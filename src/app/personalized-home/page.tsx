@@ -1,22 +1,26 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import Image from "@/components/ImageFallback";
 import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
+// 👇 새로 만든 예쁜 모달 import 확인
+import TicketPlans from "@/components/TicketPlans";
 import {
     Sparkles,
     MapPin,
     Clock,
     Users,
     Star,
-    Zap,
-    Crown,
     Ticket,
     CheckCircle,
     XCircle,
     User,
-    LogOut,
     MessageCircle,
     RefreshCw,
+    ChevronRight,
+    Crown, // Crown 아이콘 import 추가
 } from "lucide-react";
 
 // 타입 정의
@@ -53,14 +57,23 @@ interface Course {
     score?: number;
 }
 
-// 질문 시나리오 (오늘 상황 기반)
+type TrendingCourse = {
+    id: string | number;
+    title: string;
+    imageUrl?: string | null;
+    location?: string | null;
+    duration?: string | null;
+    viewCount?: number;
+};
+
+// 질문 시나리오
 const questionFlow: Question[] = [
     {
         id: "greeting",
         type: "ai",
         text: "안녕하세요! 🌟 오늘 당신에게 딱 맞는 코스를 찾기 위해 간단한 질문 몇 개만 답해주세요.",
         options: [
-            { text: "네, 시작할게요! 🚀", value: "start", next: "goal" },
+            { text: "네, 시작할게요! ", value: "start", next: "goal" },
             { text: "어떤 질문들인지 궁금해요", value: "preview", next: "preview" },
         ],
     },
@@ -151,6 +164,9 @@ const AIRecommender = () => {
     const [showPaywall, setShowPaywall] = useState(false);
     const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
     const [weekStamps, setWeekStamps] = useState<boolean[]>([false, false, false, false, false, false, false]);
+    const [todayIndex, setTodayIndex] = useState<number | null>(null);
+    const [todayChecked, setTodayChecked] = useState(false);
+    const [weekCount, setWeekCount] = useState(0);
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [currentQuestion, setCurrentQuestion] = useState<Question>(questionFlow[0]);
@@ -255,6 +271,9 @@ const AIRecommender = () => {
                 const res = await fetchWeekStamps();
                 if (!res) return;
                 setWeekStamps(res.stamps);
+                setTodayIndex(typeof res.todayIndex === "number" ? res.todayIndex : null);
+                setTodayChecked(Boolean(res.todayChecked));
+                if (typeof res.weekCount === "number") setWeekCount(res.weekCount);
             } catch (error) {
                 console.error("출석 정보 조회 오류:", error);
             }
@@ -269,8 +288,9 @@ const AIRecommender = () => {
             const result = await postCheckin();
             if (result.ok && result.success) {
                 await fetchUserData();
-                // 서버가 내려준 todayIndex가 있으면 그 위치만 true로 반영 (KST 기준 안전)
-                if (typeof result.todayIndex === "number") {
+                if (Array.isArray(result.weekStamps) && result.weekStamps.length === 7) {
+                    setWeekStamps(result.weekStamps);
+                } else if (typeof result.todayIndex === "number") {
                     setWeekStamps((prev) => prev.map((v, i) => (i === result.todayIndex ? true : v)));
                 } else {
                     const now = new Date();
@@ -278,6 +298,11 @@ const AIRecommender = () => {
                     const idx = (day + 6) % 7;
                     setWeekStamps((prev) => prev.map((v, i) => (i === idx ? true : v)));
                 }
+                if (typeof result.todayIndex === "number" || result.todayIndex === null) {
+                    setTodayIndex(result.todayIndex ?? null);
+                }
+                setTodayChecked(true);
+                if (typeof result.weekCount === "number") setWeekCount(result.weekCount);
                 setAttendanceModalOpen(false);
 
                 if (result.awarded) {
@@ -298,6 +323,7 @@ const AIRecommender = () => {
     const handleLogout = () => {
         localStorage.removeItem("authToken");
         localStorage.removeItem("user");
+        sessionStorage.removeItem("auth:loggingIn");
         setIsLoggedIn(false);
         setUserName("");
         setNickname("");
@@ -306,6 +332,9 @@ const AIRecommender = () => {
         resetConversation();
         setConversationStarted(false);
         window.dispatchEvent(new CustomEvent("authTokenChange"));
+        try {
+            router.replace("/personalized-home");
+        } catch {}
     };
 
     const resetConversation = () => {
@@ -324,15 +353,14 @@ const AIRecommender = () => {
             setMessages([{ type: "ai", text: currentQuestion.text }]);
             setConversationStarted(true);
         }
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
     };
 
-    // 쿠폰 사용 API (중복 차감 방지)
+    // 쿠폰 사용 API
     const useCoupon = async (): Promise<boolean> => {
-        // 이미 쿠폰 차감 중이면 중복 차감 방지
-        if (isUsingCoupon) {
-            console.log("쿠폰 차감이 이미 진행 중입니다.");
-            return false;
-        }
+        if (isUsingCoupon) return false;
 
         const token = localStorage.getItem("authToken");
         if (!token) {
@@ -340,7 +368,7 @@ const AIRecommender = () => {
             return false;
         }
 
-        setIsUsingCoupon(true); // 쿠폰 차감 시작 플래그 설정
+        setIsUsingCoupon(true);
 
         try {
             const response = await fetch("/api/ai-recommendation/use-ticket", {
@@ -351,11 +379,11 @@ const AIRecommender = () => {
             if (response.ok) {
                 const data = await response.json();
                 setCoupons(data.ticketsRemaining);
-                setIsUsingCoupon(false); // 쿠폰 차감 완료
+                setIsUsingCoupon(false);
                 return true;
             } else {
                 const errorData = await response.json();
-                setIsUsingCoupon(false); // 쿠폰 차감 실패
+                setIsUsingCoupon(false);
                 if (response.status === 400) {
                     setShowPaywall(true);
                 } else {
@@ -366,7 +394,7 @@ const AIRecommender = () => {
             }
         } catch (error) {
             console.error("쿠폰 사용 API 오류:", error);
-            setIsUsingCoupon(false); // 쿠폰 차감 실패
+            setIsUsingCoupon(false);
             alert("네트워크 오류");
             setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
             return false;
@@ -398,7 +426,6 @@ const AIRecommender = () => {
 
     // 답변 처리
     const handleAnswer = async (option: QuestionOption) => {
-        // payment_prompt에서 "yes"를 선택하면 쿠폰 차감 및 추천 생성
         if (currentQuestion.id === "payment_prompt") {
             if (option.value === "yes") {
                 if (!isLoggedIn) {
@@ -410,9 +437,7 @@ const AIRecommender = () => {
                     return;
                 }
                 const couponUsed = await useCoupon();
-                if (!couponUsed) {
-                    return;
-                }
+                if (!couponUsed) return;
 
                 setMessages((prev) => [...prev, { type: "user", text: option.text }]);
                 setIsTyping(true);
@@ -426,35 +451,25 @@ const AIRecommender = () => {
                 }, 600);
                 return;
             } else if (option.value === "no") {
-                // 나중에 할게요 선택 시 대화 초기화
                 resetConversation();
                 return;
             }
         }
 
-        // 첫 답변 시 로그인/쿠폰 체크는 하지 않음 (payment_prompt에서 처리)
         setMessages((prev) => [...prev, { type: "user", text: option.text }]);
-
         const newAnswers = { ...userAnswers, [currentQuestion.id]: option.value };
         setUserAnswers(newAnswers);
-
         setIsTyping(true);
 
         setTimeout(async () => {
             setIsTyping(false);
-
-            // 진행률 계산 (goal, companion_today, mood_today, region_today)
             const progressKeys = ["goal", "companion_today", "mood_today", "region_today"];
             const answered = Object.keys(newAnswers).filter((k) => progressKeys.includes(k)).length;
             const totalSteps = 4;
             const pct = Math.min(100, Math.round((answered / totalSteps) * 100));
             setProgress(pct);
 
-            // complete로 가면 추천 생성 (payment_prompt에서 처리하므로 여기서는 처리 안 함)
-            if (option.next === "complete") {
-                // 이미 payment_prompt에서 처리됨
-                return;
-            }
+            if (option.next === "complete") return;
 
             const nextQuestion = questionFlow.find((q) => q.id === option.next);
             if (nextQuestion) {
@@ -503,7 +518,6 @@ const AIRecommender = () => {
             }
         };
 
-        // 새로운 질문 구조에 맞게 추천 API 호출
         const goal = answers.goal || "";
         const companionToday = answers.companion_today || "";
         const moodToday = answers.mood_today || "";
@@ -511,7 +525,6 @@ const AIRecommender = () => {
 
         let list: Course[] = [];
 
-        // 추천 API 호출 (새로운 알고리즘 사용)
         try {
             const token = localStorage.getItem("authToken");
             const params = new URLSearchParams({
@@ -538,7 +551,6 @@ const AIRecommender = () => {
             hadNetworkError = true;
         }
 
-        // 폴백: 기존 방식으로 필터링
         if (list.length === 0) {
             let fallbackList = await fetchCourses({
                 ...(regionToday ? { region: regionToday } : {}),
@@ -546,7 +558,6 @@ const AIRecommender = () => {
             list = fallbackList.slice(0, 2);
         }
 
-        // 결과 없거나 네트워크 오류 시 환불 및 오류 표시
         if (list.length === 0) {
             if (hadNetworkError) {
                 setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
@@ -573,85 +584,64 @@ const AIRecommender = () => {
         ]);
     };
 
-    // 다른 추천 (쿠폰 차감 없이 재시작)
     const handleResetAndRecommend = async () => {
         resetConversation();
     };
 
-    // ... (결제, 모달, 카드 등 나머지 UI 컴포넌트는 기존과 동일)
-
-    const beginPurchase = async (plan: "basic" | "premium" | "vip") => {
-        // Toss Payments 결제창으로 이동 (redirect 방식)
-        // orderId는 간단히 timestamp 기반으로 생성
-        const orderId = `order_${plan}_${Date.now()}`;
-        const amount = plan === "basic" ? 4900 : plan === "premium" ? 14900 : 29900;
-        const successUrl = `${window.location.origin}/personalized-home/pay/success?orderId=${encodeURIComponent(
-            orderId
-        )}&amount=${amount}&plan=${plan}`;
-        const failUrl = `${window.location.origin}/personalized-home/pay/fail?orderId=${encodeURIComponent(
-            orderId
-        )}&amount=${amount}&plan=${plan}`;
-
-        const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY || "";
-        if (!clientKey) {
-            alert("결제 설정이 완료되지 않았습니다. (NEXT_PUBLIC_TOSS_CLIENT_KEY)");
-            return;
-        }
-        const params = new URLSearchParams({
-            clientKey,
-            amount: String(amount),
-            orderId,
-            orderName:
-                plan === "basic" ? "AI 추천 쿠폰 5개" : plan === "premium" ? "AI 추천 쿠폰 20개" : "AI 추천 쿠폰 50개",
-            successUrl,
-            failUrl,
-        }).toString();
-        window.location.href = `https://tosspayments.com/payments/checkout?${params}`;
-    };
+    const [loginNavigating, setLoginNavigating] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
 
     const LoginModal = () => (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-8 relative">
+            <div className="bg-white rounded-[28px] max-w-md w-full p-7 relative shadow-2xl">
                 <button
                     onClick={() => setShowLogin(false)}
-                    className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-all active:scale-95 hover:cursor-pointer"
+                    aria-label="닫기"
+                    className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center active:scale-95"
                 >
-                    <XCircle className="w-6 h-6" />
+                    x
                 </button>
 
-                <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <User className="w-8 h-8 text-white" />
+                <div className="text-center mb-5">
+                    <div className="w-20 h-20 rounded-full bg-emerald-500/90 mx-auto mb-4 flex items-center justify-center shadow-md">
+                        <User className="w-9 h-9 text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-2 text-gray-600">로그인하고 AI 추천받기</h2>
-                    <p className="text-gray-600">로그인하면 무료 쿠폰 2개를 드려요! 🎁</p>
+                    <h2 className="text-[22px] font-extrabold text-gray-900 mb-1">로그인하고 AI 추천받기</h2>
+                    <p className="text-gray-600 text-sm">로그인하면 무료 쿠폰 2개를 드려요! 🎁</p>
                 </div>
 
-                <div className="space-y-4">
-                    <button
-                        onClick={() => {
+                <button
+                    onClick={() => {
+                        if (loginNavigating) return;
+                        setLoginNavigating(true);
+                        try {
+                            sessionStorage.setItem("auth:loggingIn", "1");
+                            setAuthLoading(true);
+                            const next = pathname || "/personalized-home";
+                            router.push(`/login?next=${encodeURIComponent(next)}`);
+                        } catch {
                             window.location.href = "/login";
-                        }}
-                        className="hover:cursor-pointer w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all active:scale-95"
-                    >
-                        로그인 하러 가기
-                    </button>
-                </div>
+                        }
+                    }}
+                    disabled={loginNavigating}
+                    className={`w-full py-3.5 rounded-xl text-white font-extrabold shadow-sm transition-colors active:scale-95 ${
+                        loginNavigating ? "bg-emerald-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                >
+                    {loginNavigating ? "이동 중..." : "로그인 하러 가기"}
+                </button>
 
-                <div className="mt-6 p-4 bg-purple-50 rounded-xl">
-                    <h4 className="font-semibold text-purple-800 mb-2">로그인 혜택</h4>
-                    <ul className="text-sm text-purple-600 space-y-1">
+                <div className="mt-6 p-5 rounded-xl bg-emerald-50">
+                    <h4 className="font-extrabold text-emerald-700 mb-2 text-sm">로그인 혜택</h4>
+                    <ul className="text-[13px] text-emerald-700 space-y-2">
                         <li className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-purple-500" />
-                            AI 추천 무료 쿠폰 2개
+                            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" /> AI 추천 무료 쿠폰 2개
                         </li>
                         <li className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-purple-500" />
-                            개인 맞춤 추천 서비스
+                            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" /> 개인 맞춤 추천 서비스
                         </li>
                         <li className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-purple-500" />
-                            코스 예약 할인 혜택
+                            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" /> 코스 예약 할인 혜택
                         </li>
                     </ul>
                 </div>
@@ -659,131 +649,7 @@ const AIRecommender = () => {
         </div>
     );
 
-    const TicketPlans = () => (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="relative bg-gradient-to-br from-purple-600 via-pink-500 to-blue-600 p-8 rounded-t-3xl">
-                    <button
-                        onClick={() => setShowPaywall(false)}
-                        className="absolute top-4 right-4 text-white/80 hover:text-white transition-all active:scale-95"
-                    >
-                        <XCircle className="w-6 h-6" />
-                    </button>
-
-                    <div className="text-center text-white">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur rounded-full mb-4">
-                            <Ticket className="w-10 h-10" />
-                        </div>
-                        <h2 className="text-3xl font-bold mb-2">AI 추천 쿠폰</h2>
-                        <p className="text-white/90">쿠폰이 부족해요! 더 많은 추천을 받으려면 쿠폰을 구매하세요</p>
-                    </div>
-                </div>
-
-                <div className="p-8">
-                    <div className="grid md:grid-cols-3 gap-6">
-                        {/* Basic */}
-                        <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-purple-300 transition-all flex flex-col">
-                            <h3 className="text-xl font-bold mb-2">Basic</h3>
-                            <div className="mb-4">
-                                <span className="text-3xl font-bold">₩4,900</span>
-                            </div>
-                            <div className="text-center mb-4">
-                                <span className="text-4xl font-bold text-purple-600">5개</span>
-                                <p className="text-gray-600">쿠폰</p>
-                            </div>
-                            <ul className="space-y-3 mb-6 flex-grow">
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">AI 추천 5회 이용</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">5% 코스 할인</span>
-                                </li>
-                            </ul>
-                            <button
-                                onClick={() => beginPurchase("basic")}
-                                className="w-full py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition-all active:scale-95"
-                            >
-                                구매하기
-                            </button>
-                        </div>
-
-                        {/* Premium */}
-                        <div className="border-2 border-purple-500 rounded-2xl p-6 relative transform md:scale-105 shadow-xl flex flex-col">
-                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                                    BEST VALUE
-                                </span>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2 flex items-center">
-                                Premium <Crown className="w-5 h-5 text-yellow-500 ml-2" />
-                            </h3>
-                            <div className="mb-4">
-                                <span className="text-3xl font-bold">₩14,900</span>
-                            </div>
-                            <div className="text-center mb-4">
-                                <span className="text-4xl font-bold text-purple-600">20개</span>
-                                <p className="text-gray-600">쿠폰</p>
-                            </div>
-                            <ul className="space-y-3 mb-6 flex-grow">
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">AI 추천 20회 이용</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">15% 코스 할인</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">우선 예약권</span>
-                                </li>
-                            </ul>
-                            <button
-                                onClick={() => beginPurchase("premium")}
-                                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all active:scale-95"
-                            >
-                                인기 플랜 선택
-                            </button>
-                        </div>
-
-                        {/* VIP */}
-                        <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-purple-300 transition-all flex flex-col">
-                            <h3 className="text-xl font-bold mb-2">VIP</h3>
-                            <div className="mb-4">
-                                <span className="text-3xl font-bold">₩29,900</span>
-                            </div>
-                            <div className="text-center mb-4">
-                                <span className="text-4xl font-bold text-purple-600">50개</span>
-                                <p className="text-gray-600">쿠폰</p>
-                            </div>
-                            <ul className="space-y-3 mb-6 flex-grow">
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">AI 추천 50회 이용</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">30% 코스 할인</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                                    <span className="text-sm">VIP 전용 코스</span>
-                                </li>
-                            </ul>
-                            <button
-                                onClick={() => beginPurchase("vip")}
-                                className="w-full py-3 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition-all active:scale-95"
-                            >
-                                VIP 되기
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    // ❌ [삭제된 TicketPlans 내부 컴포넌트]
 
     const CourseCard = ({ course }: { course: Course }) => (
         <a
@@ -842,29 +708,99 @@ const AIRecommender = () => {
         </a>
     );
 
+    const router = useRouter();
+    const pathname = usePathname();
+
+    useEffect(() => {
+        try {
+            router.prefetch && router.prefetch("/login");
+        } catch {}
+    }, [router]);
+
+    useEffect(() => {
+        const inProgress = sessionStorage.getItem("auth:loggingIn") === "1";
+        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+        if (inProgress && !token) setAuthLoading(true);
+
+        let intervalId: any;
+        if (inProgress) {
+            intervalId = setInterval(() => {
+                const t = localStorage.getItem("authToken");
+                if (t) {
+                    setAuthLoading(false);
+                    sessionStorage.removeItem("auth:loggingIn");
+                    clearInterval(intervalId);
+                }
+            }, 500);
+            setTimeout(() => {
+                if (intervalId) clearInterval(intervalId);
+            }, 120000);
+        }
+
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, []);
+
+    // 트렌딩 코스 (TOP 3)
+    const [trending, setTrending] = useState<TrendingCourse[]>([]);
+    useEffect(() => {
+        (async () => {
+            try {
+                const sp = new URLSearchParams();
+                sp.set("limit", "20");
+                sp.set("nocache", "1");
+                sp.set("imagePolicy", "any");
+                const res = await fetch(`/api/courses?${sp.toString()}`, { cache: "no-store" });
+                const data = await res.json().catch(() => null);
+                const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.courses) ? data.courses : [];
+                const norm: TrendingCourse[] = list.map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    imageUrl: c.imageUrl,
+                    location: c.location,
+                    duration: c.duration,
+                    viewCount: Number(c.viewCount ?? c.view_count ?? 0),
+                }));
+                norm.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+                setTrending(norm.slice(0, 3));
+            } catch {}
+        })();
+    }, []);
+
     return (
-        <div className="min-h-screen bg-white font-sans ">
+        <div className="min-h-screen bg-gradient-to-b from-emerald-50/20 to-white font-sans ">
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal />}
-                {showPaywall && <TicketPlans />}
+                {/* 👇 [수정됨] 외부 컴포넌트 사용 */}
+                {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
+
                 {attendanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center">
                             <h3 className="text-lg font-bold text-gray-900 mb-2">출석 체크</h3>
-                            <p className="text-gray-600 mb-4">이번 주 출석 현황</p>
-                            <div className="grid grid-cols-7 gap-2 mb-4">
-                                {["월", "화", "수", "목", "금", "토", "일"].map((label, i) => (
-                                    <div key={i} className="flex flex-col items-center gap-1">
-                                        <span className="text-xs text-gray-500">{label}</span>
-                                        <span
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                                                weekStamps[i] ? "bg-purple-600 text-white" : "bg-gray-200 text-gray-600"
-                                            }`}
-                                        >
-                                            {weekStamps[i] ? "✔" : ""}
-                                        </span>
-                                    </div>
-                                ))}
+                            <p className="text-gray-600 mb-3">
+                                이번 주 진행도: <span className="font-semibold text-gray-900">{weekCount}</span>/7
+                            </p>
+                            <div className="grid grid-cols-7 gap-2 mb-5">
+                                {Array.from({ length: 7 }).map((_, i) => {
+                                    const checked = Boolean(weekStamps[i]);
+                                    const isToday = typeof todayIndex === "number" && todayIndex === i;
+                                    return (
+                                        <div key={i} className="flex flex-col items-center gap-1">
+                                            <span className="text-[10px] text-gray-400">{i + 1}</span>
+                                            <span
+                                                className={[
+                                                    "w-9 h-9 rounded-full flex items-center justify-center text-base font-semibold transition-all",
+                                                    checked ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600",
+                                                    isToday ? "ring-2 ring-emerald-400" : "",
+                                                ].join(" ")}
+                                            >
+                                                {checked ? "🌱" : ""}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                             <div className="flex gap-3 justify-center">
                                 <button
@@ -875,118 +811,142 @@ const AIRecommender = () => {
                                 </button>
                                 <button
                                     onClick={doHomeCheckin}
-                                    className="px-4 py-2 bg-purple-600 text-white rounded-lg"
+                                    disabled={todayChecked}
+                                    className={`px-4 py-2 rounded-lg text-white ${
+                                        todayChecked
+                                            ? "bg-gray-300 cursor-not-allowed"
+                                            : "bg-emerald-600 hover:bg-emerald-700"
+                                    }`}
                                 >
-                                    출석 체크 하기
+                                    {todayChecked ? "오늘은 완료됨" : "출석 체크 하기"}
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                <div className="w-full max-w-4xl flex flex-col">
-                    {/* AI 추천 헤더 - 이미지 스타일 */}
-                    <div className="flex flex-col gap-4 mb-6">
-                        {/* 상단 카드: AI 추천 카드 */}
-                        <div className="bg-white rounded-2xl shadow-lg p-6 flex-shrink-0">
-                            <div className="flex items-center space-x-4 mb-4">
-                                <div className="relative">
-                                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                                        <img
-                                            src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
-                                            alt="DoNa"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex-1">
-                                    <h1 className="text-2xl font-bold text-black mb-1">두나의 AI 코스 추천</h1>
-                                    <p className="text-sm text-gray-500">98.7% 만족도 · 32명 사용 중</p>
-                                </div>
+                <div className="w-full max-w-4xl flex flex-col mb-6">
+                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <p className="text-gray-500 text-sm mb-1 font-medium">오늘도 즐거운 여행 되세요!</p>
+                                <h2 className="text-2xl font-bold text-gray-900 leading-tight">
+                                    {isLoggedIn ? (
+                                        <>
+                                            안녕하세요, <br />
+                                            <span className="text-emerald-600">{nickname}님</span> 👋
+                                        </>
+                                    ) : (
+                                        <>
+                                            로그인이 <br />
+                                            <span className="text-emerald-600">필요해요</span> 👋
+                                        </>
+                                    )}
+                                </h2>
                             </div>
-                            <button
-                                onClick={startConversation}
-                                className="w-full bg-gray-100 hover:bg-gray-200 rounded-xl py-3 px-4 flex items-center justify-center text-black font-medium transition-all active:scale-95"
-                            >
-                                <span>AI 추천 시작하기</span>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="ml-2"
-                                >
-                                    <path d="m9 18 6-6-6-6" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* 하단 카드: 사용자 정보 카드 */}
-                        <div className="bg-white rounded-2xl shadow-lg p-6 flex-shrink-0">
-                            {isLoggedIn ? (
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                                            <img
-                                                src={
-                                                    profileImageUrl ||
-                                                    "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png"
-                                                }
-                                                alt={nickname || "사용자"}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                        <div>
-                                            <p className="text-base font-medium text-black">
-                                                안녕하세요, {nickname && nickname.trim() ? nickname : "사용자"}님
-                                            </p>
-                                            <div className="flex items-center space-x-2 mt-1">
-                                                <Ticket className="w-5 h-5 text-gray-400" />
-                                                <span className="text-lg font-bold text-black">쿠폰 {coupons}개</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
+                                    <img
+                                        src={
+                                            profileImageUrl ||
+                                            "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png"
+                                        }
+                                        alt="프로필"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                {isLoggedIn && (
                                     <button
                                         onClick={handleLogout}
-                                        className="p-2 hover:bg-gray-100 rounded-lg transition-all active:scale-95"
+                                        className="text-xs text-gray-400 underline hover:text-gray-600"
                                     >
-                                        <LogOut className="w-5 h-5 text-gray-600" />
+                                        로그아웃
                                     </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-6">
+                            {isLoggedIn ? (
+                                <div className="inline-flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 text-xs font-bold text-gray-600">
+                                    <Ticket className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>쿠폰 {coupons}개</span>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                                            <img
-                                                src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png"
-                                                alt="기본 프로필"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                        <div>
-                                            <p className="text-base font-medium text-black">로그인이 필요해요</p>
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                로그인하면 무료 쿠폰 2개를 드려요! 🎁
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowLogin(true)}
-                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all active:scale-95 text-sm font-semibold"
-                                    >
-                                        로그인
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => setShowLogin(true)}
+                                    className="inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 text-xs font-bold text-emerald-600 hover:bg-emerald-100 transition-colors"
+                                >
+                                    <span>로그인하고 혜택받기</span>
+                                </button>
                             )}
                         </div>
-                    </div>
 
-                    {/* 채팅 및 추천 결과가 표시되는 메인 영역 */}
+                        <div
+                            onClick={startConversation}
+                            className="bg-emerald-50 rounded-2xl p-5 flex items-center justify-between cursor-pointer hover:bg-emerald-100 transition-colors group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-xl group-hover:scale-110 transition-transform">
+                                    🤖
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                        <h3 className="font-bold text-gray-900 text-[15px]">두나의 AI 코스 추천</h3>
+                                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                    </div>
+                                    <p className="text-xs text-emerald-700 font-medium">
+                                        만족도 <span className="font-bold text-emerald-600">98.7%</span> 코스 보기
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="text-gray-400 group-hover:translate-x-1 transition-transform">
+                                <ChevronRight className="w-5 h-5" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-full max-w-4xl flex flex-col">
+                    {!conversationStarted && trending.length > 0 && (
+                        <div className="mb-6">
+                            <div className="flex items-center justify-between px-1 mb-2">
+                                <h3 className="text-sm font-extrabold text-gray-900">요즘 뜨는 코스 TOP 3</h3>
+                                <Link href="/nearby" className="text-xs text-gray-500 hover:text-gray-700">
+                                    더 보기
+                                </Link>
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1">
+                                {trending.map((t) => (
+                                    <Link
+                                        key={String(t.id)}
+                                        href={`/courses/${t.id}`}
+                                        className="shrink-0 w-[210px] rounded-xl bg-white border border-gray-100 hover:shadow-sm transition-all"
+                                    >
+                                        <div className="relative w-full aspect-[4/3] rounded-t-xl overflow-hidden bg-gray-100">
+                                            <Image
+                                                src={t.imageUrl || ""}
+                                                alt={t.title}
+                                                fill
+                                                className="object-cover"
+                                                sizes="210px"
+                                                quality={70}
+                                            />
+                                        </div>
+                                        <div className="p-3">
+                                            <div className="text-[13px] text-gray-500 mb-1 line-clamp-1">
+                                                {(t.location || "").toString()} {t.duration ? `· ${t.duration}` : ""}
+                                            </div>
+                                            <div className="text-sm font-bold text-gray-900 line-clamp-2">
+                                                {t.title}
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <main className="flex-1 overflow-y-auto rounded-3xl">
                         {conversationStarted && !showRecommendations && (
                             <div className="sticky top-0 z-10 p-3">
@@ -1013,19 +973,13 @@ const AIRecommender = () => {
                             <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-white/10 rounded-3xl border border-white/10">
                                 <button
                                     onClick={startConversation}
-                                    className="cursor-pointer px-8 py-4 bg-[#2A3B5F] text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 flex items-center mx-auto"
+                                    className="cursor-pointer px-7 py-3 bg-emerald-500 text-white rounded-xl font-bold text-base shadow-sm hover:bg-emerald-600 transition-all transform active:scale-95 flex items-center mx-auto"
                                 >
-                                    <MessageCircle className="w-6 h-6 mr-3" />
+                                    <MessageCircle className="w-5 h-5 mr-2.5 text-white/90" />
                                     AI 추천 시작하기
                                 </button>
-                                <p className="text-gray-600 mt-4">몇 가지 질문에 답하면 </p>
+                                <p className="text-gray-600 mt-4">몇 가지 질문에 답하면</p>
                                 <p className="text-gray-600">완벽한 코스를 찾아드려요!</p>
-                                <div className="mt-6 text-sm text-gray-700 bg-gray-50 rounded-xl p-4">
-                                    <p>
-                                        시작하면 <strong>콘셉트/지역/시간</strong>을 바탕으로
-                                        <strong> 3시간짜리 맞춤 데이트 코스</strong>를 만드는 중이에요 🎉
-                                    </p>
-                                </div>
                             </div>
                         )}
 
@@ -1085,15 +1039,15 @@ const AIRecommender = () => {
                                                     className="w-full h-full object-cover"
                                                 />
                                             </div>
-                                            <div className="bg-gray-100 px-5 py-4 rounded-2xl rounded-bl-none">
+                                            <div className="bg-emerald-50 border border-emerald-100 px-5 py-4 rounded-2xl rounded-bl-none">
                                                 <div className="flex space-x-1.5">
-                                                    <div className="w-2 h-2 bg-[#2A3B5F] rounded-full animate-bounce"></div>
+                                                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
                                                     <div
-                                                        className="w-2 h-2 bg-[#3E548C] rounded-full animate-bounce"
+                                                        className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"
                                                         style={{ animationDelay: "150ms" }}
                                                     ></div>
                                                     <div
-                                                        className="w-2 h-2 bg-[#6B84C3] rounded-full animate-bounce"
+                                                        className="w-2 h-2 bg-emerald-600 rounded-full animate-bounce"
                                                         style={{ animationDelay: "300ms" }}
                                                     ></div>
                                                 </div>
@@ -1104,13 +1058,13 @@ const AIRecommender = () => {
                                 </div>
 
                                 {!isTyping && !showRecommendations && currentQuestion.options && (
-                                    <div className="flex-shrink-0 border-t border-gray-100 mt-4 pt-4">
+                                    <div className="flex-shrink-0 border-t border-emerald-100 mt-4 pt-4">
                                         <div className="flex flex-wrap gap-3">
                                             {currentQuestion.options.map((option, index) => (
                                                 <button
                                                     key={index}
                                                     onClick={() => handleAnswer(option)}
-                                                    className="cursor-pointer px-5 py-2.5 bg-white/90 border-2 border-[#2A3B5F]/30 text-[#1E2A44] rounded-full font-semibold hover:bg-white transition-all active:scale-95"
+                                                    className="cursor-pointer px-5 py-2.5 bg-emerald-50 border-2 border-emerald-200 text-emerald-700 rounded-full font-semibold hover:bg-emerald-100 hover:border-emerald-300 transition-all active:scale-95"
                                                 >
                                                     {option.text}
                                                 </button>

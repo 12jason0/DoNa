@@ -17,6 +17,7 @@
         "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "^9.4.0",
         "@tensorflow/tfjs": "^4.22.0",
+        "@tosspayments/payment-sdk": "^1.9.2",
         "@types/jsonwebtoken": "^9.0.10",
         "bcryptjs": "^3.0.2",
         "browser-image-compression": "^2.0.2",

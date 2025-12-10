@@ -7,10 +7,12 @@ import { fetchWeekStamps, getLocalTodayKey, postCheckin } from "@/lib/checkinCli
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
-import SectionHeader from "@/components/SectionHeader";
 import HeroSlider from "@/components/HeroSlider";
 import OnboardingSection from "@/components/OnboardingSection";
 import CompletionModal from "@/components/CompletionModal";
+
+// [변경] 기존 onboardingData에서 필요한 데이터만 가져옵니다.
+import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 
 type Course = {
     id: string;
@@ -22,6 +24,7 @@ type Course = {
     imageUrl: string;
     concept: string;
     rating: number;
+    region?: string;
     reviewCount: number;
     participants: number;
     view_count: number;
@@ -34,9 +37,7 @@ export default function Home() {
     const [allTags, setAllTags] = useState<Array<{ id: number; name: string }>>([]);
     const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
     const [query, setQuery] = useState("");
-    const [showTags, setShowTags] = useState(false);
     const [searchNonce, setSearchNonce] = useState(0);
-    const [currentSlide] = useState(0);
     const [, setLoading] = useState(true);
     const [showWelcome, setShowWelcome] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -51,14 +52,13 @@ export default function Home() {
     const [stampCompleted, setStampCompleted] = useState(false);
     const [alreadyToday, setAlreadyToday] = useState(false);
     const [cycleProgress, setCycleProgress] = useState(0);
-    const [todayIndex, setTodayIndex] = useState(0);
     const [streak, setStreak] = useState<number>(0);
     const [userId, setUserId] = useState<number | null>(null);
-    const [hasPreferences, setHasPreferences] = useState<boolean>(false);
+    const [userName, setUserName] = useState<string>("");
+    const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
+
     const router = useRouter();
     const hasShownCheckinModalRef = useRef(false);
-
-    // 날짜 키는 공용 유틸을 사용
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -87,6 +87,8 @@ export default function Home() {
                             ? Number(p?.user?.id ?? p?.id ?? p?.userId ?? p?.user_id)
                             : null;
                     if (id) setUserId(id);
+                    const name = p?.user?.nickname ?? p?.nickname ?? "두나";
+                    setUserName(name);
                 }
                 if (checkinRes.ok) {
                     const c = await checkinRes.json().catch(() => ({}));
@@ -94,18 +96,18 @@ export default function Home() {
                 }
                 if (preferencesRes.ok) {
                     const prefs = await preferencesRes.json().catch(() => ({}));
-                    // API가 { preferences: {...} } 형태로 반환하거나 직접 preferences 객체를 반환할 수 있음
                     const prefData = prefs?.preferences ?? prefs ?? {};
-                    // 선호도가 설정되었는지 확인 (새로운 구조 기준)
-                    const hasPrefs =
-                        prefData &&
-                        typeof prefData === "object" &&
-                        Object.keys(prefData).length > 0 &&
-                        ((prefData.concept && Array.isArray(prefData.concept) && prefData.concept.length > 0) ||
-                            (prefData.companion && prefData.companion !== "") ||
-                            (prefData.mood && Array.isArray(prefData.mood) && prefData.mood.length > 0) ||
-                            (prefData.regions && Array.isArray(prefData.regions) && prefData.regions.length > 0));
-                    setHasPreferences(hasPrefs);
+                    const s1 = localStorage.getItem("onboardingStep1") === "1";
+                    const s2 = localStorage.getItem("onboardingStep2") === "1";
+                    const s3 = localStorage.getItem("onboardingStep3") === "1";
+                    const doneFlag = localStorage.getItem("onboardingComplete") === "1";
+                    const step1 =
+                        s1 ||
+                        (Array.isArray(prefData?.mood) && prefData.mood.length > 0) ||
+                        (Array.isArray(prefData?.concept) && prefData.concept.length > 0);
+                    const step2 = s2;
+                    const step3 = s3 || (typeof prefData?.companion === "string" && prefData.companion !== "");
+                    setIsOnboardingComplete(doneFlag || (step1 && step2 && step3));
                 }
             } catch {}
         })();
@@ -132,7 +134,7 @@ export default function Home() {
         }
     };
 
-    // 태그 목록 불러오기 (초기 페인트 후 유휴 시간에)
+    // 태그 목록 불러오기
     useEffect(() => {
         const idle = (cb: () => void) =>
             "requestIdleCallback" in window
@@ -151,7 +153,6 @@ export default function Home() {
 
     const buildCourseListUrl = () => {
         const params = new URLSearchParams();
-        // 초기 목록은 로딩 속도를 위해 30개만 로드
         params.set("limit", "30");
         params.set("imagePolicy", "any");
         const qTrim = query.trim();
@@ -184,10 +185,6 @@ export default function Home() {
         fetchCourses();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedTagIds.join(","), searchNonce]);
-
-    const toggleTag = (id: number) => {
-        setSelectedTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-    };
 
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -261,17 +258,13 @@ export default function Home() {
             const token = localStorage.getItem("authToken");
             if (!token) return;
 
-            // 항상 최신 데이터를 가져옴
             const result = await fetchAndSetWeekStamps();
             if (!result) return;
 
             const already = Boolean(result.todayChecked);
-
             setAnimStamps(null);
 
-            // 오늘 미출석이면 홈 진입 시마다 모달을 즉시 표시
             if (!already) {
-                // 모달 노출 전에 최신 streak 정보를 동기화
                 try {
                     const token2 = localStorage.getItem("authToken");
                     const res = await fetch("/api/users/checkins", {
@@ -285,21 +278,19 @@ export default function Home() {
                         }
                     }
                 } catch {}
-                // 서버 weekStamps가 불완전한 경우, streak와 todayIndex 기반으로 '어제까지' 도장을 채워 표시
+
                 try {
                     const expected = Math.min(7, Number(result?.streak || 0));
                     const tIdx = typeof result?.todayIndex === "number" ? (result?.todayIndex as number) : null;
                     if (expected > 0 && tIdx !== null) {
                         const currentTrue = (result?.stamps || []).filter(Boolean).length;
                         if (currentTrue < expected) {
-                            // todayIndex가 0이면 서버 사이클이 '오늘부터' 시작하므로, 좌측부터 expected개를 채워 보정
                             if (tIdx === 0) {
                                 const pre = new Array(7).fill(false);
                                 for (let i = 0; i < Math.min(7, expected); i++) pre[i] = true;
                                 setWeekStamps(pre);
                             } else {
                                 const pre = (result?.stamps || new Array(7).fill(false)).slice(0, 7);
-                                // 어제까지 expected개: [tIdx - expected, tIdx - 1]
                                 const start = Math.max(0, tIdx - expected);
                                 const end = Math.max(-1, tIdx - 1);
                                 for (let i = start; i <= end; i++) pre[i] = true;
@@ -307,11 +298,9 @@ export default function Home() {
                             }
                         }
                     } else if (expected > 0) {
-                        // todayIndex를 전달받지 못한 경우: streak 기반으로 '어제까지' 미리 채워서 빈 화면 방지
-                        // 예: streak=6이면 [true,true,true,true,true,false,false] 형태로 표시
                         const currentTrue = (result?.stamps || []).filter(Boolean).length;
                         if (currentTrue < expected) {
-                            const fillCount = Math.max(0, Math.min(6, expected - 1)); // 오늘은 비워두기
+                            const fillCount = Math.max(0, Math.min(6, expected - 1));
                             const pre = new Array(7).fill(false);
                             for (let i = 0; i < fillCount; i++) pre[i] = true;
                             setWeekStamps(pre);
@@ -349,7 +338,6 @@ export default function Home() {
         };
         initAuth();
 
-        // 페이지 포커스 시에도 출석체크 모달 확인 (메인으로 돌아올 때마다)
         const handleFocus = () => {
             const token = localStorage.getItem("authToken");
             if (token) {
@@ -364,7 +352,6 @@ export default function Home() {
         };
     }, []);
 
-    // 홈 진입 시 즉시 출석 모달 확인 (로그인 상태)
     useEffect(() => {
         const token = localStorage.getItem("authToken");
         if (token) {
@@ -409,7 +396,6 @@ export default function Home() {
             if (Array.isArray(data?.recommendations)) {
                 setRecs(data.recommendations);
             } else {
-                // API 실패 시 빈 배열로 설정 (섹션은 표시되지만 내용 없음)
                 setRecs([]);
             }
         } catch {
@@ -429,7 +415,6 @@ export default function Home() {
         });
     }, []);
 
-    // 로그인 상태 변경 시 추천 다시 가져오기
     useEffect(() => {
         const handleAuthChange = () => {
             fetchRecommendations();
@@ -438,7 +423,6 @@ export default function Home() {
         return () => window.removeEventListener("authTokenChange", handleAuthChange as EventListener);
     }, []);
 
-    // 출석 업데이트를 전역 이벤트로 수신하여 위젯/모달 상태를 즉시 갱신
     useEffect(() => {
         const onCheckinUpdated = (e: Event) => {
             const d = (e as CustomEvent).detail || {};
@@ -450,7 +434,6 @@ export default function Home() {
         return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
     }, []);
 
-    // 미리보기: 토스트 테스트 (콘솔에서 window.previewCheckinToast() 호출 또는 ?toast=checkin7)
     useEffect(() => {
         try {
             (window as any).previewCheckinToast = () => {
@@ -682,7 +665,6 @@ export default function Home() {
                                                     setIsStamping(false);
                                                     return;
                                                 }
-                                                // 이미 오늘 출석한 경우: 서버 배열로 동기화하고 종료
                                                 if (data.alreadyChecked) {
                                                     if (Array.isArray(data.weekStamps))
                                                         setWeekStamps(data.weekStamps as boolean[]);
@@ -691,13 +673,11 @@ export default function Home() {
                                                     setAlreadyToday(true);
                                                     setIsStamping(false);
                                                     setStampCompleted(true);
-                                                    // 출석체크 버튼을 눌렀을 때만 dismissedDate 저장 및 버튼 눌림 표시
                                                     const todayKey = getLocalTodayKey();
                                                     localStorage.setItem("checkinModalDismissedDate", todayKey);
                                                     localStorage.setItem(`checkinButtonPressed_${todayKey}`, "true");
                                                     return;
                                                 }
-                                                // 서버에서 받은 weekCount/streak 등 보조정보는 즉시 반영
                                                 if (typeof data.weekCount === "number") {
                                                     setCycleProgress((data.weekCount % 7) as number);
                                                 }
@@ -716,11 +696,9 @@ export default function Home() {
                                                     } catch {}
                                                 }
 
-                                                // 애니메이션: 오늘 날짜에 해당하는 인덱스에만 도장 찍기
                                                 const targetIdx =
                                                     typeof data.todayIndex === "number" ? data.todayIndex : null;
 
-                                                // 오늘 날짜 인덱스가 없으면 애니메이션 없이 바로 완료
                                                 if (targetIdx === null) {
                                                     if (Array.isArray(data.weekStamps)) {
                                                         setWeekStamps(data.weekStamps as boolean[]);
@@ -746,15 +724,13 @@ export default function Home() {
                                                     return;
                                                 }
 
-                                                // 기존(어제까지) 출석은 그대로 보이되, 오늘 건만 비워둔 상태로 먼저 렌더링
                                                 if (Array.isArray(data.weekStamps)) {
                                                     const serverStamps = (data.weekStamps as boolean[]).slice(0, 7);
                                                     if (targetIdx >= 0 && targetIdx < serverStamps.length) {
                                                         const preStamps = serverStamps.slice();
-                                                        preStamps[targetIdx] = false; // 오늘 스탬프만 잠시 비움
+                                                        preStamps[targetIdx] = false;
                                                         setWeekStamps(preStamps);
                                                     } else {
-                                                        // 범위 밖이면 전체를 바로 반영
                                                         setWeekStamps(serverStamps);
                                                     }
                                                 }
@@ -767,7 +743,6 @@ export default function Home() {
                                                         return next;
                                                     });
                                                     setTimeout(() => {
-                                                        // 서버에서 받은 배열을 그대로 사용
                                                         if (Array.isArray(data.weekStamps)) {
                                                             setWeekStamps(data.weekStamps as boolean[]);
                                                         }
@@ -826,115 +801,23 @@ export default function Home() {
             )}
 
             <>
-                {/* 검색/카테고리 섹션 (헤더와 분리) */}
-                <section className="py-6">
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="space-y-2">
-                            <div className="flex gap-2">
-                                <input
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="코스 검색 (제목/설명/지역)"
-                                    className="flex-1 border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900"
-                                    aria-label="코스 검색"
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            const sp = new URLSearchParams();
-                                            const qTrim = query.trim();
-                                            if (qTrim) sp.set("q", qTrim);
-                                            if (selectedTagIds.length > 0) sp.set("tagIds", selectedTagIds.join(","));
-                                            router.push(`/nearby?${sp.toString()}`);
-                                        }
-                                    }}
-                                />
-                                <button
-                                    onClick={() => {
-                                        const sp = new URLSearchParams();
-                                        const qTrim = query.trim();
-                                        if (qTrim) sp.set("q", qTrim);
-                                        if (selectedTagIds.length > 0) sp.set("tagIds", selectedTagIds.join(","));
-                                        router.push(`/nearby?${sp.toString()}`);
-                                    }}
-                                    className="px-3 py-2 rounded-xl text-sm font-semibold border border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-                                    aria-label="검색 실행"
-                                >
-                                    검색
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                {/* 메인 히어로 */}
-                <HeroSlider
-                    items={topCourses.map((c) => ({
-                        id: c.id,
-                        imageUrl: c.imageUrl,
-                        location: c.location,
-                        concept: c.concept,
-                        tags: c.tags,
-                    }))}
-                />
+                {/* [수정] 메인 히어로 슬라이더 (검색창이 빠지면서 위로 올라갑니다) */}
+                <div className="pt-4">
+                    <HeroSlider
+                        items={topCourses.map((c) => ({
+                            id: c.id,
+                            imageUrl: c.imageUrl,
+                            location: c.location,
+                            concept: c.concept,
+                            tags: c.tags,
+                        }))}
+                    />
+                </div>
 
+                {/* 탭 메뉴 (개선된 TabbedConcepts) */}
                 <TabbedConcepts courses={courses} hotCourses={hotCourses} newCourses={newCourses} />
-                {/* 당신을 위한 추천: 로그인 여부와 관계없이 항상 표시 */}
-                <section>
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-black flex items-center gap-2">
-                                <span className="text-2xl">🌿</span>
-                                {isLoggedInForRecs ? "당신을 위한 추천" : "인기 코스"}
-                            </h2>
-                            <Link
-                                href={isLoggedInForRecs ? "/courses?recommended=1" : "/courses?sort=popular"}
-                                aria-label="코스 더 보기"
-                                className="w-8 h-8 flex items-center justify-center rounded-full border border-green-300 text-green-700 hover:bg-green-50"
-                            >
-                                ›
-                            </Link>
-                        </div>
-                        {isLoadingRecs ? (
-                            <div className="flex gap-4 overflow-x-auto pb-2">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="min-w-[200px] bg-gray-100 rounded-xl h-40 animate-pulse" />
-                                ))}
-                            </div>
-                        ) : recs.length > 0 ? (
-                            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar scrollbar-hide">
-                                {recs.slice(0, 3).map((c) => (
-                                    <Link
-                                        key={c.id}
-                                        href={`/courses/${c.id}`}
-                                        className="min-w-[200px] bg-white rounded-xl shadow border border-green-100 hover:shadow-md hover:border-green-200 transition"
-                                    >
-                                        <div className="relative text-black w-full h-32 overflow-hidden rounded-t-xl bg-gray-200">
-                                            {c.imageUrl ? (
-                                                <Image
-                                                    src={c.imageUrl}
-                                                    alt={c.title}
-                                                    fill
-                                                    sizes="(max-width: 768px) 200px, 240px"
-                                                    className="object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full bg-gray-200" />
-                                            )}
-                                        </div>
-                                        <div className="p-3">
-                                            <div className="font-semibold line-clamp-1 text-black">{c.title}</div>
-                                            <div className="text-sm text-gray-500 line-clamp-1">
-                                                {(c as any).concept} · {(c as any).region}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-gray-500">추천 코스를 불러올 수 없습니다.</div>
-                        )}
-                    </div>
-                </section>
 
-                {/* 출석 위젯: 테마별과 당신을 위한 추천 사이 */}
+                {/* 출석 위젯 */}
                 <section className="py-6">
                     <div className="max-w-7xl mx-auto px-4">
                         <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center justify-between">
@@ -949,14 +832,11 @@ export default function Home() {
                                         const result = await fetchAndSetWeekStamps();
                                         const already = Boolean(result?.todayChecked);
 
-                                        // 오늘 이미 출석체크 버튼을 눌렀으면 마이페이지로 이동
                                         if (checkinButtonPressed) {
                                             router.push("/mypage?tab=checkins");
                                             return;
                                         }
 
-                                        // 오늘 출석 안 했거나, 출석했지만 버튼을 안 눌렀으면 모달 열기
-                                        // 단, 오늘 이미 모달을 표시했으면 마이페이지로 이동 (하루에 한 번만 표시)
                                         if (shownDate === todayKey && showCheckinModal === false) {
                                             router.push("/mypage?tab=checkins");
                                             return;
@@ -999,12 +879,92 @@ export default function Home() {
                         </div>
                     </div>
                 </section>
-                {!hasPreferences && <OnboardingSection onStart={handleStartOnboarding} />}
+
+                {/* [핵심 수정] 개인화 추천 섹션 */}
+                <section className="pb-12">
+                    <div className="max-w-7xl mx-auto px-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                {isLoggedInForRecs ? `${userName}님을 위한 추천` : "요즘 뜨는 인기 코스"}
+                            </h2>
+                        </div>
+
+                        {/* 추천 로딩 중일 때 스켈레톤 */}
+                        {isLoadingRecs && isLoggedInForRecs ? (
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                                {[1, 2, 3].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="min-w-[160px] w-[45%] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse"
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            /* 데이터 표시 */
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
+                                {(isLoggedInForRecs && recs.length > 0 ? recs : hotCourses).slice(0, 5).map((c) => {
+                                    const locationParts = (c.location || "").split(" ");
+                                    const fallbackRegion = locationParts[1] ?? locationParts[0] ?? "서울";
+                                    const displayRegion = c.region || fallbackRegion;
+
+                                    // [수정] 영어 Concept 키를 한글로 변환
+                                    const displayConcept = CONCEPTS[c.concept as keyof typeof CONCEPTS] || c.concept;
+
+                                    return (
+                                        <Link
+                                            key={c.id}
+                                            href={`/courses/${c.id}`}
+                                            className="block min-w-[160px] w-[45%] group relative"
+                                        >
+                                            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-200 shadow-sm border border-gray-100 group-hover:shadow-md transition-all">
+                                                {c.imageUrl ? (
+                                                    <Image
+                                                        src={c.imageUrl}
+                                                        alt={c.title}
+                                                        fill
+                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
+                                                        No Image
+                                                    </div>
+                                                )}
+
+                                                {/* [해시태그] 지역명 + 한글 테마명 */}
+                                                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                                                    <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
+                                                        #{displayRegion}
+                                                    </span>
+                                                    <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
+                                                        #{displayConcept}
+                                                    </span>
+                                                </div>
+
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90" />
+
+                                                <div className="absolute bottom-0 left-0 w-full p-4 text-left z-10">
+                                                    <div className="text-white font-bold text-sm line-clamp-2 leading-tight">
+                                                        {c.title}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                {!isOnboardingComplete && <OnboardingSection onStart={handleStartOnboarding} />}
             </>
         </>
     );
 }
 
+// --------------------------------------------------------
+// [TabbedConcepts] : onboardingData 재사용 버전
+// --------------------------------------------------------
 function TabbedConcepts({
     courses,
     hotCourses,
@@ -1017,6 +977,9 @@ function TabbedConcepts({
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"concept" | "popular" | "new">("concept");
     const [conceptCountsMap, setConceptCountsMap] = useState<Record<string, number>>({});
+
+    // [New State] Controls the "Show More" toggle for the Concept tab
+    const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
         const fetchCounts = async () => {
@@ -1031,7 +994,7 @@ function TabbedConcepts({
         fetchCounts();
     }, []);
 
-    const representativeImageByConcept: Record<string, string | undefined> = courses.reduce((acc, c) => {
+    const representativeImageByConcept = courses.reduce((acc, c) => {
         const key = c.concept || "기타";
         if (!acc[key] && c.imageUrl) acc[key] = c.imageUrl;
         return acc;
@@ -1053,11 +1016,8 @@ function TabbedConcepts({
                   }, {})
               ).map(([name, v]) => ({ name, count: v.count, imageUrl: v.imageUrl }))
     ).sort((a, b) => b.count - a.count);
-    const trackClasses =
-        "flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 no-scrollbar scrollbar-hide cursor-grab select-none overscroll-contain touch-pan-x";
-    const cardBase =
-        "snap-start w-[130px] min-w-[130px] bg-white rounded-2xl border border-gray-200 text-black flex flex-col items-center py-6";
 
+    // Scroll logic
     const trackRef = useRef<HTMLDivElement | null>(null);
     const isDownRef = useRef(false);
     const startXRef = useRef(0);
@@ -1090,29 +1050,18 @@ function TabbedConcepts({
         trackRef.current.scrollLeft = scrollLeftRef.current - dx;
     };
 
-    useEffect(() => {
-        const el = trackRef.current;
-        if (!el) return;
-        const onWheel = (e: WheelEvent) => {
-            try {
-                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                    e.preventDefault();
-                    el.scrollLeft += e.deltaY;
-                }
-            } catch {}
-        };
-        el.addEventListener("wheel", onWheel, { passive: false });
-        return () => {
-            try {
-                el.removeEventListener("wheel", onWheel as any);
-            } catch {}
-        };
-    }, []);
+    const formatViewCount = (num: number) => {
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + "k";
+        }
+        return num.toLocaleString();
+    };
 
     return (
-        <section className="py-12">
-            <div className="max-w-7xl mx-auto px-4">
-                <div className="flex gap-3 mb-6 ">
+        <section className="py-6">
+            <div className="max-w-7xl mx-auto px-5">
+                {/* Tab Buttons */}
+                <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-1">
                     {[
                         { key: "concept", label: "테마별" },
                         { key: "popular", label: "인기별" },
@@ -1120,249 +1069,205 @@ function TabbedConcepts({
                     ].map((tab) => (
                         <button
                             key={tab.key}
-                            onClick={() => setActiveTab(tab.key as any)}
-                            className={`px-4 py-2 rounded-full border transition shadow-sm hover:cursor-pointer ${
+                            onClick={() => {
+                                setActiveTab(tab.key as any);
+                                if (tab.key === "concept") setIsExpanded(false);
+                            }}
+                            className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap border ${
                                 activeTab === tab.key
-                                    ? "bg-white text-green-600 border-green-300 shadow"
-                                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-white "
+                                    ? "bg-gray-900 text-white border-gray-900 shadow-md transform scale-105"
+                                    : "bg-white text-gray-500 border-gray-100 hover:bg-gray-50"
                             }`}
                         >
                             {tab.label}
                         </button>
                     ))}
                 </div>
-                {activeTab === "concept" && (
-                    <div
-                        className={trackClasses}
-                        ref={trackRef}
-                        onMouseDown={handleMouseDown}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseUp={handleMouseUp}
-                        onMouseMove={handleMouseMove}
-                    >
-                        {conceptItems.map((item) => (
-                            <button
-                                key={item.name}
-                                onClick={() => router.push(`/courses?concept=${encodeURIComponent(item.name)}`)}
-                                className={`${cardBase} cursor-pointer hover:border-green-200 hover:shadow-md transition`}
-                            >
-                                <div className="w-20 h-20 rounded-full overflow-hidden mb-4 ">
-                                    {item.imageUrl ? (
-                                        <Image
-                                            src={item.imageUrl}
-                                            alt={item.name}
-                                            width={144}
-                                            height={144}
-                                            className="object-cover w-full h-full"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-green-100 to-emerald-100" />
-                                    )}
-                                </div>
-                                <div className="text-lg font-bold text-gray-900 mb-2">{item.name}</div>
-                                <div className="text-green-600 font-semibold">{item.count}개 코스</div>
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {activeTab === "popular" && (
-                    <div
-                        className={trackClasses}
-                        ref={trackRef}
-                        onMouseDown={handleMouseDown}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseUp={handleMouseUp}
-                        onMouseMove={handleMouseMove}
-                    >
-                        {hotCourses.map((c) => (
-                            <Link
-                                key={c.id}
-                                href={`/courses/${c.id}`}
-                                className={`${cardBase} hover:border-green-200 hover:shadow-md transition`}
-                            >
-                                <div className="w-20 h-20  rounded-full overflow-hidden mb-4">
-                                    {c.imageUrl ? (
-                                        <Image
-                                            src={c.imageUrl}
-                                            alt={c.title}
-                                            width={144}
-                                            height={144}
-                                            className="object-cover w-full h-full"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-gray-200" />
-                                    )}
-                                </div>
-                                <div className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">{c.title}</div>
-                                <div className="text-green-600 font-semibold">
-                                    {(typeof c.view_count === "number" && Number.isFinite(c.view_count)
-                                        ? c.view_count
-                                        : (c as any).viewCount ?? 0
-                                    ).toLocaleString()}{" "}
-                                    조회
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-                {activeTab === "new" && (
-                    <div
-                        className={trackClasses}
-                        ref={trackRef}
-                        onMouseDown={handleMouseDown}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseUp={handleMouseUp}
-                        onMouseMove={handleMouseMove}
-                    >
-                        {newCourses.map((c) => (
-                            <Link
-                                key={c.id}
-                                href={`/courses/${c.id}`}
-                                className={`${cardBase} hover:border-green-200 hover:shadow-md transition`}
-                            >
-                                <div className="w-20 h-20  rounded-full overflow-hidden mb-4">
-                                    {c.imageUrl ? (
-                                        <Image
-                                            src={c.imageUrl}
-                                            alt={c.title}
-                                            width={144}
-                                            height={144}
-                                            className="object-cover w-full h-full"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-gray-200" />
-                                    )}
-                                </div>
-                                <div className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">{c.title}</div>
-                                <div className="text-green-600 font-semibold flex items-center gap-1">
-                                    <span className="text-lg">🌱</span>
-                                    NEW
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </section>
-    );
-}
 
-function ConceptSection() {
-    const [conceptCounts, setConceptCounts] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
-    const [showAll, setShowAll] = useState(false);
-    useEffect(() => {
-        const fetchConceptCounts = async () => {
-            try {
-                const response = await fetch("/api/courses/concept-counts");
-                if (response.ok) {
-                    const data = await response.json();
-                    setConceptCounts(data);
-                }
-            } catch (error) {
-                console.error("Error fetching concept counts:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchConceptCounts();
-    }, []);
-    const concepts = [
-        { name: "카페투어", icon: "☕", gradient: "from-amber-400 to-orange-400" },
-        { name: "맛집탐방", icon: "🍜", gradient: "from-red-400 to-orange-500" },
-        { name: "인생샷", icon: "📸", gradient: "from-green-300 to-emerald-400" },
-        { name: "체험", icon: "🎯", gradient: "from-lime-400 to-green-500" },
-        { name: "힐링", icon: "🌿", gradient: "from-green-400 to-emerald-500" },
-        { name: "공연·전시", icon: "🏛️", gradient: "from-teal-400 to-cyan-500" },
-        { name: "야경", icon: "🌃", gradient: "from-green-500 to-teal-600" },
-        { name: "힙스터", icon: "🎨", gradient: "from-lime-400 to-green-500" },
-        { name: "테마파크", icon: "🎢", gradient: "from-emerald-400 to-green-500" },
-        { name: "핫플레이스", icon: "🔥", gradient: "from-orange-400 to-red-500" },
-        { name: "이색데이트", icon: "🧪", gradient: "from-teal-400 to-cyan-500" },
-    ];
-    if (loading) {
-        return (
-            <section className="py-16 bg-white">
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold mb-4 text-black">이런 컨셉은 어때요?</h2>
-                        <p className="text-gray-600 text-lg">취향에 맞는 코스를 찾아보세요</p>
-                    </div>
-                    <div className="flex justify-center">
-                        <div className="text-xl">로딩 중...</div>
-                    </div>
-                </div>
-            </section>
-        );
-    }
-    return (
-        <section className="py-16 bg-white">
-            <div className="max-w-7xl mx-auto px-4">
-                <SectionHeader title="이런 컨셉은 어때요?" subtitle="취향에 맞는 코스를 찾아보세요" />
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {concepts.slice(0, showAll ? concepts.length : 6).map((concept, index) => {
-                        const hasCourses = conceptCounts[concept.name] > 0;
-                        return (
-                            <div
-                                key={concept.name}
-                                className={`relative transition-all duration-500 ${
-                                    index >= 6 && showAll
-                                        ? "animate-fade-in-up opacity-100"
-                                        : index >= 6
-                                        ? "opacity-0 scale-95"
-                                        : "opacity-100"
-                                }`}
-                                style={{ animationDelay: index >= 6 ? `${(index - 6) * 100}ms` : "0ms" }}
-                            >
-                                {hasCourses ? (
-                                    <Link
-                                        href={`/courses?concept=${encodeURIComponent(concept.name)}`}
-                                        className="group relative p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block border border-green-100 hover:border-green-200"
-                                    >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-emerald-50 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity" />
-                                        <div className="relative text-center">
-                                            <div className="text-4xl mb-3 transform group-hover:scale-110 transition-transform">
-                                                {concept.icon}
-                                            </div>
-                                            <h3 className="font-bold text-gray-800">{concept.name}</h3>
-                                            <p className="text-sm text-green-600 mt-1 font-medium">
-                                                {conceptCounts[concept.name]}개 코스
-                                            </p>
+                {/* Content Area */}
+                <div className="mt-4 px-1">
+                    {/* A. Concept Tab: Grid Layout + Expand/Collapse */}
+                    {activeTab === "concept" && (
+                        <div className="flex flex-col">
+                            {/* Grid Layout: 4 columns */}
+                            <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+                                {conceptItems
+                                    // Logic: Show only 8 items if not expanded
+                                    .slice(0, isExpanded ? undefined : 8)
+                                    .map((item) => {
+                                        // 1. item.name이 영어(키)인지 한글(값)인지 판단하여 한글 라벨(koreanName)을 찾습니다.
+                                        // 예: "EXHIBITION" -> "공연·전시" / "전시" -> "전시"
+                                        const rawName = item.name;
+                                        const koreanName = CONCEPTS[rawName as keyof typeof CONCEPTS] || rawName;
+
+                                        // 2. 한글 라벨을 사용하여 S3 아이콘을 찾습니다.
+                                        // CATEGORY_ICONS의 키는 한글 값(예: "공연·전시")으로 되어 있습니다.
+                                        const targetImage =
+                                            CATEGORY_ICONS[koreanName] || // 1순위: 한글 키로 조회
+                                            CATEGORY_ICONS[rawName] || // 2순위: 혹시 몰라 원본 키로 조회
+                                            item.imageUrl; // 3순위: API 이미지
+
+                                        return (
+                                            <button
+                                                key={item.name}
+                                                onClick={() =>
+                                                    router.push(`/courses?concept=${encodeURIComponent(item.name)}`)
+                                                }
+                                                className="flex flex-col items-center gap-2 group"
+                                            >
+                                                {/* Icon Container: Increased to w-20 (80px) */}
+                                                <div className="relative w-20 h-20 rounded-full p-1 bg-white border border-gray-100 shadow-md group-hover:border-emerald-400 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300">
+                                                    <div className="w-full h-full rounded-full overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                                                        {targetImage ? (
+                                                            <Image
+                                                                src={targetImage}
+                                                                alt={koreanName}
+                                                                width={80}
+                                                                height={80}
+                                                                className="object-contain w-full h-full transform scale-110 group-hover:scale-125 transition-transform duration-500 p-1"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-emerald-50 flex items-center justify-center text-emerald-300">
+                                                                <span className="text-[24px]">🌱</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {/* Text Area */}
+                                                <div className="text-center w-full">
+                                                    {/* 한글 라벨(koreanName)을 출력 */}
+                                                    <div className="text-xs font-extrabold text-gray-800 whitespace-nowrap tracking-tight mt-1 group-hover:text-emerald-600 transition-colors">
+                                                        {koreanName}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 font-bold mt-0.5">
+                                                        {item.count}개
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                            </div>
+
+                            {/* Show More / Show Less Button */}
+                            {conceptItems.length > 8 && (
+                                <button
+                                    onClick={() => setIsExpanded(!isExpanded)}
+                                    className="w-full mt-6 py-3 flex items-center justify-center gap-1 text-sm font-bold text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    {isExpanded ? (
+                                        <>
+                                            접기 <span className="text-xs">▲</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            더보기 <span className="text-xs">▼</span>
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* B. Popular Tab: Horizontal Scroll + Increased Size */}
+                    {activeTab === "popular" && (
+                        <div
+                            className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide select-none cursor-grab active:cursor-grabbing px-1"
+                            ref={trackRef}
+                            onMouseDown={handleMouseDown}
+                            onMouseLeave={handleMouseLeave}
+                            onMouseUp={handleMouseUp}
+                            onMouseMove={handleMouseMove}
+                        >
+                            {hotCourses.map((c) => (
+                                <Link
+                                    key={c.id}
+                                    href={`/courses/${c.id}`}
+                                    // Increased width to w-24 (96px) to allow text to breathe
+                                    className="flex flex-col items-center gap-2 group shrink-0 w-24"
+                                    draggable={false}
+                                >
+                                    {/* Increased Icon Size: w-20 (80px) */}
+                                    <div className="relative w-20 h-20 rounded-full p-1 bg-white border border-gray-100 shadow-md group-hover:border-orange-400 transition-all duration-300">
+                                        <div className="w-full h-full rounded-full overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                                            {c.imageUrl ? (
+                                                <Image
+                                                    src={c.imageUrl}
+                                                    alt={c.title}
+                                                    width={80}
+                                                    height={80}
+                                                    className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gray-200" />
+                                            )}
                                         </div>
-                                    </Link>
-                                ) : (
-                                    <div className="group relative p-6 bg-gray-100 rounded-2xl shadow-md block">
-                                        <div className="relative text-center">
-                                            <div className="text-4xl mb-3 opacity-50">{concept.icon}</div>
-                                            <h3 className="font-bold text-gray-500">{concept.name}</h3>
-                                            <p className="text-sm text-gray-400 mt-1">준비중</p>
+                                        {/* Badge */}
+                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full w-8 h-8 flex items-center justify-center border border-orange-100 shadow-md text-[16px] z-10">
+                                            🔥
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                    <div className="text-center w-full">
+                                        <div className="text-xs font-extrabold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis px-1 tracking-tight mt-1">
+                                            {c.title}
+                                        </div>
+                                        <div className="text-[10px] text-orange-500 font-bold mt-0.5">
+                                            {formatViewCount(c.view_count ?? 0)} views
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* C. New Tab: Horizontal Scroll + Increased Size */}
+                    {activeTab === "new" && (
+                        <div
+                            className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide select-none cursor-grab active:cursor-grabbing px-1"
+                            ref={trackRef}
+                            onMouseDown={handleMouseDown}
+                            onMouseLeave={handleMouseLeave}
+                            onMouseUp={handleMouseUp}
+                            onMouseMove={handleMouseMove}
+                        >
+                            {newCourses.map((c) => (
+                                <Link
+                                    key={c.id}
+                                    href={`/courses/${c.id}`}
+                                    // Increased width to w-24 (96px)
+                                    className="flex flex-col items-center gap-2 group shrink-0 w-24"
+                                    draggable={false}
+                                >
+                                    {/* Increased Icon Size: w-20 (80px) */}
+                                    <div className="relative w-20 h-20 rounded-full p-1 bg-white border border-gray-100 shadow-md group-hover:border-emerald-400 transition-all duration-300">
+                                        <div className="w-full h-full rounded-full overflow-hidden relative bg-gray-50 flex items-center justify-center">
+                                            {c.imageUrl ? (
+                                                <Image
+                                                    src={c.imageUrl}
+                                                    alt={c.title}
+                                                    width={80}
+                                                    height={80}
+                                                    className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gray-200" />
+                                            )}
+                                        </div>
+                                        {/* Badge */}
+                                        <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white shadow-sm z-10 transform translate-x-1 -translate-y-1">
+                                            N
+                                        </div>
+                                    </div>
+                                    <div className="text-center w-full">
+                                        <div className="text-xs font-extrabold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis px-1 tracking-tight mt-1">
+                                            {c.title}
+                                        </div>
+                                        <div className="text-[10px] text-emerald-600 font-bold mt-0.5">✨ 신규</div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
-                {!showAll && concepts.length > 6 && (
-                    <div className="text-center mt-8">
-                        <button
-                            onClick={() => setShowAll(true)}
-                            className="rounded-2xl hover:cursor-pointer w-full border border-green-200 bg-white text-gray-800 py-3 text-center hover:bg-green-50 transition-colors"
-                        >
-                            더 많은 컨셉 보기 ({concepts.length - 6}개 더)
-                        </button>
-                    </div>
-                )}
-                {showAll && (
-                    <div className="text-center mt-8">
-                        <button
-                            onClick={() => setShowAll(false)}
-                            className="rounded-2xl hover:cursor-pointer w-full border border-green-200 bg-white text-gray-800 py-3 text-center hover:bg-green-50 transition-colors"
-                        >
-                            접기
-                        </button>
-                    </div>
-                )}
             </div>
         </section>
     );

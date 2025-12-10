@@ -5,10 +5,7 @@ import { getUserIdFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> } // ✅ Promise 제거
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
         const courseId = Number(id);
@@ -52,13 +49,20 @@ export async function GET(
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
 
-        // 기본 course 정보
+        // 기본 course 정보 가공
         const formattedCourse = {
             id: String(course.id),
             title: course.title || "",
             description: course.description || "",
             duration: course.duration || "",
-            location: course.region || "",
+
+            // ✅ [수정됨] region이 있으면 그대로 쓰고, 없으면 null (프론트에서 처리)
+            region: course.region || null,
+
+            // ✅ [추가됨] Hero Section용 데이터
+            sub_title: course.sub_title || null,
+            target_situation: course.target_situation || null,
+
             imageUrl: course.imageUrl || "",
             concept: course.concept || "",
             rating: Number(course.rating) || 0,
@@ -66,12 +70,12 @@ export async function GET(
             reviewCount: 0,
             participants: course.current_participants || 0,
             maxParticipants: course.max_participants || 10,
-            isPopular: (course.current_participants || 0) > 5,
+            isPopular: (course.current_participants || 0) > 5 || course.isPopular, // isPopular 플래그도 반영
             recommended_start_time: (course as any).courseDetail?.recommended_start_time || "오후 2시-6시",
             season: (course as any).courseDetail?.season || "사계절",
             courseType: (course as any).courseDetail?.course_type || "데이트",
             transportation: (course as any).courseDetail?.transportation || "도보",
-            reservationRequired: false,
+            reservationRequired: course.reservationRequired || false,
             placeCount: course._count?.coursePlaces ?? (course.coursePlaces?.length || 0),
             createdAt: course.createdAt,
             updatedAt: course.updatedAt,
@@ -86,6 +90,11 @@ export async function GET(
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
             notes: cp.notes,
+
+            // ✅ [추가됨] 스토리텔링용 3대장 데이터 매핑
+            role_badge: cp.role_badge || null,
+            coaching_tip: cp.coaching_tip || null,
+
             place: cp.place
                 ? {
                       id: cp.place.id,

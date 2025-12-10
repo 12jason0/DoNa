@@ -34,20 +34,14 @@ body {
         sans-serif;
 }
 
-/* 브랜드용 라운디드 한글 폰트 (GmarketSans) */
 @font-face {
-    font-family: "GmarketSans";
-    src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/GmarketSansMedium.woff") format("woff");
-    font-weight: 500;
+    /* 폰트 패밀리 이름을 'Juache'로 지정 */
+    font-family: "Juache";
+    /* 눈누에서 제공하는 CDN URL 사용 */
+    src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/BMJUA.woff") format("woff");
+    font-weight: normal; /* 주아체는 하나의 굵기만 지원 */
     font-style: normal;
-    font-display: swap;
-}
-@font-face {
-    font-family: "GmarketSans";
-    src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/GmarketSansBold.woff") format("woff");
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
+    font-display: swap; /* 폰트 로딩 최적화 */
 }
 
 /* 전역 버튼 기본값 통일 */

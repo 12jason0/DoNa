@@ -1,15 +1,22 @@
 # StyleMap - AI-Powered Travel Course Recommendation System
 
-StyleMap은 딥러닝과 머신러닝을 활용한 개인화된 여행 코스 추천 플랫폼입니다. 사용자의 취향, 행동 패턴, 컨텍스트 정보를 분석하여 최적의 여행 경험을 제공합니다.
+StyleMap은 초개인화(Hyper-Personalization)를 지향하는 여행 코스 추천 플랫폼입니다. 사용자 선호(온보딩), 실시간 컨텍스트(오늘 목적/동반자/분위기/지역), 최근 행동 데이터를 결합해 체감 품질 높은 추천을 제공합니다.
 
 ## 🚀 주요 기능
 
-### 🎯 AI 추천 시스템
+### 🎯 AI 추천 시스템 (현재 운영 로직)
 
--   **개인화된 추천**: 사용자 선호도와 행동 패턴 기반 맞춤형 코스 추천
--   **실시간 학습**: TensorFlow.js 기반 딥러닝 모델의 온라인 학습
--   **다중 목표 최적화**: 클릭률, 전환율, 평점 예측을 동시에 최적화
--   **컨텍스트 인식**: 시간, 날씨, 위치 등 상황별 추천
+-   **Rule-based Scoring**: 아래 4축 가중치로 점수화한 뒤 상위 N개 추천
+    -   conceptMatch × 0.25
+    -   moodMatch × 0.25
+    -   regionMatch × 0.20
+    -   goalMatch × 0.30
+-   **장기 선호도(온보딩)**: `concept[]`, `mood[]`, `regions[]`, `companion`를 `user_preferences.preferences` JSON에 저장해 반영
+-   **오늘의 컨텍스트(실시간)**: 쿼리 파라미터로 전달
+    -   `goal`, `companion_today`, `mood_today`, `region_today`
+-   **보너스 점수**: 최근 상호작용(개념/지역) + 인기도(view_count) + 평점(rating)
+-   **폴백**: 가용 추천이 부족하면 인기 코스 반환
+-   **ML 엔진(옵션)**: TensorFlow.js 기반 심층 모델이 준비되어 있으며, 필요 시 스위치-온 가능한 구조(현재 기본 경로는 Rule-based)
 
 ### 📊 A/B 테스트 시스템
 
@@ -43,10 +50,10 @@ StyleMap은 딥러닝과 머신러닝을 활용한 개인화된 여행 코스 �
 
 ### AI/ML
 
--   **TensorFlow.js**: 브라우저 기반 딥러닝
--   **딥러닝 모델**: 다층 신경망 기반 추천 시스템
--   **특성 엔지니어링**: 사용자/아이템 특성 벡터화
--   **온라인 학습**: 실시간 모델 업데이트
+-   **Rule-based 엔진**: 태그 매칭 기반 가중 합 점수
+-   **TensorFlow.js 모델(옵션)**: 다층 신경망 추천기(해석 가능 사유 생성 지원)
+-   **특성 엔지니어링**: 사용자/아이템/컨텍스트 특성
+-   (운영) 기본 경로는 Rule-based, ML은 점진 도입 가능
 
 ### Backend
 
@@ -174,6 +181,12 @@ vercel --prod
 -   **이미지 최적화**: Next.js Image 컴포넌트 활용
 -   **SSR/SSG**: 서버 사이드 렌더링 최적화
 
+### 로그인/라우팅 최적화
+
+-   **Prefetch**: 주요 페이지 사전 로드
+-   **로딩 상태 UX**: 로그인 중 오버레이, 빠른 `router.replace`/`prefetch` 기반 전환
+-   **이미지 LCP 최적화**: 첫 1~2장 `priority`, `fetchPriority="high"`, `sizes`/`quality` 최적 설정
+
 ## 🔒 보안
 
 ### 데이터 보호
@@ -218,3 +231,290 @@ vercel --prod
 ---
 
 **StyleMap** - AI로 더 스마트한 여행을 경험하세요! 🎯✈️
+
+## 🗄️ 데이터베이스 스키마 (칼럼 상세)
+
+아래는 `prisma/schema.prisma` 기준 실제 DB 모델과 컬럼 정의입니다. `@@map()`이 지정된 경우 DB의 실제 테이블명도 함께 표기했습니다.
+
+### User (`users`)
+
+| 컬럼            | 타입      | 기본값/제약      | 설명              |
+| --------------- | --------- | ---------------- | ----------------- |
+| id              | Int       | PK, auto         | 사용자 ID         |
+| email           | String?   | unique           | 이메일            |
+| password        | String?   |                  | 해시 비밀번호     |
+| username        | String    | map("nickname")  | 닉네임            |
+| profileImageUrl | String?   |                  | 프로필 이미지     |
+| socialId        | String?   |                  | 소셜 로그인 ID    |
+| provider        | String    | default("local") | 로그인 제공자     |
+| createdAt       | DateTime  | now()            | 생성일            |
+| updatedAt       | DateTime  | @updatedAt       | 수정일            |
+| mbti            | String?   |                  | MBTI              |
+| age             | Int?      |                  | 나이              |
+| coinBalance     | Int       | default(0)       | 코인 잔액         |
+| couponCount     | Int       | default(0)       | AI 쿠폰 개수      |
+| gender          | String?   |                  | 성별              |
+| lastActiveAt    | DateTime? |                  | 최근 활동         |
+| level           | Int       | default(1)       | 레벨              |
+| location        | String?   |                  | 선호 지역         |
+| preferredTags   | String[]  |                  | 선호 태그(레거시) |
+| totalWaterGiven | Int       | default(0)       | 누적 물 주기      |
+| waterStock      | Int       | default(0)       | 보유 물           |
+| ageRange        | String?   |                  | 연령대            |
+| birthday        | DateTime? |                  | 생일              |
+| phone           | String?   |                  | 전화번호          |
+
+연관: completedCourses, completedEscapes, bookings, courses, reviews, trees, userFavorites, interactions, userPreference, rewards, userBadges, checkins, UserCollage, waterLogs, userStoryProgress, pushTokens, garden 등
+
+### UserPreference (`user_preferences`)
+
+| 컬럼        | 타입     | 제약                   | 설명                                                                                                  |
+| ----------- | -------- | ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| id          | Int      | PK, auto               | ID                                                                                                    |
+| userId      | Int      | unique, map("user_id") | `users.id` FK                                                                                         |
+| preferences | Json     |                        | 온보딩/설정 값 저장: `{ concept: string[], companion: string, mood: string[], regions: string[] }` 등 |
+| createdAt   | DateTime | now()                  |                                                                                                       |
+| updatedAt   | DateTime | @updatedAt             |                                                                                                       |
+
+### PushToken (`push_tokens`)
+
+| 컬럼       | 타입     | 제약            | 설명      |
+| ---------- | -------- | --------------- | --------- |
+| id         | String   | PK, cuid()      | 토큰 ID   |
+| userId     | Int      | unique          | 사용자    |
+| token      | String   |                 | 푸시 토큰 |
+| platform   | String   | default("expo") | 플랫폼    |
+| subscribed | Boolean  | default(true)   | 구독 여부 |
+| createdAt  | DateTime | now()           |           |
+| updatedAt  | DateTime | @updatedAt      |           |
+
+### Course (`courses`)
+
+| 컬럼                 | 타입           | 설명                                                                 |
+| -------------------- | -------------- | -------------------------------------------------------------------- |
+| id                   | Int (PK, auto) | 코스 ID                                                              |
+| userId               | Int?           | 작성자                                                               |
+| title                | String         | 제목                                                                 |
+| description          | String?        | 설명                                                                 |
+| imageUrl             | String?        | 대표 이미지                                                          |
+| region               | String?        | 지역                                                                 |
+| duration             | String?        | 소요시간                                                             |
+| concept              | String?        | 콘셉트 키워드                                                        |
+| tags                 | Json?          | AI 추천용 태그 JSON `{ concept, mood, target, time, budget, theme }` |
+| isPopular            | Boolean        | default(false)                                                       |
+| rating               | Float          | default(0)                                                           |
+| current_participants | Int            | default(0)                                                           |
+| max_participants     | Int            | default(0)                                                           |
+| view_count           | Int            | default(0)                                                           |
+| createdAt            | DateTime       | now()                                                                |
+| updatedAt            | DateTime       | @updatedAt                                                           |
+
+인덱스: concept, region, title  
+연관: courseDetail(1:1), CourseTagToCourses(N:M), benefits, bookings, coursePlaces, highlights, reviews, userFavorites, interactions 등
+
+> 참고: `/api/courses` 응답의 `tags`(문자열 배열)는 `CourseTagToCourses` 조인 결과이며, 추천 점수에서 사용하는 `Course.tags`(JSON)과는 별개입니다. 추천은 `Course.tags` JSON을 활용합니다.
+
+### CourseDetail (`course_details`)
+
+| 컬럼                   | 타입           | 설명              |
+| ---------------------- | -------------- | ----------------- |
+| id                     | Int (PK, auto) |                   |
+| course_id              | Int (unique)   | `courses.id` FK   |
+| recommended_start_time | String?        | 추천 시작 시간    |
+| season                 | String?        | 추천 계절         |
+| course_type            | String?        | 유형(액티비티 등) |
+| transportation         | String?        | 교통              |
+
+### CoursePlace (`course_places`)
+
+| 컬럼               | 타입           | 설명              |
+| ------------------ | -------------- | ----------------- |
+| id                 | Int (PK, auto) |                   |
+| course_id          | Int            | 코스              |
+| place_id           | Int            | 장소              |
+| order_index        | Int            | 코스 내 순서      |
+| estimated_duration | Int?           | 추정 소요시간(분) |
+| recommended_time   | String?        | 추천 시간대       |
+| notes              | String?        | 메모              |
+
+### Place (`places`)
+
+| 컬럼                 | 타입           | 설명            |
+| -------------------- | -------------- | --------------- |
+| id                   | Int (PK, auto) | 장소 ID         |
+| name                 | String         | 장소명          |
+| address              | String?        | 주소            |
+| description          | String?        | 설명            |
+| category             | String?        | 카테고리        |
+| avg_cost_range       | String?        | 평균 비용대     |
+| opening_hours        | String?        | 영업시간        |
+| phone                | String?        | 전화            |
+| website              | String?        | 웹사이트        |
+| parking_available    | Boolean?       | 주차 가능       |
+| reservation_required | Boolean?       | 예약 필요       |
+| latitude             | Float?         | 위도            |
+| longitude            | Float?         | 경도            |
+| imageUrl             | String?        | 이미지          |
+| tags                 | Json?          | 장소 태그(JSON) |
+| created_at           | DateTime       | now()           |
+| updated_at           | DateTime       | @updatedAt      |
+
+> 현재 추천 점수는 기본적으로 코스 단위의 `Course.tags`를 사용합니다. `Place.tags`는 장소 검색/메타 용도로 보관되며, 필요 시 코스 구성 시점에 집계해 `Course.tags`로 병합하는 확장을 고려할 수 있습니다.
+
+### PlaceClosedDay (`place_closed_days`)
+
+| 컬럼          | 타입           | 설명        |
+| ------------- | -------------- | ----------- |
+| id            | Int (PK, auto) |             |
+| place_id      | Int            | 장소        |
+| day_of_week   | Int?           | 요일(0-6)   |
+| specific_date | DateTime?      | 특정 휴무일 |
+| note          | String?        | 비고        |
+
+### CourseTag (`course_tags`) / CourseTagToCourses (`_CourseTagToCourses`)
+
+-   `CourseTag`는 태그 마스터 테이블(name unique)
+-   `CourseTagToCourses`는 코스-태그 연결 테이블(복합 PK [A, B])
+
+### Review (`reviews`)
+
+| 컬럼      | 타입           | 설명       |
+| --------- | -------------- | ---------- |
+| id        | Int (PK, auto) |            |
+| userId    | Int            | 사용자     |
+| courseId  | Int            | 코스       |
+| rating    | Int            | 평점(1~5)  |
+| comment   | String?        | 코멘트     |
+| createdAt | DateTime       | now()      |
+| updatedAt | DateTime       | @updatedAt |
+
+### Booking (`bookings`)
+
+| 컬럼         | 타입           | 설명              |
+| ------------ | -------------- | ----------------- |
+| id           | Int (PK, auto) |                   |
+| user_id      | Int            | 사용자            |
+| course_title | String         | 예약 제목(스냅샷) |
+| booking_date | Date           | 예약일            |
+| status       | String         | 상태              |
+| price        | String         | 가격              |
+| participants | Int            | 인원              |
+| created_at   | DateTime       | now()             |
+| updated_at   | DateTime       | @updatedAt        |
+| course_id    | Int            | 코스              |
+
+### UserFavorite (`user_favorites`)
+
+| 컬럼       | 타입           | 제약                       |
+| ---------- | -------------- | -------------------------- |
+| id         | Int (PK, auto) |                            |
+| user_id    | Int            |                            |
+| course_id  | Int            | unique(user_id, course_id) |
+| created_at | DateTime       | now()                      |
+
+### UserInteraction (`user_interactions`)
+
+| 컬럼      | 타입           | 설명                                |
+| --------- | -------------- | ----------------------------------- |
+| id        | Int (PK, auto) |                                     |
+| userId    | Int            | 사용자                              |
+| courseId  | Int            | 코스                                |
+| action    | String         | view/click/like/share/time_spent 등 |
+| createdAt | DateTime       | now()                               |
+
+### Highlight (`highlights`)
+
+| 컬럼        | 타입           | 설명            |
+| ----------- | -------------- | --------------- |
+| id          | Int (PK, auto) |                 |
+| course_id   | Int            | 코스            |
+| title       | String         | 하이라이트 제목 |
+| description | String?        | 설명            |
+| icon        | String?        | 아이콘          |
+| created_at  | DateTime       | now()           |
+
+### Benefit (`benefits`)
+
+| 컬럼          | 타입           | 설명        |
+| ------------- | -------------- | ----------- |
+| id            | Int (PK, auto) |             |
+| course_id     | Int            | 코스        |
+| benefit_text  | String         | 혜택 텍스트 |
+| category      | String?        | 카테고리    |
+| display_order | Int?           | 표시 순서   |
+| created_at    | DateTime       | now()       |
+
+### CourseNotice (`course_notices`)
+
+| 컬럼          | 타입           | 설명            |
+| ------------- | -------------- | --------------- |
+| id            | Int (PK, auto) |                 |
+| course_id     | Int            | 코스            |
+| notice_text   | String         | 공지 텍스트     |
+| type          | String?        | default("info") |
+| display_order | Int?           | default(0)      |
+| created_at    | DateTime       | now()           |
+| updatedAt     | DateTime       | @updatedAt      |
+
+### UserReward (`user_rewards`)
+
+| 컬럼      | 타입           | 설명               |
+| --------- | -------------- | ------------------ |
+| id        | Int (PK, auto) |                    |
+| userId    | Int            | 사용자             |
+| amount    | Int            | 수량               |
+| type      | RewardType     | signup/checkin/... |
+| unit      | RewardUnit     | coin/coupon/water  |
+| createdAt | DateTime       | now()              |
+| placeId   | Int?           | 장소 기반 보상용   |
+
+### UserCheckin (`user_checkins`)
+
+| 컬럼      | 타입           | 설명        |
+| --------- | -------------- | ----------- |
+| id        | Int (PK, auto) |             |
+| userId    | Int            | 사용자      |
+| date      | DateTime       | 체크인 일자 |
+| rewarded  | Boolean        | 보상 여부   |
+| createdAt | DateTime       | now()       |
+
+### Story (`stories`) / StoryUI (`story_ui`)
+
+스토리 메타와 UI 토큰/플로우 JSON을 분리 저장. `StoryUI`는 스토리와 1:1.
+
+### PlaceOption, PlaceDialogue, PlaceMission, PlaceStory
+
+이스케이프/스토리 플레이를 위한 장소/대화/미션/연출 테이블.
+
+### UserCollage (`user_collages`) / CollageTemplate (`collage_templates`)
+
+유저 콜라주 결과와 템플릿 정의.
+
+### Badge (`badges`) / UserBadge (`user_badges`)
+
+뱃지 정의와 사용자 보유 뱃지 연결.
+
+### CompletedCourse (`CompletedCourses`) / CompletedEscape (`CompletedEscapes`)
+
+완료 기록.
+
+### Tree (`trees`) / WaterLog (`water_logs`) / Garden (`gardens`) / GardenTree (`garden_trees`)
+
+가든/나무/물주기 기능을 위한 테이블.
+
+### MissionSubmission (`mission_submissions`)
+
+이스케이프 미션 제출(사진/텍스트/정답 등) 기록.
+
+---
+
+### Enums
+
+-   ChapterType: intro, restaurant, cafe, spot, final_spot, ending
+-   MissionType: quiz, photo, gps, puzzle, text, choice
+-   RewardType: signup, checkin, ad_watch, purchase, event, escape_place_clear
+-   RewardUnit: coin, coupon, water
+-   SpeakerRole: user, npc, system, clear_place, mission_start
+-   TreeStatus: seedling, growing, completed
+-   WaterSource: course, escape, admin, bonus
+-   PlaceTheme: footsteps, history, time, location

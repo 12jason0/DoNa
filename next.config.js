@@ -26,6 +26,7 @@ const nextConfig = {
                                 "blob:", // ✅ 올바른 위치
                                 "https://cdn.jsdelivr.net", // ✅ browser-image-compression 외부 스크립트 허용
                                 "https://vercel.live",
+                                "https://*.tosspayments.com",
                                 "https://*.vercel.live",
                                 "https://oapi.map.naver.com",
                                 "https://openapi.map.naver.com",
@@ -54,6 +55,7 @@ const nextConfig = {
                                 "'self'",
                                 "https://vercel.live",
                                 "https://*.vercel.live",
+                                "https://*.tosspayments.com",
                                 "https://nrbe.pstatic.net",
                                 "https://*.pstatic.net",
                                 "https://oapi.map.naver.com",
@@ -66,6 +68,7 @@ const nextConfig = {
                                 "https://stats.g.doubleclick.net",
                                 "https://region1.google-analytics.com",
                                 "https://*.kakao.com",
+                                "https://api.tosspayments.com",
                                 "https://kauth.kakao.com",
                                 "https://t1.kakaocdn.net",
                                 "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com",
@@ -79,7 +82,12 @@ const nextConfig = {
                                     : []),
                             ].join(" ");
 
-                            const fontSrc = ["'self'", "data:", "https://cdn.jsdelivr.net"].join(" ");
+                            const fontSrc = [
+                                "'self'",
+                                "data:",
+                                "https://cdn.jsdelivr.net",
+                                "https://*.tosspayments.com",
+                            ].join(" ");
                             const frameSrc = ["'self'", "https://vercel.live", "https://www.googletagmanager.com"].join(
                                 " "
                             );
@@ -109,6 +117,9 @@ const nextConfig = {
             { protocol: "https", hostname: "stylemap-images.s3.ap-southeast-2.amazonaws.com" },
         ],
         unoptimized: true,
+
+        // ⬇⬇⬇ 추가된 부분
+        qualities: [70],
     },
 };
 

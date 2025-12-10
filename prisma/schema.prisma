@@ -8,6 +8,32 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Payment {
+  id          String        @id @default(cuid()) // 결제 ID는 보안상 UUID(cuid) 추천
+  userId      Int           @map("user_id")
+  
+  // 주문 정보
+  orderId     String        @unique @map("order_id") // 우리가 생성한 주문번호 (예: ORD_2024...)
+  orderName   String        @map("order_name")       // 상품명 (예: "AI 프리미엄 구독", "쿠폰 5개")
+  amount      Int                                    // 결제 금액
+  
+  // 결제 상태 및 PG사 정보
+  status      PaymentStatus @default(READY)
+  paymentKey  String?       @map("payment_key")      // 토스 등 PG사에서 주는 결제 키
+  method      String?                                // 카드, 계좌이체 등
+  
+  // 날짜
+  requestedAt DateTime      @default(now()) @map("requested_at") // 결제 요청 시각
+  approvedAt  DateTime?     @map("approved_at")      // 결제 승인 시각
+
+  // 관계
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([orderId])
+  @@map("payments")
+}
+
 model User {
   id                 Int                 @id @default(autoincrement())
   email              String?             @unique @db.VarChar(191)
@@ -50,6 +76,14 @@ model User {
   rewards            UserReward[]
   userStoryProgress  UserStoryProgress[]
   waterLogs          WaterLog[]
+
+  // [추가] 구독 정보 👑
+  subscriptionTier     SubscriptionTier  @default(FREE) @map("subscription_tier")
+  subscriptionExpiresAt DateTime?        @map("subscription_expires_at")
+  isAutoRenewal        Boolean           @default(false) @map("is_auto_renewal")
+
+  // 결제 내역
+  payments             Payment[]
 
   @@index([provider, socialId])
   @@map("users")
@@ -140,7 +174,7 @@ model Course {
   completedCourses     CompletedCourse[]
   // 코스 상세(부가 정보) 1:1
   courseDetail         CourseDetail?
-  CourseTagToCourses   CourseTagToCourses[]
+  courseTags    CourseTagRelation[]
   benefits             Benefit[]
   bookings             Booking[]
   courseNotices        CourseNotice[]
@@ -150,6 +184,14 @@ model Course {
   reviews              Review[]
   userFavorites        UserFavorite[]
   interactions         UserInteraction[]
+
+  // 썸네일용 짧은 카피 (카드 UI 상단에 띄울 문구)
+  // 예: "썸녀가 200% 감동하는", "비 오는 날도 뽀송하게"
+  sub_title          String?  @map("sub_title") @db.VarChar(100)
+  // 코스의 핵심 상황 (메인 화면 큐레이션 및 필터링용)
+  // 예: "FIRST_DATE"(첫만남), "ANNIVERSARY"(기념일), "RAINY_DAY"(비오는날), "AFTER_WORK"(퇴근후)
+  // Enum으로 관리해도 좋지만, 유연하게 String으로 시작해도 됩니다.
+  target_situation   String?  @map("target_situation") @db.VarChar(50)
 
   @@index([concept])
   @@index([region])
@@ -201,7 +243,7 @@ model CourseTag {
   id                 Int                  @id @default(autoincrement())
   name               String               @unique @db.VarChar(100)
   createdAt          DateTime             @default(now())
-  CourseTagToCourses CourseTagToCourses[]
+  courses   CourseTagRelation[]
 
   @@map("course_tags")
 }
@@ -421,6 +463,11 @@ model CoursePlace {
   updated_at         DateTime @updatedAt
   course             Course   @relation(fields: [course_id], references: [id])
   place              Place    @relation(fields: [place_id], references: [id])
+  // 1. 역할 배지 (Role Badge): 이 장소가 오늘 데이트에서 맡은 역할
+  role_badge         String?  @map("role_badge") @db.VarChar(50)
+
+  // 2. 에디터 코칭 (Human-in-the-loop): 단순 장소 설명 말고 '행동 지침'
+  coaching_tip       String?  @map("coaching_tip") @db.Text
 
   @@map("course_places")
 }
@@ -529,15 +576,17 @@ model CompletedEscape {
   @@map("CompletedEscapes")
 }
 
-model CourseTagToCourses {
-  A           Int
-  B           Int
-  courses     Course    @relation(fields: [A], references: [id], onDelete: Cascade)
-  course_tags CourseTag @relation(fields: [B], references: [id], onDelete: Cascade)
+model CourseTagRelation {
+  // ✨ A, B 대신 명확한 컬럼명(courseId, tagId) 사용
+  courseId  Int
+  tagId     Int
+  
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tag       CourseTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@id([A, B], map: "_CourseTagToCourses_AB_pkey")
-  @@index([B], map: "_CourseTagToCourses_B_index")
-  @@map("_CourseTagToCourses")
+  @@id([courseId, tagId]) // 복합 키 설정
+  @@index([tagId])        // 태그로 검색할 때 속도 향상
+  @@map("course_tags_relation") // 실제 DB 테이블 이름
 }
 
 model Tree {
@@ -667,4 +716,19 @@ enum PlaceTheme {
   history // 역사
   time // 시간간
   location // 장소
+}
+
+// 구독 등급 (무료 / 베이직 / 프리미엄)
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PREMIUM
+}
+
+// 결제 상태 (대기 / 성공 / 실패 / 취소)
+enum PaymentStatus {
+  READY
+  PAID
+  FAILED
+  CANCELLED
 }

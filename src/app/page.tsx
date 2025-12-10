@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 // 두나 브랜드 컬러 및 에셋 (layout.tsx 참고함)
@@ -11,6 +12,67 @@ const LOGO_URL = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/do
 const bgImage = "/images/poster-bg.jpg";
 
 const LandingPage = () => {
+    const router = useRouter();
+    const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // 핵심 경로 사전 로드로 전환 속도 향상
+    useEffect(() => {
+        try {
+            router.prefetch("/courses");
+            router.prefetch("/nearby");
+            router.prefetch("/personalized-home");
+            router.prefetch("/onboarding");
+            router.prefetch("/login");
+        } catch {}
+    }, [router]);
+
+    // 온보딩 미완료 상태 감지 (기존 이미지는 유지하고, 배너만 상단에 노출)
+    useEffect(() => {
+        const checkOnboarding = async () => {
+            try {
+                const token = localStorage.getItem("authToken");
+                let prefs: { concept: string[]; mood: string[]; companion: string } = {
+                    concept: [],
+                    mood: [],
+                    companion: "",
+                };
+                if (token) {
+                    try {
+                        const res = await fetch("/api/users/preferences", {
+                            method: "GET",
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const raw = data?.preferences ?? data;
+                            prefs = {
+                                concept: Array.isArray(raw?.concept) ? raw.concept : [],
+                                mood: Array.isArray(raw?.mood) ? raw.mood : [],
+                                companion: typeof raw?.companion === "string" ? raw.companion : "",
+                            };
+                        }
+                    } catch {}
+                }
+                const s1 = localStorage.getItem("onboardingStep1") === "1";
+                const s2 = localStorage.getItem("onboardingStep2") === "1";
+                const s3 = localStorage.getItem("onboardingStep3") === "1";
+
+                const step1 = s1 || prefs.mood.length > 0 || prefs.concept.length > 0;
+                const step2 = s2; // 2단계는 로컬 플래그로 판별
+                const step3 = s3 || (prefs.companion ?? "") !== "";
+                const complete = step1 && step2 && step3;
+                setShowOnboarding(!complete);
+            } catch {
+                // ignore
+            }
+        };
+        checkOnboarding();
+    }, []);
+
+    const handleStartOnboarding = () => {
+        router.push("/onboarding");
+    };
+
     return (
         // **********************************************
         // 1. [수정됨] min-h-screen -> h-screen (스크롤 방지)

@@ -41,9 +41,17 @@ export default function ImageFallback(props: ImageFallbackProps) {
         );
     }
 
+    // 합리적인 기본값으로 성능 최적화 (필요 시 개별 호출부에서 override 가능)
+    const defaultSizes = rest.sizes ?? "(max-width: 768px) 100vw, 500px"; // 카드 최대 폭 ~500px 기준
+    const defaultLoading = rest.loading ?? (rest.priority ? undefined : "lazy");
+    const defaultQuality = typeof rest.quality === "number" ? rest.quality : 70;
+
     return (
         <NextImage
             {...rest}
+            sizes={defaultSizes}
+            loading={defaultLoading as any}
+            quality={defaultQuality}
             src={src}
             alt={alt}
             className={className}

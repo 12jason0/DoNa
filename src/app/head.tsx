@@ -7,6 +7,9 @@ export default function Head() {
         <>
             <title>{title}</title>
             <meta name="description" content={description} />
+            {/* Image CDN preconnect for faster LCP */}
+            <link rel="preconnect" href="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com" />
+            <link rel="dns-prefetch" href="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com" />
 
             {/* Open Graph */}
             <meta property="og:type" content="website" />

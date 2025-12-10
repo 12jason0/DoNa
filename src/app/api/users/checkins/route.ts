@@ -95,18 +95,48 @@ function buildCycleStamps(
 		anchor.setDate(anchor.getDate() - 1);
 	}
 
-	let cycleStart = new Date(anchor);
-	// 보상 당일: 7칸 모두 채워서 보여주기 위해 앵커일 -6일부터 표시
-	if (lastRewarded && isSameDayKST(startOfDayKST(new Date(lastRewarded.date)), startOfDayKST(anchor))) {
-		cycleStart.setDate(cycleStart.getDate() - 6);
-	} else if (lastRewarded) {
-		// 보상 다음날부터 1칸부터 시작
+	// 현재 유효 스트릭 계산 (연속성이 끊겼는지 확인하기 위함)
+	const effective = computeEffectiveStreakUpTo(sortedDescCheckins, anchor);
+
+	let cycleStart: Date;
+	let useRewardCycle = false;
+
+	if (lastRewarded) {
 		const rewardedDay = startOfDayKST(new Date(lastRewarded.date));
-		cycleStart = new Date(rewardedDay);
-		cycleStart.setDate(cycleStart.getDate() + 1);
+		// 1. 보상 받은 날이 앵커(오늘/어제)인 경우 -> 꽉 찬 7개 보여줌
+		if (isSameDayKST(rewardedDay, startOfDayKST(anchor))) {
+			useRewardCycle = true;
+		} else {
+			// 2. 보상 이후 진행 중인 경우 -> 연속성이 유지되고 있는지 확인
+			const expectedStart = new Date(rewardedDay);
+			expectedStart.setDate(expectedStart.getDate() + 1);
+
+			// 스트릭으로 역산한 시작일
+			// effective가 1이면 anchor와 동일, 2이면 anchor-1...
+			const streakStart = new Date(anchor);
+			streakStart.setDate(streakStart.getDate() - Math.max(0, effective - 1));
+
+			// 스트릭 시작일이 보상 다음날보다 늦으면 -> 중간에 끊긴 것임 -> 리셋 로직(else) 사용
+			// 스트릭 시작일이 보상 다음날과 같거나 빠르면 -> 연속 유지 중 -> 보상 사이클 유지
+			if (streakStart.getTime() <= expectedStart.getTime()) {
+				useRewardCycle = true;
+			}
+		}
+	}
+
+	if (useRewardCycle && lastRewarded) {
+		const rewardedDay = startOfDayKST(new Date(lastRewarded.date));
+		if (isSameDayKST(rewardedDay, startOfDayKST(anchor))) {
+			cycleStart = new Date(anchor);
+			cycleStart.setDate(cycleStart.getDate() - 6);
+		} else {
+			// 보상 다음날부터 1칸부터 시작
+			cycleStart = new Date(rewardedDay);
+			cycleStart.setDate(cycleStart.getDate() + 1);
+		}
 	} else {
-		// 보상 이력 없으면 현재 유효 스트릭(앵커 기준)에 맞춰 시작점 계산
-		const effective = computeConsecutiveStreakUpTo(sortedDescCheckins, anchor);
+		// 보상 이력 없거나, 중간에 끊겨서 새로 시작해야 하는 경우
+		cycleStart = new Date(anchor);
 		cycleStart.setDate(cycleStart.getDate() - Math.max(0, effective - 1));
 	}
 

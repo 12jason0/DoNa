@@ -5,9 +5,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 
 const Header = () => {
-    // ... (컴포넌트의 나머지 로직은 그대로 유지) ...
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [panelRight, setPanelRight] = useState(0);
     const [panelWidth, setPanelWidth] = useState(0);
@@ -41,7 +41,6 @@ const Header = () => {
 
                 if (response.ok) {
                     setIsLoggedIn(true);
-                    // 즐겨찾기/정원 상태는 초기 페인트 이후로 지연
                     const idle = (cb: () => void) =>
                         "requestIdleCallback" in window
                             ? (window as any).requestIdleCallback(cb, { timeout: 2000 })
@@ -70,7 +69,6 @@ const Header = () => {
         const token = localStorage.getItem("authToken");
         setIsLoggedIn(!!token);
         if (token) {
-            // 초기 렌더 블로킹 방지: 모든 네트워크는 idle에 수행
             const idle = (cb: () => void) =>
                 "requestIdleCallback" in window
                     ? (window as any).requestIdleCallback(cb, { timeout: 2000 })
@@ -116,7 +114,6 @@ const Header = () => {
         };
     }, []);
 
-    // 메뉴 패널 기준을 main 우측 가장자리로 고정
     const recomputeAnchor = () => {
         try {
             const mainEl = document.querySelector("main");
@@ -126,7 +123,7 @@ const Header = () => {
             setPanelRight(rightOffset);
             setPanelWidth(rect.width);
             const isMobile = window.innerWidth < 768;
-            const mobileWidth = Math.round(rect.width * 0.5); // 모바일에서는 화면의 절반만
+            const mobileWidth = Math.round(rect.width * 0.5);
             const desktopWidth = Math.min(333, rect.width);
             setDrawerWidth(isMobile ? mobileWidth : desktopWidth);
         } catch {}
@@ -187,7 +184,6 @@ const Header = () => {
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
     const closeMenu = () => setIsMenuOpen(false);
 
-    // 메뉴가 열릴 때: 페이지 스크롤 잠그되, 드로어 내부는 스크롤 가능하도록 유지
     useEffect(() => {
         const mainEl = document.querySelector("main") as HTMLElement | null;
         if (!mainEl) return;
@@ -195,7 +191,7 @@ const Header = () => {
             const prevOverflow = document.body.style.overflow;
             const prevMainOverflow = mainEl.style.overflow;
             document.body.style.overflow = "hidden";
-            mainEl.style.overflow = "hidden"; // 배경 스크롤 잠금
+            mainEl.style.overflow = "hidden";
             return () => {
                 document.body.style.overflow = prevOverflow;
                 mainEl.style.overflow = prevMainOverflow;
@@ -206,7 +202,6 @@ const Header = () => {
         }
     }, [isMenuOpen]);
 
-    // 접근성: 드로어 열림/닫힘 시 inert 적용 및 포커스 이동 처리
     useEffect(() => {
         const drawerEl = drawerRef.current;
         if (!drawerEl) return;
@@ -215,7 +210,6 @@ const Header = () => {
             try {
                 drawerEl.removeAttribute("inert");
             } catch {}
-            // 드로어가 열릴 때 첫 번째 포커스 가능한 요소로 포커스 이동
             setTimeout(() => {
                 try {
                     const firstFocusable = drawerEl.querySelector(
@@ -225,7 +219,6 @@ const Header = () => {
                 } catch {}
             }, 0);
         } else {
-            // 닫힐 때 드로어 내부에 포커스가 남아있다면 해제하고 토글 버튼으로 포커스 복귀
             try {
                 const active = document.activeElement as HTMLElement | null;
                 if (active && drawerEl.contains(active)) {
@@ -268,7 +261,6 @@ const Header = () => {
     const closeLogoutConfirm = () => setShowLogoutConfirm(false);
 
     return (
-        // [수정] fixed 속성을 relative로 변경하고 그림자(shadow-sm)를 추가합니다.
         <header className="relative z-50 bg-white shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
@@ -277,33 +269,52 @@ const Header = () => {
                         <span className="text-xl font-bold text-gray-900">DoNa</span>
                     </Link>
 
-                    {/* 모바일 스타일 헤더를 웹에서도 동일하게 사용 */}
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() =>
-                                router.push(localStorage.getItem("authToken") ? "/mypage?tab=favorites" : "/login")
-                            }
-                            className={`p-2 rounded-md transition-colors cursor-pointer ${
-                                hasFavorites
-                                    ? "text-pink-600 hover:text-pink-700 hover:bg-pink-50"
-                                    : "text-gray-400 hover:text-pink-600 hover:bg-pink-50"
-                            }`}
-                            aria-label="찜 목록"
-                            title="찜 목록"
+                        {/* [추가] 검색 아이콘 버튼 */}
+                        <button 
+                            onClick={() => {
+                                window.dispatchEvent(new Event("openSearchModal"));
+                            }}
+                            className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+                            aria-label="검색"
                         >
+                            <Search className="w-6 h-6" />
+                        </button>
+
+                        {/* ✅ [수정] 기존 하트 버튼을 종(Bell) 모양의 알림 버튼으로 교체 */}
+                        <button
+                            onClick={() => {
+                                // 임시 알림 처리 (추후 알림 페이지로 이동 가능)
+                                alert("🔔 1월 1일 정식 오픈! 사전 예약 혜택 알림이 설정되어 있습니다.");
+                            }}
+                            className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors relative"
+                            aria-label="알림"
+                            title="알림"
+                        >
+                            {/* 종 아이콘 SVG */}
                             <svg
-                                className="w-6 h-6"
-                                viewBox="0 0 24 24"
-                                fill={hasFavorites ? "currentColor" : "none"}
                                 xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-6 h-6"
                             >
                                 <path
-                                    d="M12 21s-6.716-4.223-9.193-7.246C1.087 11.85 1 9.49 2.343 7.9 3.685 6.31 5.89 6.02 7.5 7.2 8.55 7.98 9.19 9.2 12 11.5c2.81-2.3 3.45-3.52 4.5-4.3 1.61-1.18 3.815-.89 5.157.7 1.343 1.59 1.256 3.95-.464 5.854C18.716 16.777 12 21 12 21z"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
                                 />
                             </svg>
+
+                            {/* 🔴 빨간 점 (이벤트 알림 배지) */}
+                            <span className="absolute top-2 right-2.5 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
                         </button>
+
+                        {/* 메뉴(햄버거) 버튼 */}
                         <button
                             onClick={toggleMenu}
                             className="p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors cursor-pointer"
@@ -323,7 +334,7 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* 앱 스타일 오프캔버스 메뉴 (왼쪽에서 슬라이드) */}
+            {/* 앱 스타일 오프캔버스 메뉴 (나머지 로직 동일) */}
             <div>
                 {isMenuOpen && (
                     <div
@@ -355,7 +366,7 @@ const Header = () => {
                             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                             onClick={closeMenu}
                         >
-                            코스
+                            완벽한 하루
                         </Link>
                         <Link
                             href="/nearby"
@@ -378,7 +389,6 @@ const Header = () => {
                         >
                             지도
                         </Link>
-
                         <Link
                             href="/escape"
                             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
@@ -433,12 +443,6 @@ const Header = () => {
                             title="곧 공개됩니다"
                             role="button"
                             tabIndex={0}
-                            onKeyDown={() => {
-                                try {
-                                    setIsMenuOpen(false);
-                                } catch {}
-                                setShowComingSoon("forest");
-                            }}
                         >
                             <span>🔒</span>
                             <span>숲</span>
@@ -454,12 +458,6 @@ const Header = () => {
                             title="곧 공개됩니다"
                             role="button"
                             tabIndex={0}
-                            onKeyDown={() => {
-                                try {
-                                    setIsMenuOpen(false);
-                                } catch {}
-                                setShowComingSoon("garden");
-                            }}
                         >
                             <span>🔒</span>
                             <span>정원</span>
@@ -558,7 +556,7 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* 로그아웃 확인 모달 - 두나 스타일 */}
+            {/* 로그아웃 모달 */}
             {showLogoutConfirm && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000]">
                     <div className="bg-white rounded-2xl shadow-xl p-6 w-80 animate-fade-in">
@@ -587,6 +585,7 @@ const Header = () => {
                     </div>
                 </div>
             )}
+            {/* 커밍순 모달 */}
             {showComingSoon && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2100]"
