@@ -188,12 +188,13 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     // 핸들러 함수들
     // =================================================================
     const handleVibeSelect = (option: (typeof VIBE_OPTIONS)[number]) => {
+        // 기존 선택 초기화하고 새로운 값만 설정 (덮어쓰기)
         setPreferences((prev) => ({
             ...prev,
-            concept: [...new Set([...prev.concept, ...option.concepts])],
-            mood: [...new Set([...prev.mood, ...option.moods])],
+            concept: [...option.concepts],
+            mood: [...option.moods],
         }));
-        setSelectedVibeIds((prev) => (prev.includes(option.id) ? prev : [...prev, option.id]));
+        setSelectedVibeIds([option.id]);
         setAnalysisKeyword((prev) => ({ ...prev, vibe: option.desc }));
         localStorage.setItem("onboardingStep1", "1");
 
@@ -202,11 +203,42 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     };
 
     const handleValueSelect = (option: (typeof VALUE_OPTIONS)[number]) => {
+        // 기존 선택 초기화하고 새로운 값만 설정 (덮어쓰기)
+        // 주의: Step 1의 선택값은 유지해야 함 (concept, mood는 Step 1, 2가 공유하므로 누적 방식이 아닌 "Step 1 값 + Step 2 값"으로 재구성 필요)
+        // 하지만 여기서는 간단하게 "이전 단계의 값은 유지하되, 현재 단계의 값만 교체"하는 로직이 필요함.
+        // 현재 구조상 step 1과 step 2가 concept/mood 배열을 공유하므로,
+        // 완벽한 분리를 위해서는 step1_concepts, step2_concepts 등으로 상태를 분리해야 하지만,
+        // 여기서는 "기존에 선택된 값에 추가"가 아닌 "현재 선택으로 덮어쓰기"를 원하므로,
+        // Step 1에서 선택한 값은 보존되어야 한다면 로직이 복잡해짐.
+        // 사용자의 의도가 "완전히 새로 선택"이라면, Step 2 선택 시 Step 1 값 + Step 2 값으로 재구성하는 것이 맞음.
+        // 하지만 여기서는 DB나 상태에 "Step 1에서 온 것", "Step 2에서 온 것" 구분이 없으므로,
+        // 단순히 append 하는 방식으로는 중복이나 누적 문제가 발생함.
+
+        // 해결책: Step 2 선택 시, Step 2에 해당하는 값들만 갱신하기 어려우므로(어떤게 Step 2 값인지 모름),
+        // 가장 안전한 방법은 "append" 하되, 중복 제거는 Set으로 처리하고,
+        // 만약 "재선택" 시 이전 Step 2 값을 지우고 싶다면, 상태 관리를 더 세분화해야 함.
+
+        // 하지만 사용자의 요청인 "새로운 답변이 정확히 반영"되려면,
+        // Step 1, Step 2가 독립적이라면 각자 덮어쓰면 되지만, 공유한다면...
+        // 일단 사용자의 의도는 "이전 선택들이 계속 쌓여서 혼종이 되는 것을 방지"하는 것이므로,
+        // Step 1에서는 싹 지우고 넣고 (성공)
+        // Step 2에서는 Step 1 값은 유지하고 Step 2 값만 추가해야 함.
+
+        // 현재 preferences 상태에는 step 구분 없이 섞여 있으므로,
+        // selectedVibeIds(Step 1 선택)를 기반으로 Step 1 값을 복원하고, 거기에 현재 선택값을 더하는 방식으로 구현.
+
+        // 1. Step 1에서 선택된 옵션 찾기
+        const step1Option = VIBE_OPTIONS.find((opt) => selectedVibeIds.includes(opt.id));
+        const baseConcepts = step1Option ? step1Option.concepts : [];
+        const baseMoods = step1Option ? step1Option.moods : [];
+
+        // 2. Step 1 값 + 현재 선택 값으로 재설정
         setPreferences((prev) => ({
             ...prev,
-            concept: [...new Set([...prev.concept, option.addConcept])],
-            mood: [...new Set([...prev.mood, option.addMood])],
+            concept: [...new Set([...baseConcepts, ...option.addConcept])],
+            mood: [...new Set([...baseMoods, ...option.addMood])],
         }));
+
         setSelectedValueId(option.id);
         setAnalysisKeyword((prev) => ({ ...prev, type: option.typeLabel }));
         localStorage.setItem("onboardingStep2", "1");
@@ -222,6 +254,18 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
     const handleRegionSelect = (group: (typeof REGION_GROUPS)[number]) => {
         setPreferences((prev) => {
+            // 지역 선택은 다중 선택이 가능하지만, "새로 시작" 느낌을 위해
+            // 만약 기존에 선택된 지역들이 있고 사용자가 새로 클릭한다면?
+            // -> 여기는 "자주 출몰하는 지역"이라 여러 개 선택이 자연스러움.
+            // -> 하지만 "재설정" 상황이라면 기존 것을 다 날리고 싶을 수도 있음.
+            // -> 일단 기존 토글 방식 유지하되, 사용자가 명시적으로 지우지 않는 한 유지되는 것이 일반적임.
+            // -> 다만 사용자가 "초기화"를 원한다면 별도 버튼이 필요하거나,
+            //    진입 시점에 초기화했어야 함.
+            // -> 요청하신 "각 단계 선택 시 기존 값 초기화"를 지역에도 적용하려면 단일 선택으로 바뀌거나,
+            //    첫 클릭 시 초기화 로직이 필요한데, 다중 선택 UI에서는 첫 클릭인지 알기 어려움.
+            // -> 따라서 지역은 토글 방식을 유지하되, 만약 "단일 선택"처럼 동작하길 원하면 수정 가능.
+            // -> 여기서는 기존 토글 로직 유지 (지역은 여러 곳일 수 있으므로)
+
             const current = prev.regions || [];
             const isSelected = current.includes(group.dbValues[0]);
             let newRegions = [...current];
@@ -265,7 +309,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     };
 
     const completeOnboarding = () => {
-                window.location.href = "/";
+        window.location.href = "/";
     };
 
     // 🔥 [수정] 닫기 동작 개선
@@ -295,7 +339,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     // UI 렌더링: 인트로 (Step 1이 아닐 경우 자동으로 스킵됨)
     // =================================================================
     if (showIntro) {
-                return (
+        return (
             <div
                 className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out ${
                     isIntroFading ? "opacity-0 pointer-events-none" : "opacity-100"
@@ -310,12 +354,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         <button
                             onClick={handleClose}
                             className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/80 hover:bg-white/20 transition-all border border-white/10 group relative"
-                                >
+                        >
                             <X size={20} />
                             <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 text-white/80 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                                 다음에 하기
                             </span>
-                                </button>
+                        </button>
                     </div>
 
                     <div className="flex flex-col items-start text-left space-y-6">
@@ -345,15 +389,15 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             />
                         </button>
                     </div>
-                        </div>
-                    </div>
-                );
+                </div>
+            </div>
+        );
     }
 
     // 결과 화면
     if (showResult) {
         // (기존 코드와 동일, 생략 가능하지만 문맥상 유지)
-                return (
+        return (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
                 {/* ...결과 UI 코드... */}
                 <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center relative overflow-hidden">
@@ -364,16 +408,16 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     <div className="mt-8">
                         <h2 className="text-2xl font-bold mb-2">분석 완료!</h2>
                         <p className="text-gray-500 mb-6">회원님의 취향 DNA가 추출되었습니다.</p>
-                                <button
+                        <button
                             onClick={completeOnboarding}
                             className="w-full py-4 bg-black text-white rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform"
                         >
                             맞춤 코스 확인하기 ➔
-                                </button>
+                        </button>
                     </div>
-                        </div>
-                    </div>
-                );
+                </div>
+            </div>
+        );
     }
 
     // 로딩 화면
@@ -384,7 +428,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 <h2 className="text-xl font-bold text-white animate-pulse">취향 데이터 분석 중...</h2>
             </div>
         );
-        }
+    }
 
     // =================================================================
     // 메인 온보딩 UI (Step 1~4)
@@ -401,7 +445,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     >
                         <X size={20} />
                     </button>
-                    </div>
+                </div>
 
                 {/* Progress Bar */}
                 <div className="px-4 pt-16 pb-2 shrink-0">
@@ -454,7 +498,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                                 ? "border-[#7aa06f] ring-2 ring-[#7aa06f]"
                                                 : "border-gray-100 hover:border-gray-300"
                                         }`}
-                    >
+                                    >
                                         <span className="text-3xl bg-gray-50 p-3 rounded-2xl group-hover:scale-110 transition-transform">
                                             {opt.icon}
                                         </span>
@@ -465,8 +509,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                         </div>
                                     </button>
                                 ))}
-                    </div>
-                </div>
+                            </div>
+                        </div>
                     )}
 
                     {/* Step 3: 동행자 선택 */}
@@ -479,7 +523,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             <p className="text-gray-500 mb-8 text-sm">주로 함께하는 대상을 알려주세요.</p>
                             <div className="grid grid-cols-2 gap-3">
                                 {CREW_OPTIONS.map((crew) => (
-                    <button
+                                    <button
                                         key={crew.value}
                                         onClick={() => handleCrewSelect(crew.value)}
                                         className={`p-5 rounded-2xl border transition-all text-left shadow-sm active:scale-95 bg-white ${
@@ -490,7 +534,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                     >
                                         <div className="text-lg font-bold text-gray-800 mb-1">{crew.label}</div>
                                         <div className="text-xs text-gray-400">{crew.sub}</div>
-                    </button>
+                                    </button>
                                 ))}
                             </div>
                         </div>
@@ -516,12 +560,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                 ))}
                             </div>
                             <div className="shrink-0 mt-auto pb-6 pt-4">
-                    <button
-                        onClick={nextStep}
+                                <button
+                                    onClick={nextStep}
                                     className="w-full py-4 bg-[#7aa06f] text-white rounded-xl font-bold shadow-lg"
-                    >
+                                >
                                     분석 시작하기 ✨
-                    </button>
+                                </button>
                             </div>
                         </div>
                     )}
@@ -530,13 +574,13 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 {/* 이전 버튼 */}
                 {currentStep > 1 && !isAnalyzing && !showResult && (
                     <div className="px-6 pb-6 pt-2 shrink-0">
-                    <button
+                        <button
                             onClick={prevStep}
                             className="text-gray-400 text-sm flex items-center gap-1 hover:text-gray-600"
-                    >
+                        >
                             ← 이전 단계
-                    </button>
-                </div>
+                        </button>
+                    </div>
                 )}
             </div>
         </div>

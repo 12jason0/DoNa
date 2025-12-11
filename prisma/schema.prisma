@@ -185,6 +185,9 @@ model Course {
   userFavorites        UserFavorite[]
   interactions         UserInteraction[]
 
+  //대표님 픽
+  is_editor_pick Boolean @default(false)
+
   // 썸네일용 짧은 카피 (카드 UI 상단에 띄울 문구)
   // 예: "썸녀가 200% 감동하는", "비 오는 날도 뽀송하게"
   sub_title          String?  @map("sub_title") @db.VarChar(100)
@@ -655,6 +658,13 @@ model GardenTree {
 
   @@index([gardenId])
   @@map("garden_trees")
+}
+
+model GridCode {
+  id          Int     @id @default(autoincrement())
+  region_name String  @unique // "서울 강남구"와 같은 지역명
+  nx          Int
+  ny          Int
 }
 
 enum ChapterType {

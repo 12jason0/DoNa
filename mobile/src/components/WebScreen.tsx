@@ -64,44 +64,58 @@ export default function WebScreen({ uri }: Props) {
 
             // 3) Safe-area 처리 수정
             lines.push(`
-                (function applySafeArea(){
-                    function update(){
-                        try {
-                            const path = window.location.pathname;
-                            const href = window.location.href;
-                            
-                            // 인트로 페이지와 스플래시(민트색) 페이지는 풀스크린
-                            const isIntro = path.includes("/escape/intro");
-                            const isSplash = (href === "https://dona-two.vercel.app/" || 
-                                             href === "https://dona-two.vercel.app" ||
-                                             path === "/" && !document.querySelector('[class*="container"]'));
+ (function applySafeArea(){
+        function update(){
+            try {
+                const path = window.location.pathname;
+                const href = window.location.href;
+                
+                const isIntro = path.includes("/escape/intro");
+                const isSplash = (href === "https://dona-two.vercel.app/" || 
+                                  href === "https://dona-two.vercel.app" ||
+                                  path === "/" && !document.querySelector('[class*="container"]'));
 
-                            if (isIntro || isSplash) {
-                                // 풀스크린 - safe-area 제거
-                                document.documentElement.style.paddingTop = "0px";
-                                document.body.style.paddingTop = "0px";
-                                document.documentElement.style.marginTop = "0px";
-                                document.body.style.marginTop = "0px";
+                // 🚩 HTML/BODY 높이를 뷰포트 높이로 설정하여 웹뷰 영역을 가득 채우게 함
+                document.documentElement.style.height = '100%';
+                document.body.style.minHeight = '100%';
+                document.body.style.position = 'relative'; 
 
-                                const old = document.getElementById("safe-area-style");
-                                if (old) old.remove();
-                                return;
-                            }
+                if (isIntro || isSplash) {
+                    // 풀스크린 (상/하단 모두 0)
+                    document.documentElement.style.padding = "0px";
+                    document.body.style.padding = "0px";
+                    document.documentElement.style.marginTop = "0px";
+                    document.body.style.marginTop = "0px";
+                    
+                    const old = document.getElementById("safe-area-style");
+                    if (old) old.remove();
+                    return;
+                }
 
-                            // 나머지 페이지는 safe-area 없이 처리
-                            // React Native의 SafeAreaView가 이미 처리하므로 웹에서는 추가 padding 불필요
-                            document.documentElement.style.paddingTop = "0px";
-                            document.body.style.paddingTop = "0px";
-                            document.documentElement.style.marginTop = "0px";
-                            document.body.style.marginTop = "0px";
-                            
-                            const existing = document.getElementById("safe-area-style");
-                            if (existing) existing.remove();
+                // 🚩 일반 페이지: 상단 여백 제거 및 하단 확장 강제
+                
+                // 상단 여백 제거 (RN의 SafeAreaView가 이미 처리함)
+                document.documentElement.style.setProperty('padding-top', '0px', 'important');
+                document.body.style.setProperty('padding-top', '0px', 'important');
+                document.documentElement.style.marginTop = "0px";
+                document.body.style.marginTop = "0px";
+                
+                // 🚩 하단 여백을 0으로 강제하여 Safe Area까지 콘텐츠 확장
+                // (기존의 !important 설정은 유지하되, 혹시 모를 충돌을 위해 paddingBottom만 확실히 보강)
+                document.documentElement.style.setProperty('padding-bottom', '0px', 'important');
+                document.body.style.setProperty('padding-bottom', '0px', 'important');
+                
+                // 🚩 웹 콘텐츠에 safe-area-inset-bottom이 적용된 경우도 무시하도록 max-height 설정
+                // 이는 웹 콘텐츠 자체가 100vh로 제한될 경우를 대비
+                document.body.style.setProperty('max-height', 'unset', 'important');
 
-                        } catch(e){
-                            console.error('Safe area update error:', e);
-                        }
-                    }
+                const existing = document.getElementById("safe-area-style");
+                if (existing) existing.remove();
+
+            } catch(e){
+                console.error('Safe area update error:', e);
+            }
+        }
 
                     // 초기 실행
                     update();

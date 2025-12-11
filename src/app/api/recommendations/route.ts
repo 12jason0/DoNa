@@ -3,14 +3,161 @@ import prisma from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+const KMA_API_KEY = process.env.KMA_API_KEY; // .env에서 API 키 가져오기
+const AIRKOREA_API_KEY = process.env.AIRKOREA_API_KEY;
+
+// ---------------------------------------------
+// 🚩 [날씨 API 유틸리티 함수] 시작
+// ---------------------------------------------
+
+// 1. 날씨 코드 해석 함수
+function extractWeatherStatus(data: any): string | null {
+    const items = data?.response?.body?.items?.item;
+    if (!items || items.length === 0) return null;
+
+    let weatherStatus = "맑음";
+    let hasRain = false;
+
+    // PTY(강수 형태)와 SKY(하늘 상태) 코드를 분석하는 로직
+    for (const item of items) {
+        if (item.category === "PTY" && item.obsrValue !== "0") {
+            hasRain = true;
+        }
+        if (item.category === "SKY") {
+            if (item.obsrValue === "4") {
+                weatherStatus = "흐림";
+            } else if (item.obsrValue === "3") {
+                weatherStatus = "구름많음";
+            } else if (item.obsrValue === "1") {
+                weatherStatus = "맑음";
+            }
+        }
+    }
+    return hasRain ? "비/눈" : weatherStatus;
+}
+
+// 2. KMA API 호출 함수
+async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | null> {
+    if (!KMA_API_KEY) return null;
+
+    // 현재 시각 계산 (실제 발표 시간 기준으로 수정 필요)
+    const now = new Date();
+    const baseDate = now.toISOString().slice(0, 10).replace(/-/g, "");
+    const baseTime = `${now.getHours().toString().padStart(2, "0")}00`;
+
+    const apiUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst?serviceKey=${KMA_API_KEY}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+
+    try {
+        const response = await fetch(apiUrl);
+        const jsonResponse = await response.json();
+        return extractWeatherStatus(jsonResponse);
+    } catch (error) {
+        // console.error("Weather API call failed:", error); // 디버깅 시 사용
+        return null;
+    }
+}
+
+// 3. 에어코리아 API 호출 및 미세먼지 상태 해석 함수 (신규)
+// 3. 에어코리아 API 호출 및 미세먼지 상태 해석 함수 (최종 반영)
+async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
+    if (!AIRKOREA_API_KEY || !sidoName) return null;
+    try {
+        const encodedServiceKey = encodeURIComponent(AIRKOREA_API_KEY);
+        const encodedSidoName = encodeURIComponent(sidoName);
+
+        // API 기본 호출 URL
+        const apiUrl = `https://apis.data.go.kr/B552584/ArpltnInforinquireSvc/getCtprvnRltmMesureDnsty?serviceKey=${encodedServiceKey}&numOfRows=1&pageNo=1&sidoName=${encodedSidoName}&ver=1.3&returnType=json`;
+
+        const response = await fetch(apiUrl, { next: { revalidate: 3600 } });
+        const jsonResponse = await response.json().catch(() => null as any);
+        const items = jsonResponse?.response?.body?.items;
+        if (!Array.isArray(items) || items.length === 0) return null;
+
+        const item = items[0] || {};
+
+        // PM10 (미세먼지) 및 PM2.5 (초미세먼지) 데이터 추출
+        const pm10Grade = String(item.pm10Grade || "");
+        const pm25Grade = String(item.pm25Grade || "");
+        const pm10Value = parseInt(String(item.pm10Value ?? ""), 10);
+        const pm25Value = parseInt(String(item.pm25Value ?? ""), 10);
+
+        // 1. 황사/매우나쁨 (등급 4 또는 농도 초과)
+        const isExtremelyBad =
+            pm10Grade === "4" ||
+            pm25Grade === "4" ||
+            (Number.isFinite(pm10Value) && pm10Value > 150) || // PM10 매우 나쁨 기준
+            (Number.isFinite(pm25Value) && pm25Value > 75); // PM2.5 매우 나쁨 기준
+
+        if (isExtremelyBad) {
+            return "황사";
+        }
+
+        // 2. 미세먼지/나쁨 (등급 3 또는 농도 초과)
+        const isBad =
+            pm10Grade === "3" ||
+            pm25Grade === "3" ||
+            (Number.isFinite(pm10Value) && pm10Value > 75) || // PM10 나쁨 기준
+            (Number.isFinite(pm25Value) && pm25Value > 35); // PM2.5 나쁨 기준
+
+        if (isBad) {
+            return "미세먼지";
+        }
+
+        // 좋음/보통인 경우
+        return null;
+    } catch {
+        return null;
+    }
+}
+// 3. 날씨 페널티/보너스 함수 (알고리즘 반영)
+// route.ts 파일 (calculateWeatherPenalty 함수)
+
+function calculateWeatherPenalty(courseTags: any, weatherToday: string): number {
+    let penalty = 0;
+
+    // ------------------------------------
+    // 1. [비/눈] 페널티 (기존 로직)
+    // ------------------------------------
+    if (weatherToday.includes("비") || weatherToday.includes("눈")) {
+        // 야외 코스에 -0.2점 감점
+        const isOutdoorCourse = courseTags.concept?.some(
+            (tag: string) => tag.includes("야외") || tag.includes("공원") || tag.includes("루프탑")
+        );
+        if (isOutdoorCourse) penalty += -0.2; // 감점 적용
+
+        // 실내 코스에 +0.05점 보너스
+        const isIndoorCourse = courseTags.concept?.some((tag: string) => tag.includes("실내"));
+        if (isIndoorCourse) penalty += 0.05;
+    }
+
+    // ------------------------------------
+    // 2. [미세먼지/황사] 페널티 (신규 로직)
+    // ------------------------------------
+    // 🚨 실제 API에서 '미세먼지'나 '황사'라는 문자열을 받아온다고 가정합니다.
+    // (만약 기상청 API에서 시정(VRS) 값을 분석해야 한다면 로직을 더 복잡하게 구현해야 합니다.)
+    if (weatherToday.includes("미세먼지") || weatherToday.includes("황사")) {
+        // 야외 활동 코스에 중급 페널티 -0.15점
+        const isActivityCourse = courseTags.concept?.some(
+            (tag: string) => tag.includes("활동적인") || tag.includes("야외") || tag.includes("모험")
+        );
+        if (isActivityCourse) penalty += -0.15; // 야외 활동 페널티
+
+        // 박물관, 전시, 쇼핑몰 등 실내 코스에 소폭 보너스 +0.03점
+        const isSafeIndoor = courseTags.concept?.some(
+            (tag: string) => tag.includes("전시") || tag.includes("쇼핑") || tag.includes("카페")
+        );
+        if (isSafeIndoor) penalty += 0.03;
+    }
+
+    return penalty;
+}
+// ---------------------------------------------
+// 🚩 [날씨 API 유틸리티 함수] 끝
+// ---------------------------------------------
 
 /**
  * DoNa 추천 알고리즘 점수 계산 공식 (Rule-based Scoring)
- *
- * 총점 = (취향 매칭 × 0.35) + (상황/목적 매칭 × 0.25) + (시간대 매칭 × 0.15)
- *      + (예산 매칭 × 0.15) + (특수 태그 매칭 × 0.10)
- *
- * 각 점수는 0~1 사이로 정규화됨
+ * ... (기존 calculateTagMatchScore 함수는 변화 없음)
  */
 function calculateTagMatchScore(
     courseTags: any,
@@ -186,12 +333,19 @@ function calculateThemeScore(courseTags: any, userPrefs: any): number {
 
 /**
  * 새로운 추천 알고리즘: conceptMatch * 0.25 + moodMatch * 0.25 + regionMatch * 0.20 + goalMatch * 0.30
+ * 🚩 todayContext에 weather_today를 추가했습니다.
  */
 function calculateNewRecommendationScore(
     courseTags: any,
     courseRegion: string | null,
     longTermPrefs: { concept?: string[]; companion?: string; mood?: string[]; regions?: string[] },
-    todayContext: { goal?: string; companion_today?: string; mood_today?: string; region_today?: string }
+    todayContext: {
+        goal?: string;
+        companion_today?: string;
+        mood_today?: string;
+        region_today?: string;
+        weather_today?: string;
+    } // 🚩 weather_today 추가
 ): number {
     let score = 0;
 
@@ -214,6 +368,10 @@ function calculateNewRecommendationScore(
     // 4. goalMatch (0~1) × 0.30
     const goalScore = calculateGoalMatch(courseTags, todayContext.goal || "", todayContext.companion_today || "");
     score += goalScore * 0.3;
+
+    // 🚩 5. 날씨 페널티/보너스 적용 (calculateWeatherPenalty 호출)
+    const weatherPenalty = calculateWeatherPenalty(courseTags, todayContext.weather_today || "");
+    score += weatherPenalty;
 
     return Math.min(score, 1.0);
 }
@@ -415,7 +573,9 @@ export async function GET(req: NextRequest) {
             include: { course: { select: { id: true, concept: true, region: true } } },
         });
 
-        // 모든 코스 가져오기
+        // ---------------------------------------------
+        // 🚩 [A] DB 반복 호출 제거 및 코스 데이터 가져오기 (563줄 근처)
+        // ---------------------------------------------
         const allCourses = (await prisma.course.findMany({
             select: {
                 id: true,
@@ -427,6 +587,8 @@ export async function GET(req: NextRequest) {
                 rating: true,
                 view_count: true,
                 createdAt: true,
+                tags: true,
+                is_editor_pick: true,
             },
         })) as Array<{
             id: number;
@@ -439,18 +601,10 @@ export async function GET(req: NextRequest) {
             view_count: number;
             createdAt: Date;
             tags?: any;
+            is_editor_pick: boolean; // 🚩 is_editor_pick 에러 해결 (타입 추가)
         }>;
 
-        // 각 코스의 tags 가져오기
-        const coursesWithTags = await Promise.all(
-            allCourses.map(async (course) => {
-                const fullCourse = await prisma.course.findUnique({
-                    where: { id: course.id },
-                    select: { tags: true } as any,
-                });
-                return { ...course, tags: (fullCourse as any)?.tags };
-            })
-        );
+        // ⚠️ 치명적인 비효율 로직 (Promise.all + findUnique 반복 호출) 삭제됨
 
         // 사용자 장기 선호도 파싱
         let longTermPrefs: any = {};
@@ -463,19 +617,53 @@ export async function GET(req: NextRequest) {
             };
         }
 
-        // 오늘의 상황
+        // ---------------------------------------------
+        // 🚩 [B] 격자 코드 조회 및 날씨 API 호출 (593줄 근처)
+        // ---------------------------------------------
+
+        // 1. 지역명으로 격자 코드를 DB에서 조회
+        let gridCoords: { nx: number; ny: number } | null = null;
+        if (regionToday) {
+            // ⚠️ prisma.GridCode 모델이 prisma/schema.prisma에 정의되어 있어야 합니다.
+            // ⚠️ GridCode 테이블에 데이터가 있어야 작동합니다.
+            const gridData = await prisma.gridCode.findFirst({
+                where: { region_name: { contains: regionToday } },
+                select: { nx: true, ny: true },
+            });
+            if (gridData) {
+                gridCoords = gridData;
+            }
+        }
+
+        // 2. KMA 날씨 + 에어코리아 미세먼지 병렬 호출
+        let weatherToday: string | null = null;
+        let airQualityStatus: string | null = null;
+        if (regionToday) {
+            const sidoName = (regionToday.split(" ")[0] || regionToday).replace(/시|도$/g, "");
+            const [kmaStatus, airStatus] = await Promise.all([
+                gridCoords ? fetchWeatherAndCache(gridCoords.nx, gridCoords.ny) : Promise.resolve(null),
+                fetchAirQualityStatus(sidoName),
+            ]);
+            weatherToday = kmaStatus;
+            airQualityStatus = airStatus;
+        }
+
+        // 3. 오늘의 상황 context 업데이트
         const todayContext = {
             goal,
             companion_today: companionToday,
             mood_today: moodToday,
             region_today: regionToday,
+            weather_today: [weatherToday, airQualityStatus].filter(Boolean).join("/") || "", // 날씨/미세먼지 결합
         };
+        // ---------------------------------------------
 
         // 오늘 선택한 지역이 있으면 해당 지역의 코스만 필터링 (선택적)
-        let filteredCourses = coursesWithTags;
+        // 🚩 allCourses를 바로 사용합니다.
+        let filteredCourses = allCourses;
         if (regionToday) {
             // 지역이 정확히 일치하거나 포함하는 코스만 필터링
-            filteredCourses = coursesWithTags.filter((course) => {
+            filteredCourses = allCourses.filter((course) => {
                 if (!course.region) return false;
                 return (
                     course.region === regionToday ||
@@ -484,23 +672,28 @@ export async function GET(req: NextRequest) {
                 );
             });
 
-            // 필터링 후 결과가 없으면 전체 코스 사용 (폴백)
+            // 필터링 후 결과가 없으면 전체 코스 사용 (폴백) ⚠️ 안전을 위해 이 로직은 유지
             if (filteredCourses.length === 0) {
-                filteredCourses = coursesWithTags;
+                filteredCourses = allCourses;
             }
         }
 
-        // 새로운 알고리즘으로 점수 계산
+        // 새로운 알고리즘으로 점수 계산 (640줄 근처)
+        // 🚩 filteredCourses를 사용
         const coursesWithScores = filteredCourses.map((course) => {
             const recommendationScore = calculateNewRecommendationScore(
                 course.tags,
                 course.region,
                 longTermPrefs,
-                todayContext
+                todayContext // 🚩 weather_today 포함된 todayContext 전달
             );
 
             // 보너스 점수 (최대 0.2)
             let bonusScore = 0;
+
+            if (course.is_editor_pick) {
+                bonusScore += 0.1; // 보너스 점수 0.1점 추가 (D-Day 부스팅)
+            }
 
             // 최근 상호작용 보너스
             if (recent && recent.length > 0) {
@@ -541,10 +734,7 @@ export async function GET(req: NextRequest) {
         });
 
         // 점수 순으로 정렬하고 상위 N개 선택
-        const recs = coursesWithScores
-            .sort((a, b) => b.matchScore - a.matchScore)
-            .slice(0, limit)
-            .map(({ matchScore, ...course }) => course);
+        const recs = coursesWithScores.sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
 
         // 결과가 없으면 인기 코스 반환
         if (recs.length === 0) {

@@ -314,7 +314,12 @@ function MapPageInner() {
             if (!navigator.geolocation) return reject();
             navigator.geolocation.getCurrentPosition(
                 (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-                reject
+                reject,
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
+                }
             );
         });
 
@@ -339,10 +344,10 @@ function MapPageInner() {
         if (!map) return;
 
         const clickListener = navermaps.Event.addListener(map, "click", () => {
-            if (selectedPlace) {
+            if (selectedPlace || panelState !== "minimized") {
                 setSelectedPlace(null);
-                setPanelState("default");
-            } else setPanelState("default");
+                setPanelState("minimized");
+            }
         });
         const dragStartListener = navermaps.Event.addListener(map, "dragstart", () => setShowMapSearchButton(true));
 
@@ -352,7 +357,7 @@ function MapPageInner() {
                 navermaps.Event.removeListener(dragStartListener);
             } catch {}
         };
-    }, [navermaps, selectedPlace]);
+    }, [navermaps, selectedPlace, panelState]); // 🚩 panelState 의존성 추가
 
     const getPanelHeightClass = () => {
         if (panelState === "expanded") return "h-[90vh]";
@@ -371,7 +376,7 @@ function MapPageInner() {
     return (
         <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100">
             {/* 1. 상단 검색창 + 탭 */}
-            <div className="absolute top-0 left-0 right-0 z-50 flex flex-col p-4 bg-gradient-to-b from-white/90 via-white/50 to-transparent pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-gradient-to-b from-white/90 via-white/50 to-transparent pointer-events-none">
                 <div className="flex items-center bg-white rounded-xl shadow-lg border border-gray-200 p-2 transition-all pointer-events-auto mb-3">
                     <div className="pl-2 pr-2 text-emerald-600">
                         <svg
@@ -397,37 +402,39 @@ function MapPageInner() {
                     />
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto pl-1 pb-2">
-                    <button
-                        onClick={() => {
-                            setActiveTab("places");
-                            setSelectedPlace(null);
-                            setPanelState("default");
-                        }}
-                        className={`px-4 py-2 rounded-full text-sm font-bold shadow-md border whitespace-nowrap transition-all ${
-                            activeTab === "places"
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white text-gray-600 border-gray-200"
-                        }`}
-                    >
-                        주변 장소
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveTab("courses");
-                            setPanelState("default");
-                        }}
-                        className={`px-4 py-2 rounded-full text-sm font-bold shadow-md border whitespace-nowrap transition-all ${
-                            activeTab === "courses"
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white text-gray-600 border-gray-200"
-                        }`}
-                    >
-                        추천 코스
-                    </button>
+                <div className="flex items-center justify-between pointer-events-auto pl-1 pb-2 w-full max-w-md mx-auto">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                        <button
+                            onClick={() => {
+                                setActiveTab("places");
+                                setSelectedPlace(null);
+                                setPanelState("default");
+                            }}
+                            className={`px-4 py-2 rounded-full text-sm font-bold shadow-md border whitespace-nowrap transition-all ${
+                                activeTab === "places"
+                                    ? "bg-emerald-600 text-white border-emerald-600"
+                                    : "bg-white text-gray-600 border-gray-200"
+                            }`}
+                        >
+                            주변 장소
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab("courses");
+                                setPanelState("default");
+                            }}
+                            className={`px-4 py-2 rounded-full text-sm font-bold shadow-md border whitespace-nowrap transition-all ${
+                                activeTab === "courses"
+                                    ? "bg-emerald-600 text-white border-emerald-600"
+                                    : "bg-white text-gray-600 border-gray-200"
+                            }`}
+                        >
+                            추천 코스
+                        </button>
+                    </div>
                     <button
                         onClick={handleMapSearch}
-                        className="flex items-center gap-1 px-4 py-2 rounded-full text-sm font-bold shadow-md border border-emerald-500 bg-white text-emerald-600 whitespace-nowrap hover:bg-emerald-50 active:scale-95 transition-transform"
+                        className="flex items-center gap-1 px-4 py-2 rounded-full text-sm font-bold shadow-md border border-emerald-500 bg-white text-emerald-600 whitespace-nowrap hover:bg-emerald-50 active:scale-95 transition-transform ml-2"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -465,6 +472,7 @@ function MapPageInner() {
                                 }}
                             />
                         )}
+                        {/* 장소 마커 */}
                         {(selectedPlace ? [selectedPlace] : places).map((place) => (
                             <Marker
                                 key={place.id}
@@ -492,8 +500,15 @@ function MapPageInner() {
                 className={`z-40 absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-[0_-5px_20px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
                 <div
-                    className="w-full flex justify-center pt-3 pb-2 cursor-pointer touch-none"
-                    onClick={() => setPanelState((p) => (p === "expanded" ? "default" : "expanded"))}
+                    className="w-full flex justify-center pt-3 pb-2 cursor-pointer touch-none active:bg-gray-50 transition-colors"
+                    onClick={() => {
+                        // 패널 상태 토글: 최소화 <-> 기본 <-> 확장
+                        setPanelState((prev) => {
+                            if (prev === "expanded") return "default";
+                            if (prev === "default") return "minimized";
+                            return "default";
+                        });
+                    }}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                 >

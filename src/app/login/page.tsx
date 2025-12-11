@@ -62,19 +62,18 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // 서버 응답의 토큰도 함께 로컬스토리지에 저장하여 기존 헤더 로직과 동기화
+                // 토큰 저장 로직 (기존 유지)
                 if (data?.token) {
                     localStorage.setItem("authToken", data.token);
                     if (data?.user) localStorage.setItem("user", JSON.stringify(data.user));
                     localStorage.setItem("loginTime", Date.now().toString());
                     window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
                 } else {
-                    // 쿠키만 설정된 케이스: 세션 조회 후 이벤트 발생
                     await fetchSession();
                     window.dispatchEvent(new CustomEvent("authTokenChange"));
                 }
 
-                // 모바일 WebView에 로그인 성공 알림
+                // 웹뷰 통신 (기존 유지)
                 try {
                     if ((window as any).ReactNativeWebView) {
                         (window as any).ReactNativeWebView.postMessage(
@@ -87,8 +86,12 @@ const Login = () => {
                     }
                 } catch {}
 
-                // 홈페이지로 이동 (로그인 성공 모달 표시)
-                router.push("/?login_success=true");
+                // ✅ [수정된 부분]
+                // URL에 표시하지 않고, sessionStorage에 '로그인 성공' 흔적을 남깁니다.
+                sessionStorage.setItem("login_success_trigger", "true");
+
+                // 깔끔하게 메인으로 이동! (?login_success=true 없음)
+                router.push("/");
             } else {
                 setError(data.error || "로그인에 실패했습니다.");
             }
@@ -144,7 +147,7 @@ const Login = () => {
                 return;
             }
 
-            let intervalId: NodeJS.Timeout | null = null;
+            let intervalId: NodeJS.Timeout | number | null = null;
 
             const cleanup = () => {
                 if (intervalId) clearInterval(intervalId);

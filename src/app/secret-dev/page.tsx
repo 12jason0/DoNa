@@ -10,6 +10,7 @@ import Image from "@/components/ImageFallback";
 import HeroSlider from "@/components/HeroSlider";
 import OnboardingSection from "@/components/OnboardingSection";
 import CompletionModal from "@/components/CompletionModal";
+import PersonalizedSection from "@/components/PersonalizedSection";
 
 // [변경] 기존 onboardingData에서 필요한 데이터만 가져옵니다.
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
@@ -192,6 +193,7 @@ export default function Home() {
         const loginSuccess = urlParams.get("login_success");
         const signupSuccess = urlParams.get("signup_success");
 
+        // 1. 단순 웰컴 메시지 (기존 유지)
         if (welcome === "true") {
             setShowWelcome(true);
             const newUrl = window.location.pathname;
@@ -199,20 +201,34 @@ export default function Home() {
             setTimeout(() => setShowWelcome(false), 3000);
         }
 
+        // 2. 로그인 성공 (✅ 여기를 수정했습니다)
         if (loginSuccess === "true") {
-            setShowLoginModal(true);
-            maybeOpenCheckinModal();
+            // 🚨 수정 포인트: 로그인했으니 로그인 창은 끄고(false), 환영 배너를 켭니다(true)
+            setShowLoginModal(false);
+            setShowWelcome(true);
+
+            maybeOpenCheckinModal(); // 출석체크 모달은 유지
+
+            // 토큰 이벤트 발생 (기존 유지)
             const token = localStorage.getItem("authToken");
             if (token) {
                 window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token } }));
             } else {
                 window.dispatchEvent(new CustomEvent("authTokenChange"));
             }
+
+            // URL 세탁 (기존 유지)
             const newUrl = window.location.pathname;
             window.history.replaceState({}, "", newUrl);
+
+            // ✨ 추가: 3초 뒤에 환영 배너 자동으로 끄기
+            setTimeout(() => setShowWelcome(false), 3000);
         }
 
+        // 3. 회원가입 성공 (기존 유지)
         if (signupSuccess === "true") {
+            // 💡 팁: 만약 회원가입 후 바로 로그인이 된 상태라면 여기도 false로 바꾸는 게 좋습니다.
+            // 일단은 기존 코드대로 true(모달 띄움)로 두었습니다.
             setShowLoginModal(true);
             setIsSignup(true);
             localStorage.setItem("loginTime", Date.now().toString());
@@ -801,16 +817,20 @@ export default function Home() {
             )}
 
             <>
-                {/* [수정] 메인 히어로 슬라이더 (검색창이 빠지면서 위로 올라갑니다) */}
                 <div className="pt-4">
                     <HeroSlider
-                        items={topCourses.map((c) => ({
-                            id: c.id,
-                            imageUrl: c.imageUrl,
-                            location: c.location,
-                            concept: c.concept,
-                            tags: c.tags,
-                        }))}
+                        items={topCourses.map((c) => {
+                            const displayConcept = CONCEPTS[c.concept as keyof typeof CONCEPTS] || c.concept;
+
+                            // 3. 명시적으로 return을 해줍니다.
+                            return {
+                                id: c.id,
+                                imageUrl: c.imageUrl,
+                                location: c.location,
+                                concept: displayConcept,
+                                tags: c.tags,
+                            };
+                        })}
                     />
                 </div>
 
@@ -880,81 +900,7 @@ export default function Home() {
                     </div>
                 </section>
 
-                {/* [핵심 수정] 개인화 추천 섹션 */}
-                <section className="pb-12">
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                {isLoggedInForRecs ? `${userName}님을 위한 추천` : "요즘 뜨는 인기 코스"}
-                            </h2>
-                        </div>
-
-                        {/* 추천 로딩 중일 때 스켈레톤 */}
-                        {isLoadingRecs && isLoggedInForRecs ? (
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                                {[1, 2, 3].map((i) => (
-                                    <div
-                                        key={i}
-                                        className="min-w-[160px] w-[45%] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse"
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            /* 데이터 표시 */
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
-                                {(isLoggedInForRecs && recs.length > 0 ? recs : hotCourses).slice(0, 5).map((c) => {
-                                    const locationParts = (c.location || "").split(" ");
-                                    const fallbackRegion = locationParts[1] ?? locationParts[0] ?? "서울";
-                                    const displayRegion = c.region || fallbackRegion;
-
-                                    // [수정] 영어 Concept 키를 한글로 변환
-                                    const displayConcept = CONCEPTS[c.concept as keyof typeof CONCEPTS] || c.concept;
-
-                                    return (
-                                        <Link
-                                            key={c.id}
-                                            href={`/courses/${c.id}`}
-                                            className="block min-w-[160px] w-[45%] group relative"
-                                        >
-                                            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-200 shadow-sm border border-gray-100 group-hover:shadow-md transition-all">
-                                                {c.imageUrl ? (
-                                                    <Image
-                                                        src={c.imageUrl}
-                                                        alt={c.title}
-                                                        fill
-                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
-                                                        No Image
-                                                    </div>
-                                                )}
-
-                                                {/* [해시태그] 지역명 + 한글 테마명 */}
-                                                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
-                                                    <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
-                                                        #{displayRegion}
-                                                    </span>
-                                                    <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
-                                                        #{displayConcept}
-                                                    </span>
-                                                </div>
-
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90" />
-
-                                                <div className="absolute bottom-0 left-0 w-full p-4 text-left z-10">
-                                                    <div className="text-white font-bold text-sm line-clamp-2 leading-tight">
-                                                        {c.title}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </section>
+                <PersonalizedSection />
 
                 {!isOnboardingComplete && <OnboardingSection onStart={handleStartOnboarding} />}
             </>

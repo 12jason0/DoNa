@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "@/components/ImageFallback";
-import { useRouter } from "next/navigation"; // 1. 라우터 임포트
+import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
 
+// Updated type definition to include the new icon field
 export type SliderItem = {
     id: string;
     imageUrl?: string;
     location?: string;
     concept?: string;
+    conceptIcon?: string; // New: Icon for the concept badge
     tags?: string[];
 };
 
@@ -17,163 +19,118 @@ type HeroSliderProps = {
 };
 
 export default function HeroSlider({ items }: HeroSliderProps) {
-    const router = useRouter(); // 2. 라우터 사용
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [touchStartX, setTouchStartX] = useState<number | null>(null);
-    const [touchDeltaX, setTouchDeltaX] = useState(0);
-    const [isTouching, setIsTouching] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-    // 4초 자동 슬라이드 (터치 시 멈춤)
-    React.useEffect(() => {
-        const total = items.length > 0 ? Math.min(5, items.length) : 0;
-        if (total <= 1 || isTouching) return;
-
-        const timer = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % total);
-        }, 3000);
-
-        return () => clearInterval(timer);
-    }, [isTouching, items.length]);
-
-    // ✅ 상세 페이지 이동 함수
-    const navigateToDetail = () => {
-        if (items[currentSlide]?.id) {
-            // [중요] 이동할 경로 설정 (예: /course/코스ID)
-            router.push(`/courses/${items[currentSlide].id}`);
+    // Update current index based on scroll position
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            const scrollLeft = scrollRef.current.scrollLeft;
+            const width = scrollRef.current.offsetWidth;
+            // Calculate index by rounding the scroll position relative to container width
+            const index = Math.round(scrollLeft / width);
+            setCurrentIndex(index);
         }
     };
 
+    // Auto-scroll functionality (pauses on user interaction implicitly via scroll position check)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (scrollRef.current) {
+                // Calculate next index, looping back to 0 at the end
+                const isEnd = currentIndex === items.length - 1;
+                const nextIndex = isEnd ? 0 : currentIndex + 1;
+                const width = scrollRef.current.offsetWidth;
+
+                scrollRef.current.scrollTo({
+                    left: width * nextIndex,
+                    behavior: "smooth",
+                });
+            }
+        }, 4000); // 4-second interval
+
+        return () => clearInterval(interval);
+    }, [currentIndex, items.length]);
+
+    if (!items || items.length === 0) return null;
+
     return (
-        <section className="relative px-4 pb-6">
+        <section className="relative w-full pb-6 pt-2">
+            {/* Slider Container */}
             <div
-                // cursor-grab -> cursor-pointer로 변경 (클릭 가능하다는 느낌)
-                className="relative w-full h-[320px] overflow-hidden rounded-xl bg-gray-200 cursor-pointer select-none shadow-sm"
-                style={{
-                    transform: `translateX(${touchDeltaX * 0.15}px)`,
-                    transition: isTouching ? "none" : "transform 300ms ease",
-                }}
-                // --- 터치 이벤트 핸들링 ---
-                onTouchStart={(e) => {
-                    if (e.touches && e.touches.length > 0) {
-                        setTouchStartX(e.touches[0].clientX);
-                        setTouchDeltaX(0);
-                        setIsTouching(true);
-                    }
-                }}
-                onTouchMove={(e) => {
-                    if (touchStartX !== null && e.touches && e.touches.length > 0) {
-                        setTouchDeltaX(e.touches[0].clientX - touchStartX);
-                    }
-                }}
-                onTouchEnd={() => {
-                    const threshold = 40;
-                    const total = items.length > 0 ? Math.min(5, items.length) : 0;
-
-                    if (total === 0) return;
-
-                    if (touchDeltaX > threshold) {
-                        // 오른쪽으로 스와이프 (이전 슬라이드)
-                        setCurrentSlide((prev) => (prev - 1 + total) % total);
-                    } else if (touchDeltaX < -threshold) {
-                        // 왼쪽으로 스와이프 (다음 슬라이드)
-                        setCurrentSlide((prev) => (prev + 1) % total);
-                    } else if (Math.abs(touchDeltaX) < 5) {
-                        // ✅ [NEW] 움직임이 거의 없으면(5px 미만) 클릭으로 간주 -> 이동
-                        navigateToDetail();
-                    }
-
-                    setTouchStartX(null);
-                    setTouchDeltaX(0);
-                    setIsTouching(false);
-                }}
-                // --- 마우스 이벤트 핸들링 ---
-                onMouseDown={(e) => {
-                    e.preventDefault(); // 이미지 드래그 방지
-                    setTouchStartX(e.clientX);
-                    setTouchDeltaX(0);
-                    setIsTouching(true);
-                }}
-                onMouseMove={(e) => {
-                    if (isTouching && touchStartX !== null) {
-                        setTouchDeltaX(e.clientX - touchStartX);
-                    }
-                }}
-                onMouseLeave={() => {
-                    if (!isTouching) return;
-                    // 마우스가 영역을 벗어나면 스와이프 처리만 하고 클릭은 무시
-                    const threshold = 40;
-                    const total = items.length > 0 ? Math.min(5, items.length) : 0;
-                    if (total !== 0) {
-                        if (touchDeltaX > threshold) {
-                            setCurrentSlide((prev) => (prev - 1 + total) % total);
-                        } else if (touchDeltaX < -threshold) {
-                            setCurrentSlide((prev) => (prev + 1) % total);
-                        }
-                    }
-                    setTouchStartX(null);
-                    setTouchDeltaX(0);
-                    setIsTouching(false);
-                }}
-                onMouseUp={() => {
-                    if (!isTouching) return;
-                    const threshold = 40;
-                    const total = items.length > 0 ? Math.min(5, items.length) : 0;
-
-                    if (total !== 0) {
-                        if (touchDeltaX > threshold) {
-                            setCurrentSlide((prev) => (prev - 1 + total) % total);
-                        } else if (touchDeltaX < -threshold) {
-                            setCurrentSlide((prev) => (prev + 1) % total);
-                        } else if (Math.abs(touchDeltaX) < 5) {
-                            // ✅ [NEW] 마우스 클릭(드래그 없이) 시 이동
-                            navigateToDetail();
-                        }
-                    }
-                    setTouchStartX(null);
-                    setTouchDeltaX(0);
-                    setIsTouching(false);
-                }}
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3"
+                style={{ scrollBehavior: "smooth" }}
             >
-                <div className="absolute inset-0">
-                    {items.map((item, index) => (
-                        <div
-                            key={item.id}
-                            className={`absolute inset-0 transition-all duration-500 ease-in-out ${
-                                index === currentSlide ? "opacity-100 z-20" : "opacity-0 z-10"
-                            }`}
-                        >
-                            {/* 이미지 */}
-                            <div className="absolute inset-0">
+                {items.map((item, idx) => (
+                    <Link
+                        key={item.id}
+                        href={`/courses/${item.id}`}
+                        className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-[2rem] overflow-hidden snap-center shadow-lg active:scale-[0.98] transition-transform duration-200 block"
+                    >
+                        {/* Background Image */}
+                        <div className="relative w-full h-full">
+                            {item.imageUrl ? (
                                 <Image
-                                    src={item.imageUrl || ""}
-                                    alt={item.location || "slide"}
+                                    src={item.imageUrl}
+                                    alt={item.location || "Course Image"}
                                     fill
-                                    priority={index === 0}
-                                    sizes="(max-width: 768px) 100vw, 800px"
                                     className="object-cover"
+                                    priority={idx === 0} // Prioritize loading the first image
+                                    sizes="(max-width: 768px) 100vw, 400px"
                                 />
-                                {/* 그라데이션 오버레이 */}
-                                <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                            ) : (
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
+                                    No Image
+                                </div>
+                            )}
+
+                            {/* Gradient Overlay: Transparent to Dark */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/80" />
+                        </div>
+
+                        {/* Content Overlay */}
+                        <div className="absolute bottom-0 left-0 w-full p-6 text-white z-10">
+                            {/* Badge Area with Glassmorphism */}
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                {/* Location Badge */}
+                                {item.location && (
+                                    <span className="bg-white/20 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-xs font-semibold text-white tracking-wide">
+                                        📍 {item.location}
+                                    </span>
+                                )}
+
+                                {/* Concept Badge with Icon */}
+                                {item.concept && (
+                                    <span className="bg-emerald-500/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1 shadow-sm">
+                                        {item.conceptIcon && (
+                                            <Image
+                                                src={item.conceptIcon}
+                                                width={14}
+                                                height={14}
+                                                alt="icon"
+                                                className="invert brightness-0" // Invert color for white icon
+                                            />
+                                        )}
+                                        {item.concept}
+                                    </span>
+                                )}
                             </div>
 
-                            {/* 텍스트 내용 (왼쪽 정렬) */}
-                            <div className="absolute bottom-5 left-5 text-left z-30 pr-4">
-                                <span className="bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full mb-2 inline-block font-medium">
-                                    {index + 1} / {items.length || 1}
-                                </span>
-                                <h2 className="text-white text-2xl font-bold drop-shadow-sm leading-tight">
-                                    {item.location}
-                                </h2>
-                                <div className="text-gray-200 text-sm mt-1 font-medium flex gap-2">
-                                    <span>#{item.concept}</span>
-                                    {Array.isArray(item.tags) && item.tags.length > 0 && (
-                                        <span className="opacity-90">#{item.tags[0]}</span>
-                                    )}
-                                </div>
-                            </div>
+                            {/* Main Title / Catchphrase */}
+                            <h3 className="text-2xl font-extrabold leading-tight drop-shadow-sm mb-1 line-clamp-2">
+                                {/* Fallback to location or tags for title if needed */}
+                                {item.tags?.[0] ? `#${item.tags[0]} 핫플레이스` : `${item.location || "이곳"}의 매력`}
+                            </h3>
+
+                            {/* Subtitle / Hash Tags */}
+                            <p className="text-sm text-gray-200 font-medium opacity-90 line-clamp-1">
+                                {item.tags?.map((t) => `#${t}`).join(" ")}
+                            </p>
                         </div>
-                    ))}
-                </div>
+                    </Link>
+                ))}
             </div>
         </section>
     );

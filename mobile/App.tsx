@@ -66,7 +66,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
             <StatusBar style="dark" />
             <PushTokenContext.Provider value={pushToken}>
-                <WebScreen uri="https://dona.io.kr" />
+                <WebScreen uri="https://dona.io.kr/secret-dev" />
             </PushTokenContext.Provider>
         </NavigationContainer>
     );
