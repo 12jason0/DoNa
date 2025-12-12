@@ -129,17 +129,10 @@ const questionFlow: Question[] = [
         text: "Q4. 오늘의 선호 지역은 어디인가요? 📍",
         options: [
             { text: "성수", value: "성수", next: "payment_prompt" },
-            { text: "한남", value: "한남", next: "payment_prompt" },
-            { text: "홍대", value: "홍대", next: "payment_prompt" },
-            { text: "강남", value: "강남", next: "payment_prompt" },
-            { text: "서초", value: "서초", next: "payment_prompt" },
-            { text: "여의도", value: "여의도", next: "payment_prompt" },
+            { text: "홍대/연남", value: "홍대/연남", next: "payment_prompt" },
+            { text: "을지로", value: "을지로", next: "payment_prompt" },
             { text: "종로/북촌", value: "종로/북촌", next: "payment_prompt" },
-            { text: "잠실", value: "잠실", next: "payment_prompt" },
-            { text: "신촌", value: "신촌", next: "payment_prompt" },
-            { text: "가로수길", value: "가로수길", next: "payment_prompt" },
-            { text: "이태원", value: "이태원", next: "payment_prompt" },
-            { text: "압구정", value: "압구정", next: "payment_prompt" },
+            { text: "용산", value: "용산", next: "payment_prompt" },
         ],
     },
     {
@@ -533,6 +526,7 @@ const AIRecommender = () => {
                 mood_today: moodToday,
                 region_today: regionToday,
                 limit: "2",
+                strict: "true", // 🚩 쿠폰 사용 시 지역 강제 필터링 적용
             }).toString();
 
             const res = await fetch(`/api/recommendations?${params}`, {
@@ -649,17 +643,18 @@ const AIRecommender = () => {
         </div>
     );
 
-    // ❌ [삭제된 TicketPlans 내부 컴포넌트]
-
     const CourseCard = ({ course }: { course: Course }) => (
         <a
             href={`/courses/${course.id}`}
-            className="block bg-white rounded-2xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300"
+            className="block bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 border border-gray-100"
         >
-            <div className="p-6">
-                <h3 className="text-xl font-bold mb-2">{course.title}</h3>
+            <div className="p-6 flex flex-col h-full">
+                {/* 1. 타이틀 */}
+                <h3 className="text-xl font-bold mb-3 text-gray-900 leading-snug">{course.title}</h3>
+
+                {/* 2. 설명 */}
                 <p
-                    className="text-gray-600 text-sm mb-4"
+                    className="text-gray-600 text-sm mb-6 leading-relaxed"
                     style={{
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
@@ -669,41 +664,44 @@ const AIRecommender = () => {
                 >
                     {course.description}
                 </p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {course.highlights.map((highlight) => (
-                        <span
-                            key={highlight}
-                            className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold"
-                        >
-                            #{highlight}
-                        </span>
-                    ))}
+
+                {/* 3. 구분선 */}
+                <div className="border-t border-gray-100 w-full mb-5"></div>
+
+                {/* 4. 상세 정보 (녹색 테마 적용) */}
+                <div className="space-y-3 mb-6">
+                    <div className="flex items-center text-sm text-gray-700">
+                        {/* 아이콘 컬러를 녹색(green-500 혹은 emerald-500)으로 변경 */}
+                        <MapPin className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
+                        <span>{course.location}</span>
+                    </div>
+
+                    {course.duration && (
+                        <div className="flex items-center text-sm text-gray-700">
+                            <Clock className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
+                            <span>{course.duration}</span>
+                        </div>
+                    )}
+
+                    <div className="flex items-center text-sm text-gray-700">
+                        <Users className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
+                        <span>{course.participants}명 참여</span>
+                    </div>
+
+                    <div className="flex items-center text-sm text-gray-700">
+                        {/* 별점은 노란색 유지하되 조금 더 부드럽게 */}
+                        <Star className="w-4 h-4 mr-3 text-yellow-400 shrink-0 fill-yellow-400" />
+                        <span className="font-bold mr-1">{course.rating}</span>
+                        <span className="text-gray-400">({course.reviewCount}개 리뷰)</span>
+                    </div>
                 </div>
-                <div className="border-t border-gray-100 pt-4 space-y-3 text-sm">
-                    <div className="flex items-center text-gray-700">
-                        <MapPin className="w-4 h-4 mr-2 text-purple-500" />
-                        {course.location}
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                        <Clock className="w-4 h-4 mr-2 text-purple-500" />
-                        {course.duration}
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                        <Users className="w-4 h-4 mr-2 text-purple-500" />
-                        {course.participants}명 참여
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                        <Star className="w-4 h-4 mr-2 text-yellow-500" />
-                        <strong>{course.rating}</strong>
-                        <span className="text-gray-500 ml-1">({course.reviewCount}개 리뷰)</span>
-                    </div>
+
+                {/* 5. 하단 버튼 (두나 시그니처 그린 적용) */}
+                <div className="mt-auto flex justify-end">
+                    <span className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 hover:shadow-lg transition-all cursor-pointer">
+                        자세히 보기
+                    </span>
                 </div>
-            </div>
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
-                <span className="text-xl font-bold text-purple-600">{course.price}</span>
-                <span className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:shadow-md transition-all">
-                    자세히 보기
-                </span>
             </div>
         </a>
     );

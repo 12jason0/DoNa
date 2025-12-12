@@ -35,8 +35,8 @@ export const RECOMMENDATION_MESSAGES = {
     },
     // 기본값 (태그 없을 때)
     default: {
-        title: (name: string) => `${name}님을 위한, 실패 없는 선택! ✨`,
-        subtitle: "요즘 가장 인기 있는 코스만 모았어요.",
-        badge: "🔥 인기 급상승",
+        title: (name: string) => `${name}님의 취향을 저격할, 숨겨진 보석 같은 곳들`,
+        subtitle: "당신이 좋아할 만한 분위기를 찾아냈어요.",
+        badge: "✨ AI 맞춤 추천",
     },
 };

@@ -22,14 +22,45 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // --- Mouse Drag State ---
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
     // Update current index based on scroll position
     const handleScroll = () => {
         if (scrollRef.current) {
-            const scrollLeft = scrollRef.current.scrollLeft;
+            const scrollLeftVal = scrollRef.current.scrollLeft;
             const width = scrollRef.current.offsetWidth;
-            // Calculate index by rounding the scroll position relative to container width
-            const index = Math.round(scrollLeft / width);
+            const index = Math.round(scrollLeftVal / width);
             setCurrentIndex(index);
+        }
+    };
+
+    // --- Mouse Drag Handlers ---
+    const onMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        if (scrollRef.current) {
+            setStartX(e.pageX - scrollRef.current.offsetLeft);
+            setScrollLeft(scrollRef.current.scrollLeft);
+        }
+    };
+
+    const onMouseLeave = () => {
+        setIsDragging(false);
+    };
+
+    const onMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const onMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        if (scrollRef.current) {
+            const x = e.pageX - scrollRef.current.offsetLeft;
+            const walk = (x - startX) * 2; // scroll-fast
+            scrollRef.current.scrollLeft = scrollLeft - walk;
         }
     };
 
@@ -60,17 +91,22 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3"
-                style={{ scrollBehavior: "smooth" }}
+                onMouseDown={onMouseDown}
+                onMouseLeave={onMouseLeave}
+                onMouseUp={onMouseUp}
+                onMouseMove={onMouseMove}
+                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 cursor-grab active:cursor-grabbing"
+                style={{ scrollBehavior: isDragging ? "auto" : "smooth" }}
             >
                 {items.map((item, idx) => (
                     <Link
                         key={item.id}
                         href={`/courses/${item.id}`}
-                        className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-[2rem] overflow-hidden snap-center shadow-lg active:scale-[0.98] transition-transform duration-200 block"
+                        draggable={false} // Prevent native drag
+                        className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-[2rem] overflow-hidden snap-center shadow-lg active:scale-[0.98] transition-transform duration-200 block select-none"
                     >
                         {/* Background Image */}
-                        <div className="relative w-full h-full">
+                        <div className="relative w-full h-full pointer-events-none">
                             {item.imageUrl ? (
                                 <Image
                                     src={item.imageUrl}

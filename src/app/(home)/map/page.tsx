@@ -154,15 +154,21 @@ function MapPageInner() {
 
     // [중요] 스크롤 방지 및 모바일 화면 높이 보정 (100dvh)
     useEffect(() => {
-        document.body.style.overflow = "hidden";
-        document.body.style.position = "fixed";
-        document.body.style.width = "100%";
-        document.body.style.height = "100%";
+        // !important로 강제 적용하여 모바일 웹뷰 등에서 injected style 무력화
+        document.documentElement.style.setProperty("overflow", "hidden", "important");
+        document.body.style.setProperty("overflow", "hidden", "important");
+        document.body.style.setProperty("position", "fixed", "important");
+        document.body.style.setProperty("width", "100%", "important");
+        document.body.style.setProperty("height", "100%", "important");
+        document.body.style.setProperty("touch-action", "none", "important");
+
         return () => {
+            document.documentElement.style.overflow = "";
             document.body.style.overflow = "";
             document.body.style.position = "";
             document.body.style.width = "";
             document.body.style.height = "";
+            document.body.style.touchAction = "";
         };
     }, []);
 
@@ -374,7 +380,7 @@ function MapPageInner() {
         );
 
     return (
-        <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100">
+        <div className="relative w-full h-full overflow-hidden bg-gray-100">
             {/* 1. 상단 검색창 + 탭 */}
             <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-gradient-to-b from-white/90 via-white/50 to-transparent pointer-events-none">
                 <div className="flex items-center bg-white rounded-xl shadow-lg border border-gray-200 p-2 transition-all pointer-events-auto mb-3">

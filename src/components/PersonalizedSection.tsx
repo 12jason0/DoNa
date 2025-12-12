@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 // 🚨 경로 주의: constants 폴더 안에 recommendations.ts 파일이 있어야 합니다.
 import { RECOMMENDATION_MESSAGES, UserTagType } from "@/constants/recommendations";
+import { useRef } from "react";
 
 interface Course {
     id: number;
@@ -20,6 +21,38 @@ export default function PersonalizedSection() {
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("회원");
     const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
+
+    // --- Mouse Drag State ---
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
+    const onMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        if (scrollRef.current) {
+            setStartX(e.pageX - scrollRef.current.offsetLeft);
+            setScrollLeft(scrollRef.current.scrollLeft);
+        }
+    };
+
+    const onMouseLeave = () => {
+        setIsDragging(false);
+    };
+
+    const onMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const onMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        if (scrollRef.current) {
+            const x = e.pageX - scrollRef.current.offsetLeft;
+            const walk = (x - startX) * 2; // scroll-fast
+            scrollRef.current.scrollLeft = scrollLeft - walk;
+        }
+    };
 
     useEffect(() => {
         async function fetchData() {
@@ -93,7 +126,15 @@ export default function PersonalizedSection() {
             </div>
 
             {/* 2. 카드 리스트 (가로 스크롤) */}
-            <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4 snap-x">
+            <div
+                ref={scrollRef}
+                onMouseDown={onMouseDown}
+                onMouseLeave={onMouseLeave}
+                onMouseUp={onMouseUp}
+                onMouseMove={onMouseMove}
+                className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4 snap-x cursor-grab active:cursor-grabbing"
+                style={{ scrollBehavior: isDragging ? "auto" : "smooth" }}
+            >
                 {loading
                     ? [1, 2, 3].map((n) => (
                           <div
@@ -105,7 +146,8 @@ export default function PersonalizedSection() {
                           <Link
                               key={course.id}
                               href={`/courses/${course.id}`}
-                              className="snap-center shrink-0 w-[200px] group relative"
+                              draggable={false}
+                              className="snap-center shrink-0 w-[200px] group relative select-none"
                           >
                               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-md transition-transform active:scale-95">
                                   {/* 이미지 */}

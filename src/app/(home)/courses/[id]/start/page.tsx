@@ -30,6 +30,22 @@ type Course = {
     coursePlaces: CoursePlace[];
 };
 
+// --- Helpers ---
+function deg2rad(deg: number) {
+    return deg * (Math.PI / 180);
+}
+
+function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371; // Earth radius in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c * 1000; // meters
+}
+
 // --- Components ---
 function LoadingSpinner() {
     return (
@@ -59,6 +75,33 @@ function GuidePageInner() {
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showCongrats, setShowCongrats] = useState(false);
     const [showReview, setShowReview] = useState(false);
+
+    // 거리 계산 및 도착 여부 체크
+    const [distance, setDistance] = useState<number | null>(null);
+    const [isArrived, setIsArrived] = useState(false);
+
+    const currentPlace = course?.coursePlaces?.[currentStep]?.place;
+    const movementGuide = course?.coursePlaces?.[currentStep]?.movement_guide;
+    const totalSteps = course?.coursePlaces?.length || 0;
+    const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
+
+    // 거리 업데이트 Effect
+    useEffect(() => {
+        if (userLocation && currentPlace) {
+            const dist = getDistanceFromLatLonInMeters(
+                userLocation.lat,
+                userLocation.lng,
+                currentPlace.latitude,
+                currentPlace.longitude
+            );
+            setDistance(dist);
+            // 50m 이내면 도착으로 간주
+            setIsArrived(dist <= 50);
+        } else {
+            setDistance(null);
+            setIsArrived(false);
+        }
+    }, [userLocation, currentPlace]);
 
     // Fetch Course
     useEffect(() => {
@@ -91,11 +134,6 @@ function GuidePageInner() {
         }
     }, []);
 
-    const currentPlace = course?.coursePlaces?.[currentStep]?.place;
-    const movementGuide = course?.coursePlaces?.[currentStep]?.movement_guide;
-    const totalSteps = course?.coursePlaces?.length || 0;
-    const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
-
     const mapPlaces = useMemo(() => {
         if (!currentPlace) return [];
         return [
@@ -111,6 +149,11 @@ function GuidePageInner() {
     }, [currentPlace, currentStep]);
 
     const handleNext = () => {
+        if (!isArrived) {
+            alert("목적지에 도착해야 다음 단계로 넘어갈 수 있습니다!");
+            return;
+        }
+
         if (course && currentStep < course.coursePlaces.length - 1) setCurrentStep((c) => c + 1);
         else {
             markCompleted();
@@ -221,21 +264,21 @@ function GuidePageInner() {
                     {/* 다음 단계 버튼 */}
                     <button
                         onClick={handleNext}
-                        className="h-12 bg-black text-white rounded-xl text-sm font-bold shadow-lg hover:bg-gray-800 flex items-center justify-center gap-2"
+                        disabled={!isArrived}
+                        className={`h-12 rounded-xl text-sm font-bold shadow-lg flex items-center justify-center gap-2
+                            ${
+                                isArrived
+                                    ? "bg-black text-white hover:bg-gray-800"
+                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            }`}
                     >
-                        {currentStep === totalSteps - 1 ? "코스 완료 🎉" : "다음 장소로 →"}
+                        {!isArrived && distance
+                            ? `목적지까지 ${Math.round(distance)}m 남음`
+                            : currentStep === totalSteps - 1
+                            ? "코스 완료 🎉"
+                            : "다음 장소로 →"}
                     </button>
                 </div>
-
-                {/* 이전 버튼 (작게) */}
-                {currentStep > 0 && (
-                    <button
-                        onClick={handlePrev}
-                        className="mt-4 w-full text-xs text-gray-400 font-medium hover:text-gray-600 underline"
-                    >
-                        이전 장소 다시 보기
-                    </button>
-                )}
             </div>
 
             {/* Congrats Modal */}

@@ -57,7 +57,6 @@ async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | nu
     }
 }
 
-// 3. 에어코리아 API 호출 및 미세먼지 상태 해석 함수 (신규)
 // 3. 에어코리아 API 호출 및 미세먼지 상태 해석 함수 (최종 반영)
 async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
     if (!AIRKOREA_API_KEY || !sidoName) return null;
@@ -551,6 +550,7 @@ export async function GET(req: NextRequest) {
         const companionToday = searchParams.get("companion_today") || "";
         const moodToday = searchParams.get("mood_today") || "";
         const regionToday = searchParams.get("region_today") || "";
+        const strictRegion = searchParams.get("strict") === "true"; // 🚩 쿠폰 사용 시 지역 강제 필터링 여부
 
         if (!userIdStr) {
             // 비로그인: 인기 코스 반환
@@ -574,9 +574,17 @@ export async function GET(req: NextRequest) {
         });
 
         // ---------------------------------------------
-        // 🚩 [A] DB 반복 호출 제거 및 코스 데이터 가져오기 (563줄 근처)
+        // 🚩 [A] DB 반복 호출 제거 및 코스 데이터 가져오기
         // ---------------------------------------------
-        const allCourses = (await prisma.course.findMany({
+
+        // 🚩 검색 조건(Where) 구성 (strict 모드 지원)
+        const whereConditions: any = {};
+        if (strictRegion && regionToday) {
+            whereConditions.region = { contains: regionToday };
+        }
+
+        const allCoursesRaw = await prisma.course.findMany({
+            where: whereConditions, // strict=true일 때만 지역 필터 적용
             select: {
                 id: true,
                 title: true,
@@ -590,7 +598,9 @@ export async function GET(req: NextRequest) {
                 tags: true,
                 is_editor_pick: true,
             },
-        })) as Array<{
+        });
+
+        const allCourses = allCoursesRaw as Array<{
             id: number;
             title: string;
             description: string | null;
@@ -601,10 +611,8 @@ export async function GET(req: NextRequest) {
             view_count: number;
             createdAt: Date;
             tags?: any;
-            is_editor_pick: boolean; // 🚩 is_editor_pick 에러 해결 (타입 추가)
+            is_editor_pick: boolean;
         }>;
-
-        // ⚠️ 치명적인 비효율 로직 (Promise.all + findUnique 반복 호출) 삭제됨
 
         // 사용자 장기 선호도 파싱
         let longTermPrefs: any = {};
@@ -658,12 +666,15 @@ export async function GET(req: NextRequest) {
         };
         // ---------------------------------------------
 
-        // 오늘 선택한 지역이 있으면 해당 지역의 코스만 필터링 (선택적)
-        // 🚩 allCourses를 바로 사용합니다.
+        // 🚩 strict 모드가 아닐 때도 점수 계산을 위해 filteredCourses 변수는 유지하되,
+        //    이미 DB에서 걸러졌다면(strict) allCourses 그대로 사용
         let filteredCourses = allCourses;
-        if (regionToday) {
-            // 지역이 정확히 일치하거나 포함하는 코스만 필터링
-            filteredCourses = allCourses.filter((course) => {
+
+        // strict 모드가 아니고(DB 필터링 안 함), regionToday가 있는 경우에만 JS 필터링 시도
+        // 하지만 이미 점수 로직(calculateRegionMatch)에서 처리하므로, 여기서는 '후보군 좁히기' 용도로만 사용하거나 생략 가능
+        // 기존 로직 유지: 지역이 있다면 우선순위로 필터링하되, 없으면 전체 사용
+        if (!strictRegion && regionToday) {
+            const regionFiltered = allCourses.filter((course) => {
                 if (!course.region) return false;
                 return (
                     course.region === regionToday ||
@@ -671,10 +682,9 @@ export async function GET(req: NextRequest) {
                     regionToday.includes(course.region)
                 );
             });
-
-            // 필터링 후 결과가 없으면 전체 코스 사용 (폴백) ⚠️ 안전을 위해 이 로직은 유지
-            if (filteredCourses.length === 0) {
-                filteredCourses = allCourses;
+            // 결과가 너무 적으면(0개) 전체 풀 사용 (유연함)
+            if (regionFiltered.length > 0) {
+                filteredCourses = regionFiltered;
             }
         }
 
