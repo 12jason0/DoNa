@@ -46,15 +46,12 @@ model User {
   updatedAt          DateTime            @updatedAt
   mbti               String?             @db.VarChar(20)
   age                Int?
-  coinBalance        Int                 @default(0)
   couponCount        Int                 @default(0)
   gender             String?             @db.VarChar(10)
   lastActiveAt       DateTime?
   level              Int                 @default(1)
   location           String?             @db.VarChar(100)
   preferredTags      String[]
-  totalWaterGiven    Int                 @default(0)
-  waterStock         Int                 @default(0)
   ageRange           String?             @db.VarChar(20)
   birthday           DateTime?
   phone              String?             @db.VarChar(30)
@@ -62,11 +59,9 @@ model User {
   completedEscapes   CompletedEscape[]
   bookings           Booking[]
   courses            Course[]
-  garden             Garden?
   missionSubmissions MissionSubmission[]
   pushTokens         PushToken?
   reviews            Review[]
-  trees              Tree[]
   userBadges         UserBadge[]
   checkins           UserCheckin[]
   UserCollage        UserCollage[]
@@ -75,7 +70,7 @@ model User {
   userPreference     UserPreference?
   rewards            UserReward[]
   userStoryProgress  UserStoryProgress[]
-  waterLogs          WaterLog[]
+  savedCourses       SavedCourse[]
 
   // [추가] 구독 정보 👑
   subscriptionTier     SubscriptionTier  @default(FREE) @map("subscription_tier")
@@ -184,6 +179,7 @@ model Course {
   reviews              Review[]
   userFavorites        UserFavorite[]
   interactions         UserInteraction[]
+  savedUsers           SavedCourse[]
 
   //대표님 픽
   is_editor_pick Boolean @default(false)
@@ -195,6 +191,11 @@ model Course {
   // 예: "FIRST_DATE"(첫만남), "ANNIVERSARY"(기념일), "RAINY_DAY"(비오는날), "AFTER_WORK"(퇴근후)
   // Enum으로 관리해도 좋지만, 유연하게 String으로 시작해도 됩니다.
   target_situation   String?  @map("target_situation") @db.VarChar(50)
+
+  // 코스 공개 여부부
+  isPublic    Boolean  @default(true)
+  // [추가] 코스 등급 (무료/베이직/프리미엄)
+  grade              CourseGrade @default(FREE)
 
   @@index([concept])
   @@index([region])
@@ -454,6 +455,20 @@ model UserFavorite {
   @@map("user_favorites")
 }
 
+model SavedCourse {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  courseId  Int      @map("course_id")
+  savedAt   DateTime @default(now()) @map("saved_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@map("saved_courses")
+}
+
 model CoursePlace {
   id                 Int      @id @default(autoincrement())
   course_id          Int
@@ -592,74 +607,6 @@ model CourseTagRelation {
   @@map("course_tags_relation") // 실제 DB 테이블 이름
 }
 
-model Tree {
-  id          Int         @id @default(autoincrement())
-  userId      Int
-  name        String?     @db.VarChar(100)
-  variant     String?     @db.VarChar(50)
-  waterCount  Int         @default(0)
-  status      TreeStatus  @default(seedling)
-  createdAt   DateTime    @default(now())
-  completedAt DateTime?
-  updatedAt   DateTime    @updatedAt
-  gardenTree  GardenTree?
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  waterLogs   WaterLog[]
-
-  @@index([userId])
-  @@map("trees")
-}
-
-model WaterLog {
-  id        Int         @id @default(autoincrement())
-  userId    Int
-  treeId    Int
-  amount    Int
-  source    WaterSource
-  meta      Json?
-  createdAt DateTime    @default(now())
-  tree      Tree        @relation(fields: [treeId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([treeId])
-  @@map("water_logs")
-}
-
-model Garden {
-  id          Int          @id @default(autoincrement())
-  userId      Int          @unique
-  name        String?      @db.VarChar(100)
-  isUnlocked  Boolean      @default(false)
-  openedAt    DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  gardenTrees GardenTree[]
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("gardens")
-}
-
-model GardenTree {
-  id        Int      @id @default(autoincrement())
-  gardenId  Int
-  treeId    Int?     @unique
-  posX      Float    @default(0)
-  posY      Float    @default(0)
-  posZ      Float    @default(0)
-  rotX      Float    @default(0)
-  rotY      Float    @default(0)
-  rotZ      Float    @default(0)
-  scale     Float    @default(1)
-  placedAt  DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  garden    Garden   @relation(fields: [gardenId], references: [id], onDelete: Cascade)
-  tree      Tree?    @relation(fields: [treeId], references: [id], onDelete: Cascade)
-
-  @@index([gardenId])
-  @@map("garden_trees")
-}
-
 model GridCode {
   id          Int     @id @default(autoincrement())
   region_name String  @unique // "서울 강남구"와 같은 지역명
@@ -695,9 +642,7 @@ enum RewardType {
 }
 
 enum RewardUnit {
-  coin
   coupon
-  water
 }
 
 enum SpeakerRole {
@@ -706,19 +651,6 @@ enum SpeakerRole {
   system
   clear_place
   mission_start
-}
-
-enum TreeStatus {
-  seedling
-  growing
-  completed
-}
-
-enum WaterSource {
-  course
-  escape
-  admin
-  bonus
 }
 
 enum PlaceTheme {
@@ -741,4 +673,11 @@ enum PaymentStatus {
   PAID
   FAILED
   CANCELLED
+}
+
+// [추가] 코스 등급
+enum CourseGrade {
+  FREE
+  BASIC
+  PREMIUM
 }

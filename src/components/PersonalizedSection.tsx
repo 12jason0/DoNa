@@ -14,12 +14,14 @@ interface Course {
     region: string | null;
     tags: any;
     matchScore?: number;
+    coursePlaces?: Array<{ place: { imageUrl?: string } }>;
 }
 
 export default function PersonalizedSection() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("회원");
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
 
     // --- Mouse Drag State ---
@@ -62,6 +64,9 @@ export default function PersonalizedSection() {
                 if (userStr) {
                     const user = JSON.parse(userStr);
                     setUserName(user.name || user.nickname || "회원");
+                    setIsLoggedIn(true);
+                } else {
+                    setIsLoggedIn(false);
                 }
 
                 // 2. API 호출 (🚨 limit=3 으로 수정했습니다!)
@@ -109,7 +114,10 @@ export default function PersonalizedSection() {
     if (!loading && courses.length === 0) return null;
 
     // ✅ 여기서 멘트를 가져옵니다!
-    const content = RECOMMENDATION_MESSAGES[currentTagType] || RECOMMENDATION_MESSAGES["default"];
+    // 비로그인 상태이면 무조건 guest 메시지 사용, 로그인 상태이면 태그 분석 결과 사용
+    const content = !isLoggedIn
+        ? RECOMMENDATION_MESSAGES["guest"]
+        : RECOMMENDATION_MESSAGES[currentTagType] || RECOMMENDATION_MESSAGES["default"];
 
     return (
         <section className="py-8 px-4">

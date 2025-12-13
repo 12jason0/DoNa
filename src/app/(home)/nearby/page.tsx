@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import NearbyClient from "./NearbyClient";
 import prisma from "@/lib/db";
+import { cookies } from "next/headers";
+import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,33 +10,46 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 1. URL 파라미터 파싱
     const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
     const region = typeof searchParams?.region === "string" ? searchParams.region : undefined;
-    const keyword = (q || region || "").trim();
+    const keywordRaw = (q || region || "").trim();
 
     const concept = typeof searchParams?.concept === "string" ? searchParams.concept.trim() : undefined;
     const tagIdsParam = typeof searchParams?.tagIds === "string" ? searchParams.tagIds.trim() : undefined;
 
-    // 2. 검색 조건 구성 (AND 조건 배열)
     const andConditions: any[] = [];
 
-    // (A) 키워드 검색
-    if (keyword) {
-        andConditions.push({
-            OR: [
-                { region: { contains: keyword, mode: "insensitive" } },
-                { title: { contains: keyword, mode: "insensitive" } },
-                {
-                    coursePlaces: {
-                        some: {
-                            place: {
-                                OR: [
-                                    { address: { contains: keyword, mode: "insensitive" } },
-                                    { name: { contains: keyword, mode: "insensitive" } },
-                                ],
+    // ✅ 공개된 코스만 필터링
+    andConditions.push({ isPublic: true });
+
+    // ✅ 장소 이름(name)과 주소(address)까지 검색 범위 확장
+    if (keywordRaw) {
+        const keywords = keywordRaw.split(/\s+/).filter(Boolean);
+        console.log("검색어 파싱됨:", keywordRaw);
+        keywords.forEach((k) => {
+            const cleanKeyword = k.replace("동", "");
+
+            andConditions.push({
+                OR: [
+                    // 1. 코스 자체 정보 검색
+                    { region: { contains: cleanKeyword, mode: "insensitive" } },
+                    { title: { contains: cleanKeyword, mode: "insensitive" } },
+                    { concept: { contains: cleanKeyword, mode: "insensitive" } },
+                    { description: { contains: cleanKeyword, mode: "insensitive" } },
+
+                    // 2. 코스 안에 포함된 "장소" 검색
+                    {
+                        coursePlaces: {
+                            some: {
+                                place: {
+                                    OR: [
+                                        { name: { contains: cleanKeyword, mode: "insensitive" } },
+                                        { address: { contains: cleanKeyword, mode: "insensitive" } },
+                                    ],
+                                },
                             },
                         },
                     },
-                },
-            ],
+                ],
+            });
         });
     }
 
@@ -45,7 +60,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         });
     }
 
-    // (C) 태그 필터 [수정됨: tags -> courseTags]
+    // (C) 태그 필터
     if (tagIdsParam) {
         const tagIds = tagIdsParam
             .split(",")
@@ -54,12 +69,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         if (tagIds.length > 0) {
             andConditions.push({
                 courseTags: {
-                    // schema.prisma의 Course 모델 필드명
                     some: {
-                        tagId: {
-                            // schema.prisma의 CourseTagRelation 모델 컬럼명
-                            in: tagIds,
-                        },
+                        tagId: { in: tagIds },
                     },
                 },
             });
@@ -69,90 +80,133 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 최종 Where 절
     const whereClause = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    const courseSelect = {
-        id: true,
-        title: true,
-        description: true,
-        imageUrl: true,
-        region: true,
-        concept: true,
-        // ❌ viewCount: true (삭제)
-        view_count: true, // ✅ DB 컬럼명 (snake_case)
-
-        // ❌ reviewCount: true (삭제 - DB에 없는 필드)
-        _count: {
-            // ✅ Prisma 집계 기능으로 리뷰 개수 가져오기
-            select: { reviews: true },
-        },
-
-        rating: true,
-        coursePlaces: {
-            orderBy: { order_index: "asc" as const },
-            select: {
-                order_index: true,
-                place: {
-                    select: {
-                        id: true,
-                        name: true,
-                        imageUrl: true,
-                        latitude: true,
-                        longitude: true,
-                        address: true,
-                        opening_hours: true,
-                        closed_days: {
-                            select: {
-                                day_of_week: true,
-                                specific_date: true,
-                                note: true,
+    // 4. DB 조회 실행
+    const courses = await prisma.course.findMany({
+        where: whereClause,
+        orderBy: { id: "desc" },
+        take: 100,
+        select: {
+            id: true,
+            title: true,
+            description: true,
+            imageUrl: true,
+            region: true,
+            concept: true,
+            view_count: true,
+            rating: true,
+            grade: true, // ✅ 등급 정보 가져오기
+            _count: {
+                select: { reviews: true },
+            },
+            coursePlaces: {
+                orderBy: { order_index: "asc" as const },
+                select: {
+                    order_index: true,
+                    place: {
+                        select: {
+                            id: true,
+                            name: true,
+                            imageUrl: true,
+                            latitude: true,
+                            longitude: true,
+                            address: true,
+                            opening_hours: true,
+                            closed_days: {
+                                select: {
+                                    day_of_week: true,
+                                    specific_date: true,
+                                    note: true,
+                                },
                             },
                         },
                     },
                 },
             },
         },
-    };
-
-    // 4. DB 조회 실행
-    const courses = await prisma.course.findMany({
-        where: whereClause,
-        orderBy: { id: "desc" },
-        take: 100,
-        select: courseSelect,
     });
 
-    // 5. 데이터 매핑 (Client 컴포넌트 타입에 맞춤)
-    return courses.map((c: any) => ({
-        id: String(c.id),
-        title: c.title,
-        description: c.description,
-        imageUrl: c.imageUrl,
-        concept: c.concept,
-        region: c.region,
+    // ✅ [유저 등급 확인]
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth")?.value;
+    let userTier = "FREE";
 
-        // ✅ DB의 snake_case를 클라이언트의 camelCase로 매핑
-        viewCount: c.view_count || 0,
+    if (token) {
+        try {
+            const userId = verifyJwtAndGetUserId(token);
+            if (userId) {
+                const user = await prisma.user.findUnique({
+                    where: { id: Number(userId) },
+                    select: { subscriptionTier: true },
+                });
+                if (user) {
+                    userTier = user.subscriptionTier;
+                }
+            }
+        } catch (e) {
+            // 토큰이 유효하지 않은 경우 무시 (FREE로 유지)
+        }
+    }
 
-        // ✅ _count에서 리뷰 개수를 꺼내옴
-        reviewCount: c._count?.reviews || 0,
+    // 5. 데이터 매핑 & 잠금 계산 & 정렬
+    const mappedCourses = courses.map((c: any) => {
+        // 잠금 계산
+        let isLocked = false;
+        const courseGrade = c.grade || "FREE";
 
-        rating: c.rating || 0,
-        coursePlaces: c.coursePlaces.map((cp: any) => ({
-            order_index: cp.order_index,
-            place: cp.place
-                ? {
-                      id: cp.place.id,
-                      name: cp.place.name,
-                      imageUrl: cp.place.imageUrl,
-                      latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
-                      longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
-                      address: cp.place.address,
-                      opening_hours: cp.place.opening_hours,
-                      closed_days: cp.place.closed_days || [],
-                  }
-                : null,
-        })),
-        location: c.region,
-    }));
+        if (userTier === "PREMIUM") {
+            isLocked = false;
+        } else if (userTier === "BASIC") {
+            if (courseGrade === "PREMIUM") isLocked = true;
+        } else {
+            // FREE 유저
+            if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+        }
+
+        return {
+            id: String(c.id),
+            title: c.title,
+            description: c.description,
+            imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+            concept: c.concept,
+            region: c.region,
+            viewCount: c.view_count || 0,
+            reviewCount: c._count?.reviews || 0,
+            rating: c.rating || 0,
+            grade: courseGrade,
+            isLocked: isLocked, // ✅ 잠금 상태 전달
+            coursePlaces: c.coursePlaces.map((cp: any) => ({
+                order_index: cp.order_index,
+                place: cp.place
+                    ? {
+                          id: cp.place.id,
+                          name: cp.place.name,
+                          imageUrl: cp.place.imageUrl,
+                          latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
+                          longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
+                          address: cp.place.address,
+                          opening_hours: cp.place.opening_hours,
+                          closed_days: cp.place.closed_days || [],
+                      }
+                    : null,
+            })),
+            location: c.region,
+        };
+    });
+
+    // ✅ 6. [정렬] FREE > BASIC > PREMIUM 순서
+    const gradeWeight: Record<string, number> = {
+        FREE: 1,
+        BASIC: 2,
+        PREMIUM: 3,
+    };
+
+    mappedCourses.sort((a, b) => {
+        const weightA = gradeWeight[a.grade] || 1;
+        const weightB = gradeWeight[b.grade] || 1;
+        return weightA - weightB;
+    });
+
+    return mappedCourses;
 }
 
 export default async function NearbyPage({
@@ -161,11 +215,13 @@ export default async function NearbyPage({
     searchParams: { [key: string]: string | string[] | undefined };
 }) {
     const resolvedParams = await Promise.resolve(searchParams);
-
-    // DB에서 데이터 가져오기
     const initialCourses = await getInitialNearbyCourses(resolvedParams);
 
-    const initialKeyword = (resolvedParams?.q as string) || (resolvedParams?.region as string) || "";
+    // 초기 검색어 (UI 표시용)
+    const initialKeyword =
+        (typeof resolvedParams?.q === "string" ? resolvedParams.q : "") ||
+        (typeof resolvedParams?.region === "string" ? resolvedParams.region : "") ||
+        "";
 
     return (
         <Suspense fallback={<div className="min-h-screen bg-white" />}>

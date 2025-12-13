@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Container as MapDiv, NaverMap, Marker } from "react-naver-maps";
 
@@ -29,7 +29,6 @@ interface Course {
     start_place_name?: string;
 }
 
-// [수정됨] BoundsBox 타입을 최상단으로 이동
 type BoundsBox = {
     sw: { lat: number; lng: number };
     ne: { lat: number; lng: number };
@@ -55,8 +54,6 @@ function createReactNaverMapIcon(category: string, orderIndex?: number, isSelect
     const width = isSelected ? 44 : 36;
     const height = isSelected ? 54 : 46;
     const iconSize = isSelected ? 22 : 18;
-    const numberSize = isSelected ? 13 : 11;
-    const numberBox = isSelected ? 24 : 20;
 
     return {
         content: `
@@ -72,18 +69,6 @@ function createReactNaverMapIcon(category: string, orderIndex?: number, isSelect
                     width: 0; height: 0; border-left: 8px solid transparent;
                     border-right: 8px solid transparent; border-top: 12px solid ${color};
                 "></div>
-                ${
-                    orderIndex
-                        ? `<div style="
-                        position: absolute; top: -6px; right: -6px; background: ${color};
-                        border: 2px solid white; border-radius: 50%;
-                        min-width: 20px; height: 20px; padding: 0 4px;
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 11px; font-weight: bold; color: white;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    ">${orderIndex}</div>`
-                        : ""
-                }
             </div>
         `,
         size: { width, height },
@@ -103,13 +88,27 @@ const LoadingSpinner = ({ text = "로딩 중..." }: { text?: string }) => (
 function MapPageInner() {
     const router = useRouter();
     const [mapsReady, setMapsReady] = useState(false);
-    // [수정] navermaps 객체 안전하게 가져오기
     const navermaps =
         typeof window !== "undefined" && (window as any).naver && (window as any).naver.maps
             ? (window as any).naver.maps
             : null;
     const mapRef = useRef<any>(null);
-    const suppressSearchButtonRef = useRef<boolean>(false);
+
+    // --- 상태 관리 ---
+    const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 37.5665, lng: 126.978 }); // 서울시청 기본
+    const [zoom, setZoom] = useState(15);
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [places, setPlaces] = useState<Place[]>([]);
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+    const [searchInput, setSearchInput] = useState("");
+    const [activeTab, setActiveTab] = useState<"places" | "courses">("places");
+    const [loading, setLoading] = useState(false); // 초기 로딩 상태 조정
+    const [panelState, setPanelState] = useState<"minimized" | "default" | "expanded">("default");
+    const [showMapSearchButton, setShowMapSearchButton] = useState(false);
+
+    const dragStartY = useRef<number>(0);
+    const fetchAbortRef = useRef<AbortController | null>(null);
 
     // 네이버 지도 SDK 로드
     useEffect(() => {
@@ -118,23 +117,16 @@ function MapPageInner() {
             setMapsReady(true);
             return;
         }
-
         const existing = document.getElementById("naver-maps-script-fallback");
         if (existing) return;
-
         const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID || "";
         if (!clientId) return;
 
         const script = document.createElement("script");
         script.id = "naver-maps-script-fallback";
-
-        // [중요 수정] ncpClientId -> ncpKeyId 로 변경
-        // script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`;
         script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`;
-
         script.async = true;
         script.defer = true;
-
         script.onload = () => {
             const checkInterval = setInterval(() => {
                 if ((window as any).naver && (window as any).naver.maps) {
@@ -143,25 +135,17 @@ function MapPageInner() {
                 }
             }, 100);
         };
-
-        // 인증 실패 시 처리
-        (window as any).navermap_authFailure = function () {
-            console.error("네이버 지도 인증 실패: Client ID를 확인해주세요.");
-        };
-
         document.head.appendChild(script);
     }, []);
 
-    // [중요] 스크롤 방지 및 모바일 화면 높이 보정 (100dvh)
+    // 스크롤 방지
     useEffect(() => {
-        // !important로 강제 적용하여 모바일 웹뷰 등에서 injected style 무력화
         document.documentElement.style.setProperty("overflow", "hidden", "important");
         document.body.style.setProperty("overflow", "hidden", "important");
         document.body.style.setProperty("position", "fixed", "important");
         document.body.style.setProperty("width", "100%", "important");
         document.body.style.setProperty("height", "100%", "important");
         document.body.style.setProperty("touch-action", "none", "important");
-
         return () => {
             document.documentElement.style.overflow = "";
             document.body.style.overflow = "";
@@ -172,29 +156,137 @@ function MapPageInner() {
         };
     }, []);
 
-    // --- 상태 관리 ---
-    const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 37.5665, lng: 126.978 });
-    const [zoom, setZoom] = useState(15);
-    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-    const [places, setPlaces] = useState<Place[]>([]);
-    const [viewBounds, setViewBounds] = useState<BoundsBox | null>(null);
-    const [courses, setCourses] = useState<Course[]>([]);
-    const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-    const [searchInput, setSearchInput] = useState("");
-    const [activeTab, setActiveTab] = useState<"places" | "courses">("places");
-    const [loading, setLoading] = useState(true);
-    const [panelState, setPanelState] = useState<"minimized" | "default" | "expanded">("default");
-    const [showMapSearchButton, setShowMapSearchButton] = useState(false);
-
-    const dragStartY = useRef<number>(0);
-    const fetchAbortRef = useRef<AbortController | null>(null);
-
-    const triggerMapResize = useCallback(() => {
+    // 데이터 Fetching
+    const fetchPlacesAndCourses = useCallback(async (location: { lat: number; lng: number }, keyword?: string) => {
+        setLoading(true);
         try {
-            if (navermaps && mapRef.current) navermaps.Event.trigger(mapRef.current, "resize");
-            else window.dispatchEvent(new Event("resize"));
-        } catch {}
-    }, [navermaps]);
+            try {
+                fetchAbortRef.current?.abort();
+            } catch {}
+            const aborter = new AbortController();
+            fetchAbortRef.current = aborter;
+
+            // 카카오 검색 API 사용
+            let placesUrl = `/api/places/search-kakao?lat=${location.lat}&lng=${location.lng}`;
+            if (keyword && keyword.trim()) placesUrl += `&keyword=${encodeURIComponent(keyword)}`;
+
+            const res = await fetch(placesUrl, { signal: aborter.signal });
+            let fetchedPlaces: Place[] = [];
+            let fetchedCourses: Course[] = [];
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) {
+                    fetchedPlaces = data.places.map((p: any) => ({
+                        ...p,
+                        id: p.id,
+                        latitude: parseFloat(p.latitude),
+                        longitude: parseFloat(p.longitude),
+                    }));
+                    if (Array.isArray(data.relatedCourses)) {
+                        fetchedCourses = data.relatedCourses.map((c: any) => ({
+                            id: c.id,
+                            title: c.title,
+                            description: c.description || "",
+                            distance: 0,
+                            start_place_name: c.region || "",
+                        }));
+                    }
+                }
+            }
+            setPlaces(fetchedPlaces);
+            setCourses(fetchedCourses);
+            if (keyword && fetchedCourses.length > 0) setActiveTab("courses");
+        } catch (e: any) {
+            if (e?.name !== "AbortError") console.error("Fetch error:", e);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // [중요] 내 위치 찾기 및 주변 검색 실행
+    const moveToCurrentLocation = useCallback(async () => {
+        if (!navigator.geolocation) {
+            alert("위치 정보를 사용할 수 없습니다.");
+            return;
+        }
+        setLoading(true);
+        navigator.geolocation.getCurrentPosition(
+            async (p) => {
+                console.log("위치 찾기 성공:", p.coords); // 성공 로그
+                const loc = { lat: p.coords.latitude, lng: p.coords.longitude };
+                setUserLocation(loc);
+                setCenter(loc);
+                setZoom(16);
+                await fetchPlacesAndCourses(loc, undefined);
+                setLoading(false);
+            },
+            (err) => {
+                // [수정] 에러 상세 분석
+                let errMsg = "";
+                switch (err.code) {
+                    case 1:
+                        errMsg = "권한 거부됨 (브라우저 설정 확인)";
+                        break; // PERMISSION_DENIED
+                    case 2:
+                        errMsg = "위치 확인 불가 (GPS 신호 약함)";
+                        break; // POSITION_UNAVAILABLE
+                    case 3:
+                        errMsg = "시간 초과 (Timeout)";
+                        break; // TIMEOUT
+                    default:
+                        errMsg = "알 수 없는 오류";
+                        break;
+                }
+                console.error(`위치 에러(${err.code}): ${err.message}`);
+                alert(`위치를 가져올 수 없습니다: ${errMsg}`);
+
+                setLoading(false);
+                // 실패 시 기본 위치 유지
+                fetchPlacesAndCourses(center, undefined);
+            },
+            // [수정] 타임아웃 10초로 증가
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+        );
+    }, [fetchPlacesAndCourses, center]); // center 의존성 추가 (실패 시 사용)
+
+    // [수정] 지도 준비되면 내 위치 찾기 실행 (무한 루프 방지 적용)
+    useEffect(() => {
+        if (mapsReady) {
+            moveToCurrentLocation();
+        }
+        // 🚨 아래 주석이 있어야 무한 재실행을 막습니다!
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mapsReady]);
+
+    const handleSearch = useCallback(async () => {
+        if (!searchInput.trim()) return;
+        setLoading(true);
+        setSelectedPlace(null);
+        try {
+            // 단일 장소 검색 (좌표 얻기용)
+            const res = await fetch(`/api/places/search-single?query=${encodeURIComponent(searchInput)}`);
+            const data = await res.json();
+            if (data.success && data.place) {
+                const loc = { lat: parseFloat(data.place.lat), lng: parseFloat(data.place.lng) };
+                setCenter(loc);
+                await fetchPlacesAndCourses(loc, searchInput);
+                setPanelState("default");
+                setShowMapSearchButton(false);
+                setSearchInput(""); // [추가] 검색 완료 후 검색창 초기화
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [searchInput, fetchPlacesAndCourses]);
+
+    const handleMapSearch = () => {
+        fetchPlacesAndCourses(center, undefined);
+        setShowMapSearchButton(false);
+        setPanelState("default");
+    };
 
     const handleTouchStart = (e: React.TouchEvent) => {
         dragStartY.current = e.touches[0].clientY;
@@ -213,175 +305,30 @@ function MapPageInner() {
         }
     };
 
-    // --- 데이터 fetching ---
-    type FetchOptions = { bounds?: BoundsBox; skipCourses?: boolean; limit?: number; injectPlace?: Place };
-
-    const fetchPlacesAndCourses = useCallback(
-        async (location: { lat: number; lng: number }, keyword?: string, opts?: FetchOptions) => {
-            setLoading(true);
-
-            try {
-                try {
-                    fetchAbortRef.current?.abort();
-                } catch {}
-                const aborter = new AbortController();
-                fetchAbortRef.current = aborter;
-
-                let placesUrl = `/api/places/search-kakao?lat=${location.lat}&lng=${location.lng}`;
-                if (keyword && keyword.trim()) placesUrl += `&keyword=${encodeURIComponent(keyword)}`;
-                if (opts?.bounds) {
-                    const radius = 2000;
-                    placesUrl += `&radius=${radius}`;
-                }
-
-                const keywordParam = keyword && keyword.trim() ? `&keyword=${encodeURIComponent(keyword.trim())}` : "";
-
-                const placesRes = await fetch(placesUrl, { signal: aborter.signal });
-                let fetchedPlaces: Place[] = [];
-                if (placesRes.ok) {
-                    const data = await placesRes.json();
-                    if (data.success) {
-                        fetchedPlaces = data.places.map((p: any) => ({
-                            ...p,
-                            latitude: parseFloat(p.latitude),
-                            longitude: parseFloat(p.longitude),
-                        }));
-                    }
-                }
-
-                let fetchedCourses: Course[] = [];
-                if (!opts?.skipCourses) {
-                    try {
-                        const coursesRes = await fetch(
-                            `/api/courses/nearby?lat=${location.lat}&lng=${location.lng}${keywordParam}`,
-                            { signal: aborter.signal }
-                        );
-                        const cData = await coursesRes.json();
-                        if (cData.success) fetchedCourses = cData.courses;
-                    } catch {}
-                }
-
-                setPlaces(fetchedPlaces);
-                setCourses(fetchedCourses);
-
-                if (keyword && fetchedCourses.length > 0) setActiveTab("courses");
-            } catch (e: any) {
-                if (e?.name !== "AbortError") console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        },
-        []
-    );
-
-    const handleSearch = useCallback(async () => {
-        if (!searchInput.trim()) return;
-        setLoading(true);
-        setSelectedPlace(null);
-        try {
-            const res = await fetch(`/api/places/search-single?query=${encodeURIComponent(searchInput)}`);
-            const data = await res.json();
-
-            if (data.success && data.place) {
-                const loc = { lat: parseFloat(data.place.lat), lng: parseFloat(data.place.lng) };
-                setCenter(loc);
-
-                await fetchPlacesAndCourses(loc, searchInput, { limit: 50 });
-                setPanelState("default");
-                setShowMapSearchButton(false);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    }, [searchInput, fetchPlacesAndCourses]);
-
-    const handleMapSearch = () => {
-        fetchPlacesAndCourses(center, undefined, { limit: 50 });
-        setShowMapSearchButton(false);
-        setPanelState("default");
-    };
-
-    useEffect(() => {
-        if (!mapsReady) return;
-        (async () => {
-            try {
-                const loc = await getQuickLocation();
-                setUserLocation(loc);
-                setCenter(loc);
-                fetchPlacesAndCourses(loc, undefined, { limit: 50 });
-            } catch {}
-        })();
-    }, [mapsReady]);
-
-    const getQuickLocation = () =>
-        new Promise<{ lat: number; lng: number }>((resolve, reject) => {
-            if (!navigator.geolocation) return reject();
-            navigator.geolocation.getCurrentPosition(
-                (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-                reject,
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0,
-                }
-            );
-        });
-
-    const handlePlaceClick = (place: Place) => {
-        setSelectedPlace(place);
-        setCenter({ lat: place.latitude, lng: place.longitude });
-        setZoom(17);
-        setActiveTab("places");
-        setPanelState("default");
-    };
-
-    const formatDistance = (p: Place) => {
-        if (!userLocation) return "";
-        return "350m";
-    };
-
-    useEffect(() => {
-        if (!navermaps || !mapRef.current) return;
-        const map = mapRef.current;
-
-        // [수정] 이벤트 리스너 추가 시 map 객체가 유효한지 재확인
-        if (!map) return;
-
-        const clickListener = navermaps.Event.addListener(map, "click", () => {
-            if (selectedPlace || panelState !== "minimized") {
-                setSelectedPlace(null);
-                setPanelState("minimized");
-            }
-        });
-        const dragStartListener = navermaps.Event.addListener(map, "dragstart", () => setShowMapSearchButton(true));
-
-        return () => {
-            try {
-                navermaps.Event.removeListener(clickListener);
-                navermaps.Event.removeListener(dragStartListener);
-            } catch {}
-        };
-    }, [navermaps, selectedPlace, panelState]); // 🚩 panelState 의존성 추가
-
     const getPanelHeightClass = () => {
         if (panelState === "expanded") return "h-[90vh]";
         if (panelState === "minimized") return "h-[120px]";
         return "h-[50vh]";
     };
 
-    // [중요 수정] mapsReady가 true여도 navermaps 객체가 없으면 로딩 표시
     if (!mapsReady || !navermaps)
         return (
             <div className="h-screen flex items-center justify-center">
                 <LoadingSpinner />
             </div>
         );
+    // [추가] 리스트 아이템 클릭 핸들러
+    const handlePlaceClick = (place: Place) => {
+        setSelectedPlace(place);
+        setCenter({ lat: place.latitude, lng: place.longitude });
+        setZoom(17);
+        setPanelState("default");
+        setShowMapSearchButton(false);
+    };
 
     return (
         <div className="relative w-full h-full overflow-hidden bg-gray-100">
-            {/* 1. 상단 검색창 + 탭 */}
+            {/* 상단 검색창 */}
             <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-gradient-to-b from-white/90 via-white/50 to-transparent pointer-events-none">
                 <div className="flex items-center bg-white rounded-xl shadow-lg border border-gray-200 p-2 transition-all pointer-events-auto mb-3">
                     <div className="pl-2 pr-2 text-emerald-600">
@@ -407,7 +354,7 @@ function MapPageInner() {
                         className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder:text-gray-400 text-base"
                     />
                 </div>
-
+                {/* 탭 버튼들 */}
                 <div className="flex items-center justify-between pointer-events-auto pl-1 pb-2 w-full max-w-md mx-auto">
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         <button
@@ -459,26 +406,51 @@ function MapPageInner() {
                 </div>
             </div>
 
-            {/* 2. 지도 */}
+            {/* 지도 */}
             <div className="absolute inset-0 z-0 w-full h-full">
                 <MapDiv style={{ width: "100%", height: "100%" }}>
                     <NaverMap
                         ref={mapRef}
                         center={new navermaps.LatLng(center.lat, center.lng)}
                         zoom={zoom}
+                        // [수정] 중괄호 { } 확인하세요
                         onCenterChanged={(c) => {
                             setCenter({ lat: c.y, lng: c.x });
+                            setShowMapSearchButton(true);
+                        }}
+                        // [수정] 아래 주석을 onClick 바로 윗줄에 붙여넣으세요!
+                        // @ts-ignore
+                        onClick={() => {
+                            if (selectedPlace || panelState !== "minimized") {
+                                setSelectedPlace(null);
+                                setPanelState("minimized");
+                            }
                         }}
                     >
+                        {/* [수정] 내 위치 마커 디자인 개선 */}
                         {userLocation && (
                             <Marker
                                 position={new navermaps.LatLng(userLocation.lat, userLocation.lng)}
                                 icon={{
-                                    content: `<div style="width:18px;height:18px;background:#3B82F6;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(59,130,246,0.3);"></div>`,
+                                    content: `
+                                        <div style="position: relative;">
+                                            <div style="position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.2); border-radius: 50%; top: -20px; left: -20px; animation: pulse 2s infinite;"></div>
+                                            <div style="width: 16px; height: 16px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transform: translate(-50%, -50%);"></div>
+                                        </div>
+                                        <style>
+                                            @keyframes pulse {
+                                                0% { transform: scale(0.5); opacity: 0; }
+                                                50% { opacity: 0.5; }
+                                                100% { transform: scale(1.5); opacity: 0; }
+                                            }
+                                        </style>
+                                    `,
                                 }}
+                                zIndex={200}
                             />
                         )}
-                        {/* 장소 마커 */}
+
+                        {/* 장소 마커들 */}
                         {(selectedPlace ? [selectedPlace] : places).map((place) => (
                             <Marker
                                 key={place.id}
@@ -499,22 +471,39 @@ function MapPageInner() {
                         ))}
                     </NaverMap>
                 </MapDiv>
+
+                {/* [추가] 내 위치 찾기 버튼 */}
+                <button
+                    onClick={moveToCurrentLocation}
+                    className="absolute bottom-32 right-5 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-200"
+                    aria-label="내 위치 찾기"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-6 h-6 text-blue-500"
+                    >
+                        <path
+                            fillRule="evenodd"
+                            d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
+                            clipRule="evenodd"
+                        />
+                    </svg>
+                </button>
             </div>
 
-            {/* 3. 하단 패널 */}
+            {/* 하단 패널 */}
             <div
                 className={`z-40 absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-[0_-5px_20px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
                 <div
                     className="w-full flex justify-center pt-3 pb-2 cursor-pointer touch-none active:bg-gray-50 transition-colors"
-                    onClick={() => {
-                        // 패널 상태 토글: 최소화 <-> 기본 <-> 확장
-                        setPanelState((prev) => {
-                            if (prev === "expanded") return "default";
-                            if (prev === "default") return "minimized";
-                            return "default";
-                        });
-                    }}
+                    onClick={() =>
+                        setPanelState((prev) =>
+                            prev === "expanded" ? "default" : prev === "default" ? "minimized" : "default"
+                        )
+                    }
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                 >
@@ -547,7 +536,7 @@ function MapPageInner() {
                             <button
                                 className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold"
                                 onClick={() =>
-                                    selectedPlace.phone && (window.location.href = `tel:${selectedPlace.phone}`)
+                                    selectedPlace?.phone && (window.location.href = `tel:${selectedPlace.phone}`)
                                 }
                             >
                                 전화하기
@@ -560,9 +549,7 @@ function MapPageInner() {
                                 className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3 cursor-pointer hover:bg-gray-50"
                                 onClick={() => {
                                     if (activeTab === "courses") router.push(`/courses/${item.id}`);
-                                    else {
-                                        handlePlaceClick(item);
-                                    }
+                                    else handlePlaceClick(item);
                                 }}
                             >
                                 <h4 className="font-bold text-gray-800">{item.name || item.title}</h4>

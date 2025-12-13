@@ -40,13 +40,7 @@ async function getCourse(id: string): Promise<CourseData | null> {
             recommended_time: cp.recommended_time || "",
             notes: cp.notes || undefined,
 
-            coaching_tip:
-                cp.coaching_tip ||
-                (idx === 0
-                    ? "창가 자리 예약 필수! 뷰가 정말 예뻐요."
-                    : idx === 1
-                    ? "시그니처 메뉴인 '트러플 파스타' 강추!"
-                    : null),
+            coaching_tip: cp.coaching_tip || null,
 
             place: {
                 id: cp.place.id,
@@ -75,8 +69,8 @@ async function getCourse(id: string): Promise<CourseData | null> {
             title: course.title,
             description: course.description || "",
             region: course.region || null,
-            sub_title: course.sub_title || "썸녀가 200% 감동하는 완벽 코스", // Default
-            target_situation: course.target_situation || "SOME", // Default
+            sub_title: course.sub_title || null, // Default
+            target_situation: course.target_situation || null, // Default
             duration: course.duration || "시간 미정",
             price: "", // DB에 price 컬럼이 없다면 빈 문자열
             imageUrl: course.imageUrl || "",

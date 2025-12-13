@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import NotificationModal from "@/components/NotificationModal";
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -15,12 +16,12 @@ const Header = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [hasFavorites, setHasFavorites] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const [gardenUnlocked, setGardenUnlocked] = useState(false);
     const [showComingSoon, setShowComingSoon] = useState<null | "forest" | "garden">(null);
     const pathname = usePathname();
     const router = useRouter();
     const menuButtonRef = useRef<HTMLButtonElement | null>(null);
     const drawerRef = useRef<HTMLDivElement | null>(null);
+    const [showNotiModal, setShowNotiModal] = useState(false);
 
     useEffect(() => {
         const checkLoginStatus = async () => {
@@ -28,7 +29,6 @@ const Header = () => {
             if (!token) {
                 setIsLoggedIn(false);
                 setHasFavorites(false);
-                setGardenUnlocked(false);
                 return;
             }
 
@@ -47,14 +47,12 @@ const Header = () => {
                             : setTimeout(cb, 500);
                     idle(() => {
                         fetchFavoritesSummary();
-                        fetchGardenStatus();
                     });
                 } else {
                     localStorage.removeItem("authToken");
                     localStorage.removeItem("user");
                     setIsLoggedIn(false);
                     setHasFavorites(false);
-                    setGardenUnlocked(false);
                 }
             } catch (error) {
                 console.error("토큰 검증 오류:", error);
@@ -62,7 +60,6 @@ const Header = () => {
                 localStorage.removeItem("user");
                 setIsLoggedIn(false);
                 setHasFavorites(false);
-                setGardenUnlocked(false);
             }
         };
 
@@ -76,7 +73,6 @@ const Header = () => {
             idle(() => {
                 checkLoginStatus();
                 fetchFavoritesSummary();
-                fetchGardenStatus();
             });
         }
 
@@ -92,10 +88,8 @@ const Header = () => {
             setIsLoggedIn(!!token);
             if (token) {
                 fetchFavoritesSummary();
-                fetchGardenStatus();
             } else {
                 setHasFavorites(false);
-                setGardenUnlocked(false);
             }
         };
 
@@ -155,29 +149,6 @@ const Header = () => {
         } catch (e) {
             console.error("Failed to fetch favorites summary", e);
             setHasFavorites(false);
-        }
-    };
-
-    const fetchGardenStatus = async () => {
-        try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                setGardenUnlocked(false);
-                return;
-            }
-            const res = await fetch("/api/garden", {
-                headers: { Authorization: `Bearer ${token}` },
-                cache: "no-store",
-            });
-            if (res.ok) {
-                const data = await res.json().catch(() => ({}));
-                setGardenUnlocked(Boolean(data?.garden?.isUnlocked));
-            } else {
-                setGardenUnlocked(false);
-            }
-        } catch (e) {
-            console.error("Failed to fetch garden status", e);
-            setGardenUnlocked(false);
         }
     };
 
@@ -271,7 +242,7 @@ const Header = () => {
 
                     <div className="flex items-center gap-2">
                         {/* [추가] 검색 아이콘 버튼 */}
-                        <button 
+                        <button
                             onClick={() => {
                                 window.dispatchEvent(new Event("openSearchModal"));
                             }}
@@ -281,17 +252,11 @@ const Header = () => {
                             <Search className="w-6 h-6" />
                         </button>
 
-                        {/* ✅ [수정] 기존 하트 버튼을 종(Bell) 모양의 알림 버튼으로 교체 */}
                         <button
-                            onClick={() => {
-                                // 임시 알림 처리 (추후 알림 페이지로 이동 가능)
-                                alert("🔔 1월 1일 정식 오픈! 사전 예약 혜택 알림이 설정되어 있습니다.");
-                            }}
+                            onClick={() => setShowNotiModal(true)} // <-- 여기를 수정했습니다!
                             className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors relative"
                             aria-label="알림"
-                            title="알림"
                         >
-                            {/* 종 아이콘 SVG */}
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
@@ -307,13 +272,12 @@ const Header = () => {
                                 />
                             </svg>
 
-                            {/* 🔴 빨간 점 (이벤트 알림 배지) */}
+                            {/* 빨간 점 (배지) */}
                             <span className="absolute top-2 right-2.5 flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                             </span>
                         </button>
-
                         {/* 메뉴(햄버거) 버튼 */}
                         <button
                             onClick={toggleMenu}
@@ -338,7 +302,7 @@ const Header = () => {
             <div>
                 {isMenuOpen && (
                     <div
-                        className="fixed top-16 bottom-0 z-[1400] bg-black/30"
+                        className="fixed top-16 bottom-0 z-100 bg-black/30"
                         style={{ right: panelRight, width: panelWidth }}
                         onClick={closeMenu}
                     />
@@ -431,36 +395,6 @@ const Header = () => {
                                     </Link>
                                 </>
                             )}
-                        </div>
-                        <div
-                            className="w-full px-3 py-2 rounded-md text-base font-medium text-gray-400 bg-gray-50 cursor-pointer flex items-center gap-2 hover:bg-gray-100"
-                            onClick={() => {
-                                try {
-                                    setIsMenuOpen(false);
-                                } catch {}
-                                setShowComingSoon("forest");
-                            }}
-                            title="곧 공개됩니다"
-                            role="button"
-                            tabIndex={0}
-                        >
-                            <span>🔒</span>
-                            <span>숲</span>
-                        </div>
-                        <div
-                            className="w-full px-3 py-2 rounded-md text-base font-medium text-gray-400 bg-gray-50 cursor-pointer flex items-center gap-2 hover:bg-gray-100"
-                            onClick={() => {
-                                try {
-                                    setIsMenuOpen(false);
-                                } catch {}
-                                setShowComingSoon("garden");
-                            }}
-                            title="곧 공개됩니다"
-                            role="button"
-                            tabIndex={0}
-                        >
-                            <span>🔒</span>
-                            <span>정원</span>
                         </div>
 
                         {/* 하단 고정: 서비스 소개 / 이용안내 */}
@@ -608,6 +542,7 @@ const Header = () => {
                     </div>
                 </div>
             )}
+            {showNotiModal && <NotificationModal onClose={() => setShowNotiModal(false)} />}
         </header>
     );
 };

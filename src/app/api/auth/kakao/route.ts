@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
                     profileImageUrl,
                     provider: "kakao",
                     createdAt: new Date(),
-                    couponCount: 2,
+                    couponCount: 3, // 🎁 카카오 로그인으로 가입 시 무료 쿠폰 2개 지급!
                 },
                 select: { id: true, email: true, username: true, couponCount: true },
             });

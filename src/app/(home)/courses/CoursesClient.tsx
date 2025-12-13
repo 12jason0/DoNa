@@ -4,8 +4,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
+import CourseLockOverlay from "@/components/CourseLockOverlay";
+import CourseCard from "@/components/CourseCard";
+// TicketPlans 제거
 // ✅ [필수] 한글 변환을 위해 CONCEPTS 가져오기
 import { CONCEPTS } from "@/constants/onboardingData";
+
+// import { Lock } from "lucide-react"; (삭제 또는 유지, 여기선 Overlay 내부 SVG 사용하므로 삭제 가능하지만, 안전하게 두거나 삭제)
 
 // --- Type Definitions ---
 type PlaceClosedDay = {
@@ -43,6 +48,8 @@ export interface Course {
     viewCount: number;
     createdAt?: string | Date;
     coursePlaces?: CoursePlace[];
+    grade?: "FREE" | "BASIC" | "PREMIUM"; // ✅
+    isLocked?: boolean; // ✅
 }
 
 interface CoursesClientProps {
@@ -59,6 +66,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     const [sortBy, setSortBy] = useState<"views" | "latest">("views");
     const [activeConcept, setActiveConcept] = useState<string>(conceptParam || "");
     const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+    // showSubscriptionModal 제거
 
     useEffect(() => {
         if (conceptParam) {
@@ -192,10 +200,12 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
         } catch {}
     };
 
+    // handleLockedClick 제거됨 (CourseCard 내부로 이동)
+
     return (
         <div className="min-h-screen bg-[#F8F9FA]">
             {/* Header */}
-            <div className="bg-white px-5 pt-6 pb-2 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+            <div className="bg-white px-5 pt-6 pb-2 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                 <div className="flex justify-between items-end mb-4">
                     <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight leading-none">완벽한 하루</h1>
                     <div className="flex items-center gap-3 text-sm">
@@ -258,118 +268,18 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
             {/* List Area */}
             <div className="px-5 py-6 space-y-6">
-                {visibleCourses.map((course, i) => {
-                    // ✅ [수정됨] 문법 오류 해결: map 함수 내부에서 변수 선언 시 { } 사용 및 return 추가
-                    const displayConcept = CONCEPTS[course.concept as keyof typeof CONCEPTS] || course.concept;
-
-                    return (
-                        <div key={course.id} className="group relative w-full mb-8">
-                            <Link
-                                href={`/courses/${course.id}`}
-                                className="absolute inset-0 z-10"
-                                onClick={() => {
-                                    try {
-                                        fetch(`/api/courses/${course.id}/view`, {
-                                            method: "POST",
-                                            keepalive: true,
-                                        }).catch(() => {});
-                                    } catch {}
-                                }}
-                            />
-
-                            {/* Image */}
-                            <div className="relative w-full h-64 overflow-hidden rounded-xl bg-gray-100 mb-3 shadow-sm">
-                                <Image
-                                    src={course.imageUrl || ""}
-                                    alt={course.title}
-                                    fill
-                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                    priority={i < 2}
-                                    sizes="(max-width: 768px) 100vw, 500px"
-                                    quality={70}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-
-                                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pointer-events-none">
-                                    <span className="px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-black/40 backdrop-blur-md">
-                                        {displayConcept}
-                                    </span>
-                                    {course.reviewCount === 0 && (
-                                        <span className="px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-[#7aa06f] shadow-sm">
-                                            NEW
-                                        </span>
-                                    )}
-                                </div>
-
-                                <button
-                                    onClick={(e) => toggleFavorite(e, course.id)}
-                                    className="absolute top-3 right-3 z-10 flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90 shadow-sm"
-                                >
-                                    <svg
-                                        className={`w-7 h-7 drop-shadow-sm transition-colors ${
-                                            favoriteIds.has(Number(course.id))
-                                                ? "text-red-500 fill-red-500"
-                                                : "text-white"
-                                        }`}
-                                        fill={favoriteIds.has(Number(course.id)) ? "currentColor" : "none"}
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={2}
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            {/* Info */}
-                            <div className="px-1 pt-1">
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                    <span className="inline-block px-2 py-1 bg-gray-100 rounded-md text-[13px] font-bold text-gray-700">
-                                        #{course.location}
-                                    </span>
-                                    <span className="inline-block px-2 py-1 bg-gray-100 rounded-md text-[13px] font-bold text-gray-700">
-                                        #{course.duration}
-                                    </span>
-                                </div>
-
-                                <h3 className="text-lg font-bold text-gray-900 leading-snug line-clamp-2 mb-2">
-                                    {course.title}
-                                </h3>
-
-                                <div className="text-xs font-medium">
-                                    {(() => {
-                                        const views = Number(course.viewCount || 0);
-                                        const formatCount = (n: number) => {
-                                            if (n >= 10000) return `${(n / 10000).toFixed(n % 10000 ? 1 : 0)}만`;
-                                            if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 ? 1 : 0)}천`;
-                                            return `${n}`;
-                                        };
-
-                                        if (views >= 1000) {
-                                            return (
-                                                <span className="text-orange-600 font-bold">
-                                                    👀 {formatCount(views)}명이 보는 중
-                                                </span>
-                                            );
-                                        }
-                                        if (course.reviewCount > 0) {
-                                            return (
-                                                <span className="text-gray-700">
-                                                    ★ {course.rating} ({course.reviewCount})
-                                                </span>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                {visibleCourses.map((course, i) => (
+                    <CourseCard
+                        key={course.id}
+                        course={course}
+                        isPriority={i < 2}
+                        isFavorite={favoriteIds.has(Number(course.id))}
+                        onToggleFavorite={toggleFavorite}
+                        // onLockedClick 제거
+                        showNewBadge={true}
+                        // Courses 페이지에는 휴무일 로직이 따로 없으므로 생략
+                    />
+                ))}
 
                 {visibleCourses.length === 0 && (
                     <div className="text-center py-20">
@@ -378,6 +288,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                     </div>
                 )}
             </div>
+            {/* 결제 모달 제거 (CourseCard 내부로 이동) */}
         </div>
     );
 }

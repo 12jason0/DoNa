@@ -213,7 +213,8 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                         )}
                     </button>
                     <p className="text-[10px] text-center text-gray-400 mt-3">
-                        구독은 언제든 해지 가능하며, 7일 내 미사용 시 100% 환불됩니다.
+                        본 상품은 디지털 콘텐츠 특성상 결제 즉시 사용 처리되며, <br />
+                        단순 변심에 의한 <strong>취소 및 환불이 불가능</strong>합니다.
                     </p>
                 </div>
             </div>

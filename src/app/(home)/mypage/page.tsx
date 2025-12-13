@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Image from "@/components/ImageFallback";
+import CourseCard from "@/components/CourseCard"; // 추가
 
 // --- 수정된 부분: 데이터 타입 정의 ---
 // API 응답 데이터 구조에 맞게 타입을 명확하게 수정했습니다.
@@ -15,6 +16,7 @@ interface UserInfo {
     profileImage: string;
     mbti?: string | null;
     age?: number | null;
+    subscriptionTier?: "FREE" | "BASIC" | "PREMIUM"; // 추가
 }
 
 interface UserPreferences {
@@ -42,6 +44,7 @@ interface CourseInfoForFavorite {
     price: string;
     rating: number;
     concept: string;
+    grade?: "FREE" | "BASIC" | "PREMIUM"; // 추가
 }
 
 // 2. Favorite 타입이 CourseInfoForFavorite를 포함하도록 수정합니다.
@@ -85,6 +88,7 @@ const MyPage = () => {
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
     const [favorites, setFavorites] = useState<Favorite[]>([]);
+    const [savedCourses, setSavedCourses] = useState<any[]>([]); // 저장된 코스 상태 추가
     const [completed, setCompleted] = useState<
         Array<{
             course_id: number;
@@ -164,6 +168,7 @@ const MyPage = () => {
         fetchUserInfo();
         fetchUserPreferences();
         fetchFavorites();
+        fetchSavedCourses(); // 호출 추가
         fetchBadges();
         fetchCompleted();
         fetchCasefiles();
@@ -175,7 +180,7 @@ const MyPage = () => {
         try {
             const url = new URL(window.location.href);
             const tab = url.searchParams.get("tab");
-            if (["profile", "preferences", "favorites", "completed", "badges", "checkins"].includes(tab || "")) {
+            if (["profile", "preferences", "favorites", "saved", "completed", "badges", "checkins"].includes(tab || "")) {
                 setActiveTab(tab || "profile");
             }
         } catch {}
@@ -209,6 +214,7 @@ const MyPage = () => {
                     profileImage,
                     mbti: src.mbti ?? null,
                     age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
+                    subscriptionTier: src.subscriptionTier || "FREE", // 추가
                 };
                 setUserInfo(mapped);
             } else {
@@ -370,6 +376,24 @@ const MyPage = () => {
         }
     };
 
+    const fetchSavedCourses = async () => {
+        try {
+            const token = localStorage.getItem("authToken");
+            if (!token) return;
+
+            const res = await fetch("/api/users/me/courses", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSavedCourses(data.savedCourses || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch saved courses:", error);
+            setSavedCourses([]);
+        }
+    };
+
     const fetchFavorites = async () => {
         try {
             const token = localStorage.getItem("authToken");
@@ -395,6 +419,7 @@ const MyPage = () => {
                         price: f.course?.price || f.price || "",
                         rating: Number(f.course?.rating ?? f.rating ?? 0),
                         concept: f.course?.concept || f.concept || "",
+                        grade: f.course?.grade || "FREE", // 추가
                     },
                 }));
                 setFavorites(normalized);
@@ -738,79 +763,116 @@ const MyPage = () => {
         </div>
     );
 
-    // --- 수정된 부분: renderFavoritesTab ---
-    // API 응답 구조에 맞춰 favorite.course.title 처럼 중첩된 객체에 접근하도록 수정했습니다.
-    const renderFavoritesTab = () => (
+    const renderSavedTab = () => (
         <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">내 여행 보관함</h3>
-
-                {favorites.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                        {favorites.map((favorite) => (
-                            <div
-                                key={favorite.id}
-                                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                                onClick={() => router.push(`/courses/${favorite.course_id}`)}
-                            >
-                                <div className="relative">
-                                    <div className="relative h-48">
-                                        <Image
-                                            src={favorite.course.imageUrl || ""}
-                                            alt={favorite.course.title}
-                                            fill
-                                            className="object-cover rounded-none"
-                                            priority={false}
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            removeFavorite(favorite.course_id);
-                                        }}
-                                        className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                                    >
-                                        ×
-                                    </button>
-                                    <div className="absolute bottom-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                                        {favorite.course.concept}
-                                    </div>
-                                </div>
-                                <div className="p-4">
-                                    <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                                        {favorite.course.title}
-                                    </h4>
-                                    <p className="text-gray-600 text-xs md:text-sm mb-3 line-clamp-2">
-                                        {favorite.course.description}
-                                    </p>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-yellow-400">★</span>
-                                            <span className="text-xs md:text-sm font-medium text-gray-900">
-                                                {favorite.course.rating}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">AI가 추천해준 나만의 코스</h3>
+                {savedCourses.length > 0 ? (
+                    <div className="space-y-6">
+                        {savedCourses.map((item) => (
+                            <CourseCard
+                                key={item.id}
+                                course={{
+                                    id: String(item.course.id),
+                                    title: item.course.title,
+                                    description: item.course.description,
+                                    imageUrl: item.course.imageUrl,
+                                    concept: item.course.concept,
+                                    region: item.course.region,
+                                    grade: "FREE", // AI 추천은 잠금 없음 (FREE 취급)
+                                    isLocked: false, // 강제 잠금 해제
+                                    rating: 0,
+                                    reviewCount: 0,
+                                    viewCount: 0,
+                                }}
+                                isFavorite={false} // 저장된 코스는 찜 목록이 아님 (별도 관리)
+                                onToggleFavorite={() => {}} // 기능 없음
+                                showNewBadge={false}
+                            />
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <div className="text-6xl mb-4">💖</div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">찜한 코스가 없어요</h4>
-                        <p className="text-gray-600 mb-4">마음에 드는 코스를 찜해보세요!</p>
+                    <div className="text-center py-10">
+                        <div className="text-6xl mb-3">✨</div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">아직 AI 추천 코스가 없어요</h4>
+                        <p className="text-gray-600 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
                         <button
-                            onClick={() => router.push("/courses")}
-                            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                            onClick={() => router.push("/personalized-home")}
+                            className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors cursor-pointer"
                         >
-                            코스 둘러보기
+                            AI 추천 받으러 가기
                         </button>
                     </div>
                 )}
             </div>
         </div>
     );
+
+    // --- 수정된 부분: renderFavoritesTab ---
+    // API 응답 구조에 맞춰 favorite.course.title 처럼 중첩된 객체에 접근하도록 수정했습니다.
+    const renderFavoritesTab = () => {
+        const userTier = userInfo?.subscriptionTier || "FREE";
+
+        return (
+            <div className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">내 여행 보관함</h3>
+
+                    {favorites.length > 0 ? (
+                        <div className="space-y-6">
+                            {favorites.map((favorite) => {
+                                const courseGrade = favorite.course.grade || "FREE";
+                                let isLocked = false;
+                                if (userTier === "PREMIUM") isLocked = false;
+                                else if (userTier === "BASIC") {
+                                    if (courseGrade === "PREMIUM") isLocked = true;
+                                } else {
+                                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                                }
+
+                                return (
+                                    <CourseCard
+                                        key={favorite.id}
+                                        course={{
+                                            id: String(favorite.course.id),
+                                            title: favorite.course.title,
+                                            description: favorite.course.description,
+                                            imageUrl: favorite.course.imageUrl,
+                                            concept: favorite.course.concept,
+                                            // region 정보가 없으면 생략 또는 빈 문자열
+                                            grade: courseGrade,
+                                            isLocked: isLocked,
+                                            rating: favorite.course.rating,
+                                            reviewCount: 0,
+                                            viewCount: 0,
+                                        }}
+                                        isFavorite={true}
+                                        onToggleFavorite={(e) => {
+                                            e.stopPropagation();
+                                            removeFavorite(favorite.course_id);
+                                        }}
+                                        showNewBadge={false}
+                                    />
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <div className="text-6xl mb-4">💖</div>
+                            <h4 className="text-lg font-semibold text-gray-900 mb-2">찜한 코스가 없어요</h4>
+                            <p className="text-gray-600 mb-4">마음에 드는 코스를 찜해보세요!</p>
+                            <button
+                                onClick={() => router.push("/courses")}
+                                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                            >
+                                코스 둘러보기
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const [selectedBadge, setSelectedBadge] = useState<UserBadgeItem | null>(null);
 
@@ -1141,6 +1203,7 @@ const MyPage = () => {
                             {[
                                 { id: "profile", label: "프로필", icon: "👤" },
                                 { id: "preferences", label: "선호도", icon: "🎯" },
+                                { id: "saved", label: "AI 추천", icon: "✨" }, // 추가
                                 { id: "favorites", label: "보관함", icon: "💖" },
                                 { id: "completed", label: "완료", icon: "✅" },
                                 { id: "casefiles", label: "사건 파일", icon: "🗂️" },
@@ -1168,6 +1231,7 @@ const MyPage = () => {
 
                 {activeTab === "profile" && renderProfileTab()}
                 {activeTab === "preferences" && renderPreferencesTab()}
+                {activeTab === "saved" && renderSavedTab()}
                 {activeTab === "favorites" && renderFavoritesTab()}
                 {activeTab === "badges" && renderBadgesTab()}
                 {activeTab === "completed" && (

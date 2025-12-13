@@ -47,6 +47,14 @@ export async function POST(request: NextRequest) {
             if (Number.isFinite(age) && age >= 0 && age <= 120) computedAge = age;
         }
 
+        // ⚠️ [시간대 수정] 서버가 UTC일 수 있으므로 한국 시간(KST)으로 변환하여 비교
+        const now = new Date();
+        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+        const kstNow = new Date(utc + 9 * 60 * 60 * 1000); // 한국 시간(UTC+9)
+
+        const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
+        const initialCoupons = kstNow <= eventEndDate ? 3 : 1;
+
         const created = await (prisma as any).user.create({
             data: {
                 email,
@@ -57,6 +65,7 @@ export async function POST(request: NextRequest) {
                 ageRange: trimmedAgeRange,
                 birthday: birthdayDate,
                 age: computedAge,
+                couponCount: initialCoupons, // 🎁 이벤트 기간이면 3개, 아니면 1개
             },
             select: { id: true, email: true, username: true },
         });

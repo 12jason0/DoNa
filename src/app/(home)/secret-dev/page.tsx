@@ -31,10 +31,12 @@ type Course = {
     view_count: number;
     viewCount?: number;
     tags?: string[];
+    grade?: "FREE" | "BASIC" | "PREMIUM";
 };
 
 export default function Home() {
     const [courses, setCourses] = useState<Course[]>([]);
+    const [heroCourses, setHeroCourses] = useState<Course[]>([]);
     const [allTags, setAllTags] = useState<Array<{ id: number; name: string }>>([]);
     const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
     const [query, setQuery] = useState("");
@@ -377,6 +379,48 @@ export default function Home() {
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    // HeroSlider용 별도 데이터 로드 및 3일 로테이션 로직
+    useEffect(() => {
+        const fetchHeroData = async () => {
+            try {
+                // FREE 코스를 충분히 확보하기 위해 limit=100으로 별도 요청
+                const res = await fetch("/api/courses?limit=100&imagePolicy=any");
+                const data = await res.json();
+                const allCourses = Array.isArray(data) ? data : data.courses || [];
+
+                // 1. FREE 등급 코스만 필터링
+                const freeCourses = allCourses.filter((c: any) => c.grade === "FREE");
+                // FREE가 없으면 전체 사용
+                const targetCourses = freeCourses.length > 0 ? freeCourses : allCourses;
+
+                // 이미지 폴백 처리
+                const processed = targetCourses.map((c: any) => ({
+                    ...c,
+                    imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+                }));
+
+                // 2. 3일 주기 인덱스 계산
+                const threeDayEpoch = Math.floor(Date.now() / 259200000);
+
+                // 3. 로테이션 및 선택 (5개)
+                const count = processed.length;
+                const selected: Course[] = [];
+                if (count > 0) {
+                    const startIndex = threeDayEpoch % count;
+                    for (let i = 0; i < 5; i++) {
+                        selected.push(processed[(startIndex + i) % count]);
+                    }
+                }
+                setHeroCourses(selected);
+            } catch (error) {
+                console.error("Hero data fetch error:", error);
+            }
+        };
+
+        fetchHeroData();
+    }, []); // 마운트 시 한 번만 실행 (courses 상태와 무관하게 동작)
+
     const topCourses = courses.slice(0, 5);
     const hotCourses = courses
         .slice()
@@ -819,12 +863,13 @@ export default function Home() {
             <>
                 <div className="pt-4">
                     <HeroSlider
-                        items={topCourses.map((c) => {
+                        items={heroCourses.map((c) => {
                             const displayConcept = CONCEPTS[c.concept as keyof typeof CONCEPTS] || c.concept;
 
                             // 3. 명시적으로 return을 해줍니다.
                             return {
                                 id: c.id,
+                                title: c.title,
                                 imageUrl: c.imageUrl,
                                 location: c.location,
                                 concept: displayConcept,

@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
-// 👇 새로 만든 예쁜 모달 import 확인
 import TicketPlans from "@/components/TicketPlans";
 import {
     Sparkles,
@@ -15,13 +14,47 @@ import {
     Star,
     Ticket,
     CheckCircle,
-    XCircle,
     User,
     MessageCircle,
     RefreshCw,
     ChevronRight,
-    Crown, // Crown 아이콘 import 추가
+    Search,
+    Zap,
+    Gift,
+    Bot,
+    X,
+    Navigation,
+    Store,
 } from "lucide-react";
+
+// --- [스타일 추가] 카드 뒤집기 및 애니메이션 효과 ---
+const gameStyles = `
+  .perspective-1000 { perspective: 1000px; }
+  .transform-style-3d { transform-style: preserve-3d; }
+  .backface-hidden { backface-visibility: hidden; }
+  .rotate-y-180 { transform: rotateY(180deg); }
+  
+  @keyframes radar-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-radar { animation: radar-spin 2s linear infinite; }
+  
+  @keyframes pulse-fast {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.95); }
+  }
+  .animate-pulse-fast { animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+  /* 스크롤바 숨기기 (깔끔한 UI를 위해) */
+  .no-scrollbar::-webkit-scrollbar {
+      display: none;
+  }
+  .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+  }
+`;
 
 // 타입 정의
 interface QuestionOption {
@@ -138,9 +171,9 @@ const questionFlow: Question[] = [
     {
         id: "payment_prompt",
         type: "ai",
-        text: "좋아요! ✨\n\n지금까지 답변을 분석해보니,\n당신에게 딱 맞는 코스를 최대 2가지로 좁힐 수 있을 것 같아요.\n\nAI 맞춤 코스 추천은\n쿠폰 1개로 이용할 수 있어요 💡\n\n계속해서 추천 받아볼까요?",
+        text: "좋아요! ✨\n\n지금까지 답변을 분석해보니,\n당신에게 딱 맞는 코스를 최대 2가지로 좁힐 수 있을 것 같아요.\n\nAI 맞춤 코스 추천은\n쿠폰 1개로 이용할 수 있어요 💡\n\n지금 바로 카드를 뽑아볼까요?",
         options: [
-            { text: "네, 추천 받을게요! 🎉", value: "yes", next: "complete" },
+            { text: "코스 뽑기 (쿠폰 1개) 🎲", value: "yes", next: "complete" },
             { text: "나중에 할게요", value: "no", next: "greeting" },
         ],
     },
@@ -160,6 +193,8 @@ const AIRecommender = () => {
     const [todayIndex, setTodayIndex] = useState<number | null>(null);
     const [todayChecked, setTodayChecked] = useState(false);
     const [weekCount, setWeekCount] = useState(0);
+    const [loginNavigating, setLoginNavigating] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [currentQuestion, setCurrentQuestion] = useState<Question>(questionFlow[0]);
@@ -168,11 +203,23 @@ const AIRecommender = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [showRecommendations, setShowRecommendations] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [conversationStarted, setConversationStarted] = useState(false);
+
+    // 👇 conversationStarted 대신 showChatModal 사용
+    const [showChatModal, setShowChatModal] = useState(false);
+
     const [progress, setProgress] = useState(0);
     const [showUpsell, setShowUpsell] = useState(false);
     const [netError, setNetError] = useState<string | null>(null);
-    const [isUsingCoupon, setIsUsingCoupon] = useState(false); // 쿠폰 차감 중복 방지
+    const [isUsingCoupon, setIsUsingCoupon] = useState(false);
+    const [trending, setTrending] = useState<TrendingCourse[]>([]);
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+
+    // --- [추가] 게임 효과 및 모달 상태 ---
+    const [isAnalyzing, setIsAnalyzing] = useState(false); // 분석 화면 표시 여부
+    const [analysisText, setAnalysisText] = useState("취향 분석 중..."); // 분석 멘트
+    const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({}); // 카드 뒤집힘 상태
+    const [selectedDetailCourse, setSelectedDetailCourse] = useState<Course | null>(null); // 상세 보기 모달용
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -182,7 +229,7 @@ const AIRecommender = () => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, isTyping]);
+    }, [messages, isTyping, showChatModal]); // showChatModal 추가
 
     // 유저 정보 가져오기
     const fetchUserData = async () => {
@@ -323,7 +370,6 @@ const AIRecommender = () => {
         setProfileImageUrl(null);
         setCoupons(0);
         resetConversation();
-        setConversationStarted(false);
         window.dispatchEvent(new CustomEvent("authTokenChange"));
         try {
             router.replace("/personalized-home");
@@ -339,16 +385,23 @@ const AIRecommender = () => {
         setProgress(0);
         setShowUpsell(false);
         setIsGenerating(false);
+        setSelectedCourseId(null);
+        setIsAnalyzing(false);
+        setRevealedCards({});
+        setSelectedDetailCourse(null);
+        setShowChatModal(false); // 모달 닫기
     };
 
+    // 👇 [수정됨] 대화 시작 시 모달 띄우기
     const startConversation = () => {
-        if (!conversationStarted) {
-            setMessages([{ type: "ai", text: currentQuestion.text }]);
-            setConversationStarted(true);
+        setShowChatModal(true);
+        // 초기화가 필요하면 여기서 resetConversation 로직 일부 수행 가능
+        if (messages.length === 0) {
+            setMessages([{ type: "ai", text: questionFlow[0].text }]);
         }
         setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
+        }, 300);
     };
 
     // 쿠폰 사용 API
@@ -433,15 +486,35 @@ const AIRecommender = () => {
                 if (!couponUsed) return;
 
                 setMessages((prev) => [...prev, { type: "user", text: option.text }]);
-                setIsTyping(true);
+
+                setIsTyping(false);
                 setIsGenerating(true);
+                setIsAnalyzing(true);
                 setShowRecommendations(true);
 
-                setTimeout(async () => {
-                    setIsTyping(false);
-                    await generateRecommendations(userAnswers);
+                const texts = [
+                    "사용자 취향 데이터 스캔 중...",
+                    `"${userAnswers["region_today"]}" 핫플레이스 탐색 중...`,
+                    "날씨 및 분위기 점수 계산 중...",
+                    `"${userAnswers["companion_today"]}"과(와) 함께하기 좋은 곳 필터링...`,
+                    "최적의 동선 시뮬레이션 돌리는 중...",
+                    "✨ 황금 코스 발견! ✨",
+                ];
+
+                let textIdx = 0;
+                const textInterval = setInterval(() => {
+                    setAnalysisText(texts[textIdx]);
+                    textIdx = (textIdx + 1) % texts.length;
+                }, 800);
+
+                await generateRecommendations(userAnswers);
+
+                clearInterval(textInterval);
+                setTimeout(() => {
+                    setIsAnalyzing(false);
                     setIsGenerating(false);
-                }, 600);
+                }, 1000);
+
                 return;
             } else if (option.value === "no") {
                 resetConversation();
@@ -472,7 +545,6 @@ const AIRecommender = () => {
         }, 600);
     };
 
-    // 추천 생성
     const generateRecommendations = async (answers: Record<string, string>) => {
         let hadNetworkError = false;
         const buildList = (rows: any[]): Course[] =>
@@ -526,7 +598,7 @@ const AIRecommender = () => {
                 mood_today: moodToday,
                 region_today: regionToday,
                 limit: "2",
-                strict: "true", // 🚩 쿠폰 사용 시 지역 강제 필터링 적용
+                strict: "true",
             }).toString();
 
             const res = await fetch(`/api/recommendations?${params}`, {
@@ -560,7 +632,6 @@ const AIRecommender = () => {
         }
 
         setRecommendedCourses(list);
-        setShowRecommendations(true);
 
         setMessages((prev) => [
             ...prev,
@@ -568,9 +639,7 @@ const AIRecommender = () => {
                 type: "ai",
                 text:
                     list.length > 0
-                        ? `완벽해요! 🎉 ${nickname}님의 취향을 분석해 ${
-                              list.length === 1 ? "1가지" : "2가지"
-                          } 코스를 찾았어요!`
+                        ? `짜잔! 🎉 ${nickname}님을 위한 시크릿 코스를 찾았습니다.\n카드를 터치해서 확인해보세요!`
                         : hadNetworkError
                         ? `네트워크 오류로 추천을 가져오지 못했어요. 쿠폰은 복구해드렸습니다. 잠시 후 다시 시도해 주세요.`
                         : `조건에 맞는 코스를 찾지 못했어요. 사용하신 쿠폰은 바로 복구해드렸습니다. 다른 조건으로 다시 시도해볼까요?`,
@@ -579,11 +648,293 @@ const AIRecommender = () => {
     };
 
     const handleResetAndRecommend = async () => {
-        resetConversation();
+        // 기존 대화 내용을 초기화하고 다시 첫 질문으로
+        setMessages([{ type: "ai", text: questionFlow[0].text }]);
+        setCurrentQuestion(questionFlow[0]);
+        setUserAnswers({});
+        setRecommendedCourses([]);
+        setShowRecommendations(false);
+        setProgress(0);
+        setShowUpsell(false);
+        setIsGenerating(false);
+        setSelectedCourseId(null);
+        setIsAnalyzing(false);
+        setRevealedCards({});
+        setSelectedDetailCourse(null);
     };
 
-    const [loginNavigating, setLoginNavigating] = useState(false);
-    const [authLoading, setAuthLoading] = useState(false);
+    const handleSelectCourse = async (courseId: string, courseTitle: string) => {
+        if (isSelecting || selectedCourseId) return;
+
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+            setShowLogin(true);
+            return;
+        }
+
+        if (!confirm(`'${courseTitle}' 코스를 선택하시겠어요?\n선택한 코스는 마이페이지에 저장됩니다.`)) {
+            return;
+        }
+
+        setIsSelecting(true);
+        try {
+            const res = await fetch("/api/users/me/courses", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ courseId }),
+            });
+
+            if (res.ok) {
+                setSelectedCourseId(courseId);
+                alert("코스가 저장되었습니다! 마이페이지에서 확인하실 수 있어요.");
+                router.push(`/courses/${courseId}`);
+            } else {
+                const data = await res.json();
+                alert(data.message || "코스 저장에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("코스 저장 오류:", error);
+            alert("오류가 발생했습니다.");
+        } finally {
+            setIsSelecting(false);
+        }
+    };
+
+    const handleFlipCard = (courseId: string) => {
+        if (!revealedCards[courseId]) {
+            setRevealedCards((prev) => ({ ...prev, [courseId]: true }));
+        }
+    };
+
+    // --- [NEW] 상세 보기 모달 컴포넌트 ---
+    const CourseDetailModal = ({ course, onClose }: { course: Course; onClose: () => void }) => {
+        const [detail, setDetail] = useState<any>(null);
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+            const fetchCourseDetail = async () => {
+                try {
+                    setLoading(true);
+                    const res = await fetch(`/api/courses/${course.id}`, { cache: "no-store" });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setDetail(data);
+                    }
+                } catch (error) {
+                    console.error("코스 상세 조회 실패:", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchCourseDetail();
+        }, [course.id]);
+
+        return (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-[2rem] w-full max-w-md h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
+                    {/* Header */}
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+                        <div>
+                            <span className="text-xs font-bold text-emerald-600 tracking-wider uppercase mb-1 block">
+                                Course Detail
+                            </span>
+                            <h3 className="text-lg font-bold text-gray-900 leading-tight">{course.title}</h3>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                        >
+                            <X className="w-5 h-5 text-gray-600" />
+                        </button>
+                    </div>
+
+                    {/* Content (Scrollable) */}
+                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                        {/* Summary Card */}
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                            <p className="text-sm text-gray-600 leading-relaxed">{course.description}</p>
+                            <div className="flex gap-3 mt-4 text-xs font-medium text-gray-500">
+                                <div className="flex items-center">
+                                    <MapPin className="w-3.5 h-3.5 mr-1" />
+                                    {course.location}
+                                </div>
+                                <div className="flex items-center">
+                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                    {course.duration}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-emerald-200 before:to-gray-200">
+                            {loading ? (
+                                <div className="flex items-center justify-center py-10">
+                                    <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+                                </div>
+                            ) : detail?.coursePlaces?.length > 0 ? (
+                                detail.coursePlaces.map((cp: any, index: number) => (
+                                    <div key={cp.id} className="relative flex items-start group">
+                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-white border-4 border-emerald-100 flex items-center justify-center shadow-sm z-10 group-hover:border-emerald-200 transition-colors">
+                                            {index === 0 ? (
+                                                <Store className="w-4 h-4 text-emerald-600" />
+                                            ) : index === detail.coursePlaces.length - 1 ? (
+                                                <Star className="w-4 h-4 text-emerald-600" />
+                                            ) : (
+                                                <Bot className="w-4 h-4 text-emerald-600" />
+                                            )}
+                                        </div>
+                                        <div className="ml-14 flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                                            <span className="text-xs font-bold text-emerald-600 mb-1 block">
+                                                {cp.place?.category || `${index + 1}번째 장소`}
+                                            </span>
+                                            <h4 className="text-base font-bold text-gray-900 mb-1">
+                                                {cp.place?.name || "장소 정보 없음"}
+                                            </h4>
+                                            <p className="text-xs text-gray-500 line-clamp-2">
+                                                {cp.description || cp.place?.description || cp.role_badge || ""}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-10 text-gray-500 text-sm">
+                                    상세 장소 정보가 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Footer Action */}
+                    <div className="p-4 bg-white border-t border-gray-100">
+                        <button
+                            onClick={() => {
+                                onClose();
+                                handleSelectCourse(course.id, course.title);
+                            }}
+                            disabled={!!selectedCourseId}
+                            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                                selectedCourseId
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-900 text-white hover:bg-gray-800"
+                            }`}
+                        >
+                            {selectedCourseId ? (
+                                "이미 선택된 코스입니다"
+                            ) : (
+                                <>
+                                    <span>이 코스로 결정하기</span>
+                                    <CheckCircle className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const FlipCard = ({ course }: { course: Course }) => {
+        const isRevealed = revealedCards[course.id];
+        const isSelected = selectedCourseId === course.id;
+
+        if (selectedCourseId && !isSelected) return null;
+
+        return (
+            <div
+                className={`group h-[420px] w-full cursor-pointer perspective-1000 transition-all duration-500 ${
+                    isSelected ? "scale-105" : ""
+                }`}
+                onClick={() => !isSelected && handleFlipCard(course.id)}
+            >
+                <div
+                    className={`relative w-full h-full text-left transition-all duration-700 transform-style-3d ${
+                        isRevealed ? "rotate-y-180" : ""
+                    }`}
+                >
+                    {/* 앞면 */}
+                    <div className="absolute w-full h-full backface-hidden rounded-2xl shadow-xl bg-gradient-to-br from-[#2A3B5F] to-[#1E2A44] flex flex-col items-center justify-center border-4 border-[#C8A97E] overflow-hidden">
+                        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                        <div className="z-10 text-center p-6">
+                            <div className="w-20 h-20 mx-auto mb-4 bg-[#C8A97E] rounded-full flex items-center justify-center shadow-lg animate-pulse-fast">
+                                <Sparkles className="w-10 h-10 text-[#1E2A44]" />
+                            </div>
+                            <h3 className="text-[#C8A97E] text-xl font-bold tracking-widest mb-2">
+                                SECRET
+                                <br />
+                                COURSE
+                            </h3>
+                            <p className="text-gray-300 text-sm">터치하여 확인하기</p>
+                        </div>
+                    </div>
+
+                    {/* 뒷면 */}
+                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
+                        <div className="p-6 flex flex-col h-full">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="inline-block px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">
+                                    추천 매칭 99%
+                                </span>
+                                {isRevealed && (
+                                    <span className="animate-ping absolute top-6 right-6 inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
+                                )}
+                            </div>
+
+                            <h3 className="text-xl font-bold mb-3 text-gray-900 leading-snug">{course.title}</h3>
+                            <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">{course.description}</p>
+
+                            <div className="space-y-3 mb-6 bg-gray-50 p-3 rounded-xl">
+                                <div className="flex items-center text-sm text-gray-700">
+                                    <MapPin className="w-4 h-4 mr-2 text-emerald-500" />
+                                    {course.location}
+                                </div>
+                                <div className="flex items-center text-sm text-gray-700">
+                                    <Clock className="w-4 h-4 mr-2 text-emerald-500" />
+                                    {course.duration}
+                                </div>
+                                <div className="flex items-center text-sm text-gray-700">
+                                    <Star className="w-4 h-4 mr-2 text-yellow-400 fill-yellow-400" />
+                                    <span className="font-bold">{course.rating}</span>
+                                    <span className="text-gray-400 text-xs ml-1">({course.reviewCount})</span>
+                                </div>
+                            </div>
+
+                            {/* 하단 버튼 */}
+                            <div className="mt-auto flex gap-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // 카드 뒤집기 방지
+                                        setSelectedDetailCourse(course); // 상세 모달 열기
+                                    }}
+                                    className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold text-center text-sm hover:bg-gray-200 transition-colors"
+                                >
+                                    상세보기
+                                </button>
+
+                                {!selectedCourseId ? (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSelectCourse(course.id, course.title);
+                                        }}
+                                        className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 shadow-md transition-colors"
+                                    >
+                                        선택하기
+                                    </button>
+                                ) : (
+                                    <div className="flex-1 py-3 bg-emerald-100 text-emerald-700 rounded-xl font-bold text-center text-sm border border-emerald-200">
+                                        저장됨 ✅
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const LoginModal = () => (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -643,69 +994,6 @@ const AIRecommender = () => {
         </div>
     );
 
-    const CourseCard = ({ course }: { course: Course }) => (
-        <a
-            href={`/courses/${course.id}`}
-            className="block bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 border border-gray-100"
-        >
-            <div className="p-6 flex flex-col h-full">
-                {/* 1. 타이틀 */}
-                <h3 className="text-xl font-bold mb-3 text-gray-900 leading-snug">{course.title}</h3>
-
-                {/* 2. 설명 */}
-                <p
-                    className="text-gray-600 text-sm mb-6 leading-relaxed"
-                    style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                    }}
-                >
-                    {course.description}
-                </p>
-
-                {/* 3. 구분선 */}
-                <div className="border-t border-gray-100 w-full mb-5"></div>
-
-                {/* 4. 상세 정보 (녹색 테마 적용) */}
-                <div className="space-y-3 mb-6">
-                    <div className="flex items-center text-sm text-gray-700">
-                        {/* 아이콘 컬러를 녹색(green-500 혹은 emerald-500)으로 변경 */}
-                        <MapPin className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
-                        <span>{course.location}</span>
-                    </div>
-
-                    {course.duration && (
-                        <div className="flex items-center text-sm text-gray-700">
-                            <Clock className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
-                            <span>{course.duration}</span>
-                        </div>
-                    )}
-
-                    <div className="flex items-center text-sm text-gray-700">
-                        <Users className="w-4 h-4 mr-3 text-emerald-500 shrink-0" />
-                        <span>{course.participants}명 참여</span>
-                    </div>
-
-                    <div className="flex items-center text-sm text-gray-700">
-                        {/* 별점은 노란색 유지하되 조금 더 부드럽게 */}
-                        <Star className="w-4 h-4 mr-3 text-yellow-400 shrink-0 fill-yellow-400" />
-                        <span className="font-bold mr-1">{course.rating}</span>
-                        <span className="text-gray-400">({course.reviewCount}개 리뷰)</span>
-                    </div>
-                </div>
-
-                {/* 5. 하단 버튼 (두나 시그니처 그린 적용) */}
-                <div className="mt-auto flex justify-end">
-                    <span className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 hover:shadow-lg transition-all cursor-pointer">
-                        자세히 보기
-                    </span>
-                </div>
-            </div>
-        </a>
-    );
-
     const router = useRouter();
     const pathname = usePathname();
 
@@ -741,7 +1029,6 @@ const AIRecommender = () => {
     }, []);
 
     // 트렌딩 코스 (TOP 3)
-    const [trending, setTrending] = useState<TrendingCourse[]>([]);
     useEffect(() => {
         (async () => {
             try {
@@ -768,10 +1055,196 @@ const AIRecommender = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-emerald-50/20 to-white font-sans ">
+            <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal />}
-                {/* 👇 [수정됨] 외부 컴포넌트 사용 */}
                 {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
+
+                {/* 👇 [추가됨] 상세 정보 모달 */}
+                {selectedDetailCourse && (
+                    <CourseDetailModal course={selectedDetailCourse} onClose={() => setSelectedDetailCourse(null)} />
+                )}
+
+                {/* 👇 [추가됨] 대화창 모달 */}
+                {showChatModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        {/* 모달 컨테이너 */}
+                        <div className="bg-white/95 backdrop-blur-md w-full h-full md:h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
+                            {/* 헤더 */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white/80">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                        <Bot className="w-6 h-6 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">AI 두나</h3>
+                                        <p className="text-xs text-emerald-600 font-medium flex items-center">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                                            실시간 분석 중
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => resetConversation()}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <X className="w-6 h-6 text-gray-500" />
+                                </button>
+                            </div>
+
+                            {/* 프로그레스 바 */}
+                            {!showRecommendations && (
+                                <div className="h-1 bg-gray-100 w-full">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* 채팅 영역 (스크롤 가능) */}
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50">
+                                {showUpsell && !showRecommendations && (
+                                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 text-sm text-amber-900 shadow-sm">
+                                        <div className="font-bold mb-1 flex items-center gap-2">
+                                            <Ticket className="w-4 h-4 text-amber-600" />
+                                            AI 추천 {coupons <= 1 ? "1회 남음" : `${coupons}개 남음`}
+                                        </div>
+                                        <div className="flex justify-between items-center mt-2">
+                                            <span className="text-xs opacity-80">더 많은 추천이 필요하신가요?</span>
+                                            <button
+                                                onClick={() => setShowPaywall(true)}
+                                                className="px-3 py-1.5 rounded-lg bg-amber-900 text-white text-xs font-bold hover:bg-amber-800 transition-colors"
+                                            >
+                                                충전하기
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {messages.map((message, index) => (
+                                    <div
+                                        key={index}
+                                        className={`flex items-end gap-3 ${
+                                            message.type === "user" ? "justify-end" : "justify-start"
+                                        }`}
+                                    >
+                                        {message.type === "ai" && (
+                                            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-gray-100 bg-white p-0.5">
+                                                <img
+                                                    src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
+                                                    alt="DoNa"
+                                                    className="w-full h-full object-cover rounded-full"
+                                                />
+                                            </div>
+                                        )}
+                                        <div
+                                            className={`max-w-[80%] px-5 py-3.5 rounded-2xl shadow-sm text-[15px] leading-relaxed ${
+                                                message.type === "user"
+                                                    ? "bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-br-sm"
+                                                    : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                                            }`}
+                                        >
+                                            {message.text.split("\n").map((line, i) => (
+                                                <span key={i}>
+                                                    {line}
+                                                    <br />
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {isTyping && (
+                                    <div className="flex items-center gap-2 text-gray-400 text-sm ml-12 animate-pulse">
+                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
+                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+                                    </div>
+                                )}
+                                <div ref={messagesEndRef} />
+
+                                {/* 결과 표시 영역 (채팅창 내부) */}
+                                {showRecommendations && !isAnalyzing && (
+                                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="flex justify-between items-center mb-4 px-1">
+                                            <h3 className="text-lg font-bold text-gray-900">🎁 추천 결과</h3>
+                                            <button
+                                                onClick={handleResetAndRecommend}
+                                                className="text-xs text-gray-500 underline hover:text-emerald-600"
+                                            >
+                                                다시 하기
+                                            </button>
+                                        </div>
+
+                                        {recommendedCourses.length > 0 ? (
+                                            <div className="grid gap-4 pb-10">
+                                                {recommendedCourses.map((course) => (
+                                                    <FlipCard key={course.id} course={course} />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-10 text-center text-gray-500 bg-white rounded-2xl border border-gray-100">
+                                                <p className="mb-4">
+                                                    조건에 맞는 코스를 찾지 못했어요.
+                                                    <br />
+                                                    쿠폰은 복구되었습니다.
+                                                </p>
+                                                <button
+                                                    onClick={handleResetAndRecommend}
+                                                    className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold"
+                                                >
+                                                    다시 시도하기
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 답변 선택 영역 (하단 고정) */}
+                            {!isTyping && !showRecommendations && currentQuestion.options && (
+                                <div className="p-4 md:p-6 bg-white border-t border-gray-100">
+                                    <div className="flex flex-wrap gap-2.5 justify-center">
+                                        {currentQuestion.options.map((option, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => handleAnswer(option)}
+                                                className={`px-5 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm border ${
+                                                    option.value === "yes"
+                                                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-transparent shadow-emerald-200 hover:shadow-md"
+                                                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                                                }`}
+                                            >
+                                                {option.text}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 분석 로딩 화면 (모달 내부 오버레이) */}
+                            {isAnalyzing && (
+                                <div className="absolute inset-0 z-50 bg-gray-900/95 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                                    <div className="relative w-32 h-32 mb-6">
+                                        <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-full animate-[spin_3s_linear_infinite]"></div>
+                                        <div className="absolute inset-2 border-2 border-emerald-400/50 rounded-full animate-[spin_2s_linear_infinite_reverse]"></div>
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Zap className="w-10 h-10 text-emerald-400 animate-pulse" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xl font-bold mb-2 animate-pulse">{analysisText}</h3>
+                                    <div className="w-40 h-1 bg-gray-700 rounded-full overflow-hidden mt-4">
+                                        <div
+                                            className="h-full bg-emerald-500 animate-[width_1.5s_ease-in-out_infinite]"
+                                            style={{ width: "100%" }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {attendanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -824,7 +1297,7 @@ const AIRecommender = () => {
                 )}
 
                 <div className="w-full max-w-4xl flex flex-col mb-6">
-                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+                    <div className="bg-white/80 backdrop-blur-md rounded-[2rem] p-6 shadow-lg border border-white/50">
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <p className="text-gray-500 text-sm mb-1 font-medium">오늘도 즐거운 여행 되세요!</p>
@@ -879,34 +1352,11 @@ const AIRecommender = () => {
                                 </button>
                             )}
                         </div>
-
-                        <div
-                            onClick={startConversation}
-                            className="bg-emerald-50 rounded-2xl p-5 flex items-center justify-between cursor-pointer hover:bg-emerald-100 transition-colors group"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-xl group-hover:scale-110 transition-transform">
-                                    🤖
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                        <h3 className="font-bold text-gray-900 text-[15px]">두나의 AI 코스 추천</h3>
-                                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                                    </div>
-                                    <p className="text-xs text-emerald-700 font-medium">
-                                        만족도 <span className="font-bold text-emerald-600">98.7%</span> 코스 보기
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-gray-400 group-hover:translate-x-1 transition-transform">
-                                <ChevronRight className="w-5 h-5" />
-                            </div>
-                        </div>
                     </div>
                 </div>
 
-                <div className="w-full max-w-4xl flex flex-col">
-                    {!conversationStarted && trending.length > 0 && (
+                <div className="w-full max-w-4xl flex flex-col relative min-h-[600px]">
+                    {trending.length > 0 && (
                         <div className="mb-6">
                             <div className="flex items-center justify-between px-1 mb-2">
                                 <h3 className="text-sm font-extrabold text-gray-900">요즘 뜨는 코스 TOP 3</h3>
@@ -945,170 +1395,59 @@ const AIRecommender = () => {
                         </div>
                     )}
 
-                    <main className="flex-1 overflow-y-auto rounded-3xl">
-                        {conversationStarted && !showRecommendations && (
-                            <div className="sticky top-0 z-10 p-3">
-                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
-                                        style={{ width: `${progress}%` }}
-                                    />
-                                </div>
-                                <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-600">
-                                    {[0, 25, 50, 75, 100].map((v) => (
-                                        <span
-                                            key={v}
-                                            className={`inline-block w-2 h-2 rounded-full ${
-                                                progress >= v ? "bg-purple-600" : "bg-gray-300"
-                                            }`}
-                                        />
-                                    ))}
-                                    <span className="ml-2">{progress}%</span>
+                    <main className="flex-1 overflow-y-auto rounded-3xl relative">
+                        {/* 👇 [수정됨] 시작 화면 UI: 고급스러운 AI 컨시어지 스타일 */}
+                        <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-h-[400px]">
+                            {/* 1. 아이콘 영역 */}
+                            <div className="relative mb-8 group">
+                                <div className="absolute inset-0 bg-emerald-200 rounded-[2rem] blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
+
+                                <div className="relative w-28 h-28 bg-gradient-to-br from-white to-emerald-50 rounded-[2.5rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
+                                    <Sparkles className="w-12 h-12 text-emerald-600 drop-shadow-sm" />
+
+                                    <span className="absolute top-6 right-6 flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                    </span>
                                 </div>
                             </div>
-                        )}
-                        {!conversationStarted && (
-                            <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-white/10 rounded-3xl border border-white/10">
-                                <button
-                                    onClick={startConversation}
-                                    className="cursor-pointer px-7 py-3 bg-emerald-500 text-white rounded-xl font-bold text-base shadow-sm hover:bg-emerald-600 transition-all transform active:scale-95 flex items-center mx-auto"
-                                >
-                                    <MessageCircle className="w-5 h-5 mr-2.5 text-white/90" />
-                                    AI 추천 시작하기
-                                </button>
-                                <p className="text-gray-600 mt-4">몇 가지 질문에 답하면</p>
-                                <p className="text-gray-600">완벽한 코스를 찾아드려요!</p>
-                            </div>
-                        )}
 
-                        {conversationStarted && (
-                            <div className="bg-white/95 rounded-3xl shadow-xl p-4 sm:p-6 h-full flex flex-col max-h-[600px]">
-                                {showUpsell && !showRecommendations && (
-                                    <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-pink-50 border border-amber-200 text-[13px] text-gray-800">
-                                        <div className="font-semibold mb-1">
-                                            🔑 AI 추천 {coupons <= 1 ? "1회 남음" : `${coupons}개 남음`}
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span>프리미엄으로 업그레이드하면 무제한 추천!</span>
-                                            <button
-                                                onClick={() => setShowPaywall(true)}
-                                                className="px-2 py-1 rounded-lg bg-black text-white text-xs cursor-pointer"
-                                            >
-                                                업그레이드
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex-grow overflow-y-auto pr-2 space-y-6">
-                                    {messages.map((message, index) => (
-                                        <div
-                                            key={index}
-                                            className={`flex items-end gap-2 ${
-                                                message.type === "user" ? "justify-end" : "justify-start"
-                                            }`}
-                                        >
-                                            {message.type === "ai" && (
-                                                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                                                    <img
-                                                        src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
-                                                        alt="DoNa"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                            )}
-                                            <div
-                                                className={`max-w-sm px-5 py-3 rounded-2xl ${
-                                                    message.type === "user"
-                                                        ? "bg-[#2A3B5F] text-white shadow-lg rounded-br-none"
-                                                        : "bg-gray-100 text-gray-800 rounded-bl-none"
-                                                }`}
-                                            >
-                                                {message.text}
-                                            </div>
-                                        </div>
-                                    ))}
+                            {/* 2. 타이포그래피 */}
+                            <h2 className="text-[26px] font-extrabold text-gray-900 mb-4 tracking-tight leading-snug">
+                                AI 두나의 <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
+                                    프라이빗 코스 설계
+                                </span>
+                            </h2>
 
-                                    {isTyping && (
-                                        <div className="flex items-end gap-2 justify-start">
-                                            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                                                <img
-                                                    src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
-                                                    alt="DoNa"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="bg-emerald-50 border border-emerald-100 px-5 py-4 rounded-2xl rounded-bl-none">
-                                                <div className="flex space-x-1.5">
-                                                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
-                                                    <div
-                                                        className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"
-                                                        style={{ animationDelay: "150ms" }}
-                                                    ></div>
-                                                    <div
-                                                        className="w-2 h-2 bg-emerald-600 rounded-full animate-bounce"
-                                                        style={{ animationDelay: "300ms" }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div ref={messagesEndRef} />
+                            <p className="text-gray-500 text-[15px] leading-relaxed mb-10 max-w-[260px] mx-auto">
+                                복잡한 검색은 그만하세요.
+                                <br />
+                                취향 데이터를 분석해 <span className="font-semibold text-gray-700">실패 없는 하루</span>
+                                를<br />
+                                지금 바로 계획해 드립니다.
+                            </p>
+
+                            {/* 3. 버튼 */}
+                            <button
+                                onClick={startConversation} // 모달 오픈 함수 호출
+                                className="group relative px-8 py-4 w-full max-w-[280px] bg-gray-900 text-white rounded-2xl font-bold text-[17px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-[length:200%_auto] animate-[gradient_3s_ease_infinite]"></div>
+
+                                <div className="relative flex items-center justify-center gap-2">
+                                    <span>내 취향 분석 시작하기</span>
+                                    <ChevronRight className="w-5 h-5 text-white/90 group-hover:translate-x-1 transition-transform" />
                                 </div>
+                            </button>
 
-                                {!isTyping && !showRecommendations && currentQuestion.options && (
-                                    <div className="flex-shrink-0 border-t border-emerald-100 mt-4 pt-4">
-                                        <div className="flex flex-wrap gap-3">
-                                            {currentQuestion.options.map((option, index) => (
-                                                <button
-                                                    key={index}
-                                                    onClick={() => handleAnswer(option)}
-                                                    className="cursor-pointer px-5 py-2.5 bg-emerald-50 border-2 border-emerald-200 text-emerald-700 rounded-full font-semibold hover:bg-emerald-100 hover:border-emerald-300 transition-all active:scale-95"
-                                                >
-                                                    {option.text}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                            <div className="mt-6 flex items-center gap-1.5 opacity-60">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">
+                                    Powered by DoNa AI Engine
+                                </p>
                             </div>
-                        )}
-
-                        {showRecommendations && (
-                            <div className="overflow-y-auto h-full text-black">
-                                {isGenerating ? (
-                                    <div className="py-16 text-center text-gray-600">맞춤 코스를 생성 중입니다...</div>
-                                ) : recommendedCourses.length > 0 ? (
-                                    <>
-                                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6 p-2">
-                                            {recommendedCourses.map((course) => (
-                                                <CourseCard key={course.id} course={course} />
-                                            ))}
-                                        </div>
-                                        <div className="text-center pb-6">
-                                            <button
-                                                onClick={handleResetAndRecommend}
-                                                className="cursor-pointer px-6 py-3 bg-white border-2 border-[#2A3B5F] text-[#1E2A44] rounded-2xl font-bold text-base hover:bg-white transition-all transform hover:scale-105 active:scale-95 flex items-center mx-auto"
-                                            >
-                                                <RefreshCw className="w-5 h-5 mr-2" />
-                                                다른 추천 받기
-                                            </button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="py-16 text-center text-gray-700">
-                                        조건에 맞는 코스를 찾지 못했어요. 사용하신 쿠폰은 복구되었습니다.
-                                        <div className="mt-4">
-                                            <button
-                                                onClick={resetConversation}
-                                                className="cursor-pointer px-6 py-3 bg-white border-2 border-[#2A3B5F] text-[#1E2A44] rounded-2xl font-bold text-base"
-                                            >
-                                                다른 조건으로 다시 시도
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        </div>
                     </main>
                 </div>
             </div>

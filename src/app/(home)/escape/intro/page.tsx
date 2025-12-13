@@ -2458,19 +2458,7 @@ function EscapeIntroPageInner() {
                     a.click();
                     a.remove();
                     URL.revokeObjectURL(url);
-                    try {
-                        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-                        await fetch("/api/forest/water", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                            },
-                            credentials: "include",
-                            body: JSON.stringify({ source: "escape" }), // 💧 이스케이프 템플릿 완료 보상 +5
-                        });
-                        setEndingStep("badge");
-                    } catch {}
+                    setEndingStep("badge");
                 },
                 "image/jpeg",
                 0.95
@@ -2483,19 +2471,7 @@ function EscapeIntroPageInner() {
             document.body.appendChild(a);
             a.click();
             a.remove();
-            try {
-                const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-                await fetch("/api/forest/water", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({ source: "escape" }),
-                });
-                setEndingStep("badge");
-            } catch {}
+            setEndingStep("badge");
         }
     };
 
@@ -2762,18 +2738,6 @@ function EscapeIntroPageInner() {
             setToast("카카오톡 공유 창이 열렸어요!");
 
             // 보상 및 완료 처리
-            try {
-                const token = localStorage.getItem("authToken");
-                await fetch("/api/forest/water", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({ source: "escape" }),
-                });
-            } catch {}
             await awardBadgeAndComplete();
         } catch (error: any) {
             console.error("[카카오 공유] 에러:", error);

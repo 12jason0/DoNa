@@ -7,8 +7,6 @@ Allow: /personalized-home
 Allow: /map
 
 # 미운영 페이지 크롤링 차단
-Disallow: /garden
-Disallow: /tree
 
 # 개인정보 페이지 차단
 Disallow: /api/

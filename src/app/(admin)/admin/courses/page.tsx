@@ -84,6 +84,8 @@ type Course = {
     imageUrl?: string | null;
     tags?: DoNaCourseTags | null;
     is_editor_pick?: boolean;
+    isPublic: boolean; // [추가]
+    grade?: "FREE" | "BASIC" | "PREMIUM"; // [추가]
     places?: LinkedPlace[]; // 화면 표시용 (DB 저장시엔 별도 로직)
     placesCount?: number;
 };
@@ -106,6 +108,8 @@ const INITIAL_COURSE: Omit<Course, "id"> = {
     imageUrl: "",
     tags: INITIAL_TAGS,
     is_editor_pick: false,
+    isPublic: true, // [추가]
+    grade: "FREE", // [추가]
     places: [],
 };
 
@@ -229,6 +233,8 @@ export default function AdminCoursesPage() {
                 imageUrl: courseDetail.imageUrl || "",
                 tags: safeTags,
                 is_editor_pick: courseDetail.is_editor_pick || false,
+                isPublic: courseDetail.isPublic ?? true, // [추가]
+                grade: courseDetail.grade || "FREE",
 
                 // ✅ API에서 include로 가져온 places (coursePlaces) 데이터를 바로 넣음
                 // 백엔드에서 places: course.coursePlaces로 매핑해서 보냈으므로 그대로 사용
@@ -405,6 +411,26 @@ export default function AdminCoursesPage() {
                             />
                         </div>
                         <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-600">부제목 (Sub Title)</label>
+                            <input
+                                name="sub_title"
+                                placeholder="예: 썸녀가 감동하는 완벽 코스"
+                                value={formData.sub_title || ""}
+                                onChange={handleInputChange}
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-600">타겟 상황 (Target Situation)</label>
+                            <input
+                                name="target_situation"
+                                placeholder="예: 썸 탈출, 기념일"
+                                value={formData.target_situation || ""}
+                                onChange={handleInputChange}
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-600">지역</label>
                             <input
                                 name="region"
@@ -549,6 +575,32 @@ export default function AdminCoursesPage() {
                                     className="text-sm font-medium text-gray-700 cursor-pointer"
                                 >
                                     에디터 픽 (추천 코스)
+                                </label>
+                            </div>
+                            <div className="space-y-1 pt-6">
+                                <label className="text-sm font-medium text-gray-600">등급 (Grade)</label>
+                                <select
+                                    name="grade"
+                                    value={formData.grade || "FREE"}
+                                    onChange={handleInputChange}
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                >
+                                    <option value="FREE">무료 (Free)</option>
+                                    <option value="BASIC">베이직 (Basic)</option>
+                                    <option value="PREMIUM">프리미엄 (Premium)</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center space-x-3 pt-6">
+                                <input
+                                    type="checkbox"
+                                    id="isPublic"
+                                    name="isPublic"
+                                    checked={formData.isPublic}
+                                    onChange={handleCheckboxChange}
+                                    className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                                />
+                                <label htmlFor="isPublic" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                    코스 공개 (체크 해제 시 숨김)
                                 </label>
                             </div>
                         </div>

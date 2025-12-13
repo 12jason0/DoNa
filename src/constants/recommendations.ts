@@ -1,6 +1,6 @@
 // src/constants/recommendations.ts
 
-export type UserTagType = "healing" | "photo" | "food" | "cost" | "activity" | "default";
+export type UserTagType = "healing" | "photo" | "food" | "cost" | "activity" | "default" | "guest";
 
 export const RECOMMENDATION_MESSAGES = {
     // 1. 조용한/힐링 (#조용한, #힐링)
@@ -38,5 +38,11 @@ export const RECOMMENDATION_MESSAGES = {
         title: (name: string) => `${name}님의 취향을 저격할, 숨겨진 보석 같은 곳들`,
         subtitle: "당신이 좋아할 만한 분위기를 찾아냈어요.",
         badge: "✨ AI 맞춤 추천",
+    },
+    // 비로그인 (추가됨)
+    guest: {
+        title: (_name: string) => `로그인하면 더 완벽한 취향 저격!`,
+        subtitle: "지금은 인기 코스를 보여드려요. AI에게 내 취향을 알려주세요.",
+        badge: "🔥 인기 코스",
     },
 };

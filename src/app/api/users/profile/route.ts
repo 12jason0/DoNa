@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
                 mbti: true,
                 age: true,
                 couponCount: true,
+                subscriptionTier: true, // 구독 등급 추가
             },
         });
         if (!user) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
             mbti: user.mbti,
             age: user.age,
             couponCount: user.couponCount ?? 0,
+            subscriptionTier: user.subscriptionTier, // 추가
             // 중첩 구조(신규)
             user: {
                 id: user.id,
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
                 mbti: user.mbti,
                 age: user.age,
                 couponCount: user.couponCount ?? 0,
+                subscriptionTier: user.subscriptionTier, // 추가
             },
         });
     } catch (e) {

@@ -149,7 +149,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         }
 
         const body = await request.json();
-        const { title, description, duration, location, imageUrl, concept } = body || {};
+        const {
+            title,
+            description,
+            duration,
+            location,
+            imageUrl,
+            concept,
+            sub_title,
+            target_situation,
+            is_editor_pick,
+            grade,
+            isPublic, // [추가]
+            tags, // [추가]
+        } = body || {};
 
         const updated = await prisma.course.update({
             where: { id: courseId },
@@ -160,6 +173,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
                 ...(location !== undefined ? { region: location } : {}),
                 ...(imageUrl !== undefined ? { imageUrl } : {}),
                 ...(concept !== undefined ? { concept } : {}),
+                ...(sub_title !== undefined ? { sub_title } : {}),
+                ...(target_situation !== undefined ? { target_situation } : {}),
+                ...(is_editor_pick !== undefined ? { is_editor_pick } : {}),
+                ...(grade !== undefined ? { grade } : {}),
+                ...(isPublic !== undefined ? { isPublic } : {}), // [추가]
+                ...(tags !== undefined ? { tags } : {}), // [추가]
             },
             select: {
                 id: true,

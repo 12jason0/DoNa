@@ -12,6 +12,7 @@ export type SliderItem = {
     concept?: string;
     conceptIcon?: string; // New: Icon for the concept badge
     tags?: string[];
+    title?: string;
 };
 
 type HeroSliderProps = {
@@ -27,17 +28,56 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
 
-    // Update current index based on scroll position
+    // 3배수 렌더링 (무한 스크롤용)
+    const renderItems = items.length > 1 ? [...items, ...items, ...items] : items;
+    const realLength = items.length;
+
+    // 초기 위치 설정 (중앙 세트의 첫 번째)
+    useEffect(() => {
+        if (scrollRef.current && realLength > 1) {
+            const width = scrollRef.current.offsetWidth;
+            scrollRef.current.scrollTo({
+                left: width * realLength,
+                behavior: "auto",
+            });
+            setCurrentIndex(realLength);
+        }
+    }, [realLength]);
+
+    // 무한 스크롤 보정 로직 (onScroll에서 처리)
     const handleScroll = () => {
-        if (scrollRef.current) {
+        if (scrollRef.current && realLength > 1) {
             const scrollLeftVal = scrollRef.current.scrollLeft;
             const width = scrollRef.current.offsetWidth;
+            const maxScroll = scrollRef.current.scrollWidth - width;
             const index = Math.round(scrollLeftVal / width);
+
             setCurrentIndex(index);
+
+            // 오른쪽 끝(3번째 세트 진입) -> 중앙 세트로 점프
+            if (scrollLeftVal >= width * (realLength * 2)) {
+                const relativeOffset = scrollLeftVal - width * (realLength * 2);
+                scrollRef.current.scrollTo({
+                    left: width * realLength + relativeOffset,
+                    behavior: "auto",
+                });
+            }
+            // 왼쪽 끝(1번째 세트 진입) -> 중앙 세트로 점프
+            else if (scrollLeftVal <= width * (realLength - 1)) {
+                // 약간의 여유를 두고 점프 (정확히 realLength - 1일 때 점프하면 드래그 시 튈 수 있음)
+                // 여기서는 0에 가까워지면 점프하도록 설정
+                if (scrollLeftVal <= width * 0.5) {
+                    const relativeOffset = width * realLength;
+                    scrollRef.current.scrollTo({
+                        left: scrollLeftVal + relativeOffset,
+                        behavior: "auto",
+                    });
+                }
+            }
         }
     };
 
-    // --- Mouse Drag Handlers ---
+    // --- Mouse Drag Handlers (복원됨) ---
     const onMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         if (scrollRef.current) {
@@ -64,24 +104,25 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         }
     };
 
-    // Auto-scroll functionality (pauses on user interaction implicitly via scroll position check)
+    // 자동 스크롤
     useEffect(() => {
+        if (realLength <= 1) return;
+
         const interval = setInterval(() => {
             if (scrollRef.current) {
-                // Calculate next index, looping back to 0 at the end
-                const isEnd = currentIndex === items.length - 1;
-                const nextIndex = isEnd ? 0 : currentIndex + 1;
                 const width = scrollRef.current.offsetWidth;
+                const nextIndex = currentIndex + 1;
 
                 scrollRef.current.scrollTo({
                     left: width * nextIndex,
                     behavior: "smooth",
                 });
+                // setCurrentIndex는 onScroll에서 업데이트됨
             }
-        }, 4000); // 4-second interval
+        }, 4000);
 
         return () => clearInterval(interval);
-    }, [currentIndex, items.length]);
+    }, [currentIndex, realLength]);
 
     if (!items || items.length === 0) return null;
 
@@ -98,9 +139,9 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 cursor-grab active:cursor-grabbing"
                 style={{ scrollBehavior: isDragging ? "auto" : "smooth" }}
             >
-                {items.map((item, idx) => (
+                {renderItems.map((item, idx) => (
                     <Link
-                        key={item.id}
+                        key={`${item.id}-${idx}`} // 고유 키 생성
                         href={`/courses/${item.id}`}
                         draggable={false} // Prevent native drag
                         className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-[2rem] overflow-hidden snap-center shadow-lg active:scale-[0.98] transition-transform duration-200 block select-none"
@@ -155,10 +196,13 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                             </div>
 
                             {/* Main Title / Catchphrase */}
-                            <h3 className="text-2xl font-extrabold leading-tight drop-shadow-sm mb-1 line-clamp-2">
+                            <h4 className="text-xl font-extrabold leading-tight drop-shadow-sm mb-1 line-clamp-2">
                                 {/* Fallback to location or tags for title if needed */}
-                                {item.tags?.[0] ? `#${item.tags[0]} 핫플레이스` : `${item.location || "이곳"}의 매력`}
-                            </h3>
+                                {item.title ||
+                                    (item.tags?.[0]
+                                        ? `#${item.tags[0]} 핫플레이스`
+                                        : `${item.location || "이곳"}의 매력`)}
+                            </h4>
 
                             {/* Subtitle / Hash Tags */}
                             <p className="text-sm text-gray-200 font-medium opacity-90 line-clamp-1">

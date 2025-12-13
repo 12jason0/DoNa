@@ -5,8 +5,10 @@ import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import { useSearchParams, useRouter } from "next/navigation";
-// ✅ [추가] 한글 변환을 위해 CONCEPTS 가져오기
 import { CONCEPTS } from "@/constants/onboardingData";
+import CourseLockOverlay from "@/components/CourseLockOverlay";
+// TicketPlans 제거
+import CourseCard from "@/components/CourseCard";
 
 // --- Types ---
 type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
@@ -34,63 +36,54 @@ export type Course = {
     duration?: string;
     viewCount?: number;
     reviewCount?: number;
+    grade?: "FREE" | "BASIC" | "PREMIUM";
     rating?: number;
+    isLocked?: boolean;
 };
 
-// --- Data Constants (유지) ---
+// (기존 코드의 상수들을 그대로 두시면 됩니다)
 const tagCategories: Record<string, string[]> = {
-    분위기: [
-        "#힙스터",
-        "#감성",
-        "#로맨틱",
-        "#캐주얼",
-        "#럭셔리",
-        "#빈티지",
-        "#모던",
-        "#전통",
-        "#이국적",
-        "#아늑한",
-        "#힐링",
-        "#프리미엄",
+    Concept: [
+        "실내",
+        "야외",
+        "복합",
+        "활동적인",
+        "정적인",
+        "맛집",
+        "카페",
+        "주점",
+        "전시",
+        "복합문화공간",
+        "쇼핑",
+        "팝업",
+        "체험",
+        "공연",
+        "테마파크",
+        "힐링",
+        "이색체험",
+        "맛집탐방",
+        "인생샷",
+        "기념일",
+        "소개팅",
+        "빵지순례",
     ],
-    특징: [
-        "#사진촬영",
-        "#인생샷",
-        "#인스타",
-        "#SNS인증",
-        "#포토존",
-        "#핫플",
-        "#숨은명소",
-        "#요즘핫한",
-        "#신상",
-        "#가성비",
-        "#무료",
-        "#비오는날",
-        "#야경",
-        "#실내",
-        "#야외",
-        "#한강",
+    Mood: [
+        "로맨틱",
+        "힙한",
+        "트렌디한",
+        "조용한",
+        "활기찬",
+        "레트로",
+        "고급스러운",
+        "감성",
+        "편안한",
+        "이국적인",
+        "전통적인",
+        "신비로운",
     ],
-    장소: ["#카페", "#레스토랑", "#전시관람", "#공연관람", "#방탈출", "#루프탑", "#복합문화공간", "#플래그십"],
-    기타: [
-        "#데이트",
-        "#혼자",
-        "#친구",
-        "#기념일",
-        "#첫만남",
-        "#문화생활",
-        "#산책",
-        "#체험",
-        "#쇼핑",
-        "#맛집투어",
-        "#카페투어",
-        "#액티비티",
-        "#미식",
-        "#브런치",
-        "#술집투어",
-    ],
+    Target: ["연인", "썸", "친구", "가족", "혼자", "반려동물", "단체/모임"],
 };
-
+// const activities = ... (사용하지 않으므로 삭제 또는 주석 처리 가능, 여기선 tagCategories만 교체)
 const activities = [
     { key: "카페투어", label: "☕ 카페투어" },
     { key: "맛집탐방", label: "🍜 맛집탐방" },
@@ -101,10 +94,8 @@ const activities = [
     { key: "체험", label: "🧪 체험" },
     { key: "이색데이트", label: "✨ 이색데이트" },
 ];
-
 const regions = ["강남", "성수", "홍대", "종로", "연남", "한남", "서초", "건대", "송파", "신촌"];
 
-// --- Skeleton UI ---
 const SkeletonLoader = () => (
     <div className="space-y-8 animate-pulse">
         {[1, 2].map((i) => (
@@ -143,9 +134,12 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const router = useRouter();
 
     const [mounted, setMounted] = useState(false);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
-    const [modalSelectedLabels, setModalSelectedLabels] = useState<string[]>([]);
 
+    // ✅ [추가] 필터 모달과 결제 모달 상태 분리
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    // showSubscriptionModal 제거
+
+    const [modalSelectedLabels, setModalSelectedLabels] = useState<string[]>([]);
     const [selectedActivities, setSelectedActivities] = useState<string[]>(() => {
         const c = (searchParams.get("concept") || "").trim();
         return c ? [c] : [];
@@ -169,7 +163,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const [refreshNonce, setRefreshNonce] = useState(0);
     const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
-    // --- Effects ---
+    // --- Effects & Logic (기존과 동일) ---
     useEffect(() => {
         setMounted(true);
     }, []);
@@ -178,8 +172,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         setLoading(false);
     }, [initialCourses]);
     useEffect(() => {
-        const q = (searchParams.get("q") || "").trim();
-        if (q !== searchInput) setSearchInput(q);
+        setSearchInput("");
     }, [searchParams]);
 
     useEffect(() => {
@@ -210,7 +203,6 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         } catch {}
     }, []);
 
-    // --- Actions ---
     const toggleFavorite = async (e: React.MouseEvent, courseId: string | number) => {
         e.preventDefault();
         e.stopPropagation();
@@ -246,7 +238,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         }
     };
 
-    // Modal & Filter Logic (기존 코드 유지)
+    // Filter Logic
     useEffect(() => {
         if (!showCategoryModal || !allTags.length) return;
         const labels = allTags
@@ -340,14 +332,12 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         setSearchInput("");
         pushUrlFromState({ activities: next, q: "", regions: selectedRegions, tagIds: selectedTagIds });
     };
-
     const toggleRegionSingle = (value: string) => {
         const next = selectedRegions.includes(value) ? [] : [value];
         setSelectedRegions(next);
         setSearchInput("");
         pushUrlFromState({ regions: next, q: "", activities: selectedActivities, tagIds: selectedTagIds });
     };
-
     const removeTag = (tagIdToRemove: number) => {
         const next = selectedTagIds.filter((id) => id !== tagIdToRemove);
         setSelectedTagIds(next);
@@ -372,9 +362,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
     return (
         <div className="min-h-screen bg-[#F9FAFB] text-gray-900">
+            {/* Header */}
             <section className="max-w-[500px] mx-auto min-h-screen bg-white shadow-xl shadow-gray-100/50 flex flex-col">
-                {/* Header (생략없이 기존 코드 유지) */}
-                <div className="sticky top-0 z-30 bg-white px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
+                <div className="sticky top-0 z-40 bg-white px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
                     <div className="relative mb-3">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                             <svg
@@ -424,7 +414,6 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             </div>
                         </button>
                     </div>
-
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth">
                         {(selectedRegions.length > 0 || selectedActivities.length > 0 || selectedTagIds.length > 0) && (
                             <>
@@ -511,7 +500,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             <p className="text-gray-500 text-[15px] mb-8 leading-relaxed">
                                 아직 등록되지 않은 테마나 지역인 것 같아요.
                                 <br />
-                                빠른 시일 내에 멋진 코스로 채워둘게요! 🏃‍♂️
+                                빠른 시일 내에 멋진 코스를 추가할게요! 🏃‍♂️
                             </p>
                             <button
                                 onClick={() => {
@@ -531,132 +520,60 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                         </div>
                     ) : (
                         <div className="space-y-8">
-                            {filtered.map((c, i) => {
-                                // ✅ [수정] concept 값을 한글로 변환
-                                const rawConcept = c.concept?.split(",")[0] || "";
-                                const displayConcept = CONCEPTS[rawConcept as keyof typeof CONCEPTS] || rawConcept;
-
-                                return (
-                                    <Link key={c.id} href={`/courses/${c.id}`} className="block group relative">
-                                        <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-gray-100 mb-3 shadow-sm border border-gray-100">
-                                            {c.imageUrl ? (
-                                                <Image
-                                                    src={c.imageUrl}
-                                                    alt={c.title}
-                                                    fill
-                                                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                                    sizes="(max-width: 768px) 100vw, 500px"
-                                                    priority={i < 2}
-                                                />
-                                            ) : (
-                                                <PlaceholderImage />
-                                            )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                                            <button
-                                                onClick={(e) => toggleFavorite(e, c.id)}
-                                                className="absolute top-3 right-3 z-20 flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90 shadow-sm"
-                                            >
-                                                <svg
-                                                    className={`w-7 h-7 drop-shadow-sm transition-colors ${
-                                                        favoriteIds.has(Number(c.id))
-                                                            ? "text-red-500 fill-red-500"
-                                                            : "text-white"
-                                                    }`}
-                                                    fill={favoriteIds.has(Number(c.id)) ? "currentColor" : "none"}
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    strokeWidth={2}
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                                    />
-                                                </svg>
-                                            </button>
-                                            {hasClosedPlace(c) && (
-                                                <div className="absolute bottom-3 right-3 z-10">
-                                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm border border-red-100 shadow-md">
-                                                        <span className="text-[12px] font-bold text-red-600 leading-none">
-                                                            {getClosedPlaceCount(c)}곳 휴무
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
-                                                <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
-                                                    #{c.region || "서울"}
-                                                </span>
-                                                {/* ✅ [수정] 변환된 한글 displayConcept 사용 */}
-                                                <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
-                                                    #{displayConcept}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="px-1 pt-1">
-                                            <div className="flex flex-wrap gap-2 mb-3">
-                                                {c.region && (
-                                                    <span className="inline-block px-2 py-1 bg-gray-100 rounded-md text-[13px] font-bold text-gray-600">
-                                                        #{c.region}
-                                                    </span>
-                                                )}
-                                                {c.duration ? (
-                                                    <span className="inline-block px-2 py-1 bg-gray-100 rounded-md text-[13px] font-bold text-gray-600">
-                                                        #{c.duration}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                            <h3 className="text-[18px] font-bold text-gray-900 leading-snug mb-2 group-hover:text-gray-700 transition-colors break-keep">
-                                                {c.title}
-                                            </h3>
-                                            <div className="text-xs font-medium">
-                                                {(() => {
-                                                    const views = Number(c.viewCount || 0);
-                                                    if (views >= 1000)
-                                                        return (
-                                                            <span className="text-orange-600 font-bold">
-                                                                👀 {(views / 1000).toFixed(1)}천명이 보는 중
-                                                            </span>
-                                                        );
-                                                    if (c.reviewCount && c.reviewCount > 0)
-                                                        return (
-                                                            <span className="text-gray-700">
-                                                                ★ {c.rating} ({c.reviewCount})
-                                                            </span>
-                                                        );
-                                                    return null;
-                                                })()}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                );
-                            })}
+                            {filtered.map((c, i) => (
+                                <CourseCard
+                                    key={c.id}
+                                    course={c}
+                                    isPriority={i < 2}
+                                    isFavorite={favoriteIds.has(Number(c.id))}
+                                    onToggleFavorite={toggleFavorite}
+                                    // onLockedClick removed
+                                    hasClosedPlace={hasClosedPlace}
+                                    getClosedPlaceCount={getClosedPlaceCount}
+                                    showNewBadge={false}
+                                />
+                            ))}
                         </div>
                     )}
                 </div>
             </section>
 
-            {/* Modal */}
+            {/* 필터 Modal */}
             {showCategoryModal && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center sm:justify-center backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white w-full sm:max-w-lg sm:rounded-[32px] rounded-t-[32px] p-6 shadow-2xl animate-slide-up max-h-[85vh] flex flex-col">
-                        <div className="flex items-center justify-between mb-6 shrink-0">
-                            <h3 className="text-xl font-bold text-gray-900">필터</h3>
-                            <button
-                                onClick={() => setShowCategoryModal(false)}
-                                className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
+                <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center">
+                    {/* 1. 뒷배경 (Backdrop) */}
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+                        onClick={() => setShowCategoryModal(false)}
+                    />
+
+                    {/* 2. 바텀 시트 본문 */}
+                    <div className="bg-white w-full sm:max-w-[480px] rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative flex flex-col max-h-[85vh] animate-slide-up">
+                        {/* --- [헤더 영역] 고정됨 --- */}
+                        <div className="relative pt-3 pb-4 px-6 border-b border-gray-100 flex-shrink-0">
+                            {/* 핸들바 디자인 추가 */}
+                            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
+
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[19px] font-bold text-gray-900">필터 설정</h3>
+                                <button
+                                    onClick={() => setShowCategoryModal(false)}
+                                    className="p-2 -mr-2 text-gray-400 hover:text-gray-800 transition-colors"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-                        <div className="overflow-y-auto no-scrollbar space-y-8 mb-6 flex-1">
+
+                        {/* --- [컨텐츠 영역] 스크롤 가능 --- */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
                             {Object.entries(tagCategories).map(([group, tags]) => (
                                 <div key={group}>
                                     <div className="text-[15px] font-bold text-gray-900 mb-3">{group}</div>
@@ -665,10 +582,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             <button
                                                 key={t}
                                                 onClick={() => handleCategoryClick(t)}
-                                                className={`px-3.5 py-2 rounded-xl text-[14px] font-medium transition-all duration-200 border ${
+                                                className={`px-3.5 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-200 border ${
                                                     modalSelectedLabels.includes(t)
-                                                        ? "bg-emerald-600 text-white border-emerald-600"
-                                                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100"
+                                                        : "bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:bg-emerald-50"
                                                 }`}
                                             >
                                                 {t}
@@ -677,26 +594,33 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     </div>
                                 </div>
                             ))}
+                            {/* 하단 버튼에 가려지지 않도록 여유 공간 */}
+                            <div className="h-2" />
                         </div>
-                        <div className="flex gap-3 shrink-0 pt-2 border-t border-gray-100">
-                            <button
-                                onClick={() => setModalSelectedLabels([])}
-                                className="flex-1 py-4 rounded-2xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
-                            >
-                                초기화
-                            </button>
-                            <button
-                                onClick={applyCategorySelection}
-                                className="flex-[2] py-4 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all"
-                            >
-                                {modalSelectedLabels.length > 0
-                                    ? `${modalSelectedLabels.length}개 적용하기`
-                                    : "적용하기"}
-                            </button>
+
+                        {/* --- [하단 버튼 영역] 고정됨 --- */}
+                        <div className="p-5 border-t border-gray-100 bg-white pb-8 sm:pb-5 rounded-b-[32px] flex-shrink-0 z-10">
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setModalSelectedLabels([])}
+                                    className="flex-1 py-4 rounded-2xl bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    초기화
+                                </button>
+                                <button
+                                    onClick={applyCategorySelection}
+                                    className="flex-[2.5] py-4 rounded-2xl bg-gray-900 text-white font-bold text-[16px] hover:bg-gray-800 shadow-lg active:scale-[0.98] transition-all"
+                                >
+                                    {modalSelectedLabels.length > 0
+                                        ? `${modalSelectedLabels.length}개 적용하기`
+                                        : "적용하기"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
+            {/* ✅ [추가] 결제 모달 렌더링 (CourseCard 내부로 이동됨) */}
         </div>
     );
 }
