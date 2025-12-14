@@ -195,6 +195,8 @@ export async function GET(request: NextRequest) {
                 distance: distStr,
                 imageUrl: "",
                 isDbMatched: !!matchedDbId,
+                relatedCourseIds:
+                    matchedDbId && dbPlace ? dbPlace.coursePlaces.map((cp) => cp.course?.id).filter(Boolean) : [], // ✅ 관련 코스 ID 배열 추가
             });
         }
 

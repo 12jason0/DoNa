@@ -112,11 +112,11 @@ export default function CourseCard({
         <div className="block group relative cursor-pointer">
             {/* Link or Div based on Lock status */}
             {course.isLocked ? (
-                <div onClick={handleLockedClick} className="absolute inset-0 z-25 cursor-pointer" />
+                <div onClick={handleLockedClick} className="absolute inset-0 z-[25] cursor-pointer" />
             ) : (
                 <Link
                     href={`/courses/${course.id}`}
-                    className="absolute inset-0 z-25"
+                    className="absolute inset-0 z-[25]"
                     onClick={() => {
                         try {
                             fetch(`/api/courses/${course.id}/view`, {
@@ -185,7 +185,7 @@ export default function CourseCard({
             {/* Favorite Button (Moved outside Image Section to ensure clickability) */}
             <button
                 onClick={(e) => onToggleFavorite(e, course.id)}
-                className="absolute top-3 right-3 z-29 flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90 shadow-sm"
+                className="absolute top-3 right-3 z-[29] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90 shadow-sm"
             >
                 <svg
                     className={`w-7 h-7 drop-shadow-sm transition-colors ${

@@ -9,12 +9,23 @@ import Link from "next/link";
 export default function Footer() {
     const pathname = usePathname();
 
-    // [수정된 부분] 맵 페이지(/map)이거나 하위 경로(/map/...)일 경우 아무것도 렌더링하지 않음
     if (pathname === "/map" || pathname?.startsWith("/map/")) {
         return null;
     }
 
     const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+    // 공통 SVG 속성
+    const svgProps = {
+        width: "28",
+        height: "28",
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: "2",
+        strokeLinecap: "round" as const,
+        strokeLinejoin: "round" as const,
+    };
 
     return (
         <footer
@@ -28,118 +39,70 @@ export default function Footer() {
         >
             <div className="max-w-7xl mx-auto px-4 py-2">
                 <nav className="flex items-center justify-around">
-                    {/* 코스 */}
-                    <Link
-                        href="/courses"
-                        aria-label="코스"
-                        title="코스"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/courses") ? "bg-green-50" : ""}`}
-                        style={{ color: isActive("/courses") ? "#7aa06f" : "#99c08e" }}
-                    >
-                        <svg
-                            width="28"
-                            height="28"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M9 4l-6 2v13l6-2 6 2 6-2V4l-6 2-6-2z" />
-                            <path d="M9 4v13" />
-                            <path d="M15 6v13" />
-                        </svg>
-                    </Link>
-                    {/* 맵 */}
-                    <Link
-                        href="/map"
-                        aria-label="맵"
-                        title="맵"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/map") ? "bg-green-50" : ""}`}
-                        style={{ color: isActive("/map") ? "#7aa06f" : "#99c08e" }}
-                    >
-                        <svg
-                            width="28"
-                            height="28"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M15 9l-3 6-3-3 6-3z" />
-                            <circle cx="12" cy="12" r="1" />
-                        </svg>
-                    </Link>
-                    {/* 홈 */}
+                    {/* 1. 홈 */}
                     <Link
                         href="/"
                         aria-label="메인"
-                        title="메인"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/") ? "#7aa06f" : "#99c08e" }}
                     >
-                        <svg
-                            width="28"
-                            height="28"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M3 10.5L12 4l9 6.5" />
-                            <path d="M5 10.5V20h14V10.5" />
-                            <path d="M10 20v-5h4v5" />
-                        </svg>
-                    </Link>
-                    {/* 마이페이지 */}
-                    <Link
-                        href="/mypage"
-                        aria-label="마이페이지"
-                        title="마이페이지"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/mypage") ? "bg-green-50" : ""}`}
-                        style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
-                    >
-                        <svg
-                            width="28"
-                            height="28"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <circle cx="12" cy="8" r="3.5" />
-                            <path d="M4 20c1.8-4.4 6-5.5 8-5.5s6.2 1.1 8 5.5" />
+                        <svg {...svgProps}>
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
                         </svg>
                     </Link>
 
-                    {/* Escape */}
+                    {/* 2. 코스 */}
+                    <Link
+                        href="/courses"
+                        aria-label="코스"
+                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/courses") ? "bg-green-50" : ""}`}
+                        style={{ color: isActive("/courses") ? "#7aa06f" : "#99c08e" }}
+                    >
+                        <svg {...svgProps}>
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                            <line x1="8" y1="2" x2="8" y2="18" />
+                            <line x1="16" y1="6" x2="16" y2="22" />
+                        </svg>
+                    </Link>
+
+                    {/* 3. 맵 */}
+                    <Link
+                        href="/map"
+                        aria-label="맵"
+                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/map") ? "bg-green-50" : ""}`}
+                        style={{ color: isActive("/map") ? "#7aa06f" : "#99c08e" }}
+                    >
+                        <svg {...svgProps}>
+                            <circle cx="12" cy="12" r="10" />
+                            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                        </svg>
+                    </Link>
+
+                    {/* 4. Escape (수정됨: 깃발 아이콘) */}
                     <Link
                         href="/escape"
                         aria-label="Escape"
-                        title="Escape"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/escape") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/escape") ? "#7aa06f" : "#99c08e" }}
                     >
-                        <svg
-                            width="28"
-                            height="28"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <circle cx="11" cy="11" r="5" />
-                            <path d="M16 16l5 5" />
+                        {/* 1번 옵션: 깃발 (미션/목표) */}
+                        <svg {...svgProps}>
+                            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                            <line x1="4" x2="4" y1="22" y2="15" />
+                        </svg>
+                    </Link>
+
+                    {/* 5. 마이페이지 */}
+                    <Link
+                        href="/mypage"
+                        aria-label="마이페이지"
+                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/mypage") ? "bg-green-50" : ""}`}
+                        style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
+                    >
+                        <svg {...svgProps}>
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
                         </svg>
                     </Link>
                 </nav>

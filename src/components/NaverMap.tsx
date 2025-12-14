@@ -20,7 +20,7 @@ export default function NaverMapComponent({
     showControls = true,
     showPlaceOverlay = true,
 }: MapProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
     const polylineRef = useRef<any>(null);
@@ -279,19 +279,22 @@ export default function NaverMapComponent({
             } catch (e) {
                 console.error("Naver Maps SDK 로드 실패:", e);
             }
-            if (cancelled || !(window as any).naver?.maps || !containerRef.current) return;
+            if (cancelled || !(window as any).naver?.maps || !mapElementRef.current) return;
             const naver = (window as any).naver;
             const c = center ?? pickCenter();
             try {
-                mapRef.current = new naver.maps.Map(containerRef.current, {
-                    center: new naver.maps.LatLng(c.lat, c.lng),
-                    zoom: 15,
-                    zoomControl: false,
-                    mapTypeControl: false,
-                    scaleControl: false,
-                    logoControl: false,
-                });
-                setMapReady(true);
+                // 이미 지도가 있으면 초기화하지 않음 (React StrictMode 등 대응)
+                if (!mapRef.current) {
+                    mapRef.current = new naver.maps.Map(mapElementRef.current, {
+                        center: new naver.maps.LatLng(c.lat, c.lng),
+                        zoom: 15,
+                        zoomControl: false,
+                        mapTypeControl: false,
+                        scaleControl: false,
+                        logoControl: false,
+                    });
+                    setMapReady(true);
+                }
             } catch (e) {
                 console.error("지도 인스턴스 생성 실패:", e);
             }
@@ -754,11 +757,9 @@ export default function NaverMapComponent({
     }, [selectedPlace]);
 
     return (
-        <div
-            ref={containerRef}
-            className={className}
-            style={{ ...style, width: "100%", height: "100%", position: "relative" }}
-        >
+        <div className={className} style={{ ...style, width: "100%", height: "100%", position: "relative" }}>
+            <div ref={mapElementRef} style={{ width: "100%", height: "100%" }} />
+
             {mapReady && showControls && (
                 <div
                     style={{

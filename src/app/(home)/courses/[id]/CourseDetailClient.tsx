@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
+import TicketPlans from "@/components/TicketPlans";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 
 // --- 아이콘 (SVG) 완벽 정의 ---
@@ -147,6 +148,8 @@ export interface CourseData {
     concept: string;
     rating: number;
     isPopular: boolean;
+    grade?: "FREE" | "BASIC" | "PREMIUM";
+    isLocked?: boolean;
     recommended_start_time: string;
     season: string;
     courseType: string;
@@ -210,6 +213,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
     const [showShareModal, setShowShareModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
     // 전체 지도 모달 State
     const [showFullMapModal, setShowFullMapModal] = useState(false);
@@ -408,6 +412,86 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
         }
     };
 
+    // ... (imports)
+
+    // --- 🔒 잠금 화면 (Modern Commercial Style) ---
+    if (courseData.isLocked) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50/50 backdrop-blur-sm">
+                <div className="bg-white rounded-[24px] p-8 max-w-[360px] w-full text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative">
+                    {/* 1. 세련된 아이콘 영역 (이모지 제거 -> 벡터 아이콘 적용) */}
+                    <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-emerald-100/50">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-8 h-8 text-emerald-600"
+                        >
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                    </div>
+
+                    {/* 2. 타이포그래피 & 배지 (절제된 디자인) */}
+                    <div className="space-y-2 mb-8">
+                        <div className="flex justify-center mb-3">
+                            <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-bold uppercase tracking-wider border border-gray-200">
+                                {courseData.grade} Membership
+                            </span>
+                        </div>
+
+                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">멤버십 전용 콘텐츠입니다</h2>
+
+                        <p className="text-gray-500 text-sm leading-relaxed font-medium">
+                            <span className="text-gray-800 font-semibold border-b border-gray-200 pb-0.5">
+                                "{courseData.title}"
+                            </span>
+                            <br />
+                            상세 코스는 멤버십 가입 후 열람 가능합니다.
+                        </p>
+                    </div>
+
+                    {/* 3. 액션 버튼 (직관적이고 단단한 느낌) */}
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => setShowSubscriptionModal(true)}
+                            className="w-full py-3.5 rounded-xl bg-gray-900 text-white font-semibold text-[15px] hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center gap-2"
+                        >
+                            <span>지금 시작하기</span>
+                            {/* '결제하기' 같은 부담스러운 말 대신 '시작하기' 사용 */}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-4 h-4 text-gray-400"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                        </button>
+
+                        <button
+                            onClick={() => router.back()}
+                            className="w-full py-3 rounded-xl text-gray-500 font-medium text-[14px] hover:text-gray-800 hover:bg-gray-50 transition-colors"
+                        >
+                            다음에 볼래요
+                        </button>
+                    </div>
+                </div>
+
+                {/* 결제 모달 */}
+                {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            </div>
+        );
+    }
+
     return (
         <>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -496,7 +580,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                     }))}
                                     userLocation={null}
                                     selectedPlace={selectedPlace}
-                                    onPlaceClick={(mapPlace) => {
+                                    onPlaceClick={(mapPlace: MapPlace) => {
                                         const fullPlace = sortedCoursePlaces.find(
                                             (cp) => cp.place.id === mapPlace.id
                                         )?.place;
@@ -841,7 +925,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                 }))}
                                 userLocation={null}
                                 selectedPlace={null}
-                                onPlaceClick={(place) => setModalSelectedPlace(place)}
+                                onPlaceClick={(place: MapPlace) => setModalSelectedPlace(place)}
                                 drawPath={true}
                                 numberedMarkers={true}
                                 className="w-full h-full"

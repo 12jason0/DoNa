@@ -1283,6 +1283,15 @@ const DialogueFlow = ({
 };
 
 function EscapeIntroPageInner() {
+    // [추가] 페이지 진입 시 스크롤을 맨 위로 고정
+    useEffect(() => {
+        window.scrollTo(0, 0);
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, []);
+
     const COUNT_PAGES = 21;
     const numFlipPages = 11;
     const router = useRouter();
@@ -1436,9 +1445,30 @@ function EscapeIntroPageInner() {
             .toLowerCase();
 
     // --- 통합 상태 전환 헬퍼 ---
+    const [lastScrollY, setLastScrollY] = useState<number>(0);
+    const listScrollRef = useRef<HTMLDivElement>(null);
+
     const changeFlowStep = (newStep: typeof flowStep, options?: { resetMission?: boolean; resetPlace?: boolean }) => {
         if (endingStartedRef.current && newStep !== "done") return;
+
+        // category -> 다른 화면으로 갈 때 스크롤 저장
+        if (flowStep === "category" && newStep !== "category") {
+            try {
+                setLastScrollY(window.scrollY);
+            } catch {}
+        }
+
         setFlowStep(newStep);
+
+        // 다른 화면 -> category로 돌아올 때 스크롤 복원
+        if (newStep === "category") {
+            setTimeout(() => {
+                try {
+                    window.scrollTo({ top: lastScrollY, behavior: "instant" });
+                } catch {}
+            }, 0);
+        }
+
         if (options?.resetMission) {
             try {
                 setMissionUnlocked(false);
@@ -3191,6 +3221,23 @@ function EscapeIntroPageInner() {
                 const data = await res.json();
                 if (res.ok && Array.isArray(data?.urls)) setGalleryUrls(data.urls);
             } catch {}
+
+            // [추가] 스토리 완료 기록 저장 (마이페이지 연동용)
+            try {
+                const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+                await fetch("/api/escape/complete", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    credentials: "include",
+                    body: JSON.stringify({ storyId }),
+                });
+            } catch (e) {
+                console.error("스토리 완료 처리 실패:", e);
+            }
+
             try {
                 const br = await fetch(`/api/escape/badge?storyId=${storyId}`);
                 const bd = await br.json();
@@ -3447,7 +3494,7 @@ function EscapeIntroPageInner() {
             <div
                 className="relative overflow-hidden"
                 style={{
-                    minHeight: "100dvh",
+                    height: "100dvh", // minHeight -> height로 변경하여 스크롤 방지
                     paddingTop: "env(safe-area-inset-top)",
                     paddingBottom: "env(safe-area-inset-bottom)",
                 }}
@@ -3539,6 +3586,7 @@ function EscapeIntroPageInner() {
                                         </button>
                                     )}
                                     <div
+                                        ref={listScrollRef} // 📍 [수정] 여기에 ref 추가
                                         className={`grid grid-cols-2 gap-3 ${
                                             titlePopAnim ? "animate-[titlePop_400ms_ease-out]" : ""
                                         } max-h-[56vh] overflow-auto pr-1`}
@@ -3612,26 +3660,41 @@ function EscapeIntroPageInner() {
                                 <>
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between mb-2">
-                                            <button
-                                                onClick={() => {
-                                                    // 카테고리 선택 화면으로 복귀
-                                                    setSelectedCategory(null);
-                                                    setSelectedPlaceId(null);
-                                                    setSelectedPlaceIndex(null);
-                                                    setSelectedPlaceConfirm(null);
-                                                    setMissionUnlocked(false);
-                                                    setInSelectedRange(false);
-                                                    setFlowStep("category");
-                                                }}
-                                                className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white/85 hover:bg-white text-gray-900 border shadow"
-                                            >
-                                                ← 카테고리로
-                                            </button>
+                                            {/* 뒤로 가기 버튼: 모든 카테고리를 완료한 상태(엔딩 직전)가 아닐 때만 표시 */}
+                                            {!computeAllCategoriesCleared(availableCategoryKeys) && (
+                                                <button
+                                                    onClick={() => {
+                                                        // 카테고리 선택 화면으로 복귀
+                                                        setSelectedCategory(null);
+                                                        setSelectedPlaceId(null);
+                                                        setSelectedPlaceIndex(null);
+                                                        setSelectedPlaceConfirm(null);
+                                                        setMissionUnlocked(false);
+                                                        setInSelectedRange(false);
+                                                        setFlowStep("category");
+                                                    }}
+                                                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white/85 hover:bg-white text-gray-900 border shadow"
+                                                >
+                                                    ← 카테고리로
+                                                </button>
+                                            )}
+                                            {/* [추가] 선택된 장소가 있을 때 지도 보기 버튼 표시 */}
+                                            {selectedPlaceConfirm && (
+                                                <button
+                                                    onClick={() => setShowMapModal(true)}
+                                                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white border shadow"
+                                                >
+                                                    📍 지도 보기
+                                                </button>
+                                            )}
                                         </div>
                                         {/* placeList에서는 액션 버튼을 숨깁니다 (갤러리 모달 내부로 이동) */}
                                     </div>
                                     {/* 장소 리스트 */}
-                                    <div>
+                                    <div
+                                        ref={listScrollRef} // 📍 [수정] 여기에 ref 추가
+                                        className="max-h-[56vh] overflow-auto pr-1" // 📍 기존에 없던 overflow-auto 클래스가 필요하다면 여기에 있어야 함
+                                    >
                                         {(() => {
                                             const all = ((currentChapter.placeOptions || []) as any[]).slice();
                                             const list = all.filter((p: any) =>
@@ -4380,13 +4443,22 @@ function EscapeIntroPageInner() {
                             </div>
                             <div className="w-full h-full min-h-[420px]">
                                 <NaverMap
-                                    places={mapPlaces as any}
+                                    key={showMapModal ? "map-open" : "map-closed"} // [수정] 모달 열릴 때마다 재마운트 강제
+                                    places={
+                                        selectedPlaceId
+                                            ? ([
+                                                  (currentChapter?.placeOptions || []).find(
+                                                      (p: any) => Number(p.id) === Number(selectedPlaceId)
+                                                  ),
+                                              ].filter(Boolean) as any)
+                                            : []
+                                    }
                                     userLocation={userLocation as any}
                                     selectedPlace={null}
                                     onPlaceClick={() => {}}
                                     className="w-full h-full"
-                                    drawPath={userLocation !== null && mapPlaces.length >= 1}
-                                    routeMode={isMobile ? "walking" : "driving"}
+                                    drawPath={true}
+                                    routeMode={"walking"} // 모바일/PC 구분 없이 walking으로 고정 (홍대 방탈출 특성상)
                                 />
                             </div>
                         </div>
@@ -4417,7 +4489,19 @@ function EscapeIntroPageInner() {
                                     });
                                 }
                                 // 통합 확인 핸들러: PHOTO와 PUZZLE_ANSWER 처리
+                                // --- 통합 확인 핸들러: PHOTO와 PUZZLE_ANSWER 처리
                                 const handleConfirm = async () => {
+                                    // 📍 [1] 현재 "리스트 박스"의 스크롤 위치를 저장 (window 아님!)
+                                    const savedScrollTop = listScrollRef.current ? listScrollRef.current.scrollTop : 0;
+
+                                    // 📍 [2] 키보드 내리기 (포커스 해제)
+                                    if (document.activeElement instanceof HTMLElement) {
+                                        document.activeElement.blur();
+                                    }
+
+                                    // 📍 [3] 키보드 내려갈 시간 확보 (0.3초)
+                                    await new Promise((resolve) => setTimeout(resolve, 300));
+
                                     try {
                                         setIsSubmitting(true);
                                         if (t === "PHOTO") {
@@ -4445,6 +4529,7 @@ function EscapeIntroPageInner() {
                                             const uploadResponse = await fetch("/api/upload", {
                                                 method: "POST",
                                                 body: formData,
+                                                credentials: "include",
                                                 cache: "no-store",
                                             });
                                             if (!uploadResponse.ok) {
@@ -4471,16 +4556,23 @@ function EscapeIntroPageInner() {
                                                 setIsSubmitting(false);
                                                 throw new Error(r.error || "미션 저장 실패");
                                             }
-                                        } else if (t === "PUZZLE_ANSWER") {
+                                        } else if (t === "PUZZLE_ANSWER" || t === "TEXT") {
                                             const ok = isCorrectForPayload(payload, modalAnswer);
-                                            if (!ok) {
+                                            if (!ok && t === "PUZZLE_ANSWER") {
                                                 setModalWrongOnce(true);
                                                 setModalError("정답이 아니에요");
                                                 setIsSubmitting(false);
+
+                                                // 📍 [에러 시 복구] 실패 시에도 스크롤 복구
+                                                if (listScrollRef.current) {
+                                                    listScrollRef.current.scrollTop = savedScrollTop;
+                                                }
                                                 return;
                                             }
+
                                             setModalError(null);
                                             setModalWrongOnce(false);
+
                                             await submitMission({
                                                 chapterId: Number(selectedPlaceId ?? currentChapter?.id),
                                                 missionType: t,
@@ -4500,7 +4592,7 @@ function EscapeIntroPageInner() {
                                             }));
                                         }
 
-                                        // ✅ 미션이 2개 완료되었는지 확인 (TEXT와 동일한 로직)
+                                        // ✅ 미션이 2개 완료되었는지 확인
                                         const place = (currentChapter?.placeOptions || []).find(
                                             (p: any) => Number(p.id) === Number(selectedPlaceId)
                                         );
@@ -4516,9 +4608,8 @@ function EscapeIntroPageInner() {
                                             return clearedMissions[mid] || solvedMissionIds.includes(mid);
                                         }).length;
 
-                                        // 미션이 2개 완료되었을 때 카테고리 완료 처리 (자동 이동 제거)
+                                        // ✅ 미션이 2개 완료되었을 때 카테고리 완료 처리 (자동 이동 제거)
                                         if (placeClearedCount >= 2) {
-                                            // 카테고리 완료 처리
                                             try {
                                                 const catKey = normalizeCategory(
                                                     (place as any)?.category || (place as any)?.type || ""
@@ -4566,9 +4657,25 @@ function EscapeIntroPageInner() {
                                     } catch (e: any) {
                                         setValidationError(e?.message || "오류가 발생했습니다.");
                                         setIsSubmitting(false);
+
+                                        // 📍 [에러 시 복구] 에러가 나도 스크롤 위치 복구
+                                        if (listScrollRef.current) {
+                                            listScrollRef.current.scrollTop = savedScrollTop;
+                                        }
                                     } finally {
                                         setIsSubmitting(false);
-                                        setToast(null);
+
+                                        // 📍 [4] 핵심: 마지막으로 스크롤 위치를 "리스트 박스"에 강제로 주입
+                                        // 모달이 닫히고 화면이 다시 그려지는 찰나(50ms) 뒤에 실행해야 정확함
+                                        setTimeout(() => {
+                                            if (listScrollRef.current) {
+                                                // instant로 설정하여 눈에 띄지 않게 순간이동
+                                                listScrollRef.current.scrollTo({
+                                                    top: savedScrollTop,
+                                                    behavior: "instant",
+                                                });
+                                            }
+                                        }, 50);
                                     }
                                 };
 
@@ -4724,18 +4831,14 @@ function EscapeIntroPageInner() {
                                                                     setToast(
                                                                         "미션 완료! 다음 카테고리로 버튼을 눌러주세요."
                                                                     );
-                                                                    try {
-                                                                        await proceedAfterMission();
-                                                                    } catch {}
+                                                                    // 자동 이동 제거
                                                                 } else {
                                                                     // 미션이 2개 미완료인 경우: 모달만 닫고 미션 목록으로 돌아감
                                                                     setMissionModalOpen(false);
                                                                     setActiveMission(null);
                                                                     setModalAnswer("");
                                                                     setToast("미션 완료!");
-                                                                    try {
-                                                                        await proceedAfterMission();
-                                                                    } catch {}
+                                                                    // 자동 이동 제거
                                                                 }
                                                             } catch (err: any) {
                                                                 setModalError(
@@ -4816,28 +4919,45 @@ function EscapeIntroPageInner() {
                     </div>
                 )}
 
-                {/* 미션 이후 스토리 모달 */}
+                {/* 미션 이후 스토리 모달 (UI 리뉴얼) */}
                 {showPostStory && postStoryQueue.length > 0 && (
-                    <div className="fixed inset-0 z-[1550] bg-black/40 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-md p-5">
-                            <div className="text-gray-900 whitespace-pre-wrap break-words min-h-[4em]">
-                                {postStoryQueue[postStoryIdx]}
+                    <div className="fixed inset-0 z-[1550] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+                        <div className="w-full max-w-sm bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E6E2D6] overflow-hidden relative">
+                            {/* 상단 장식 (클립/테이프 느낌) */}
+                            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#C8AA64] via-[#E6D2A0] to-[#C8AA64] opacity-80" />
+
+                            <div className="p-8 flex flex-col min-h-[320px]">
+                                {/* 소제목: 스토리 조각 */}
+                                <div className="text-center mb-6">
+                                    <span className="inline-block px-3 py-1 rounded-full border border-[#C8AA64] text-[#8B6E4A] text-[10px] font-bold tracking-widest bg-white">
+                                        STORY PIECE {postStoryIdx + 1} / {postStoryQueue.length}
+                                    </span>
+                                </div>
+
+                                {/* 메인 텍스트 (소설책 느낌) */}
+                                <div className="flex-1 flex items-center justify-center">
+                                    <p className="text-[#2C2824] font-serif text-lg leading-loose text-center whitespace-pre-wrap break-keep animate-fade-in-up">
+                                        {postStoryQueue[postStoryIdx]}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="text-right mt-4">
+
+                            {/* 하단 버튼 영역 */}
+                            <div className="bg-[#F7F4EB] p-4 border-t border-[#E6E2D6]">
                                 <button
                                     onClick={() => {
                                         if (postStoryIdx < postStoryQueue.length - 1) {
                                             setPostStoryIdx((i) => i + 1);
                                         } else {
-                                            // 스토리 종료
+                                            // 스토리 종료 로직
                                             setShowPostStory(false);
                                             setPostStoryQueue([]);
                                             setPostStoryIdx(0);
-                                            // 다음 카테고리로 즉시 이동 (완료 표시는 advanceToNextCategory에서 처리됨)
+
+                                            // 다음 단계 처리
                                             if (typeof pendingNextChapterIdx === "number") {
                                                 const nextIndex = pendingNextChapterIdx as number;
                                                 setPendingNextChapterIdx(null);
-                                                // 조각은 조용히 증가시키되, UI는 카테고리로 전환
                                                 setPiecesCollected((n) => n + 1);
                                                 setCurrentChapterIdx(nextIndex);
                                                 changeFlowStep("category", { resetMission: true, resetPlace: true });
@@ -4848,14 +4968,19 @@ function EscapeIntroPageInner() {
                                                 setSelectedPlaceConfirm(null);
                                                 setMissionUnlocked(false);
                                             } else {
-                                                // 안전장치: 다음 인덱스가 설정되지 않았으면 기존 동작 유지하지 않고 카테고리로 복귀
                                                 changeFlowStep("category", { resetMission: true, resetPlace: true });
                                             }
                                         }
                                     }}
-                                    className="px-4 py-2 rounded-lg bg-black text-white"
+                                    className="w-full py-3.5 rounded-lg bg-[#3A3530] text-[#E6D2A0] font-serif font-bold text-base shadow hover:bg-[#2C2824] transition-colors flex items-center justify-center gap-2"
                                 >
-                                    {postStoryIdx < postStoryQueue.length - 1 ? "다음" : "닫기"}
+                                    {postStoryIdx < postStoryQueue.length - 1 ? (
+                                        <>
+                                            다음 페이지 <span className="text-xs">▶</span>
+                                        </>
+                                    ) : (
+                                        "이야기 닫기"
+                                    )}
                                 </button>
                             </div>
                         </div>
