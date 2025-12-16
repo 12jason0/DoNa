@@ -105,6 +105,18 @@ const MyPage = () => {
             if (response.ok) {
                 const raw = await response.json();
                 const src: any = raw?.user ?? raw ?? {};
+
+                // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+                const convertToHttps = (url: string | null | undefined): string => {
+                    if (!url) return "";
+                    if (url.startsWith("http://")) {
+                        return url.replace(/^http:\/\//, "https://");
+                    }
+                    return url;
+                };
+
+                const profileImageUrl = src.profileImage || src.profileImageUrl || src.profile_image_url || "";
+
                 setUserInfo({
                     name: src.name || src.username || src.nickname || "",
                     email: src.email || src.userEmail || "",
@@ -113,7 +125,7 @@ const MyPage = () => {
                         : src.createdAt
                         ? new Date(src.createdAt).toLocaleDateString()
                         : "",
-                    profileImage: src.profileImage || src.profileImageUrl || src.profile_image_url || "",
+                    profileImage: convertToHttps(profileImageUrl),
                     mbti: src.mbti ?? null,
                     age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
                     subscriptionTier: src.subscriptionTier || "FREE",

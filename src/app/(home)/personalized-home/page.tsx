@@ -255,7 +255,18 @@ const AIRecommender = () => {
                 const nick = userData.nickname || userData.name || userData.email?.split("@")[0] || "사용자";
                 setUserName(nick);
                 setNickname(nick);
-                setProfileImageUrl(userData.profileImage || userData.user?.profileImage || null);
+
+                // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+                const convertToHttps = (url: string | null | undefined): string | null => {
+                    if (!url) return null;
+                    if (url.startsWith("http://")) {
+                        return url.replace(/^http:\/\//, "https://");
+                    }
+                    return url;
+                };
+
+                const profileImage = userData.profileImage || userData.user?.profileImage || null;
+                setProfileImageUrl(convertToHttps(profileImage));
                 setCoupons(userData.couponCount || 0);
                 localStorage.setItem("user", JSON.stringify(userData));
             } else {

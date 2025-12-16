@@ -23,13 +23,25 @@ export async function GET(request: NextRequest) {
             },
         });
         if (!user) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+
+        // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+        const convertToHttps = (url: string | null | undefined): string | null => {
+            if (!url) return null;
+            if (url.startsWith("http://")) {
+                return url.replace(/^http:\/\//, "https://");
+            }
+            return url;
+        };
+
+        const profileImageUrl = convertToHttps(user.profileImageUrl);
+
         return NextResponse.json({
             // 평탄 구조(호환용)
             id: user.id,
             email: user.email,
             name: user.username,
             nickname: user.username,
-            profileImage: user.profileImageUrl,
+            profileImage: profileImageUrl,
             createdAt: user.createdAt,
             mbti: user.mbti,
             age: user.age,
@@ -41,7 +53,7 @@ export async function GET(request: NextRequest) {
                 email: user.email,
                 name: user.username,
                 nickname: user.username,
-                profileImage: user.profileImageUrl,
+                profileImage: profileImageUrl,
                 createdAt: user.createdAt,
                 mbti: user.mbti,
                 age: user.age,
@@ -81,6 +93,16 @@ export async function PUT(request: NextRequest) {
         if (age !== undefined) data.age = age;
 
         const updated = await prisma.user.update({ where: { id: userId }, data });
+
+        // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+        const convertToHttps = (url: string | null | undefined): string | null => {
+            if (!url) return null;
+            if (url.startsWith("http://")) {
+                return url.replace(/^http:\/\//, "https://");
+            }
+            return url;
+        };
+
         return NextResponse.json({
             success: true,
             user: {
@@ -90,7 +112,7 @@ export async function PUT(request: NextRequest) {
                 mbti: updated.mbti,
                 age: updated.age,
                 createdAt: updated.createdAt,
-                profileImage: updated.profileImageUrl || null,
+                profileImage: convertToHttps(updated.profileImageUrl),
             },
         });
     } catch (e: any) {

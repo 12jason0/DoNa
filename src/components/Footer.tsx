@@ -18,9 +18,10 @@ export default function Footer() {
             const token = localStorage.getItem("authToken");
             setIsLoggedIn(!!token);
 
-            // 알림 상태 확인
+            // 알림 상태 확인 함수
             const checkNotificationStatus = async () => {
-                if (!token) {
+                const currentToken = localStorage.getItem("authToken");
+                if (!currentToken) {
                     setNotificationEnabled(null);
                     return;
                 }
@@ -39,7 +40,7 @@ export default function Footer() {
 
                     if (!userId) {
                         const userResponse = await fetch("/api/users/profile", {
-                            headers: { Authorization: `Bearer ${token}` },
+                            headers: { Authorization: `Bearer ${currentToken}` },
                         });
                         if (userResponse.ok) {
                             const userData = await userResponse.json();
@@ -49,7 +50,7 @@ export default function Footer() {
 
                     if (userId) {
                         const statusResponse = await fetch(`/api/push?userId=${userId}`, {
-                            headers: { Authorization: `Bearer ${token}` },
+                            headers: { Authorization: `Bearer ${currentToken}` },
                         });
                         if (statusResponse.ok) {
                             const statusData = await statusResponse.json();
@@ -58,14 +59,29 @@ export default function Footer() {
                     }
                 } catch (error) {
                     console.error("알림 상태 조회 오류:", error);
-                    setNotificationEnabled(null);
+                    // 에러 시 기존 상태 유지 혹은 null
                 }
             };
 
+            // 1. 초기 로드 시 확인
             checkNotificationStatus();
-            // 주기적으로 상태 확인 (30초마다)
+
+            // 2. 주기적으로 상태 확인 (30초마다 - 기존 로직 유지)
             const interval = setInterval(checkNotificationStatus, 30000);
-            return () => clearInterval(interval);
+
+            // 3. [추가됨] ProfileTab에서 변경 발생 시 즉시 반응하는 리스너
+            const handleNotificationUpdate = (event: CustomEvent) => {
+                if (event.detail && typeof event.detail.subscribed === "boolean") {
+                    setNotificationEnabled(event.detail.subscribed);
+                }
+            };
+
+            window.addEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
+
+            return () => {
+                clearInterval(interval);
+                window.removeEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
+            };
         }
     }, [pathname]);
 
@@ -139,7 +155,7 @@ export default function Footer() {
                         </svg>
                     </Link>
 
-                    {/* 4. Escape (수정됨: 깃발 아이콘 -> 준비중 모달) */}
+                    {/* 4. Escape */}
                     <button
                         onClick={() => setShowEscapeComingSoon(true)}
                         aria-label="Escape"
@@ -169,7 +185,7 @@ export default function Footer() {
                         {isLoggedIn && notificationEnabled === false && (
                             <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
                             </span>
                         )}
                     </Link>

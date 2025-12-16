@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import MyFootprintMap from "@/components/MyFootprintMap";
@@ -14,76 +14,18 @@ interface FootprintTabProps {
 const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
     const router = useRouter();
 
-    // ----------------------------------------------------------------------
-    // 🧪 [테스트 모드]
-    // ----------------------------------------------------------------------
-    const [isTestMode, setIsTestMode] = useState(false);
-
-    // 더미 데이터
-    const dummyCasefiles: CasefileItem[] = [
-        {
-            story_id: 101,
-            title: "종로 미스터리",
-            clear_date: "",
-            created_at: "",
-            description: "",
-            location: "Jongno",
-            difficulty: "Hard",
-        },
-        {
-            story_id: 102,
-            title: "홍대 추리반",
-            clear_date: "",
-            created_at: "",
-            description: "",
-            location: "Hongdae",
-            difficulty: "Normal",
-        },
-    ];
-    const dummyCompleted: CompletedCourse[] = [
-        {
-            course_id: 201,
-            title: "성수동 카페",
-            completed_at: "",
-            created_at: "",
-            description: "",
-            location: "Seongsu",
-            themes: [],
-        },
-        {
-            course_id: 202,
-            title: "한강 피크닉",
-            completed_at: "",
-            created_at: "",
-            description: "",
-            location: "HanRiver",
-            themes: [],
-        },
-        {
-            course_id: 203,
-            title: "북촌 산책",
-            completed_at: "",
-            created_at: "",
-            description: "",
-            location: "Bukchon",
-            themes: [],
-        },
-    ];
-
-    const currentCasefiles = isTestMode ? dummyCasefiles : casefiles;
-    const currentCompleted = isTestMode ? dummyCompleted : completed;
-    const hasData = currentCasefiles.length > 0 || currentCompleted.length > 0;
+    const hasData = casefiles.length > 0 || completed.length > 0;
 
     // 📍 핀 매핑
     const mapVisitedPlaces = [
-        ...currentCasefiles.map((file, idx) => ({
+        ...casefiles.map((file, idx) => ({
             id: `case-${file.story_id}`,
             name: file.title,
             lat: 37.57 + idx * 0.01,
             lng: 126.98 - idx * 0.02,
             type: "escape" as const,
         })),
-        ...currentCompleted.map((course, idx) => ({
+        ...completed.map((course, idx) => ({
             id: `course-${course.course_id}`,
             name: course.title,
             lat: 37.54 + idx * 0.02,
@@ -92,7 +34,7 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
         })),
     ];
 
-    const mapCourses = currentCompleted.map((course) => ({
+    const mapCourses = completed.map((course) => ({
         id: course.course_id,
         title: course.title,
         path: [],
@@ -103,14 +45,6 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
     return (
         <div className="space-y-6">
             <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden relative">
-                {/* 개발용 버튼 (위치 조정: 헤더 위쪽이나 구석에 작게) */}
-                <button
-                    onClick={() => setIsTestMode(!isTestMode)}
-                    className="absolute top-4 right-4 z-50 bg-indigo-600/90 backdrop-blur hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md transition-all"
-                >
-                    {isTestMode ? "🔄 리셋" : "✨ 채워진 모습"}
-                </button>
-
                 {/* 헤더 */}
                 <div className="p-5 md:p-8 border-b border-gray-50 bg-white relative z-10">
                     <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 tracking-tight">내 발자취 👣</h3>
@@ -190,7 +124,7 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
                     <div className="flex items-center justify-center gap-12">
                         <div className="text-center group cursor-default">
                             <div className="text-2xl md:text-3xl font-black text-gray-900 group-hover:text-[#5B21B6] transition-colors duration-300">
-                                {currentCompleted.length}
+                                {completed.length}
                             </div>
                             <div className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
                                 완료 코스
@@ -199,7 +133,7 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
                         <div className="w-px h-8 bg-gray-200"></div>
                         <div className="text-center group cursor-default">
                             <div className="text-2xl md:text-3xl font-black text-gray-900 group-hover:text-[#5B21B6] transition-colors duration-300">
-                                {currentCasefiles.length}
+                                {casefiles.length}
                             </div>
                             <div className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
                                 완료 사건

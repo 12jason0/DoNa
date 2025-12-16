@@ -39,8 +39,10 @@ export async function POST(req: NextRequest) {
             where: { userId: parseInt(userId) },
         });
 
-        // pushToken이 없고 기존 토큰도 없으면 에러
-        if (!pushToken && !existingToken) {
+        // pushToken이 없거나 빈 문자열이고, 기존 토큰도 없으면 에러
+        // 단, subscribed 상태만 변경하려는 경우(기존 토큰이 있으면)는 허용
+        const hasValidPushToken = pushToken && pushToken.trim() !== "";
+        if (!hasValidPushToken && !existingToken) {
             return NextResponse.json(
                 { error: "pushToken이 필요합니다. 앱에서 알림 권한을 허용해주세요." },
                 { status: 400 }
@@ -51,13 +53,16 @@ export async function POST(req: NextRequest) {
         const updateData: any = {
             updatedAt: new Date(),
         };
-        if (pushToken) updateData.token = pushToken;
+        // pushToken이 유효한 경우에만 업데이트 (빈 문자열이 아닐 때만)
+        if (hasValidPushToken) {
+            updateData.token = pushToken;
+        }
         if (platform) updateData.platform = platform || "expo";
         if (typeof subscribed === "boolean") updateData.subscribed = subscribed;
 
         const createData: any = {
             userId: parseInt(userId),
-            token: pushToken || existingToken?.token || "",
+            token: hasValidPushToken ? pushToken : existingToken?.token || "",
             platform: platform || "expo",
         };
         if (typeof subscribed === "boolean") createData.subscribed = subscribed;

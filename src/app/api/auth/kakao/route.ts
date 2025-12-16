@@ -114,7 +114,11 @@ export async function POST(request: NextRequest) {
         const { id, properties, kakao_account } = userData;
         const socialId = String(id);
         const nickname = properties?.nickname || kakao_account?.profile?.nickname;
-        const profileImageUrl = properties?.profile_image || kakao_account?.profile?.profile_image_url;
+        // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+        let profileImageUrl = properties?.profile_image || kakao_account?.profile?.profile_image_url;
+        if (profileImageUrl && profileImageUrl.startsWith("http://")) {
+            profileImageUrl = profileImageUrl.replace(/^http:\/\//, "https://");
+        }
         const email = kakao_account?.email || null;
 
         let user;

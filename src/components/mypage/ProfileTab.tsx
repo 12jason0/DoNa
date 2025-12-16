@@ -13,6 +13,18 @@ interface ProfileTabProps {
     onLogout: () => void;
 }
 
+// 기본 프로필 이미지
+const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+
+// HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+const convertToHttps = (url: string | null | undefined): string => {
+    if (!url) return DEFAULT_PROFILE_IMG;
+    if (url.startsWith("http://")) {
+        return url.replace(/^http:\/\//, "https://");
+    }
+    return url;
+};
+
 const ProfileTab = ({
     userInfo,
     userPreferences,
@@ -21,9 +33,8 @@ const ProfileTab = ({
     onOpenPwModal,
     onLogout,
 }: ProfileTabProps) => {
-    // 기본 프로필 이미지
-    const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
-    const [notificationEnabled, setNotificationEnabled] = useState<boolean>(false);
+    // 1. 초기값을 null로 변경 (데이터를 불러오기 전 상태)
+    const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
     const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [notificationMessage, setNotificationMessage] = useState<string>("");
 
@@ -69,11 +80,14 @@ const ProfileTab = ({
                     });
                     if (statusResponse.ok) {
                         const statusData = await statusResponse.json();
+                        // 2. 데이터가 로드되면 true/false 설정
                         setNotificationEnabled(statusData.subscribed ?? false);
                     }
                 }
             } catch (error) {
                 console.error("알림 상태 조회 오류:", error);
+                // 에러 발생 시 기본값 false로 설정하여 로딩 상태 해제
+                setNotificationEnabled(false);
             }
         };
 
@@ -82,11 +96,20 @@ const ProfileTab = ({
 
     // 알림 토글 핸들러 (DB와 연결)
     const handleNotificationToggle = async () => {
+        if (notificationEnabled === null) return; // 로딩 중 클릭 방지
+
         // Optimistic update: 즉시 UI 업데이트
         const newSubscribedState = !notificationEnabled;
         setNotificationEnabled(newSubscribedState);
         setNotificationStatus("loading");
         setNotificationMessage("");
+
+        // Footer 등 다른 컴포넌트에 알림 상태 변경 전파
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(
+                new CustomEvent("notificationUpdated", { detail: { subscribed: newSubscribedState } })
+            );
+        }
 
         try {
             // 1. 앱에서 저장한 pushToken 가져오기 (localStorage)
@@ -170,12 +193,22 @@ const ProfileTab = ({
             } else {
                 // 실패 시 원래 상태로 되돌리기
                 setNotificationEnabled(!newSubscribedState);
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("notificationUpdated", { detail: { subscribed: !newSubscribedState } })
+                    );
+                }
                 throw new Error(pushData.error || "알림 설정 변경에 실패했습니다.");
             }
         } catch (error: any) {
             console.error("알림 토글 오류:", error);
             // 실패 시 원래 상태로 되돌리기
             setNotificationEnabled(!newSubscribedState);
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                    new CustomEvent("notificationUpdated", { detail: { subscribed: !newSubscribedState } })
+                );
+            }
             setNotificationStatus("error");
             setNotificationMessage(error.message || "알림 설정 변경 중 오류가 발생했습니다.");
             // 3초 후 에러 메시지 제거
@@ -221,7 +254,7 @@ const ProfileTab = ({
                         <div className="relative w-[88px] h-[88px] md:w-[100px] md:h-[100px] rounded-full p-1 bg-gradient-to-br from-emerald-100 to-white shadow-sm flex-shrink-0">
                             <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white bg-gray-50">
                                 <Image
-                                    src={userInfo.profileImage || DEFAULT_PROFILE_IMG}
+                                    src={convertToHttps(userInfo.profileImage)}
                                     alt={userInfo.name || "프로필"}
                                     fill
                                     className="object-cover"
@@ -398,59 +431,76 @@ const ProfileTab = ({
                         <div className="w-full flex items-center justify-between px-6 py-4.5 rounded-2xl bg-white border border-gray-100 shadow-sm">
                             <div className="flex items-center gap-4">
                                 {/* 1. 아이콘 상자 */}
-                                <div
-                                    className={`p-2.5 rounded-xl transition-all duration-300 ${
-                                        notificationEnabled
-                                            ? "bg-emerald-100 text-emerald-600 shadow-sm shadow-emerald-100"
-                                            : "bg-gray-100 text-gray-400"
-                                    }`}
-                                >
-                                    {notificationEnabled ? "🔔" : "🔕"}
+                                <div className="relative">
+                                    <div
+                                        className={`p-2.5 rounded-xl transition-all duration-300 ${
+                                            notificationEnabled === true
+                                                ? "bg-emerald-100 text-emerald-600 shadow-sm shadow-emerald-100"
+                                                : "bg-gray-100 text-gray-400"
+                                        }`}
+                                    >
+                                        {notificationEnabled === true ? "🔔" : "🔕"}
+                                    </div>
+
+                                    {/* 🔴 빨간 점 (알림이 꺼져 있을 때 왼쪽 위에 표시) - 로딩 중 아닐 때만 */}
+                                    {notificationEnabled === false && (
+                                        <span className="absolute -top-1 -left-1 flex h-3 w-3">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col items-start">
                                     <span
                                         className={`font-bold transition-colors duration-300 ${
-                                            notificationEnabled ? "text-gray-800" : "text-gray-400"
+                                            notificationEnabled === true ? "text-gray-800" : "text-gray-400"
                                         }`}
                                     >
                                         알림 설정
                                     </span>
                                     <span
                                         className={`text-xs font-medium transition-colors duration-300 ${
-                                            notificationEnabled ? "text-emerald-600" : "text-gray-400"
+                                            notificationEnabled === true ? "text-emerald-600" : "text-gray-400"
                                         }`}
                                     >
-                                        {notificationStatus === "loading"
+                                        {notificationEnabled === null
+                                            ? "설정 불러오는 중..."
+                                            : notificationStatus === "loading"
                                             ? "처리 중..."
-                                            : notificationEnabled
+                                            : notificationEnabled === true
                                             ? "푸시 알림을 받는 중"
                                             : "알림이 꺼져 있어요"}
                                     </span>
                                 </div>
                             </div>
 
-                            {/* 2. 토글 스위치: border-2 제거 및 translate 값 수정 */}
-                            <button
-                                onClick={handleNotificationToggle}
-                                disabled={notificationStatus === "loading"}
-                                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    notificationEnabled ? "bg-emerald-500" : "bg-gray-200"
-                                }`} // border-2, border-transparent 제거함
-                                role="switch"
-                                aria-checked={notificationEnabled}
-                                aria-label="알림 설정"
-                            >
-                                <span
-                                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow-md ring-0 transition-all duration-300 ease-in-out flex items-center justify-center ${
-                                        notificationEnabled ? "translate-x-5" : "translate-x-0"
-                                    }`} // translate-x-[22px] -> translate-x-5 (20px) 로 수정
+                            {/* 2. 토글 스위치 */}
+                            {notificationEnabled === null ? (
+                                /* 로딩 시 스켈레톤 토글 */
+                                <div className="h-7 w-12 rounded-full bg-gray-200 animate-pulse"></div>
+                            ) : (
+                                <button
+                                    onClick={handleNotificationToggle}
+                                    disabled={notificationStatus === "loading"}
+                                    className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        notificationEnabled ? "bg-emerald-500" : "bg-gray-200"
+                                    }`}
+                                    role="switch"
+                                    aria-checked={notificationEnabled}
+                                    aria-label="알림 설정"
                                 >
-                                    {notificationStatus === "loading" && (
-                                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-500" />
-                                    )}
-                                </span>
-                            </button>
+                                    <span
+                                        className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow-md ring-0 transition-all duration-300 ease-in-out flex items-center justify-center ${
+                                            notificationEnabled ? "translate-x-5" : "translate-x-0"
+                                        }`}
+                                    >
+                                        {notificationStatus === "loading" && (
+                                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-500" />
+                                        )}
+                                    </span>
+                                </button>
+                            )}
                         </div>
 
                         {/* 메시지 알림 */}
