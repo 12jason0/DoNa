@@ -41,20 +41,29 @@ export async function POST(req: NextRequest) {
 
         console.log("푸시 알림 전송:", message);
 
-        // 5. Expo Push API로 전송
+        // 5. Expo Push API 헤더 생성 (Access Token 포함)
+        const headers: Record<string, string> = {
+            Accept: "application/json",
+            "Accept-encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+        };
+
+        // Access Token이 있으면 헤더에 추가 (선택사항)
+        const accessToken = process.env.EXPO_ACCESS_TOKEN;
+        if (accessToken) {
+            headers.Authorization = `Bearer ${accessToken}`;
+        }
+
+        // 6. Expo Push API로 전송
         const response = await fetch("https://exp.host/--/api/v2/push/send", {
             method: "POST",
-            headers: {
-                Accept: "application/json",
-                "Accept-encoding": "gzip, deflate",
-                "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify(message),
         });
 
         const result = await response.json();
 
-        // 6. 결과 확인 (단건/배열 모두 대응)
+        // 7. 결과 확인 (단건/배열 모두 대응)
         const payload = result?.data;
         const first = Array.isArray(payload) ? payload[0] : payload;
 

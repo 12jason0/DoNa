@@ -1,27 +1,42 @@
 {
-    "expo": {
-        "name": "StyleMap",
-        "slug": "stylemap",
-        "scheme": "stylemap",
-        "version": "0.1.0",
-        "orientation": "portrait",
-        "userInterfaceStyle": "automatic",
-        "sdkVersion": "54.0.0",
-        "updates": {
-            "fallbackToCacheTimeout": 0
-        },
-        "assetBundlePatterns": ["**/*"],
-        "ios": {
-            "supportsTablet": true
-        },
-        "android": {
-            "adaptiveIcon": {
-                "backgroundColor": "#ffffff"
-            }
-        },
-        "web": {
-            "bundler": "metro"
-        },
-        "plugins": ["expo-sqlite"]
+  "expo": {
+    "name": "두나(DoNa)",
+    "slug": "duna",
+    "owner": "dona-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.duna.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.duna.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-sqlite"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
+      }
     }
+  }
 }

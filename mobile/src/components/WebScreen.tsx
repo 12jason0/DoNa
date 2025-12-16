@@ -182,6 +182,8 @@ export default function WebScreen({ uri }: Props) {
                         source={{ uri }}
                         contentInset={{ top: 0, bottom: 0 }}
                         contentInsetAdjustmentBehavior="never"
+                        cacheEnabled={false}
+                        cacheMode="LOAD_NO_CACHE"
                         onLoadStart={() => setLoading(true)}
                         onLoadEnd={() => setLoading(false)}
                         onNavigationStateChange={(nav) => setCanGoBack(nav.canGoBack)}
@@ -201,6 +203,12 @@ export default function WebScreen({ uri }: Props) {
                                     if (userId && pushToken) {
                                         await registerPushToken(userId, pushToken);
                                     }
+                                }
+
+                                // 웹에서 pushToken 요청 시 전달
+                                if (data.type === "requestPushToken" && pushToken && webRef.current) {
+                                    const script = `try{ localStorage.setItem('expoPushToken', '${pushToken}'); window.dispatchEvent(new Event('pushTokenReceived')); }catch(e){}`;
+                                    webRef.current.injectJavaScript(script);
                                 }
                             } catch (e) {}
                         }}

@@ -2,6 +2,22 @@ import prisma from "@/lib/db";
 
 type PushData = Record<string, any> | undefined;
 
+// Expo Push API 헤더 생성 (Access Token 포함)
+function getExpoPushHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+    };
+
+    // Access Token이 있으면 헤더에 추가 (선택사항)
+    const accessToken = process.env.EXPO_ACCESS_TOKEN;
+    if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    return headers;
+}
+
 // 지정 사용자들에게만 발송
 export async function sendPushNotificationToUsers(userIds: number[], title: string, body: string, data?: PushData) {
     const uniqueUserIds = Array.from(new Set(userIds.filter((id) => Number.isFinite(Number(id)))));
@@ -34,10 +50,7 @@ export async function sendPushNotificationToUsers(userIds: number[], title: stri
         try {
             const resp = await fetch("https://exp.host/--/api/v2/push/send", {
                 method: "POST",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                },
+                headers: getExpoPushHeaders(),
                 body: JSON.stringify(messages),
             });
             sent += slice.length;
@@ -80,10 +93,7 @@ export async function sendPushNotificationToAll(title: string, body: string, dat
         try {
             const resp = await fetch("https://exp.host/--/api/v2/push/send", {
                 method: "POST",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                },
+                headers: getExpoPushHeaders(),
                 body: JSON.stringify(messages),
             });
             sent += slice.length;
@@ -112,7 +122,7 @@ export async function sendPushNotificationToEveryone(title: string, body: string
         try {
             const resp = await fetch("https://exp.host/--/api/v2/push/send", {
                 method: "POST",
-                headers: { Accept: "application/json", "Content-Type": "application/json" },
+                headers: getExpoPushHeaders(),
                 body: JSON.stringify(messages),
             });
             sent += slice.length;

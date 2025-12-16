@@ -145,6 +145,10 @@ DIRECT_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmod
 
 # 기타 설정
 NEXT_PUBLIC_KAKAO_MAP_API_KEY="your_kakao_map_api_key"
+
+# Expo Push Notification (선택사항, 프로덕션 권장)
+# Expo 대시보드에서 Access Token 발급: https://expo.dev/accounts/[your-account]/settings/access-tokens
+EXPO_ACCESS_TOKEN="your_expo_access_token_here"
 ```
 
 ⚠️ **중요**: `DATABASE_URL`에는 `&pgbouncer=true`를 추가하고, `DIRECT_URL`에는 추가하지 마세요.

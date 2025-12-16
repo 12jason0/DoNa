@@ -1,6 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import MyFootprintMap from "@/components/MyFootprintMap";
 import { CasefileItem, CompletedCourse } from "@/types/user";
 
@@ -10,71 +12,198 @@ interface FootprintTabProps {
 }
 
 const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
-    // 화면 테스트를 위해 서울 주변 임의 좌표 생성 로직 (기존 유지)
+    const router = useRouter();
+
+    // ----------------------------------------------------------------------
+    // 🧪 [테스트 모드]
+    // ----------------------------------------------------------------------
+    const [isTestMode, setIsTestMode] = useState(false);
+
+    // 더미 데이터
+    const dummyCasefiles: CasefileItem[] = [
+        {
+            story_id: 101,
+            title: "종로 미스터리",
+            clear_date: "",
+            created_at: "",
+            description: "",
+            location: "Jongno",
+            difficulty: "Hard",
+        },
+        {
+            story_id: 102,
+            title: "홍대 추리반",
+            clear_date: "",
+            created_at: "",
+            description: "",
+            location: "Hongdae",
+            difficulty: "Normal",
+        },
+    ];
+    const dummyCompleted: CompletedCourse[] = [
+        {
+            course_id: 201,
+            title: "성수동 카페",
+            completed_at: "",
+            created_at: "",
+            description: "",
+            location: "Seongsu",
+            themes: [],
+        },
+        {
+            course_id: 202,
+            title: "한강 피크닉",
+            completed_at: "",
+            created_at: "",
+            description: "",
+            location: "HanRiver",
+            themes: [],
+        },
+        {
+            course_id: 203,
+            title: "북촌 산책",
+            completed_at: "",
+            created_at: "",
+            description: "",
+            location: "Bukchon",
+            themes: [],
+        },
+    ];
+
+    const currentCasefiles = isTestMode ? dummyCasefiles : casefiles;
+    const currentCompleted = isTestMode ? dummyCompleted : completed;
+    const hasData = currentCasefiles.length > 0 || currentCompleted.length > 0;
+
+    // 📍 핀 매핑
     const mapVisitedPlaces = [
-        // 1. 완료한 사건 파일 (Escape) 매핑
-        ...casefiles.map((file) => ({
+        ...currentCasefiles.map((file, idx) => ({
             id: `case-${file.story_id}`,
             name: file.title,
-            // 임시 좌표: 서울 중심에서 조금씩 떨어진 위치
-            lat: 37.5665 + (Math.random() - 0.5) * 0.05,
-            lng: 126.978 + (Math.random() - 0.5) * 0.05,
+            lat: 37.57 + idx * 0.01,
+            lng: 126.98 - idx * 0.02,
             type: "escape" as const,
         })),
-        // 2. 완료한 코스 (Course) 매핑 (단일 마커로 표시)
-        ...completed.map((course) => ({
+        ...currentCompleted.map((course, idx) => ({
             id: `course-${course.course_id}`,
             name: course.title,
-            // 임시 좌표
-            lat: 37.5665 + (Math.random() - 0.5) * 0.05,
-            lng: 126.978 + (Math.random() - 0.5) * 0.05,
+            lat: 37.54 + idx * 0.02,
+            lng: 127.05 - idx * 0.03,
             type: "course_spot" as const,
         })),
     ];
 
-    // 3. 코스 경로 데이터 매핑 (API에 경로 데이터가 있다면 사용)
-    const mapCourses = completed.map((course) => ({
+    const mapCourses = currentCompleted.map((course) => ({
         id: course.course_id,
         title: course.title,
-        path: [
-            // 임시 경로 (직선)
-            { lat: 37.5665, lng: 126.978 },
-            {
-                lat: 37.5665 + (Math.random() - 0.5) * 0.05,
-                lng: 126.978 + (Math.random() - 0.5) * 0.05,
-            },
-        ],
+        path: [],
     }));
+
+    const bannerImageUrl = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/mypage/mypageMap.jpg";
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-                <div className="p-6 md:p-8 border-b border-gray-100">
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">내 발자취 👣</h3>
-                    <p className="text-gray-500 text-sm">내가 완료한 미션과 다녀온 코스들을 지도에서 확인해보세요.</p>
+            <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden relative">
+                {/* 개발용 버튼 (위치 조정: 헤더 위쪽이나 구석에 작게) */}
+                <button
+                    onClick={() => setIsTestMode(!isTestMode)}
+                    className="absolute top-4 right-4 z-50 bg-indigo-600/90 backdrop-blur hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md transition-all"
+                >
+                    {isTestMode ? "🔄 리셋" : "✨ 채워진 모습"}
+                </button>
+
+                {/* 헤더 */}
+                <div className="p-5 md:p-8 border-b border-gray-50 bg-white relative z-10">
+                    <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 tracking-tight">내 발자취 👣</h3>
+                    <p className="text-gray-500 text-xs md:text-sm font-medium">
+                        내가 완료한 미션과 다녀온 코스들을 확인해보세요.
+                    </p>
                 </div>
-                {/* 지도 컨테이너 */}
-                <div className="w-full h-[500px] md:h-[600px] relative bg-gray-50">
-                    {casefiles.length > 0 || completed.length > 0 ? (
-                        <MyFootprintMap visitedPlaces={mapVisitedPlaces} courses={mapCourses} />
+
+                {/* 메인 영역 (높이 수정됨) */}
+                {/* ✨ h-[350px]로 줄여서 모바일 한 화면에 꽉 차게 만듦 */}
+                <div className="w-full h-[350px] md:h-[500px] relative bg-slate-50 overflow-hidden group">
+                    {hasData ? (
+                        /* [CASE 1: 데이터 있음] */
+                        <div className="w-full h-full animate-[fadeIn_0.5s_ease-out] relative">
+                            <div className="w-full h-full filter saturate-[0.6] sepia-[0.1] brightness-[1.05] contrast-[1.1]">
+                                <MyFootprintMap visitedPlaces={mapVisitedPlaces} courses={mapCourses} />
+                            </div>
+                        </div>
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                            <div className="text-4xl mb-2">🗺️</div>
-                            <p>아직 기록된 발자취가 없어요.</p>
+                        /* [CASE 2: 데이터 없음] */
+                        <div className="w-full h-full relative flex flex-col items-center justify-center">
+                            <div className="absolute inset-0 p-8">
+                                <Image
+                                    src={bannerImageUrl}
+                                    alt="Korea Map Background"
+                                    fill
+                                    className="object-contain object-center grayscale opacity-50 mix-blend-multiply transform transition-transform duration-[10s] ease-in-out scale-100 group-hover:scale-105"
+                                    priority
+                                />
+                            </div>
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-transparent via-white/20 to-white/90 pointer-events-none"></div>
+
+                            {/* 카드 패딩 줄임 (p-6) */}
+                            <div className="z-10 relative p-4 animate-[fadeIn_0.8s_ease-out]">
+                                <div className="bg-white/90 backdrop-blur-xl p-6 md:p-10 rounded-[24px] shadow-[0_15px_40px_-12px_rgba(0,0,0,0.15)] border border-white/60 max-w-[280px] md:max-w-sm w-full text-center transform transition-transform hover:scale-[1.02] duration-300">
+                                    <h4 className="text-lg md:text-xl font-extrabold text-gray-900 mb-2 leading-tight tracking-tight">
+                                        나만의 지도를
+                                        <br />
+                                        완성해보세요!
+                                    </h4>
+                                    <div className="w-8 h-1 bg-gray-900/10 mx-auto mb-4 rounded-full"></div>
+                                    <p className="text-gray-500 text-xs md:text-sm leading-relaxed mb-6 font-medium">
+                                        지금은 빈 지도지만,
+                                        <br />
+                                        두나와 함께라면
+                                        <br />
+                                        <span className="text-gray-900 font-bold">예쁜 추억들로 가득 찰 거예요.</span>
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push("/courses")}
+                                        className="w-full bg-[#18181b] hover:bg-black text-white text-xs md:text-sm font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 group"
+                                    >
+                                        <span>데이트 코스 보러가기</span>
+                                        <svg
+                                            className="w-3 h-3 md:w-4 md:h-4 group-hover:translate-x-1 transition-transform duration-300"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2.5"
+                                                d="M13 7l5 5m0 0l-5 5m5-5H6"
+                                            ></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
-                {/* 통계 정보 */}
-                <div className="p-4 md:p-6 border-t border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-center gap-6 md:gap-8 text-sm md:text-base">
-                        <div className="text-center">
-                            <div className="text-lg md:text-xl font-bold text-gray-900">{completed.length}</div>
-                            <div className="text-gray-600">완료 코스</div>
+
+                {/* 하단 통계 (높이 절약 위해 패딩 조정) */}
+                <div className="px-6 py-4 border-t border-gray-50 bg-white/60 backdrop-blur-sm">
+                    <div className="flex items-center justify-center gap-12">
+                        <div className="text-center group cursor-default">
+                            <div className="text-2xl md:text-3xl font-black text-gray-900 group-hover:text-[#5B21B6] transition-colors duration-300">
+                                {currentCompleted.length}
+                            </div>
+                            <div className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+                                완료 코스
+                            </div>
                         </div>
-                        <div className="w-px h-8 bg-gray-300"></div>
-                        <div className="text-center">
-                            <div className="text-lg md:text-xl font-bold text-gray-900">{casefiles.length}</div>
-                            <div className="text-gray-600">완료 사건</div>
+                        <div className="w-px h-8 bg-gray-200"></div>
+                        <div className="text-center group cursor-default">
+                            <div className="text-2xl md:text-3xl font-black text-gray-900 group-hover:text-[#5B21B6] transition-colors duration-300">
+                                {currentCasefiles.length}
+                            </div>
+                            <div className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+                                완료 사건
+                            </div>
                         </div>
                     </div>
                 </div>
