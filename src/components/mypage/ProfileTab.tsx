@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { UserInfo, UserPreferences } from "@/types/user";
 
@@ -23,21 +23,80 @@ const ProfileTab = ({
 }: ProfileTabProps) => {
     // 기본 프로필 이미지
     const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+    const [notificationEnabled, setNotificationEnabled] = useState<boolean>(false);
     const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [notificationMessage, setNotificationMessage] = useState<string>("");
 
-    // 알림 허용 버튼 클릭 핸들러 (최적화 버전)
-    const handleNotificationPermission = async () => {
-        try {
-            setNotificationStatus("loading");
-            setNotificationMessage("");
+    // 알림 상태 초기 로드 (DB에서 가져오기)
+    useEffect(() => {
+        const fetchNotificationStatus = async () => {
+            try {
+                const token = localStorage.getItem("authToken");
+                if (!token) return;
 
+                // userId 가져오기
+                let userId: number | null = null;
+                try {
+                    const userStr = localStorage.getItem("user");
+                    if (userStr) {
+                        const userData = JSON.parse(userStr);
+                        userId = userData?.id || null;
+                    }
+                } catch (e) {
+                    console.error("localStorage user 파싱 오류:", e);
+                }
+
+                // props에서 userId 가져오기 시도
+                if (!userId) {
+                    userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
+                }
+
+                // API로 userId 가져오기
+                if (!userId) {
+                    const userResponse = await fetch("/api/users/profile", {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        userId = userData?.user?.id || userData?.id || null;
+                    }
+                }
+
+                // DB에서 알림 상태 조회 (push_tokens 테이블)
+                if (userId) {
+                    const statusResponse = await fetch(`/api/push?userId=${userId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (statusResponse.ok) {
+                        const statusData = await statusResponse.json();
+                        setNotificationEnabled(statusData.subscribed ?? false);
+                    }
+                }
+            } catch (error) {
+                console.error("알림 상태 조회 오류:", error);
+            }
+        };
+
+        fetchNotificationStatus();
+    }, [userInfo]);
+
+    // 알림 토글 핸들러 (DB와 연결)
+    const handleNotificationToggle = async () => {
+        // Optimistic update: 즉시 UI 업데이트
+        const newSubscribedState = !notificationEnabled;
+        setNotificationEnabled(newSubscribedState);
+        setNotificationStatus("loading");
+        setNotificationMessage("");
+
+        try {
             // 1. 앱에서 저장한 pushToken 가져오기 (localStorage)
-            const expoPushToken = localStorage.getItem("expoPushToken");
-            if (!expoPushToken) {
-                setNotificationStatus("error");
-                setNotificationMessage("앱에서 알림 권한을 허용해주세요. 앱을 재시작해주세요.");
-                return;
+            let expoPushToken = localStorage.getItem("expoPushToken");
+
+            // 1-1. localStorage에 없으면 앱에 요청
+            if (!expoPushToken && (window as any).ReactNativeWebView) {
+                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "requestPushToken" }));
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                expoPushToken = localStorage.getItem("expoPushToken");
             }
 
             // 2. 로그인 토큰 확인
@@ -48,11 +107,24 @@ const ProfileTab = ({
                 return;
             }
 
-            // 3. userId 가져오기 (최적화: props 활용)
-            // userInfo 타입 정의에 id가 없더라도 실제 데이터엔 있을 수 있으므로 any로 우회하여 접근
-            let userId = (userInfo as any)?.id || (userInfo as any)?.user?.id;
+            // 3. userId 가져오기
+            let userId: number | null = null;
+            try {
+                const userStr = localStorage.getItem("user");
+                if (userStr) {
+                    const userData = JSON.parse(userStr);
+                    userId = userData?.id || null;
+                }
+            } catch (e) {
+                console.error("localStorage user 파싱 오류:", e);
+            }
 
-            // 만약 props에 정보가 없다면, 비상용으로 API 호출 (기존 로직 수행)
+            // props에서 userId 가져오기 시도
+            if (!userId) {
+                userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
+            }
+
+            // API로 userId 가져오기
             if (!userId) {
                 const userResponse = await fetch("/api/users/profile", {
                     headers: { Authorization: `Bearer ${token}` },
@@ -61,14 +133,14 @@ const ProfileTab = ({
                     throw new Error("사용자 정보를 가져올 수 없습니다.");
                 }
                 const userData = await userResponse.json();
-                userId = userData?.user?.id || userData?.id;
+                userId = userData?.user?.id || userData?.id || null;
             }
 
             if (!userId) {
                 throw new Error("사용자 ID를 찾을 수 없습니다.");
             }
 
-            // 4. PushToken 서버에 등록 (subscribed: true)
+            // 4. PushToken 서버에 업데이트 (subscribed 상태 토글)
             const pushResponse = await fetch("/api/push", {
                 method: "POST",
                 headers: {
@@ -77,9 +149,9 @@ const ProfileTab = ({
                 },
                 body: JSON.stringify({
                     userId: userId,
-                    pushToken: expoPushToken,
+                    pushToken: expoPushToken || "", // 없으면 빈 문자열 (DB에 이미 있을 수 있음)
                     platform: "expo",
-                    subscribed: true, // 알림 허용
+                    subscribed: newSubscribedState, // 토글된 상태
                 }),
             });
 
@@ -87,14 +159,30 @@ const ProfileTab = ({
 
             if (pushResponse.ok) {
                 setNotificationStatus("success");
-                setNotificationMessage("✅ 알림이 활성화되었습니다!");
+                setNotificationMessage(
+                    newSubscribedState ? "✅ 알림이 활성화되었습니다!" : "🔕 알림이 비활성화되었습니다."
+                );
+                // 2초 후 메시지 제거
+                setTimeout(() => {
+                    setNotificationMessage("");
+                    setNotificationStatus("idle");
+                }, 2000);
             } else {
-                throw new Error(pushData.error || "알림 등록에 실패했습니다.");
+                // 실패 시 원래 상태로 되돌리기
+                setNotificationEnabled(!newSubscribedState);
+                throw new Error(pushData.error || "알림 설정 변경에 실패했습니다.");
             }
         } catch (error: any) {
-            console.error("알림 등록 오류:", error);
+            console.error("알림 토글 오류:", error);
+            // 실패 시 원래 상태로 되돌리기
+            setNotificationEnabled(!newSubscribedState);
             setNotificationStatus("error");
-            setNotificationMessage(error.message || "알림 등록 중 오류가 발생했습니다.");
+            setNotificationMessage(error.message || "알림 설정 변경 중 오류가 발생했습니다.");
+            // 3초 후 에러 메시지 제거
+            setTimeout(() => {
+                setNotificationMessage("");
+                setNotificationStatus("idle");
+            }, 3000);
         }
     };
 
@@ -305,37 +393,79 @@ const ProfileTab = ({
                         </span>
                     </button>
 
-                    {/* 알림 설정 버튼 */}
+                    {/* 알림 설정 토글 버튼 영역 */}
                     <div>
-                        <button
-                            onClick={handleNotificationPermission}
-                            disabled={notificationStatus === "loading"}
-                            className="w-full flex items-center justify-between px-6 py-4.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-emerald-200 hover:shadow-md hover:bg-emerald-50/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
+                        <div className="w-full flex items-center justify-between px-6 py-4.5 rounded-2xl bg-white border border-gray-100 shadow-sm">
                             <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-gray-100 rounded-xl text-gray-600 group-hover:bg-white group-hover:text-emerald-600 transition-colors">
-                                    🔔
+                                {/* 1. 아이콘 상자 */}
+                                <div
+                                    className={`p-2.5 rounded-xl transition-all duration-300 ${
+                                        notificationEnabled
+                                            ? "bg-emerald-100 text-emerald-600 shadow-sm shadow-emerald-100"
+                                            : "bg-gray-100 text-gray-400"
+                                    }`}
+                                >
+                                    {notificationEnabled ? "🔔" : "🔕"}
                                 </div>
-                                <span className="font-bold text-gray-700 group-hover:text-gray-900">
-                                    {notificationStatus === "loading" ? "등록 중..." : "알림 허용"}
-                                </span>
+
+                                <div className="flex flex-col items-start">
+                                    <span
+                                        className={`font-bold transition-colors duration-300 ${
+                                            notificationEnabled ? "text-gray-800" : "text-gray-400"
+                                        }`}
+                                    >
+                                        알림 설정
+                                    </span>
+                                    <span
+                                        className={`text-xs font-medium transition-colors duration-300 ${
+                                            notificationEnabled ? "text-emerald-600" : "text-gray-400"
+                                        }`}
+                                    >
+                                        {notificationStatus === "loading"
+                                            ? "처리 중..."
+                                            : notificationEnabled
+                                            ? "푸시 알림을 받는 중"
+                                            : "알림이 꺼져 있어요"}
+                                    </span>
+                                </div>
                             </div>
-                            <span className="text-gray-300 group-hover:text-emerald-400 group-hover:translate-x-1 transition-transform">
-                                →
-                            </span>
-                        </button>
+
+                            {/* 2. 토글 스위치: border-2 제거 및 translate 값 수정 */}
+                            <button
+                                onClick={handleNotificationToggle}
+                                disabled={notificationStatus === "loading"}
+                                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    notificationEnabled ? "bg-emerald-500" : "bg-gray-200"
+                                }`} // border-2, border-transparent 제거함
+                                role="switch"
+                                aria-checked={notificationEnabled}
+                                aria-label="알림 설정"
+                            >
+                                <span
+                                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow-md ring-0 transition-all duration-300 ease-in-out flex items-center justify-center ${
+                                        notificationEnabled ? "translate-x-5" : "translate-x-0"
+                                    }`} // translate-x-[22px] -> translate-x-5 (20px) 로 수정
+                                >
+                                    {notificationStatus === "loading" && (
+                                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-500" />
+                                    )}
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* 메시지 알림 */}
                         {notificationMessage && (
-                            <p
-                                className={`text-sm mt-2 px-2 ${
+                            <div
+                                className={`mt-3 px-4 py-2.5 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-2 ${
                                     notificationStatus === "success"
-                                        ? "text-emerald-600"
+                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                         : notificationStatus === "error"
-                                        ? "text-red-600"
-                                        : "text-gray-500"
+                                        ? "bg-red-50 text-red-700 border border-red-200"
+                                        : "bg-gray-50 text-gray-600"
                                 }`}
                             >
                                 {notificationMessage}
-                            </p>
+                            </div>
                         )}
                     </div>
 

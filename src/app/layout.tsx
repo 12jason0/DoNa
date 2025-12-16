@@ -11,12 +11,13 @@ const inter = Inter({
 export const metadata: Metadata = {
     title: "DoNa - 두나",
     description: "데이트 코스 추천 서비스",
-    viewport: {
-        width: "device-width",
-        initialScale: 1,
-        maximumScale: 1,
-        userScalable: false,
-    },
+};
+
+export const viewport = {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
 };
 
 export default function RootLayout({

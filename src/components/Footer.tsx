@@ -11,13 +11,63 @@ export default function Footer() {
     const pathname = usePathname();
     const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             const token = localStorage.getItem("authToken");
             setIsLoggedIn(!!token);
+
+            // 알림 상태 확인
+            const checkNotificationStatus = async () => {
+                if (!token) {
+                    setNotificationEnabled(null);
+                    return;
+                }
+
+                try {
+                    let userId: number | null = null;
+                    try {
+                        const userStr = localStorage.getItem("user");
+                        if (userStr) {
+                            const userData = JSON.parse(userStr);
+                            userId = userData?.id || null;
+                        }
+                    } catch (e) {
+                        console.error("localStorage user 파싱 오류:", e);
+                    }
+
+                    if (!userId) {
+                        const userResponse = await fetch("/api/users/profile", {
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (userResponse.ok) {
+                            const userData = await userResponse.json();
+                            userId = userData?.user?.id || userData?.id || null;
+                        }
+                    }
+
+                    if (userId) {
+                        const statusResponse = await fetch(`/api/push?userId=${userId}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (statusResponse.ok) {
+                            const statusData = await statusResponse.json();
+                            setNotificationEnabled(statusData.subscribed ?? false);
+                        }
+                    }
+                } catch (error) {
+                    console.error("알림 상태 조회 오류:", error);
+                    setNotificationEnabled(null);
+                }
+            };
+
+            checkNotificationStatus();
+            // 주기적으로 상태 확인 (30초마다)
+            const interval = setInterval(checkNotificationStatus, 30000);
+            return () => clearInterval(interval);
         }
-    }, []);
+    }, [pathname]);
 
     if (pathname === "/map" || pathname?.startsWith("/map/")) {
         return null;
@@ -115,8 +165,8 @@ export default function Footer() {
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                         </svg>
-                        {/* 로그인 상태일 때 빨간 점 깜빡임 (알림 유도) */}
-                        {isLoggedIn && (
+                        {/* 알림이 꺼져 있을 때만 빨간 점 깜빡임 */}
+                        {isLoggedIn && notificationEnabled === false && (
                             <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
