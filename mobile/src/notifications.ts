@@ -15,7 +15,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         });
     }
 
-    if (Device.isDevice) {
+    if (Device.isDevice || Platform.OS === "web") {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -29,8 +29,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
             return null;
         }
 
-        // ✅ [수정됨] app.json에서 자동으로 ID를 가져옵니다 (하드코딩 X)
-        // npx eas-cli init 명령어가 성공해야 이 부분이 작동합니다.
         const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.manifest?.extra?.eas?.projectId;
 
         if (!projectId) {
@@ -39,16 +37,21 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         }
 
         try {
+            // ✅ [수정됨] 'as any'를 붙여서 TypeScript 오류를 무시합니다.
             const tokenData = await Notifications.getExpoPushTokenAsync({
                 projectId: projectId,
-            });
+                vapidPublicKey:
+                    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ??
+                    "BMW3e7lNnYLnS2-pRm-WDzsLpKSsssMvpY4a0v-XsAAUMY_vnxdMT8bCEPRugZrOpwxIExCt4ILNZON1e-QqqKI",
+            } as any);
+
             token = tokenData.data;
             console.log("✅ 성공! 푸시 토큰:", token);
         } catch (e) {
             console.error("❌ 토큰 발급 에러:", e);
         }
     } else {
-        alert("실제 기기에서만 푸시 알림을 테스트할 수 있습니다.");
+        alert("에뮬레이터에서는 푸시 알림이 작동하지 않을 수 있습니다.");
     }
 
     return token ?? null;
