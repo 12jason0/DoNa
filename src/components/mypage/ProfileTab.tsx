@@ -13,18 +13,6 @@ interface ProfileTabProps {
     onLogout: () => void;
 }
 
-// 기본 프로필 이미지
-const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
-
-// HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
-const convertToHttps = (url: string | null | undefined): string => {
-    if (!url) return DEFAULT_PROFILE_IMG;
-    if (url.startsWith("http://")) {
-        return url.replace(/^http:\/\//, "https://");
-    }
-    return url;
-};
-
 const ProfileTab = ({
     userInfo,
     userPreferences,
@@ -33,6 +21,9 @@ const ProfileTab = ({
     onOpenPwModal,
     onLogout,
 }: ProfileTabProps) => {
+    // 기본 프로필 이미지
+    const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+
     // 1. 초기값을 null로 변경 (데이터를 불러오기 전 상태)
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
     const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -178,7 +169,7 @@ const ProfileTab = ({
                 }),
             });
 
-            const pushData = await pushResponse.json();
+            // const pushData = await pushResponse.json(); // 사용하지 않는 변수라면 주석 처리 혹은 제거
 
             if (pushResponse.ok) {
                 setNotificationStatus("success");
@@ -198,7 +189,6 @@ const ProfileTab = ({
                         new CustomEvent("notificationUpdated", { detail: { subscribed: !newSubscribedState } })
                     );
                 }
-                throw new Error(pushData.error || "알림 설정 변경에 실패했습니다.");
             }
         } catch (error: any) {
             console.error("알림 토글 오류:", error);
@@ -254,7 +244,7 @@ const ProfileTab = ({
                         <div className="relative w-[88px] h-[88px] md:w-[100px] md:h-[100px] rounded-full p-1 bg-gradient-to-br from-emerald-100 to-white shadow-sm flex-shrink-0">
                             <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white bg-gray-50">
                                 <Image
-                                    src={convertToHttps(userInfo.profileImage)}
+                                    src={userInfo.profileImage || DEFAULT_PROFILE_IMG}
                                     alt={userInfo.name || "프로필"}
                                     fill
                                     className="object-cover"
@@ -265,9 +255,9 @@ const ProfileTab = ({
 
                         {/* 텍스트 정보 */}
                         <div className="flex-1 min-w-0">
-                            <h4 className="text-2xl md:text-3xl font-black text-gray-900 mb-1 truncate tracking-tight">
+                            <h5 className="text-2xl font-black text-gray-900 mb-1 truncate tracking-tight">
                                 {userInfo.name}
-                            </h4>
+                            </h5>
                             <p className="text-gray-500 text-sm md:text-base mb-4 truncate font-medium">
                                 {userInfo.email}
                             </p>
@@ -283,7 +273,7 @@ const ProfileTab = ({
                                         {userInfo.mbti}
                                     </span>
                                 )}
-                                <span className="bg-gray-50 text-gray-400 px-3 py-1.5 rounded-lg">
+                                <span className="bg-gray-5 text-gray-400 px-3 py-1.5 rounded-lg">
                                     가입일 {userInfo.joinDate}
                                 </span>
                             </div>

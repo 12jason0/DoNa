@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
         // pushToken이 없거나 빈 문자열이고, 기존 토큰도 없으면 에러
         // 단, subscribed 상태만 변경하려는 경우(기존 토큰이 있으면)는 허용
-        const hasValidPushToken = pushToken && pushToken.trim() !== "";
+        const hasValidPushToken = pushToken && typeof pushToken === "string" && pushToken.trim() !== "";
         if (!hasValidPushToken && !existingToken) {
             return NextResponse.json(
                 { error: "pushToken이 필요합니다. 앱에서 알림 권한을 허용해주세요." },
