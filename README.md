@@ -133,11 +133,22 @@ npm install
 
 ### 2. 환경 변수 설정
 
+`.env.local` 파일을 생성하고 다음 내용을 추가하세요:
+
 ```bash
 # .env.local
-DATABASE_URL="postgresql://..."
+
+# 데이터베이스 설정 (Neon PostgreSQL 권장)
+# 자세한 설정 방법은 DATABASE_URL_SETUP.md 참고
+DATABASE_URL="postgresql://user:password@ep-xxx-pooler.region.aws.neon.tech/dbname?sslmode=require&pgbouncer=true"
+DIRECT_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require"
+
+# 기타 설정
 NEXT_PUBLIC_KAKAO_MAP_API_KEY="your_kakao_map_api_key"
 ```
+
+⚠️ **중요**: `DATABASE_URL`에는 `&pgbouncer=true`를 추가하고, `DIRECT_URL`에는 추가하지 마세요.
+자세한 내용은 `DATABASE_URL_SETUP.md` 파일을 참고하세요.
 
 ### 3. 데이터베이스 설정
 

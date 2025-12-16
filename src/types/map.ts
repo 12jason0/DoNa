@@ -40,6 +40,8 @@ export interface MapProps {
     showControls?: boolean;
     // 선택된 장소 하단 오버레이 표시 여부
     showPlaceOverlay?: boolean;
+    // 외부에서 주입된 경로 좌표 배열 (있으면 자체 계산 대신 이걸 그림)
+    pathCoordinates?: number[][];
 }
 
 // 과거 호환용 타입 별칭 (점진적 마이그레이션용)

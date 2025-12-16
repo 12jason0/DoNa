@@ -2,12 +2,22 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import ComingSoonModal from "@/components/ComingSoonModal";
 
 export default function Footer() {
     const pathname = usePathname();
+    const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const token = localStorage.getItem("authToken");
+            setIsLoggedIn(!!token);
+        }
+    }, []);
 
     if (pathname === "/map" || pathname?.startsWith("/map/")) {
         return null;
@@ -79,34 +89,45 @@ export default function Footer() {
                         </svg>
                     </Link>
 
-                    {/* 4. Escape (수정됨: 깃발 아이콘) */}
-                    <Link
-                        href="/escape"
+                    {/* 4. Escape (수정됨: 깃발 아이콘 -> 준비중 모달) */}
+                    <button
+                        onClick={() => setShowEscapeComingSoon(true)}
                         aria-label="Escape"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/escape") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/escape") ? "#7aa06f" : "#99c08e" }}
                     >
-                        {/* 1번 옵션: 깃발 (미션/목표) */}
                         <svg {...svgProps}>
                             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                             <line x1="4" x2="4" y1="22" y2="15" />
                         </svg>
-                    </Link>
+                    </button>
 
                     {/* 5. 마이페이지 */}
                     <Link
                         href="/mypage"
                         aria-label="마이페이지"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/mypage") ? "bg-green-50" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 relative ${
+                            isActive("/mypage") ? "bg-green-50" : ""
+                        }`}
                         style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                         </svg>
+                        {/* 로그인 상태일 때 빨간 점 깜빡임 (알림 유도) */}
+                        {isLoggedIn && (
+                            <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            </span>
+                        )}
                     </Link>
                 </nav>
             </div>
+
+            {/* ✅ 사건 파일 준비 중 모달 */}
+            {showEscapeComingSoon && <ComingSoonModal onClose={() => setShowEscapeComingSoon(false)} />}
         </footer>
     );
 }

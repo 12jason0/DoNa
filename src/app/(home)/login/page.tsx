@@ -199,7 +199,10 @@ const Login = () => {
                                 );
                             }
                         } catch {}
-                        router.push("/?login_success=true");
+
+                        // ✅ 로그인 성공 트리거 설정 후 메인으로 이동 (URL 깔끔하게)
+                        sessionStorage.setItem("login_success_trigger", "true");
+                        router.push("/");
                     } catch (err: unknown) {
                         console.error("카카오 로그인 처리 오류:", err);
                         setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");

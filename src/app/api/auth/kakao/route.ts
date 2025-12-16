@@ -71,9 +71,6 @@ export async function POST(request: NextRequest) {
         // 2. GET 함수에서 사용한 것과 *똑같은* Redirect URI를 생성합니다.
         const redirectUri = `${protocol}://${host}/api/auth/kakao/callback`;
 
-        // 3. 기존의 하드코딩된 redirectUri를 대체합니다.
-        // const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/kakao/callback`; // (기존 코드)
-
         const tokenParams = new URLSearchParams({
             grant_type: "authorization_code",
             client_id: kakaoClientId,
@@ -84,6 +81,7 @@ export async function POST(request: NextRequest) {
             tokenParams.append("client_secret", process.env.KAKAO_CLIENT_SECRET);
         }
 
+        // [병렬 요청 ❌] 토큰 요청 먼저 수행
         const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
@@ -99,6 +97,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // [최적화] 사용자 정보 요청
         const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
             headers: {
                 Authorization: `Bearer ${tokenData.access_token}`,
@@ -112,10 +111,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "카카오 사용자 정보를 가져올 수 없습니다." }, { status: 401 });
         }
 
-        console.log("카카오 사용자 정보:", userData);
-
         const { id, properties, kakao_account } = userData;
-
         const socialId = String(id);
         const nickname = properties?.nickname || kakao_account?.profile?.nickname;
         const profileImageUrl = properties?.profile_image || kakao_account?.profile?.profile_image_url;
@@ -126,7 +122,8 @@ export async function POST(request: NextRequest) {
         let isNewUser = false;
         let couponsAwarded = 0;
 
-        // ✅ username 사용
+        // [최적화] DB 조회 및 생성
+        // Prisma Client 타입을 명시적으로 사용하지 않고 any로 우회하던 것을 유지하되 로직 최적화
         const existing = await (prisma as any).user.findFirst({
             where: { provider: "kakao", socialId },
             select: { id: true, email: true, username: true, couponCount: true },
@@ -135,28 +132,31 @@ export async function POST(request: NextRequest) {
         if (existing) {
             user = existing;
         } else {
-            // 새로운 유저 생성 + 쿠폰 2개 지급
-            user = await (prisma as any).user.create({
-                data: {
-                    email,
-                    username: nickname || `user_${socialId}`,
-                    socialId,
-                    profileImageUrl,
-                    provider: "kakao",
-                    createdAt: new Date(),
-                    couponCount: 3, // 🎁 카카오 로그인으로 가입 시 무료 쿠폰 2개 지급!
-                },
-                select: { id: true, email: true, username: true, couponCount: true },
-            });
+            // [최적화] 트랜잭션으로 묶어서 DB 라운드트립 감소 및 정합성 보장
+            user = await (prisma as any).$transaction(async (tx: any) => {
+                const newUser = await tx.user.create({
+                    data: {
+                        email,
+                        username: nickname || `user_${socialId}`,
+                        socialId,
+                        profileImageUrl,
+                        provider: "kakao",
+                        createdAt: new Date(),
+                        couponCount: 3, // 🎁 카카오 로그인으로 가입 시 무료 쿠폰 2개 지급!
+                    },
+                    select: { id: true, email: true, username: true, couponCount: true },
+                });
 
-            // 보상 기록 남기기
-            await (prisma as any).userReward.create({
-                data: {
-                    userId: user.id,
-                    type: "signup",
-                    amount: 2,
-                    unit: "coupon",
-                },
+                await tx.userReward.create({
+                    data: {
+                        userId: newUser.id,
+                        type: "signup",
+                        amount: 2,
+                        unit: "coupon",
+                    },
+                });
+
+                return newUser;
             });
 
             message = "카카오 회원가입이 완료되었습니다. 쿠폰 2개가 지급되었습니다.";
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
             couponsAwarded = 2;
         }
 
-        // ✅ 토큰에 username 반영
+        // JWT 발급
         const token = jwt.sign({ userId: user.id, email: user.email, name: user.username }, JWT_SECRET, {
             expiresIn: "7d",
         });

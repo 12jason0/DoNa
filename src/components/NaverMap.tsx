@@ -19,6 +19,7 @@ export default function NaverMapComponent({
     onNearFallbackShown,
     showControls = true,
     showPlaceOverlay = true,
+    pathCoordinates,
 }: MapProps) {
     const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -465,6 +466,25 @@ export default function NaverMapComponent({
                 console.error("❌ Naver Maps API가 아직 로드되지 않았습니다");
                 return;
             }
+
+            // ✅ [추가] 외부에서 주입된 경로가 있으면 우선 사용
+            if (pathCoordinates && pathCoordinates.length > 0) {
+                console.log("📥 외부 주입 경로 사용:", pathCoordinates.length, "포인트");
+                const latlngs = pathCoordinates.map(([lng, lat]) => new naver.maps.LatLng(lat, lng));
+
+                polylineRef.current = new naver.maps.Polyline({
+                    map: mapRef.current,
+                    path: latlngs,
+                    strokeWeight: 4,
+                    strokeColor: "var(--brand-green-dark, #5f8d57)",
+                    strokeOpacity: 0.95,
+                    strokeStyle: "solid",
+                    strokeLineCap: "round",
+                    strokeLineJoin: "round",
+                });
+                return;
+            }
+
             if (routeUnchanged && polylineRef.current) {
                 console.log("⏭ 경로 키 변경 없음 - 기존 경로 유지");
                 return;
@@ -476,6 +496,9 @@ export default function NaverMapComponent({
                 console.log("⚠️ drawPath가 false - 경로 그리기 건너뜀");
                 return;
             }
+
+            // ⚡️ [성능 최적화] 즉시 실행하지 않고 약간의 지연을 주어 UI 렌더링 우선권 부여
+            await new Promise((r) => setTimeout(r, 100));
 
             console.log("🚀 경로 그리기 시작");
 
@@ -684,7 +707,7 @@ export default function NaverMapComponent({
                     ];
                 };
 
-                // 병렬로 모든 세그먼트 요청
+                // 병렬로 모든 세그먼트 요청 (성능 최적화를 위해 청크 처리 고려 가능하나, 일단 예외 처리 강화)
                 const tasks: Array<Promise<Array<[number, number]> | null>> = [];
                 for (let i = 0; i < valid.length - 1; i++) {
                     const a = valid[i];
@@ -698,9 +721,13 @@ export default function NaverMapComponent({
                             ? "walking"
                             : "driving";
                     console.log(`🔗 세그먼트 ${i}:`, a.name, "→", b.name, `(${d.toFixed(0)}m, ${primary})`);
-                    tasks.push(tryFetchSegment(a as any, b as any, primary));
+                    // 각 요청이 실패해도 전체 프로세스가 죽지 않도록 개별 catch 처리
+                    tasks.push(tryFetchSegment(a as any, b as any, primary).catch(() => null));
                 }
+
+                // 모든 요청이 끝날 때까지 기다림 (Promise.allSettled와 유사하게 동작하도록 위에서 catch함)
                 const results = await Promise.all(tasks);
+
                 results.forEach((coordsPath, idx) => {
                     if (coordsPath && coordsPath.length > 0) {
                         try {
@@ -741,7 +768,7 @@ export default function NaverMapComponent({
         buildRoute().catch((error) => {
             console.error("❌ buildRoute 에러:", error);
         });
-    }, [places, userLocation, selectedPlace, drawPath, routeMode, mapReady]);
+    }, [places, userLocation, selectedPlace, drawPath, routeMode, mapReady, pathCoordinates]);
 
     // 선택된 장소로 부드럽게 이동
     useEffect(() => {

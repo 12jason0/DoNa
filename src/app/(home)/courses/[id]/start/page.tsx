@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ReviewModal from "@/components/ReviewModal";
+import { motion, PanInfo } from "framer-motion";
 
 // --- Types ---
 type Place = {
@@ -76,6 +77,9 @@ function GuidePageInner() {
     const [showCongrats, setShowCongrats] = useState(false);
     const [showReview, setShowReview] = useState(false);
 
+    // ✅ 토스트(카드) 최소화 상태 관리
+    const [isMinimized, setIsMinimized] = useState(false);
+
     // 거리 계산 및 도착 여부 체크
     const [distance, setDistance] = useState<number | null>(null);
     const [isArrived, setIsArrived] = useState(false);
@@ -84,6 +88,21 @@ function GuidePageInner() {
     const movementGuide = course?.coursePlaces?.[currentStep]?.movement_guide;
     const totalSteps = course?.coursePlaces?.length || 0;
     const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
+
+    // ✅ 드래그 및 토글 핸들러 복구
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        if (info.offset.y > 50) {
+            // 아래로 50px 이상 드래그하면 닫기
+            setIsMinimized(true);
+        } else if (info.offset.y < -50) {
+            // 위로 50px 이상 드래그하면 열기
+            setIsMinimized(false);
+        }
+    };
+
+    const toggleMinimize = () => {
+        setIsMinimized((prev) => !prev);
+    };
 
     // 거리 업데이트 Effect
     useEffect(() => {
@@ -179,7 +198,7 @@ function GuidePageInner() {
     if (loading || !course || !currentPlace) return <LoadingSpinner />;
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-white overflow-hidden relative">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-hidden overscroll-none">
             {/* 1. Top Bar (Progress & Exit) */}
             <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-gradient-to-b from-white/90 to-transparent pointer-events-none">
                 <div className="flex items-center justify-between mb-2 pointer-events-auto">
@@ -219,9 +238,26 @@ function GuidePageInner() {
             </div>
 
             {/* 3. Bottom Control Card (Sliding Up) */}
-            <div className="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-6 pb-8 animate-slide-up">
-                {/* Drag Handle */}
-                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+            <motion.div
+                initial={{ y: 0 }}
+                animate={{ y: isMinimized ? "calc(100% - 50px)" : 0 }}
+                onDragEnd={handleDragEnd}
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }} // 드래그 후 제자리 복귀 (애니메이션은 state로 제어)
+                dragElastic={0.2} // 탄성 추가
+                transition={{ type: "spring", stiffness: 300, damping: 30 }} // 부드러운 스프링 애니메이션
+                className="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-6 pb-8"
+            >
+                {/* Drag Handle & Toggle Click Area */}
+                <div
+                    className="w-full h-8 absolute top-0 left-0 flex items-center justify-center cursor-pointer touch-none"
+                    onClick={toggleMinimize}
+                >
+                    <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+                </div>
+
+                {/* Spacer for Handle */}
+                <div className="h-6" />
 
                 <div className="flex justify-between items-start mb-4">
                     <div>
@@ -279,7 +315,7 @@ function GuidePageInner() {
                             : "다음 장소로 →"}
                     </button>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Congrats Modal */}
             {showCongrats && (

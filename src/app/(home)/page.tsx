@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 
 // 두나 브랜드 컬러 및 에셋 (layout.tsx 참고함)
@@ -13,18 +13,45 @@ const bgImage = "/images/poster-bg.jpg";
 
 const LandingPage = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [showOnboarding, setShowOnboarding] = useState(false);
+    // ✅ [추가] 로그인 성공 알림 토스트 상태
+    const [loginSuccessToast, setLoginSuccessToast] = useState(false);
+    // ✅ [추가] 사건 파일 준비 중 모달
+    const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
 
-    // 핵심 경로 사전 로드로 전환 속도 향상
+    // 핵심 경로 사전 로드로 전환 속도 향상 (과도한 프리페치 방지를 위해 일부 제거)
     useEffect(() => {
         try {
-            router.prefetch("/courses");
-            router.prefetch("/nearby");
-            router.prefetch("/personalized-home");
+            // router.prefetch("/courses"); // 제거
+            // router.prefetch("/nearby"); // 제거
+            // router.prefetch("/personalized-home"); // 제거
             router.prefetch("/onboarding");
             router.prefetch("/login");
         } catch {}
     }, [router]);
+
+    // ✅ [추가] 로그인 후 리다이렉트 시 토스트 표시
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            // 1. 로그인 성공 체크
+            const trigger = sessionStorage.getItem("login_success_trigger");
+            if (trigger) {
+                setLoginSuccessToast(true);
+                sessionStorage.removeItem("login_success_trigger");
+                setTimeout(() => setLoginSuccessToast(false), 3000);
+            }
+
+            // 2. Escape 준비 중 체크 (Middleware에서 리다이렉트된 경우)
+            const alertType = searchParams.get("alert");
+            if (alertType === "coming_soon_escape") {
+                setShowEscapeComingSoon(true);
+                // URL에서 파라미터 제거 (선택)
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, "", newUrl);
+            }
+        }
+    }, [searchParams]);
 
     // 온보딩 미완료 상태 감지 (기존 이미지는 유지하고, 배너만 상단에 노출)
     useEffect(() => {
@@ -78,6 +105,14 @@ const LandingPage = () => {
         // 1. [수정됨] min-h-screen -> h-screen (스크롤 방지)
         // **********************************************
         <div className="relative h-screen w-full flex flex-col font-sans overflow-hidden bg-white">
+            {/* ✅ 로그인 성공 토스트 메시지 */}
+            {loginSuccessToast && (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-3.5 rounded-full shadow-2xl z-[5000] animate-fade-in-down flex items-center gap-3 min-w-[320px] justify-center">
+                    <span className="text-lg">🎉</span>
+                    <span className="font-semibold text-sm tracking-wide">로그인되었습니다!</span>
+                </div>
+            )}
+
             {/* 1. 배경 레이어 (이미지를 흐릿하게 깔아서 분위기만 연출) */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute inset-0 bg-white/60 backdrop-blur-xl z-10" />
@@ -173,6 +208,30 @@ const LandingPage = () => {
                     </p>
                 </div>
             </footer>
+
+            {/* ✅ 사건 파일 준비 중 모달 */}
+            {showEscapeComingSoon && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[5000]"
+                    onClick={() => setShowEscapeComingSoon(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-xl p-6 w-80 animate-fade-in"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="text-center mb-4">
+                            <div className="text-lg font-bold text-gray-900 mb-2">Coming soon</div>
+                            <p className="text-gray-600">곧 공개됩니다. 조금만 기다려 주세요!</p>
+                        </div>
+                        <button
+                            onClick={() => setShowEscapeComingSoon(false)}
+                            className="w-full px-4 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-all cursor-pointer"
+                        >
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

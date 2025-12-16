@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import NotificationModal from "@/components/NotificationModal";
+import ComingSoonModal from "@/components/ComingSoonModal";
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,7 +17,7 @@ const Header = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [hasFavorites, setHasFavorites] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const [showComingSoon, setShowComingSoon] = useState<null | "forest" | "garden">(null);
+    const [showComingSoon, setShowComingSoon] = useState<null | string>(null);
     const pathname = usePathname();
     const router = useRouter();
     const menuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -252,32 +253,35 @@ const Header = () => {
                             <Search className="w-6 h-6" />
                         </button>
 
-                        <button
-                            onClick={() => setShowNotiModal(true)} // <-- 여기를 수정했습니다!
-                            className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors relative"
-                            aria-label="알림"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-6 h-6"
+                        {/* 알림 버튼: 로그인하지 않은 경우에만 표시 */}
+                        {!isLoggedIn && (
+                            <button
+                                onClick={() => setShowNotiModal(true)}
+                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors relative"
+                                aria-label="알림"
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
-                                />
-                            </svg>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="w-6 h-6"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+                                    />
+                                </svg>
 
-                            {/* 빨간 점 (배지) */}
-                            <span className="absolute top-2 right-2.5 flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                        </button>
+                                {/* 빨간 점 (배지) */}
+                                <span className="absolute top-2 right-2.5 flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                </span>
+                            </button>
+                        )}
                         {/* 메뉴(햄버거) 버튼 */}
                         <button
                             onClick={toggleMenu}
@@ -353,13 +357,18 @@ const Header = () => {
                         >
                             지도
                         </Link>
-                        <Link
-                            href="/escape"
-                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
-                            onClick={closeMenu}
+
+                        {/* 커플 미션 게임 (Coming Soon) */}
+                        <button
+                            onClick={() => {
+                                closeMenu();
+                                setShowComingSoon("escape");
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:bg-gray-50 flex items-center gap-2"
                         >
-                            사건 파일
-                        </Link>
+                            <span>🔒 커플 미션 게임</span>
+                        </button>
+
                         <div className="pt-4 mt-2 border-t border-gray-200">
                             {isLoggedIn ? (
                                 <>
@@ -520,29 +529,9 @@ const Header = () => {
                 </div>
             )}
             {/* 커밍순 모달 */}
-            {showComingSoon && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2100]"
-                    onClick={() => setShowComingSoon(null)}
-                >
-                    <div
-                        className="bg-white rounded-2xl shadow-xl p-6 w-80 animate-fade-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="text-center mb-4">
-                            <div className="text-lg font-bold text-gray-900 mb-2">comming soon</div>
-                            <p className="text-gray-600">곧 공개됩니다. 조금만 기다려 주세요!</p>
-                        </div>
-                        <button
-                            onClick={() => setShowComingSoon(null)}
-                            className="w-full px-4 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-all cursor-pointer"
-                        >
-                            닫기
-                        </button>
-                    </div>
-                </div>
-            )}
-            {showNotiModal && <NotificationModal onClose={() => setShowNotiModal(false)} />}
+            {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(null)} />}
+            {/* 알림 모달: 로그인하지 않은 경우에만 표시 */}
+            {!isLoggedIn && showNotiModal && <NotificationModal onClose={() => setShowNotiModal(false)} />}
         </header>
     );
 };

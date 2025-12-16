@@ -154,7 +154,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                                     alt={item.location || "Course Image"}
                                     fill
                                     className="object-cover"
-                                    priority={idx === 0} // Prioritize loading the first image
+                                    priority={items.length > 1 ? idx === realLength : idx === 0} // Prioritize loading the first image
                                     sizes="(max-width: 768px) 100vw, 400px"
                                 />
                             ) : (

@@ -460,7 +460,7 @@ export default function EscapePage() {
         <div className="min-h-screen bg-gray-50">
             <div className="bg-white shadow-sm">
                 <div className="max-w-[400px] mx-auto px-4 py-5">
-                    <h1 className="text-2xl font-bold text-gray-900">사건 파일</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">커플 미션 게임</h1>
                     <p className="text-gray-600 mt-2">도심을 누비며 챕터를 완료하고 배지를 획득하세요!</p>
                 </div>
             </div>
