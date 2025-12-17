@@ -363,7 +363,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     return (
         <div className="min-h-screen bg-[#F9FAFB] text-gray-900">
             {/* Header */}
-            <section className="max-w-[500px] mx-auto min-h-screen bg-white shadow-xl shadow-gray-100/50 flex flex-col">
+            <section className="max-w-[500px] mx-auto min-h-screen bg-white border-x border-gray-100 flex flex-col">
                 <div className="sticky top-0 z-40 bg-white px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
                     <div className="relative mb-3">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -396,13 +396,13 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 }
                             }}
                             placeholder="성수동 힙한 카페 어디지?"
-                            className="w-full bg-gray-50 rounded-2xl py-3.5 pl-12 pr-12 text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-all shadow-sm"
+                            className="w-full bg-gray-50 rounded-xl py-3.5 pl-12 pr-12 text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-all tracking-tight"
                         />
                         <button
                             onClick={() => setShowCategoryModal(true)}
                             className="absolute inset-y-0 right-3 flex items-center"
                         >
-                            <div className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
+                            <div className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
@@ -442,7 +442,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 <button
                                     key={tagId}
                                     onClick={() => removeTag(tagId)}
-                                    className="shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-600 text-white border border-emerald-600 shadow-md shadow-emerald-100 flex items-center gap-1"
+                                    className="shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-600 text-white border border-emerald-600 flex items-center gap-1 tracking-tight"
                                 >
                                     #{tag.name} <span className="text-white/70 text-[10px] ml-1">✕</span>
                                 </button>
@@ -454,7 +454,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 onClick={() => toggleRegionSingle(r)}
                                 className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all duration-200 border ${
                                     selectedRegions.includes(r)
-                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100"
+                                        ? "bg-emerald-600 text-white border-emerald-600"
                                         : "bg-white text-gray-600 border-gray-200 hover:border-emerald-500 hover:text-emerald-600"
                                 }`}
                             >
@@ -468,7 +468,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 onClick={() => toggleActivitySingle(a.key)}
                                 className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all duration-200 border ${
                                     selectedActivities.includes(a.key)
-                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100"
+                                        ? "bg-emerald-600 text-white border-emerald-600"
                                         : "bg-white text-gray-600 border-gray-200 hover:border-emerald-500 hover:text-emerald-600"
                                 }`}
                             >
@@ -487,7 +487,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-5">
                                 <span className="text-3xl">🤔</span>
                             </div>
-                            <h3 className="text-[19px] font-bold text-gray-900 mb-2">
+                            <h3 className="text-[19px] font-bold text-gray-900 mb-2 tracking-tight">
                                 {displayKeyword ? (
                                     <>
                                         <span className="text-emerald-600">'{displayKeyword}'</span>에 대한 결과가
@@ -513,7 +513,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     router.push("/nearby");
                                     setRefreshNonce((n) => n + 1);
                                 }}
-                                className="px-8 py-3.5 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 active:scale-95"
+                                className="px-8 py-3.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-all tracking-tight"
                             >
                                 전체 코스 보기
                             </button>
@@ -548,14 +548,14 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                     />
 
                     {/* 2. 바텀 시트 본문 */}
-                    <div className="bg-white w-full sm:max-w-[480px] rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative flex flex-col max-h-[85vh] animate-slide-up">
+                    <div className="bg-white w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl border border-gray-100 relative flex flex-col max-h-[85vh] animate-slide-up">
                         {/* --- [헤더 영역] 고정됨 --- */}
                         <div className="relative pt-3 pb-4 px-6 border-b border-gray-100 flex-shrink-0">
                             {/* 핸들바 디자인 추가 */}
                             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
 
                             <div className="flex items-center justify-between">
-                                <h3 className="text-[19px] font-bold text-gray-900">필터 설정</h3>
+                                <h3 className="text-[19px] font-bold text-gray-900 tracking-tight">필터 설정</h3>
                                 <button
                                     onClick={() => setShowCategoryModal(false)}
                                     className="p-2 -mr-2 text-gray-400 hover:text-gray-800 transition-colors"
@@ -582,9 +582,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             <button
                                                 key={t}
                                                 onClick={() => handleCategoryClick(t)}
-                                                className={`px-3.5 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-200 border ${
+                                                className={`px-3.5 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200 border tracking-tight ${
                                                     modalSelectedLabels.includes(t)
-                                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100"
+                                                        ? "bg-emerald-600 text-white border-emerald-600"
                                                         : "bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:bg-emerald-50"
                                                 }`}
                                             >
@@ -603,13 +603,13 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setModalSelectedLabels([])}
-                                    className="flex-1 py-4 rounded-2xl bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition-colors"
+                                    className="flex-1 py-4 rounded-lg bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition-colors tracking-tight"
                                 >
                                     초기화
                                 </button>
                                 <button
                                     onClick={applyCategorySelection}
-                                    className="flex-[2.5] py-4 rounded-2xl bg-gray-900 text-white font-bold text-[16px] hover:bg-gray-800 shadow-lg active:scale-[0.98] transition-all"
+                                    className="flex-[2.5] py-4 rounded-lg bg-slate-900 text-white font-bold text-[16px] hover:bg-slate-800 transition-all tracking-tight"
                                 >
                                     {modalSelectedLabels.length > 0
                                         ? `${modalSelectedLabels.length}개 적용하기`

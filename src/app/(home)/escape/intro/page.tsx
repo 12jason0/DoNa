@@ -124,7 +124,7 @@ function WebtoonIntro({ tokens, flow, onComplete }: { tokens?: any; flow?: any; 
                                                     </div>
                                                 ) : null}
                                                 {speech ? (
-                                                    <div className="inline-block bg-blue-100 rounded-2xl px-3 py-2 text-[#0F2B46] shadow">
+                                                    <div className="inline-block bg-blue-100 rounded-xl px-3 py-2 text-[#0F2B46] border border-blue-200">
                                                         {speech}
                                                     </div>
                                                 ) : null}
@@ -282,7 +282,7 @@ function WebtoonScrollToMap({
                 <div className="absolute inset-0 bg-black/60" />
             )}
             <div className="absolute inset-0 flex items-end justify-center p-4 pb-[12vh] animate-fade-in overflow-y-auto">
-                <div className="w-full max-w-lg rounded-2xl overflow-hidden">
+                <div className="w-full max-w-lg rounded-xl overflow-hidden">
                     <div className="bg-white/95 rounded-t-2xl p-5 max-h-[70vh] overflow-y-auto space-y-4">
                         <header className="text-center mb-6 pt-4 pb-3 border-b border-[#c8aa64]">
                             {title ? (

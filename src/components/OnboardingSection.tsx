@@ -12,14 +12,14 @@ export default function OnboardingSection({ onStart }: Props) {
             <button
                 onClick={onStart}
                 // 1. 테두리와 그림자를 브랜드 컬러(Green/Emerald) 계열로 변경
-                className="w-full group relative flex items-center justify-between p-5 rounded-[28px] bg-white border-2 border-emerald-50 shadow-[0_4px_20px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(16,185,129,0.25)] active:scale-98"
+                className="w-full group relative flex items-center justify-between p-5 rounded-xl bg-white border border-emerald-100 transition-all duration-300 active:scale-98"
             >
                 {/* 배경: 아주 은은한 민트빛 그라데이션 */}
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-transparent to-transparent rounded-[28px] pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-transparent to-transparent rounded-xl pointer-events-none" />
 
                 <div className="relative z-10 flex items-center gap-4">
                     {/* 2. 아이콘 배경: 연한 초록색 */}
-                    <div className="relative flex items-center justify-center w-14 h-14 rounded-[20px] bg-[#E8FBF4] group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                    <div className="relative flex items-center justify-center w-14 h-14 rounded-xl bg-[#E8FBF4] group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                         {/* 오로라 효과: 초록색 + 청록색 */}
                         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-green-200/50 to-teal-200/50 opacity-50 blur-md" />
 
@@ -45,7 +45,9 @@ export default function OnboardingSection({ onStart }: Props) {
                     </div>
 
                     <div className="text-left">
-                        <h3 className="text-[17px] font-bold text-gray-800 leading-tight">코스 고민은 DoNa에게!</h3>
+                        <h3 className="text-[17px] font-bold text-gray-800 leading-tight tracking-tight">
+                            코스 고민은 DoNa에게!
+                        </h3>
                         <p className="text-[13px] text-gray-500 mt-1 font-medium">
                             AI가{" "}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 font-bold">

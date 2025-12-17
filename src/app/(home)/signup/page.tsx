@@ -88,7 +88,7 @@ const Signup = () => {
     return (
         // 배경: 아주 연한 회색으로 깔끔하게 (초록색이 돋보이게 함)
         <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-            <div className="max-w-md w-full space-y-8 bg-white p-8 md:p-10 rounded-[32px] shadow-xl border border-gray-100">
+            <div className="max-w-md w-full space-y-8 bg-white p-8 md:p-10 rounded-xl border border-gray-100">
                 {/* 헤더 섹션 */}
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight font-brand">
@@ -100,7 +100,7 @@ const Signup = () => {
 
                 {/* 에러 메시지 */}
                 {error && (
-                    <div className="rounded-2xl bg-red-50 p-4 border border-red-100 flex items-center animate-pulse">
+                    <div className="rounded-xl bg-red-50 p-4 border border-red-100 flex items-center animate-pulse">
                         <svg className="h-5 w-5 text-red-500 mr-3" viewBox="0 0 20 20" fill="currentColor">
                             <path
                                 fillRule="evenodd"
@@ -153,7 +153,7 @@ const Signup = () => {
                             onChange={handleChange}
                             placeholder="두나에서 사용할 이름"
                             // ✅ 포커스 시 에메랄드(녹색) 링 효과
-                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm"
+                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm tracking-tight"
                         />
                     </div>
 
@@ -170,7 +170,7 @@ const Signup = () => {
                             value={formData.email}
                             onChange={handleChange}
                             placeholder="name@example.com"
-                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm"
+                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm tracking-tight"
                         />
                     </div>
 
@@ -187,7 +187,7 @@ const Signup = () => {
                             value={formData.password}
                             onChange={handleChange}
                             placeholder="6자 이상 입력해주세요"
-                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm"
+                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm tracking-tight"
                         />
                     </div>
 
@@ -204,7 +204,7 @@ const Signup = () => {
                             value={formData.confirmPassword}
                             onChange={handleChange}
                             placeholder="비밀번호를 한번 더 입력해주세요"
-                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm"
+                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm tracking-tight"
                         />
                     </div>
 
@@ -213,7 +213,7 @@ const Signup = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-[16px] font-bold rounded-2xl text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform active:scale-[0.98]"
+                            className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-[16px] font-bold rounded-lg text-white bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform active:scale-[0.98] tracking-tight"
                         >
                             {loading ? (
                                 <span className="flex items-center">

@@ -24,7 +24,7 @@ export default function NotificationModal({ onClose }: NotificationModalProps) {
             />
 
             {/* 모달 본문 */}
-            <div className="bg-white w-full max-w-[320px] rounded-[32px] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 z-10 p-8 text-center">
+            <div className="bg-white w-full max-w-[320px] rounded-xl border border-gray-100 relative overflow-hidden animate-in zoom-in-95 duration-300 z-10 p-8 text-center">
                 {/* 1. 비주얼 영역: 3D 아이콘이나 깔끔한 그래픽 */}
                 <div className="relative w-20 h-20 mx-auto mb-6 bg-gray-50 rounded-full flex items-center justify-center">
                     <span className="text-4xl animate-bounce-slow">🎁</span>
@@ -50,7 +50,7 @@ export default function NotificationModal({ onClose }: NotificationModalProps) {
                     <button
                         onClick={handleSignup}
                         style={{ backgroundColor: "#7aa06f" }}
-                        className="w-full py-4 rounded-2xl text-white text-[16px] font-bold shadow-lg shadow-[#7aa06f]/20 hover:brightness-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        className="w-full py-4 rounded-lg bg-slate-900 text-white text-[16px] font-bold hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 tracking-tight"
                     >
                         3초 만에 혜택 받기
                     </button>

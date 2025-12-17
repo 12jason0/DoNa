@@ -6,6 +6,8 @@ import ProfileTab from "@/components/mypage/ProfileTab";
 import FootprintTab from "@/components/mypage/FootprintTab";
 import RecordsTab from "@/components/mypage/RecordsTab";
 import ActivityTab from "@/components/mypage/ActivityTab";
+import LogoutModal from "@/components/LogoutModal";
+import PasswordCheckModal from "@/components/passwordChackModal";
 import {
     UserInfo,
     UserPreferences,
@@ -543,7 +545,10 @@ const MyPage = () => {
                 </div>
 
                 <div className="flex justify-center mb-6 md:mb-8">
-                    <div className="bg-white rounded-xl shadow-lg p-2 overflow-x-auto no-scrollbar" ref={tabsTrackRef}>
+                    <div
+                        className="bg-white rounded-lg border border-gray-100 p-2 overflow-x-auto no-scrollbar"
+                        ref={tabsTrackRef}
+                    >
                         <div className="flex space-x-2 min-w-max">
                             {[
                                 { id: "profile", label: "내 정보", icon: "👤" },
@@ -655,7 +660,7 @@ const MyPage = () => {
                                         <button
                                             key={i}
                                             onClick={() => setFullImageUrl(u)}
-                                            className="bg-[#a5743a] rounded-xl p-2 shadow-inner text-left"
+                                            className="bg-[#a5743a] rounded-lg p-2 shadow-inner text-left"
                                         >
                                             <div className="bg-[#f8f5ef] rounded-lg p-2 border-2 border-[#704a23]">
                                                 <img
@@ -679,16 +684,57 @@ const MyPage = () => {
             )}
 
             {/* 모달: 비밀번호 변경 */}
-            {pwModalOpen && (
+            {pwModalOpen && pwStep === "verify" && (
+                <PasswordCheckModal
+                    error={pwError}
+                    onClose={() => {
+                        setPwModalOpen(false);
+                        setPwError("");
+                        setPwState({ current: "", next: "", confirm: "" });
+                    }}
+                    onConfirm={async (password) => {
+                        setPwLoading(true);
+                        setPwError("");
+                        try {
+                            const token = localStorage.getItem("authToken");
+                            if (!token) throw new Error("로그인이 필요합니다.");
+
+                            const res = await fetch("/api/users/password/verify", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${token}`,
+                                },
+                                body: JSON.stringify({ currentPassword: password }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok || !data?.ok) {
+                                throw new Error(data?.error || "현재 비밀번호가 올바르지 않습니다.");
+                            }
+                            // 현재 비밀번호 저장하고 다음 단계로
+                            setPwState((s) => ({ ...s, current: password }));
+                            setPwStep("change");
+                        } catch (err: any) {
+                            setPwError(err.message || "오류가 발생했습니다.");
+                        } finally {
+                            setPwLoading(false);
+                        }
+                    }}
+                />
+            )}
+            {pwModalOpen && pwStep === "change" && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl shadow-xl p-6 w-[90vw] max-w-md mx-4">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900">
-                                {pwStep === "verify" ? "현재 비밀번호 확인" : "새 비밀번호 설정"}
-                            </h3>
+                            <h3 className="text-xl font-bold text-gray-900">새 비밀번호 설정</h3>
                             <button
                                 className="hover:cursor-pointer text-gray-400 hover:text-gray-600 text-2xl"
-                                onClick={() => setPwModalOpen(false)}
+                                onClick={() => {
+                                    setPwModalOpen(false);
+                                    setPwError("");
+                                    setPwState({ current: "", next: "", confirm: "" });
+                                    setPwStep("verify");
+                                }}
                             >
                                 ×
                             </button>
@@ -707,44 +753,30 @@ const MyPage = () => {
                                     const token = localStorage.getItem("authToken");
                                     if (!token) throw new Error("로그인이 필요합니다.");
 
-                                    if (pwStep === "verify") {
-                                        const res = await fetch("/api/users/password/verify", {
-                                            method: "POST",
-                                            headers: {
-                                                "Content-Type": "application/json",
-                                                Authorization: `Bearer ${token}`,
-                                            },
-                                            body: JSON.stringify({ currentPassword: pwState.current }),
-                                        });
-                                        const data = await res.json().catch(() => ({}));
-                                        if (!res.ok || !data?.ok) {
-                                            throw new Error(data?.error || "현재 비밀번호가 올바르지 않습니다.");
-                                        }
-                                        setPwStep("change");
-                                    } else {
-                                        if (pwState.next.length < 6)
-                                            throw new Error("새 비밀번호는 최소 6자 이상이어야 합니다.");
-                                        if (pwState.next !== pwState.confirm)
-                                            throw new Error("새 비밀번호가 일치하지 않습니다.");
+                                    if (pwState.next.length < 6)
+                                        throw new Error("새 비밀번호는 최소 6자 이상이어야 합니다.");
+                                    if (pwState.next !== pwState.confirm)
+                                        throw new Error("새 비밀번호가 일치하지 않습니다.");
 
-                                        const res = await fetch("/api/users/password", {
-                                            method: "PUT",
-                                            headers: {
-                                                "Content-Type": "application/json",
-                                                Authorization: `Bearer ${token}`,
-                                            },
-                                            body: JSON.stringify({
-                                                currentPassword: pwState.current,
-                                                newPassword: pwState.next,
-                                            }),
-                                        });
-                                        const data = await res.json().catch(() => ({}));
-                                        if (!res.ok || !data?.success) throw new Error(data?.error || "변경 실패");
+                                    const res = await fetch("/api/users/password", {
+                                        method: "PUT",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            Authorization: `Bearer ${token}`,
+                                        },
+                                        body: JSON.stringify({
+                                            currentPassword: pwState.current,
+                                            newPassword: pwState.next,
+                                        }),
+                                    });
+                                    const data = await res.json().catch(() => ({}));
+                                    if (!res.ok || !data?.success) throw new Error(data?.error || "변경 실패");
 
-                                        setPwModalOpen(false);
-                                        alert("비밀번호가 변경되었습니다. 다시 로그인해 주세요.");
-                                        handleLogout();
-                                    }
+                                    setPwModalOpen(false);
+                                    setPwState({ current: "", next: "", confirm: "" });
+                                    setPwStep("verify");
+                                    alert("비밀번호가 변경되었습니다. 다시 로그인해 주세요.");
+                                    handleLogout();
                                 } catch (err: any) {
                                     setPwError(err.message || "오류가 발생했습니다.");
                                 } finally {
@@ -753,54 +785,37 @@ const MyPage = () => {
                             }}
                             className="space-y-4"
                         >
-                            {pwStep === "verify" ? (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        현재 비밀번호
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={pwState.current}
-                                        onChange={(e) => setPwState((s) => ({ ...s, current: e.target.value }))}
-                                        required
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                        placeholder="현재 비밀번호"
-                                    />
-                                </div>
-                            ) : (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            새 비밀번호
-                                        </label>
-                                        <input
-                                            type="password"
-                                            value={pwState.next}
-                                            onChange={(e) => setPwState((s) => ({ ...s, next: e.target.value }))}
-                                            required
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                            placeholder="새 비밀번호 (6자 이상)"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            새 비밀번호 확인
-                                        </label>
-                                        <input
-                                            type="password"
-                                            value={pwState.confirm}
-                                            onChange={(e) => setPwState((s) => ({ ...s, confirm: e.target.value }))}
-                                            required
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                            placeholder="새 비밀번호 확인"
-                                        />
-                                    </div>
-                                </>
-                            )}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                                <input
+                                    type="password"
+                                    value={pwState.next}
+                                    onChange={(e) => setPwState((s) => ({ ...s, next: e.target.value }))}
+                                    required
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                                    placeholder="새 비밀번호 (6자 이상)"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호 확인</label>
+                                <input
+                                    type="password"
+                                    value={pwState.confirm}
+                                    onChange={(e) => setPwState((s) => ({ ...s, confirm: e.target.value }))}
+                                    required
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                                    placeholder="새 비밀번호 확인"
+                                />
+                            </div>
                             <div className="flex gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setPwModalOpen(false)}
+                                    onClick={() => {
+                                        setPwModalOpen(false);
+                                        setPwError("");
+                                        setPwState({ current: "", next: "", confirm: "" });
+                                        setPwStep("verify");
+                                    }}
                                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg"
                                 >
                                     취소
@@ -808,9 +823,9 @@ const MyPage = () => {
                                 <button
                                     type="submit"
                                     disabled={pwLoading}
-                                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+                                    className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-lg disabled:opacity-50 tracking-tight font-bold hover:bg-slate-800 transition-colors"
                                 >
-                                    {pwLoading ? "처리 중..." : pwStep === "verify" ? "다음" : "변경하기"}
+                                    {pwLoading ? "처리 중..." : "변경하기"}
                                 </button>
                             </div>
                         </form>
@@ -821,9 +836,9 @@ const MyPage = () => {
             {/* 모달: 프로필 수정 */}
             {showEditModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+                    <div className="bg-white rounded-xl border border-gray-100 p-8 max-w-md w-full mx-4">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-bold text-gray-900">프로필 수정</h3>
+                            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">프로필 수정</h3>
                             <button
                                 onClick={() => setShowEditModal(false)}
                                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -915,7 +930,7 @@ const MyPage = () => {
                                 <button
                                     type="submit"
                                     disabled={editLoading}
-                                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+                                    className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-lg disabled:opacity-50 tracking-tight font-bold hover:bg-slate-800 transition-colors"
                                 >
                                     {editLoading ? "수정 중..." : "수정하기"}
                                 </button>
@@ -925,37 +940,15 @@ const MyPage = () => {
                 </div>
             )}
 
-            {/* 모달: 로그아웃 */}
-            {showLogoutModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 text-center">
-                        <div className="text-6xl mb-4">🚪</div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4">로그아웃</h3>
-                        <p className="text-gray-600 mb-8">정말 로그아웃 하시겠습니까?</p>
-                        <div className="flex space-x-3">
-                            <button
-                                onClick={() => setShowLogoutModal(false)}
-                                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                            >
-                                로그아웃
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* 로그아웃 모달 */}
+            {showLogoutModal && <LogoutModal onClose={() => setShowLogoutModal(false)} onConfirm={handleLogout} />}
 
             {/* 모달: 뱃지 상세 */}
             {selectedBadge && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl p-6 w-[90vw] max-w-md mx-4">
+                    <div className="bg-white rounded-xl border border-gray-100 p-6 w-[90vw] max-w-md mx-4">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900">{selectedBadge.name}</h3>
+                            <h3 className="text-xl font-bold text-gray-900 tracking-tight">{selectedBadge.name}</h3>
                             <button
                                 className="text-gray-400 hover:text-gray-600 text-2xl"
                                 onClick={() => setSelectedBadge(null)}

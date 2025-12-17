@@ -448,7 +448,7 @@ const CookiesPolicyPage = () => {
                                 <p className="mb-4">쿠키 정책에 대한 문의사항이 있으시면 아래로 연락해 주세요.</p>
                                 <div className="space-y-2 text-sm">
                                     <p>
-                                        <strong>이메일: 12jason@naver.com</strong>
+                                        <strong>이메일: 12jason@donacouse.com</strong>
                                     </p>
                                     <p>
                                         <strong>개인정보보호책임자:</strong> 오승용

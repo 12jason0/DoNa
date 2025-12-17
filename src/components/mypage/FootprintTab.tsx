@@ -96,7 +96,7 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
                                     <button
                                         type="button"
                                         onClick={() => router.push("/courses")}
-                                        className="w-full bg-[#18181b] hover:bg-black text-white text-xs md:text-sm font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 group"
+                                        className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs md:text-sm font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 group tracking-tight"
                                     >
                                         <span>데이트 코스 보러가기</span>
                                         <svg

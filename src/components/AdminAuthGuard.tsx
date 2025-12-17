@@ -37,12 +37,12 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm">
+                <div className="bg-white p-8 rounded-xl border border-gray-100 w-full max-w-sm">
                     <div className="text-center mb-8">
                         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
                             🔒
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-800">관리자 인증</h1>
+                        <h1 className="text-2xl font-bold text-gray-800 tracking-tight">관리자 인증</h1>
                         <p className="text-gray-500 text-sm mt-2">접근 권한 확인이 필요합니다.</p>
                     </div>
 
@@ -67,7 +67,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                         )}
                         <button
                             type="submit"
-                            className="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold hover:bg-green-700 active:scale-95 transition-all shadow-md hover:shadow-lg"
+                            className="w-full bg-slate-900 text-white py-3.5 rounded-lg font-bold hover:bg-slate-800 active:scale-95 transition-all tracking-tight"
                         >
                             접속하기
                         </button>

@@ -46,7 +46,7 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
     return (
         <div className="space-y-6">
             {/* 서브 탭 네비게이션 */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 overflow-x-auto no-scrollbar">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 overflow-x-auto no-scrollbar">
                 <div className="flex space-x-2 min-w-max">
                     {subTabs.map((tab) => (
                         <button
@@ -54,7 +54,7 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
                             onClick={() => setSubTab(tab.id)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                                 subTab === tab.id
-                                    ? "bg-blue-600 text-white shadow-md"
+                                    ? "bg-slate-900 text-white"
                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         >
@@ -66,16 +66,16 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
 
             {/* 뱃지 탭 */}
             {subTab === "badges" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900">내 뱃지</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">내 뱃지</h3>
                     </div>
                     {badges.length > 0 ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6">
                             {badges.map((b) => (
                                 <div
                                     key={b.id}
-                                    className="border border-gray-200 rounded-xl p-4 flex flex-col items-center text-center bg-white hover:shadow-md transition-shadow cursor-pointer"
+                                    className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center bg-white hover:border-gray-300 transition-colors cursor-pointer"
                                     onClick={() => onSelectBadge(b)}
                                 >
                                     {b.image_url ? (
@@ -116,9 +116,9 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
 
             {/* 보상 내역 탭 */}
             {subTab === "rewards" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900">보상 지급 내역</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">보상 지급 내역</h3>
                     </div>
                     {rewards.length > 0 ? (
                         <div className="divide-y">
@@ -173,9 +173,9 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
 
             {/* 출석 기록 탭 */}
             {subTab === "checkins" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900">출석 기록</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">출석 기록</h3>
                     </div>
                     <div className="mb-4 flex items-center justify-between">
                         <button

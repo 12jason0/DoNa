@@ -230,10 +230,10 @@ const StoryCard = React.memo(
 
         return (
             <div
-                className="group flex flex-col gap-4 border rounded-2xl shadow-sm hover:shadow-md transition-shadow bg-white"
+                className="group flex flex-col gap-4 border rounded-xl transition-shadow bg-white hover:border-gray-300"
                 onClick={() => onDetails(story.id)}
             >
-                <div className="relative h-40 rounded-2xl overflow-hidden">
+                <div className="relative h-40 rounded-xl overflow-hidden">
                     {isPopular && (
                         <div className="absolute top-2 left-2 z-10">
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow">
@@ -380,7 +380,7 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
       `}</style>
 
             <div
-                className="w-full max-w-[450px] bg-white rounded-2xl shadow-2xl overflow-hidden relative"
+                className="w-full max-w-[450px] bg-white rounded-xl border border-gray-100 overflow-hidden relative"
                 style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -460,7 +460,7 @@ export default function EscapePage() {
         <div className="min-h-screen bg-gray-50">
             <div className="bg-white shadow-sm">
                 <div className="max-w-[400px] mx-auto px-4 py-5">
-                    <h1 className="text-2xl font-bold text-gray-900">커플 미션 게임</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">커플 미션 게임</h1>
                     <p className="text-gray-600 mt-2">도심을 누비며 챕터를 완료하고 배지를 획득하세요!</p>
                 </div>
             </div>
@@ -469,7 +469,7 @@ export default function EscapePage() {
                 <div className="grid grid-cols-1 gap-6">
                     {isLoading
                         ? [...Array(3)].map((_, i) => (
-                              <div key={i} className="bg-white rounded-2xl shadow-md animate-pulse h-60" />
+                              <div key={i} className="bg-white rounded-xl border border-gray-100 animate-pulse h-60" />
                           ))
                         : stories.map((story, index) => (
                               <StoryCard

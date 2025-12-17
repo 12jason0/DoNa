@@ -11,6 +11,10 @@ const inter = Inter({
 export const metadata: Metadata = {
     title: "DoNa - 두나",
     description: "데이트 코스 추천 서비스",
+
+    verification: {
+        google: "xhBJt4-Q66AzounvtMTRw9qUJwusvg_p83BG-DGTLhg",
+    },
 };
 
 export const viewport = {

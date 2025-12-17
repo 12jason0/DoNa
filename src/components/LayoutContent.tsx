@@ -45,7 +45,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                         <div className="px-10 max-w-[520px] text-white space-y-6">
                             {/* 1. 로고 및 앱 이름 - 자연스러운 느낌으로 수정 */}
                             <div className="inline-block">
-                                <div className="w-32 h-32 shadow-xl p-4 flex items-center justify-center">
+                                <div className="w-32 h-32 border border-white/20 p-4 flex items-center justify-center">
                                     <img
                                         src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
                                         alt="DoNa Logo"
@@ -58,7 +58,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             </div>
 
                             {/* 2. 메인 슬로건 (Headline) */}
-                            <h2 className="text-4xl font-extrabold leading-tight drop-shadow">
+                            <h2 className="text-4xl font-extrabold leading-tight drop-shadow tracking-tight">
                                 우리의 데이트가 한 편의 이야기가 되다
                             </h2>
 
@@ -132,7 +132,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                         </div>
                     </div>
                 )}
-                <div className="relative h-full bg-white min-[600px]:w-[500px] min-[600px]:shadow-lg flex flex-col">
+                <div className="relative h-full bg-white min-[600px]:w-[500px] min-[600px]:border-l border-gray-100 flex flex-col">
                     {/* 헤더 영역 */}
                     <div className={`${isEscapeIntroPage || isCourseStart ? "hidden" : "block"} flex-shrink-0`}>
                         <Header />

@@ -22,9 +22,9 @@ export default function AppInstallQR({
     const currentUrl = isApple ? appleUrl : googleUrl;
 
     return (
-        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+        <div className="bg-white rounded-xl border border-gray-100 p-6 w-full max-w-md">
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">앱 설치 QR 코드</h3>
+                <h3 className="text-lg font-semibold text-gray-900 tracking-tight">앱 설치 QR 코드</h3>
 
                 {/* 탭 버튼 */}
                 <div className="grid grid-cols-2 gap-2">
@@ -60,7 +60,7 @@ export default function AppInstallQR({
                             className="w-full h-full object-contain"
                             src={qrSrc(currentUrl)}
                             onError={(e) => {
-                                (e.currentTarget.style.display = "none");
+                                e.currentTarget.style.display = "none";
                             }}
                         />
                     </div>
@@ -69,7 +69,7 @@ export default function AppInstallQR({
 
                 <button
                     type="button"
-                    className=" mt-2 w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-black/90 hover:cursor-pointer"
+                    className=" mt-2 w-full py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 hover:cursor-pointer tracking-tight"
                     onClick={() => onClose?.()}
                 >
                     닫기

@@ -23,7 +23,7 @@ const ContactPage = () => {
             return;
         }
 
-        const mailto = `mailto:12jason@naver.com?subject=${encodeURIComponent(
+        const mailto = `mailto:12jason@donacouse.com?subject=${encodeURIComponent(
             trimmedSubject
         )}&body=${encodeURIComponent(
             `이름: ${trimmedName}\n이메일: ${trimmedEmail}\n\n문의 내용:\n${trimmedMessage}`
@@ -50,7 +50,7 @@ const ContactPage = () => {
                     <div className="grid md:grid-cols-2 gap-8 mb-12">
                         <div className="bg-blue-50 rounded-lg p-6">
                             <h2 className="text-xl font-semibold text-gray-900 mb-4">이메일 문의</h2>
-                            <p className="text-blue-600 font-medium">12jason@naver.com</p>
+                            <p className="text-blue-600 font-medium">12jason@donacouse.com</p>
                         </div>
 
                         <div className="bg-green-50 rounded-lg p-6">

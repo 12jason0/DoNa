@@ -144,7 +144,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                         key={`${item.id}-${idx}`} // 고유 키 생성
                         href={`/courses/${item.id}`}
                         draggable={false} // Prevent native drag
-                        className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-[2rem] overflow-hidden snap-center shadow-lg active:scale-[0.98] transition-transform duration-200 block select-none"
+                        className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-xl overflow-hidden snap-center border border-gray-100 active:scale-[0.98] transition-transform duration-200 block select-none"
                     >
                         {/* Background Image */}
                         <div className="relative w-full h-full pointer-events-none">
@@ -180,7 +180,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
 
                                 {/* Concept Badge with Icon */}
                                 {item.concept && (
-                                    <span className="bg-emerald-500/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1 shadow-sm">
+                                    <span className="bg-emerald-500/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1 tracking-tight">
                                         {item.conceptIcon && (
                                             <Image
                                                 src={item.conceptIcon}
@@ -196,7 +196,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                             </div>
 
                             {/* Main Title / Catchphrase */}
-                            <h4 className="text-xl font-extrabold leading-tight drop-shadow-sm mb-1 line-clamp-2">
+                            <h4 className="text-xl font-extrabold leading-tight drop-shadow-sm mb-1 line-clamp-2 tracking-tight">
                                 {/* Fallback to location or tags for title if needed */}
                                 {item.title ||
                                     (item.tags?.[0]

@@ -33,7 +33,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-[24px] shadow-xl w-full max-w-[300px] p-6 text-center transform transition-all animate-scale-up"
+                className="bg-white rounded-xl border border-gray-100 w-full max-w-[300px] p-6 text-center transform transition-all animate-scale-up"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 아이콘 영역: 룰렛 -> 잠금(Lock) 아이콘으로 변경 */}
@@ -55,7 +55,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                 </div>
 
                 {/* 텍스트 영역 */}
-                <h3 className="text-xl font-bold text-gray-900 mb-2">오픈 준비 중이에요</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">오픈 준비 중이에요</h3>
                 <p className="text-[15px] text-gray-500 leading-relaxed mb-6 break-keep">
                     새로운 실외 방탈출 코스를
                     <br />
@@ -67,7 +67,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                     <button
                         onClick={handleNotification}
                         style={{ backgroundColor: "#7aa06f" }}
-                        className="w-full py-3.5 rounded-xl text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight"
                     >
                         {/* 알림 종 아이콘 추가 */}
                         <svg

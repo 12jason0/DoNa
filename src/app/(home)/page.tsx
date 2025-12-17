@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import KakaoChannelModal from "@/components/KakaoChannelModal";
 
 // 두나 브랜드 컬러 및 에셋 (layout.tsx 참고함)
 const BRAND_COLOR = "#7aa06f"; // 두나 그린
@@ -19,6 +20,8 @@ const LandingPage = () => {
     const [loginSuccessToast, setLoginSuccessToast] = useState(false);
     // ✅ [추가] 사건 파일 준비 중 모달
     const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
+    // ✅ [추가] 로그인 시 카카오톡 채널 모달
+    const [showKakaoChannelModal, setShowKakaoChannelModal] = useState(false);
 
     // 핵심 경로 사전 로드로 전환 속도 향상 (과도한 프리페치 방지를 위해 일부 제거)
     useEffect(() => {
@@ -31,7 +34,7 @@ const LandingPage = () => {
         } catch {}
     }, [router]);
 
-    // ✅ [추가] 로그인 후 리다이렉트 시 토스트 표시
+    // ✅ [추가] 로그인 후 리다이렉트 시 토스트 및 모달 표시
     useEffect(() => {
         if (typeof window !== "undefined") {
             // 1. 로그인 성공 체크
@@ -40,6 +43,17 @@ const LandingPage = () => {
                 setLoginSuccessToast(true);
                 sessionStorage.removeItem("login_success_trigger");
                 setTimeout(() => setLoginSuccessToast(false), 3000);
+
+                // 로그인 시 카카오톡 채널 모달 표시 (약간의 딜레이 후, 하루에 한 번만)
+                setTimeout(() => {
+                    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD 형식
+                    const lastSeenDate = localStorage.getItem("kakao_channel_modal_date");
+
+                    // 오늘 본 기록이 없으면 모달 표시
+                    if (lastSeenDate !== today) {
+                        setShowKakaoChannelModal(true);
+                    }
+                }, 1500);
             }
 
             // 2. Escape 준비 중 체크 (Middleware에서 리다이렉트된 경우)
@@ -107,7 +121,7 @@ const LandingPage = () => {
         <div className="relative h-screen w-full flex flex-col font-sans overflow-hidden bg-white">
             {/* ✅ 로그인 성공 토스트 메시지 */}
             {loginSuccessToast && (
-                <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-3.5 rounded-full shadow-2xl z-[5000] animate-fade-in-down flex items-center gap-3 min-w-[320px] justify-center">
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-3.5 rounded-full border border-emerald-400 z-[5000] animate-fade-in-down flex items-center gap-3 min-w-[320px] justify-center tracking-tight">
                     <span className="text-lg">🎉</span>
                     <span className="font-semibold text-sm tracking-wide">로그인되었습니다!</span>
                 </div>
@@ -130,19 +144,19 @@ const LandingPage = () => {
                 {/* **********************************************
                 // 3. [수정됨] 카드 내부 패딩 p-8 -> p-6 (공간 확보)
                 // ********************************************** */}
-                <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl border border-white/50 overflow-hidden flex flex-col items-center text-center p-6 animate-fade-in-up">
+                <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl border border-gray-100 overflow-hidden flex flex-col items-center text-center p-6 animate-fade-in-up">
                     {/* 상단 로고 */}
                     <div className="w-16 h-16 rounded-3xl shadow-md overflow-hidden mb-4 bg-white flex items-center justify-center">
                         <Image src={LOGO_URL} alt="DoNa Logo" width={64} height={64} className="object-cover" />
                     </div>
 
                     {/* 뱃지 */}
-                    <span className="inline-block py-1 px-3 rounded-full bg-[#7aa06f]/10 text-[#7aa06f] text-xs font-bold mb-4 tracking-tight">
+                    <span className="inline-block py-1 px-3 rounded-full bg-[#7aa06f]/10 text-[#7aa06f] text-xs font-bold mb-4 tracking-tight border border-[#7aa06f]/20">
                         💌 시크릿 초대장이 도착했습니다
                     </span>
 
                     {/* 메인 카피 */}
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight mb-3">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight mb-3 tracking-tight">
                         매번 똑같은 데이트,
                         <br />
                         <span style={{ color: BRAND_COLOR }}>지겹지 않으세요?</span>
@@ -171,7 +185,7 @@ const LandingPage = () => {
                         rel="noopener noreferrer"
                         className="w-full block"
                     >
-                        <button className="w-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3c1e1e] font-bold text-base py-3 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2">
+                        <button className="w-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3c1e1e] font-bold text-base py-3 rounded-lg border border-[#FEE500]/50 transition-all active:scale-98 flex items-center justify-center gap-2 tracking-tight">
                             <svg
                                 width="24"
                                 height="24"
@@ -204,7 +218,7 @@ const LandingPage = () => {
                         <br />
                         주소: 충청남도 홍성군 홍북읍 신대로 33
                         <br />
-                        고객센터: 12jason@naver.com
+                        고객센터: 12jason@donacouse.com
                     </p>
                 </div>
             </footer>
@@ -216,7 +230,7 @@ const LandingPage = () => {
                     onClick={() => setShowEscapeComingSoon(false)}
                 >
                     <div
-                        className="bg-white rounded-2xl shadow-xl p-6 w-80 animate-fade-in"
+                        className="bg-white rounded-xl border border-gray-100 p-6 w-80 animate-fade-in"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="text-center mb-4">
@@ -225,12 +239,24 @@ const LandingPage = () => {
                         </div>
                         <button
                             onClick={() => setShowEscapeComingSoon(false)}
-                            className="w-full px-4 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-all cursor-pointer"
+                            className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-all cursor-pointer tracking-tight"
                         >
                             닫기
                         </button>
                     </div>
                 </div>
+            )}
+
+            {/* ✅ 로그인 시 카카오톡 채널 모달 */}
+            {showKakaoChannelModal && (
+                <KakaoChannelModal
+                    onClose={() => {
+                        // 모달을 닫을 때 오늘 날짜 저장
+                        const today = new Date().toISOString().split("T")[0];
+                        localStorage.setItem("kakao_channel_modal_date", today);
+                        setShowKakaoChannelModal(false);
+                    }}
+                />
             )}
         </div>
     );

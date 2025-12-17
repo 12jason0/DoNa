@@ -53,8 +53,11 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         }
     }
 
+    // isPublic 필터 추가 및 필요한 필드만 선택
+    const whereWithPublic = { ...where, isPublic: true };
+
     const courses = await prisma.course.findMany({
-        where,
+        where: whereWithPublic,
         orderBy: { id: "desc" },
         take: limit,
         select: {
@@ -68,8 +71,10 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             rating: true,
             view_count: true,
             createdAt: true,
-            grade: true, // ✅ 등급 정보 가져오기
+            grade: true,
+            // coursePlaces는 첫 번째 장소의 이미지만 필요하므로 최소한만 가져옴
             coursePlaces: {
+                take: 1, // 첫 번째 장소만
                 orderBy: { order_index: "asc" },
                 select: {
                     order_index: true,
@@ -78,16 +83,8 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
                             id: true,
                             name: true,
                             imageUrl: true,
-                            latitude: true,
-                            longitude: true,
-                            opening_hours: true,
-                            closed_days: {
-                                select: {
-                                    day_of_week: true,
-                                    specific_date: true,
-                                    note: true,
-                                },
-                            },
+                            // latitude, longitude는 리스트에서 불필요하므로 제거
+                            // opening_hours, closed_days도 리스트에서 불필요
                         },
                     },
                 },
@@ -128,6 +125,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             createdAt: course.createdAt ? course.createdAt.toISOString() : undefined,
             grade: courseGrade,
             isLocked: isLocked, // ✅ 잠금 상태 전달
+            // coursePlaces는 이미지 URL 추출용으로만 사용 (리스트에서는 상세 정보 불필요)
             coursePlaces:
                 course.coursePlaces?.map((cp: any) => ({
                     order_index: cp.order_index,
@@ -136,10 +134,6 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
                               id: cp.place.id,
                               name: cp.place.name,
                               imageUrl: cp.place.imageUrl,
-                              latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
-                              longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
-                              opening_hours: cp.place.opening_hours || null,
-                              closed_days: cp.place.closed_days || [],
                           }
                         : null,
                 })) || [],

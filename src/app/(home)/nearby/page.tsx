@@ -23,7 +23,6 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // ✅ 장소 이름(name)과 주소(address)까지 검색 범위 확장
     if (keywordRaw) {
         const keywords = keywordRaw.split(/\s+/).filter(Boolean);
-        console.log("검색어 파싱됨:", keywordRaw);
         keywords.forEach((k) => {
             const cleanKeyword = k.replace("동", "");
 
@@ -80,7 +79,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 최종 Where 절
     const whereClause = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    // 4. DB 조회 실행
+    // 4. DB 조회 실행 - 필요한 필드만 선택
     const courses = await prisma.course.findMany({
         where: whereClause,
         orderBy: { id: "desc" },
@@ -94,11 +93,13 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             concept: true,
             view_count: true,
             rating: true,
-            grade: true, // ✅ 등급 정보 가져오기
+            grade: true,
             _count: {
                 select: { reviews: true },
             },
+            // 리스트에서는 첫 번째 장소의 이미지만 필요
             coursePlaces: {
+                take: 1,
                 orderBy: { order_index: "asc" as const },
                 select: {
                     order_index: true,
@@ -107,17 +108,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                             id: true,
                             name: true,
                             imageUrl: true,
-                            latitude: true,
-                            longitude: true,
-                            address: true,
-                            opening_hours: true,
-                            closed_days: {
-                                select: {
-                                    day_of_week: true,
-                                    specific_date: true,
-                                    note: true,
-                                },
-                            },
+                            // address, latitude, longitude, opening_hours, closed_days는 리스트에서 불필요
                         },
                     },
                 },
@@ -174,6 +165,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             rating: c.rating || 0,
             grade: courseGrade,
             isLocked: isLocked, // ✅ 잠금 상태 전달
+            // 리스트에서는 장소 상세 정보 불필요 (이미지만 사용)
             coursePlaces: c.coursePlaces.map((cp: any) => ({
                 order_index: cp.order_index,
                 place: cp.place
@@ -181,11 +173,6 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                           id: cp.place.id,
                           name: cp.place.name,
                           imageUrl: cp.place.imageUrl,
-                          latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
-                          longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
-                          address: cp.place.address,
-                          opening_hours: cp.place.opening_hours,
-                          closed_days: cp.place.closed_days || [],
                       }
                     : null,
             })),

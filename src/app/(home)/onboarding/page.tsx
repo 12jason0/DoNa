@@ -400,7 +400,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         return (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
                 {/* ...결과 UI 코드... */}
-                <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center relative overflow-hidden">
+                <div className="bg-white w-full max-w-sm rounded-xl border border-gray-100 p-6 text-center relative overflow-hidden">
                     <button onClick={completeOnboarding} className="absolute top-4 right-4 text-gray-400">
                         <X size={24} />
                     </button>
@@ -436,7 +436,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm">
             {/* ... 배경 이미지 및 컨테이너 ... */}
-            <div className="relative z-10 w-full h-full max-w-[480px] bg-white sm:h-[85vh] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
+            <div className="relative z-10 w-full h-full max-w-[480px] bg-white sm:h-[85vh] sm:rounded-xl border border-gray-100 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
                 {/* 닫기 버튼 */}
                 <div className="absolute top-4 right-4 z-50">
                     <button
@@ -462,7 +462,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     {currentStep === 1 && (
                         /* Step 1 UI */
                         <div className="animate-slideUp flex flex-col h-full overflow-y-auto scrollbar-hide">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2 mt-4 leading-tight shrink-0">
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2 mt-4 leading-tight shrink-0 tracking-tight">
                                 당신이 꿈꾸는
                                 <br />
                                 '완벽한 주말'의 모습은?
@@ -472,7 +472,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                     <button
                                         key={opt.id}
                                         onClick={() => handleVibeSelect(opt)}
-                                        className="relative group overflow-hidden rounded-2xl aspect-square shadow-md"
+                                        className="relative group overflow-hidden rounded-xl aspect-square border border-gray-100"
                                     >
                                         <Image src={opt.img} alt={opt.title} fill className="object-cover" />
                                         <span className="absolute bottom-4 left-4 text-white font-bold text-sm drop-shadow">
@@ -486,14 +486,16 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     {/* Step 2: 가치관 선택 */}
                     {currentStep === 2 && (
                         <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">딱 하나만 고른다면?</h1>
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">
+                                딱 하나만 고른다면?
+                            </h1>
                             <p className="text-gray-500 mb-8 text-sm">실패 없는 추천을 위해 가치관을 파악합니다.</p>
                             <div className="flex flex-col gap-4">
                                 {VALUE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.id}
                                         onClick={() => handleValueSelect(opt)}
-                                        className={`w-full bg-white p-5 rounded-2xl shadow-sm border transition-all active:scale-95 flex items-center gap-4 text-left group ${
+                                        className={`w-full bg-white p-5 rounded-xl border transition-all active:scale-95 flex items-center gap-4 text-left group ${
                                             selectedValueId === opt.id
                                                 ? "border-[#7aa06f] ring-2 ring-[#7aa06f]"
                                                 : "border-gray-100 hover:border-gray-300"
@@ -503,7 +505,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                             {opt.icon}
                                         </span>
                                         <div>
-                                            <h3 className="font-bold text-gray-800 text-lg whitespace-pre-wrap leading-snug">
+                                            <h3 className="font-bold text-gray-800 text-lg whitespace-pre-wrap leading-snug tracking-tight">
                                                 {opt.title}
                                             </h3>
                                         </div>
@@ -526,7 +528,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                     <button
                                         key={crew.value}
                                         onClick={() => handleCrewSelect(crew.value)}
-                                        className={`p-5 rounded-2xl border transition-all text-left shadow-sm active:scale-95 bg-white ${
+                                        className={`p-5 rounded-xl border transition-all text-left active:scale-95 bg-white ${
                                             selectedCrew === crew.value
                                                 ? "border-[#7aa06f] ring-2 ring-[#7aa06f]"
                                                 : "border-gray-100 hover:border-gray-300"
@@ -562,7 +564,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             <div className="shrink-0 mt-auto pb-6 pt-4">
                                 <button
                                     onClick={nextStep}
-                                    className="w-full py-4 bg-[#7aa06f] text-white rounded-xl font-bold shadow-lg"
+                                    className="w-full py-4 bg-slate-900 text-white rounded-lg font-bold tracking-tight"
                                 >
                                     분석 시작하기 ✨
                                 </button>

@@ -123,7 +123,7 @@ export default function PersonalizedSection() {
         <section className="py-8 px-4">
             {/* 1. 멘트 영역 (여기에 멘트가 나옵니다) */}
             <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in">
+                <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in tracking-tight">
                     {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
                     {content.title(userName)}
                 </h2>
@@ -147,7 +147,7 @@ export default function PersonalizedSection() {
                     ? [1, 2, 3].map((n) => (
                           <div
                               key={n}
-                              className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-2xl animate-pulse"
+                              className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse"
                           />
                       ))
                     : courses.map((course) => (
@@ -157,7 +157,7 @@ export default function PersonalizedSection() {
                               draggable={false}
                               className="snap-center shrink-0 w-[200px] group relative select-none"
                           >
-                              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-md transition-transform active:scale-95">
+                              <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-gray-100 transition-transform active:scale-95">
                                   {/* 이미지 */}
                                   <div className="relative w-full h-full bg-gray-200">
                                       {course.imageUrl ? (
@@ -180,7 +180,7 @@ export default function PersonalizedSection() {
 
                                   {/* 뱃지 */}
                                   <div className="absolute top-3 left-3">
-                                      <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1 backdrop-blur-md bg-opacity-90">
+                                      <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
                                           {course.matchScore
                                               ? `🎯 취향저격 ${Math.round(course.matchScore * 100)}%`
                                               : content.badge}
@@ -194,7 +194,7 @@ export default function PersonalizedSection() {
                                               📍 {course.region}
                                           </span>
                                       )}
-                                      <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 drop-shadow-md">
+                                      <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 drop-shadow-md tracking-tight">
                                           {course.title}
                                       </h3>
                                   </div>

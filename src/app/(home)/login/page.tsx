@@ -234,12 +234,12 @@ const Login = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-[var(--brand-cream)] to-white">
             <main className="max-w-sm mx-auto px-4 py-8 pb-28 overflow-y-auto">
-                <div className="w-full bg-white rounded-2xl shadow-sm border border-green-100 p-6 flex flex-col">
+                <div className="w-full bg-white rounded-xl border border-gray-100 p-6 flex flex-col">
                     <div className="text-center mb-6">
                         <div className="mx-auto mb-2 w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
                             <span className="text-2xl">🌿</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1 font-brand">로그인</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-1 font-brand tracking-tight">로그인</h1>
                         <p className="text-gray-600 text-sm">DoNa에 오신 것을 환영합니다</p>
                     </div>
                     <div ref={scrollAreaRef}>
@@ -291,7 +291,7 @@ const Login = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                className="w-full text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 tracking-tight"
                             >
                                 {loading ? "로그인 중..." : "로그인"}
                             </button>

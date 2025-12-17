@@ -66,12 +66,12 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             {/* 모달 컨테이너 */}
-            <div className="bg-white w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[85vh] rounded-t-[32px] sm:rounded-[32px] flex flex-col shadow-2xl relative overflow-hidden">
+            <div className="bg-white w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[85vh] rounded-t-xl sm:rounded-xl border border-gray-100 flex flex-col relative overflow-hidden">
                 {/* 헤더 */}
                 <div className="px-6 pt-8 pb-4 bg-white z-10">
                     <div className="flex justify-between items-start mb-2">
                         <div>
-                            <h2 className="text-2xl font-extrabold text-gray-900 leading-tight">
+                            <h2 className="text-2xl font-extrabold text-gray-900 leading-tight tracking-tight">
                                 더 완벽한 데이트, <br />
                                 <span className="text-emerald-500">두나 멤버십</span>으로 ✨
                             </h2>
@@ -97,16 +97,16 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                             <div
                                 key={plan.id}
                                 onClick={() => setSelectedPlanId(plan.id)}
-                                className={`relative p-5 rounded-3xl border-2 cursor-pointer transition-all duration-200 ${
+                                className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                                     selectedPlanId === plan.id
-                                        ? "border-emerald-500 bg-emerald-50/50 shadow-emerald-100 shadow-lg ring-1 ring-emerald-500"
+                                        ? "border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500"
                                         : "border-gray-100 bg-white hover:border-emerald-200"
                                 }`}
                             >
                                 {/* 뱃지 */}
                                 {plan.badge && (
                                     <div
-                                        className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-bold text-white shadow-sm flex items-center gap-1 ${
+                                        className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-bold text-white flex items-center gap-1 tracking-tight ${
                                             plan.badge === "EARLY BIRD"
                                                 ? "bg-gradient-to-r from-red-500 to-pink-500"
                                                 : "bg-gray-800"
@@ -201,7 +201,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                     <button
                         onClick={handlePayment}
                         disabled={loading}
-                        className="w-full py-4 rounded-[20px] bg-gradient-to-r from-[#00C7AE] to-[#00A896] text-white font-bold text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full py-4 rounded-lg bg-slate-900 text-white font-bold text-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed tracking-tight"
                     >
                         {loading ? (
                             "결제창 띄우는 중..."

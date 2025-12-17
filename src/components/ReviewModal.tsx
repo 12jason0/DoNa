@@ -82,7 +82,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
             <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-gray-900">후기 작성하기</h2>
+                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">후기 작성하기</h2>
                         <button
                             onClick={handleClose}
                             disabled={isSubmitting}
@@ -173,7 +173,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                             <button
                                 type="submit"
                                 disabled={isSubmitting || content.trim().length < 10}
-                                className="hover:cursor-pointer flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="hover:cursor-pointer flex-1 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
                             >
                                 {isSubmitting ? "작성 중..." : "후기 작성"}
                             </button>

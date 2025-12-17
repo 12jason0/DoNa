@@ -349,12 +349,12 @@ function MapPageInner() {
         );
     }, [fetchAllData, center]);
 
-    useEffect(() => {
-        if (mapsReady) {
-            fetchAllData(center);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mapsReady]);
+    // 초기 로드 시 자동 데이터 로드는 제거 - "현 지도 검색" 버튼을 클릭해야만 데이터 로드
+    // useEffect(() => {
+    //     if (mapsReady) {
+    //         fetchAllData(center);
+    //     }
+    // }, [mapsReady]);
 
     const handleSearch = useCallback(async () => {
         if (!searchInput.trim()) return;
@@ -587,7 +587,17 @@ function MapPageInner() {
 
             {/* 지도 영역 */}
             <div className="absolute inset-0 z-0 w-full h-full">
-                <MapDiv id="react-naver-map" style={{ width: "100%", height: "100%", touchAction: "none" }}>
+                <MapDiv
+                    id="react-naver-map"
+                    style={{ width: "100%", height: "100%", touchAction: "none" }}
+                    onClick={() => {
+                        // 지도 영역 클릭 시 패널 최소화
+                        if (selectedPlace || panelState !== "minimized") {
+                            setSelectedPlace(null);
+                            setPanelState("minimized");
+                        }
+                    }}
+                >
                     <NaverMap
                         ref={mapRef}
                         center={new navermaps.LatLng(center.lat, center.lng)}
@@ -596,24 +606,8 @@ function MapPageInner() {
                             setCenter({ lat: c.y, lng: c.x });
                             setShowMapSearchButton(true);
                         }}
-                        // @ts-ignore
-                        onIdle={() => {
-                            if (mapRef.current && activeTab === "places") {
-                                const bounds = mapRef.current.getBounds();
-                                fetchAllData(center, undefined, {
-                                    minLat: bounds._min.y,
-                                    maxLat: bounds._max.y,
-                                    minLng: bounds._min.x,
-                                    maxLng: bounds._max.x,
-                                });
-                            }
-                        }}
-                        onClick={() => {
-                            if (selectedPlace || panelState !== "minimized") {
-                                setSelectedPlace(null);
-                                setPanelState("minimized");
-                            }
-                        }}
+                        // onClick은 NaverMap에서 지원하지 않으므로 제거
+                        // 지도 클릭 기능이 필요하면 MapDiv에 onClick 핸들러를 추가해야 함
                     >
                         {userLocation && (
                             <Marker
@@ -674,11 +668,11 @@ function MapPageInner() {
                     </svg>
                 </button>
             </div>
+
             {/* 하단 패널 */}
             <div
                 className={`z-40 absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
-                {/* 패널 핸들 (드래그 영역) */}
                 <div
                     className="w-full flex justify-center pt-3 pb-1 cursor-pointer touch-none active:bg-gray-50 transition-colors rounded-t-3xl"
                     onClick={() =>
@@ -692,7 +686,6 @@ function MapPageInner() {
                     <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-2" />
                 </div>
 
-                {/* 리스트 뷰 헤더 (선택된 장소가 없을 때만 표시) */}
                 {!selectedPlace && (
                     <div className="px-6 pb-3 border-b border-gray-100 flex justify-between items-end">
                         <div>
@@ -708,13 +701,12 @@ function MapPageInner() {
                     </div>
                 )}
 
-                {/* 컨텐츠 영역 (스크롤 가능) */}
                 <div className="flex-1 overflow-y-auto bg-white scrollbar-hide">
                     {loading ? (
                         <LoadingSpinner text="정보를 불러오고 있어요..." />
                     ) : selectedPlace ? (
-                        /* ================= [상세 정보 뷰] ================= */
                         <div className="px-5 pb-8 pt-0 animate-fadeIn">
+                            {/* 상세 정보 뷰 (생략 없이 유지) */}
                             <div className="flex justify-between items-start mb-2 mt-1">
                                 <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100">
                                     {selectedPlace.category || "추천 장소"}
@@ -743,13 +735,12 @@ function MapPageInner() {
                             <div className="text-sm text-gray-500 mb-6 flex items-start gap-1">
                                 <span className="leading-snug">{selectedPlace.address}</span>
                             </div>
-
-                            {/* ✅ 수정된 버튼 영역: 길찾기(메인) + 전화(아이콘) */}
+                            {/* ✅ 수정된 버튼 영역 (안전장치 추가됨) */}
                             <div className="flex gap-3 mb-6 h-14">
-                                {/* 1. 전화하기 (작은 아이콘 버튼) */}
+                                {/* 1. 전화하기 버튼 (작은 아이콘) */}
                                 <button
                                     onClick={() =>
-                                        selectedPlace.phone
+                                        selectedPlace?.phone
                                             ? (window.location.href = `tel:${selectedPlace.phone}`)
                                             : showToast("전화번호 정보가 없어요 🥲")
                                     }
@@ -770,9 +761,9 @@ function MapPageInner() {
                                     </svg>
                                 </button>
 
-                                {/* 2. 길찾기 (큰 메인 버튼) */}
+                                {/* 2. 길찾기 버튼 (메인 강조) */}
                                 <button
-                                    onClick={() => handleFindWay(selectedPlace.name)}
+                                    onClick={() => handleFindWay(selectedPlace?.name || "")}
                                     className="flex-1 h-full flex items-center justify-center gap-2 bg-emerald-500 text-white rounded-xl font-bold shadow-md hover:bg-emerald-600 active:scale-95 transition-all"
                                 >
                                     <span className="text-lg">길찾기</span>
@@ -790,7 +781,6 @@ function MapPageInner() {
                                     </svg>
                                 </button>
                             </div>
-
                             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                                 <h4 className="font-bold text-gray-800 mb-2 text-sm">💡 장소 설명</h4>
                                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -799,7 +789,6 @@ function MapPageInner() {
                             </div>
                         </div>
                     ) : (
-                        /* ================= [리스트 뷰] ================= */
                         <div className="px-5 pb-20 pt-1">
                             {(activeTab === "places" ? places : courses).length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-60">
@@ -812,6 +801,7 @@ function MapPageInner() {
                                 </div>
                             ) : (
                                 (activeTab === "places" ? places : courses).map((item: any) => (
+                                    // ✅ 여기도 key가 중복되면 에러가 납니다. c-*, k-*, db-*로 처리되어 안전합니다.
                                     <div
                                         key={item.id}
                                         onClick={() => {

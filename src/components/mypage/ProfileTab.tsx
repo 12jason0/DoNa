@@ -214,7 +214,7 @@ const ProfileTab = ({
             {/* ======================================================================
           1. 기본 정보 카드 (Profile Card)
       ====================================================================== */}
-            <div className="bg-white rounded-[32px] shadow-lg shadow-gray-100/50 border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
+            <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
                 {/* 배경 장식 (은은한 그라데이션) */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 opacity-50 pointer-events-none"></div>
 
@@ -224,7 +224,7 @@ const ProfileTab = ({
                     </h3>
                     <button
                         onClick={onEditProfile}
-                        className="px-4 py-2 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all flex items-center gap-1.5"
+                        className="px-4 py-2 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all flex items-center gap-1.5 tracking-tight"
                     >
                         <span>수정</span>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,14 +294,14 @@ const ProfileTab = ({
             {/* ======================================================================
           2. 취향 정보 카드 (Preferences)
       ====================================================================== */}
-            <div className="bg-white rounded-[32px] shadow-lg shadow-gray-100/50 border border-gray-100 p-6 md:p-8">
+            <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
                         나의 여행 취향
                     </h3>
                     <button
                         onClick={onEditPreferences}
-                        className="px-5 py-2.5 text-sm font-bold text-white bg-gray-900 hover:bg-black rounded-xl transition-all shadow-md hover:shadow-lg transform active:scale-95"
+                        className="px-5 py-2.5 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-all tracking-tight"
                     >
                         취향 수정하기
                     </button>
@@ -311,7 +311,7 @@ const ProfileTab = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {/* 동반자 */}
                         {userPreferences.companion && (
-                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 hover:border-emerald-100 transition-colors group">
+                            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 hover:border-emerald-100 transition-colors group">
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     누구와 함께?
                                 </h4>
@@ -323,7 +323,7 @@ const ProfileTab = ({
 
                         {/* 선호 콘셉트 */}
                         {userPreferences.concept && userPreferences.concept.length > 0 && (
-                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 hover:border-emerald-100 transition-colors group">
+                            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 hover:border-emerald-100 transition-colors group">
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     선호 콘셉트
                                 </h4>
@@ -342,7 +342,7 @@ const ProfileTab = ({
 
                         {/* 선호 분위기 */}
                         {userPreferences.mood && userPreferences.mood.length > 0 && (
-                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 hover:border-emerald-100 transition-colors group">
+                            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 hover:border-emerald-100 transition-colors group">
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     선호 분위기
                                 </h4>
@@ -361,7 +361,7 @@ const ProfileTab = ({
 
                         {/* 선호 지역 */}
                         {userPreferences.regions && userPreferences.regions.length > 0 && (
-                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 hover:border-emerald-100 transition-colors group">
+                            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 hover:border-emerald-100 transition-colors group">
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     관심 지역
                                 </h4>
@@ -379,7 +379,7 @@ const ProfileTab = ({
                         )}
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                         <p className="text-gray-500 font-medium mb-4">아직 등록된 취향 정보가 없어요 😢</p>
                         <button
                             onClick={onEditPreferences}
@@ -394,7 +394,7 @@ const ProfileTab = ({
             {/* ======================================================================
           3. 계정 관리 카드 (Account Settings)
       ====================================================================== */}
-            <div className="bg-white rounded-[32px] shadow-lg shadow-gray-100/50 border border-gray-100 p-6 md:p-8">
+            <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                 <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 mb-6 flex items-center gap-2 tracking-tight">
                     계정 관리
                 </h3>
@@ -403,10 +403,10 @@ const ProfileTab = ({
                     {/* 비밀번호 변경 버튼 */}
                     <button
                         onClick={onOpenPwModal}
-                        className="w-full flex items-center justify-between px-6 py-4.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-emerald-200 hover:shadow-md hover:bg-emerald-50/30 transition-all group"
+                        className="w-full flex items-center justify-between px-6 py-4.5 rounded-xl bg-white border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="p-2.5 bg-gray-100 rounded-xl text-gray-600 group-hover:bg-white group-hover:text-emerald-600 transition-colors">
+                            <div className="p-2.5 bg-gray-100 rounded-lg text-gray-600 group-hover:bg-white group-hover:text-emerald-600 transition-colors">
                                 🔒
                             </div>
                             <span className="font-bold text-gray-700 group-hover:text-gray-900">비밀번호 변경</span>
@@ -418,14 +418,14 @@ const ProfileTab = ({
 
                     {/* 알림 설정 토글 버튼 영역 */}
                     <div>
-                        <div className="w-full flex items-center justify-between px-6 py-4.5 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                        <div className="w-full flex items-center justify-between px-6 py-4.5 rounded-xl bg-white border border-gray-100">
                             <div className="flex items-center gap-4">
                                 {/* 1. 아이콘 상자 */}
                                 <div className="relative">
                                     <div
-                                        className={`p-2.5 rounded-xl transition-all duration-300 ${
+                                        className={`p-2.5 rounded-lg transition-all duration-300 ${
                                             notificationEnabled === true
-                                                ? "bg-emerald-100 text-emerald-600 shadow-sm shadow-emerald-100"
+                                                ? "bg-emerald-100 text-emerald-600"
                                                 : "bg-gray-100 text-gray-400"
                                         }`}
                                     >
@@ -496,7 +496,7 @@ const ProfileTab = ({
                         {/* 메시지 알림 */}
                         {notificationMessage && (
                             <div
-                                className={`mt-3 px-4 py-2.5 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-2 ${
+                                className={`mt-3 px-4 py-2.5 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 ${
                                     notificationStatus === "success"
                                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                         : notificationStatus === "error"
@@ -508,13 +508,48 @@ const ProfileTab = ({
                             </div>
                         )}
                     </div>
+                    <div className="h-px bg-gray-100 my-2"></div>
 
+                    {/* ✅ [최종 수정] 설명 없이 깔끔한 '한 줄' 스타일 */}
+                    <button
+                        onClick={() => window.open("https://pf.kakao.com/_xxxx/chat", "_blank")}
+                        className="w-full flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 hover:border-[#FEE500] hover:bg-yellow-50/10 transition-all duration-200 group"
+                    >
+                        <div className="flex items-center gap-4">
+                            {/* 1. 아이콘: 옐로우 포인트로 시선 집중 */}
+                            <div className="w-10 h-10 rounded-lg bg-[#FEE500] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                {/* 확성기 아이콘 */}
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#3b1e1e]">
+                                    <path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" />
+                                </svg>
+                            </div>
+
+                            {/* 2. 텍스트: 딱 한 줄로 끝내기 */}
+                            <span className="flex flex-col font-bold text-gray-800 text-[16px] group-hover:text-gray-900">
+                                히든 맛집 제보하고 <span className="text-yellow-600">커피 받기 ☕️</span>
+                            </span>
+                        </div>
+
+                        {/* 3. 화살표 */}
+                        <span className="text-gray-300 group-hover:text-[#FEE500] group-hover:translate-x-1 transition-transform">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </span>
+                    </button>
                     <div className="h-px bg-gray-100 my-2"></div>
 
                     {/* 로그아웃 버튼 */}
                     <button
                         onClick={onLogout}
-                        className="w-full flex items-center justify-between px-6 py-4.5 rounded-2xl bg-red-50/50 border border-transparent hover:border-red-100 hover:bg-red-50 hover:shadow-sm transition-all group"
+                        className="w-full flex items-center justify-between px-6 py-4.5 rounded-xl bg-red-50/50 border border-transparent hover:border-red-100 hover:bg-red-50 transition-all group"
                     >
                         <div className="flex items-center gap-4">
                             <div className="p-2.5 bg-white rounded-xl text-red-400 group-hover:text-red-500 shadow-sm">

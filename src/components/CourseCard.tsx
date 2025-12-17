@@ -154,7 +154,7 @@ export default function CourseCard({
                 {/* Closed Place Indicator (Optional) */}
                 {hasClosedPlace && getClosedPlaceCount && hasClosedPlace(course) && (
                     <div className="absolute bottom-3 right-3 z-10">
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm border border-red-100 shadow-md">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm border border-red-100">
                             <span className="text-[12px] font-bold text-red-600 leading-none">
                                 {getClosedPlaceCount(course)}곳 휴무
                             </span>
@@ -175,9 +175,7 @@ export default function CourseCard({
                     </span>
                     {/* New Badge */}
                     {showNewBadge && course.reviewCount === 0 && (
-                        <span className="bg-[#7aa06f] text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm">
-                            NEW
-                        </span>
+                        <span className="bg-[#7aa06f] text-white text-[10px] px-2 py-1 rounded-md font-bold">NEW</span>
                     )}
                 </div>
             </div>
@@ -185,7 +183,7 @@ export default function CourseCard({
             {/* Favorite Button (Moved outside Image Section to ensure clickability) */}
             <button
                 onClick={(e) => onToggleFavorite(e, course.id)}
-                className="absolute top-3 right-3 z-[29] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90 shadow-sm"
+                className="absolute top-3 right-3 z-[29] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
             >
                 <svg
                     className={`w-7 h-7 drop-shadow-sm transition-colors ${
@@ -218,7 +216,7 @@ export default function CourseCard({
                         </span>
                     ) : null}
                 </div>
-                <h3 className="text-[18px] font-bold text-gray-900 leading-snug mb-2 group-hover:text-gray-700 transition-colors break-keep line-clamp-2">
+                <h3 className="text-[18px] font-bold text-gray-900 leading-snug mb-2 group-hover:text-gray-700 transition-colors break-keep line-clamp-2 tracking-tight">
                     {course.title}
                 </h3>
                 <div className="text-xs font-medium">

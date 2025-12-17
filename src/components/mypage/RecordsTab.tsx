@@ -38,7 +38,7 @@ const RecordsTab = ({
     return (
         <div className="space-y-6">
             {/* 서브 탭 네비게이션 */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 overflow-x-auto no-scrollbar">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 overflow-x-auto no-scrollbar">
                 <div className="flex space-x-2 min-w-max">
                     {subTabs.map((tab) => (
                         <button
@@ -46,7 +46,7 @@ const RecordsTab = ({
                             onClick={() => setSubTab(tab.id)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                                 subTab === tab.id
-                                    ? "bg-blue-600 text-white shadow-md"
+                                    ? "bg-slate-900 text-white"
                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         >
@@ -58,8 +58,10 @@ const RecordsTab = ({
 
             {/* 보관함 (Favorites) */}
             {subTab === "favorites" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">내 여행 보관함</h3>
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 tracking-tight">
+                        내 여행 보관함
+                    </h3>
                     {favorites.length > 0 ? (
                         <div className="space-y-6">
                             {favorites.map((favorite) => {
@@ -115,8 +117,8 @@ const RecordsTab = ({
 
             {/* AI 추천 (Saved) */}
             {subTab === "saved" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 tracking-tight">
                         AI가 추천해준 나만의 코스
                     </h3>
                     {savedCourses.length > 0 ? (
@@ -150,7 +152,7 @@ const RecordsTab = ({
                             <p className="text-gray-600 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
                             <button
                                 onClick={() => router.push("/personalized-home")}
-                                className="px-6 py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors cursor-pointer"
+                                className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors cursor-pointer tracking-tight"
                             >
                                 AI 추천 받으러 가기
                             </button>
@@ -161,16 +163,16 @@ const RecordsTab = ({
 
             {/* 완료한 코스 (Completed) */}
             {subTab === "completed" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900">완료한 코스</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">완료한 코스</h3>
                     </div>
                     {completed.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {completed.map((c) => (
                                 <div
                                     key={c.course_id}
-                                    className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                                    className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors cursor-pointer"
                                     onClick={() => router.push(`/courses/${c.course_id}`)}
                                 >
                                     <div className="relative">
@@ -223,16 +225,16 @@ const RecordsTab = ({
 
             {/* 사건 파일 (Casefiles) */}
             {subTab === "casefiles" && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900">완료한 사건 파일</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">완료한 사건 파일</h3>
                     </div>
                     {casefiles.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {casefiles.map((f) => (
                                 <div
                                     key={f.story_id}
-                                    className="group relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all cursor-pointer"
+                                    className="group relative rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
                                     onClick={() => onOpenCaseModal(f.story_id, f.title)}
                                 >
                                     <div className="relative h-60">
