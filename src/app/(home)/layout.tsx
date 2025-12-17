@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         images: ["https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"],
     },
     verification: {
-        google: "b1a43bde06d184c8",
+        google: ["b1a43bde06d184c8", "xhBJt4-Q66AzounvtMTRw9qUJwusvg_p83BG-DGTLhg"],
         other: {
             "naver-site-verification": "247ecc2d7ba71441970f8ae0c7cf097cf3d895f1",
         },
