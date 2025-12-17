@@ -213,13 +213,15 @@ function MapPageInner() {
                 const aborter = new AbortController();
                 fetchAbortRef.current = aborter;
 
-                // API URL 구성
-                let placesUrl = `/api/places/search-kakao?lat=${location.lat}&lng=${location.lng}`;
-                if (keyword && keyword.trim()) placesUrl += `&keyword=${encodeURIComponent(keyword)}`;
-
                 let minLat, maxLat, minLng, maxLng;
+                let centerLat = location.lat;
+                let centerLng = location.lng;
+
                 if (bounds) {
                     ({ minLat, maxLat, minLng, maxLng } = bounds);
+                    // bounds의 중심점 계산
+                    centerLat = (minLat + maxLat) / 2;
+                    centerLng = (minLng + maxLng) / 2;
                 } else {
                     const range = 0.02;
                     minLat = location.lat - range;
@@ -230,11 +232,43 @@ function MapPageInner() {
 
                 const myDataUrl = `/api/map?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}`;
 
-                // 병렬 요청
-                const [kakaoData, myData] = await Promise.all([
-                    fetch(placesUrl, { signal: aborter.signal }).then((res) => res.json()),
+                // 카카오 API와 DB API를 항상 병렬 호출 (DB 데이터가 적어도 카카오 데이터가 필요)
+                const promises: Promise<any>[] = [
                     fetch(myDataUrl, { signal: aborter.signal }).then((res) => res.json()),
-                ]);
+                ];
+
+                // 카카오 API 호출 (keyword가 있으면 keyword 사용, 없으면 기본 "맛집")
+                const effectiveKeyword = keyword && keyword.trim() ? keyword : "맛집";
+                let radius = 2000; // 기본 2km
+
+                if (bounds) {
+                    // bounds가 있으면 bounds 크기에 맞는 반경 계산
+                    const latDiff = maxLat - minLat;
+                    const lngDiff = maxLng - minLng;
+                    radius = Math.max(latDiff * 111000, lngDiff * 88800); // 위도 1도 ≈ 111km, 경도 1도 ≈ 88.8km
+                }
+
+                const placesUrl = `/api/places/search-kakao?lat=${centerLat}&lng=${centerLng}&keyword=${encodeURIComponent(
+                    effectiveKeyword
+                )}&radius=${Math.round(radius)}`;
+                promises.push(
+                    fetch(placesUrl, { signal: aborter.signal })
+                        .then((res) => res.json())
+                        .catch(() => ({ success: false, places: [], relatedCourses: [] })) // 카카오 API 실패해도 계속 진행
+                );
+
+                const [myData, kakaoData] = await Promise.all(promises);
+
+                // bounds가 있으면 카카오 장소를 bounds 범위 내로 필터링
+                let filteredKakaoPlaces = kakaoData.places || [];
+                if (bounds && kakaoData.success && Array.isArray(kakaoData.places)) {
+                    filteredKakaoPlaces = kakaoData.places.filter((p: any) => {
+                        const pLat = parseFloat(p.latitude);
+                        const pLng = parseFloat(p.longitude);
+                        return pLat >= minLat && pLat <= maxLat && pLng >= minLng && pLng <= maxLng;
+                    });
+                    kakaoData.places = filteredKakaoPlaces;
+                }
 
                 // ✅ Map을 사용하여 중복 ID 원천 차단
                 const uniquePlaces = new Map<string, Place>();
@@ -346,17 +380,93 @@ function MapPageInner() {
         }
     }, [searchInput, fetchAllData]);
 
-    const handleMapSearch = () => {
+    const handleMapSearch = async () => {
         if (!mapRef.current) return;
-        const bounds = mapRef.current.getBounds();
-        fetchAllData(center, undefined, {
-            minLat: bounds._min.y,
-            maxLat: bounds._max.y,
-            minLng: bounds._min.x,
-            maxLng: bounds._max.x,
-        });
-        setShowMapSearchButton(false);
-        setPanelState("default");
+        setLoading(true);
+        try {
+            const bounds = mapRef.current.getBounds();
+            const minLat = bounds._min.y;
+            const maxLat = bounds._max.y;
+            const minLng = bounds._min.x;
+            const maxLng = bounds._max.x;
+
+            // bounds의 중심점 계산
+            const centerLat = (minLat + maxLat) / 2;
+            const centerLng = (minLng + maxLng) / 2;
+
+            // bounds의 대각선 거리를 반경(m)으로 계산 (대략적으로)
+            const latDiff = maxLat - minLat;
+            const lngDiff = maxLng - minLng;
+            const radius = Math.max(latDiff * 111000, lngDiff * 88800); // 위도 1도 ≈ 111km, 경도 1도 ≈ 88.8km (서울 기준)
+
+            const myDataUrl = `/api/map?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}`;
+            // 카카오 API는 중심점과 반경으로 호출 (keyword 없이 기본 "맛집" 검색)
+            const kakaoUrl = `/api/places/search-kakao?lat=${centerLat}&lng=${centerLng}&radius=${Math.round(radius)}`;
+
+            // 병렬 요청 (DB는 빠르고, 카카오는 느릴 수 있으므로 함께 호출)
+            const [myData, kakaoData] = await Promise.all([
+                fetch(myDataUrl).then((res) => res.json()),
+                fetch(kakaoUrl)
+                    .then((res) => res.json())
+                    .catch(() => ({ success: false, places: [], relatedCourses: [] })), // 카카오 API 실패해도 계속 진행
+            ]);
+
+            // 데이터 처리
+            const uniquePlaces = new Map<string, Place>();
+            const uniqueCourses = new Map<string, Course>();
+
+            // (1) 카카오 데이터 처리
+            if (kakaoData.success && Array.isArray(kakaoData.places)) {
+                kakaoData.places.forEach((p: any) => {
+                    // bounds 범위 내에 있는지 확인
+                    const pLat = parseFloat(p.latitude);
+                    const pLng = parseFloat(p.longitude);
+                    if (pLat >= minLat && pLat <= maxLat && pLng >= minLng && pLng <= maxLng) {
+                        const id = `k-${p.id}`;
+                        uniquePlaces.set(id, {
+                            ...p,
+                            id: id,
+                            latitude: pLat,
+                            longitude: pLng,
+                            source: "kakao",
+                        });
+                    }
+                });
+            }
+
+            // (2) DB 데이터 처리
+            if (myData.places && Array.isArray(myData.places)) {
+                myData.places.forEach((p: any) => {
+                    const id = `db-${p.id}`;
+                    uniquePlaces.set(id, { ...p, id: id, source: "db" });
+                });
+            }
+
+            // (3) 코스 데이터 처리
+            if (myData.courses && Array.isArray(myData.courses)) {
+                myData.courses.forEach((c: any) => {
+                    const id = `c-${c.id}`;
+                    uniqueCourses.set(id, { ...c, id: id });
+                });
+            }
+
+            if (kakaoData.relatedCourses && Array.isArray(kakaoData.relatedCourses)) {
+                kakaoData.relatedCourses.forEach((c: any) => {
+                    const id = `c-${c.id}`;
+                    uniqueCourses.set(id, { ...c, id: id });
+                });
+            }
+
+            setPlaces(Array.from(uniquePlaces.values()));
+            setCourses(Array.from(uniqueCourses.values()));
+            setShowMapSearchButton(false);
+            setPanelState("default");
+        } catch (e: any) {
+            console.error("현 지도 검색 오류:", e);
+            showToast("검색 중 오류가 발생했습니다.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleTouchStart = (e: React.TouchEvent) => {
@@ -375,9 +485,9 @@ function MapPageInner() {
     };
 
     const getPanelHeightClass = () => {
-        if (panelState === "expanded") return "h-[90vh]";
+        if (panelState === "expanded") return "h-[85vh]";
         if (panelState === "minimized") return "h-[120px]";
-        return "h-[50vh]";
+        return "h-[40vh]"; // 50vh -> 40vh로 줄여서 지도가 더 많이 보이도록
     };
 
     const handlePlaceClick = (place: Place) => {
@@ -564,11 +674,11 @@ function MapPageInner() {
                     </svg>
                 </button>
             </div>
-
             {/* 하단 패널 */}
             <div
                 className={`z-40 absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
+                {/* 패널 핸들 (드래그 영역) */}
                 <div
                     className="w-full flex justify-center pt-3 pb-1 cursor-pointer touch-none active:bg-gray-50 transition-colors rounded-t-3xl"
                     onClick={() =>
@@ -582,6 +692,7 @@ function MapPageInner() {
                     <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-2" />
                 </div>
 
+                {/* 리스트 뷰 헤더 (선택된 장소가 없을 때만 표시) */}
                 {!selectedPlace && (
                     <div className="px-6 pb-3 border-b border-gray-100 flex justify-between items-end">
                         <div>
@@ -597,12 +708,13 @@ function MapPageInner() {
                     </div>
                 )}
 
+                {/* 컨텐츠 영역 (스크롤 가능) */}
                 <div className="flex-1 overflow-y-auto bg-white scrollbar-hide">
                     {loading ? (
                         <LoadingSpinner text="정보를 불러오고 있어요..." />
                     ) : selectedPlace ? (
+                        /* ================= [상세 정보 뷰] ================= */
                         <div className="px-5 pb-8 pt-0 animate-fadeIn">
-                            {/* 상세 정보 뷰 (생략 없이 유지) */}
                             <div className="flex justify-between items-start mb-2 mt-1">
                                 <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100">
                                     {selectedPlace.category || "추천 장소"}
@@ -631,24 +743,54 @@ function MapPageInner() {
                             <div className="text-sm text-gray-500 mb-6 flex items-start gap-1">
                                 <span className="leading-snug">{selectedPlace.address}</span>
                             </div>
-                            <div className="grid grid-cols-[1.5fr_1fr] gap-3 mb-6">
+
+                            {/* ✅ 수정된 버튼 영역: 길찾기(메인) + 전화(아이콘) */}
+                            <div className="flex gap-3 mb-6 h-14">
+                                {/* 1. 전화하기 (작은 아이콘 버튼) */}
                                 <button
                                     onClick={() =>
                                         selectedPlace.phone
                                             ? (window.location.href = `tel:${selectedPlace.phone}`)
                                             : showToast("전화번호 정보가 없어요 🥲")
                                     }
-                                    className="flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-white rounded-xl font-bold shadow-md hover:bg-emerald-600 active:scale-95 transition-all"
+                                    className="w-14 h-full flex items-center justify-center bg-white text-gray-400 border border-gray-200 rounded-xl hover:text-emerald-500 hover:border-emerald-200 hover:bg-emerald-50 active:scale-95 transition-all"
+                                    aria-label="전화하기"
                                 >
-                                    전화하기
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="w-6 h-6"
+                                    >
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
                                 </button>
+
+                                {/* 2. 길찾기 (큰 메인 버튼) */}
                                 <button
                                     onClick={() => handleFindWay(selectedPlace.name)}
-                                    className="flex items-center justify-center gap-2 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 active:scale-95 transition-all border border-gray-200"
+                                    className="flex-1 h-full flex items-center justify-center gap-2 bg-emerald-500 text-white rounded-xl font-bold shadow-md hover:bg-emerald-600 active:scale-95 transition-all"
                                 >
-                                    길찾기
+                                    <span className="text-lg">길찾기</span>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="w-5 h-5"
+                                    >
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
                                 </button>
                             </div>
+
                             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                                 <h4 className="font-bold text-gray-800 mb-2 text-sm">💡 장소 설명</h4>
                                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -657,6 +799,7 @@ function MapPageInner() {
                             </div>
                         </div>
                     ) : (
+                        /* ================= [리스트 뷰] ================= */
                         <div className="px-5 pb-20 pt-1">
                             {(activeTab === "places" ? places : courses).length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-60">
@@ -669,7 +812,6 @@ function MapPageInner() {
                                 </div>
                             ) : (
                                 (activeTab === "places" ? places : courses).map((item: any) => (
-                                    // ✅ 여기도 key가 중복되면 에러가 납니다. c-*, k-*, db-*로 처리되어 안전합니다.
                                     <div
                                         key={item.id}
                                         onClick={() => {

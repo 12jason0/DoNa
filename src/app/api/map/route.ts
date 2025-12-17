@@ -14,23 +14,24 @@ export async function GET(request: NextRequest) {
 
         const onlyMine = searchParams.get("onlyMine") === "true";
 
-        // 2. 장소 검색 조건 (Place 테이블용)
+        // 2. 장소 검색 조건 (Place 테이블용) - null 값 제외
         const locationFilter = {
-            latitude: { gte: minLat, lte: maxLat },
-            longitude: { gte: minLng, lte: maxLng },
+            latitude: { gte: minLat, lte: maxLat, not: null },
+            longitude: { gte: minLng, lte: maxLng, not: null },
         };
 
         // 3. 쿼리 조건 생성
         // (1) Place 검색 조건
         let placeWhere: any = { ...locationFilter };
 
-        // (2) Course 검색 조건
-        // ⭐️ [수정] course_places -> coursePlaces (Prisma 모델명 사용)
+        // (2) Course 검색 조건 - 공개된 코스만
         let courseWhere: any = {
+            isPublic: true,
             coursePlaces: {
                 some: {
                     place: {
-                        ...locationFilter,
+                        latitude: { gte: minLat, lte: maxLat, not: null },
+                        longitude: { gte: minLng, lte: maxLng, not: null },
                     },
                 },
             },
@@ -40,46 +41,65 @@ export async function GET(request: NextRequest) {
         if (onlyMine) {
             const userId = resolveUserId(request);
             if (userId) {
-                // [체크] userId 필드명 확인 (에러 없으면 통과)
-                placeWhere.userId = userId;
-                courseWhere.userId = userId;
+                courseWhere.userId = Number(userId);
             } else {
                 return NextResponse.json({ places: [], courses: [] });
             }
         }
 
-        // 5. 데이터 조회 (병렬 실행)
+        // 5. 데이터 조회 (병렬 실행) - 필요한 필드만 선택하여 성능 최적화
         const [places, courses] = await Promise.all([
-            // (1) 장소 검색
+            // (1) 장소 검색 - 필요한 필드만 선택
             prisma.place.findMany({
                 where: placeWhere,
                 take: 50,
+                select: {
+                    id: true,
+                    name: true,
+                    address: true,
+                    latitude: true,
+                    longitude: true,
+                    category: true,
+                    imageUrl: true,
+                    description: true,
+                },
             }),
 
-            // (2) 코스 검색
+            // (2) 코스 검색 - 필요한 필드만 선택 (최소한의 join)
             prisma.course.findMany({
                 where: courseWhere,
                 take: 20,
-                include: {
-                    // ⭐️ [수정] course_places -> coursePlaces
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    imageUrl: true,
+                    region: true,
+                    concept: true,
+                    rating: true,
+                    view_count: true,
                     coursePlaces: {
                         take: 1,
-                        // 🚨 만약 여기서도 에러나면 'order_index'를 'orderIndex'로 바꿔보세요!
                         orderBy: { order_index: "asc" },
-                        include: {
-                            place: true,
+                        select: {
+                            place: {
+                                select: {
+                                    latitude: true,
+                                    longitude: true,
+                                },
+                            },
                         },
                     },
                 },
             }),
         ]);
 
-        // 6. 코스 데이터 매핑 (좌표 추가)
+        // 6. 코스 데이터 매핑 (좌표 추가) - 성능 최적화
         const mappedCourses = courses.map((course: any) => {
-            // ⭐️ [수정] 여기도 coursePlaces로 접근해야 합니다.
             const firstPlace = course.coursePlaces?.[0]?.place;
+            const { coursePlaces, ...courseData } = course;
             return {
-                ...course,
+                ...courseData,
                 latitude: firstPlace?.latitude || 0,
                 longitude: firstPlace?.longitude || 0,
             };

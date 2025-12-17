@@ -4,6 +4,12 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
+    // 1. 웹 브라우저면 바로 종료 (알림 기능 안 씀 -> 오류 해결)
+    if (Platform.OS === "web") {
+        console.log("웹 환경이라 푸시 알림을 등록하지 않습니다.");
+        return null;
+    }
+
     let token;
 
     if (Platform.OS === "android") {
@@ -15,7 +21,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         });
     }
 
-    if (Device.isDevice || Platform.OS === "web") {
+    // 2. 실제 기기(앱)일 때만 실행
+    if (Device.isDevice) {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -32,21 +39,18 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.manifest?.extra?.eas?.projectId;
 
         if (!projectId) {
-            console.error("❌ Project ID를 찾을 수 없습니다. 'npx eas-cli init'을 실행했나요?");
+            console.error("❌ Project ID 없음");
             return null;
         }
 
         try {
-            // ✅ [수정됨] 'as any'를 붙여서 TypeScript 오류를 무시합니다.
+            // 웹은 위에서 걸러졌으므로 vapidPublicKey 삭제해도 됨
             const tokenData = await Notifications.getExpoPushTokenAsync({
                 projectId: projectId,
-                vapidPublicKey:
-                    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ??
-                    "BMW3e7lNnYLnS2-pRm-WDzsLpKSsssMvpY4a0v-XsAAUMY_vnxdMT8bCEPRugZrOpwxIExCt4ILNZON1e-QqqKI",
-            } as any);
+            });
 
             token = tokenData.data;
-            console.log("✅ 성공! 푸시 토큰:", token);
+            console.log("✅ 앱 푸시 토큰:", token);
         } catch (e) {
             console.error("❌ 토큰 발급 에러:", e);
         }

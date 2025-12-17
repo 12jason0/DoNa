@@ -240,6 +240,7 @@ model Place {
 
   @@index([name])
   @@index([address])
+  @@index([latitude, longitude]) // 지도 조회 성능 최적화를 위한 복합 인덱스
   @@map("places")
 }
 

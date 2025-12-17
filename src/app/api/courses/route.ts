@@ -13,9 +13,6 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
     try {
-        console.log(">>> API 함수 진입");
-        console.log("--- [START] /api/courses GET 요청 수신 ---");
-
         const { searchParams } = new URL(request.url);
         const concept = searchParams.get("concept");
         const q = (searchParams.get("q") || "").trim();
@@ -192,13 +189,9 @@ export async function GET(request: NextRequest) {
 
         let results: any[] | undefined = defaultCache.get<any[]>(cacheKey);
         if (!results) {
-            console.log("[LOG] Cache miss → Prisma 쿼리 실행");
             results = await prisma.course.findMany(prismaQuery);
             defaultCache.set(cacheKey, results);
-        } else {
-            console.log("[LOG] Cache hit → 메모리 캐시 사용");
         }
-        console.log(`[LOG] Prisma 쿼리 성공. ${results.length}개 데이터 수신.`);
 
         const imagePolicyApplied = filterCoursesByImagePolicy(results as CourseWithPlaces[], imagePolicy);
 
@@ -293,8 +286,6 @@ export async function GET(request: NextRequest) {
            기존의 개인화 정렬(ViewCount, Rating 기반)은 등급 정렬 완료된 상태를 유지하도록 둡니다.
            만약 개인화가 더 중요하다면 이 주석을 풀고 가중치를 조정해야 합니다.
         */
-
-        console.log("--- [SUCCESS] /api/courses 요청 처리 완료 ---");
 
         return NextResponse.json(responseList, {
             status: 200,

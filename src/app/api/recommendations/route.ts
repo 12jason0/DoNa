@@ -3,8 +3,11 @@ import { prisma } from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-const KMA_API_KEY = process.env.KMA_API_KEY;
-const AIRKOREA_API_KEY = process.env.AIRKOREA_API_KEY;
+// 공공데이터포털 인증 키 (기상청 API와 미세먼지 API 모두 동일한 키 사용)
+// KMA_API_KEY 또는 AIRKOREA_API_KEY 중 하나만 설정하면 됨
+const PUBLIC_DATA_API_KEY = process.env.KMA_API_KEY || process.env.AIRKOREA_API_KEY;
+const KMA_API_KEY = PUBLIC_DATA_API_KEY;
+const AIRKOREA_API_KEY = PUBLIC_DATA_API_KEY;
 
 // ---------------------------------------------
 // [날씨/점수 계산 함수들은 기존과 동일 - 생략 없이 전체 코드 유지]
@@ -27,28 +30,81 @@ function extractWeatherStatus(data: any): string | null {
 }
 
 async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | null> {
-    if (!KMA_API_KEY) return null;
+    if (!KMA_API_KEY) {
+        console.error("⚠️ KMA_API_KEY가 설정되지 않았습니다.");
+        return null;
+    }
     const now = new Date();
     const baseDate = now.toISOString().slice(0, 10).replace(/-/g, "");
     const baseTime = `${now.getHours().toString().padStart(2, "0")}00`;
-    const apiUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst?serviceKey=${KMA_API_KEY}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+    const apiUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst?serviceKey=${encodeURIComponent(
+        KMA_API_KEY
+    )}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
     try {
         const response = await fetch(apiUrl);
+        if (!response.ok) {
+            console.error(`❌ 날씨 API HTTP 오류: ${response.status} ${response.statusText}`);
+            return null;
+        }
         const jsonResponse = await response.json();
+
+        // 공공데이터포털 API는 에러 시에도 200을 반환하므로 resultCode 확인
+        const resultCode = jsonResponse?.response?.header?.resultCode;
+        if (resultCode && resultCode !== "00") {
+            const resultMsg = jsonResponse?.response?.header?.resultMsg || "알 수 없는 오류";
+            console.error(`❌ 날씨 API 오류 (resultCode: ${resultCode}): ${resultMsg}`);
+            return null;
+        }
+
         return extractWeatherStatus(jsonResponse);
-    } catch {
+    } catch (error) {
+        console.error("❌ 날씨 API 호출 중 예외 발생:", error);
         return null;
     }
 }
 
 async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
-    if (!AIRKOREA_API_KEY || !sidoName) return null;
+    if (!AIRKOREA_API_KEY || !sidoName) {
+        if (!AIRKOREA_API_KEY) console.error("⚠️ AIRKOREA_API_KEY가 설정되지 않았습니다.");
+        if (!sidoName) console.error("⚠️ sidoName이 없습니다.");
+        return null;
+    }
     try {
         const encodedServiceKey = encodeURIComponent(AIRKOREA_API_KEY);
         const encodedSidoName = encodeURIComponent(sidoName);
         const apiUrl = `https://apis.data.go.kr/B552584/ArpltnInforinquireSvc/getCtprvnRltmMesureDnsty?serviceKey=${encodedServiceKey}&numOfRows=1&pageNo=1&sidoName=${encodedSidoName}&ver=1.3&returnType=json`;
+
         const response = await fetch(apiUrl, { next: { revalidate: 3600 } });
+
+        if (!response.ok) {
+            // 500 오류인 경우 응답 본문 확인
+            let errorBody = "";
+            try {
+                errorBody = await response.text();
+                console.error(`❌ 미세먼지 API HTTP 오류: ${response.status} ${response.statusText}`);
+                console.error(`❌ 응답 본문: ${errorBody.substring(0, 500)}`); // 처음 500자만 출력
+            } catch (e) {
+                console.error(
+                    `❌ 미세먼지 API HTTP 오류: ${response.status} ${response.statusText} (응답 본문 읽기 실패)`
+                );
+            }
+            return null;
+        }
+
         const jsonResponse = await response.json().catch(() => null as any);
+        if (!jsonResponse) {
+            console.error("❌ 미세먼지 API JSON 파싱 실패");
+            return null;
+        }
+
+        // 공공데이터포털 API는 에러 시에도 200을 반환하므로 resultCode 확인
+        const resultCode = jsonResponse?.response?.header?.resultCode;
+        if (resultCode && resultCode !== "00") {
+            const resultMsg = jsonResponse?.response?.header?.resultMsg || "알 수 없는 오류";
+            console.error(`❌ 미세먼지 API 오류 (resultCode: ${resultCode}): ${resultMsg}`);
+            return null;
+        }
+
         const items = jsonResponse?.response?.body?.items;
         if (!Array.isArray(items) || items.length === 0) return null;
         const item = items[0] || {};
@@ -69,13 +125,16 @@ async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
             (Number.isFinite(pm25Value) && pm25Value > 35);
         if (isBad) return "미세먼지";
         return null;
-    } catch {
+    } catch (error) {
+        console.error("❌ 미세먼지 API 호출 중 예외 발생:", error);
         return null;
     }
 }
 
 function calculateWeatherPenalty(courseTags: any, weatherToday: string): number {
     let penalty = 0;
+
+    // 비/눈 날씨: 야외 코스는 페널티, 실내 코스는 보너스
     if (weatherToday.includes("비") || weatherToday.includes("눈")) {
         const isOutdoorCourse = courseTags.concept?.some(
             (tag: string) => tag.includes("야외") || tag.includes("공원") || tag.includes("루프탑")
@@ -84,7 +143,8 @@ function calculateWeatherPenalty(courseTags: any, weatherToday: string): number 
         const isIndoorCourse = courseTags.concept?.some((tag: string) => tag.includes("실내"));
         if (isIndoorCourse) penalty += 0.05;
     }
-    if (weatherToday.includes("미세먼지") || weatherToday.includes("황사")) {
+    // 미세먼지/황사: 활동적인 야외 코스는 페널티, 안전한 실내 코스는 보너스
+    else if (weatherToday.includes("미세먼지") || weatherToday.includes("황사")) {
         const isActivityCourse = courseTags.concept?.some(
             (tag: string) => tag.includes("활동적인") || tag.includes("야외") || tag.includes("모험")
         );
@@ -94,6 +154,17 @@ function calculateWeatherPenalty(courseTags: any, weatherToday: string): number 
         );
         if (isSafeIndoor) penalty += 0.03;
     }
+    // 맑은 날씨: 야외 코스는 보너스, 실내 코스는 약간의 페널티
+    else if (weatherToday.includes("맑음") || weatherToday.includes("구름많음") || weatherToday.includes("흐림")) {
+        const isOutdoorCourse = courseTags.concept?.some(
+            (tag: string) =>
+                tag.includes("야외") || tag.includes("공원") || tag.includes("루프탑") || tag.includes("활동적인")
+        );
+        if (isOutdoorCourse) penalty += 0.1;
+        const isIndoorCourse = courseTags.concept?.some((tag: string) => tag.includes("실내"));
+        if (isIndoorCourse && !isOutdoorCourse) penalty += -0.05;
+    }
+
     return penalty;
 }
 
@@ -260,33 +331,29 @@ export async function GET(req: NextRequest) {
         let userId: number | null = null;
         if (userIdStr) userId = Number(userIdStr);
 
-        // 1. 비로그인 처리: 무조건 'FREE' 등급의 인기 코스 반환
-        if (!userId) {
-            const popular = await prisma.course.findMany({
-                where: { grade: "FREE", isPublic: true },
-                orderBy: { view_count: "desc" },
-                take: limit,
-            });
-            return NextResponse.json({ recommendations: popular });
-        }
+        // 2. 사용자 정보 (구독 등급 포함) - 로그인 사용자만
+        const user = userId
+            ? await prisma.user.findUnique({
+                  where: { id: userId },
+                  select: { subscriptionTier: true },
+              })
+            : null;
 
-        // 2. 사용자 정보 (구독 등급 포함)
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { subscriptionTier: true },
-        });
+        const userPrefs = userId
+            ? await prisma.userPreference.findUnique({
+                  where: { userId },
+                  select: { preferences: true },
+              })
+            : null;
 
-        const userPrefs = await prisma.userPreference.findUnique({
-            where: { userId },
-            select: { preferences: true },
-        });
-
-        const recent = await prisma.userInteraction.findMany({
-            where: { userId, action: { in: ["view", "click", "like"] } },
-            orderBy: { createdAt: "desc" },
-            take: 10,
-            include: { course: { select: { id: true, concept: true, region: true } } },
-        });
+        const recent = userId
+            ? await prisma.userInteraction.findMany({
+                  where: { userId, action: { in: ["view", "click", "like"] } },
+                  orderBy: { createdAt: "desc" },
+                  take: 10,
+                  include: { course: { select: { id: true, concept: true, region: true } } },
+              })
+            : [];
 
         // ---------------------------------------------
         // 🔥 [핵심 변경] 등급별 필터링 로직
@@ -295,7 +362,10 @@ export async function GET(req: NextRequest) {
         const whereConditions: any = { isPublic: true };
         const userTier = user?.subscriptionTier || "FREE";
 
-        if (mode === "main") {
+        // 비로그인 사용자는 FREE 코스만
+        if (!userId) {
+            whereConditions.grade = "FREE";
+        } else if (mode === "main") {
             // ✅ 1. 메인/온보딩 추천: 유저 등급을 따라감
             if (userTier === "PREMIUM") {
                 // [PREMIUM 유저] -> 필터 없음 (FREE, BASIC, PREMIUM 모두 보임)
@@ -358,17 +428,58 @@ export async function GET(req: NextRequest) {
 
         let gridCoords: { nx: number; ny: number } | null = null;
         if (regionToday) {
-            const gridData = await prisma.gridCode.findFirst({
+            // 지역명 검색: "서울 강남구" -> "서울 특별시 강남구" 매칭
+            // 1. 원본으로 먼저 검색 ("서울 강남구")
+            let gridData = await prisma.gridCode.findFirst({
                 where: { region_name: { contains: regionToday } },
                 select: { nx: true, ny: true },
             });
-            if (gridData) gridCoords = gridData;
+
+            // 2. "특별시" 또는 "광역시"를 추가한 패턴으로 검색
+            if (!gridData) {
+                const patterns = [
+                    regionToday.replace(/서울\s+/, "서울 특별시 "), // "서울 강남구" -> "서울 특별시 강남구"
+                    regionToday.replace(/\s+강남구/, " 특별시 강남구"), // "서울 강남구" -> "서울 특별시 강남구"
+                ];
+
+                for (const pattern of patterns) {
+                    if (pattern !== regionToday) {
+                        // 원본과 다를 때만
+                        gridData = await prisma.gridCode.findFirst({
+                            where: { region_name: { contains: pattern } },
+                            select: { nx: true, ny: true },
+                        });
+                        if (gridData) break;
+                    }
+                }
+            }
+
+            // 3. 마지막 부분(구/동 이름)만으로 검색 (예: "강남구")
+            if (!gridData) {
+                const parts = regionToday.split(/\s+/).filter((p) => p.length > 1);
+                const lastPart = parts[parts.length - 1]; // "강남구"
+                if (lastPart && lastPart.length > 1) {
+                    gridData = await prisma.gridCode.findFirst({
+                        where: { region_name: { contains: lastPart } },
+                        select: { nx: true, ny: true },
+                    });
+                }
+            }
+
+            if (gridData) {
+                gridCoords = gridData;
+            }
         }
 
         let weatherToday: string | null = null;
         let airQualityStatus: string | null = null;
         if (regionToday) {
-            const sidoName = (regionToday.split(" ")[0] || regionToday).replace(/시|도$/g, "");
+            // sidoName 변환: "서울 강남구" -> "서울" 또는 "서울특별시"
+            let sidoName = (regionToday.split(" ")[0] || regionToday).replace(/시|도$/g, "");
+            // "서울"을 "서울특별시"로 변환 시도 (일부 API가 이 형식을 요구할 수 있음)
+            if (sidoName === "서울") {
+                sidoName = "서울특별시";
+            }
             const [kmaStatus, airStatus] = await Promise.all([
                 gridCoords ? fetchWeatherAndCache(gridCoords.nx, gridCoords.ny) : Promise.resolve(null),
                 fetchAirQualityStatus(sidoName),
@@ -384,6 +495,16 @@ export async function GET(req: NextRequest) {
             region_today: regionToday,
             weather_today: [weatherToday, airQualityStatus].filter(Boolean).join("/") || "",
         };
+
+        // 비로그인 사용자는 날씨 정보를 활용하지 않고 바로 인기 코스 반환
+        if (!userId) {
+            const popular = await prisma.course.findMany({
+                where: { grade: "FREE", isPublic: true },
+                orderBy: { view_count: "desc" },
+                take: limit,
+            });
+            return NextResponse.json({ recommendations: popular });
+        }
 
         let filteredCourses = allCourses;
         if (!strictRegion && regionToday) {

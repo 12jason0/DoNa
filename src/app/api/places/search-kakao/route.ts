@@ -130,8 +130,47 @@ export async function GET(request: NextRequest) {
         const enrichedPlaces: any[] = [];
         const relatedCourseIds = new Set<number>();
 
-        // [B] 검색 결과 처리
-        for (const doc of documents) {
+        // [B-1] 모든 카카오 장소 이름과 주소 추출 (배치 쿼리를 위한 준비)
+        const kakaoNames = documents.map((doc: any) => doc.place_name);
+        const kakaoAddresses = documents.map((doc: any) => {
+            const addr = doc.road_address_name || doc.address_name;
+            return addr ? addr.split(" ").slice(0, 2).join(" ") : "";
+        });
+
+        // [B-2] 배치로 DB 매칭 (N+1 쿼리 문제 해결)
+        const dbPlaces = await prisma.place.findMany({
+            where: {
+                OR: [
+                    { name: { in: kakaoNames } },
+                    ...kakaoAddresses.filter(Boolean).map((addr: string) => ({ address: { contains: addr } })),
+                ],
+            },
+            select: {
+                id: true,
+                name: true,
+                address: true,
+                coursePlaces: {
+                    select: {
+                        course: {
+                            select: {
+                                id: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        // [B-3] DB 매칭 맵 생성 (빠른 조회를 위해)
+        const dbPlaceMap = new Map<number, (typeof dbPlaces)[0]>();
+        const dbPlaceByNameMap = new Map<string, (typeof dbPlaces)[0]>();
+        dbPlaces.forEach((place) => {
+            dbPlaceMap.set(place.id, place);
+            dbPlaceByNameMap.set(place.name, place);
+        });
+
+        // [B-4] 검색 결과 처리 (DB 쿼리 없이 메모리에서 매칭)
+        for (const doc of documents as any[]) {
             // 카카오 데이터 필드 매핑
             const title = doc.place_name;
             const address = doc.road_address_name || doc.address_name;
@@ -142,7 +181,7 @@ export async function GET(request: NextRequest) {
             const placeUrl = doc.place_url;
             const id = doc.id;
 
-            // 거리 계산 (API가 distance를 주기도 하지만 미터 단위 문자열일 수 있음)
+            // 거리 계산
             let distStr = "";
             if (doc.distance) {
                 const dist = parseInt(doc.distance);
@@ -152,33 +191,18 @@ export async function GET(request: NextRequest) {
                 distStr = dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`;
             }
 
-            // 2. 우리 DB 매칭 (주소 앞부분 or 이름)
-            // 주소 매칭: "서울 마포구 어울마당로" -> "서울 마포구" 정도만 일치해도 후보로?
-            // 정확도를 위해 이름이 포함되는지 확인하는 것이 좋음
-            const dbPlace = await prisma.place.findFirst({
-                where: {
-                    OR: [{ address: { contains: address.split(" ").slice(0, 2).join(" ") } }, { name: title }],
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    coursePlaces: {
-                        include: { course: true },
-                    },
-                },
-            });
-
-            // 이름이 너무 다르면 매칭 취소 (안전장치)
+            // DB 매칭 (메모리에서)
             let matchedDbId = null;
-            if (dbPlace) {
-                // DB 이름과 카카오 이름이 유사한지 체크 (간단히 포함 여부)
-                if (title.includes(dbPlace.name) || dbPlace.name.includes(title)) {
-                    matchedDbId = dbPlace.id;
-                    // 연관 코스 수집
-                    dbPlace.coursePlaces.forEach((cp) => {
-                        if (cp.course) relatedCourseIds.add(cp.course.id);
-                    });
-                }
+            const dbPlace =
+                dbPlaceByNameMap.get(title) ||
+                dbPlaces.find((p) => address && p.address?.includes(address.split(" ").slice(0, 2).join(" ")));
+
+            if (dbPlace && (title.includes(dbPlace.name) || dbPlace.name.includes(title))) {
+                matchedDbId = dbPlace.id;
+                // 연관 코스 수집
+                dbPlace.coursePlaces.forEach((cp) => {
+                    if (cp.course) relatedCourseIds.add(cp.course.id);
+                });
             }
 
             enrichedPlaces.push({
@@ -196,7 +220,7 @@ export async function GET(request: NextRequest) {
                 imageUrl: "",
                 isDbMatched: !!matchedDbId,
                 relatedCourseIds:
-                    matchedDbId && dbPlace ? dbPlace.coursePlaces.map((cp) => cp.course?.id).filter(Boolean) : [], // ✅ 관련 코스 ID 배열 추가
+                    matchedDbId && dbPlace ? dbPlace.coursePlaces.map((cp) => cp.course?.id).filter(Boolean) : [],
             });
         }
 
