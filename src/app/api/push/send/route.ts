@@ -29,6 +29,19 @@ export async function POST(req: NextRequest) {
             });
         }
 
+        // [법적 필수] 마케팅 수신 동의 확인 (정보통신망법 준수)
+        const user = await prisma.user.findUnique({
+            where: { id: parseInt(userId) },
+            select: { isMarketingAgreed: true },
+        });
+
+        if (!user || !user.isMarketingAgreed) {
+            return NextResponse.json({
+                success: false,
+                message: "마케팅 수신 동의가 필요한 알림입니다",
+            });
+        }
+
         // 4. Expo Push Notification 메시지 구성
         const message = {
             to: pushToken.token,

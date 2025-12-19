@@ -8,25 +8,32 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// =====================================================================
+// [1] 결제 및 구독 (Monetization)
+// : 앱의 수익화(돈)와 관련된 핵심 테이블입니다.
+// =====================================================================
+
+// 사용자가 결제한 내역을 영수증처럼 보관합니다.
+// (토스 페이먼츠나 아임포트 연동 시 사용)
 model Payment {
-  id          String        @id @default(cuid()) // 결제 ID는 보안상 UUID(cuid) 추천
+  id          String        @id @default(cuid()) // 보안을 위해 숫자가 아닌 무작위 문자열(cuid) 사용
   userId      Int           @map("user_id")
   
-  // 주문 정보
-  orderId     String        @unique @map("order_id") // 우리가 생성한 주문번호 (예: ORD_2024...)
-  orderName   String        @map("order_name")       // 상품명 (예: "AI 프리미엄 구독", "쿠폰 5개")
-  amount      Int                                    // 결제 금액
+  // 주문 정보 (우리 DB 기준)
+  orderId     String        @unique @map("order_id") // 예: "ORD_20251218_A1B2"
+  orderName   String        @map("order_name")       // 예: "1개월 프리미엄 구독권"
+  amount      Int                                    // 결제 금액 (원 단위)
   
-  // 결제 상태 및 PG사 정보
-  status      PaymentStatus @default(READY)
-  paymentKey  String?       @map("payment_key")      // 토스 등 PG사에서 주는 결제 키
-  method      String?                                // 카드, 계좌이체 등
+  // PG사(토스 등) 정보
+  status      PaymentStatus @default(READY)          // 결제 상태 (대기 -> 완료/실패)
+  paymentKey  String?       @map("payment_key")      // 토스에서 주는 고유 키 (환불할 때 필요)
+  method      String?                                // 카드, 계좌이체, 카카오페이 등
   
-  // 날짜
+  // 시간 기록
   requestedAt DateTime      @default(now()) @map("requested_at") // 결제 요청 시각
-  approvedAt  DateTime?     @map("approved_at")      // 결제 승인 시각
+  approvedAt  DateTime?     @map("approved_at")      // 실제 승인 떨어진 시각 (이때부터 서비스 제공)
 
-  // 관계
+  // 관계: 어떤 유저가 샀는지
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -34,168 +41,161 @@ model Payment {
   @@map("payments")
 }
 
+// =====================================================================
+// [2] 사용자 (User & Identity)
+// : 고객의 개인정보, 취향, 상태, 법적 동의를 관리합니다.
+// =====================================================================
+
 model User {
-  id                 Int                 @id @default(autoincrement())
-  email              String?             @unique @db.VarChar(191)
-  password           String?             @db.VarChar(255)
-  username           String              @map("nickname") @db.VarChar(50)
-  profileImageUrl    String?
-  socialId           String?             @db.VarChar(255)
-  provider           String              @default("local") @db.VarChar(20)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  mbti               String?             @db.VarChar(20)
-  age                Int?
-  couponCount        Int                 @default(0)
-  gender             String?             @db.VarChar(10)
-  lastActiveAt       DateTime?
-  level              Int                 @default(1)
-  location           String?             @db.VarChar(100)
-  preferredTags      String[]
-  ageRange           String?             @db.VarChar(20)
-  birthday           DateTime?
-  phone              String?             @db.VarChar(30)
-  completedCourses   CompletedCourse[]
-  completedEscapes   CompletedEscape[]
-  bookings           Booking[]
-  courses            Course[]
-  missionSubmissions MissionSubmission[]
-  pushTokens         PushToken?
-  reviews            Review[]
-  userBadges         UserBadge[]
-  checkins           UserCheckin[]
-  UserCollage        UserCollage[]
-  userFavorites      UserFavorite[]
-  interactions       UserInteraction[]
-  userPreference     UserPreference?
-  rewards            UserReward[]
-  userStoryProgress  UserStoryProgress[]
-  savedCourses       SavedCourse[]
+  id                  Int               @id @default(autoincrement())
+  
+  // 1. 기본 계정 정보
+  email               String?           @unique @db.VarChar(191) // 로그인 ID 역할
+  password            String?           @db.VarChar(255)         // 소셜 로그인은 비번 없음
+  username            String            @map("nickname") @db.VarChar(50) // 앱에서 보여질 닉네임
+  profileImageUrl     String?           // 프사 URL
+  
+  // 2. 소셜 로그인 정보 (카카오/애플 등)
+  socialId            String?           @db.VarChar(255) // 카카오 고유 ID값
+  provider            String            @default("local") @db.VarChar(20) // "kakao", "apple", "local"
+  
+  // 3. 데이트 성향 정보 (AI 추천에 필수)
+  mbti                String?           @db.VarChar(20)
+  age                 Int?
+  gender              String?           @db.VarChar(10)
+  ageRange            String?           @db.VarChar(20) // "20~29"
+  birthday            DateTime?
+  location            String?           @db.VarChar(100) // 주 활동 지역 (예: "홍대/합정")
+  preferredTags       String[]          // 선호 태그 ["조용한", "사진잘나오는"]
+  
+  // 4. 앱 활동 지표
+  level               Int               @default(1) // 유저 레벨 (게이미피케이션)
+  couponCount         Int               @default(0) // 보유 쿠폰 수
+  lastActiveAt        DateTime?         // 마지막 접속일 (휴면 유저 관리용)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
-  // [추가] 구독 정보 👑
-  subscriptionTier     SubscriptionTier  @default(FREE) @map("subscription_tier")
-  subscriptionExpiresAt DateTime?        @map("subscription_expires_at")
-  isAutoRenewal        Boolean           @default(false) @map("is_auto_renewal")
+  // ---------------------------------------------------
+  // [구독 모델] 프리미엄 멤버십 관리
+  // ---------------------------------------------------
+  subscriptionTier      SubscriptionTier  @default(FREE) @map("subscription_tier") // 현재 등급
+  subscriptionExpiresAt DateTime?         @map("subscription_expires_at")          // 언제 끝나는지
+  isAutoRenewal         Boolean           @default(false) @map("is_auto_renewal")  // 자동 갱신 여부
 
-  // 결제 내역
-  payments             Payment[]
+  // ---------------------------------------------------
+  // [법적 필수] 마케팅 및 로깅 (방어막)
+  // ---------------------------------------------------
+  // 광고성 정보 수신 동의 (정보통신망법)
+  // false면 광고 푸시를 보내면 과태료 대상임
+  isMarketingAgreed Boolean   @default(false) @map("is_marketing_agreed")
+  
+  // 동의한 시각 (나중에 분쟁 시 증거 자료)
+  // 동의를 철회하면 null로 변경됨
+  marketingAgreedAt DateTime? @map("marketing_agreed_at") 
 
-  @@index([provider, socialId])
+  // 로그 테이블 연결 (법적 의무)
+  locationLogs      LocationLog[] // 위치기반서비스 이용 내역
+  loginLogs         LoginLog[]    // 로그인/접속 IP 기록
+
+  // ---------------------------------------------------
+  // [관계] 다른 테이블과의 연결
+  // ---------------------------------------------------
+  completedCourses    CompletedCourse[]   // 완주한 코스
+  completedEscapes    CompletedEscape[]   // 탈출 성공한 스토리
+  bookings            Booking[]           // 예약 내역
+  courses             Course[]            // (혹시 유저가 만든 코스가 있다면)
+  missionSubmissions  MissionSubmission[] // 미션 정답 제출 내역
+  pushTokens          PushToken?          // 기기 토큰 (1:1 관계)
+  reviews             Review[]            // 작성한 리뷰
+  userBadges          UserBadge[]         // 획득한 뱃지
+  checkins            UserCheckin[]       // 출석 체크
+  UserCollage         UserCollage[]       // 만든 콜라주(네컷)
+  userFavorites       UserFavorite[]      // 찜한 코스
+  interactions        UserInteraction[]   // 클릭/조회 로그
+  userPreference      UserPreference?     // AI 취향 분석 데이터
+  rewards             UserReward[]        // 받은 보상 내역
+  userStoryProgress   UserStoryProgress[] // 스토리 진행 상황 (저장 데이터)
+  savedCourses        SavedCourse[]       // 저장(북마크)한 코스
+  payments            Payment[]           // 결제 내역
+
+  @@index([provider, socialId]) // 소셜 로그인 속도 향상 인덱스
   @@map("users")
 }
 
-model UserReward {
-  id        Int          @id @default(autoincrement())
-  amount    Int
-  createdAt DateTime     @default(now())
-  userId    Int
-  type      RewardType
-  unit      RewardUnit
-  user      User         @relation(fields: [userId], references: [id])
-  // 장소 기반 보상(예: escape 장소 클리어 보상) 추적용
-  placeId   Int?
-  place     PlaceOption? @relation(fields: [placeId], references: [id])
-
-  // 같은 유형(type)의 장소(placeId) 보상은 사용자당 1회만 허용
-  @@unique([userId, placeId, type])
-  @@map("user_rewards")
-}
-
-model UserCheckin {
-  id        Int      @id @default(autoincrement())
-  date      DateTime
-  rewarded  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@map("user_checkins")
-}
-
-model UserInteraction {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  courseId  Int
-  action    String
-  createdAt DateTime @default(now())
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_interactions")
-}
-
-model UserPreference {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique @map("user_id")
-  preferences Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_preferences")
-}
-
+// 사용자의 기기 정보 (푸시 알림용)
 model PushToken {
-  id         String   @id @default(cuid())
-  userId     Int      @unique
-  token      String
-  platform   String   @default("expo")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  subscribed Boolean  @default(true)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  userId            Int       @unique
+  token             String    // Expo Push Token (기기 고유 주소)
+  platform          String    @default("expo") // ios, android
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // 사용자가 앱 설정에서 "알림 끄기" 하면 false
+  subscribed        Boolean   @default(true)
+  
+  // 알람 스위치를 껐다 켰다 한 시간 기록 (CS 대응용)
+  alarmEnabledAt    DateTime? @map("alarm_enabled_at")  
+  alarmDisabledAt   DateTime? @map("alarm_disabled_at") 
+  
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("push_tokens")
 }
 
+// =====================================================================
+// [3] 데이트 코스 (Core Content)
+// : 앱의 메인 콘텐츠인 코스와 장소 데이터입니다.
+// =====================================================================
+
+// 하나의 완성된 데이트 코스 (예: "성수동 힙한 데이트")
 model Course {
-  id                   Int                  @id @default(autoincrement())
-  userId               Int?
-  title                String               @db.VarChar(100)
-  description          String?
-  imageUrl             String?              @db.VarChar(255)
-  region               String?              @db.VarChar(50)
-  duration             String?              @db.VarChar(45)
-  concept              String?              @db.VarChar(45)
-  tags                 Json? // AI 추천용 태그: { concept, mood, target, time, budget(예산), theme }
-  isPopular            Boolean              @default(false)
-  rating               Float                @default(0.0)
-  current_participants Int                  @default(0)
-  max_participants     Int                  @default(0)
-  view_count           Int                  @default(0)
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  id                   Int               @id @default(autoincrement())
+  userId               Int?              // 에디터(관리자) ID
+  
+  // 1. 노출 정보
+  title                String            @db.VarChar(100) // 제목
+  sub_title            String?           @map("sub_title") @db.VarChar(100) // 카드 상단 소제목
+  description          String?           // 상세 설명
+  imageUrl             String?           @db.VarChar(255) // 대표 썸네일
+  
+  // 2. 검색/필터 정보
+  region               String?           @db.VarChar(50)  // 지역 (홍대, 강남 등)
+  duration             String?           @db.VarChar(45)  // 소요 시간 (예: "4시간")
+  concept              String?           @db.VarChar(45)  // 컨셉 (힐링, 액티비티)
+  tags                 Json?             // AI 태그 { mood: "로맨틱", budget: "5만원" }
+  target_situation     String?           @map("target_situation") // 상황 (첫만남, 기념일)
+  
+  // 3. 운영/통계
+  isPopular            Boolean           @default(false)  // 인기 코스 뱃지
+  is_editor_pick       Boolean           @default(false)  // 사장님 추천 뱃지
+  rating               Float             @default(0.0)    // 평균 별점
+  view_count           Int               @default(0)      // 조회수
+  isPublic             Boolean           @default(true)   // 공개 여부 (숨김 처리 가능)
+  
+  // 4. 유료화 등급 (무료/유료 코스 구분)
+  grade                CourseGrade       @default(FREE)   
+  
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  
+  // 관계들
+  coursePlaces         CoursePlace[]     // 이 코스에 포함된 장소들 (순서 포함)
+  courseDetail         CourseDetail?     // 상세 정보
+  reviews              Review[]          // 리뷰
+  userFavorites        UserFavorite[]    // 좋아요
+  savedUsers           SavedCourse[]     // 저장
+  
+  // 기타 연결
   completedCourses     CompletedCourse[]
-  // 코스 상세(부가 정보) 1:1
-  courseDetail         CourseDetail?
-  courseTags    CourseTagRelation[]
+  courseTags           CourseTagRelation[]
   benefits             Benefit[]
   bookings             Booking[]
   courseNotices        CourseNotice[]
-  coursePlaces         CoursePlace[]
-  user                 User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   highlights           Highlight[]
-  reviews              Review[]
-  userFavorites        UserFavorite[]
   interactions         UserInteraction[]
-  savedUsers           SavedCourse[]
-
-  //대표님 픽
-  is_editor_pick Boolean @default(false)
-
-  // 썸네일용 짧은 카피 (카드 UI 상단에 띄울 문구)
-  // 예: "썸녀가 200% 감동하는", "비 오는 날도 뽀송하게"
-  sub_title          String?  @map("sub_title") @db.VarChar(100)
-  // 코스의 핵심 상황 (메인 화면 큐레이션 및 필터링용)
-  // 예: "FIRST_DATE"(첫만남), "ANNIVERSARY"(기념일), "RAINY_DAY"(비오는날), "AFTER_WORK"(퇴근후)
-  // Enum으로 관리해도 좋지만, 유연하게 String으로 시작해도 됩니다.
-  target_situation   String?  @map("target_situation") @db.VarChar(50)
-
-  // 코스 공개 여부부
-  isPublic    Boolean  @default(true)
-  // [추가] 코스 등급 (무료/베이직/프리미엄)
-  grade              CourseGrade @default(FREE)
 
   @@index([concept])
   @@index([region])
@@ -203,8 +203,221 @@ model Course {
   @@map("courses")
 }
 
-// 코스 부가 정보(추천 시간/계절/유형/교통/주차 등)
-model CourseDetail {
+// 실제 장소 데이터 (맛집, 카페 DB)
+model Place {
+  id                   Int            @id @default(autoincrement())
+  name                 String         @db.VarChar(255) // 가게 이름
+  address              String?        @db.VarChar(500) // 주소 (지도 연동용)
+  category             String?        @db.VarChar(100) // 카테고리 (카페, 식당)
+  
+  // 상세 정보
+  description          String?        // 가게 설명
+  opening_hours        String?        // 영업 시간
+  phone                String?        // 전화번호
+  avg_cost_range       String?        // 평균 가격대 (예: "1~2만원")
+  parking_available    Boolean?       @default(false) // 주차 가능?
+  
+  // 위치 정보 (지도 표시용)
+  latitude             Float?         // 위도 (37.xxx)
+  longitude            Float?         // 경도 (127.xxx)
+  imageUrl             String?        // 가게 사진
+  
+  // AI용 데이터
+  tags                 Json? 
+
+  // 관계
+  coursePlaces         CoursePlace[]    // 어떤 코스들에 쓰였는지
+  closed_days          PlaceClosedDay[] // 휴무일 정보
+
+  @@index([name])
+  @@index([address])
+  @@index([latitude, longitude]) 
+  @@map("places")
+}
+
+// [중간 테이블] 코스와 장소의 연결고리
+// "A코스의 1번 장소는 B식당이고, 2번 장소는 C카페다"를 정의함
+model CoursePlace {
+  id                 Int      @id @default(autoincrement())
+  course_id          Int
+  place_id           Int
+  
+  // 순서와 시간
+  order_index        Int      // 몇 번째 방문 장소인지 (1, 2, 3...)
+  estimated_duration Int?     // 예상 체류 시간 (분)
+  recommended_time   String?  // 추천 방문 시각 (예: "점심 12시")
+  
+  // 큐레이션 (Human Touch)
+  coaching_tip       String?  @map("coaching_tip") // 사장님의 조언 ("여기서는 창가 자리에 앉으세요")
+
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  
+  course             Course   @relation(fields: [course_id], references: [id])
+  place              Place    @relation(fields: [place_id], references: [id])
+
+  @@map("course_places")
+}
+
+// =====================================================================
+// [4] 스토리 & 미션 (Gamification)
+// : 방탈출 게임처럼 스토리를 따라가며 미션을 수행하는 기능입니다.
+// =====================================================================
+
+// 방탈출 게임 시나리오 (하나의 게임 테마)
+model Story {
+  id                     Int                 @id @default(autoincrement())
+  title                  String              // 스토리 제목 (예: "사라진 연인을 찾아서")
+  synopsis               String?             // 줄거리 요약
+  scenario               String?             // 전체 시나리오 텍스트
+  
+  // 위치 및 난이도
+  region                 String?             // 플레이 지역
+  stationName            String?             // 시작 지하철역
+  stationLat             Float?
+  stationLng             Float?
+  level                  Int?                @default(1) // 난이도
+  estimated_duration_min Int?                // 예상 플레이 시간
+  
+  // 보상
+  reward_badge_id        Int?                // 클리어 시 줄 뱃지 ID
+  
+  // UI/연출 연결
+  ui                     StoryUI?            // 이 스토리는 웹툰형인지 대화형인지 설정
+  
+  created_at             DateTime            @default(now())
+  updated_at             DateTime            @updatedAt
+
+  // 관계
+  completedEscapes       CompletedEscape[]
+  placeDialogues         PlaceDialogue[]
+  CollageTemplate        CollageTemplate[]
+  reward_badge           Badge?              @relation(fields: [reward_badge_id], references: [id])
+  userstoryprogress      UserStoryProgress[]
+
+  @@map("stories")
+}
+
+// 미션 정답 제출 내역 (유저가 문제를 풀었을 때)
+model MissionSubmission {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  chapterId  Int      @map("chapter_id")
+  
+  // 제출한 답
+  textAnswer String?  @map("text_answer") // 주관식 답
+  photoUrl   String?  @map("photo_url")   // 사진 인증 미션일 경우
+  
+  // 결과
+  isCorrect  Boolean  @default(false) @map("is_correct") // 정답 여부
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mission_submissions")
+}
+
+// 유저의 스토리 진행 상황 저장 (세이브 파일 역할)
+model UserStoryProgress {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  story_id        Int
+  
+  current_chapter Int       // 현재 몇 챕터까지 깼는지
+  status          String    // "IN_PROGRESS", "COMPLETED"
+  
+  started_at      DateTime? // 시작 시간
+  completed_at    DateTime? // 클리어 시간 (랭킹 산정용)
+  
+  story           Story     @relation(fields: [story_id], references: [id])
+  user            User      @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, story_id])
+  @@map("userstoryprogress")
+}
+
+// =====================================================================
+// [5] 부가 기능 (Community & Utilities)
+// : 리뷰, 찜하기, 뱃지, 콜라주 등 앱을 풍성하게 만드는 기능들
+// =====================================================================
+
+// 유저가 받은 보상 (포인트/쿠폰) 내역
+model UserReward {
+  id        Int       @id @default(autoincrement())
+  amount    Int       // 지급 양 (예: 500포인트)
+  type      RewardType // 보상 종류 (출석, 가입, 미션클리어 등)
+  unit      RewardUnit // 단위 (COUPON, POINT)
+  createdAt DateTime  @default(now())
+  
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  
+  // 특정 장소 미션 클리어 보상일 경우 (중복 지급 방지용)
+  placeId   Int?
+  place     PlaceOption? @relation(fields: [placeId], references: [id])
+
+  @@unique([userId, placeId, type])
+  @@map("user_rewards")
+}
+
+// 네컷사진(콜라주) 결과물
+model UserCollage {
+  id           Int              @id @default(autoincrement())
+  userId       Int
+  templateId   Int?             // 사용한 프레임 ID
+  collageUrl   String           @map("collage_url")   // 완성된 이미지
+  thumbnailUrl String?          @map("thumbnail_url") // 썸네일
+  
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     CollageTemplate? @relation(fields: [templateId], references: [id])
+
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  storyId      Int?             // 어떤 스토리 하다가 만들었는지
+
+  @@map("user_collages")
+}
+
+// =====================================================================
+// [6] 법적 방어막 (Compliance Logs) - 중요!
+// : 방통위/개인정보보호법 준수를 위한 필수 로그 테이블입니다.
+// =====================================================================
+
+// [위치정보법 제16조] 위치정보 이용 사실 확인 자료
+// **주의:** 사용자의 GPS 좌표(위도/경도)는 여기에 절대 저장하지 않습니다.
+// "누가 언제 위치 서비스를 썼다"는 사실만 6개월간 보관합니다.
+model LocationLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") // 이용 시각
+  purpose   String   @default("DATE_COURSE_RECOMMENDATION") @db.VarChar(100) // 이용 목적
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("location_logs")
+}
+
+// [개인정보보호법 안전조치의무] 접속 기록 보관
+// 해킹 사고 발생 시 "이건 사장님 폰에서 접속한 거예요"라고 증명하거나,
+// 부정 로그인을 탐지하기 위해 IP 주소를 저장합니다.
+model LoginLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  loginAt   DateTime @default(now()) @map("login_at") // 접속 시각
+  ipAddress String?  @map("ip_address") @db.VarChar(45) // 접속 IP
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("login_logs")
+}
+
+// =====================================================================
+// [7] 기타 서브 테이블들 (참조용)
+// =====================================================================
+
+model CourseDetail { // 코스 계절/교통 정보
   id                     Int     @id @default(autoincrement())
   course_id              Int     @unique
   recommended_start_time String? @db.VarChar(100)
@@ -212,92 +425,32 @@ model CourseDetail {
   course_type            String? @db.VarChar(50)
   transportation         String? @db.VarChar(50)
   course                 Course  @relation(fields: [course_id], references: [id], onDelete: Cascade)
-
   @@map("course_details")
 }
 
-model Place {
-  id                   Int              @id @default(autoincrement())
-  name                 String           @db.VarChar(255)
-  address              String?          @db.VarChar(500)
-  description          String?
-  category             String?          @db.VarChar(100)
-  avg_cost_range       String?          @db.VarChar(100)
-  opening_hours        String?          @db.VarChar(200)
-  phone                String?          @db.VarChar(50)
-  website              String?          @db.VarChar(500)
-  parking_available    Boolean?         @default(false)
-  reservation_required Boolean?         @default(false)
-  latitude             Float?
-  longitude            Float?
-  imageUrl             String?          @db.VarChar(500)
-  created_at           DateTime         @default(now())
-  updated_at           DateTime         @updatedAt
-  // 코스와 동일하게 JSON 형식으로 보관 (배열/객체 모두 허용)
-  tags                 Json? // AI 추천용 태그: { concept, mood, target, time, budget(예산), theme }
-  coursePlaces         CoursePlace[]
-  closed_days          PlaceClosedDay[]
-
-  @@index([name])
-  @@index([address])
-  @@index([latitude, longitude]) // 지도 조회 성능 최적화를 위한 복합 인덱스
-  @@map("places")
-}
-
-model CourseTag {
-  id                 Int                  @id @default(autoincrement())
-  name               String               @unique @db.VarChar(100)
-  createdAt          DateTime             @default(now())
+model CourseTag { // 코스 태그 목록
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now())
   courses   CourseTagRelation[]
-
   @@map("course_tags")
 }
 
-model Story {
-  id                     Int                 @id @default(autoincrement())
-  title                  String              @db.VarChar(255)
-  synopsis               String?
-  region                 String?             @db.VarChar(100)
-  estimated_duration_min Int?
-  price                  String?             @db.VarChar(100)
-  reward_badge_id        Int?
-  is_active              Boolean             @default(true)
-  created_at             DateTime            @default(now())
-  updated_at             DateTime            @updatedAt
-  imageUrl               String?
-  level                  Int?                @default(1)
-  epilogue_text          String?
-  stationName            String?             @db.VarChar(100)
-  stationLat             Float?
-  stationLng             Float?
-  scenario               String?
-  completedEscapes       CompletedEscape[]
-  placeDialogues         PlaceDialogue[]
-  CollageTemplate        CollageTemplate[]
-  reward_badge           Badge?              @relation(fields: [reward_badge_id], references: [id])
-  userstoryprogress      UserStoryProgress[]
-  ui                     StoryUI?
-
-  @@map("stories")
-}
-
-/// UI/연출 설정을 스토리 단위로 보관 (엔진 전환/테마/플로우)
-model StoryUI {
+model StoryUI { // 스토리 연출(웹툰/채팅) 설정
   id          Int      @id @default(autoincrement())
   storyId     Int      @unique
-  engine_key  String   @db.VarChar(50) // letter | webtoon | visual_novel ...
-  tokens_json Json? // 색/폰트/곡률 등 테마 토큰
-  flow_json   Json? // 연출/씬/메시지 시퀀스(참조 id 기반)
+  engine_key  String   @db.VarChar(50) 
+  tokens_json Json? 
+  flow_json   Json? 
   version     Int      @default(1)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
   story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-
   @@index([engine_key])
   @@map("story_ui")
 }
 
-model PlaceOption {
+model PlaceOption { // 미션용 장소 데이터
   id             Int             @id @default(autoincrement())
   storyId        Int
   name           String
@@ -312,12 +465,10 @@ model PlaceOption {
   missions       PlaceMission[]
   stories        PlaceStory[]
   theme          PlaceTheme?
-
-  // UserReward와의 역관계(장소 기반 보상 기록)
-  userRewards UserReward[]
+  userRewards    UserReward[]
 }
 
-model PlaceDialogue {
+model PlaceDialogue { // 스토리 대사
   id          Int          @id @default(autoincrement())
   storyId     Int
   placeId     Int?
@@ -334,7 +485,7 @@ model PlaceDialogue {
   story       Story        @relation(fields: [storyId], references: [id])
 }
 
-model PlaceMission {
+model PlaceMission { // 미션 상세 정보
   id             Int          @id @default(autoincrement())
   placeId        Int
   missionNumber  Int
@@ -348,8 +499,8 @@ model PlaceMission {
   placeStories   PlaceStory[]
 }
 
-model PlaceStory {
-  id          Int           @id @default(autoincrement())
+model PlaceStory { // 장소별 스토리 흐름
+  id          Int          @id @default(autoincrement())
   placeId     Int
   order       Int
   speaker     String?
@@ -361,22 +512,7 @@ model PlaceStory {
   place       PlaceOption   @relation(fields: [placeId], references: [id])
 }
 
-model UserCollage {
-  id           Int              @id @default(autoincrement())
-  userId       Int
-  templateId   Int?
-  collageUrl   String           @map("collage_url")
-  thumbnailUrl String?          @map("thumbnail_url")
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
-  storyId      Int?
-  template     CollageTemplate? @relation(fields: [templateId], references: [id])
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_collages")
-}
-
-model CollageTemplate {
+model CollageTemplate { // 네컷사진 프레임
   id          Int           @id @default(autoincrement())
   name        String        @db.VarChar(50)
   imageUrl    String?       @map("image_url")
@@ -386,48 +522,45 @@ model CollageTemplate {
   storyId     Int?
   story       Story?        @relation(fields: [storyId], references: [id], onDelete: Cascade)
   userCollage UserCollage[]
-
   @@unique([storyId])
   @@map("collage_templates")
 }
 
-model Badge {
+model Badge { // 업적 뱃지
   id          Int         @id @default(autoincrement())
   name        String      @unique @db.VarChar(100)
   description String?
   image_url   String?     @db.VarChar(500)
   stories     Story[]
   userBadges  UserBadge[]
-
   @@map("badges")
 }
 
-model CompletedCourse {
+model CompletedCourse { // 완주 기록
   id          Int      @id @default(autoincrement())
   userId      Int
   courseId    Int
   completedAt DateTime @default(now())
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@map("CompletedCourses")
 }
 
-model Review {
+model Review { // 리뷰
   id        Int      @id @default(autoincrement())
   userId    Int
   courseId  Int
   rating    Int
   comment   String?
+  imageUrls String[] @default([]) // 후기 사진들 (여러 개 가능)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@map("reviews")
 }
 
-model Booking {
+model Booking { // 예약
   id           Int      @id @default(autoincrement())
   user_id      Int
   course_title String   @db.VarChar(255)
@@ -440,58 +573,33 @@ model Booking {
   course_id    Int
   course       Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
   user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
   @@map("bookings")
 }
 
-model UserFavorite {
+model UserFavorite { // 좋아요(찜)
   id         Int      @id @default(autoincrement())
   user_id    Int
   course_id  Int
   created_at DateTime @default(now())
   course     Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
   @@unique([user_id, course_id], name: "unique_user_course", map: "unique_user_course")
   @@map("user_favorites")
 }
 
-model SavedCourse {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  courseId  Int      @map("course_id")
-  savedAt   DateTime @default(now()) @map("saved_at")
-
+model SavedCourse { // 저장하기
+  id       Int      @id @default(autoincrement())
+  userId   Int      @map("user_id")
+  courseId Int      @map("course_id")
+  savedAt  DateTime @default(now()) @map("saved_at")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
   @@unique([userId, courseId])
   @@index([userId])
   @@map("saved_courses")
 }
 
-model CoursePlace {
-  id                 Int      @id @default(autoincrement())
-  course_id          Int
-  place_id           Int
-  order_index        Int
-  estimated_duration Int?
-  recommended_time   String?  @db.VarChar(100)
-  notes              String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  course             Course   @relation(fields: [course_id], references: [id])
-  place              Place    @relation(fields: [place_id], references: [id])
-  // 1. 역할 배지 (Role Badge): 이 장소가 오늘 데이트에서 맡은 역할
-  role_badge         String?  @map("role_badge") @db.VarChar(50)
-
-  // 2. 에디터 코칭 (Human-in-the-loop): 단순 장소 설명 말고 '행동 지침'
-  coaching_tip       String?  @map("coaching_tip") @db.Text
-
-  @@map("course_places")
-}
-
-model PlaceClosedDay {
+model PlaceClosedDay { // 장소 휴무일
   id            Int       @id @default(autoincrement())
   place_id      Int
   day_of_week   Int?
@@ -500,14 +608,13 @@ model PlaceClosedDay {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   place         Place     @relation(fields: [place_id], references: [id], onDelete: Cascade)
-
   @@index([place_id])
   @@index([day_of_week])
   @@index([specific_date])
   @@map("place_closed_days")
 }
 
-model Highlight {
+model Highlight { // 코스 하이라이트
   id          Int      @id @default(autoincrement())
   course_id   Int
   title       String   @db.VarChar(255)
@@ -515,11 +622,10 @@ model Highlight {
   icon        String?  @db.VarChar(10)
   created_at  DateTime @default(now())
   course      Course   @relation(fields: [course_id], references: [id])
-
   @@map("highlights")
 }
 
-model Benefit {
+model Benefit { // 혜택
   id            Int      @id @default(autoincrement())
   course_id     Int
   benefit_text  String
@@ -527,11 +633,10 @@ model Benefit {
   display_order Int?     @default(0)
   created_at    DateTime @default(now())
   course        Course   @relation(fields: [course_id], references: [id])
-
   @@map("benefits")
 }
 
-model CourseNotice {
+model CourseNotice { // 공지사항
   id            Int      @id @default(autoincrement())
   course_id     Int
   notice_text   String
@@ -540,80 +645,81 @@ model CourseNotice {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   course        Course   @relation(fields: [course_id], references: [id])
-
   @@map("course_notices")
 }
 
-model UserStoryProgress {
-  id              Int       @id @default(autoincrement())
-  user_id         Int
-  story_id        Int
-  current_chapter Int
-  status          String    @db.VarChar(30)
-  started_at      DateTime?
-  completed_at    DateTime?
-  story           Story     @relation(fields: [story_id], references: [id])
-  user            User      @relation(fields: [user_id], references: [id])
-
-  @@unique([user_id, story_id])
-  @@map("userstoryprogress")
+model UserCheckin { // 출석 체크
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  rewarded  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  @@map("user_checkins")
 }
 
-model MissionSubmission {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  chapterId  Int      @map("chapter_id")
-  photoUrl   String?  @map("photo_url")
-  textAnswer String?  @map("text_answer")
-  isCorrect  Boolean  @default(false) @map("is_correct")
-  createdAt  DateTime @default(now()) @map("created_at")
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("mission_submissions")
+model UserInteraction { // 유저 활동 로그
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  courseId  Int
+  action    String
+  createdAt DateTime @default(now())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("user_interactions")
 }
 
-model UserBadge {
+model UserPreference { // 유저 취향(AI)
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique @map("user_id")
+  preferences   Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("user_preferences")
+}
+
+model UserBadge { // 유저 뱃지 획득
   id         Int      @id @default(autoincrement())
   user_id    Int
   badge_id   Int
   awarded_at DateTime @default(now())
   badge      Badge    @relation(fields: [badge_id], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
   @@unique([user_id, badge_id])
   @@map("user_badges")
 }
 
-model CompletedEscape {
+model CompletedEscape { // 방탈출 클리어
   id          Int      @id @default(autoincrement())
   userId      Int
   storyId     Int
   completedAt DateTime @default(now())
   story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@map("CompletedEscapes")
 }
 
-model CourseTagRelation {
-  // ✨ A, B 대신 명확한 컬럼명(courseId, tagId) 사용
+model CourseTagRelation { // 코스-태그 연결
   courseId  Int
   tagId     Int
-  
   course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   tag       CourseTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([courseId, tagId]) // 복합 키 설정
-  @@index([tagId])        // 태그로 검색할 때 속도 향상
-  @@map("course_tags_relation") // 실제 DB 테이블 이름
+  @@id([courseId, tagId]) 
+  @@index([tagId])        
+  @@map("course_tags_relation") 
 }
 
-model GridCode {
+model GridCode { // 기상청 격자 코드
   id          Int     @id @default(autoincrement())
-  region_name String  @unique // "서울 강남구"와 같은 지역명
+  region_name String  @unique 
   nx          Int
   ny          Int
 }
+
+// =====================================================================
+// [8] ENUM (선택지 목록)
+// =====================================================================
 
 enum ChapterType {
   intro
@@ -661,14 +767,12 @@ enum PlaceTheme {
   location // 장소
 }
 
-// 구독 등급 (무료 / 베이직 / 프리미엄)
 enum SubscriptionTier {
   FREE
   BASIC
   PREMIUM
 }
 
-// 결제 상태 (대기 / 성공 / 실패 / 취소)
 enum PaymentStatus {
   READY
   PAID
@@ -676,7 +780,6 @@ enum PaymentStatus {
   CANCELLED
 }
 
-// [추가] 코스 등급
 enum CourseGrade {
   FREE
   BASIC

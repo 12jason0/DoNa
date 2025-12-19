@@ -42,8 +42,6 @@ const getCourse = unstable_cache(
                 order_index: cp.order_index,
                 estimated_duration: cp.estimated_duration || 0,
                 recommended_time: cp.recommended_time || "",
-                notes: cp.notes || undefined,
-
                 coaching_tip: cp.coaching_tip || null,
 
                 place: {
@@ -56,7 +54,7 @@ const getCourse = unstable_cache(
                     opening_hours: cp.place.opening_hours || "영업시간 정보 없음",
                     phone: cp.place.phone || undefined,
                     parking_available: !!cp.place.parking_available,
-                    reservation_required: !!cp.place.reservation_required,
+                    reservation_required: false, // Place 모델에 필드가 없으므로 기본값 사용
                     latitude: Number(cp.place.latitude),
                     longitude: Number(cp.place.longitude),
                     imageUrl: cp.place.imageUrl || undefined,
@@ -118,6 +116,7 @@ async function getReviews(id: string): Promise<Review[]> {
             userName: r.user?.nickname || "익명",
             createdAt: r.createdAt.toISOString(),
             content: r.comment || "",
+            imageUrls: r.imageUrls || [],
         }));
     } catch (error) {
         console.error("Reviews fetch error:", error);
@@ -172,5 +171,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     // courseData에 잠금 상태 주입
     const secureCourseData = { ...courseData, isLocked };
 
-    return <CourseDetailClient courseData={secureCourseData} initialReviews={reviews} courseId={id} />;
+    return (
+        <CourseDetailClient courseData={secureCourseData} initialReviews={reviews} courseId={id} userTier={userTier} />
+    );
 }

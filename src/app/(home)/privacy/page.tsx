@@ -48,6 +48,12 @@ export default function PrivacyPolicyPage() {
                             >
                                 안전조치
                             </a>
+                            <a
+                                href="/data-deletion"
+                                className="px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-sm hover:bg-red-100 border border-red-200 font-medium"
+                            >
+                                계정 탈퇴 / 데이터 삭제
+                            </a>
                         </div>
                         {/* 베타 서비스 안내 */}
                         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
@@ -229,10 +235,24 @@ export default function PrivacyPolicyPage() {
                             <li>삭제 요구</li>
                             <li>처리정지 요구</li>
                         </ul>
-                        <p className="text-gray-700 mb-6">
+                        <p className="text-gray-700 mb-4">
                             위의 권리 행사는 개인정보보호법 시행령 제41조제1항에 따라 서면, 전자우편 등을 통하여 하실 수
                             있으며 DoNa는 이에 대해 지체없이 조치하겠습니다.
                         </p>
+                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r">
+                            <p className="text-sm text-blue-800 mb-2">
+                                <strong>💡 계정 탈퇴 또는 개인정보 삭제를 원하시나요?</strong>
+                            </p>
+                            <p className="text-sm text-blue-700 mb-3">
+                                회원 탈퇴 및 개인정보 삭제 절차에 대한 자세한 안내를 확인하실 수 있습니다.
+                            </p>
+                            <a
+                                href="/data-deletion"
+                                className="inline-block px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                데이터 삭제 안내 보기 →
+                            </a>
+                        </div>
 
                         <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제8조 개인정보의 파기</h2>
                         <p className="text-gray-700 mb-6">
@@ -296,6 +316,28 @@ export default function PrivacyPolicyPage() {
 
                         <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제11조 개인정보 처리방침 변경</h2>
                         <p className="text-gray-700 mb-2">이 개인정보처리방침은 2026년 1월 1일부터 적용됩니다.</p>
+
+                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제12조 사업자 정보</h2>
+                        <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                            <p className="text-gray-700 mb-2">
+                                <strong>상호:</strong> (주)두나 (DoNa)
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>대표:</strong> 오승용
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>사업자등록번호:</strong> 166-10-03081
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>고객센터:</strong> {CONTACT_EMAIL}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </main>

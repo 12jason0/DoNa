@@ -327,11 +327,14 @@ const ProfileTab = ({
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     선호 콘셉트
                                 </h4>
-                                <div className="flex flex-wrap gap-2">
+                                <div
+                                    className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide"
+                                    style={{ maxWidth: "calc(6 * (80px + 8px))" }}
+                                >
                                     {userPreferences.concept.map((item, idx) => (
                                         <span
                                             key={idx}
-                                            className="px-3.5 py-1.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg text-sm"
+                                            className="px-3.5 py-1.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg text-sm whitespace-nowrap flex-shrink-0"
                                         >
                                             #{item}
                                         </span>
@@ -346,11 +349,14 @@ const ProfileTab = ({
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     선호 분위기
                                 </h4>
-                                <div className="flex flex-wrap gap-2">
+                                <div
+                                    className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide"
+                                    style={{ maxWidth: "calc(6 * (80px + 8px))" }}
+                                >
                                     {userPreferences.mood.map((item, idx) => (
                                         <span
                                             key={idx}
-                                            className="px-3.5 py-1.5 bg-orange-100 text-orange-700 font-bold rounded-lg text-sm"
+                                            className="px-3.5 py-1.5 bg-orange-100 text-orange-700 font-bold rounded-lg text-sm whitespace-nowrap flex-shrink-0"
                                         >
                                             #{item}
                                         </span>
@@ -365,11 +371,14 @@ const ProfileTab = ({
                                 <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
                                     관심 지역
                                 </h4>
-                                <div className="flex flex-wrap gap-2">
+                                <div
+                                    className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide"
+                                    style={{ maxWidth: "calc(6 * (80px + 8px))" }}
+                                >
                                     {userPreferences.regions.map((item, idx) => (
                                         <span
                                             key={idx}
-                                            className="px-3.5 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm"
+                                            className="px-3.5 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm whitespace-nowrap flex-shrink-0"
                                         >
                                             {item}
                                         </span>
@@ -561,6 +570,18 @@ const ProfileTab = ({
                             →
                         </span>
                     </button>
+                </div>
+
+                {/* 사업자 정보 */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">사업자 정보</h4>
+                    <div className="text-xs text-gray-500 space-y-1 leading-relaxed">
+                        <p className="font-semibold text-gray-600">(주)두나 (DoNa)</p>
+                        <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
+                        <p>통신판매업 신고번호: 제 2025-충남홍성-0193 호</p>
+                        <p>주소: 충청남도 홍성군 홍북읍 신대로 33</p>
+                        <p>고객센터: 12jason@donacouse.com</p>
+                    </div>
                 </div>
             </div>
         </div>

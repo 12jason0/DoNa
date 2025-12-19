@@ -269,6 +269,28 @@ export default function TermsOfServicePage() {
                                 <strong>운영시간:</strong> 평일 10:00 - 18:00 (주말 및 공휴일 제외)
                             </p>
                         </div>
+
+                        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+                            <h3 className="font-semibold text-gray-900 mb-2">사업자 정보</h3>
+                            <p className="text-gray-700 text-sm mb-1">
+                                <strong>상호:</strong> (주)두나 (DoNa)
+                            </p>
+                            <p className="text-gray-700 text-sm mb-1">
+                                <strong>대표:</strong> 오승용
+                            </p>
+                            <p className="text-gray-700 text-sm mb-1">
+                                <strong>사업자등록번호:</strong> 166-10-03081
+                            </p>
+                            <p className="text-gray-700 text-sm mb-1">
+                                <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
+                            </p>
+                            <p className="text-gray-700 text-sm mb-1">
+                                <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
+                            </p>
+                            <p className="text-gray-700 text-sm">
+                                <strong>고객센터:</strong> {CONTACT_EMAIL}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </main>

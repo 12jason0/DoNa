@@ -11,12 +11,18 @@ export async function GET(request: NextRequest) {
         const lng = searchParams.get("lng");
         const region = searchParams.get("region");
 
-        // Admin 등에서 전체 목록이 필요한 경우: /api/places?all=1&limit=200
+        // Admin 등에서 전체 목록이 필요한 경우: /api/places?all=1&limit=10&offset=0
         if (all === "1") {
-            const limitParam = Math.min(Math.max(Number(searchParams.get("limit") ?? 100), 1), 500);
+            const limitParam = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 100);
+            const offsetParam = Math.max(Number(searchParams.get("offset") ?? 0), 0);
+
+            // 전체 개수 조회
+            const totalCount = await (prisma as any).place.count();
+
             const places = (await (prisma as any).place.findMany({
+                skip: offsetParam,
                 take: limitParam,
-                orderBy: { id: "desc" },
+                orderBy: { id: "asc" }, // id 오름차순 (1번부터)
                 select: {
                     id: true,
                     name: true,
@@ -26,9 +32,7 @@ export async function GET(request: NextRequest) {
                     avg_cost_range: true,
                     opening_hours: true,
                     phone: true,
-                    website: true,
                     parking_available: true,
-                    reservation_required: true,
                     latitude: true,
                     longitude: true,
                     imageUrl: true,
@@ -36,7 +40,14 @@ export async function GET(request: NextRequest) {
                 },
             })) as any[];
 
-            return NextResponse.json({ success: true, places });
+            return NextResponse.json({
+                success: true,
+                places,
+                total: totalCount,
+                limit: limitParam,
+                offset: offsetParam,
+                hasMore: offsetParam + limitParam < totalCount,
+            });
         }
 
         if (!lat || !lng) {
@@ -55,9 +66,7 @@ export async function GET(request: NextRequest) {
                 avg_cost_range: true,
                 opening_hours: true,
                 phone: true,
-                website: true,
                 parking_available: true,
-                reservation_required: true,
                 latitude: true,
                 longitude: true,
                 imageUrl: true,
@@ -71,9 +80,7 @@ export async function GET(request: NextRequest) {
             avg_cost_range: string | null;
             opening_hours: string | null;
             phone?: string | null;
-            website?: string | null;
             parking_available: boolean | null;
-            reservation_required: boolean | null;
             latitude: any;
             longitude: any;
             imageUrl?: string | null;
@@ -182,9 +189,7 @@ export async function POST(request: NextRequest) {
                 avg_cost_range: avg_cost_range || null,
                 opening_hours: opening_hours || null,
                 phone: phone || null,
-                website: website || null,
                 parking_available: typeof parking_available === "boolean" ? parking_available : false,
-                reservation_required: typeof reservation_required === "boolean" ? reservation_required : false,
                 latitude: latitude ?? null,
                 longitude: longitude ?? null,
                 imageUrl: imageUrl || null,

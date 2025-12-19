@@ -20,6 +20,9 @@ export default function NaverMapComponent({
     showControls = true,
     showPlaceOverlay = true,
     pathCoordinates,
+    pathPlaces,
+    onBoundsChanged,
+    onMapReady,
 }: MapProps) {
     const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -295,6 +298,46 @@ export default function NaverMapComponent({
                         logoControl: false,
                     });
                     setMapReady(true);
+
+                    // 지도 준비 완료 시 bounds 가져오는 함수 제공
+                    if (onMapReady) {
+                        onMapReady(() => {
+                            if (!mapRef.current) return null;
+                            try {
+                                const bounds = mapRef.current.getBounds();
+                                const sw = bounds.getSW();
+                                const ne = bounds.getNE();
+                                return {
+                                    minLat: sw.lat(),
+                                    maxLat: ne.lat(),
+                                    minLng: sw.lng(),
+                                    maxLng: ne.lng(),
+                                };
+                            } catch {
+                                return null;
+                            }
+                        });
+                    }
+
+                    // 지도 이동/줌 변경 시 bounds 콜백
+                    if (onBoundsChanged) {
+                        const updateBounds = () => {
+                            if (!mapRef.current) return;
+                            try {
+                                const bounds = mapRef.current.getBounds();
+                                const sw = bounds.getSW();
+                                const ne = bounds.getNE();
+                                onBoundsChanged({
+                                    minLat: sw.lat(),
+                                    maxLat: ne.lat(),
+                                    minLng: sw.lng(),
+                                    maxLng: ne.lng(),
+                                });
+                            } catch {}
+                        };
+
+                        naver.maps.Event.addListener(mapRef.current, "idle", updateBounds);
+                    }
                 }
             } catch (e) {
                 console.error("지도 인스턴스 생성 실패:", e);
@@ -388,26 +431,77 @@ export default function NaverMapComponent({
         const valid: Place[] = (places || []).filter((p) => isValidLatLng(p?.latitude, p?.longitude)) as Place[];
         console.log("📍 유효한 장소:", valid.length, "개");
 
-        const createNumberContent = (orderIndex: number) => {
+        // 카테고리별 색상 및 아이콘 가져오기
+        const getCategoryStyle = (category?: string) => {
+            const cat = (category || "").toLowerCase();
+            if (cat.includes("카페") || cat.includes("cafe") || cat.includes("커피") || cat.includes("coffee")) {
+                return { color: "#059669", icon: "☕", name: "카페" };
+            } else if (
+                cat.includes("음식") ||
+                cat.includes("식당") ||
+                cat.includes("맛집") ||
+                cat.includes("restaurant") ||
+                cat.includes("food")
+            ) {
+                return { color: "#EA580C", icon: "🍽️", name: "음식점" };
+            } else if (cat.includes("관광") || cat.includes("명소") || cat.includes("tour")) {
+                return { color: "#7C3AED", icon: "📷", name: "관광" };
+            } else if (cat.includes("데이트") || cat.includes("date") || cat.includes("데이팅")) {
+                return { color: "#EC4899", icon: "💕", name: "데이트" };
+            } else if (cat.includes("카페") || cat.includes("cafe")) {
+                return { color: "#059669", icon: "☕", name: "카페" };
+            }
+            // 기본값
+            return { color: "#10B981", icon: "📍", name: "기타" };
+        };
+
+        const createNumberContent = (orderIndex: number, categoryColor: string) => {
             const size = 36;
-            const numberBox = 20;
             return `
                 <div style="position: relative; width: ${size}px; height: ${size + 10}px;">
                     <div style="
-                        width: ${size}px; height: ${size}px; background: var(--brand-green, #10B981);
+                        width: ${size}px; height: ${size}px; background: ${categoryColor};
                         border: 2px solid white; border-radius: 50%;
                         display: flex; align-items: center; justify-content: center;
                         color: white; font-weight: bold; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
                     ">${orderIndex}</div>
                     <div style="position:absolute;left:50%;bottom:0;transform:translate(-50%,0);width:0;height:0;
-                        border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--brand-green, #10B981);"></div>
+                        border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${categoryColor};"></div>
                 </div>`;
         };
+
+        const createCategoryMarker = (categoryStyle: { color: string; icon: string }, isSelected: boolean = false) => {
+            const baseSize = isSelected ? 52 : 42;
+            const iconSize = isSelected ? 26 : 20;
+            return `
+                <div style="
+                    width: ${baseSize}px; height: ${baseSize}px;
+                    position: relative;
+                    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+                    transition: transform 0.2s;
+                    ${isSelected ? "transform: translateY(-10px) scale(1.1);" : ""}
+                ">
+                    <div style="
+                        width: 100%; height: 100%;
+                        background: ${categoryStyle.color};
+                        border: 3px solid white;
+                        border-radius: 50% 50% 50% 0;
+                        transform: rotate(-45deg);
+                        display: flex; align-items: center; justify-content: center;
+                    ">
+                        <div style="transform: rotate(45deg); font-size: ${iconSize}px; line-height: 1; color: white;">
+                            ${categoryStyle.icon}
+                        </div>
+                    </div>
+                </div>`;
+        };
+
         // (moved) createUserLocationContent는 상단으로 이동
         valid.forEach((p, idx) => {
             const pos = new naver.maps.LatLng(Number(p.latitude), Number(p.longitude));
             const isSelected = selectedPlace?.id === p.id;
-            const orderIndex = (p as any).orderIndex ?? idx + 1;
+            const orderIndex = (p as any).orderIndex;
+            const categoryStyle = getCategoryStyle(p.category);
 
             const markerInit: any = {
                 position: pos,
@@ -415,12 +509,21 @@ export default function NaverMapComponent({
                 title: p.name,
                 zIndex: isSelected ? 1000 : 100,
             };
+
+            // 번호가 있는 경우 (코스 순서)
             if (numberedMarkers && Number.isFinite(orderIndex)) {
                 markerInit.icon = {
-                    content: createNumberContent(Number(orderIndex)),
+                    content: createNumberContent(Number(orderIndex), categoryStyle.color),
                     anchor: new naver.maps.Point(18, 46),
                 };
+            } else {
+                // 번호가 없는 경우 카테고리별 아이콘
+                markerInit.icon = {
+                    content: createCategoryMarker(categoryStyle, isSelected),
+                    anchor: new naver.maps.Point(isSelected ? 26 : 21, isSelected ? 52 : 42),
+                };
             }
+
             const marker = new naver.maps.Marker(markerInit);
 
             naver.maps.Event.addListener(marker, "click", () => {
@@ -448,8 +551,21 @@ export default function NaverMapComponent({
         }
 
         // 경로 그리기
+        // pathPlaces가 있으면 그것으로 경로를 그림, 없으면 valid(places)로 그림
+        const placesForPath =
+            pathPlaces && pathPlaces.length > 0
+                ? pathPlaces
+                      .filter((p) => isValidLatLng(p?.latitude, p?.longitude))
+                      .sort((a, b) => {
+                          // orderIndex로 정렬 (있으면)
+                          const aOrder = (a as any).orderIndex ?? 999;
+                          const bOrder = (b as any).orderIndex ?? 999;
+                          return aOrder - bOrder;
+                      })
+                : valid;
+
         // 선택만 바뀐 경우에는 경로 재계산을 건너뜀
-        const placesKey = valid
+        const placesKey = placesForPath
             .map((p) => `${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`)
             .join("|");
         const userKey = userPos
@@ -503,22 +619,29 @@ export default function NaverMapComponent({
             console.log("🚀 경로 그리기 시작");
 
             // ✅ Case 1: start 페이지 (현재 위치 + 장소 1개)
-            if (userPos && valid.length === 1) {
+            if (userPos && placesForPath.length === 1) {
                 const uLng = Number(userLocation?.lng ?? 0);
                 const uLat = Number(userLocation?.lat ?? 0);
 
                 console.log("📍 Case 1: 사용자 위치 → 장소 1개");
                 console.log("  출발:", { lat: uLat, lng: uLng });
-                console.log("  도착:", { name: valid[0].name, lat: valid[0].latitude, lng: valid[0].longitude });
+                console.log("  도착:", {
+                    name: placesForPath[0].name,
+                    lat: placesForPath[0].latitude,
+                    lng: placesForPath[0].longitude,
+                });
 
                 // 🔴 같은 좌표 체크
-                if (Math.abs(uLat - valid[0].latitude) < 0.00001 && Math.abs(uLng - valid[0].longitude) < 0.00001) {
+                if (
+                    Math.abs(uLat - placesForPath[0].latitude) < 0.00001 &&
+                    Math.abs(uLng - placesForPath[0].longitude) < 0.00001
+                ) {
                     console.error("❌ 출발지와 도착지가 동일합니다!");
                     return;
                 }
 
                 const fetchPath = async () => {
-                    const coords = `${uLng},${uLat};${valid[0].longitude},${valid[0].latitude}`;
+                    const coords = `${uLng},${uLat};${placesForPath[0].longitude},${placesForPath[0].latitude}`;
                     console.log("🌐 API 요청 좌표:", coords);
                     const samplePath = (path: Array<[number, number]>, maxPoints = 200): Array<[number, number]> => {
                         if (!Array.isArray(path) || path.length <= maxPoints) return path;
@@ -603,7 +726,7 @@ export default function NaverMapComponent({
                         console.warn("⚠️ 경로 데이터가 없습니다 - 직선 폴백 사용");
                         const fallback = [
                             [uLng, uLat],
-                            [valid[0].longitude, valid[0].latitude],
+                            [placesForPath[0].longitude, placesForPath[0].latitude],
                         ] as Array<[number, number]>;
                         const latlngs = fallback.map(([lng, lat]) => new naver.maps.LatLng(lat, lng));
                         polylineRef.current = new naver.maps.Polyline({
@@ -709,9 +832,9 @@ export default function NaverMapComponent({
 
                 // 병렬로 모든 세그먼트 요청 (성능 최적화를 위해 청크 처리 고려 가능하나, 일단 예외 처리 강화)
                 const tasks: Array<Promise<Array<[number, number]> | null>> = [];
-                for (let i = 0; i < valid.length - 1; i++) {
-                    const a = valid[i];
-                    const b = valid[i + 1];
+                for (let i = 0; i < placesForPath.length - 1; i++) {
+                    const a = placesForPath[i];
+                    const b = placesForPath[i + 1];
                     const d = distanceMeters(a.latitude, a.longitude, b.latitude, b.longitude);
                     // 요청: 도보 우선. 실패 시 운전으로 자동 백업은 tryFetchSegment 내부에서 수행됨
                     const primary: "walking" | "driving" =

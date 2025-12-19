@@ -105,6 +105,22 @@ export async function GET(request: NextRequest) {
             };
         });
 
+        // [법적 필수] 위치 로그 저장 (로그인한 사용자만, GPS 좌표는 저장하지 않음)
+        const userId = resolveUserId(request);
+        if (userId) {
+            try {
+                await (prisma as any).locationLog.create({
+                    data: {
+                        userId: Number(userId),
+                        purpose: "MAP_LOCATION_SEARCH", // 지도에서 위치 기반 검색
+                    },
+                });
+            } catch (logError) {
+                // 로그 저장 실패해도 검색 결과는 정상 반환
+                console.error("위치 로그 저장 실패:", logError);
+            }
+        }
+
         return NextResponse.json({ places, courses: mappedCourses });
     } catch (error) {
         console.error("🔥 Map API Error:", error);

@@ -655,7 +655,12 @@ function MapPageInner() {
                     onClick={moveToCurrentLocation}
                     className="absolute right-5 z-20 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-95"
                     style={{
-                        bottom: panelState === "expanded" ? "92vh" : panelState === "minimized" ? "140px" : "52vh",
+                        bottom:
+                            panelState === "expanded"
+                                ? "calc(85vh + 16px)"
+                                : panelState === "minimized"
+                                ? "calc(120px + 16px)"
+                                : "calc(40vh + 16px)",
                         transition: "bottom 0.3s ease-out",
                     }}
                 >

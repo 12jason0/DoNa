@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
             userId: r.userId,
             rating: r.rating,
             comment: r.comment,
+            imageUrls: r.imageUrls || [],
             createdAt: r.createdAt,
             user: {
                 nickname: r.user?.username || "익명",
@@ -86,20 +87,61 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { courseId, rating, comment, content } = body;
+        const body = await request.json().catch(() => {
+            return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
+        });
+
+        // JSON 파싱 실패 시 에러 응답이 이미 반환됨
+        if (body instanceof NextResponse) {
+            return body;
+        }
+        const { courseId, rating, comment, content, imageUrls } = body;
 
         if (!courseId || !rating) {
             return NextResponse.json({ error: "courseId와 rating은 필수입니다." }, { status: 400 });
         }
 
-        // --- 👇 여기에 유효성 검사 추가 ---
+        // --- 👇 유효성 검사 ---
         const numericUserId = Number(userId);
         const numericCourseId = Number(courseId);
         const numericRating = Number(rating);
 
         if (!Number.isFinite(numericUserId) || !Number.isFinite(numericCourseId) || !Number.isFinite(numericRating)) {
             return NextResponse.json({ error: "유효하지 않은 데이터 타입입니다." }, { status: 400 });
+        }
+
+        // [기능 개선] rating 범위 검증 (1-5)
+        if (numericRating < 1 || numericRating > 5 || !Number.isInteger(numericRating)) {
+            return NextResponse.json({ error: "평점은 1부터 5까지의 정수만 가능합니다." }, { status: 400 });
+        }
+
+        // [기능 개선] 중복 리뷰 체크 (같은 사용자가 같은 코스에 리뷰를 여러 번 작성하는 것 방지)
+        const existingReview = await prisma.review.findFirst({
+            where: {
+                userId: numericUserId,
+                courseId: numericCourseId,
+            },
+        });
+
+        if (existingReview) {
+            // 기존 리뷰가 있으면 업데이트
+            const finalComment: string =
+                typeof comment === "string" && comment.trim().length > 0
+                    ? comment.trim()
+                    : typeof content === "string"
+                    ? content.trim()
+                    : "";
+
+            const updatedReview = await prisma.review.update({
+                where: { id: existingReview.id },
+                data: {
+                    rating: numericRating,
+                    comment: finalComment,
+                    imageUrls: Array.isArray(imageUrls) ? imageUrls : existingReview.imageUrls || [],
+                },
+            });
+
+            return NextResponse.json(updatedReview, { status: 200 });
         }
         // --- 👆 여기까지 추가 ---
 
@@ -116,13 +158,22 @@ export async function POST(request: NextRequest) {
                 courseId: numericCourseId,
                 rating: numericRating,
                 comment: finalComment,
+                imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
             },
         });
 
         return NextResponse.json(newReview, { status: 201 });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        // [보안] 상세한 에러 메시지는 서버 로그에만 기록하고, 클라이언트에는 일반적인 메시지만 반환
         console.error("리뷰 생성 오류:", error);
-        return NextResponse.json({ error: "리뷰 생성 실패", details: errorMessage }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        console.error("에러 상세:", errorMessage);
+
+        // Prisma 에러인 경우 특별 처리
+        if (error instanceof Error && error.message.includes("Unique constraint")) {
+            return NextResponse.json({ error: "이미 리뷰를 작성하셨습니다." }, { status: 409 });
+        }
+
+        return NextResponse.json({ error: "리뷰 생성 중 오류가 발생했습니다." }, { status: 500 });
     }
 }

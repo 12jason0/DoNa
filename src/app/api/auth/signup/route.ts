@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, password, nickname, phone, birthday, ageRange } = await request.json();
-        console.log("회원가입 시도:", { email, nickname, phone, birthday, ageRange });
+        const { email, password, nickname, phone, birthday, ageRange, isMarketingAgreed } = await request.json();
+        console.log("회원가입 시도:", { email, nickname, phone, birthday, ageRange, isMarketingAgreed });
 
         // 입력 검증
         if (!email || !password || !nickname) {
@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
                 birthday: birthdayDate,
                 age: computedAge,
                 couponCount: initialCoupons, // 🎁 이벤트 기간이면 3개, 아니면 1개
+                // [법적 필수] 마케팅 수신 동의
+                isMarketingAgreed: isMarketingAgreed === true,
+                marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
             },
             select: { id: true, email: true, username: true },
         });

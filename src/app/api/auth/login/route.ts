@@ -40,6 +40,26 @@ export async function POST(request: NextRequest) {
             { expiresIn: "7d" }
         );
 
+        // [법적 필수] 로그인 로그 저장
+        try {
+            const ip =
+                request.headers.get("x-forwarded-for") ||
+                request.headers.get("x-real-ip") ||
+                (request as any).socket?.remoteAddress ||
+                "unknown";
+            const ipAddress = Array.isArray(ip) ? ip[0] : ip;
+
+            await (prisma as any).loginLog.create({
+                data: {
+                    userId: user.id,
+                    ipAddress: ipAddress,
+                },
+            });
+        } catch (logError) {
+            // 로그 저장 실패해도 로그인은 성공 처리
+            console.error("로그인 로그 저장 실패:", logError);
+        }
+
         const response = {
             success: true,
             message: "로그인이 완료되었습니다.",

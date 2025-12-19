@@ -1,17 +1,28 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { UserBadgeItem, UserRewardRow, UserCheckinRow } from "@/types/user";
+
+interface PaymentHistory {
+    id: string;
+    orderName: string;
+    amount: number;
+    status: string;
+    approvedAt: string;
+    method?: string | null;
+}
 
 interface ActivityTabProps {
     badges: UserBadgeItem[];
     rewards: UserRewardRow[];
     checkins: UserCheckinRow[];
+    payments?: PaymentHistory[];
     onSelectBadge: (badge: UserBadgeItem) => void;
 }
 
-const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabProps) => {
-    const [subTab, setSubTab] = useState<"badges" | "rewards" | "checkins">("badges");
+const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }: ActivityTabProps) => {
+    const [subTab, setSubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
     const [currentMonth, setCurrentMonth] = useState<Date>(() => {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -21,6 +32,7 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
         { id: "badges" as const, label: "뱃지", count: badges.length },
         { id: "rewards" as const, label: "보상 내역", count: rewards.length },
         { id: "checkins" as const, label: "출석 기록", count: checkins.length },
+        { id: "payments" as const, label: "구매 내역", count: payments.length },
     ];
 
     // 달력 관련 로직
@@ -251,6 +263,108 @@ const ActivityTab = ({ badges, rewards, checkins, onSelectBadge }: ActivityTabPr
                             });
                         })()}
                     </div>
+                </div>
+            )}
+
+            {/* 구매 내역 탭 */}
+            {subTab === "payments" && (
+                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">구매 내역</h3>
+                    </div>
+                    {payments.length > 0 ? (
+                        <div className="space-y-4">
+                            {payments.map((payment) => {
+                                const isCoupon = payment.orderName.includes("쿠폰");
+                                const isSubscription =
+                                    payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
+                                const isRefunded = payment.status === "CANCELLED";
+
+                                return (
+                                    <div
+                                        key={payment.id}
+                                        className={`border rounded-xl p-5 transition-all ${
+                                            isRefunded
+                                                ? "bg-gray-50 border-gray-200 opacity-60"
+                                                : "bg-white border-gray-200 hover:border-emerald-200 hover:shadow-sm"
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    {isCoupon ? (
+                                                        <span className="px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold">
+                                                            쿠폰
+                                                        </span>
+                                                    ) : isSubscription ? (
+                                                        <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
+                                                            구독권
+                                                        </span>
+                                                    ) : null}
+                                                    {isRefunded && (
+                                                        <span className="px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 text-xs font-medium">
+                                                            환불 완료
+                                                        </span>
+                                                    )}
+                                                    {payment.status === "PAID" && (
+                                                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                                                            결제 완료
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h4 className="font-semibold text-gray-900 mb-1">
+                                                    {payment.orderName}
+                                                </h4>
+                                                <p className="text-sm text-gray-500">
+                                                    {new Date(payment.approvedAt).toLocaleDateString("ko-KR", {
+                                                        year: "numeric",
+                                                        month: "long",
+                                                        day: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </p>
+                                                {payment.method && (
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        결제 수단: {payment.method === "CARD" ? "카드" : payment.method}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="text-right ml-4">
+                                                <p
+                                                    className={`text-xl font-bold ${
+                                                        isRefunded ? "text-gray-400 line-through" : "text-gray-900"
+                                                    }`}
+                                                >
+                                                    {payment.amount.toLocaleString()}원
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10">
+                            <div className="text-6xl mb-3">💳</div>
+                            <div className="text-lg font-semibold text-gray-900 mb-1">구매 내역이 없습니다</div>
+                            <div className="text-gray-600 mb-4">쿠폰이나 구독권을 구매하시면 여기에 표시됩니다.</div>
+                            <Link
+                                href="/refund"
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all"
+                            >
+                                <span>결제 내역 및 환불 페이지로 이동</span>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                            </Link>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

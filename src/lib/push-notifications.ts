@@ -23,10 +23,24 @@ export async function sendPushNotificationToUsers(userIds: number[], title: stri
     const uniqueUserIds = Array.from(new Set(userIds.filter((id) => Number.isFinite(Number(id)))));
     if (uniqueUserIds.length === 0) return { success: true, sent: 0 };
 
-    // 토큰 조회 (구독자만)
+    // [법적 필수] 마케팅 수신 동의한 사용자만 필터링
+    const marketingAgreedUsers = await prisma.user
+        .findMany({
+            where: {
+                id: { in: uniqueUserIds },
+                isMarketingAgreed: true, // 마케팅 수신 동의한 사용자만
+            },
+            select: { id: true },
+        })
+        .catch(() => [] as { id: number }[]);
+
+    const agreedUserIds = marketingAgreedUsers.map((u) => u.id);
+    if (agreedUserIds.length === 0) return { success: true, sent: 0 };
+
+    // 토큰 조회 (구독자만 + 마케팅 동의한 사용자만)
     const tokens = await prisma.pushToken
         .findMany({
-            where: { userId: { in: uniqueUserIds }, subscribed: true },
+            where: { userId: { in: agreedUserIds }, subscribed: true },
             select: { token: true },
         })
         .catch(() => [] as { token: string }[]);
@@ -65,16 +79,35 @@ export async function sendPushNotificationToUsers(userIds: number[], title: stri
 
 // 구독자에게만 발송
 export async function sendPushNotificationToAll(title: string, body: string, data?: PushData) {
-    // 1) 토큰 조회 (구독자만) - 스키마 미반영 환경에서도 동작하도록 폴백 처리
-    let tokens: { token: string }[] = [];
+    // 1) 토큰 조회 (구독자만 + 마케팅 수신 동의한 사용자만) - [법적 필수] 정보통신망법 준수
+    let tokens: { token: string; userId: number }[] = [];
     try {
         // Prisma Client가 subscribed 필드를 인지하는 경우
-        tokens = await (prisma.pushToken as any).findMany({ where: { subscribed: true }, select: { token: true } });
+        tokens = await (prisma.pushToken as any).findMany({
+            where: { subscribed: true },
+            select: { token: true, userId: true },
+        });
     } catch {
         // 아직 마이그레이션/클라이언트 재생성이 안 된 경우 전체 발송으로 폴백
-        tokens = await prisma.pushToken.findMany({ select: { token: true } }).catch(() => [] as { token: string }[]);
+        tokens = await prisma.pushToken
+            .findMany({ select: { token: true, userId: true } })
+            .catch(() => [] as { token: string; userId: number }[]);
     }
-    const valid = tokens.map((t) => t.token).filter(Boolean);
+
+    // [법적 필수] 마케팅 수신 동의한 사용자만 필터링
+    const userIds = tokens.map((t) => t.userId).filter(Boolean);
+    const marketingAgreedUsers = await prisma.user
+        .findMany({
+            where: {
+                id: { in: userIds },
+                isMarketingAgreed: true, // 마케팅 수신 동의한 사용자만
+            },
+            select: { id: true },
+        })
+        .catch(() => [] as { id: number }[]);
+
+    const agreedUserIds = new Set(marketingAgreedUsers.map((u) => u.id));
+    const valid = tokens.filter((t) => t.token && agreedUserIds.has(t.userId)).map((t) => t.token);
     if (valid.length === 0) return { success: true, sent: 0 };
 
     // 2) Expo Push API로 전송 (100개 단위 배치)
@@ -109,8 +142,27 @@ export async function sendPushNotificationToAll(title: string, body: string, dat
 }
 
 // 모든 사용자에게 발송(구독 여부 무시) - 관리자 홍보용
+// ⚠️ [법적 필수] 마케팅 수신 동의한 사용자에게만 발송 (정보통신망법 준수)
 export async function sendPushNotificationToEveryone(title: string, body: string, data?: PushData) {
-    const tokens = await prisma.pushToken.findMany({ select: { token: true } }).catch(() => [] as { token: string }[]);
+    // 마케팅 수신 동의한 사용자만 조회
+    const marketingAgreedUsers = await prisma.user
+        .findMany({
+            where: { isMarketingAgreed: true },
+            select: { id: true },
+        })
+        .catch(() => [] as { id: number }[]);
+
+    const agreedUserIds = marketingAgreedUsers.map((u) => u.id);
+    if (agreedUserIds.length === 0) return { success: true, sent: 0 };
+
+    // 동의한 사용자의 토큰만 조회
+    const tokens = await prisma.pushToken
+        .findMany({
+            where: { userId: { in: agreedUserIds } },
+            select: { token: true },
+        })
+        .catch(() => [] as { token: string }[]);
+
     const valid = tokens.map((t) => t.token).filter(Boolean);
     if (valid.length === 0) return { success: true, sent: 0 };
 

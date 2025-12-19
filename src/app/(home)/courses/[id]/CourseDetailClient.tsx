@@ -91,7 +91,7 @@ const ReviewModal = dynamic(() => import("@/components/ReviewModal"), { ssr: fal
 const NaverMap = dynamic(() => import("@/components/NaverMap"), {
     ssr: false,
     loading: () => (
-        <div className="w-full h-full bg-gray-100 rounded-[2rem] animate-pulse flex items-center justify-center text-gray-400">
+        <div className="w-full h-full bg-gray-100 rounded-lg animate-pulse flex items-center justify-center text-gray-400">
             지도 로딩중...
         </div>
     ),
@@ -129,8 +129,6 @@ export interface CoursePlace {
     order_index: number;
     estimated_duration: number;
     recommended_time: string;
-    notes?: string;
-    role_badge?: string | null;
     coaching_tip?: string | null;
     place: Place;
 }
@@ -167,6 +165,7 @@ export interface Review {
     userName: string;
     createdAt: string;
     content: string;
+    imageUrls?: string[];
 }
 
 // --- Toast Component (수정됨: 성공 시 녹색 배경) ---
@@ -201,9 +200,15 @@ interface CourseDetailClientProps {
     courseData: CourseData;
     initialReviews: Review[];
     courseId: string;
+    userTier?: string; // 유저 등급 (FREE, BASIC, PREMIUM)
 }
 
-export default function CourseDetailClient({ courseData, initialReviews, courseId }: CourseDetailClientProps) {
+export default function CourseDetailClient({
+    courseData,
+    initialReviews,
+    courseId,
+    userTier = "FREE",
+}: CourseDetailClientProps) {
     const router = useRouter();
 
     // --- State ---
@@ -308,10 +313,14 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
         setShowPlaceModal(true);
     };
 
+    // ✅ [최적화] 초기 리뷰는 서버에서 이미 가져왔으므로 추가 fetch는 리뷰 작성/업데이트 시에만 수행
     const fetchReviews = useCallback(async () => {
         if (!courseId) return;
         try {
-            const response = await fetch(`/api/reviews?courseId=${courseId}`);
+            const response = await fetch(`/api/reviews?courseId=${courseId}`, {
+                // 캐시 사용으로 중복 요청 방지
+                next: { revalidate: 30 },
+            });
             if (response.ok) {
                 const data = await response.json();
                 if (Array.isArray(data))
@@ -322,6 +331,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                             userName: r.user?.nickname || "익명",
                             createdAt: r.createdAt,
                             content: r.comment,
+                            imageUrls: r.imageUrls || [],
                         }))
                     );
             }
@@ -418,9 +428,9 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
     if (courseData.isLocked) {
         return (
             <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50/50 backdrop-blur-sm">
-                <div className="bg-white rounded-[24px] p-8 max-w-[360px] w-full text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative">
+                <div className="bg-white rounded-lg p-8 max-w-[360px] w-full text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 relative">
                     {/* 1. 세련된 아이콘 영역 (이모지 제거 -> 벡터 아이콘 적용) */}
-                    <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-emerald-100/50">
+                    <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-lg flex items-center justify-center mb-6 ring-1 ring-emerald-100/50">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -459,7 +469,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     <div className="space-y-3">
                         <button
                             onClick={() => setShowSubscriptionModal(true)}
-                            className="w-full py-3.5 rounded-xl bg-gray-900 text-white font-semibold text-[15px] hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center gap-2"
+                            className="w-full py-3.5 rounded-lg bg-gray-900 text-white font-semibold text-[15px] hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center gap-2"
                         >
                             <span>지금 시작하기</span>
                             {/* '결제하기' 같은 부담스러운 말 대신 '시작하기' 사용 */}
@@ -487,7 +497,14 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                 </div>
 
                 {/* 결제 모달 */}
-                {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+                {showSubscriptionModal && (
+                    <TicketPlans
+                        onClose={() => {
+                            console.log("결제 모달 닫기");
+                            setShowSubscriptionModal(false);
+                        }}
+                    />
+                )}
             </div>
         );
     }
@@ -499,15 +516,15 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
             {/* --- Main Background --- */}
             <div className="min-h-screen bg-[#F8F9FA] font-sans text-gray-900 relative">
                 {/* 1. Hero Section */}
-                <header className="relative h-[400px] w-full max-w-[600px] mx-auto">
+                <header className="relative h-[400px] md:h-[500px] w-full max-w-[600px] md:max-w-[800px] lg:max-w-[900px] mx-auto">
                     <div className="absolute inset-0">
                         <Image src={heroImageUrl || ""} alt={courseData.title} fill className="object-cover" priority />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                         <div className="absolute inset-0 bg-black/10" />
                     </div>
 
-                    <div className="absolute bottom-0 left-0 w-full p-6 pb-14">
-                        <div className="max-w-[600px] mx-auto">
+                    <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 pb-14">
+                        <div className="max-w-[600px] md:max-w-[800px] lg:max-w-[900px] mx-auto">
                             {/* Badges */}
                             <div className="flex flex-wrap items-center gap-2.5 mb-4 animate-fade-in-up">
                                 <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-white text-[13px] font-bold rounded-full border border-white/20 flex items-center gap-1 shadow-sm">
@@ -528,18 +545,18 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                 </p>
                             )}
 
-                            <h1 className="text-2xl font-extrabold text-white leading-tight tracking-tight break-keep drop-shadow-xl mb-6">
+                            <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight break-keep drop-shadow-xl mb-6">
                                 {courseData.title}
                             </h1>
 
                             <div className="flex items-center gap-3 text-white/90 text-xs font-semibold">
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex items-center gap-1.5">
+                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10 flex items-center gap-1.5">
                                     <span>👣</span> {courseData.coursePlaces?.length || 0} 스팟
                                 </div>
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex items-center gap-1.5">
+                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10 flex items-center gap-1.5">
                                     <span>⏳</span> {courseData.duration}
                                 </div>
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex items-center gap-1.5">
+                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10 flex items-center gap-1.5">
                                     <span className="text-yellow-400">★</span> {courseData.rating}
                                 </div>
                             </div>
@@ -550,12 +567,14 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                 {/* 2. Main Content Wrapper */}
                 <main className="max-w-[600px] mx-auto -mt-8 relative z-10 px-5 space-y-10">
                     {/* Course Intro Card */}
-                    <section className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)]">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
-                            <h2 className="text-xl font-bold text-gray-900">어떤 코스인가요?</h2>
+                    <section className="bg-white rounded-lg p-8 md:p-10 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-gray-100">
+                        <div className="flex items-center gap-3 mb-4 md:mb-6">
+                            <div className="w-1.5 h-6 md:h-8 bg-emerald-500 rounded-full" />
+                            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
+                                어떤 코스인가요?
+                            </h2>
                         </div>
-                        <p className="text-gray-600 text-[15px] leading-8 whitespace-pre-wrap font-medium">
+                        <p className="text-gray-600 text-[15px] md:text-[16px] leading-8 md:leading-9 whitespace-pre-wrap font-medium">
                             {courseData.description}
                         </p>
                     </section>
@@ -563,9 +582,9 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     {/* Naver Map (Embedded) */}
                     <section
                         ref={mapSectionRef}
-                        className="bg-white rounded-[2rem] p-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)]"
+                        className="bg-white rounded-lg p-4 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-gray-100"
                     >
-                        <div className="relative rounded-3xl overflow-hidden shadow-inner border border-gray-100">
+                        <div className="relative rounded-lg overflow-hidden shadow-inner border border-gray-200">
                             {sortedCoursePlaces.length > 0 ? (
                                 <NaverMap
                                     places={sortedCoursePlaces.map((cp) => ({
@@ -588,7 +607,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                     }}
                                     drawPath={true}
                                     numberedMarkers={true}
-                                    className="w-full h-[320px]"
+                                    className="w-full h-[320px] md:h-[400px] lg:h-[450px]"
                                     showControls={false}
                                 />
                             ) : (
@@ -616,7 +635,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     </section>
 
                     {/* ★ Timeline Section (Color Fix Applied) ★ */}
-                    <section className="relative px-4 pb-20">
+                    <section className="relative px-4 md:px-6 pb-20">
                         {/* 수직 선: 은은한 점선 */}
                         <div className="absolute left-[34px] top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200" />
 
@@ -629,13 +648,16 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                     <div key={coursePlace.id} className="relative">
                                         {/* 1. 장소 카드 (Card) */}
                                         <div
-                                            onClick={() => handleTimelinePlaceClick(coursePlace)}
+                                            onClick={() => {
+                                                setSelectedPlace(coursePlace.place);
+                                                setShowPlaceModal(true);
+                                            }}
                                             className={`
-                                                relative ml-12 bg-white rounded-3xl p-4 transition-all duration-300
+                                                relative ml-12 bg-white rounded-lg p-4 transition-all duration-300 border cursor-pointer
                                                 ${
                                                     isSelected
-                                                        ? "shadow-[0_8px_30px_rgba(34,197,94,0.15)] border-2 border-emerald-500 scale-[1.02]"
-                                                        : "shadow-sm border border-gray-100 opacity-90 grayscale-[0.3] hover:grayscale-0 hover:opacity-100"
+                                                        ? "shadow-[0_4px_20px_rgba(34,197,94,0.2)] border-2 border-emerald-500 scale-[1.01]"
+                                                        : "shadow-sm border-gray-200 opacity-90 grayscale-[0.3] hover:grayscale-0 hover:opacity-100 hover:border-gray-300"
                                                 }
                                             `}
                                         >
@@ -654,8 +676,8 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                             </div>
 
                                             {/* 이미지 & 정보 */}
-                                            <div className="flex gap-4">
-                                                <div className="relative w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100">
+                                            <div className="flex gap-4 md:gap-6">
+                                                <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
                                                     {coursePlace.place.imageUrl ? (
                                                         <Image
                                                             src={coursePlace.place.imageUrl}
@@ -671,40 +693,71 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                                 </div>
 
                                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    {/* 카테고리 & 역할 배지 */}
+                                                    {/* 카테고리 */}
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                                             {coursePlace.place.category}
                                                         </span>
-                                                        {coursePlace.role_badge && (
-                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-bold">
-                                                                {coursePlace.role_badge}
-                                                            </span>
-                                                        )}
                                                     </div>
-                                                    <h3 className="font-bold text-lg text-gray-900 truncate mb-1">
+                                                    <h3 className="font-bold text-lg md:text-xl lg:text-2xl text-gray-900 truncate mb-1">
                                                         {coursePlace.place.name}
                                                     </h3>
-                                                    <p className="text-xs text-gray-500 truncate">
+                                                    <p className="text-xs md:text-sm text-gray-500 truncate">
                                                         {coursePlace.place.address}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            {/* Dona Pick (선택되었을 때만 확장해서 보여줌) */}
-                                            {isSelected && (coursePlace.coaching_tip || coursePlace.notes) && (
-                                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100 animate-fade-in-down">
-                                                    <div className="flex gap-2 items-start bg-amber-50 p-3 rounded-xl">
-                                                        <div className="pt-0.5">
-                                                            <Icons.Bulb />
+                                            {/* Dona Pick - 팁이 있으면 항상 표시 */}
+                                            {coursePlace.coaching_tip && (
+                                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
+                                                    {userTier === "FREE" ? (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                console.log("팁 클릭 - 결제 모달 열기");
+                                                                setShowSubscriptionModal(true);
+                                                            }}
+                                                            className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
+                                                        >
+                                                            <div className="pt-0.5">
+                                                                <svg
+                                                                    className="w-5 h-5 text-gray-400"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth="2"
+                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                                    />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="flex-1 text-left">
+                                                                <p className="text-xs font-bold text-gray-600 mb-0.5">
+                                                                    🔒 DoNa's Tip 보기
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-400">
+                                                                    BASIC 등급 이상만 볼 수 있습니다. 클릭하여 멤버십
+                                                                    구독하기
+                                                                </p>
+                                                            </div>
+                                                        </button>
+                                                    ) : (
+                                                        <div className="flex gap-2 items-start bg-amber-50 p-3 rounded-lg border border-amber-100">
+                                                            <div className="pt-0.5">
+                                                                <Icons.Bulb />
+                                                            </div>
+                                                            <p className="text-xs text-gray-700 leading-5 font-medium">
+                                                                <span className="font-bold text-emerald-600 block mb-0.5">
+                                                                    DoNa's Tip
+                                                                </span>
+                                                                {coursePlace.coaching_tip}
+                                                            </p>
                                                         </div>
-                                                        <p className="text-xs text-gray-700 leading-5 font-medium">
-                                                            <span className="font-bold text-emerald-600 block mb-0.5">
-                                                                DoNa's Tip
-                                                            </span>
-                                                            {coursePlace.coaching_tip || coursePlace.notes}
-                                                        </p>
-                                                    </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -715,14 +768,14 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     </section>
 
                     {/* Review Section */}
-                    <section className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] mb-24">
+                    <section className="bg-white rounded-lg p-8 md:p-10 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-gray-100 mb-24">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-bold text-gray-900">
+                            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
                                 이용후기 <span className="text-emerald-500 ml-1">{reviews.length}</span>
                             </h2>
                             <button
                                 onClick={() => setShowReviewModal(true)}
-                                className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
+                                className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
                             >
                                 작성하기
                             </button>
@@ -756,12 +809,36 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                                 </span>
                                             ))}
                                         </div>
-                                        <p className="text-[15px] text-gray-600 leading-relaxed">{review.content}</p>
+                                        <p className="text-[15px] text-gray-600 leading-relaxed mb-3">
+                                            {review.content}
+                                        </p>
+                                        {/* 후기 사진들 */}
+                                        {review.imageUrls && review.imageUrls.length > 0 && (
+                                            <div className="grid grid-cols-3 gap-2 mt-3">
+                                                {review.imageUrls.map((url, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                        onClick={() => {
+                                                            // 이미지 확대 보기 (선택사항)
+                                                            window.open(url, "_blank");
+                                                        }}
+                                                    >
+                                                        <Image
+                                                            src={url}
+                                                            alt={`후기 사진 ${idx + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                            <div className="text-center py-16 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                                 <p className="text-gray-400 text-sm">
                                     아직 작성된 후기가 없어요.
                                     <br />첫 번째 후기를 남겨보세요!
@@ -774,14 +851,14 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                 {/* ✨✨✨ [NEW] 플로팅 전체 지도 보기 버튼 (항상 표시) ✨✨✨ */}
                 <button
                     onClick={() => setShowFullMapModal(true)}
-                    className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-transform active:scale-95 border border-gray-100 lg:right-[calc(50%-300px+20px)]"
+                    className="fixed bottom-24 right-5 md:right-[calc(50%-400px+20px)] lg:right-[calc(50%-450px+20px)] z-40 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-transform active:scale-95 border border-gray-100"
                 >
                     <Icons.Map className="w-4 h-4 text-emerald-500" />
                     <span>지도 보기</span>
                 </button>
 
                 {/* --- Mobile Bottom Floating Bar (Desktop에서도 표시) --- */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] flex items-center justify-between gap-4 mx-auto lg:max-w-[600px]">
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 md:px-8 py-4 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] flex items-center justify-between gap-4 mx-auto md:max-w-[800px] lg:max-w-[900px]">
                     <div className="flex gap-4">
                         <button
                             onClick={handleSaveCourse}
@@ -802,8 +879,8 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     </div>
                     <button
                         onClick={() => router.push(`/courses/${courseId}/start`)}
-                        className="flex-1 h-14 bg-[#99c08e] text-white rounded-2xl font-bold text-[16px] 
-               shadow-xl shadow-gray-300 transition-all 
+                        className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] 
+               shadow-lg shadow-gray-300/50 transition-all 
                hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
                     >
                         <Icons.Rocket /> 코스 시작하기
@@ -818,7 +895,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     onClick={() => setShowShareModal(false)}
                 >
                     <div
-                        className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-sm p-8 shadow-2xl animate-slide-up-mobile"
+                        className="bg-white rounded-t-lg md:rounded-lg w-full max-w-sm p-8 shadow-2xl animate-slide-up-mobile border-t md:border border-gray-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8 md:hidden" />
@@ -826,7 +903,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                         <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={handleKakaoShare}
-                                className="flex flex-col items-center justify-center gap-3 p-6 bg-[#FAE100] rounded-3xl hover:brightness-95 transition-all"
+                                className="flex flex-col items-center justify-center gap-3 p-6 bg-[#FAE100] rounded-lg hover:brightness-95 transition-all border border-[#E6D100]"
                             >
                                 <div className="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center mb-1">
                                     <Icons.Kakao />
@@ -853,6 +930,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                 courseId={parseInt(courseId)}
                 courseName={courseData.title}
             />
+            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
 
             {/* Place Detail Modal */}
             {showPlaceModal && selectedPlace && (
@@ -861,7 +939,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     onClick={() => setShowPlaceModal(false)}
                 >
                     <div
-                        className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl"
+                        className="bg-white rounded-lg w-full max-w-md overflow-hidden shadow-2xl border border-gray-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="relative h-72 bg-gray-100">
@@ -890,7 +968,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                 {selectedPlace.description || "상세 설명이 없습니다."}
                             </p>
                             <button
-                                className="w-full py-4 rounded-2xl bg-gray-900 text-white font-bold text-[16px] hover:bg-black transition-colors shadow-xl"
+                                className="w-full py-4 rounded-lg bg-gray-900 text-white font-bold text-[16px] hover:bg-black transition-colors shadow-lg"
                                 onClick={() => setShowPlaceModal(false)}
                             >
                                 닫기
@@ -907,7 +985,7 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                     onClick={handleCloseFullMapModal}
                 >
                     <div
-                        className="bg-white rounded-[1.5rem] w-full max-w-md aspect-[4/5] overflow-hidden shadow-2xl relative flex flex-col ring-1 ring-black/5"
+                        className="bg-white rounded-lg w-full max-w-md aspect-[4/5] overflow-hidden shadow-2xl relative flex flex-col border border-gray-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* 지도 영역 (꽉 차게 배치) */}
@@ -951,9 +1029,9 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                             `}
                         >
                             {modalSelectedPlace && (
-                                <div className="p-5 border-t-4 border-emerald-500/80 rounded-t-[1.5rem] shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+                                <div className="p-5 border-t-4 border-emerald-500/80 rounded-t-lg shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
                                     <div className="flex gap-4 items-center">
-                                        <div className="flex-none w-16 h-16 bg-gray-100 rounded-xl overflow-hidden relative">
+                                        <div className="flex-none w-16 h-16 bg-gray-100 rounded-lg overflow-hidden relative">
                                             {modalSelectedPlace.imageUrl && (
                                                 <Image
                                                     src={modalSelectedPlace.imageUrl}
@@ -993,13 +1071,13 @@ export default function CourseDetailClient({ courseData, initialReviews, courseI
                                                 );
                                                 if (coursePlace) handleTimelinePlaceClick(coursePlace);
                                             }}
-                                            className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-[13px] font-bold hover:bg-black transition-colors"
+                                            className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-[13px] font-bold hover:bg-black transition-colors"
                                         >
                                             상세 페이지로 이동
                                         </button>
                                         <button
                                             onClick={() => setModalSelectedPlace(null)}
-                                            className="flex-none w-1/4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-[13px] font-bold hover:bg-gray-50 transition-colors"
+                                            className="flex-none w-1/4 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-[13px] font-bold hover:bg-gray-50 transition-colors"
                                         >
                                             닫기
                                         </button>

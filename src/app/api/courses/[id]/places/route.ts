@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             where: { course_id: Number(courseId) },
             orderBy: [{ order_index: "asc" }],
             include: {
-                places: {
+                place: {
                     select: {
                         id: true,
                         name: true,
@@ -24,12 +24,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         avg_cost_range: true,
                         opening_hours: true,
                         phone: true,
-                        website: true,
                         parking_available: true,
-                        reservation_required: true,
                         latitude: true,
                         longitude: true,
                         imageUrl: true,
+                        tags: true,
                     },
                 },
             },
@@ -42,22 +41,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             order_index: cp.order_index,
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
-            notes: cp.notes,
+            coaching_tip: cp.coaching_tip || null,
             place: {
                 id: cp.place_id,
-                name: cp.places?.name ?? "",
-                address: cp.places?.address ?? "",
-                description: cp.places?.description ?? "",
-                category: cp.places?.category ?? "",
-                avg_cost_range: cp.places?.avg_cost_range ?? "",
-                opening_hours: cp.places?.opening_hours ?? "",
-                phone: cp.places?.phone ?? "",
-                website: cp.places?.website ?? "",
-                parking_available: Boolean(cp.places?.parking_available),
-                reservation_required: Boolean(cp.places?.reservation_required),
-                latitude: Number(cp.places?.latitude),
-                longitude: Number(cp.places?.longitude),
-                image_url: cp.places?.imageUrl ?? "",
+                name: cp.place?.name ?? "",
+                address: cp.place?.address ?? "",
+                description: cp.place?.description ?? "",
+                category: cp.place?.category ?? "",
+                avg_cost_range: cp.place?.avg_cost_range ?? "",
+                opening_hours: cp.place?.opening_hours ?? "",
+                phone: cp.place?.phone ?? "",
+                parking_available: Boolean(cp.place?.parking_available),
+                latitude: cp.place?.latitude ? Number(cp.place.latitude) : null,
+                longitude: cp.place?.longitude ? Number(cp.place.longitude) : null,
+                image_url: cp.place?.imageUrl ?? "",
             },
         }));
 
@@ -88,7 +85,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const { id: courseIdParam } = await params;
         const course_id = Number(courseIdParam);
         const body = await request.json();
-        const { place_id, order_index, estimated_duration, recommended_time, notes } = body || {};
+        const { place_id, order_index, estimated_duration, recommended_time, coaching_tip } = body || {};
 
         if (!course_id || !place_id || !order_index) {
             return NextResponse.json({ error: "course_id, place_id, order_index는 필수입니다." }, { status: 400 });
@@ -102,7 +99,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 order_index: Number(order_index),
                 estimated_duration: typeof estimated_duration === "number" ? estimated_duration : null,
                 recommended_time: recommended_time || null,
-                notes: notes || null,
+                coaching_tip: coaching_tip || null,
             },
         });
 

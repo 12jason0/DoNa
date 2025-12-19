@@ -7,6 +7,11 @@ export default function CoursesIdLayout({ children }: { children: React.ReactNod
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/*
+ * 이 파일의 아래 부분에 있는 CourseDetailPage 함수는 더 이상 사용되지 않습니다.
+ * 실제 사용되는 컴포넌트는 page.tsx (서버 컴포넌트)와 CourseDetailClient.tsx입니다.
+ * 중복 fetch 방지를 위해 아래 코드는 주석 처리합니다.
+ */
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -42,7 +47,7 @@ interface CoursePlace {
     order_index: number;
     estimated_duration: number;
     recommended_time: string;
-    notes?: string;
+    coaching_tip?: string | null;
     place: Place;
 }
 
@@ -395,52 +400,34 @@ function CourseDetailPage() {
         }
     }, [courseId]);
 
-    // 로그인 여부와 관계없이 상세 페이지 진입 시 조회수 증가
-    useEffect(() => {
-        if (!courseId) return;
-        try {
-            fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true }).catch(() => {});
-        } catch {}
-    }, [courseId]);
+    // ✅ [최적화] 조회수 증가는 CourseDetailClient에서 처리되므로 중복 제거
+    // useEffect(() => {
+    //     if (!courseId) return;
+    //     try {
+    //         fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true }).catch(() => {});
+    //     } catch {}
+    // }, [courseId]);
 
-    // 코스 데이터 가져오기
-    const fetchCourseData = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            console.log("Fetching course data for ID:", courseId);
-            console.log("Course ID type:", typeof courseId);
-
-            // ✅ 수정된 부분: request.url 대신 window.location.href 사용
-            if (typeof window !== "undefined") {
-                console.log("API: Request URL:", window.location.href);
-            }
-
-            // 캐시 확인 (임시로 비활성화)
-            const cacheKey = `course_${courseId}`;
-            const cachedData = sessionStorage.getItem(cacheKey);
-            console.log("Cache check for key:", cacheKey);
-            console.log("Cached data exists:", !!cachedData);
-
-            // API 하나로 통합된 응답 사용
-            const courseRes = await fetch(`/api/courses/${courseId}`, { cache: "no-store" });
-            if (!courseRes.ok) {
-                throw new Error("코스 정보를 가져오는데 실패했습니다.");
-            }
-            const finalCourseData = await courseRes.json();
-            console.log("API Response - Aggregated Course:", finalCourseData);
-
-            console.log("Final Course Data:", finalCourseData);
-            setCourseData(finalCourseData);
-            document.title = `DoNa | ${finalCourseData.title}`;
-        } catch (err) {
-            console.error("Error fetching course data:", err);
-            setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-        } finally {
-            setLoading(false);
-        }
-    }, [courseId]);
+    // ✅ [최적화] 서버 컴포넌트에서 이미 데이터를 가져오므로 중복 fetch 제거
+    // 이 함수는 더 이상 필요하지 않습니다. page.tsx의 서버 컴포넌트가 데이터를 제공합니다.
+    // const fetchCourseData = useCallback(async () => {
+    //     try {
+    //         setLoading(true);
+    //         setError(null);
+    //         const courseRes = await fetch(`/api/courses/${courseId}`, { cache: "no-store" });
+    //         if (!courseRes.ok) {
+    //             throw new Error("코스 정보를 가져오는데 실패했습니다.");
+    //         }
+    //         const finalCourseData = await courseRes.json();
+    //         setCourseData(finalCourseData);
+    //         document.title = `DoNa | ${finalCourseData.title}`;
+    //     } catch (err) {
+    //         console.error("Error fetching course data:", err);
+    //         setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // }, [courseId]);
 
     const handleSaveCourse = async () => {
         try {
@@ -606,11 +593,12 @@ function CourseDetailPage() {
         }
     }, []);
 
-    useEffect(() => {
-        if (courseId) {
-            fetchCourseData();
-        }
-    }, [courseId, fetchCourseData]);
+    // ✅ [최적화] 서버 컴포넌트에서 이미 데이터를 가져오므로 클라이언트에서 중복 fetch 제거
+    // useEffect(() => {
+    //     if (courseId) {
+    //         fetchCourseData();
+    //     }
+    // }, [courseId, fetchCourseData]);
 
     // 첫 번째 장소를 기본 선택으로 설정
     useEffect(() => {
@@ -676,8 +664,8 @@ function CourseDetailPage() {
                     <ErrorDisplay
                         error={error || "요청하신 코스가 존재하지 않습니다."}
                         onRetry={() => {
-                            setError(null);
-                            fetchCourseData();
+                            // ✅ [최적화] 서버 컴포넌트에서 데이터를 제공하므로 페이지 새로고침으로 대체
+                            window.location.reload();
                         }}
                     />
                     <button
@@ -761,7 +749,7 @@ function CourseDetailPage() {
                             {/* Main Content */}
                             <div className="lg:col-span-2 space-y-8">
                                 {/* 코스 설명 */}
-                                <div className="bg-white rounded-2xl shadow-lg p-4 md:p-8">
+                                <div className="bg-white rounded-lg shadow-lg p-4 md:p-8 border border-gray-100">
                                     <h2 className="text-2xl md:text-3xl font-bold mb-6">코스 소개</h2>
                                     <p className="text-gray-700 leading-relaxed text-base md:text-lg">
                                         {courseData.description}
@@ -770,7 +758,7 @@ function CourseDetailPage() {
 
                                 {/* 코스 특징 */}
                                 {courseData.highlights && courseData.highlights.length > 0 && (
-                                    <div className="bg-white rounded-2xl shadow-lg p-4 md:p-8">
+                                    <div className="bg-white rounded-lg shadow-lg p-4 md:p-8 border border-gray-100">
                                         <h2 className="text-2xl md:text-3xl font-bold mb-6">코스 특징</h2>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {courseData.highlights.map((highlight) => (
@@ -792,9 +780,9 @@ function CourseDetailPage() {
                                 )}
 
                                 {/* 타임라인 + 지도 섹션 */}
-                                <div className="bg-white rounded-2xl shadow-lg p-4 md:p-8">
+                                <div className="bg-white rounded-lg shadow-lg p-4 md:p-8 border border-gray-100">
                                     {/* 지도 섹션 */}
-                                    <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
+                                    <div className="mb-8 rounded-lg overflow-hidden shadow-lg border border-gray-100">
                                         <div className="relative">
                                             {hasPlaces ? (
                                                 <NaverMap
@@ -817,7 +805,7 @@ function CourseDetailPage() {
                                                     style={{ minHeight: "200px" }}
                                                 />
                                             ) : (
-                                                <div className="w-full h-80 bg-gray-100 rounded-2xl flex items-center justify-center">
+                                                <div className="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
                                                     <div className="text-center">
                                                         <div className="text-6xl mb-4">🗺️</div>
                                                         <p className="text-gray-600">등록된 장소가 없습니다</p>
@@ -841,7 +829,7 @@ function CourseDetailPage() {
 
                                                     {/* 장소 카드 */}
                                                     <div
-                                                        className=" hover:cursor-pointer bg-gray-50 rounded-xl p-3 md:p-6 border border-gray-200 hover:shadow-md transition-shadow "
+                                                        className=" hover:cursor-pointer bg-gray-50 rounded-lg p-3 md:p-6 border border-gray-200 hover:shadow-md transition-shadow "
                                                         onClick={() => {
                                                             setSelectedPlace({
                                                                 id: coursePlace.place.id,
@@ -916,10 +904,10 @@ function CourseDetailPage() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        {coursePlace.notes && (
+                                                        {coursePlace.coaching_tip && (
                                                             <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
                                                                 <p className="text-sm text-blue-800">
-                                                                    💡 <strong>팁:</strong> {coursePlace.notes}
+                                                                    💡 <strong>팁:</strong> {coursePlace.coaching_tip}
                                                                 </p>
                                                             </div>
                                                         )}
@@ -1086,7 +1074,7 @@ function CourseDetailPage() {
                                                 <div>
                                                     <p className="font-medium text-gray-800">추천 시간</p>
                                                     <p className="text-sm text-gray-600">
-                                                        {courseData.recommendedTime}
+                                                        {courseData.recommended_start_time || "시간 미정"}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1157,7 +1145,7 @@ function CourseDetailPage() {
             {/* 공유 모달 */}
             {showShareModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[3000] p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-sm border border-gray-200">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-xl font-bold text-gray-800">공유하기</h3>
                             <button
@@ -1171,7 +1159,7 @@ function CourseDetailPage() {
                         <div className="space-y-4">
                             <button
                                 onClick={handleKakaoShare}
-                                className="hover:cursor-pointer w-full flex items-center gap-4 p-4 bg-yellow-400 text-white rounded-xl hover:bg-yellow-500 transition-colors"
+                                className="hover:cursor-pointer w-full flex items-center gap-4 p-4 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition-colors"
                             >
                                 <div className="text-2xl">💬</div>
                                 <div className="text-left">
@@ -1184,7 +1172,7 @@ function CourseDetailPage() {
 
                             <button
                                 onClick={handleCopyLink}
-                                className="hover:cursor-pointer w-full flex items-center gap-4 p-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+                                className="hover:cursor-pointer w-full flex items-center gap-4 p-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
                             >
                                 <div className="text-2xl">📋</div>
                                 <div className="text-left">
@@ -1252,7 +1240,7 @@ function CourseDetailPage() {
                     onClick={() => setShowPlaceModal(false)}
                 >
                     <div
-                        className="bg-white rounded-2xl max-w-lg w-full overflow-hidden"
+                        className="bg-white rounded-lg max-w-lg w-full overflow-hidden border border-gray-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="p-4 border-b">

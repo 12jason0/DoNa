@@ -14,15 +14,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
         }
 
-        // 조회수 증가 (실패해도 무시)
-        try {
-            await prisma.course.update({
-                where: { id: courseId },
-                data: { view_count: { increment: 1 } },
-            });
-        } catch (e) {
-            console.warn("View count increment failed for course", courseId, e);
-        }
+        // ✅ [최적화] 조회수 증가는 별도 엔드포인트(/api/courses/[id]/view)에서 처리하므로 여기서는 제거
+        // 조회수는 CourseDetailClient에서 페이지 진입 시 한 번만 증가시키도록 변경
+        // try {
+        //     await prisma.course.update({
+        //         where: { id: courseId },
+        //         data: { view_count: { increment: 1 } },
+        //     });
+        // } catch (e) {
+        //     console.warn("View count increment failed for course", courseId, e);
+        // }
 
         const course = await (prisma as any).course.findUnique({
             where: { id: courseId },
@@ -89,10 +90,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             order_index: cp.order_index,
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
-            notes: cp.notes,
-
-            // ✅ [추가됨] 스토리텔링용 3대장 데이터 매핑
-            role_badge: cp.role_badge || null,
             coaching_tip: cp.coaching_tip || null,
 
             place: cp.place
@@ -106,7 +103,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       opening_hours: cp.place.opening_hours,
                       phone: cp.place.phone,
                       parking_available: !!cp.place.parking_available,
-                      reservation_required: !!cp.place.reservation_required,
                       latitude: cp.place.latitude ? Number(cp.place.latitude) : null,
                       longitude: cp.place.longitude ? Number(cp.place.longitude) : null,
                       imageUrl: cp.place.imageUrl?.trim() ? cp.place.imageUrl : "",
@@ -136,19 +132,41 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const userIdStr = getUserIdFromRequest(request);
         if (!userIdStr) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        const courseId = Number(params.id);
+        const { id } = await params;
+        const courseId = Number(id);
         if (!courseId || isNaN(courseId)) {
             return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
         }
 
-        const body = await request.json();
+        // [권한 검증] 코스 소유자 확인 (관리자는 제외)
+        const course = await prisma.course.findUnique({
+            where: { id: courseId },
+            select: { userId: true },
+        });
+
+        if (!course) {
+            return NextResponse.json({ error: "코스를 찾을 수 없습니다." }, { status: 404 });
+        }
+
+        // 코스 소유자가 아니면 수정 불가 (관리자 체크는 추후 추가 가능)
+        if (course.userId && course.userId !== Number(userIdStr)) {
+            return NextResponse.json({ error: "코스를 수정할 권한이 없습니다." }, { status: 403 });
+        }
+
+        const body = await request.json().catch(() => {
+            return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
+        });
+
+        if (body instanceof NextResponse) {
+            return body;
+        }
         const {
             title,
             description,
@@ -199,16 +217,32 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const userIdStr = getUserIdFromRequest(request);
         if (!userIdStr) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        const courseId = Number(params.id);
+        const { id } = await params;
+        const courseId = Number(id);
         if (!courseId || isNaN(courseId)) {
             return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
+        }
+
+        // [권한 검증] 코스 소유자 확인
+        const course = await prisma.course.findUnique({
+            where: { id: courseId },
+            select: { userId: true },
+        });
+
+        if (!course) {
+            return NextResponse.json({ error: "코스를 찾을 수 없습니다." }, { status: 404 });
+        }
+
+        // 코스 소유자가 아니면 삭제 불가
+        if (course.userId && course.userId !== Number(userIdStr)) {
+            return NextResponse.json({ error: "코스를 삭제할 권한이 없습니다." }, { status: 403 });
         }
 
         await prisma.course.delete({ where: { id: courseId } });

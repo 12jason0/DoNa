@@ -38,21 +38,31 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
 
     const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
 
+    // 토스페이먼츠 API 개별 연동 클라이언트 키 (테스트 환경)
+    // ✅ API 개별 연동 키 사용: test_ck_... (API 개별 연동 SDK용)
+    const clientKey = "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
+
     const handlePayment = async () => {
         if (!selectedPlan) return;
         setLoading(true);
 
-        const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!;
-        if (!clientKey) return alert("토스 키가 설정되지 않았습니다.");
-
         try {
+            // 1. 토스페이먼츠 SDK 초기화
             const tossPayments = await loadTossPayments(clientKey);
+
+            // 2. 고유한 주문 ID 생성 (중복 방지)
             const orderId = `order_${selectedPlan.id}_${Date.now()}`;
 
+            // 3. 결제 요청
+            // ⚠️ 중요: successUrl에 plan 정보를 포함시켜야 합니다!
+            // 토스페이먼츠가 결제 완료 후 이 URL로 리다이렉트할 때,
+            // paymentKey, orderId, amount와 함께 plan도 쿼리 파라미터로 전달됩니다.
+            // 예: /pay/success?paymentKey=...&orderId=...&amount=...&plan=sub_premium
             await tossPayments.requestPayment("카드", {
                 amount: selectedPlan.price,
                 orderId: orderId,
                 orderName: selectedPlan.name,
+                // ✅ plan 정보를 쿼리 스트링에 포함 (성공 페이지에서 어떤 상품을 샀는지 알 수 있음)
                 successUrl: `${window.location.origin}/personalized-home/pay/success?plan=${selectedPlan.id}`,
                 failUrl: `${window.location.origin}/personalized-home/pay/fail`,
             });
@@ -64,7 +74,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             {/* 모달 컨테이너 */}
             <div className="bg-white w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[85vh] rounded-t-xl sm:rounded-xl border border-gray-100 flex flex-col relative overflow-hidden">
                 {/* 헤더 */}
@@ -87,7 +97,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 </div>
 
                 {/* 스크롤 영역 */}
-                <div className="flex-1 overflow-y-auto px-6 pb-24 space-y-6">
+                <div className="flex-1 overflow-y-auto px-6 pb-45 space-y-6">
                     {/* 1. 구독 플랜 */}
                     <div className="space-y-3">
                         <div className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
@@ -212,10 +222,21 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                             </>
                         )}
                     </button>
-                    <p className="text-[10px] text-center text-gray-400 mt-3">
-                        본 상품은 디지털 콘텐츠 특성상 결제 즉시 사용 처리되며, <br />
-                        단순 변심에 의한 <strong>취소 및 환불이 불가능</strong>합니다.
-                    </p>
+                    <div className="mt-3 space-y-2">
+                        <p className="text-[10px] text-center text-gray-500">
+                            <strong className="text-gray-700">환불 정책</strong>
+                        </p>
+                        <div className="text-[10px] text-center text-gray-400 space-y-1">
+                            <p>• 쿠폰 구매 후 사용하지 않은 경우 환불 가능합니다</p>
+                            <p>• 구매한 쿠폰을 사용한 경우 환불이 불가능합니다</p>
+                            <p>• 환불은 마이페이지 → 활동 내역 → 구매 내역에서 가능합니다</p>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                            <p className="text-[9px] text-center text-gray-400">
+                                통신판매업 신고번호: 제 2025-충남홍성-0193 호
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

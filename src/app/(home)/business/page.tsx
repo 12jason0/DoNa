@@ -26,7 +26,7 @@ export default function BusinessPage() {
 
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">통신판매업신고번호</h3>
-                                    <p className="text-gray-700">준비 중 (베타 서비스)</p>
+                                    <p className="text-gray-700">제 2025-충남홍성-0193 호</p>
                                 </div>
 
                                 <div className="md:col-span-2">

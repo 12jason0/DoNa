@@ -13,9 +13,7 @@ type Place = {
     avg_cost_range?: string | null;
     opening_hours?: string | null;
     phone?: string | null;
-    website?: string | null;
     parking_available?: boolean;
-    reservation_required?: boolean;
     latitude?: number | null;
     longitude?: number | null;
     imageUrl?: string | null;
@@ -30,9 +28,7 @@ const INITIAL_PLACE: Omit<Place, "id"> = {
     avg_cost_range: "",
     opening_hours: "",
     phone: "",
-    website: "",
     parking_available: false,
-    reservation_required: false,
     latitude: undefined,
     longitude: undefined,
     imageUrl: "",
@@ -46,13 +42,27 @@ export default function AdminPlacesPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    // 페이징 상태
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const itemsPerPage = 10;
+
     // --- 데이터 조회 ---
-    const fetchPlaces = async () => {
+    const fetchPlaces = async (page: number = 1, append: boolean = false) => {
         setLoading(true);
         try {
-            const res = await fetch("/api/places?all=1&limit=200");
+            const offset = (page - 1) * itemsPerPage;
+            const res = await fetch(`/api/places?all=1&limit=${itemsPerPage}&offset=${offset}`);
             const data = await res.json();
-            setPlaces(data?.places || []);
+
+            if (append) {
+                setPlaces((prev) => [...prev, ...(data?.places || [])]);
+            } else {
+                setPlaces(data?.places || []);
+            }
+            setTotalCount(data?.total || 0);
+            setHasMore(data?.hasMore || false);
         } catch (e) {
             console.error(e);
         } finally {
@@ -61,8 +71,23 @@ export default function AdminPlacesPage() {
     };
 
     useEffect(() => {
-        fetchPlaces();
-    }, []);
+        fetchPlaces(currentPage, false);
+    }, [currentPage]);
+
+    // 다음 페이지 로드
+    const loadNextPage = () => {
+        if (!loading && hasMore) {
+            setCurrentPage((prev) => prev + 1);
+        }
+    };
+
+    // 페이지 직접 이동
+    const goToPage = (page: number) => {
+        if (page >= 1 && page <= Math.ceil(totalCount / itemsPerPage)) {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    };
 
     // --- 핸들러 ---
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -90,9 +115,7 @@ export default function AdminPlacesPage() {
             avg_cost_range: place.avg_cost_range || "",
             opening_hours: place.opening_hours || "",
             phone: place.phone || "",
-            website: place.website || "",
             parking_available: place.parking_available || false,
-            reservation_required: place.reservation_required || false,
             latitude: place.latitude ?? undefined,
             longitude: place.longitude ?? undefined,
             imageUrl: place.imageUrl || "",
@@ -116,7 +139,7 @@ export default function AdminPlacesPage() {
             });
             if (res.ok) {
                 alert("삭제되었습니다.");
-                fetchPlaces();
+                fetchPlaces(currentPage, false);
                 if (editingId === id) cancelEdit();
             }
         } catch (e) {
@@ -141,7 +164,7 @@ export default function AdminPlacesPage() {
                 alert(editingId ? "장소가 수정되었습니다." : "장소 생성 완료");
                 setFormData(INITIAL_PLACE);
                 setEditingId(null);
-                fetchPlaces();
+                fetchPlaces(currentPage, false);
             } else {
                 const err = await res.json();
                 alert(`실패: ${err.error || "알 수 없는 오류"}`);
@@ -213,16 +236,6 @@ export default function AdminPlacesPage() {
                                 className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                             />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium text-gray-600">웹사이트/인스타</label>
-                            <input
-                                name="website"
-                                placeholder="https://..."
-                                value={formData.website || ""}
-                                onChange={handleInputChange}
-                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                            />
-                        </div>
 
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-600">영업 시간</label>
@@ -279,16 +292,6 @@ export default function AdminPlacesPage() {
                                 />
                                 <span className="text-sm text-gray-700">주차 가능</span>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    name="reservation_required"
-                                    checked={formData.reservation_required || false}
-                                    onChange={handleCheckboxChange}
-                                    className="w-5 h-5 text-green-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">예약 필수</span>
-                            </label>
                         </div>
                     </div>
 
@@ -330,47 +333,129 @@ export default function AdminPlacesPage() {
 
             {/* --- 리스트 --- */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 className="text-lg font-bold mb-4 text-gray-700">장소 목록 ({places.length})</h2>
-                {loading ? (
-                    <p>로딩 중...</p>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold text-gray-700">
+                        장소 목록 (전체 {totalCount}개, 현재 {places.length}개 표시)
+                    </h2>
+                </div>
+                {loading && places.length === 0 ? (
+                    <p className="text-center py-8 text-gray-500">로딩 중...</p>
+                ) : places.length === 0 ? (
+                    <p className="text-center py-8 text-gray-500">등록된 장소가 없습니다.</p>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left border-collapse">
-                            <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
-                                <tr>
-                                    <th className="p-3 border-b">ID</th>
-                                    <th className="p-3 border-b">이름</th>
-                                    <th className="p-3 border-b">카테고리</th>
-                                    <th className="p-3 border-b">주소</th>
-                                    <th className="p-3 border-b text-right">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {places.map((p) => (
-                                    <tr key={p.id} className="hover:bg-gray-50 group">
-                                        <td className="p-3 border-b text-gray-500">{p.id}</td>
-                                        <td className="p-3 border-b font-medium text-gray-800">{p.name}</td>
-                                        <td className="p-3 border-b text-gray-600">{p.category}</td>
-                                        <td className="p-3 border-b text-gray-500 truncate max-w-xs">{p.address}</td>
-                                        <td className="p-3 border-b text-right space-x-2">
-                                            <button
-                                                onClick={() => startEdit(p)}
-                                                className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-700 text-xs"
-                                            >
-                                                수정
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(p.id)}
-                                                className="px-3 py-1 bg-red-50 border border-red-200 text-red-600 rounded hover:bg-red-100 text-xs"
-                                            >
-                                                삭제
-                                            </button>
-                                        </td>
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left border-collapse">
+                                <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                                    <tr>
+                                        <th className="p-3 border-b">ID</th>
+                                        <th className="p-3 border-b">이름</th>
+                                        <th className="p-3 border-b">카테고리</th>
+                                        <th className="p-3 border-b">주소</th>
+                                        <th className="p-3 border-b text-right">관리</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {places.map((p) => (
+                                        <tr key={p.id} className="hover:bg-gray-50 group">
+                                            <td className="p-3 border-b text-gray-500">{p.id}</td>
+                                            <td className="p-3 border-b font-medium text-gray-800">{p.name}</td>
+                                            <td className="p-3 border-b text-gray-600">{p.category}</td>
+                                            <td className="p-3 border-b text-gray-500 truncate max-w-xs">
+                                                {p.address}
+                                            </td>
+                                            <td className="p-3 border-b text-right space-x-2">
+                                                <button
+                                                    onClick={() => startEdit(p)}
+                                                    className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-700 text-xs"
+                                                >
+                                                    수정
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(p.id)}
+                                                    className="px-3 py-1 bg-red-50 border border-red-200 text-red-600 rounded hover:bg-red-100 text-xs"
+                                                >
+                                                    삭제
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 페이지네이션 */}
+                        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="text-sm text-gray-600">
+                                페이지 {currentPage} / {Math.ceil(totalCount / itemsPerPage) || 1}
+                            </div>
+
+                            <div className="flex gap-2 items-center">
+                                <button
+                                    onClick={() => goToPage(1)}
+                                    disabled={currentPage === 1 || loading}
+                                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    처음
+                                </button>
+                                <button
+                                    onClick={() => goToPage(currentPage - 1)}
+                                    disabled={currentPage === 1 || loading}
+                                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    이전
+                                </button>
+
+                                {/* 페이지 번호 버튼 (현재 페이지 ±2 범위) */}
+                                {Array.from({ length: Math.min(5, Math.ceil(totalCount / itemsPerPage)) }, (_, i) => {
+                                    const totalPages = Math.ceil(totalCount / itemsPerPage);
+                                    let pageNum: number;
+
+                                    if (totalPages <= 5) {
+                                        pageNum = i + 1;
+                                    } else if (currentPage <= 3) {
+                                        pageNum = i + 1;
+                                    } else if (currentPage >= totalPages - 2) {
+                                        pageNum = totalPages - 4 + i;
+                                    } else {
+                                        pageNum = currentPage - 2 + i;
+                                    }
+
+                                    if (pageNum > totalPages) return null;
+
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => goToPage(pageNum)}
+                                            disabled={loading}
+                                            className={`px-3 py-1.5 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                currentPage === pageNum
+                                                    ? "bg-green-600 text-white border-green-600"
+                                                    : ""
+                                            }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+
+                                <button
+                                    onClick={() => goToPage(currentPage + 1)}
+                                    disabled={!hasMore || loading}
+                                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    다음
+                                </button>
+                                <button
+                                    onClick={() => goToPage(Math.ceil(totalCount / itemsPerPage))}
+                                    disabled={!hasMore || loading}
+                                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    마지막
+                                </button>
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

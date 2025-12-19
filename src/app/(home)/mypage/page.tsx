@@ -36,6 +36,7 @@ const MyPage = () => {
     const [casefiles, setCasefiles] = useState<CasefileItem[]>([]);
     const [rewards, setRewards] = useState<UserRewardRow[]>([]);
     const [checkins, setCheckins] = useState<UserCheckinRow[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
 
     const [activeTab, setActiveTab] = useState("profile");
     const tabsTrackRef = useRef<HTMLDivElement | null>(null);
@@ -77,6 +78,7 @@ const MyPage = () => {
         fetchCasefiles();
         fetchRewards();
         fetchCheckins();
+        fetchPayments();
 
         try {
             const url = new URL(window.location.href);
@@ -183,11 +185,41 @@ const MyPage = () => {
                         (prefs.regions && Array.isArray(prefs.regions) && prefs.regions.length > 0));
 
                 if (hasPreferences) {
+                    // 한 글자씩 분리된 항목들을 합치는 함수
+                    const mergeSingleChars = (arr: string[]): string[] => {
+                        if (!Array.isArray(arr) || arr.length === 0) return [];
+                        const result: string[] = [];
+                        let currentWord = "";
+
+                        for (let i = 0; i < arr.length; i++) {
+                            const item = arr[i];
+                            // 한 글자인 경우
+                            if (item && item.length === 1) {
+                                currentWord += item;
+                            } else {
+                                // 현재까지 모은 단어가 있으면 추가
+                                if (currentWord.length > 0) {
+                                    result.push(currentWord);
+                                    currentWord = "";
+                                }
+                                // 현재 항목 추가
+                                if (item && item.length > 0) {
+                                    result.push(item);
+                                }
+                            }
+                        }
+                        // 마지막에 남은 단어 추가
+                        if (currentWord.length > 0) {
+                            result.push(currentWord);
+                        }
+                        return result;
+                    };
+
                     setUserPreferences({
-                        concept: Array.isArray(prefs.concept) ? prefs.concept : [],
+                        concept: mergeSingleChars(Array.isArray(prefs.concept) ? prefs.concept : []),
                         companion: prefs.companion || "",
-                        mood: Array.isArray(prefs.mood) ? prefs.mood : [],
-                        regions: Array.isArray(prefs.regions) ? prefs.regions : [],
+                        mood: mergeSingleChars(Array.isArray(prefs.mood) ? prefs.mood : []),
+                        regions: mergeSingleChars(Array.isArray(prefs.regions) ? prefs.regions : []),
                     });
                 } else {
                     setUserPreferences(null);
@@ -327,6 +359,20 @@ const MyPage = () => {
             });
             const data = await res.json();
             if (res.ok && data?.success) setCheckins(data.checkins || []);
+        } catch {}
+    };
+
+    const fetchPayments = async () => {
+        try {
+            const token = localStorage.getItem("authToken");
+            if (!token) return;
+            const res = await fetch("/api/payments/history", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPayments(data.payments || []);
+            }
         } catch {}
     };
 
@@ -609,6 +655,7 @@ const MyPage = () => {
                         badges={badges}
                         rewards={rewards}
                         checkins={checkins}
+                        payments={payments}
                         onSelectBadge={setSelectedBadge}
                     />
                 )}

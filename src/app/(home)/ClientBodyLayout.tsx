@@ -8,9 +8,10 @@ import SearchModal from "@/components/SearchModal";
 
 export default function ClientBodyLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    
+
     // 2. [추가] 메인 페이지인지 확인 (여기가 바로 포스터 페이지입니다)
     const isLanding = pathname === "/";
+    const isSecretDev = pathname === "/secret-dev";
     const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
 
     React.useEffect(() => {
@@ -72,7 +73,7 @@ export default function ClientBodyLayout({ children }: { children: React.ReactNo
         <>
             <RoutePrefetcher />
             <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
-            {isLanding ? <>{children}</> : <LayoutContent>{children}</LayoutContent>}
+            {isSecretDev ? <>{children}</> : <LayoutContent>{children}</LayoutContent>}
         </>
     );
 }

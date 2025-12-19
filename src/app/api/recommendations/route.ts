@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -548,6 +548,21 @@ export async function GET(req: NextRequest) {
         });
 
         const recs = coursesWithScores.sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
+
+        // [법적 필수] 위치 로그 저장 (로그인한 사용자만, GPS 좌표는 저장하지 않음)
+        if (userId) {
+            try {
+                await (prisma as any).locationLog.create({
+                    data: {
+                        userId: userId,
+                        purpose: "DATE_COURSE_RECOMMENDATION",
+                    },
+                });
+            } catch (logError) {
+                // 로그 저장 실패해도 추천은 정상 반환
+                console.error("위치 로그 저장 실패:", logError);
+            }
+        }
 
         if (recs.length === 0) {
             const popular = await prisma.course.findMany({

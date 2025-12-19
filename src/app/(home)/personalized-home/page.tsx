@@ -805,7 +805,7 @@ const AIRecommender = () => {
                                                 {cp.place?.name || "장소 정보 없음"}
                                             </h4>
                                             <p className="text-xs text-gray-500 line-clamp-2">
-                                                {cp.description || cp.place?.description || cp.role_badge || ""}
+                                                {cp.description || cp.place?.description || ""}
                                             </p>
                                         </div>
                                     </div>

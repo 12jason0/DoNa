@@ -72,7 +72,7 @@ export const metadata: Metadata = {
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
     return (
         <div
-            className="h-screen overflow-hidden flex flex-col typography-smooth"
+            className="min-h-screen flex flex-col typography-smooth"
             style={{
                 background: "var(--background)",
                 color: "var(--foreground)",

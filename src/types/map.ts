@@ -42,6 +42,12 @@ export interface MapProps {
     showPlaceOverlay?: boolean;
     // 외부에서 주입된 경로 좌표 배열 (있으면 자체 계산 대신 이걸 그림)
     pathCoordinates?: number[][];
+    // 경로를 그릴 장소들 (places와 다를 수 있음, 예: 코스 장소만 경로로 연결)
+    pathPlaces?: Place[];
+    // 지도 경계(bounds) 변경 시 콜백
+    onBoundsChanged?: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void;
+    // 지도 준비 완료 시 콜백 (map ref 접근용)
+    onMapReady?: (getBounds: () => { minLat: number; maxLat: number; minLng: number; maxLng: number } | null) => void;
 }
 
 // 과거 호환용 타입 별칭 (점진적 마이그레이션용)

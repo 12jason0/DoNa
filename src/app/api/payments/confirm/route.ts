@@ -46,20 +46,76 @@ export async function POST(req: NextRequest) {
             userId?: number | string;
         };
 
-        if (!paymentKey || !orderId || !amount || !plan || !userId || !(plan in PLAN_DATA)) {
-            return NextResponse.json({ success: false, error: "INVALID_REQUEST" }, { status: 400 });
+        // 디버깅: 받은 데이터 로그
+        console.log("[결제 확인 API] 받은 데이터:", {
+            paymentKey: paymentKey ? "있음" : "없음",
+            orderId: orderId ? "있음" : "없음",
+            amount,
+            plan,
+            userId,
+        });
+
+        // 1. 필수 파라미터 검증
+        if (!paymentKey) {
+            return NextResponse.json(
+                { success: false, error: "INVALID_REQUEST", message: "paymentKey가 없습니다." },
+                { status: 400 }
+            );
+        }
+        if (!orderId) {
+            return NextResponse.json(
+                { success: false, error: "INVALID_REQUEST", message: "orderId가 없습니다." },
+                { status: 400 }
+            );
+        }
+        if (!amount) {
+            return NextResponse.json(
+                { success: false, error: "INVALID_REQUEST", message: "amount가 없습니다." },
+                { status: 400 }
+            );
+        }
+        if (!plan) {
+            return NextResponse.json(
+                { success: false, error: "INVALID_REQUEST", message: "plan이 없습니다." },
+                { status: 400 }
+            );
+        }
+        if (!userId) {
+            return NextResponse.json(
+                { success: false, error: "INVALID_REQUEST", message: "userId가 없습니다." },
+                { status: 400 }
+            );
+        }
+
+        // 2. plan이 유효한지 확인
+        if (!(plan in PLAN_DATA)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "INVALID_REQUEST",
+                    message: `유효하지 않은 plan입니다: ${plan}. 가능한 값: ${Object.keys(PLAN_DATA).join(", ")}`,
+                },
+                { status: 400 }
+            );
         }
 
         const planInfo = PLAN_DATA[plan];
 
+        // 3. 금액 검증
         if (Number(amount) !== planInfo.amount) {
-            return NextResponse.json({ success: false, error: "INVALID_AMOUNT" }, { status: 400 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "INVALID_AMOUNT",
+                    message: `금액이 일치하지 않습니다. 받은 금액: ${amount}, 예상 금액: ${planInfo.amount}`,
+                },
+                { status: 400 }
+            );
         }
 
-        const secretKey = process.env.TOSS_SECRET_KEY;
-        if (!secretKey) {
-            return NextResponse.json({ success: false, error: "SERVER_NOT_CONFIGURED" }, { status: 500 });
-        }
+        // ✅ API 개별 연동 키 사용: test_sk_... (API 개별 연동용 시크릿 키)
+        // ⚠️ 중요: 프론트엔드에서 test_ck_...를 사용하면 백엔드도 test_sk_...를 사용해야 합니다!
+        const secretKey = "test_sk_5OWRapdA8djee7eMOeQAVo1zEqZK";
 
         const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
         const res = await fetch("https://api.tosspayments.com/v1/payments/confirm", {

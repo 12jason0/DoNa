@@ -87,9 +87,14 @@ const nextConfig = {
                                 "https://cdn.jsdelivr.net",
                                 "https://*.tosspayments.com",
                             ].join(" ");
-                            const frameSrc = ["'self'", "https://vercel.live", "https://www.googletagmanager.com"].join(
-                                " "
-                            );
+                            const frameSrc = [
+                                "'self'",
+                                "https://vercel.live",
+                                "https://www.googletagmanager.com",
+                                "https://payment-widget.tosspayments.com",
+                                "https://*.tosspayments.com",
+                                "https://toss.im",
+                            ].join(" ");
                             const workerSrc = ["'self'", "blob:"].join(" ");
 
                             // ✅ 정확히 한 줄로 합치기 (세미콜론 + 공백 필수)

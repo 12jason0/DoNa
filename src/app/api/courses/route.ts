@@ -149,9 +149,17 @@ export async function GET(request: NextRequest) {
                 grade: true, // ✅ 등급 정보 가져오기 필수
                 courseDetail: { select: { course_type: true } },
                 rating: true,
-                current_participants: true,
                 view_count: true,
                 createdAt: true,
+                courseTags: {
+                    select: {
+                        tag: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
                 coursePlaces: {
                     orderBy: { order_index: "asc" },
                     select: {
@@ -228,12 +236,12 @@ export async function GET(request: NextRequest) {
                 isLocked: isLocked, // ✅ 프론트엔드에서 자물쇠 표시용 (boolean)
                 rating: Number(course.rating) || 0,
                 reviewCount: 0,
-                participants: course.current_participants || 0,
+                participants: 0, // current_participants 필드가 스키마에 없으므로 기본값 사용
                 view_count: course.view_count || 0,
                 viewCount: course.view_count || 0,
                 createdAt: course.createdAt,
-                tags: Array.isArray(course?.CourseTagToCourses)
-                    ? course.CourseTagToCourses.map((ctc: any) => ctc.course_tags?.name).filter(Boolean)
+                tags: Array.isArray(course?.courseTags)
+                    ? course.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
                     : [],
                 coursePlaces: Array.isArray(course.coursePlaces)
                     ? course.coursePlaces.map((cp: any) => ({

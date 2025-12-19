@@ -14,7 +14,7 @@ type Place = {
     latitude: number;
     longitude: number;
     imageUrl?: string;
-    notes?: string;
+    coaching_tip?: string | null;
     category?: string;
 };
 
@@ -76,6 +76,7 @@ function GuidePageInner() {
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showCongrats, setShowCongrats] = useState(false);
     const [showReview, setShowReview] = useState(false);
+    const [userEmail, setUserEmail] = useState<string | null>(null);
 
     // ✅ 토스트(카드) 최소화 상태 관리
     const [isMinimized, setIsMinimized] = useState(false);
@@ -83,6 +84,11 @@ function GuidePageInner() {
     // 거리 계산 및 도착 여부 체크
     const [distance, setDistance] = useState<number | null>(null);
     const [isArrived, setIsArrived] = useState(false);
+
+    // ⚠️ [보안] 테스트 계정 하드코딩 제거 - 환경변수로 관리하거나 제거 권장
+    // 배포 전 반드시 제거하거나 환경변수로 관리해야 합니다
+    const TEST_ACCOUNTS = process.env.NEXT_PUBLIC_TEST_ACCOUNTS?.split(",") || [];
+    const isTestAccount = userEmail && TEST_ACCOUNTS.includes(userEmail);
 
     const currentPlace = course?.coursePlaces?.[currentStep]?.place;
     const movementGuide = course?.coursePlaces?.[currentStep]?.movement_guide;
@@ -104,8 +110,36 @@ function GuidePageInner() {
         setIsMinimized((prev) => !prev);
     };
 
+    // 사용자 정보 가져오기 (test@test.com 계정 체크용)
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            try {
+                const token = localStorage.getItem("authToken");
+                if (token) {
+                    const res = await fetch("/api/users/profile", {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setUserEmail(data.email || data.user?.email || null);
+                    }
+                }
+            } catch (err) {
+                console.error("사용자 정보 가져오기 실패:", err);
+            }
+        };
+        fetchUserInfo();
+    }, []);
+
     // 거리 업데이트 Effect
     useEffect(() => {
+        // test@test.com 계정은 항상 도착 상태로 설정
+        if (isTestAccount) {
+            setIsArrived(true);
+            setDistance(0);
+            return;
+        }
+
         if (userLocation && currentPlace) {
             const dist = getDistanceFromLatLonInMeters(
                 userLocation.lat,
@@ -120,7 +154,7 @@ function GuidePageInner() {
             setDistance(null);
             setIsArrived(false);
         }
-    }, [userLocation, currentPlace]);
+    }, [userLocation, currentPlace, isTestAccount]);
 
     // Fetch Course
     useEffect(() => {
@@ -168,7 +202,8 @@ function GuidePageInner() {
     }, [currentPlace, currentStep]);
 
     const handleNext = () => {
-        if (!isArrived) {
+        // test@test.com 계정은 GPS 체크 건너뛰기
+        if (!isTestAccount && !isArrived) {
             alert("목적지에 도착해야 다음 단계로 넘어갈 수 있습니다!");
             return;
         }
@@ -275,10 +310,10 @@ function GuidePageInner() {
                 </p>
 
                 {/* Editor's Note (간단 버전) */}
-                {currentPlace.notes && (
+                {currentPlace.coaching_tip && (
                     <div className="bg-indigo-50 rounded-xl p-4 mb-6 border-l-4 border-indigo-500">
                         <p className="text-xs font-bold text-indigo-600 mb-1">TIP</p>
-                        <p className="text-sm text-gray-700">{currentPlace.notes}</p>
+                        <p className="text-sm text-gray-700">{currentPlace.coaching_tip}</p>
                     </div>
                 )}
 
@@ -300,15 +335,19 @@ function GuidePageInner() {
                     {/* 다음 단계 버튼 */}
                     <button
                         onClick={handleNext}
-                        disabled={!isArrived}
+                        disabled={!isTestAccount && !isArrived}
                         className={`h-12 rounded-xl text-sm font-bold shadow-lg flex items-center justify-center gap-2
                             ${
-                                isArrived
+                                isTestAccount || isArrived
                                     ? "bg-black text-white hover:bg-gray-800"
                                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                             }`}
                     >
-                        {!isArrived && distance
+                        {isTestAccount
+                            ? currentStep === totalSteps - 1
+                                ? "코스 완료 🎉"
+                                : "다음 장소로 →"
+                            : !isArrived && distance
                             ? `목적지까지 ${Math.round(distance)}m 남음`
                             : currentStep === totalSteps - 1
                             ? "코스 완료 🎉"
