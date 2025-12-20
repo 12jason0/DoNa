@@ -1,7 +1,8 @@
 import React, { useCallback, useRef, useState, useEffect, useContext } from "react";
-import { BackHandler, Platform, StyleSheet, View, ActivityIndicator, Linking } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { BackHandler, Platform, StyleSheet, View, ActivityIndicator, Linking, StatusBar } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import * as WebBrowser from "expo-web-browser";
 
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
@@ -9,13 +10,46 @@ import { registerPushToken } from "../utils/registerPushToken";
 
 type Props = { uri: string };
 
-export default function WebScreen({ uri }: Props) {
+export default function WebScreen({ uri: initialUri }: Props) {
     const webRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
     const [canGoBack, setCanGoBack] = useState(false);
+    const [currentUrl, setCurrentUrl] = useState(initialUri);
+    const insets = useSafeAreaInsets();
     const pushToken = useContext(PushTokenContext);
     const [initialScript, setInitialScript] = useState<string | null>(null);
+    const [isSplashDone, setIsSplashDone] = useState(false);
 
+    // 7초 후 스플래시 종료 처리
+    useEffect(() => {
+        const timer = setTimeout(() => setIsSplashDone(true), 7000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const isSplashPage = currentUrl.replace(/\/$/, "") === "https://dona.io.kr";
+    const dynamicPaddingTop = isSplashPage && !isSplashDone ? 0 : insets.top;
+
+    // 외부 브라우저 및 앱 실행 처리
+    const openExternalBrowser = async (url: string) => {
+        if (!url.startsWith("http")) {
+            try {
+                if (Platform.OS === "android" && url.startsWith("intent://")) {
+                    const parsedUrl = url.replace("intent://", "kakaokommunication://");
+                    await Linking.openURL(parsedUrl);
+                    return;
+                }
+                await Linking.openURL(url);
+            } catch (e) {
+                if (url.includes("kakao")) {
+                    Linking.openURL("https://apps.apple.com/kr/app/id362033756");
+                }
+            }
+            return;
+        }
+        await WebBrowser.openBrowserAsync(url, { readerMode: false, toolbarColor: "#ffffff" });
+    };
+
+    // 안드로이드 뒤로가기 버튼 처리
     const handleAndroidBack = useCallback(() => {
         if (canGoBack && webRef.current) {
             webRef.current.goBack();
@@ -31,197 +65,97 @@ export default function WebScreen({ uri }: Props) {
         }
     }, [handleAndroidBack]);
 
-    // Build injected JS
+    // 초기 자바스크립트 주입 (토큰 전송 및 Bridge 설정)
     useEffect(() => {
         (async () => {
             const authToken = await loadAuthToken();
-            const isIntroPage = uri.includes("/escape/intro");
-            const isSplashPage = uri === "https://dona-two.vercel.app/" || uri === "https://dona-two.vercel.app";
-
             const lines: string[] = [];
             lines.push("(function(){");
-
-            // 1) RN ↔ WebBridge
-            lines.push(`
-                window.__nativeBridge = {
-                    post: function(type, payload){
-                        try {
-                            window.ReactNativeWebView.postMessage(
-                                JSON.stringify({type:type, payload:payload})
-                            );
-                        } catch(e){}
-                    }
-                };
-            `);
-
-            // 2) inject tokens
-            if (pushToken) {
-                lines.push(`try{ localStorage.setItem('expoPushToken', '${pushToken}'); }catch(e){}`);
-            }
-            if (authToken) {
-                lines.push(`try{ localStorage.setItem('authToken', '${authToken}'); }catch(e){}`);
-            }
-
-            // 3) Safe-area 처리 수정
-            lines.push(`
- (function applySafeArea(){
-        function update(){
-            try {
-                const path = window.location.pathname;
-                const href = window.location.href;
-                
-                const isIntro = path.includes("/escape/intro");
-                const isSplash = (href === "https://dona-two.vercel.app/" || 
-                                  href === "https://dona-two.vercel.app" ||
-                                  path === "/" && !document.querySelector('[class*="container"]'));
-
-                // 🚩 HTML/BODY 높이를 뷰포트 높이로 설정하여 웹뷰 영역을 가득 채우게 함
-                document.documentElement.style.height = '100%';
-                document.body.style.minHeight = '100%';
-                document.body.style.position = 'relative'; 
-
-                if (isIntro || isSplash) {
-                    // 풀스크린 (상/하단 모두 0)
-                    document.documentElement.style.padding = "0px";
-                    document.body.style.padding = "0px";
-                    document.documentElement.style.marginTop = "0px";
-                    document.body.style.marginTop = "0px";
-                    
-                    const old = document.getElementById("safe-area-style");
-                    if (old) old.remove();
-                    return;
-                }
-
-                // 🚩 일반 페이지: 상단 여백 제거 및 하단 확장 강제
-                
-                // 상단 여백 제거 (RN의 SafeAreaView가 이미 처리함)
-                document.documentElement.style.setProperty('padding-top', '0px', 'important');
-                document.body.style.setProperty('padding-top', '0px', 'important');
-                document.documentElement.style.marginTop = "0px";
-                document.body.style.marginTop = "0px";
-                
-                // 🚩 하단 여백을 0으로 강제하여 Safe Area까지 콘텐츠 확장
-                // (기존의 !important 설정은 유지하되, 혹시 모를 충돌을 위해 paddingBottom만 확실히 보강)
-                document.documentElement.style.setProperty('padding-bottom', '0px', 'important');
-                document.body.style.setProperty('padding-bottom', '0px', 'important');
-                
-                // 🚩 웹 콘텐츠에 safe-area-inset-bottom이 적용된 경우도 무시하도록 max-height 설정
-                // 이는 웹 콘텐츠 자체가 100vh로 제한될 경우를 대비
-                document.body.style.setProperty('max-height', 'unset', 'important');
-
-                const existing = document.getElementById("safe-area-style");
-                if (existing) existing.remove();
-
-            } catch(e){
-                console.error('Safe area update error:', e);
-            }
-        }
-
-                    // 초기 실행
-                    update();
-
-                    document.addEventListener("DOMContentLoaded", update);
-                    window.addEventListener("load", update);
-
-                    // hydration, SPA 전환 대응
-                    setTimeout(update, 20);
-                    setTimeout(update, 200);
-                    setTimeout(update, 500);
-                    
-                    // 페이지 전환 감지
-                    let lastPath = window.location.pathname;
-                    setInterval(() => {
-                        if (window.location.pathname !== lastPath) {
-                            lastPath = window.location.pathname;
-                            update();
-                        }
-                    }, 200);
-                })();
-            `);
-
-            // 4) Escape footer 보정 (필요한 경우)
-            if (uri.includes("/escape")) {
-                lines.push(`
-                    (function(){
-                        function adjust(){
-                            try{
-                                const footer = document.querySelector('[class*="absolute"][class*="bottom"]');
-                                if (footer && !window.location.pathname.includes("/escape/intro")) {
-                                    footer.style.bottom = "calc(1rem + env(safe-area-inset-bottom, 0px))";
-                                    footer.style.paddingBottom = "calc(0.5rem + env(safe-area-inset-bottom, 0px))";
-                                }
-                            }catch(e){}
-                        }
-                        document.addEventListener("DOMContentLoaded", adjust);
-                        window.addEventListener("load", adjust);
-                        setTimeout(adjust, 200);
-                        setTimeout(adjust, 500);
-                    })();
-                `);
-            }
-
+            lines.push(
+                `window.__nativeBridge = { post: function(t,p){ window.ReactNativeWebView.postMessage(JSON.stringify({type:t, payload:p})); } };`
+            );
+            if (pushToken) lines.push(`try{ localStorage.setItem('expoPushToken', '${pushToken}'); }catch(e){}`);
+            if (authToken) lines.push(`try{ localStorage.setItem('authToken', '${authToken}'); }catch(e){}`);
+            lines.push(
+                `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 500); })();`
+            );
             lines.push("})();");
             setInitialScript(lines.join("\n"));
         })();
-    }, [pushToken, uri]);
-
-    const isIntroPage = uri.includes("/escape/intro");
-    const isSplashPage = uri === "https://dona-two.vercel.app/" || uri === "https://dona-two.vercel.app";
-    const shouldUseFullScreen = isIntroPage || isSplashPage;
+    }, [pushToken, currentUrl]);
 
     return (
-        <SafeAreaView
-            style={{ flex: 1, backgroundColor: "#fff" }}
-            edges={shouldUseFullScreen ? [] : ["top", "left", "right"]}
-        >
+        <View style={[styles.container, { paddingTop: dynamicPaddingTop }]}>
+            <StatusBar barStyle={!isSplashDone ? "light-content" : "dark-content"} />
+
             <View style={{ flex: 1 }}>
-                {!!initialScript && (
-                    <WebView
-                        ref={webRef}
-                        style={{ flex: 1 }}
-                        source={{ uri }}
-                        contentInset={{ top: 0, bottom: 0 }}
-                        contentInsetAdjustmentBehavior="never"
-                        cacheEnabled={false}
-                        cacheMode="LOAD_NO_CACHE"
-                        onLoadStart={() => setLoading(true)}
-                        onLoadEnd={() => setLoading(false)}
-                        onNavigationStateChange={(nav) => setCanGoBack(nav.canGoBack)}
-                        injectedJavaScriptBeforeContentLoaded={initialScript}
-                        onMessage={async (ev) => {
-                            try {
-                                const data = JSON.parse(ev.nativeEvent.data || "{}");
+                <WebView
+                    ref={webRef}
+                    style={{ flex: 1 }}
+                    source={{ uri: initialUri }}
+                    onNavigationStateChange={(nav) => {
+                        setCanGoBack(nav.canGoBack);
+                        setCurrentUrl(nav.url);
+                        if (!nav.loading) setLoading(false);
+                    }}
+                    onShouldStartLoadWithRequest={(request) => {
+                        const { url } = request;
 
-                                if (data.type === "setAuthToken") {
-                                    await saveAuthToken(String(data.payload || ""));
-                                }
+                        // ⭐ 카카오 로그인 및 내부 서비스 도메인 허용
+                        const isInternal =
+                            url.includes("dona.io.kr") ||
+                            url.includes("dona-two.vercel.app") ||
+                            url.includes("localhost") ||
+                            url.includes("auth.kakao.com") ||
+                            url.includes("kauth.kakao.com") ||
+                            url.includes("accounts.kakao.com"); // 계정 페이지 허용
 
-                                if (data.type === "loginSuccess") {
-                                    const userId = data.payload?.userId;
-                                    const token = data.payload?.token;
-                                    if (token) await saveAuthToken(String(token));
-                                    if (userId && pushToken) {
-                                        await registerPushToken(userId, pushToken);
-                                    }
-                                }
+                        if (isInternal) {
+                            return true; // 내부 웹뷰에서 열기
+                        }
 
-                                // 웹에서 pushToken 요청 시 전달
-                                if (data.type === "requestPushToken" && pushToken && webRef.current) {
-                                    const script = `try{ localStorage.setItem('expoPushToken', '${pushToken}'); window.dispatchEvent(new Event('pushTokenReceived')); }catch(e){}`;
-                                    webRef.current.injectJavaScript(script);
-                                }
-                            } catch (e) {}
-                        }}
-                        onFileDownload={({ nativeEvent }) => {
-                            Linking.openURL(nativeEvent.downloadUrl).catch(() => {});
-                        }}
-                        originWhitelist={["*"]}
-                        javaScriptEnabled
-                        domStorageEnabled
-                        allowsInlineMediaPlayback
-                        mediaPlaybackRequiresUserAction={false}
-                    />
-                )}
+                        // 카카오톡 앱 실행 주소(딥링크) 처리
+                        if (
+                            url.startsWith("kakaolink://") ||
+                            url.startsWith("kakaokommunication://") ||
+                            url.startsWith("intent://")
+                        ) {
+                            openExternalBrowser(url);
+                            return false;
+                        }
+
+                        // 그 외 외부 주소는 시스템 브라우저로
+                        openExternalBrowser(url);
+                        return false;
+                    }}
+                    // ⭐ 팝업 차단 해제를 위한 핵심 설정
+                    setSupportMultipleWindows={false} // 새 창을 만들지 않고 현재 창에서 로드
+                    javaScriptCanOpenWindowsAutomatically={true} // 자바스크립트 팝업 허용
+                    // ⭐ 보안 차단 회피를 위한 정교한 User-Agent
+                    userAgent={
+                        Platform.OS === "android"
+                            ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                            : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                    }
+                    contentInsetAdjustmentBehavior="never"
+                    injectedJavaScriptBeforeContentLoaded={initialScript || ""}
+                    onMessage={async (ev) => {
+                        try {
+                            const data = JSON.parse(ev.nativeEvent.data || "{}");
+                            if (data.type === "setAuthToken") await saveAuthToken(String(data.payload || ""));
+                            if (data.type === "loginSuccess") {
+                                const userId = data.payload?.userId;
+                                const token = data.payload?.token;
+                                if (token) await saveAuthToken(String(token));
+                                if (userId && pushToken) await registerPushToken(userId, pushToken);
+                            }
+                        } catch (e) {}
+                    }}
+                    originWhitelist={["*"]}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    allowsInlineMediaPlayback={true}
+                />
 
                 {loading && (
                     <View style={styles.loading} pointerEvents="none">
@@ -229,11 +163,12 @@ export default function WebScreen({ uri }: Props) {
                     </View>
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: "#fff" },
     loading: {
         position: "absolute",
         top: 8,

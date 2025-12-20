@@ -291,8 +291,13 @@ const Header = () => {
                             <Search className="w-6 h-6" />
                         </button>
 
+                        {/* 알림 버튼 */}
                         <button
                             onClick={() => {
+                                // 1. 메뉴가 열려있다면 즉시 닫기
+                                setIsMenuOpen(false);
+
+                                // 2. 로그인 상태에 따라 다른 모달 띄우기
                                 if (isLoggedIn) {
                                     setShowKakaoChannelModal(true);
                                 } else {
@@ -316,18 +321,12 @@ const Header = () => {
                                     d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
                                 />
                             </svg>
-                            {!isLoggedIn && (
-                                <span className="absolute top-2 right-2.5 flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                </span>
-                            )}
-                            {isLoggedIn && (
-                                <span className="absolute top-2 right-2.5 flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                </span>
-                            )}
+
+                            {/* 알림 표시 레드 도트 (로그인/비로그인 공통 혹은 구분) */}
+                            <span className="absolute top-2 right-2.5 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
                         </button>
 
                         <button

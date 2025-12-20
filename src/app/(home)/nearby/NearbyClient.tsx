@@ -178,7 +178,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch("/api/course-tags", { cache: "no-store" });
+                const res = await fetch("/api/course-tags", { next: { revalidate: 600 } });
                 const data = await res.json().catch(() => ({}));
                 if (data?.success && Array.isArray(data.tags)) setAllTags(data.tags);
             } catch {}
@@ -189,7 +189,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         try {
             const token = localStorage.getItem("authToken");
             if (!token) return;
-            fetch("/api/users/favorites", { headers: { Authorization: `Bearer ${token}` } })
+            fetch("/api/users/favorites", {
+                headers: { Authorization: `Bearer ${token}` },
+                next: { revalidate: 300 },
+            })
                 .then((res) => (res.ok ? res.json() : []))
                 .then((list: any[]) => {
                     const ids = new Set<number>();

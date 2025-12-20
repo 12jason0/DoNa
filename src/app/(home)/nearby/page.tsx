@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 60; // 60초 캐싱
 
 async function getInitialNearbyCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // 1. URL 파라미터 파싱
@@ -114,6 +115,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 },
             },
         },
+        // 인덱스 힌트: id, isPublic, region, concept에 인덱스가 있다고 가정
     });
 
     // ✅ [유저 등급 확인]

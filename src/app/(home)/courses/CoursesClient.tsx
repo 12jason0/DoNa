@@ -143,7 +143,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             if (!token) return;
             fetch("/api/users/favorites", {
                 headers: { Authorization: `Bearer ${token}` },
-                cache: "no-store",
+                next: { revalidate: 300 },
             })
                 .then((res) => (res.ok ? res.json() : []))
                 .then((list: any[]) => {
@@ -170,6 +170,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
         try {
             if (!liked) {
                 const res = await fetch("/api/users/favorites", {
+                    next: { revalidate: 300 },
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -186,6 +187,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                 }
             } else {
                 const res = await fetch(`/api/users/favorites?courseId=${idNum}`, {
+                    next: { revalidate: 300 },
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },
                 });

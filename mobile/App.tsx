@@ -1,11 +1,12 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useRef, useState } from "react";
+import { View } from "react-native"; // View 추가
 import { NavigationContainer, DefaultTheme, Theme } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
-import { Linking } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import WebScreen from "./src/components/WebScreen"; // ← 이 경로로 import
+import WebScreen from "./src/components/WebScreen";
 import { registerForPushNotificationsAsync } from "./src/notifications";
 import { registerPushTokenToServer } from "./src/api";
 import { initDB } from "./src/utils/storage";
@@ -42,7 +43,6 @@ export default function App() {
             setPushToken(t);
             try {
                 await registerPushTokenToServer(t || null);
-                console.log("푸시 토큰 서버 등록 완료:", t);
             } catch (error) {
                 console.error("푸시 토큰 서버 등록 실패:", error);
             }
@@ -63,11 +63,19 @@ export default function App() {
     }, []);
 
     return (
-        <NavigationContainer theme={navTheme}>
-            <StatusBar style="dark" />
-            <PushTokenContext.Provider value={pushToken}>
-                <WebScreen uri="https://dona.io.kr/secret-dev" />
-            </PushTokenContext.Provider>
-        </NavigationContainer>
+        <SafeAreaProvider>
+            {/* 배경색을 흰색으로 지정하여 상태바 영역이 튀지 않게 합니다. */}
+            <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+                <NavigationContainer theme={navTheme}>
+                    <StatusBar style="dark" />
+                    <PushTokenContext.Provider value={pushToken}>
+                        {/* WebScreen 내부에서 이전에 작성한 useSafeAreaInsets 로직이 
+                          정상 작동하려면 반드시 SafeAreaProvider 내부에 있어야 합니다. 
+                        */}
+                        <WebScreen uri="https://dona.io.kr" />
+                    </PushTokenContext.Provider>
+                </NavigationContainer>
+            </View>
+        </SafeAreaProvider>
     );
 }

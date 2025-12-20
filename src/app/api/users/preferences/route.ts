@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5분 캐싱
 
 // 기존 사용자 데이터를 새로운 구조로 마이그레이션하는 함수
 function migratePreferences(oldPrefs: any): any {

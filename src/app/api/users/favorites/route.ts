@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5분 캐싱
 
 // 통합 인증 사용
 
@@ -32,8 +33,7 @@ export async function GET(request: NextRequest) {
         // 코스 이미지 폴백 처리: 코스 imageUrl 없으면 첫 장소 이미지로 대체
         const normalized = (favorites || []).map((fav: any) => {
             const cp = Array.isArray(fav?.course?.coursePlaces) ? fav.course.coursePlaces : [];
-            const firstPlaceImage =
-                cp.find((it: any) => it?.place?.imageUrl)?.place?.imageUrl || null;
+            const firstPlaceImage = cp.find((it: any) => it?.place?.imageUrl)?.place?.imageUrl || null;
             // 코스 객체에 imageUrl 보강
             const course = fav?.course
                 ? {

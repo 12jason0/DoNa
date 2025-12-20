@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 60; // 60초 캐싱
 
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // Default params for initial load
@@ -90,6 +91,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
                 },
             },
         },
+        // 인덱스 힌트: id와 isPublic에 인덱스가 있다고 가정
     });
 
     // Image Policy (default: any)

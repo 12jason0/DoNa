@@ -319,7 +319,12 @@ function MapPageInner() {
 
                 if (keyword && uniqueCourses.size > 0) setActiveTab("courses");
             } catch (e: any) {
-                if (e?.name !== "AbortError") console.error("Fetch error:", e);
+                if (e?.name !== "AbortError") {
+                    console.error("Fetch error:", e);
+                    // 에러 발생 시에도 빈 배열로 설정하여 UI가 멈추지 않도록
+                    setPlaces([]);
+                    setCourses([]);
+                }
             }
         },
         []
@@ -331,21 +336,42 @@ function MapPageInner() {
             return;
         }
         setLoading(true);
+
+        // 타임아웃 설정 (10초 후 자동 해제)
+        const timeoutId = setTimeout(() => {
+            setLoading(false);
+            showToast("위치 정보를 가져오는 데 시간이 걸리고 있어요.");
+        }, 10000);
+
         navigator.geolocation.getCurrentPosition(
             async (p) => {
-                const loc = { lat: p.coords.latitude, lng: p.coords.longitude };
-                setUserLocation(loc);
-                setCenter(loc);
-                setZoom(16);
-                await fetchAllData(loc);
-                setLoading(false);
+                clearTimeout(timeoutId);
+                try {
+                    const loc = { lat: p.coords.latitude, lng: p.coords.longitude };
+                    setUserLocation(loc);
+                    setCenter(loc);
+                    setZoom(16);
+                    await fetchAllData(loc);
+                } catch (error) {
+                    console.error("위치 이동 중 오류:", error);
+                    showToast("데이터를 불러오는 중 오류가 발생했습니다.");
+                } finally {
+                    setLoading(false);
+                }
             },
             (err) => {
+                clearTimeout(timeoutId);
                 setLoading(false);
+                console.error("위치 정보 가져오기 실패:", err);
                 showToast("위치를 가져올 수 없습니다.");
-                fetchAllData(center);
+                // 현재 중심점 기준으로 데이터 로드
+                try {
+                    fetchAllData(center);
+                } catch (error) {
+                    console.error("데이터 로드 오류:", error);
+                }
             },
-            { enableHighAccuracy: true, timeout: 5000 }
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
         );
     }, [fetchAllData, center]);
 

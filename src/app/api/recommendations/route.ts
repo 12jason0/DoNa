@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5분 캐싱
 // 공공데이터포털 인증 키 (기상청 API와 미세먼지 API 모두 동일한 키 사용)
 // KMA_API_KEY 또는 AIRKOREA_API_KEY 중 하나만 설정하면 됨
 const PUBLIC_DATA_API_KEY = process.env.KMA_API_KEY || process.env.AIRKOREA_API_KEY;

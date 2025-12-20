@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 60; // 1분 캐싱
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000; // UTC+9
 
@@ -42,126 +43,126 @@ function startOfWeekMonday(date: Date): Date {
 
 // 기준(anchor) 날짜(보통 '오늘' 또는 '어제')을 포함하여 역방향으로 연속 출석을 계산
 function computeConsecutiveStreakUpTo(sortedDescCheckins: { date: Date }[], anchorDate: Date): number {
-	if (sortedDescCheckins.length === 0) return 0;
-	let streak = 0;
-	let expected = startOfDayKST(anchorDate);
-	for (const c of sortedDescCheckins) {
-		const day = startOfDayKST(new Date(c.date));
-		if (isSameDayKST(day, expected)) {
-			streak += 1;
-			expected = new Date(expected);
-			expected.setDate(expected.getDate() - 1);
-			continue;
-		}
-		// 첫 불일치가 나오는 즉시 종료 (중간에 빈 날이 있으면 연속 끊김)
-		// day가 expected보다 이전이면 더 이상 연속 아님
-		if (day < expected) break;
-	}
-	return streak;
+    if (sortedDescCheckins.length === 0) return 0;
+    let streak = 0;
+    let expected = startOfDayKST(anchorDate);
+    for (const c of sortedDescCheckins) {
+        const day = startOfDayKST(new Date(c.date));
+        if (isSameDayKST(day, expected)) {
+            streak += 1;
+            expected = new Date(expected);
+            expected.setDate(expected.getDate() - 1);
+            continue;
+        }
+        // 첫 불일치가 나오는 즉시 종료 (중간에 빈 날이 있으면 연속 끊김)
+        // day가 expected보다 이전이면 더 이상 연속 아님
+        if (day < expected) break;
+    }
+    return streak;
 }
 
 // 보상(award)된 날을 기준으로 다음날부터 스트릭을 1부터 다시 시작
 function computeEffectiveStreakUpTo(
-	sortedDescCheckins: { date: Date; rewarded?: boolean }[],
-	anchorDate: Date
+    sortedDescCheckins: { date: Date; rewarded?: boolean }[],
+    anchorDate: Date
 ): number {
-	const lastRewarded = sortedDescCheckins.find((c) => c.rewarded === true);
-	if (!lastRewarded) {
-		return computeConsecutiveStreakUpTo(sortedDescCheckins, anchorDate);
-	}
-	const anchorStart = startOfDayKST(anchorDate);
-	// 보상일이 앵커일과 동일하면 7개 달성 상태로 취급
-	if (isSameDayKST(startOfDayKST(new Date(lastRewarded.date)), anchorStart)) {
-		return 7;
-	}
-	// 보상일 이후부터 다시 1부터 연속 계산
-	const cutoff = startOfDayKST(new Date(lastRewarded.date));
-	const filtered = sortedDescCheckins.filter((c) => startOfDayKST(new Date(c.date)) > cutoff);
-	return computeConsecutiveStreakUpTo(filtered, anchorDate);
+    const lastRewarded = sortedDescCheckins.find((c) => c.rewarded === true);
+    if (!lastRewarded) {
+        return computeConsecutiveStreakUpTo(sortedDescCheckins, anchorDate);
+    }
+    const anchorStart = startOfDayKST(anchorDate);
+    // 보상일이 앵커일과 동일하면 7개 달성 상태로 취급
+    if (isSameDayKST(startOfDayKST(new Date(lastRewarded.date)), anchorStart)) {
+        return 7;
+    }
+    // 보상일 이후부터 다시 1부터 연속 계산
+    const cutoff = startOfDayKST(new Date(lastRewarded.date));
+    const filtered = sortedDescCheckins.filter((c) => startOfDayKST(new Date(c.date)) > cutoff);
+    return computeConsecutiveStreakUpTo(filtered, anchorDate);
 }
 
 // 보상일 기반 7칸 사이클 도장 배열 생성
 function buildCycleStamps(
-	sortedDescCheckins: { date: Date; rewarded?: boolean }[],
-	now: Date,
-	todayChecked: boolean
+    sortedDescCheckins: { date: Date; rewarded?: boolean }[],
+    now: Date,
+    todayChecked: boolean
 ): { stamps: boolean[]; todayIndex: number | null } {
-	const todayStart = startOfDayKST(now);
-	const lastRewarded = sortedDescCheckins.find((c) => c.rewarded === true);
+    const todayStart = startOfDayKST(now);
+    const lastRewarded = sortedDescCheckins.find((c) => c.rewarded === true);
 
-	// 앵커: 오늘이 찍혀 있지 않다면 '어제'를 기준으로 연속계산/표시 영역을 잡는다
-	const anchor = new Date(todayStart);
-	if (!todayChecked) {
-		anchor.setDate(anchor.getDate() - 1);
-	}
+    // 앵커: 오늘이 찍혀 있지 않다면 '어제'를 기준으로 연속계산/표시 영역을 잡는다
+    const anchor = new Date(todayStart);
+    if (!todayChecked) {
+        anchor.setDate(anchor.getDate() - 1);
+    }
 
-	// 현재 유효 스트릭 계산 (연속성이 끊겼는지 확인하기 위함)
-	const effective = computeEffectiveStreakUpTo(sortedDescCheckins, anchor);
+    // 현재 유효 스트릭 계산 (연속성이 끊겼는지 확인하기 위함)
+    const effective = computeEffectiveStreakUpTo(sortedDescCheckins, anchor);
 
-	let cycleStart: Date;
-	let useRewardCycle = false;
+    let cycleStart: Date;
+    let useRewardCycle = false;
 
-	if (lastRewarded) {
-		const rewardedDay = startOfDayKST(new Date(lastRewarded.date));
-		// 1. 보상 받은 날이 앵커(오늘/어제)인 경우 -> 꽉 찬 7개 보여줌
-		if (isSameDayKST(rewardedDay, startOfDayKST(anchor))) {
-			useRewardCycle = true;
-		} else {
-			// 2. 보상 이후 진행 중인 경우 -> 연속성이 유지되고 있는지 확인
-			const expectedStart = new Date(rewardedDay);
-			expectedStart.setDate(expectedStart.getDate() + 1);
+    if (lastRewarded) {
+        const rewardedDay = startOfDayKST(new Date(lastRewarded.date));
+        // 1. 보상 받은 날이 앵커(오늘/어제)인 경우 -> 꽉 찬 7개 보여줌
+        if (isSameDayKST(rewardedDay, startOfDayKST(anchor))) {
+            useRewardCycle = true;
+        } else {
+            // 2. 보상 이후 진행 중인 경우 -> 연속성이 유지되고 있는지 확인
+            const expectedStart = new Date(rewardedDay);
+            expectedStart.setDate(expectedStart.getDate() + 1);
 
-			// 스트릭으로 역산한 시작일
-			// effective가 1이면 anchor와 동일, 2이면 anchor-1...
-			const streakStart = new Date(anchor);
-			streakStart.setDate(streakStart.getDate() - Math.max(0, effective - 1));
+            // 스트릭으로 역산한 시작일
+            // effective가 1이면 anchor와 동일, 2이면 anchor-1...
+            const streakStart = new Date(anchor);
+            streakStart.setDate(streakStart.getDate() - Math.max(0, effective - 1));
 
-			// 스트릭 시작일이 보상 다음날보다 늦으면 -> 중간에 끊긴 것임 -> 리셋 로직(else) 사용
-			// 스트릭 시작일이 보상 다음날과 같거나 빠르면 -> 연속 유지 중 -> 보상 사이클 유지
-			if (streakStart.getTime() <= expectedStart.getTime()) {
-				useRewardCycle = true;
-			}
-		}
-	}
+            // 스트릭 시작일이 보상 다음날보다 늦으면 -> 중간에 끊긴 것임 -> 리셋 로직(else) 사용
+            // 스트릭 시작일이 보상 다음날과 같거나 빠르면 -> 연속 유지 중 -> 보상 사이클 유지
+            if (streakStart.getTime() <= expectedStart.getTime()) {
+                useRewardCycle = true;
+            }
+        }
+    }
 
-	if (useRewardCycle && lastRewarded) {
-		const rewardedDay = startOfDayKST(new Date(lastRewarded.date));
-		if (isSameDayKST(rewardedDay, startOfDayKST(anchor))) {
-			cycleStart = new Date(anchor);
-			cycleStart.setDate(cycleStart.getDate() - 6);
-		} else {
-			// 보상 다음날부터 1칸부터 시작
-			cycleStart = new Date(rewardedDay);
-			cycleStart.setDate(cycleStart.getDate() + 1);
-		}
-	} else {
-		// 보상 이력 없거나, 중간에 끊겨서 새로 시작해야 하는 경우
-		cycleStart = new Date(anchor);
-		cycleStart.setDate(cycleStart.getDate() - Math.max(0, effective - 1));
-	}
+    if (useRewardCycle && lastRewarded) {
+        const rewardedDay = startOfDayKST(new Date(lastRewarded.date));
+        if (isSameDayKST(rewardedDay, startOfDayKST(anchor))) {
+            cycleStart = new Date(anchor);
+            cycleStart.setDate(cycleStart.getDate() - 6);
+        } else {
+            // 보상 다음날부터 1칸부터 시작
+            cycleStart = new Date(rewardedDay);
+            cycleStart.setDate(cycleStart.getDate() + 1);
+        }
+    } else {
+        // 보상 이력 없거나, 중간에 끊겨서 새로 시작해야 하는 경우
+        cycleStart = new Date(anchor);
+        cycleStart.setDate(cycleStart.getDate() - Math.max(0, effective - 1));
+    }
 
-	const dayKey = (d: Date) => {
-		const sd = startOfDayKST(d);
-		const y = sd.getUTCFullYear();
-		const m = String(sd.getUTCMonth() + 1).padStart(2, "0");
-		const day = String(sd.getUTCDate()).padStart(2, "0");
-		return `${y}-${m}-${day}`;
-	};
-	const checkedDaySet = new Set(sortedDescCheckins.map((c) => dayKey(new Date(c.date))));
-	const todayKey = dayKey(todayStart);
+    const dayKey = (d: Date) => {
+        const sd = startOfDayKST(d);
+        const y = sd.getUTCFullYear();
+        const m = String(sd.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(sd.getUTCDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    };
+    const checkedDaySet = new Set(sortedDescCheckins.map((c) => dayKey(new Date(c.date))));
+    const todayKey = dayKey(todayStart);
 
-	let todayIndex: number | null = null;
-	const stamps = Array.from({ length: 7 }, (_, i) => {
-		const dt = new Date(cycleStart);
-		dt.setDate(cycleStart.getDate() + i);
-		const dtKey = dayKey(dt);
-		if (dtKey === todayKey) {
-			todayIndex = i;
-		}
-		return checkedDaySet.has(dtKey);
-	});
+    let todayIndex: number | null = null;
+    const stamps = Array.from({ length: 7 }, (_, i) => {
+        const dt = new Date(cycleStart);
+        dt.setDate(cycleStart.getDate() + i);
+        const dtKey = dayKey(dt);
+        if (dtKey === todayKey) {
+            todayIndex = i;
+        }
+        return checkedDaySet.has(dtKey);
+    });
 
-	return { stamps, todayIndex };
+    return { stamps, todayIndex };
 }
 
 export async function GET(request: NextRequest) {

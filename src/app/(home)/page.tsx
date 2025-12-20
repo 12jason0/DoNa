@@ -74,11 +74,17 @@ export default function Home() {
                 if (!token) return;
 
                 const [profileRes, checkinRes, preferencesRes] = await Promise.all([
-                    fetch("/api/users/profile", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-                    fetch("/api/users/checkins", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+                    fetch("/api/users/profile", {
+                        headers: { Authorization: `Bearer ${token}` },
+                        next: { revalidate: 300 },
+                    }),
+                    fetch("/api/users/checkins", {
+                        headers: { Authorization: `Bearer ${token}` },
+                        next: { revalidate: 60 },
+                    }),
                     fetch("/api/users/preferences", {
                         headers: { Authorization: `Bearer ${token}` },
-                        cache: "no-store",
+                        next: { revalidate: 300 },
                     }),
                 ]);
                 if (profileRes.ok) {
@@ -145,7 +151,7 @@ export default function Home() {
         idle(() => {
             (async () => {
                 try {
-                    const res = await fetch("/api/course-tags", { cache: "no-store" });
+                    const res = await fetch("/api/course-tags", { next: { revalidate: 600 } });
                     const data = await res.json().catch(() => ({}));
                     if (data?.success && Array.isArray(data.tags)) setAllTags(data.tags);
                 } catch {}
@@ -286,7 +292,7 @@ export default function Home() {
                     const token2 = localStorage.getItem("authToken");
                     const res = await fetch("/api/users/checkins", {
                         headers: token2 ? { Authorization: `Bearer ${token2}` } : {},
-                        cache: "no-store",
+                        next: { revalidate: 60 },
                     });
                     if (res.ok) {
                         const d = await res.json().catch(() => ({}));
@@ -341,11 +347,15 @@ export default function Home() {
                 const res = await fetch("/api/users/profile", {
                     credentials: "include",
                     headers: { Authorization: `Bearer ${token}` },
+                    next: { revalidate: 300 },
                 });
                 if (res.ok) {
-                    setTimeout(() => {
-                        maybeOpenCheckinModal();
-                    }, 800);
+                    // 출석체크 모달은 한 번만 열리도록 hasShownCheckinModalRef로 제어
+                    if (!hasShownCheckinModalRef.current) {
+                        setTimeout(() => {
+                            maybeOpenCheckinModal();
+                        }, 800);
+                    }
                 } else if (res.status === 401) {
                     localStorage.removeItem("authToken");
                 }
@@ -357,7 +367,7 @@ export default function Home() {
 
         const handleFocus = () => {
             const token = localStorage.getItem("authToken");
-            if (token) {
+            if (token && !hasShownCheckinModalRef.current) {
                 setTimeout(() => {
                     maybeOpenCheckinModal();
                 }, 300);
@@ -369,24 +379,19 @@ export default function Home() {
         };
     }, []);
 
-    useEffect(() => {
-        const token = localStorage.getItem("authToken");
-        if (token) {
-            maybeOpenCheckinModal();
-        }
-    }, []);
-
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    // HeroSlider용 별도 데이터 로드 및 3일 로테이션 로직
+    // HeroSlider용 별도 데이터 로드 및 3일 로테이션 로직 - 최적화
     useEffect(() => {
         const fetchHeroData = async () => {
             try {
-                // FREE 코스를 충분히 확보하기 위해 limit=100으로 별도 요청
-                const res = await fetch("/api/courses?limit=100&imagePolicy=any");
+                // ✅ 최적화: 5개만 필요하므로 limit=20으로 줄임 (FREE 필터링은 클라이언트에서)
+                const res = await fetch("/api/courses?limit=20&imagePolicy=any", {
+                    next: { revalidate: 300 },
+                    // requestIdleCallback로 지연 로딩
+                });
                 if (!res.ok) {
-                    console.error("Hero data fetch failed:", res.status);
                     // courses 상태에서 데이터 가져오기 시도
                     if (courses.length > 0) {
                         const processed = courses.slice(0, 5).map((c: any) => ({
@@ -438,8 +443,15 @@ export default function Home() {
             }
         };
 
-        fetchHeroData();
-    }, []); // 마운트 시 한 번만 실행 (courses 상태와 무관하게 동작)
+        // ✅ requestIdleCallback로 지연 로딩 (페이지 초기 로딩 후에 실행)
+        const idle = (cb: () => void) =>
+            "requestIdleCallback" in window
+                ? (window as any).requestIdleCallback(cb, { timeout: 2000 })
+                : setTimeout(cb, 500);
+        idle(() => {
+            fetchHeroData();
+        });
+    }, []); // 마운트 시 한 번만 실행
 
     const topCourses = courses.slice(0, 5);
     const hotCourses = courses
@@ -469,7 +481,7 @@ export default function Home() {
             const token = localStorage.getItem("authToken");
             setIsLoggedInForRecs(!!token);
             const res = await fetch("/api/recommendations", {
-                cache: "no-store",
+                next: { revalidate: 300 },
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
             const data = await res.json().catch(() => ({}));
@@ -997,7 +1009,7 @@ function TabbedConcepts({
     useEffect(() => {
         const fetchCounts = async () => {
             try {
-                const res = await fetch("/api/courses/concept-counts");
+                const res = await fetch("/api/courses/concept-counts", { next: { revalidate: 300 } });
                 if (res.ok) {
                     const data = await res.json();
                     if (data && typeof data === "object") setConceptCountsMap(data);

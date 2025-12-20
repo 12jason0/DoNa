@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5분 캐싱
 
 export async function GET(_request: NextRequest) {
     try {
