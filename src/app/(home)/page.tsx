@@ -144,21 +144,21 @@ export default function Home() {
         }
     };
 
-    // 태그 목록 불러오기
+    // 🟢 모바일 성능 최적화: 태그 목록은 지연 로딩 (초기 로딩 후 2초 후)
     useEffect(() => {
-        const idle = (cb: () => void) =>
-            "requestIdleCallback" in window
-                ? (window as any).requestIdleCallback(cb, { timeout: 1200 })
-                : setTimeout(cb, 1);
-        idle(() => {
+        const timer = setTimeout(() => {
             (async () => {
                 try {
-                    const res = await fetch("/api/course-tags", { next: { revalidate: 600 } });
+                    const res = await fetch("/api/course-tags", {
+                        cache: "force-cache", // 🟢 캐싱 추가
+                        next: { revalidate: 600 },
+                    });
                     const data = await res.json().catch(() => ({}));
                     if (data?.success && Array.isArray(data.tags)) setAllTags(data.tags);
                 } catch {}
             })();
-        });
+        }, 2000); // 🟢 2초 지연
+        return () => clearTimeout(timer);
     }, []);
 
     const buildCourseListUrl = () => {
@@ -504,14 +504,12 @@ export default function Home() {
         }
     };
 
+    // 🟢 모바일 성능 최적화: 추천 데이터는 지연 로딩 (초기 로딩 후 3초 후)
     useEffect(() => {
-        const idle = (cb: () => void) =>
-            "requestIdleCallback" in window
-                ? (window as any).requestIdleCallback(cb, { timeout: 1200 })
-                : setTimeout(cb, 1);
-        idle(() => {
+        const timer = setTimeout(() => {
             fetchRecommendations();
-        });
+        }, 3000); // 🟢 3초 지연 (초기 렌더링 완료 후)
+        return () => clearTimeout(timer);
     }, []);
 
     useEffect(() => {
@@ -1014,17 +1012,24 @@ function TabbedConcepts({
     // [New State] Controls the "Show More" toggle for the Concept tab
     const [isExpanded, setIsExpanded] = useState(false);
 
+    // 🟢 모바일 성능 최적화: 컨셉 카운트는 지연 로딩 (초기 로딩 후 4초 후)
     useEffect(() => {
-        const fetchCounts = async () => {
-            try {
-                const res = await fetch("/api/courses/concept-counts", { next: { revalidate: 300 } });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && typeof data === "object") setConceptCountsMap(data);
-                }
-            } catch {}
-        };
-        fetchCounts();
+        const timer = setTimeout(() => {
+            const fetchCounts = async () => {
+                try {
+                    const res = await fetch("/api/courses/concept-counts", {
+                        cache: "force-cache", // 🟢 캐싱 추가
+                        next: { revalidate: 300 },
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && typeof data === "object") setConceptCountsMap(data);
+                    }
+                } catch {}
+            };
+            fetchCounts();
+        }, 4000); // 🟢 4초 지연
+        return () => clearTimeout(timer);
     }, []);
 
     const representativeImageByConcept = courses.reduce((acc, c) => {

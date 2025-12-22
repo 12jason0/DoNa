@@ -71,8 +71,9 @@ export default function WebScreen({ uri: initialUri }: Props) {
             );
             if (pushToken) lines.push(`try{ localStorage.setItem('expoPushToken', '${pushToken}'); }catch(e){}`);
             if (authToken) lines.push(`try{ localStorage.setItem('authToken', '${authToken}'); }catch(e){}`);
+            // 🟢 성능 최적화: SafeArea 업데이트 간격 증가 (500ms -> 2000ms)
             lines.push(
-                `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 500); })();`
+                `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`
             );
             lines.push("})();");
             setInitialScript(lines.join("\n"));
@@ -88,6 +89,15 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     ref={webRef}
                     style={{ flex: 1 }}
                     source={{ uri: initialUri }}
+                    // 🟢 모바일 성능 최적화 설정
+                    cacheEnabled={true} // 캐시 활성화
+                    cacheMode="LOAD_CACHE_ELSE_NETWORK" // 캐시 우선 사용
+                    incognito={false} // 캐시 사용
+                    sharedCookiesEnabled={true} // 쿠키 공유
+                    thirdPartyCookiesEnabled={false} // 서드파티 쿠키 비활성화 (성능 향상)
+                    allowsInlineMediaPlayback={true} // 인라인 미디어 재생
+                    mediaPlaybackRequiresUserAction={false} // 자동 재생 허용
+                    allowsBackForwardNavigationGestures={true} // 제스처 네비게이션
                     onNavigationStateChange={(nav: WebViewNavigation) => {
                         setCanGoBack(nav.canGoBack);
                         setCurrentUrl(nav.url);
