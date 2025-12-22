@@ -69,8 +69,11 @@ export default function PersonalizedSection() {
                     setIsLoggedIn(false);
                 }
 
-                // 2. API 호출 (🚨 limit=3 으로 수정했습니다!)
-                const res = await fetch("/api/recommendations?limit=3");
+                // 🟢 성능 최적화: 캐싱 추가 + 빠른 로딩
+                const res = await fetch("/api/recommendations?limit=3", {
+                    cache: "force-cache", // 브라우저 캐시 사용
+                    next: { revalidate: 300 }, // 5분 캐시
+                });
                 const data = await res.json();
 
                 if (data.recommendations && data.recommendations.length > 0) {
@@ -172,6 +175,8 @@ export default function PersonalizedSection() {
                                                   alt={course.title}
                                                   className="object-cover"
                                                   sizes="200px"
+                                                  loading="lazy" // 🟢 lazy loading
+                                                  quality={75} // 🟢 적절한 quality
                                               />
                                           ) : (
                                               <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">

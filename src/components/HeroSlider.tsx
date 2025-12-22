@@ -19,11 +19,11 @@ type HeroSliderProps = {
     items: SliderItem[];
 };
 
-// 🟢 성능 최적화: SliderItem 컴포넌트를 memo로 최적화 + 비교 함수 추가
+// 🟢 단순화: memo 비교 함수 제거 (기본 비교가 더 빠를 수 있음)
 const SliderItemComponent = memo(
     ({ item, idx, realLength, items }: { item: SliderItem; idx: number; realLength: number; items: SliderItem[] }) => {
-        // 🟢 성능 최적화: 현재 보이는 슬라이드와 바로 다음 슬라이드만 이미지 로드
-        const isVisible = idx === realLength || idx === realLength + 1;
+        // 🟢 이미지 로딩: 현재 보이는 슬라이드와 인접 슬라이드만 로드
+        const isVisible = idx === realLength || idx === realLength - 1 || idx === realLength + 1;
         const shouldLoad = items.length === 1 || isVisible;
         // 첫 번째 보이는 이미지만 priority
         const isFirstVisible = idx === realLength || (items.length === 1 && idx === 0);
@@ -44,10 +44,9 @@ const SliderItemComponent = memo(
                             className="object-cover"
                             priority={isFirstVisible} // 🟢 첫 번째 이미지만 priority
                             loading={shouldLoad ? "eager" : "lazy"} // 🟢 보이는 것만 eager, 나머지는 lazy
-                            quality={60} // 🟢 성능 최적화: quality 낮춤 (60)
+                            quality={75} // 🟢 적절한 quality (60은 너무 낮음)
                             sizes="(max-width: 768px) 100vw, 400px"
-                            fetchPriority={isFirstVisible ? "high" : "low"} // 🟢 첫 이미지만 high, 나머지는 low
-                            unoptimized={false} // Next.js 최적화 사용
+                            fetchPriority={isFirstVisible ? "high" : "auto"} // 🟢 첫 이미지만 high
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
@@ -98,16 +97,6 @@ const SliderItemComponent = memo(
                 </div>
             </Link>
         );
-    },
-    // 🟢 성능 최적화: 비교 함수로 불필요한 리렌더링 방지
-    (prevProps, nextProps) => {
-        return (
-            prevProps.item.id === nextProps.item.id &&
-            prevProps.item.imageUrl === nextProps.item.imageUrl &&
-            prevProps.idx === nextProps.idx &&
-            prevProps.realLength === nextProps.realLength &&
-            prevProps.items.length === nextProps.items.length
-        );
     }
 );
 SliderItemComponent.displayName = "SliderItem";
@@ -137,13 +126,13 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         }
     }, [realLength]);
 
-    // 🟢 성능 최적화: requestAnimationFrame 사용 + useCallback 메모이제이션
-    const rafRef = useRef<number | null>(null);
-    const handleScroll = useCallback(() => {
-        if (rafRef.current) {
-            cancelAnimationFrame(rafRef.current);
+    // 🟢 단순화: throttle만 사용 (requestAnimationFrame 제거)
+    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleScroll = () => {
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
         }
-        rafRef.current = requestAnimationFrame(() => {
+        scrollTimeoutRef.current = setTimeout(() => {
             if (scrollRef.current && realLength > 1) {
                 const scrollLeftVal = scrollRef.current.scrollLeft;
                 const width = scrollRef.current.offsetWidth;
@@ -168,57 +157,48 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                     });
                 }
             }
-        });
-    }, [realLength]);
+        }, 50); // 🟢 throttle 간격 증가 (더 가벼움)
+    };
 
-    // 🟢 cleanup: requestAnimationFrame 정리
+    // cleanup
     useEffect(() => {
         return () => {
-            if (rafRef.current) {
-                cancelAnimationFrame(rafRef.current);
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
             }
         };
     }, []);
 
-    // 🟢 성능 최적화: Mouse Drag Handlers를 useCallback으로 메모이제이션
-    const onMouseDown = useCallback((e: React.MouseEvent) => {
+    // 🟢 단순화: useCallback 제거 (인라인 함수가 더 빠를 수 있음)
+    const onMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         if (scrollRef.current) {
             setStartX(e.pageX - scrollRef.current.offsetLeft);
             setScrollLeft(scrollRef.current.scrollLeft);
         }
-    }, []);
+    };
 
-    const onMouseLeave = useCallback(() => {
+    const onMouseLeave = () => {
         setIsDragging(false);
-    }, []);
+    };
 
-    const onMouseUp = useCallback(() => {
+    const onMouseUp = () => {
         setIsDragging(false);
-    }, []);
+    };
 
-    const onMouseMove = useCallback(
-        (e: React.MouseEvent) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            if (scrollRef.current) {
-                const x = e.pageX - scrollRef.current.offsetLeft;
-                const walk = (x - startX) * 2;
-                scrollRef.current.scrollLeft = scrollLeft - walk;
-            }
-        },
-        [isDragging, startX, scrollLeft]
-    );
+    const onMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        if (scrollRef.current) {
+            const x = e.pageX - scrollRef.current.offsetLeft;
+            const walk = (x - startX) * 2;
+            scrollRef.current.scrollLeft = scrollLeft - walk;
+        }
+    };
 
-    // 🟢 성능 최적화: 자동 스크롤 지연 시작 (초기 로딩 후 2초 후 시작)
-    const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
+    // 🟢 단순화: 자동 스크롤 지연 제거 (즉시 시작)
     useEffect(() => {
-        const timer = setTimeout(() => setAutoScrollEnabled(true), 2000);
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        if (realLength <= 1 || isDragging || !autoScrollEnabled) return;
+        if (realLength <= 1 || isDragging) return;
 
         const interval = setInterval(() => {
             if (scrollRef.current && !isDragging) {
@@ -230,10 +210,10 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                     behavior: "smooth",
                 });
             }
-        }, 5000); // 🟢 자동 스크롤 간격 증가 (4초 -> 5초)
+        }, 4000);
 
         return () => clearInterval(interval);
-    }, [currentIndex, realLength, isDragging, autoScrollEnabled]);
+    }, [currentIndex, realLength, isDragging]);
 
     if (!items || items.length === 0) return null;
 

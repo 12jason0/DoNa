@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 300; // 5분 캐싱 (성능 최적화)
 
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
-    // Default params for initial load
-    const limit = 100;
+    // 🟢 성능 최적화: 초기 로딩은 20개만 (나머지는 클라이언트에서 로드)
+    const limit = 20;
 
     // Simplified query for initial load
     // We replicate the core logic of /api/courses

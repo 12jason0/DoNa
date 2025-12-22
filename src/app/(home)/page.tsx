@@ -163,7 +163,7 @@ export default function Home() {
 
     const buildCourseListUrl = () => {
         const params = new URLSearchParams();
-        params.set("limit", "30");
+        params.set("limit", "20"); // 🟢 성능 최적화: 30 -> 20
         params.set("imagePolicy", "any");
         const qTrim = query.trim();
         if (qTrim) params.set("q", qTrim);
@@ -485,8 +485,10 @@ export default function Home() {
             setIsLoadingRecs(true);
             const token = localStorage.getItem("authToken");
             setIsLoggedInForRecs(!!token);
-            const res = await fetch("/api/recommendations", {
-                next: { revalidate: 300 },
+            // 🟢 성능 최적화: 캐싱 추가
+            const res = await fetch("/api/recommendations?limit=6", {
+                cache: "force-cache", // 브라우저 캐시 사용
+                next: { revalidate: 300 }, // 5분 캐시
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
             const data = await res.json().catch(() => ({}));

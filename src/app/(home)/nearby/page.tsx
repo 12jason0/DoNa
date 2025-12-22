@@ -80,11 +80,11 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 최종 Where 절
     const whereClause = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    // 4. DB 조회 실행 - 필요한 필드만 선택
+    // 🟢 성능 최적화: 초기 로딩은 20개만 (나머지는 클라이언트에서 로드)
     const courses = await prisma.course.findMany({
         where: whereClause,
         orderBy: { id: "desc" },
-        take: 100,
+        take: 20,
         select: {
             id: true,
             title: true,
