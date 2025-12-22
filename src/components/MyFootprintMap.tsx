@@ -24,10 +24,19 @@ interface FootprintProps {
         lat: number;
         lng: number;
         type: "escape" | "course_spot"; // escape: 방탈출 미션 성공, course_spot: 일반 코스 방문
+        courseId?: number | string; // 코스 ID (클릭 시 상세 페이지로 이동)
     }[];
+
+    // 🟢 핀 클릭 시 호출되는 콜백
+    onPlaceClick?: (place: {
+        id: number | string;
+        name: string;
+        courseId?: number | string;
+        type: "escape" | "course_spot";
+    }) => void;
 }
 
-export default function MyFootprintMap({ courses = [], visitedPlaces = [] }: FootprintProps) {
+export default function MyFootprintMap({ courses = [], visitedPlaces = [], onPlaceClick }: FootprintProps) {
     const [mapsReady, setMapsReady] = useState(false);
 
     // 🌫️ 안개 효과를 위한 좌표 (대한민국 주변을 덮는 거대한 사각형)
@@ -127,26 +136,40 @@ export default function MyFootprintMap({ courses = [], visitedPlaces = [] }: Foo
                         key={`marker-${place.id}-${index}`}
                         position={new navermaps.LatLng(place.lat, place.lng)}
                         zIndex={30}
+                        onClick={() => {
+                            // 🟢 핀 클릭 시 콜백 호출
+                            if (onPlaceClick) {
+                                onPlaceClick({
+                                    id: place.id,
+                                    name: place.name,
+                                    courseId: place.courseId,
+                                    type: place.type,
+                                });
+                            }
+                        }}
                         icon={{
                             // HTML 커스텀 아이콘
                             content: `
                 <div style="position: relative; display: flex; justify-content: center; align-items: center; transition: transform 0.2s;">
                    ${
                        place.type === "escape"
-                           ? // 🏆 탈출/미션 성공 마커 (큼직한 트로피 or 깃발)
+                           ? // 🏆 탈출/미션 성공 마커 (큼직한 트로피 or 깃발) - 더 크고 눈에 띄게
                              `<div style="
-                          font-size: 28px; 
-                          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
-                          transform: translateY(-14px);
+                          font-size: 36px; 
+                          filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4));
+                          transform: translateY(-18px);
+                          transition: transform 0.2s;
                         ">🚩</div>`
-                           : // 📍 일반 코스 방문 점 (두나 컬러 도트)
+                           : // 📍 일반 코스 방문 점 (두나 컬러 도트) - 더 크고 눈에 띄게
                              `<div style="
-                          width: 14px; 
-                          height: 14px; 
-                          background-color: #7aa06f; 
-                          border: 2px solid white; 
+                          width: 20px; 
+                          height: 20px; 
+                          background-color: #10b981; 
+                          border: 3px solid white; 
                           border-radius: 50%; 
-                          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                          box-shadow: 0 4px 8px rgba(0,0,0,0.4), 0 0 0 2px rgba(16,185,129,0.3);
+                          transform: scale(1);
+                          transition: transform 0.2s;
                         "></div>`
                    }
                    ${/* 라벨 (장소 이름) - 선택 사항 */ ""}
@@ -159,10 +182,16 @@ export default function MyFootprintMap({ courses = [], visitedPlaces = [] }: Foo
                       color: #374151;
                       text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
                       pointer-events: none;
-                   ">${place.name}</div>
+                      max-width: 120px;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                   ">${place.name && place.name.length > 15 ? place.name.substring(0, 15) + "..." : place.name}</div>
                 </div>
               `,
-                            anchor: new navermaps.Point(12, 12),
+                            anchor: new navermaps.Point(
+                                place.type === "escape" ? 18 : 10,
+                                place.type === "escape" ? 36 : 20
+                            ),
                         }}
                     />
                 ))}

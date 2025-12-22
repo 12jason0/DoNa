@@ -336,25 +336,31 @@ const MyPage = () => {
             if (!token) return;
             const res = await fetch("/api/users/completions", {
                 headers: { Authorization: `Bearer ${token}` },
+                cache: "no-store", // 🟢 캐시 방지
             });
             if (res.ok) {
                 const raw = await res.json();
-                const list = Array.isArray(raw?.items) ? raw.items : Array.isArray(raw) ? raw : [];
+                // 🟢 API 응답 구조: { courses: [...], escapes: [...] }
+                const coursesList = Array.isArray(raw?.courses) ? raw.courses : [];
+                console.log("[MyPage] 완료 코스 데이터:", coursesList);
+
                 setCompleted(
-                    list.map((c: any) => ({
-                        course_id: c.course_id || c.courseId || c.id,
-                        title: c.title,
-                        description: c.description || "",
-                        imageUrl: c.imageUrl || c.image_url || "",
+                    coursesList.map((c: any) => ({
+                        course_id: c.courseId || c.course_id || c.course?.id || c.id,
+                        title: c.course?.title || c.title || "",
+                        description: c.course?.description || c.description || "",
+                        imageUrl: c.course?.imageUrl || c.course?.image_url || c.imageUrl || c.image_url || "",
                         rating: Number(c.rating ?? 0),
-                        concept: c.concept || "",
+                        concept: c.course?.concept || c.concept || "",
                         completedAt: c.completedAt || c.completed_at || null,
                     }))
                 );
             } else {
+                console.error("[MyPage] 완료 코스 조회 실패:", res.status);
                 setCompleted([]);
             }
-        } catch {
+        } catch (error) {
+            console.error("[MyPage] 완료 코스 조회 오류:", error);
             setCompleted([]);
         }
     };

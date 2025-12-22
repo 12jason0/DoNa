@@ -1,10 +1,52 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import MyFootprintMap from "@/components/MyFootprintMap";
 import { CasefileItem, CompletedCourse } from "@/types/user";
+
+// 🟢 코스 이미지 로더 컴포넌트 (이미지가 없을 때 백그라운드에서 로드)
+const CourseImageLoader = ({
+    courseId,
+    onImageLoaded,
+}: {
+    courseId: number | string;
+    onImageLoaded: (url: string) => void;
+}) => {
+    const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadImage = async () => {
+            try {
+                const res = await fetch(`/api/courses/${courseId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const imageUrl =
+                        data.imageUrl?.trim() ||
+                        data.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
+                        data.coursePlaces?.[0]?.place?.image_url?.trim() ||
+                        "";
+                    if (imageUrl) {
+                        setLoadedImageUrl(imageUrl);
+                        onImageLoaded(imageUrl);
+                    }
+                }
+            } catch (error) {
+                console.error("코스 이미지 로드 실패:", error);
+            }
+        };
+        loadImage();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [courseId]); // onImageLoaded는 의존성에서 제외 (무한 루프 방지)
+
+    // 이미지가 로드되면 Image 컴포넌트로 표시
+    if (loadedImageUrl) {
+        return <Image src={loadedImageUrl} alt="Course" fill className="object-cover" sizes="64px" />;
+    }
+
+    return <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📍</div>;
+};
 
 interface FootprintTabProps {
     casefiles: CasefileItem[];
@@ -13,8 +55,72 @@ interface FootprintTabProps {
 
 const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
     const router = useRouter();
+    const [selectedCourse, setSelectedCourse] = useState<CompletedCourse | null>(null);
+    const [showCourseModal, setShowCourseModal] = useState(false);
+    const [courseDetail, setCourseDetail] = useState<any>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+    // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
+    const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
 
     const hasData = casefiles.length > 0 || completed.length > 0;
+
+    // 🟢 코스 이미지 가져오기 (코스 이미지가 없으면 첫 번째 장소 이미지 사용)
+    const getCourseImage = async (courseId: number | string): Promise<string> => {
+        // 이미 캐시된 이미지가 있으면 반환
+        if (courseImages[courseId]) {
+            return courseImages[courseId];
+        }
+
+        try {
+            const res = await fetch(`/api/courses/${courseId}`);
+            if (res.ok) {
+                const data = await res.json();
+                // 코스 이미지가 있으면 사용, 없으면 첫 번째 장소 이미지 사용
+                const imageUrl =
+                    data.imageUrl?.trim() ||
+                    data.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
+                    data.coursePlaces?.[0]?.place?.image_url?.trim() ||
+                    "";
+
+                if (imageUrl) {
+                    setCourseImages((prev) => ({ ...prev, [courseId]: imageUrl }));
+                    return imageUrl;
+                }
+            }
+        } catch (error) {
+            console.error("코스 이미지 조회 실패:", error);
+        }
+        return "";
+    };
+
+    // 🟢 핀 클릭 핸들러
+    const handlePlaceClick = async (place: {
+        id: number | string;
+        name: string;
+        courseId?: number | string;
+        type: "escape" | "course_spot";
+    }) => {
+        if (place.type === "course_spot" && place.courseId) {
+            // 코스 상세 정보 가져오기
+            setLoadingDetail(true);
+            setShowCourseModal(true);
+            try {
+                const res = await fetch(`/api/courses/${place.courseId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setCourseDetail(data);
+                    const foundCourse = completed.find((c) => c.course_id === Number(place.courseId));
+                    if (foundCourse) {
+                        setSelectedCourse(foundCourse);
+                    }
+                }
+            } catch (error) {
+                console.error("코스 상세 조회 실패:", error);
+            } finally {
+                setLoadingDetail(false);
+            }
+        }
+    };
 
     // 📍 핀 매핑
     const mapVisitedPlaces = [
@@ -31,6 +137,7 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
             lat: 37.54 + idx * 0.02,
             lng: 127.05 - idx * 0.03,
             type: "course_spot" as const,
+            courseId: course.course_id, // 🟢 코스 ID 추가
         })),
     ];
 
@@ -60,7 +167,11 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
                         /* [CASE 1: 데이터 있음] */
                         <div className="w-full h-full animate-[fadeIn_0.5s_ease-out] relative">
                             <div className="w-full h-full filter saturate-[0.6] sepia-[0.1] brightness-[1.05] contrast-[1.1]">
-                                <MyFootprintMap visitedPlaces={mapVisitedPlaces} courses={mapCourses} />
+                                <MyFootprintMap
+                                    visitedPlaces={mapVisitedPlaces}
+                                    courses={mapCourses}
+                                    onPlaceClick={handlePlaceClick}
+                                />
                             </div>
                         </div>
                     ) : (
@@ -142,6 +253,171 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
                     </div>
                 </div>
             </div>
+
+            {/* 🟢 완료 코스 리스트 */}
+            {completed.length > 0 && (
+                <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-5 md:p-8 border-b border-gray-50">
+                        <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 tracking-tight">완료한 코스</h3>
+                        <p className="text-gray-500 text-xs md:text-sm font-medium">
+                            총 {completed.length}개의 코스를 완료하셨습니다.
+                        </p>
+                    </div>
+                    <div className="p-4 md:p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {completed.map((course) => (
+                                <div
+                                    key={course.course_id}
+                                    onClick={() => {
+                                        setSelectedCourse(course);
+                                        handlePlaceClick({
+                                            id: `course-${course.course_id}`,
+                                            name: course.title,
+                                            courseId: course.course_id,
+                                            type: "course_spot",
+                                        });
+                                    }}
+                                    className="bg-gray-50 hover:bg-gray-100 rounded-xl p-4 cursor-pointer transition-all border border-gray-200 hover:border-emerald-300 hover:shadow-md"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0 relative">
+                                            {/* 🟢 우선순위: 코스 이미지 > 로드된 이미지 > 로더 */}
+                                            {course.imageUrl ? (
+                                                <Image
+                                                    src={course.imageUrl}
+                                                    alt={course.title}
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="64px"
+                                                    onError={async () => {
+                                                        // 코스 이미지 로드 실패 시 첫 번째 장소 이미지 가져오기
+                                                        const imageUrl = await getCourseImage(course.course_id);
+                                                        if (imageUrl && !courseImages[course.course_id]) {
+                                                            setCourseImages((prev) => ({
+                                                                ...prev,
+                                                                [course.course_id]: imageUrl,
+                                                            }));
+                                                        }
+                                                    }}
+                                                />
+                                            ) : courseImages[course.course_id] ? (
+                                                <Image
+                                                    src={courseImages[course.course_id]}
+                                                    alt={course.title}
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="64px"
+                                                />
+                                            ) : (
+                                                <CourseImageLoader
+                                                    courseId={course.course_id}
+                                                    onImageLoaded={(url) => {
+                                                        if (url) {
+                                                            setCourseImages((prev) => ({
+                                                                ...prev,
+                                                                [course.course_id]: url,
+                                                            }));
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-gray-900 text-sm md:text-base mb-1 line-clamp-2">
+                                                {course.title}
+                                            </h4>
+                                            {course.completedAt && (
+                                                <p className="text-xs text-gray-500">
+                                                    완료일: {new Date(course.completedAt).toLocaleDateString("ko-KR")}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 🟢 코스 상세 모달 */}
+            {showCourseModal && (
+                <div
+                    className="fixed inset-0 z-[5000] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"
+                    onClick={() => setShowCourseModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl animate-zoom-in"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {loadingDetail ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
+                            </div>
+                        ) : courseDetail ? (
+                            <>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-bold text-gray-900">코스 정보</h3>
+                                    <button
+                                        onClick={() => setShowCourseModal(false)}
+                                        className="w-8 h-8  flex items-center justify-center bg-gray-100 rounded-full transition-colors text-black"
+                                    >
+                                        X
+                                    </button>
+                                </div>
+                                {courseDetail.imageUrl && (
+                                    <div className="w-full h-48 rounded-xl overflow-hidden mb-4 bg-gray-100">
+                                        <Image
+                                            src={courseDetail.imageUrl}
+                                            alt={courseDetail.title}
+                                            width={400}
+                                            height={200}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                )}
+                                <h4 className="text-lg font-bold text-gray-900 mb-2">{courseDetail.title}</h4>
+                                {courseDetail.description && (
+                                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                                        {courseDetail.description}
+                                    </p>
+                                )}
+                                <div className="flex gap-2 mb-4">
+                                    {courseDetail.region && (
+                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
+                                            {courseDetail.region}
+                                        </span>
+                                    )}
+                                    {courseDetail.concept && (
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                                            {courseDetail.concept}
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowCourseModal(false);
+                                        router.push(`/courses/${courseDetail.id}`);
+                                    }}
+                                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors"
+                                >
+                                    코스 상세 보기
+                                </button>
+                            </>
+                        ) : (
+                            <div className="text-center py-8">
+                                <p className="text-gray-500">코스 정보를 불러올 수 없습니다.</p>
+                                <button
+                                    onClick={() => setShowCourseModal(false)}
+                                    className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                >
+                                    닫기
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

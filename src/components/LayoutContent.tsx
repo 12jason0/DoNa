@@ -132,6 +132,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     <p>
                                         <strong>유선번호:</strong> 010-2271-9824
                                     </p>
+                                    <p>
+                                        <strong>주소 : </strong> 충청남도 홍성군 홍북읍 신대로 33
+                                    </p>
                                 </div>
                             </div>
                         </div>

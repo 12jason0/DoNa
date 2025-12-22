@@ -1,10 +1,56 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CourseCard from "@/components/CourseCard";
 import Image from "@/components/ImageFallback";
 import { Favorite, CompletedCourse, CasefileItem } from "@/types/user";
+
+// 🟢 코스 이미지 로더 컴포넌트 (이미지가 없을 때 백그라운드에서 로드)
+const CourseImageLoader = ({
+    courseId,
+    onImageLoaded,
+}: {
+    courseId: number | string;
+    onImageLoaded: (url: string) => void;
+}) => {
+    const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadImage = async () => {
+            try {
+                const res = await fetch(`/api/courses/${courseId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const imageUrl =
+                        data.imageUrl?.trim() ||
+                        data.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
+                        data.coursePlaces?.[0]?.place?.image_url?.trim() ||
+                        "";
+                    if (imageUrl) {
+                        setLoadedImageUrl(imageUrl);
+                        onImageLoaded(imageUrl);
+                    }
+                }
+            } catch (error) {
+                console.error("코스 이미지 로드 실패:", error);
+            }
+        };
+        loadImage();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [courseId]); // onImageLoaded는 의존성에서 제외 (무한 루프 방지)
+
+    // 이미지가 로드되면 Image 컴포넌트로 표시
+    if (loadedImageUrl) {
+        return <Image src={loadedImageUrl} alt="Course" fill className="object-cover rounded-none" />;
+    }
+
+    return (
+        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-sm">
+            이미지 없음
+        </div>
+    );
+};
 
 interface RecordsTabProps {
     favorites: Favorite[];
@@ -27,6 +73,8 @@ const RecordsTab = ({
 }: RecordsTabProps) => {
     const router = useRouter();
     const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "casefiles">("favorites");
+    // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
+    const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
 
     const subTabs = [
         { id: "favorites" as const, label: "보관함", count: favorites.length },
@@ -169,43 +217,84 @@ const RecordsTab = ({
                     </div>
                     {completed.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {completed.map((c) => (
-                                <div
-                                    key={c.course_id}
-                                    className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors cursor-pointer"
-                                    onClick={() => router.push(`/courses/${c.course_id}`)}
-                                >
-                                    <div className="relative">
-                                        <div className="relative h-48">
-                                            <Image
-                                                src={c.imageUrl || ""}
-                                                alt={c.title}
-                                                fill
-                                                className="object-cover rounded-none"
-                                            />
-                                        </div>
-                                        {c.concept && (
-                                            <div className="absolute bottom-2 left-2 bg-emerald-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                                                {c.concept}
+                            {completed.map((c) => {
+                                // 🟢 이미지 URL 결정: 코스 이미지 > 로드된 이미지 > 로더
+                                const displayImageUrl = c.imageUrl || courseImages[c.course_id] || "";
+
+                                return (
+                                    <div
+                                        key={c.course_id}
+                                        className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors cursor-pointer"
+                                        onClick={() => router.push(`/courses/${c.course_id}`)}
+                                    >
+                                        <div className="relative">
+                                            <div className="relative h-48">
+                                                {displayImageUrl ? (
+                                                    <Image
+                                                        src={displayImageUrl}
+                                                        alt={c.title}
+                                                        fill
+                                                        className="object-cover rounded-none"
+                                                        onError={async () => {
+                                                            // 이미지 로드 실패 시 코스 상세에서 가져오기
+                                                            if (!courseImages[c.course_id]) {
+                                                                try {
+                                                                    const res = await fetch(
+                                                                        `/api/courses/${c.course_id}`
+                                                                    );
+                                                                    if (res.ok) {
+                                                                        const data = await res.json();
+                                                                        const imageUrl =
+                                                                            data.imageUrl?.trim() ||
+                                                                            data.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
+                                                                            data.coursePlaces?.[0]?.place?.image_url?.trim() ||
+                                                                            "";
+                                                                        if (imageUrl) {
+                                                                            setCourseImages((prev) => ({
+                                                                                ...prev,
+                                                                                [c.course_id]: imageUrl,
+                                                                            }));
+                                                                        }
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error("코스 이미지 로드 실패:", error);
+                                                                }
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <CourseImageLoader
+                                                        courseId={c.course_id}
+                                                        onImageLoaded={(url) => {
+                                                            if (url) {
+                                                                setCourseImages((prev) => ({
+                                                                    ...prev,
+                                                                    [c.course_id]: url,
+                                                                }));
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="p-4">
-                                        <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
-                                            {c.title}
-                                        </h4>
-                                        <div className="flex items-center justify-between text-xs text-gray-600">
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-yellow-400">★</span>
-                                                <span className="font-medium">{c.rating}</span>
-                                            </div>
-                                            {c.completedAt && (
-                                                <span>{new Date(c.completedAt).toLocaleDateString()}</span>
+                                            {c.concept && (
+                                                <div className="absolute bottom-2 left-2 bg-emerald-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                                    {c.concept}
+                                                </div>
                                             )}
                                         </div>
+                                        <div className="p-4">
+                                            <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
+                                                {c.title}
+                                            </h4>
+                                            <div className="flex items-center justify-between text-xs text-gray-600">
+                                                {c.completedAt && (
+                                                    <span>{new Date(c.completedAt).toLocaleDateString()}</span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="text-center py-10">

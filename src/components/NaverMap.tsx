@@ -503,10 +503,13 @@ export default function NaverMapComponent({
             const orderIndex = (p as any).orderIndex;
             const categoryStyle = getCategoryStyle(p.category);
 
+            // 🟢 제목 길이 제한 (지도에 표시되는 텍스트가 너무 길면 잘림) - 더 짧게
+            const displayTitle = p.name && p.name.length > 15 ? p.name.substring(0, 15) + "..." : p.name;
+            
             const markerInit: any = {
                 position: pos,
                 map,
-                title: p.name,
+                title: displayTitle,
                 zIndex: isSelected ? 1000 : 100,
             };
 
@@ -1059,12 +1062,16 @@ export default function NaverMapComponent({
             {selectedPlace && showPlaceOverlay && (
                 <div
                     className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-40"
-                    style={{ maxWidth: 360 }}
+                    style={{ maxWidth: 280 }}
                 >
-                    <div className="pointer-events-auto bg-white/95 backdrop-blur rounded-xl shadow-lg border border-gray-200 px-4 py-3">
-                        <div className="font-semibold text-gray-900 text-sm line-clamp-1">{selectedPlace.name}</div>
+                    <div className="pointer-events-auto bg-white rounded-lg shadow-xl border-2 border-gray-300 px-3 py-2.5">
+                        <div className="font-bold text-gray-900 text-base leading-tight line-clamp-1">
+                            {selectedPlace.name && selectedPlace.name.length > 18 
+                                ? selectedPlace.name.substring(0, 18) + "..." 
+                                : selectedPlace.name}
+                        </div>
                         {selectedPlace.address && (
-                            <div className="text-xs text-gray-600 line-clamp-1">{selectedPlace.address}</div>
+                            <div className="text-xs text-gray-500 line-clamp-1 mt-1">{selectedPlace.address}</div>
                         )}
                     </div>
                 </div>

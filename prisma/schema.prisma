@@ -661,6 +661,7 @@ enum RewardType {
   purchase
   event
   escape_place_clear
+  course_completion_milestone
 }
 
 enum RewardUnit {
