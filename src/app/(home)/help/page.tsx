@@ -47,7 +47,7 @@ const FAQPage = () => {
         {
             id: 5,
             question: "지도에서 현재 위치가 표시되지 않아요",
-            answer: "브라우저의 위치 권한을 허용해주세요. 설정 > 개인정보 보호 > 위치 서비스에서 DoNa에 대한 위치 권한을 확인해주세요.",
+            answer: "브라우저 및 앱의 위치 권한을 '허용'으로 설정해주세요. DoNa는 사용자의 정확한 위치를 기반으로 가장 가까운 데이트 코스를 실시간으로 추천하기 위해 GPS 정보를 사용합니다. 설정 > 개인정보 보호 > 위치 서비스에서 DoNa에 대한 위치 권한을 확인해주세요.",
             category: "기술 문제",
             isOpen: false,
         },
@@ -56,6 +56,13 @@ const FAQPage = () => {
             question: "코스 후기를 남길 수 있나요?",
             answer: "네, 코스를 이용하신 후에는 후기를 남기실 수 있습니다. 다른 사용자들에게 도움이 되는 소중한 정보가 됩니다.",
             category: "서비스 이용",
+            isOpen: false,
+        },
+        {
+            id: 7,
+            question: "공식 출시일은 언제인가요?",
+            answer: "DoNa는 2026년 1월 1일 정식 서비스를 시작합니다. 현재는 안정적인 서비스를 위한 최종 심사 단계입니다.",
+            category: "서비스 소개",
             isOpen: false,
         },
     ]);
@@ -184,10 +191,13 @@ const FAQPage = () => {
                     {/* 추가 문의 안내 */}
                     <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                         <h3 className="text-lg font-semibold text-blue-900 mb-2">더 궁금한 점이 있으신가요?</h3>
-                        <p className="text-blue-700 mb-4">위의 질문에서 답을 찾지 못하셨다면 언제든 문의해주세요.</p>
+                        <p className="text-blue-700 mb-4">
+                            위의 질문에서 답을 찾지 못하셨다면 이메일로 문의해주세요:{" "}
+                            <strong className="text-blue-800">12jason987@gmail.com</strong>
+                        </p>
                         <a
                             href="/contact"
-                            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors hover:cursor-pointer"
+                            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors hover:cursor-pointer mt-2"
                         >
                             문의하기
                         </a>
