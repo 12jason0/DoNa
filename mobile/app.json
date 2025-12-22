@@ -17,7 +17,7 @@
         "ios": {
             "supportsTablet": true,
             "bundleIdentifier": "kr.io.dona.dona",
-            "buildNumber": "3",
+            "buildNumber": "4",
             "infoPlist": {
                 "ITSAppUsesNonExemptEncryption": false,
                 "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",

@@ -96,39 +96,39 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
 
-                        // 🚩 [가장 중요] #webTalkLogin 주소가 감지되면 즉시 차단하고 정화된 주소로 이동
+                        // 1. 카카오톡 앱 인증 및 앱 자체 스킴(duna://) 처리 ⭐
+                        if (
+                            url.startsWith("kakaokompassauth://") ||
+                            url.startsWith("kakaolink://") ||
+                            url.startsWith("kakaotalk://") ||
+                            url.startsWith("duna://") // 🟢 대표님의 앱 스킴을 추가하여 마지막 리다이렉트 에러 방지
+                        ) {
+                            // 앱 외부(시스템)에서 처리하도록 던짐
+                            Linking.openURL(url).catch(() => {
+                                // 카카오톡이 없을 경우 웹 로그인을 계속 진행하도록 true 반환
+                            });
+                            return false; // 🔴 웹뷰가 이 주소를 로드하려다 -1002 에러를 내는 것을 원천 봉쇄
+                        }
+
+                        // 2. 이미 성공하신 기존 #webTalkLogin 처리 로직 (그대로 유지)
                         if (url.includes("#webTalkLogin")) {
                             const cleanUrl = url.split("#")[0];
-                            // 웹뷰의 로딩을 중단시키고, 자바스크립트로 깨끗한 주소로 보냅니다.
                             setTimeout(() => {
                                 webRef.current?.injectJavaScript(`window.location.href = "${cleanUrl}";`);
                             }, 50);
-                            return false; // 웹뷰가 이 주소를 로드하려다 -1002 에러를 내는 것을 원천 봉쇄
+                            return false;
                         }
 
-                        // 🟢 카카오톡 앱 실행 주소(딥링크) 처리 (카카오톡 앱 인증 URL 추가)
-                        if (
-                            url.startsWith("kakaokompassauth://") || // 🟢 카카오톡 앱 인증 (가장 중요!)
-                            url.startsWith("kakaolink://") ||
-                            url.startsWith("kakaotalk://") || // 🟢 일반 카카오톡 실행 주소
-                            url.startsWith("kakaokommunication://") ||
-                            url.startsWith("intent://")
-                        ) {
-                            // 시스템 브라우저/외부 앱으로 토스
-                            openExternalBrowser(url);
-                            return false; // 🔴 웹뷰 내부 로딩 차단하여 -1002 에러 방지
-                        }
-
-                        // 내부 도메인 허용
+                        // 3. 내부 도메인 허용 로직 (그대로 유지)
                         const isInternal =
                             url.includes("dona.io.kr") ||
-                            url.includes("dona-two.vercel.app") ||
                             url.includes("auth.kakao.com") ||
                             url.includes("kauth.kakao.com") ||
                             url.includes("accounts.kakao.com");
 
                         if (isInternal) return true;
 
+                        // 그 외 외부 링크는 외부 브라우저로 열기
                         openExternalBrowser(url);
                         return false;
                     }}
