@@ -9,6 +9,41 @@ interface ComingSoonModalProps {
 
 export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     const [mounted, setMounted] = useState(false);
+    const [hasNotification, setHasNotification] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // 🟢 사용자가 이미 NEW_ESCAPE 알림을 신청했는지 확인
+    useEffect(() => {
+        const checkNotificationStatus = async () => {
+            try {
+                const token = localStorage.getItem("authToken");
+                if (!token) {
+                    setIsLoading(false);
+                    return;
+                }
+
+                // 🟢 notification_interests 테이블에서 NEW_ESCAPE 확인
+                const interestRes = await fetch("/api/users/notifications/interests", {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                
+                if (interestRes.ok) {
+                    const data = await interestRes.json();
+                    const hasNewEscape = data?.interests?.some(
+                        (item: any) => item.topic === "NEW_ESCAPE"
+                    );
+                    setHasNotification(hasNewEscape || false);
+                }
+            } catch (error) {
+                console.error("알림 상태 확인 실패:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkNotificationStatus();
+    }, []);
 
     useEffect(() => {
         setMounted(true);
@@ -19,10 +54,40 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
         };
     }, []);
 
-    const handleNotification = () => {
-        // 여기에 실제 알림 신청 로직을 연결하면 됩니다 (예: API 호출)
-        alert("오픈 알림이 신청되었습니다! 🔔");
-        onClose();
+    const handleNotification = async () => {
+        setIsSubmitting(true);
+        try {
+            const token = localStorage.getItem("authToken");
+            if (!token) {
+                alert("로그인이 필요합니다.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            // 🟢 NEW_ESCAPE 알림 신청 API 호출
+            const res = await fetch("/api/users/notifications/consent", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ topics: ["NEW_ESCAPE"] }),
+            });
+
+            if (res.ok) {
+                setHasNotification(true);
+                alert("오픈 알림이 신청되었습니다! 🔔");
+                onClose();
+            } else {
+                const data = await res.json();
+                alert(data.error || "알림 신청에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("알림 신청 실패:", error);
+            alert("알림 신청 중 오류가 발생했습니다.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!mounted) return null;
@@ -64,22 +129,45 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
                 {/* 버튼 영역: 알림 받기(강조) + 닫기(보조) */}
                 <div className="space-y-3">
-                    <button
-                        onClick={handleNotification}
-                        style={{ backgroundColor: "#7aa06f" }}
-                        className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight"
-                    >
-                        {/* 알림 종 아이콘 추가 */}
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="w-4 h-4"
+                    {/* 🟢 이미 알림을 신청한 경우 버튼 숨김 */}
+                    {!isLoading && !hasNotification && (
+                        <button
+                            onClick={handleNotification}
+                            disabled={isSubmitting}
+                            style={{ backgroundColor: "#7aa06f" }}
+                            className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                        </svg>
-                        오픈 알림 받기
-                    </button>
+                            {/* 알림 종 아이콘 추가 */}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                            >
+                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                            </svg>
+                            {isSubmitting ? "처리 중..." : "오픈 알림 받기"}
+                        </button>
+                    )}
+
+                    {/* 🟢 이미 알림을 신청한 경우 안내 메시지 */}
+                    {!isLoading && hasNotification && (
+                        <div className="w-full py-3.5 rounded-lg bg-emerald-50 text-emerald-700 text-[15px] font-bold flex items-center justify-center gap-2 tracking-tight border border-emerald-200">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                            알림 신청 완료
+                        </div>
+                    )}
 
                     <button
                         onClick={onClose}

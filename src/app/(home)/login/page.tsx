@@ -102,132 +102,124 @@ const Login = () => {
             setLoading(false);
         }
     };
+    const authReceived = useRef(false);
+
+    // ... (기존 import 및 상단 로직 동일)
 
     const handleSocialLogin = async (provider: string) => {
         if (loading) return;
         setLoading(true);
         setError("");
         setMessage("");
+        authReceived.current = false;
 
         if (provider === "kakao") {
+            // 1. 웹뷰 환경 체크
+            const isMobileApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
+            if (isMobileApp) {
+                window.location.href = "/api/auth/kakao";
+                return;
+            }
+
             const kakaoClientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-            const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/kakao/callback`;
+            const redirectUri = `${window.location.origin}/api/auth/kakao/callback`; // 현재 도메인 기반으로 동적 설정
 
             if (!kakaoClientId) {
-                setError("환경변수 NEXT_PUBLIC_KAKAO_CLIENT_ID가 설정되지 않았습니다.");
+                setError("카카오 클라이언트 ID가 설정되지 않았습니다.");
                 setLoading(false);
                 return;
             }
 
-            const kakaoAuthUrl =
-                `https://kauth.kakao.com/oauth/authorize?` +
-                new URLSearchParams({
-                    client_id: kakaoClientId,
-                    redirect_uri: redirectUri,
-                    response_type: "code",
-                    scope: "profile_nickname, profile_image",
-                }).toString();
-
-            console.log("카카오 로그인 시작");
-            console.log("카카오 인증 URL:", kakaoAuthUrl);
-            console.log("Expected origin:", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
-
-            const popup = window.open(
-                kakaoAuthUrl,
-                "kakao-login",
-                "width=500,height=700,scrollbars=yes,resizable=yes,left=" +
-                    (screen.width / 2 - 250) +
-                    ",top=" +
-                    (screen.height / 2 - 350)
-            );
-
-            if (!popup) {
-                setError("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.");
-                setLoading(false);
-                return;
-            }
-
-            let intervalId: NodeJS.Timeout | number | null = null;
-
-            const cleanup = () => {
-                if (intervalId) clearInterval(intervalId);
-                window.removeEventListener("message", messageHandler);
-                if (popup && !popup.closed) popup.close();
-                setLoading(false);
-            };
-
+            // 2. 메시지 핸들러 정의 (팝업을 열기 전에 미리 정의)
             const messageHandler = async (event: MessageEvent) => {
-                // origin 체크를 더 유연하게
-                const expectedOrigin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-                if (event.origin !== expectedOrigin && event.origin !== window.location.origin) {
-                    console.log("Origin mismatch - expected:", expectedOrigin, "received:", event.origin);
+                // 보안 체크: 현재 도메인과 보낸 도메인이 같은지 확인 (가장 안전한 방법)
+                if (event.origin !== window.location.origin && !event.origin.includes("kakao.com")) {
+                    console.warn("차단된 오리진으로부터의 메시지:", event.origin);
                     return;
                 }
 
-                console.log("팝업에서 받은 메시지:", event.data);
-
-                const { type, code, error, error_description } = event.data;
+                const { type, code, error: authError } = event.data;
 
                 if (type === "KAKAO_AUTH_CODE" && code) {
-                    console.log("카카오 인증 코드 받음:", code);
+                    authReceived.current = true; // ✅ 수신 확인
+                    console.log("✅ 인증 코드 수신 성공:", code);
+
                     try {
                         const response = await fetch("/api/auth/kakao", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ code }),
                         });
-
                         const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(data.details || data.error || "서버 처리 중 오류가 발생했습니다.");
-                        }
 
-                        console.log("카카오 로그인 최종 성공!", data);
+                        if (!response.ok) throw new Error(data.error || "로그인 처리 실패");
+
                         localStorage.setItem("authToken", data.token);
                         localStorage.setItem("user", JSON.stringify(data.user));
                         localStorage.setItem("loginTime", Date.now().toString());
-                        window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
-                        try {
-                            if ((window as any).ReactNativeWebView) {
-                                (window as any).ReactNativeWebView.postMessage(
-                                    JSON.stringify({
-                                        type: "loginSuccess",
-                                        userId: data?.user?.id ?? null,
-                                        token: data?.token ?? null,
-                                    })
-                                );
-                            }
-                        } catch {}
-
-                        // ✅ 로그인 성공 트리거 설정 후 메인으로 이동 (URL 깔끔하게)
                         sessionStorage.setItem("login_success_trigger", "true");
+
+                        // ✅ Header와 다른 컴포넌트에 로그인 상태 변경 알림
+                        window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
+
+                        cleanup();
                         router.push("/");
-                    } catch (err: unknown) {
-                        console.error("카카오 로그인 처리 오류:", err);
-                        setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-                    } finally {
+                    } catch (err: any) {
+                        setError(err.message);
                         cleanup();
                     }
                 } else if (type === "KAKAO_AUTH_ERROR") {
-                    console.error("카카오 인증 에러:", error, error_description);
-                    setError(`카카오 인증 실패: ${error_description || error}`);
+                    setError(`인증 실패: ${authError}`);
                     cleanup();
                 }
             };
 
-            intervalId = setInterval(() => {
-                if (popup.closed) {
-                    console.log("카카오 인증 팝업이 닫혔습니다.");
-                    cleanup();
-                }
-            }, 1000);
+            // 3. 리스너 등록 및 팝업 감시 함수
+            let intervalId: any = null;
+            const cleanup = () => {
+                if (intervalId) clearInterval(intervalId);
+                window.removeEventListener("message", messageHandler);
+                setLoading(false);
+            };
 
             window.addEventListener("message", messageHandler);
 
+            // 4. 카카오 인증 URL 생성 및 팝업 열기
+            const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?${new URLSearchParams({
+                client_id: kakaoClientId,
+                redirect_uri: redirectUri,
+                response_type: "code",
+                scope: "profile_nickname, profile_image",
+            }).toString()}`;
+
+            const popup = window.open(
+                kakaoAuthUrl,
+                "kakao-login",
+                `width=500,height=700,left=${window.screen.width / 2 - 250},top=${window.screen.height / 2 - 350}`
+            );
+
+            if (!popup) {
+                setError("팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.");
+                cleanup();
+                return;
+            }
+
+            // 5. 팝업 닫힘 감시 로직 (수정됨)
+            intervalId = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(intervalId);
+                    // 팝업이 닫히고 나서 1초만 더 기다려보고, 그 때도 수신이 안 됐으면 에러 처리
+                    setTimeout(() => {
+                        if (!authReceived.current) {
+                            setError("카카오 로그인이 취소되었거나 인증에 실패했습니다.");
+                            cleanup();
+                        }
+                    }, 1000);
+                }
+            }, 500);
+
             return;
         }
-
         setLoading(false);
     };
 

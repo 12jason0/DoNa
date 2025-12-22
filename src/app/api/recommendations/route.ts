@@ -417,6 +417,20 @@ export async function GET(req: NextRequest) {
                 tags: true,
                 is_editor_pick: true,
                 grade: true,
+                coursePlaces: {
+                    select: {
+                        order_index: true,
+                        place: {
+                            select: {
+                                id: true,
+                                imageUrl: true,
+                            },
+                        },
+                    },
+                    orderBy: {
+                        order_index: "asc",
+                    },
+                },
             },
         });
         const allCourses = allCoursesRaw as Array<any>;
@@ -503,6 +517,34 @@ export async function GET(req: NextRequest) {
                 where: { grade: "FREE", isPublic: true },
                 orderBy: { view_count: "desc" },
                 take: limit,
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    imageUrl: true,
+                    region: true,
+                    concept: true,
+                    rating: true,
+                    view_count: true,
+                    createdAt: true,
+                    tags: true,
+                    is_editor_pick: true,
+                    grade: true,
+                    coursePlaces: {
+                        select: {
+                            order_index: true,
+                            place: {
+                                select: {
+                                    id: true,
+                                    imageUrl: true,
+                                },
+                            },
+                        },
+                        orderBy: {
+                            order_index: "asc",
+                        },
+                    },
+                },
             });
             return NextResponse.json({ recommendations: popular });
         }
@@ -570,6 +612,34 @@ export async function GET(req: NextRequest) {
                 where: whereConditions,
                 orderBy: { view_count: "desc" },
                 take: limit,
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    imageUrl: true,
+                    region: true,
+                    concept: true,
+                    rating: true,
+                    view_count: true,
+                    createdAt: true,
+                    tags: true,
+                    is_editor_pick: true,
+                    grade: true,
+                    coursePlaces: {
+                        select: {
+                            order_index: true,
+                            place: {
+                                select: {
+                                    id: true,
+                                    imageUrl: true,
+                                },
+                            },
+                        },
+                        orderBy: {
+                            order_index: "asc",
+                        },
+                    },
+                },
             });
             return NextResponse.json({ recommendations: popular });
         }

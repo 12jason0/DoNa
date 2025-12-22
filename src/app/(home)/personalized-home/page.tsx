@@ -221,6 +221,11 @@ const AIRecommender = () => {
     const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({}); // 카드 뒤집힘 상태
     const [selectedDetailCourse, setSelectedDetailCourse] = useState<Course | null>(null); // 상세 보기 모달용
 
+    // 모달 및 선택 데이터 상태
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [pendingCourse, setPendingCourse] = useState<{ id: string; title: string } | null>(null);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -674,7 +679,8 @@ const AIRecommender = () => {
         setSelectedDetailCourse(null);
     };
 
-    const handleSelectCourse = async (courseId: string, courseTitle: string) => {
+    // 1. '선택하기' 버튼 클릭 시 실행 (확인 모달만 띄움)
+    const handleSelectCourse = (courseId: string, courseTitle: string) => {
         if (isSelecting || selectedCourseId) return;
 
         const token = localStorage.getItem("authToken");
@@ -683,11 +689,18 @@ const AIRecommender = () => {
             return;
         }
 
-        if (!confirm(`'${courseTitle}' 코스를 선택하시겠어요?\n선택한 코스는 마이페이지에 저장됩니다.`)) {
-            return;
-        }
+        // 🟢 confirm 대신 데이터 저장 후 모달 오픈
+        setPendingCourse({ id: courseId, title: courseTitle });
+        setShowConfirmModal(true);
+    };
 
+    // 2. 모달 내 '결정' 버튼 클릭 시 실제 저장 수행
+    const executeCourseSelection = async () => {
+        if (!pendingCourse || isSelecting) return;
+
+        const token = localStorage.getItem("authToken");
         setIsSelecting(true);
+
         try {
             const res = await fetch("/api/users/me/courses", {
                 method: "POST",
@@ -695,20 +708,22 @@ const AIRecommender = () => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ courseId }),
+                body: JSON.stringify({ courseId: pendingCourse.id }),
             });
 
             if (res.ok) {
-                setSelectedCourseId(courseId);
-                alert("코스가 저장되었습니다! 마이페이지에서 확인하실 수 있어요.");
-                router.push(`/courses/${courseId}`);
+                setSelectedCourseId(pendingCourse.id);
+                setShowConfirmModal(false); // 확인창 닫기
+                setShowSuccessModal(true); // 🟢 성공 알림 모달 오픈
             } else {
                 const data = await res.json();
                 alert(data.message || "코스 저장에 실패했습니다.");
+                setShowConfirmModal(false);
             }
         } catch (error) {
             console.error("코스 저장 오류:", error);
             alert("오류가 발생했습니다.");
+            setShowConfirmModal(false);
         } finally {
             setIsSelecting(false);
         }
@@ -886,7 +901,7 @@ const AIRecommender = () => {
                         <div className="p-6 flex flex-col h-full">
                             <div className="flex justify-between items-start mb-2">
                                 <span className="inline-block px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">
-                                    추천 매칭 99%
+                                    추천 매칭 95%
                                 </span>
                                 {isRevealed && (
                                     <span className="animate-ping absolute top-6 right-6 inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
@@ -906,9 +921,18 @@ const AIRecommender = () => {
                                     {course.duration}
                                 </div>
                                 <div className="flex items-center text-sm text-gray-700">
-                                    <Star className="w-4 h-4 mr-2 text-yellow-400 fill-yellow-400" />
-                                    <span className="font-bold">{course.rating}</span>
-                                    <span className="text-gray-400 text-xs ml-1">({course.reviewCount})</span>
+                                    {course.rating > 0 && course.reviewCount > 0 ? (
+                                        <>
+                                            <Star className="w-4 h-4 mr-2 text-yellow-400 fill-yellow-400" />
+                                            <span className="font-bold">{course.rating}</span>
+                                            <span className="text-gray-400 text-xs ml-1">({course.reviewCount})</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-4 h-4 mr-2 text-emerald-500" />
+                                            <span className="text-emerald-600 font-semibold">두나's PICK</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -1070,6 +1094,82 @@ const AIRecommender = () => {
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal />}
                 {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
+
+                {/* 🟢 1단계: 선택 확인 모달 */}
+                {showConfirmModal && pendingCourse && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+                        <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300">
+                            <div className="p-8 text-center">
+                                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                                    <Navigation className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <h3 className="text-xl font-extrabold text-gray-900 mb-2">이 코스로 결정할까요?</h3>
+                                <p className="text-gray-500 text-sm leading-relaxed px-2">
+                                    <span className="text-emerald-600 font-bold">"{pendingCourse.title}"</span>
+                                    <br />
+                                    선택하신 코스는 마이페이지에 보관됩니다.
+                                </p>
+                            </div>
+                            <div className="flex border-t border-gray-100">
+                                <button
+                                    onClick={() => {
+                                        setShowConfirmModal(false);
+                                        setPendingCourse(null);
+                                    }}
+                                    disabled={isSelecting}
+                                    className="flex-1 py-5 text-gray-400 font-bold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={executeCourseSelection}
+                                    disabled={isSelecting}
+                                    className="flex-1 py-5 bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors active:brightness-90 disabled:opacity-50"
+                                >
+                                    {isSelecting ? "저장 중..." : "결정하기"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 🟢 2단계: 성공 알림 모달 */}
+                {showSuccessModal && pendingCourse && (
+                    <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl border border-white/20 text-center animate-in slide-in-from-bottom-8 duration-500">
+                            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
+                                <CheckCircle className="w-10 h-10 text-white" />
+                            </div>
+                            <h3 className="text-2xl font-black text-gray-900 mb-3">코스 선택 완료!</h3>
+                            <p className="text-gray-500 text-[15px] mb-8 leading-relaxed">
+                                성공적으로 저장되었습니다.
+                                <br />
+                                지금 바로 상세 코스를 확인해보세요.
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => {
+                                        setShowSuccessModal(false);
+                                        setPendingCourse(null);
+                                        router.push(`/courses/${pendingCourse.id}`);
+                                    }}
+                                    className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-all active:scale-95 shadow-xl"
+                                >
+                                    상세 코스 보러가기
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowSuccessModal(false);
+                                        setPendingCourse(null);
+                                    }}
+                                    className="w-full py-3 text-gray-400 font-bold text-sm hover:text-gray-600 transition-colors"
+                                >
+                                    닫기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* 👇 [추가됨] 상세 정보 모달 */}
                 {selectedDetailCourse && (

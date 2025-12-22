@@ -22,9 +22,11 @@ type HeroSliderProps = {
 // SliderItem 컴포넌트를 memo로 최적화
 const SliderItemComponent = memo(
     ({ item, idx, realLength, items }: { item: SliderItem; idx: number; realLength: number; items: SliderItem[] }) => {
-        // 현재 보이는 슬라이드만 이미지 로드 (첫 번째와 인접한 것만)
+        // 현재 보이는 슬라이드와 인접한 슬라이드만 이미지 로드
         const isVisible = idx === realLength || idx === realLength - 1 || idx === realLength + 1;
         const shouldLoad = items.length === 1 || isVisible || idx === 0 || idx === items.length * 2;
+        // 첫 번째 보이는 이미지는 최우선 로드
+        const isFirstVisible = idx === realLength || (items.length === 1 && idx === 0);
 
         return (
             <Link
@@ -40,10 +42,11 @@ const SliderItemComponent = memo(
                             alt={item.location || "Course Image"}
                             fill
                             className="object-cover"
-                            priority={items.length > 1 ? idx === realLength : idx === 0}
-                            loading={items.length > 1 && idx !== realLength ? "lazy" : undefined}
-                            quality={75}
+                            priority={isFirstVisible} // 첫 번째 보이는 이미지만 priority (가장 빠르게)
+                            loading={shouldLoad ? "eager" : "lazy"} // 보이는 것은 eager, 나머지는 lazy
+                            quality={70} // Next.js 설정에 맞춤 (70)
                             sizes="(max-width: 768px) 100vw, 400px"
+                            fetchPriority={isFirstVisible ? "high" : "auto"} // 🟢 첫 이미지 우선순위 최고
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">

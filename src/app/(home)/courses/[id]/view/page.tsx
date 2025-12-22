@@ -3,9 +3,9 @@ import prisma from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const courseId = Number(id);
 
         if (!courseId || !Number.isFinite(courseId)) {

@@ -27,109 +27,116 @@ const Header = () => {
     const [showNotiModal, setShowNotiModal] = useState(false);
     const [showKakaoChannelModal, setShowKakaoChannelModal] = useState(false);
 
-    // ... (기존 useEffect 로직들은 건드리지 않았습니다) ...
-    useEffect(() => {
-        const checkLoginStatus = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
+    // checkLoginStatus 함수를 컴포넌트 레벨로 이동하여 재사용 가능하게 함
+    const checkLoginStatus = async () => {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+            setIsLoggedIn(false);
+            setHasFavorites(false);
+            return;
+        }
+
+        try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            const exp = payload.exp * 1000;
+            const now = Date.now();
+
+            if (exp < now) {
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("user");
                 setIsLoggedIn(false);
                 setHasFavorites(false);
                 return;
             }
+        } catch (e) {
+            console.warn("토큰 파싱 오류 (서버 검증 시도):", e);
+        }
 
-            try {
-                const payload = JSON.parse(atob(token.split(".")[1]));
-                const exp = payload.exp * 1000;
-                const now = Date.now();
+        try {
+            const response = await fetch("/api/auth/verify", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
-                if (exp < now) {
-                    localStorage.removeItem("authToken");
-                    localStorage.removeItem("user");
-                    setIsLoggedIn(false);
-                    setHasFavorites(false);
-                    return;
-                }
-            } catch (e) {
-                console.warn("토큰 파싱 오류 (서버 검증 시도):", e);
-            }
+            if (response.ok) {
+                setIsLoggedIn(true);
+                fetchFavoritesSummary();
+            } else {
+                const data = await response.json().catch(() => ({}));
+                if (
+                    response.status === 401 &&
+                    (data.error?.includes("유효하지 않은") || data.error?.includes("만료"))
+                ) {
+                    try {
+                        const payload = JSON.parse(atob(token.split(".")[1]));
+                        const exp = payload.exp * 1000;
+                        const now = Date.now();
 
-            try {
-                const response = await fetch("/api/auth/verify", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (response.ok) {
-                    setIsLoggedIn(true);
-                    const idle = (cb: () => void) =>
-                        "requestIdleCallback" in window
-                            ? (window as any).requestIdleCallback(cb, { timeout: 2000 })
-                            : setTimeout(cb, 500);
-                    idle(() => {
-                        fetchFavoritesSummary();
-                    });
-                } else {
-                    const data = await response.json().catch(() => ({}));
-                    if (
-                        response.status === 401 &&
-                        (data.error?.includes("유효하지 않은") || data.error?.includes("만료"))
-                    ) {
-                        try {
-                            const payload = JSON.parse(atob(token.split(".")[1]));
-                            const exp = payload.exp * 1000;
-                            const now = Date.now();
-
-                            if (exp < now) {
-                                localStorage.removeItem("authToken");
-                                localStorage.removeItem("user");
-                                setIsLoggedIn(false);
-                                setHasFavorites(false);
-                            } else {
-                                setIsLoggedIn(true);
-                            }
-                        } catch {
+                        if (exp < now) {
                             localStorage.removeItem("authToken");
                             localStorage.removeItem("user");
                             setIsLoggedIn(false);
                             setHasFavorites(false);
+                        } else {
+                            setIsLoggedIn(true);
+                            fetchFavoritesSummary();
                         }
-                    } else {
-                        setIsLoggedIn(true);
+                    } catch {
+                        localStorage.removeItem("authToken");
+                        localStorage.removeItem("user");
+                        setIsLoggedIn(false);
+                        setHasFavorites(false);
                     }
+                } else {
+                    setIsLoggedIn(true);
+                    fetchFavoritesSummary();
                 }
-            } catch (error) {
-                console.warn("토큰 검증 네트워크 오류 (토큰 유지):", error);
-                setIsLoggedIn(true);
             }
-        };
+        } catch (error) {
+            console.warn("토큰 검증 네트워크 오류 (토큰 유지):", error);
+            setIsLoggedIn(true);
+            fetchFavoritesSummary();
+        }
+    };
 
+    useEffect(() => {
         const token = localStorage.getItem("authToken");
         setIsLoggedIn(!!token);
         if (token) {
+            // 초기 로드 시에는 약간의 지연을 두되, 이벤트 리스너에서는 즉시 실행
             const idle = (cb: () => void) =>
                 "requestIdleCallback" in window
                     ? (window as any).requestIdleCallback(cb, { timeout: 2000 })
                     : setTimeout(cb, 500);
             idle(() => {
                 checkLoginStatus();
-                fetchFavoritesSummary();
             });
         }
 
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === "authToken") {
-                setIsLoggedIn(!!e.newValue);
+                if (e.newValue) {
+                    setIsLoggedIn(true);
+                    checkLoginStatus();
+                } else {
+                    setIsLoggedIn(false);
+                    setHasFavorites(false);
+                }
             }
         };
 
         const handleCustomStorageChange = (event: Event) => {
             const customEvent = event as CustomEvent;
             const token = customEvent.detail?.token || localStorage.getItem("authToken");
-            setIsLoggedIn(!!token);
+
+            // 토큰이 있으면 즉시 로그인 상태로 설정하고 API 검증도 수행
             if (token) {
-                fetchFavoritesSummary();
+                setIsLoggedIn(true);
+                // 즉시 API 검증 수행 (지연 없이)
+                checkLoginStatus();
             } else {
+                setIsLoggedIn(false);
                 setHasFavorites(false);
             }
         };
@@ -487,7 +494,9 @@ const Header = () => {
                                     onClick={closeMenu}
                                     className="flex items-center justify-center gap-1.5 py-1 text-gray-400 hover:text-emerald-600 transition-colors"
                                 >
-                                    <span className="text-xs font-medium">이용 안내</span>
+                                    <span className="text-xs font-medium whitespace-normal break-words text-center leading-tight">
+                                        이용 안내
+                                    </span>
                                 </Link>
                                 <Link
                                     href="/privacy"

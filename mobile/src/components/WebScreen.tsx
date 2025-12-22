@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState, useEffect, useContext } from "react";
 import { BackHandler, Platform, StyleSheet, View, ActivityIndicator, Linking, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
+import { WebView, WebViewNavigation } from "react-native-webview";
 import * as WebBrowser from "expo-web-browser";
 
 import { loadAuthToken, saveAuthToken } from "../storage";
@@ -20,7 +20,6 @@ export default function WebScreen({ uri: initialUri }: Props) {
     const [initialScript, setInitialScript] = useState<string | null>(null);
     const [isSplashDone, setIsSplashDone] = useState(false);
 
-    // 7초 후 스플래시 종료 처리
     useEffect(() => {
         const timer = setTimeout(() => setIsSplashDone(true), 7000);
         return () => clearTimeout(timer);
@@ -29,15 +28,9 @@ export default function WebScreen({ uri: initialUri }: Props) {
     const isSplashPage = currentUrl.replace(/\/$/, "") === "https://dona.io.kr";
     const dynamicPaddingTop = isSplashPage && !isSplashDone ? 0 : insets.top;
 
-    // 외부 브라우저 및 앱 실행 처리
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {
             try {
-                if (Platform.OS === "android" && url.startsWith("intent://")) {
-                    const parsedUrl = url.replace("intent://", "kakaokommunication://");
-                    await Linking.openURL(parsedUrl);
-                    return;
-                }
                 await Linking.openURL(url);
             } catch (e) {
                 if (url.includes("kakao")) {
@@ -49,7 +42,6 @@ export default function WebScreen({ uri: initialUri }: Props) {
         await WebBrowser.openBrowserAsync(url, { readerMode: false, toolbarColor: "#ffffff" });
     };
 
-    // 안드로이드 뒤로가기 버튼 처리
     const handleAndroidBack = useCallback(() => {
         if (canGoBack && webRef.current) {
             webRef.current.goBack();
@@ -65,12 +57,15 @@ export default function WebScreen({ uri: initialUri }: Props) {
         }
     }, [handleAndroidBack]);
 
-    // 초기 자바스크립트 주입 (토큰 전송 및 Bridge 설정)
     useEffect(() => {
         (async () => {
             const authToken = await loadAuthToken();
             const lines: string[] = [];
             lines.push("(function(){");
+            // ReactNativeWebView 객체를 명시적으로 주입 (카카오 로그인 감지용)
+            lines.push(
+                `if (!window.ReactNativeWebView) { window.ReactNativeWebView = { postMessage: function(msg) { window.__nativeBridge?.post('webview', JSON.parse(msg || '{}')); } }; }`
+            );
             lines.push(
                 `window.__nativeBridge = { post: function(t,p){ window.ReactNativeWebView.postMessage(JSON.stringify({type:t, payload:p})); } };`
             );
@@ -82,7 +77,7 @@ export default function WebScreen({ uri: initialUri }: Props) {
             lines.push("})();");
             setInitialScript(lines.join("\n"));
         })();
-    }, [pushToken, currentUrl]);
+    }, [pushToken]);
 
     return (
         <View style={[styles.container, { paddingTop: dynamicPaddingTop }]}>
@@ -93,7 +88,7 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     ref={webRef}
                     style={{ flex: 1 }}
                     source={{ uri: initialUri }}
-                    onNavigationStateChange={(nav) => {
+                    onNavigationStateChange={(nav: WebViewNavigation) => {
                         setCanGoBack(nav.canGoBack);
                         setCurrentUrl(nav.url);
                         if (!nav.loading) setLoading(false);
@@ -101,17 +96,14 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
 
-                        // ⭐ 카카오 로그인 및 내부 서비스 도메인 허용
-                        const isInternal =
-                            url.includes("dona.io.kr") ||
-                            url.includes("dona-two.vercel.app") ||
-                            url.includes("localhost") ||
-                            url.includes("auth.kakao.com") ||
-                            url.includes("kauth.kakao.com") ||
-                            url.includes("accounts.kakao.com"); // 계정 페이지 허용
-
-                        if (isInternal) {
-                            return true; // 내부 웹뷰에서 열기
+                        // 🚩 [가장 중요] #webTalkLogin 주소가 감지되면 즉시 차단하고 정화된 주소로 이동
+                        if (url.includes("#webTalkLogin")) {
+                            const cleanUrl = url.split("#")[0];
+                            // 웹뷰의 로딩을 중단시키고, 자바스크립트로 깨끗한 주소로 보냅니다.
+                            setTimeout(() => {
+                                webRef.current?.injectJavaScript(`window.location.href = "${cleanUrl}";`);
+                            }, 50);
+                            return false; // 웹뷰가 이 주소를 로드하려다 -1002 에러를 내는 것을 원천 봉쇄
                         }
 
                         // 카카오톡 앱 실행 주소(딥링크) 처리
@@ -124,14 +116,29 @@ export default function WebScreen({ uri: initialUri }: Props) {
                             return false;
                         }
 
-                        // 그 외 외부 주소는 시스템 브라우저로
+                        // 내부 도메인 허용
+                        const isInternal =
+                            url.includes("dona.io.kr") ||
+                            url.includes("dona-two.vercel.app") ||
+                            url.includes("auth.kakao.com") ||
+                            url.includes("kauth.kakao.com") ||
+                            url.includes("accounts.kakao.com");
+
+                        if (isInternal) return true;
+
                         openExternalBrowser(url);
                         return false;
                     }}
-                    // ⭐ 팝업 차단 해제를 위한 핵심 설정
-                    setSupportMultipleWindows={false} // 새 창을 만들지 않고 현재 창에서 로드
-                    javaScriptCanOpenWindowsAutomatically={true} // 자바스크립트 팝업 허용
-                    // ⭐ 보안 차단 회피를 위한 정교한 User-Agent
+                    // 🚩 -1002 에러가 나더라도 경고창을 띄우지 않도록 설정
+                    onError={(syntheticEvent) => {
+                        const { nativeEvent } = syntheticEvent;
+                        if (nativeEvent.code === -1002) {
+                            console.log("지원되지 않는 URL 무시됨:", nativeEvent.url);
+                            return;
+                        }
+                    }}
+                    setSupportMultipleWindows={false}
+                    javaScriptCanOpenWindowsAutomatically={true}
                     userAgent={
                         Platform.OS === "android"
                             ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
@@ -142,19 +149,21 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     onMessage={async (ev) => {
                         try {
                             const data = JSON.parse(ev.nativeEvent.data || "{}");
-                            if (data.type === "setAuthToken") await saveAuthToken(String(data.payload || ""));
-                            if (data.type === "loginSuccess") {
-                                const userId = data.payload?.userId;
-                                const token = data.payload?.token;
-                                if (token) await saveAuthToken(String(token));
-                                if (userId && pushToken) await registerPushToken(userId, pushToken);
+                            if (data.type === "setAuthToken") {
+                                await saveAuthToken(String(data.payload || ""));
+                            } else if (data.type === "loginSuccess") {
+                                // 카카오 로그인 성공 시 토큰 저장
+                                if (data.token) {
+                                    await saveAuthToken(String(data.token || ""));
+                                }
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error("WebView message 처리 오류:", e);
+                        }
                     }}
                     originWhitelist={["*"]}
-                    javaScriptEnabled={true}
-                    domStorageEnabled={true}
-                    allowsInlineMediaPlayback={true}
+                    javaScriptEnabled
+                    domStorageEnabled
                 />
 
                 {loading && (
@@ -174,8 +183,7 @@ const styles = StyleSheet.create({
         top: 8,
         right: 8,
         backgroundColor: "rgba(255,255,255,0.85)",
-        paddingHorizontal: 8,
-        paddingVertical: 6,
+        padding: 8,
         borderRadius: 10,
     },
 });

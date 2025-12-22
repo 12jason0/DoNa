@@ -1,3 +1,5 @@
+// src/app/(home)/courses/[id]/page.tsx
+
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
@@ -6,80 +8,40 @@ import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData, Review } from "./CourseDetailClient";
 import { unstable_cache } from "next/cache";
 
-// 1. 데이터 페칭 함수 (Server-side) - 캐싱 적용 (60초)
+// 1. 데이터 페칭 함수 (코스 정보 캐싱)
 const getCourse = unstable_cache(
     async (id: string): Promise<CourseData | null> => {
         const courseId = Number(id);
         if (isNaN(courseId)) return null;
-
         try {
-            const course = await prisma.course.findUnique({
+            const course = await (prisma as any).course.findUnique({
                 where: { id: courseId },
                 include: {
                     highlights: true,
                     coursePlaces: {
-                        include: {
-                            place: {
-                                include: {
-                                    closed_days: true,
-                                },
-                            },
-                        },
+                        include: { place: { include: { closed_days: true } } },
                         orderBy: { order_index: "asc" },
                     },
                     courseDetail: true,
                     _count: { select: { coursePlaces: true } },
                 },
             });
-
             if (!course) return null;
-
-            // 데이터 가공 및 더미 데이터 주입 (UI 풍성하게 보이기 위함)
-            const coursePlaces = course.coursePlaces.map((cp, idx) => ({
-                id: cp.id,
-                course_id: cp.course_id,
-                place_id: cp.place_id,
-                order_index: cp.order_index,
-                estimated_duration: cp.estimated_duration || 0,
-                recommended_time: cp.recommended_time || "",
-                coaching_tip: cp.coaching_tip || null,
-
-                place: {
-                    id: cp.place.id,
-                    name: cp.place.name,
-                    address: cp.place.address || "",
-                    description: cp.place.description || "",
-                    category: cp.place.category || "장소",
-                    avg_cost_range: cp.place.avg_cost_range || "가격 정보 없음",
-                    opening_hours: cp.place.opening_hours || "영업시간 정보 없음",
-                    phone: cp.place.phone || undefined,
-                    parking_available: !!cp.place.parking_available,
-                    reservation_required: false, // Place 모델에 필드가 없으므로 기본값 사용
-                    latitude: Number(cp.place.latitude),
-                    longitude: Number(cp.place.longitude),
-                    imageUrl: cp.place.imageUrl || undefined,
-                    closed_days: cp.place.closed_days.map((d) => ({
-                        day_of_week: d.day_of_week,
-                        specific_date: d.specific_date ? d.specific_date.toISOString() : null,
-                        note: d.note,
-                    })),
-                },
-            }));
 
             return {
                 id: String(course.id),
                 title: course.title,
                 description: course.description || "",
                 region: course.region || null,
-                sub_title: course.sub_title || null, // Default
-                target_situation: course.target_situation || null, // Default
+                sub_title: course.sub_title || null,
+                target_situation: course.target_situation || null,
                 duration: course.duration || "시간 미정",
-                price: "", // DB에 price 컬럼이 없다면 빈 문자열
+                price: "",
                 imageUrl: course.imageUrl || "",
                 concept: course.concept || "",
                 rating: Number(course.rating),
                 isPopular: course.isPopular,
-                grade: course.grade || "FREE", // ✅ 등급 추가
+                grade: course.grade || "FREE",
                 recommended_start_time: course.courseDetail?.recommended_start_time || "오후 2시",
                 season: course.courseDetail?.season || "사계절",
                 courseType: course.courseDetail?.course_type || "데이트",
@@ -88,28 +50,37 @@ const getCourse = unstable_cache(
                 createdAt: course.createdAt.toISOString(),
                 updatedAt: course.updatedAt.toISOString(),
                 highlights: course.highlights,
-                coursePlaces: coursePlaces,
+                coursePlaces: course.coursePlaces.map((cp: any) => ({
+                    ...cp,
+                    place: {
+                        ...cp.place,
+                        latitude: Number(cp.place.latitude),
+                        longitude: Number(cp.place.longitude),
+                        closed_days: cp.place.closed_days.map((d: any) => ({
+                            ...d,
+                            specific_date: d.specific_date ? d.specific_date.toISOString() : null,
+                        })),
+                    },
+                })),
             };
-        } catch (error) {
-            console.error("Course fetch error:", error);
+        } catch (e) {
             return null;
         }
     },
-    ["course-detail"], // 캐시 키 prefix
-    { revalidate: 60, tags: ["course-detail"] } // 60초마다 갱신
+    ["course-detail"],
+    { revalidate: 300, tags: ["course-detail"] } // 5분 캐싱 (성능 최적화)
 );
 
+// 리뷰 페칭 함수
 async function getReviews(id: string): Promise<Review[]> {
     const courseId = Number(id);
     if (isNaN(courseId)) return [];
-
     try {
         const reviews = await prisma.review.findMany({
             where: { courseId: courseId },
             include: { user: true },
             orderBy: { createdAt: "desc" },
         });
-
         return reviews.map((r: any) => ({
             id: r.id,
             rating: r.rating,
@@ -118,57 +89,73 @@ async function getReviews(id: string): Promise<Review[]> {
             content: r.comment || "",
             imageUrls: r.imageUrls || [],
         }));
-    } catch (error) {
-        console.error("Reviews fetch error:", error);
+    } catch (e) {
         return [];
     }
 }
 
-// 2. 메인 페이지 컴포넌트 (Server Component)
+// 2. 메인 페이지 컴포넌트
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
+    const courseId = Number(id);
 
     // 병렬 데이터 페칭
     const [courseData, reviews] = await Promise.all([getCourse(id), getReviews(id)]);
+    if (!courseData) notFound();
 
-    if (!courseData) {
-        notFound();
-    }
-
-    // 🔒 [보안 로직] 유저 등급 확인 및 잠금 처리
+    // 🔒 [권한 확인 로직 시작]
     const cookieStore = await cookies();
     const token = cookieStore.get("auth")?.value;
     let userTier = "FREE";
+    let hasUnlocked = false; // 🟢 추가: 구매 여부 상태
 
     if (token) {
         try {
             const userId = verifyJwtAndGetUserId(token);
             if (userId) {
-                const user = await prisma.user.findUnique({
-                    where: { id: Number(userId) },
-                    select: { subscriptionTier: true },
-                });
+                // 유저 정보와 구매 기록을 동시에 조회
+                const [user, unlockRecord] = await Promise.all([
+                    prisma.user.findUnique({
+                        where: { id: Number(userId) },
+                        select: { subscriptionTier: true },
+                    }),
+                    // 🟢 핵심: CourseUnlock 테이블에서 이 유저가 이 코스를 샀는지 확인
+                    (prisma as any).courseUnlock.findUnique({
+                        where: {
+                            userId_courseId: {
+                                userId: Number(userId),
+                                courseId: courseId,
+                            },
+                        },
+                    }),
+                ]);
+
                 if (user) userTier = user.subscriptionTier;
+                if (unlockRecord) hasUnlocked = true; // 🟢 구매 기록이 있다면 true!
             }
         } catch (e) {
-            // 토큰 만료/오류 시 FREE로 유지
+            console.error("Auth check failed");
         }
     }
 
-    // 잠금 여부 계산
-    let isLocked = false;
+    // 🟢 하이브리드 잠금 계산 (등급제 OR 개별구매)
     const courseGrade = courseData.grade || "FREE";
+    let isLocked = false;
 
-    if (userTier === "PREMIUM") {
-        isLocked = false;
-    } else if (userTier === "BASIC") {
-        if (courseGrade === "PREMIUM") isLocked = true;
-    } else {
-        // FREE 유저
-        if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+    if (courseGrade !== "FREE") {
+        isLocked = true; // 기본적으로 잠금
+
+        // (1) 프리미엄 유저는 무조건 통과
+        if (userTier === "PREMIUM") isLocked = false;
+
+        // (2) 베이직 유저가 베이직 코스를 볼 때 통과
+        if (userTier === "BASIC" && courseGrade === "BASIC") isLocked = false;
+
+        // (3) ⭐️ 가장 중요: 등급이 낮아도 '구매 기록'이 있으면 무조건 잠금 해제!
+        if (hasUnlocked) isLocked = false;
     }
 
-    // courseData에 잠금 상태 주입
+    // 최종 결과 주입
     const secureCourseData = { ...courseData, isLocked };
 
     return (

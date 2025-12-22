@@ -105,9 +105,13 @@ const MyPage = () => {
             }
             const response = await fetch("/api/users/profile", {
                 headers: { Authorization: `Bearer ${token}` },
+                cache: "no-store", // 🟢 서버 캐시 방지 추가
             });
             if (response.ok) {
                 const raw = await response.json();
+                // 🟢 디버깅 로그: 여기서 BASIC이 찍히는지 확인
+                console.log("[MyPage] 서버 원본 응답:", raw);
+
                 const src: any = raw?.user ?? raw ?? {};
 
                 // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
@@ -121,7 +125,23 @@ const MyPage = () => {
 
                 const profileImageUrl = src.profileImage || src.profileImageUrl || src.profile_image_url || "";
 
-                setUserInfo({
+                // 🟢 subscriptionTier 확인: DB의 subscription_tier와 코드의 subscriptionTier 모두 체크
+                const tier =
+                    src.subscription_tier ||
+                    src.subscriptionTier ||
+                    raw?.subscription_tier ||
+                    raw?.subscriptionTier ||
+                    "FREE";
+                console.log("[MyPage] API 응답 subscriptionTier:", tier, "src:", src, "raw:", raw);
+                console.log(
+                    "[MyPage] 필드명 확인 - subscription_tier:",
+                    src.subscription_tier,
+                    "subscriptionTier:",
+                    src.subscriptionTier
+                );
+                console.log("[MyPage] 최종 등급 값 (setUserInfo에 전달):", tier);
+
+                const finalUserInfo = {
                     name: src.name || src.username || src.nickname || "",
                     email: src.email || src.userEmail || "",
                     joinDate: src.joinDate
@@ -132,8 +152,10 @@ const MyPage = () => {
                     profileImage: convertToHttps(profileImageUrl),
                     mbti: src.mbti ?? null,
                     age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
-                    subscriptionTier: src.subscriptionTier || "FREE",
-                });
+                    subscriptionTier: tier, // 🟢 확정된 등급 삽입
+                };
+                console.log("[MyPage] setUserInfo 호출 전 최종 userInfo 객체:", finalUserInfo);
+                setUserInfo(finalUserInfo);
             }
         } catch (error) {
             console.error(error);
@@ -395,9 +417,34 @@ const MyPage = () => {
     };
 
     const handleLogoutClick = () => setShowLogoutModal(true);
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            // 🟢 서버 측 로그아웃 API 호출 (쿠키 삭제)
+            await fetch("/api/auth/logout", { method: "POST" });
+        } catch (error) {
+            console.error("로그아웃 처리 중 오류 발생:", error);
+        }
+
+        // 🟢 localStorage 완전 정리
         localStorage.removeItem("authToken");
-        window.dispatchEvent(new Event("authTokenChange"));
+        localStorage.removeItem("user");
+        localStorage.removeItem("loginTime");
+
+        // 🟢 모든 상태 초기화 (UI에 데이터가 남지 않도록)
+        setUserInfo(null);
+        setUserPreferences(null);
+        setFavorites([]);
+        setSavedCourses([]);
+        setCompleted([]);
+        setBadges([]);
+        setCasefiles([]);
+        setRewards([]);
+        setCheckins([]);
+        setPayments([]);
+
+        // 🟢 인증 상태 변경 이벤트 발생
+        window.dispatchEvent(new CustomEvent("authTokenChange"));
+
         setShowLogoutModal(false);
         router.push("/");
     };
@@ -622,6 +669,8 @@ const MyPage = () => {
 
                 {activeTab === "profile" && (
                     <ProfileTab
+                        // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
+                        key={userInfo?.subscriptionTier || "loading"}
                         userInfo={userInfo}
                         userPreferences={userPreferences}
                         onEditProfile={handleEditClick}

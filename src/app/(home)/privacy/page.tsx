@@ -92,7 +92,7 @@ export default function PrivacyPolicyPage() {
                             제2조 개인정보의 처리 및 보유기간
                         </h2>
                         <p className="text-gray-700 mb-4">
-                            StyleMap은 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에
+                            DoNa는는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에
                             동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.
                         </p>
                         <ul className="list-disc pl-6 mb-6 text-gray-700">
@@ -320,7 +320,7 @@ export default function PrivacyPolicyPage() {
                         <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제12조 사업자 정보</h2>
                         <div className="bg-gray-50 p-6 rounded-lg mb-6">
                             <p className="text-gray-700 mb-2">
-                                <strong>상호:</strong> (주)두나 (DoNa)
+                                <strong>상호:</strong> 두나(DoNa) (DoNa)
                             </p>
                             <p className="text-gray-700 mb-2">
                                 <strong>대표:</strong> 오승용

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-export default function EscapeIdRedirectPage({ params }: Params) {
-    const id = params?.id;
+export default async function EscapeIdRedirectPage({ params }: Params) {
+    const { id } = await params;
     redirect(`/escape/intro?id=${encodeURIComponent(id || "")}`);
 }
 

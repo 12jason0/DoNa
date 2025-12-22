@@ -85,6 +85,29 @@ const Icons = {
             />
         </svg>
     ),
+    // ✅ [NEW] 상업용 토스트 성공 아이콘 (깔끔한 체크)
+    ToastSuccess: ({ className }: { className?: string }) => (
+        <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+        </svg>
+    ),
+    // 🚨 [NEW] 상업용 토스트 에러 아이콘 (깔끔한 X)
+    ToastError: ({ className }: { className?: string }) => (
+        <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    ),
+    // 🔔 [NEW] 상업용 토스트 정보 아이콘 (깔끔한 i)
+    ToastInfo: ({ className }: { className?: string }) => (
+        <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+        </svg>
+    ),
 };
 
 const ReviewModal = dynamic(() => import("@/components/ReviewModal"), { ssr: false, loading: () => null });
@@ -168,7 +191,7 @@ export interface Review {
     imageUrls?: string[];
 }
 
-// --- Toast Component (수정됨: 성공 시 녹색 배경) ---
+// --- Toast Component (수정됨: 이모지 제거, 상업용 SVG 적용) ---
 const Toast = ({
     message,
     type,
@@ -179,19 +202,29 @@ const Toast = ({
     onClose: () => void;
 }) => {
     useEffect(() => {
-        const timer = setTimeout(onClose, 3000);
+        const timer = setTimeout(onClose, 2500); // 2.5초 유지
         return () => clearTimeout(timer);
     }, [onClose]);
 
-    // 배경색 로직 변경: 성공(success)일 때 emerald-500 사용
-    const bgColor = type === "success" ? "bg-emerald-500" : type === "error" ? "bg-rose-500" : "bg-gray-900";
+    // 배경색: 반투명 블랙 (성공/정보), 톤다운된 레드 (에러)
+    const bgColor = type === "error" ? "bg-rose-600/90" : "bg-[#1A1A1A]/90";
+
+    // 타입에 맞는 상업용 아이콘 선택
+    const IconComponent = {
+        success: Icons.ToastSuccess,
+        error: Icons.ToastError,
+        info: Icons.ToastInfo,
+    }[type];
 
     return (
         <div
-            className={`fixed top-6 left-1/2 -translate-x-1/2 ${bgColor} text-white px-6 py-3.5 rounded-full shadow-2xl z-[5000] animate-fade-in-down flex items-center gap-3 min-w-[320px] justify-center`}
+            className={`fixed bottom-28 left-1/2 -translate-x-1/2 ${bgColor} backdrop-blur-md text-white pl-5 pr-6 py-3.5 rounded-full shadow-[0_8px_16px_rgba(0,0,0,0.15)] z-[9999] animate-slide-up-mobile flex items-center gap-3 min-w-[280px] justify-center border border-white/10`}
         >
-            <span className="text-lg">{type === "success" ? "🎉" : type === "error" ? "🚨" : "🔔"}</span>
-            <span className="font-semibold text-sm tracking-wide">{message}</span>
+            {/* ✨ 이모지 대신 깔끔한 SVG 아이콘 적용 */}
+            <div className={`flex-shrink-0 ${type === "success" ? "text-emerald-400" : "text-white/90"}`}>
+                <IconComponent className="w-5 h-5" />
+            </div>
+            <span className="font-medium text-[15px] tracking-tight leading-none pt-0.5">{message}</span>
         </div>
     );
 };
@@ -350,7 +383,9 @@ export default function CourseDetailClient({
 
         const nextState = !isSaved;
         setIsSaved(nextState);
-        showToast(nextState ? "코스를 찜했어요! 💖" : "찜 목록에서 삭제했어요.", "success");
+
+        // 🟢 문구 수정: "코스를 찜했어요" -> "취향에 쏙 담겼어요 ✨"
+        showToast(nextState ? "취향에 쏙 담겼어요 ✨" : "다음에 다시 담아주세요 💫", "success");
 
         try {
             const endpoint = `/api/users/favorites`;
@@ -427,7 +462,7 @@ export default function CourseDetailClient({
     // --- 🔒 잠금 화면 (Modern Commercial Style) ---
     if (courseData.isLocked) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50/50 backdrop-blur-sm">
+            <div className=" flex items-center justify-start p-6 bg-gray-50/50 backdrop-blur-sm">
                 <div className="bg-white rounded-lg p-8 max-w-[360px] w-full text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 relative">
                     {/* 1. 세련된 아이콘 영역 (이모지 제거 -> 벡터 아이콘 적용) */}
                     <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-lg flex items-center justify-center mb-6 ring-1 ring-emerald-100/50">
@@ -711,7 +746,8 @@ export default function CourseDetailClient({
                                             {/* Dona Pick - 팁이 있으면 항상 표시 */}
                                             {coursePlace.coaching_tip && (
                                                 <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
-                                                    {userTier === "FREE" ? (
+                                                    {/* 🟢 수정: 서버에서 보내준 isLocked 값을 최우선으로 사용 */}
+                                                    {courseData.isLocked ? (
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();

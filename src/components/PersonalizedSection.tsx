@@ -160,19 +160,25 @@ export default function PersonalizedSection() {
                               <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-gray-100 transition-transform active:scale-95">
                                   {/* 이미지 */}
                                   <div className="relative w-full h-full bg-gray-200">
-                                      {course.imageUrl ? (
-                                          <Image
-                                              src={course.imageUrl}
-                                              fill
-                                              alt={course.title}
-                                              className="object-cover"
-                                              sizes="200px"
-                                          />
-                                      ) : (
-                                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                              No Image
-                                          </div>
-                                      )}
+                                      {(() => {
+                                          // 코스 이미지가 없으면 1번 장소의 이미지 사용
+                                          const courseImage = course.imageUrl?.trim() || "";
+                                          const firstPlaceImage = course.coursePlaces?.[0]?.place?.imageUrl?.trim() || "";
+                                          const imageUrl = courseImage || firstPlaceImage;
+                                          return imageUrl ? (
+                                              <Image
+                                                  src={imageUrl}
+                                                  fill
+                                                  alt={course.title}
+                                                  className="object-cover"
+                                                  sizes="200px"
+                                              />
+                                          ) : (
+                                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                                  No Image
+                                              </div>
+                                          );
+                                      })()}
                                   </div>
 
                                   {/* 그라데이션 */}

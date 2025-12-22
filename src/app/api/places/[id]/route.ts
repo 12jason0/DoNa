@@ -4,12 +4,13 @@ import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const userId = resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
 
-        const placeId = Number(params.id);
+        const { id } = await params;
+        const placeId = Number(id);
         if (!placeId || isNaN(placeId)) return NextResponse.json({ error: "Invalid place ID" }, { status: 400 });
 
         const body = await request.json();
@@ -84,12 +85,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const userId = resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
 
-        const placeId = Number(params.id);
+        const { id } = await params;
+        const placeId = Number(id);
         if (!placeId || isNaN(placeId)) return NextResponse.json({ error: "Invalid place ID" }, { status: 400 });
 
         await (prisma as any).place.delete({ where: { id: placeId } });

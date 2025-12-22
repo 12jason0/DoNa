@@ -31,7 +31,7 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }
     const subTabs = [
         { id: "badges" as const, label: "뱃지", count: badges.length },
         { id: "rewards" as const, label: "보상 내역", count: rewards.length },
-        { id: "checkins" as const, label: "출석 기록", count: checkins.length },
+        { id: "checkins" as const, label: "출석 기록", count: null }, // 출석 기록은 숫자 표시 안 함
         { id: "payments" as const, label: "구매 내역", count: payments.length },
     ];
 
@@ -70,7 +70,8 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }
                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         >
-                            {tab.label} ({tab.count})
+                            {tab.label}
+                            {tab.count !== null ? ` (${tab.count})` : ""}
                         </button>
                     ))}
                 </div>
@@ -154,25 +155,10 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        {(() => {
-                                            const unit = String(r.unit || "").toLowerCase();
-                                            const unitKo =
-                                                unit === "coupon"
-                                                    ? "쿠폰"
-                                                    : unit === "coin"
-                                                    ? "코인"
-                                                    : unit === "water"
-                                                    ? "물"
-                                                    : r.unit;
-                                            return (
-                                                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-sm md:text-base border border-emerald-200">
-                                                    <span className="leading-none">+{r.amount}</span>
-                                                    <span className="leading-none">
-                                                        {unit === "coupon" ? "coupon" : unitKo}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })()}
+                                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-sm md:text-base border border-emerald-200">
+                                            <span className="leading-none">+{r.amount}</span>
+                                            <span className="leading-none">쿠폰</span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

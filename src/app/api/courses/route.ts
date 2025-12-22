@@ -22,19 +22,34 @@ export async function GET(request: NextRequest) {
         const offsetParam = searchParams.get("offset");
         const noCache = searchParams.get("nocache");
         const imagePolicyParam = searchParams.get("imagePolicy");
+        const gradeParam = searchParams.get("grade"); // 🟢 HeroSlider용 grade 필터
 
-        // --- 1. 유저 등급 확인 (잠금 여부 계산용) ---
+        // --- 1. 유저 등급 확인 및 잠금 해제된 코스 목록 조회 (잠금 여부 계산용) ---
         const userIdStr = getUserIdFromRequest(request);
         let userTier = "FREE"; // 기본값
+        let unlockedCourseIds: number[] = []; // 🟢 쿠폰으로 구매한 코스 ID 목록
 
         if (userIdStr && !isNaN(Number(userIdStr))) {
+            const userId = Number(userIdStr);
             // DB에서 유저의 실제 등급 조회
             const user = await prisma.user.findUnique({
-                where: { id: Number(userIdStr) },
+                where: { id: userId },
                 select: { subscriptionTier: true },
             });
             if (user?.subscriptionTier) {
                 userTier = user.subscriptionTier;
+            }
+
+            // 🟢 CourseUnlock 테이블에서 잠금 해제된 코스 ID 목록 가져오기
+            try {
+                const unlocks = await (prisma as any).courseUnlock.findMany({
+                    where: { userId },
+                    select: { courseId: true },
+                });
+                unlockedCourseIds = unlocks.map((u: any) => u.courseId);
+            } catch (error) {
+                console.error("[CourseUnlock 조회 실패]", error);
+                // 에러가 나도 계속 진행 (빈 배열로 처리)
             }
         }
 
@@ -46,15 +61,25 @@ export async function GET(request: NextRequest) {
             : "any"; // 기본값 "any"
 
         const parsedLimit = Number(limitParam ?? 100);
-        const effectiveLimit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 100, 1), 200);
+        let effectiveLimit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 100, 1), 200);
         const parsedOffset = Number(offsetParam ?? 0);
         const effectiveOffset = Math.max(Number.isFinite(parsedOffset) ? parsedOffset : 0, 0);
+        
+        // 🟢 HeroSlider용 grade 필터 (FREE만 가져오기) - limit 최소화로 성능 최적화
+        if (gradeParam === "FREE" && effectiveLimit > 5) {
+            effectiveLimit = 5; // HeroSlider는 5개만 필요하므로 DB 쿼리 최소화
+        }
 
         // AND로 결합할 동적 where 조건들
         const andWhere: any[] = [];
 
         // ✅ [필수] 사용자에게는 무조건 "공개된(isPublic: true)" 코스만 보여줍니다.
         andWhere.push({ isPublic: true });
+
+        // 🟢 HeroSlider용 grade 필터 (FREE만 가져오기)
+        if (gradeParam === "FREE") {
+            andWhere.push({ grade: "FREE" });
+        }
 
         // ✅ [수정됨] 텍스트 검색 로직 강화: 키워드 분리 및 '동' 제거 매핑
         if (q) {
@@ -162,6 +187,7 @@ export async function GET(request: NextRequest) {
                 },
                 coursePlaces: {
                     orderBy: { order_index: "asc" },
+                    take: gradeParam === "FREE" ? 1 : undefined, // 🟢 HeroSlider는 첫 번째 장소만 필요
                     select: {
                         order_index: true,
                         place: {
@@ -169,16 +195,19 @@ export async function GET(request: NextRequest) {
                                 id: true,
                                 name: true,
                                 imageUrl: true,
-                                latitude: true,
-                                longitude: true,
-                                opening_hours: true,
-                                closed_days: {
-                                    select: {
-                                        day_of_week: true,
-                                        specific_date: true,
-                                        note: true,
+                                // 🟢 HeroSlider용 최적화: 불필요한 필드 제거
+                                ...(gradeParam !== "FREE" && {
+                                    latitude: true,
+                                    longitude: true,
+                                    opening_hours: true,
+                                    closed_days: {
+                                        select: {
+                                            day_of_week: true,
+                                            specific_date: true,
+                                            note: true,
+                                        },
                                     },
-                                },
+                                }),
                             },
                         },
                     },
@@ -209,11 +238,18 @@ export async function GET(request: NextRequest) {
                 : undefined;
             const resolvedImageUrl = course.imageUrl || firstPlaceImage || "";
 
-            // ✅ 2. [잠금 로직] 유저 등급과 코스 등급 비교
+            // ✅ 2. [잠금 로직] 유저 등급과 코스 등급 비교 + CourseUnlock 확인
             let isLocked = false;
             const courseGrade = course.grade || "FREE";
+            const courseId = Number(course.id);
 
-            if (userTier === "PREMIUM") {
+            // 🟢 먼저 CourseUnlock 확인: 쿠폰으로 구매한 코스는 무조건 잠금 해제
+            const hasUnlocked = unlockedCourseIds.includes(courseId);
+
+            if (hasUnlocked) {
+                // 쿠폰으로 구매한 코스는 등급과 상관없이 열람 가능
+                isLocked = false;
+            } else if (userTier === "PREMIUM") {
                 // 프리미엄 유저는 모든 코스 열람 가능
                 isLocked = false;
             } else if (userTier === "BASIC") {

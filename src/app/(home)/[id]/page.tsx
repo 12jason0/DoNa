@@ -5,9 +5,9 @@ import Image from "@/components/ImageFallback";
 import NaverMap from "@/components/NaverMap";
 
 interface PageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,8 @@ export const dynamic = "force-dynamic";
  * 장소 상세 페이지
  */
 export default async function PlaceDetailPage({ params }: PageProps) {
-    const placeId = parseInt(params.id);
+    const { id } = await params;
+    const placeId = parseInt(id);
 
     if (isNaN(placeId)) {
         notFound();

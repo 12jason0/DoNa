@@ -75,30 +75,55 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
         }
 
-        // 이미 저장되어 있는지 확인
-        const existing = await prisma.savedCourse.findUnique({
-            where: {
-                userId_courseId: {
-                    userId: Number(userId),
-                    courseId: Number(courseId),
+        const uId = Number(userId);
+        const cId = Number(courseId);
+
+        // 🟢 [상업적 로직] 트랜잭션으로 저장과 잠금 해제를 동시에 처리
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. 이미 저장되어 있는지 확인
+            const existingSave = await tx.savedCourse.findUnique({
+                where: {
+                    userId_courseId: {
+                        userId: uId,
+                        courseId: cId,
+                    },
                 },
-            },
+            });
+
+            let savedCourse = existingSave;
+            if (!existingSave) {
+                savedCourse = await tx.savedCourse.create({
+                    data: {
+                        userId: uId,
+                        courseId: cId,
+                    },
+                });
+            }
+
+            // 2. 🟢 CourseUnlock 테이블에 권한 기록 (이미 있으면 무시)
+            await (tx as any).courseUnlock.upsert({
+                where: {
+                    userId_courseId: {
+                        userId: uId,
+                        courseId: cId,
+                    },
+                },
+                update: {}, // 이미 있다면 업데이트할 내용은 없음
+                create: {
+                    userId: uId,
+                    courseId: cId,
+                },
+            });
+
+            return savedCourse;
         });
 
-        if (existing) {
-            return NextResponse.json({ message: "Already saved", savedCourse: existing });
-        }
-
-        const savedCourse = await prisma.savedCourse.create({
-            data: {
-                userId: Number(userId),
-                courseId: Number(courseId),
-            },
+        return NextResponse.json({
+            message: "코스가 저장되었으며 권한이 부여되었습니다.",
+            savedCourse: result,
         });
-
-        return NextResponse.json({ message: "Course saved successfully", savedCourse });
     } catch (error) {
-        console.error("Failed to save course:", error);
-        return NextResponse.json({ error: "Failed to save course" }, { status: 500 });
+        console.error("Failed to save and unlock course:", error);
+        return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }
 }

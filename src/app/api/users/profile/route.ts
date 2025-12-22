@@ -3,12 +3,13 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300; // 5분 캐싱
+// ❌ export const revalidate = 300; // 캐싱 제거 (실시간 반영을 위해)
 
 export async function GET(request: NextRequest) {
     try {
         const userId = resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -20,24 +21,21 @@ export async function GET(request: NextRequest) {
                 mbti: true,
                 age: true,
                 couponCount: true,
-                subscriptionTier: true, // 구독 등급 추가
+                subscriptionTier: true, // 🟢 camelCase 확인
+                hasSeenConsentModal: true,
             },
         });
         if (!user) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-        // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
         const convertToHttps = (url: string | null | undefined): string | null => {
             if (!url) return null;
-            if (url.startsWith("http://")) {
-                return url.replace(/^http:\/\//, "https://");
-            }
-            return url;
+            return url.startsWith("http://") ? url.replace(/^http:\/\//, "https://") : url;
         };
 
         const profileImageUrl = convertToHttps(user.profileImageUrl);
 
-        return NextResponse.json({
-            // 평탄 구조(호환용)
+        // 프론트엔드 ProfileTab에서 필드명 혼선이 없도록 두 가지 케이스 모두 전달
+        const responseData = {
             id: user.id,
             email: user.email,
             name: user.username,
@@ -47,21 +45,17 @@ export async function GET(request: NextRequest) {
             mbti: user.mbti,
             age: user.age,
             couponCount: user.couponCount ?? 0,
-            subscriptionTier: user.subscriptionTier, // 추가
-            // 중첩 구조(신규)
+            subscriptionTier: user.subscriptionTier, // camelCase
+            subscription_tier: user.subscriptionTier, // 🟢 snake_case 추가 (DB 대응)
+            hasSeenConsentModal: user.hasSeenConsentModal ?? false,
             user: {
-                id: user.id,
-                email: user.email,
+                ...user,
                 name: user.username,
-                nickname: user.username,
                 profileImage: profileImageUrl,
-                createdAt: user.createdAt,
-                mbti: user.mbti,
-                age: user.age,
-                couponCount: user.couponCount ?? 0,
-                subscriptionTier: user.subscriptionTier, // 추가
             },
-        });
+        };
+
+        return NextResponse.json(responseData);
     } catch (e) {
         return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
     }
@@ -83,10 +77,6 @@ export async function PUT(request: NextRequest) {
                 ? Number.parseInt(String(body.age), 10)
                 : null;
 
-        if (age !== null && (!Number.isFinite(age) || age < 0)) {
-            return NextResponse.json({ error: "INVALID_AGE" }, { status: 400 });
-        }
-
         const data: any = {};
         if (name !== undefined) data.username = name;
         if (email !== undefined) data.email = email || null;
@@ -94,15 +84,6 @@ export async function PUT(request: NextRequest) {
         if (age !== undefined) data.age = age;
 
         const updated = await prisma.user.update({ where: { id: userId }, data });
-
-        // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
-        const convertToHttps = (url: string | null | undefined): string | null => {
-            if (!url) return null;
-            if (url.startsWith("http://")) {
-                return url.replace(/^http:\/\//, "https://");
-            }
-            return url;
-        };
 
         return NextResponse.json({
             success: true,
@@ -113,11 +94,14 @@ export async function PUT(request: NextRequest) {
                 mbti: updated.mbti,
                 age: updated.age,
                 createdAt: updated.createdAt,
-                profileImage: convertToHttps(updated.profileImageUrl),
+                subscriptionTier: updated.subscriptionTier, // 🟢 수정 후에도 등급이 유지되도록 추가
+                subscription_tier: updated.subscriptionTier, // 🟢 추가
+                profileImage: updated.profileImageUrl
+                    ? updated.profileImageUrl.replace(/^http:\/\//, "https://")
+                    : null,
             },
         });
     } catch (e: any) {
-        const msg = typeof e?.message === "string" ? e.message : "SERVER_ERROR";
-        return NextResponse.json({ error: msg }, { status: 500 });
+        return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
     }
 }

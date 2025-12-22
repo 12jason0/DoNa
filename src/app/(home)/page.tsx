@@ -10,6 +10,7 @@ import HeroSlider from "@/components/HeroSlider";
 import OnboardingSection from "@/components/OnboardingSection";
 import CompletionModal from "@/components/CompletionModal";
 import PersonalizedSection from "@/components/PersonalizedSection";
+import BenefitConsentModal from "@/components/BenefitConsentModal";
 
 // [변경] 기존 onboardingData에서 필요한 데이터만 가져옵니다.
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
@@ -48,6 +49,7 @@ export default function Home() {
     const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
     const [showCheckinModal, setShowCheckinModal] = useState(false);
     const [showRewardModal, setShowRewardModal] = useState(false);
+    const [showBenefitConsentModal, setShowBenefitConsentModal] = useState(false);
     const [weekStamps, setWeekStamps] = useState<boolean[]>([false, false, false, false, false, false, false]);
     const [animStamps, setAnimStamps] = useState<boolean[] | null>(null);
     const [isStamping, setIsStamping] = useState(false);
@@ -350,6 +352,13 @@ export default function Home() {
                     next: { revalidate: 300 },
                 });
                 if (res.ok) {
+                    const userData = await res.json();
+                    // 🟢 혜택 동의 모달 체크: 한 번도 안 본 사람에게만 표시
+                    if (userData.hasSeenConsentModal === false) {
+                        setTimeout(() => {
+                            setShowBenefitConsentModal(true);
+                        }, 1500); // 출석체크 모달보다 약간 늦게 표시
+                    }
                     // 출석체크 모달은 한 번만 열리도록 hasShownCheckinModalRef로 제어
                     if (!hasShownCheckinModalRef.current) {
                         setTimeout(() => {
@@ -382,15 +391,18 @@ export default function Home() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    // HeroSlider용 별도 데이터 로드 및 3일 로테이션 로직 - 최적화
+    // HeroSlider용 별도 데이터 로드 및 3일 로테이션 로직 - 최우선 로딩
+    // 다른 useEffect보다 먼저 실행되도록 의존성 없이 즉시 실행
     useEffect(() => {
         const fetchHeroData = async () => {
             try {
-                // ✅ 최적화: 5개만 필요하므로 limit=20으로 줄임 (FREE 필터링은 클라이언트에서)
-                const res = await fetch("/api/courses?limit=20&imagePolicy=any", {
-                    next: { revalidate: 300 },
-                    // requestIdleCallback로 지연 로딩
+                // ✅ 최적화: 캐시 사용 + 최소 데이터만 가져오기 (5개만 필요하므로 limit=5)
+                // ✅ cache: 'force-cache'로 브라우저 캐시 강제 사용 (가장 빠름)
+                const res = await fetch("/api/courses?limit=5&imagePolicy=any&grade=FREE", {
+                    cache: "force-cache", // 브라우저 캐시 강제 사용 (가장 빠른 로딩)
+                    next: { revalidate: 3600 }, // 1시간 캐시 (서버 캐시)
                 });
+
                 if (!res.ok) {
                     // courses 상태에서 데이터 가져오기 시도
                     if (courses.length > 0) {
@@ -406,10 +418,9 @@ export default function Home() {
                 const data = await res.json();
                 const allCourses = Array.isArray(data) ? data : data.courses || [];
 
-                // 1. FREE 등급 코스만 필터링
+                // FREE 등급 코스만 필터링 (API에서 이미 필터링했지만 이중 체크)
                 const freeCourses = allCourses.filter((c: any) => c.grade === "FREE");
-                // FREE가 없으면 전체 사용
-                const targetCourses = freeCourses.length > 0 ? freeCourses : allCourses;
+                const targetCourses = freeCourses.length > 0 ? freeCourses : allCourses.slice(0, 10);
 
                 // 이미지 폴백 처리
                 const processed = targetCourses.map((c: any) => ({
@@ -425,7 +436,7 @@ export default function Home() {
                 const selected: Course[] = [];
                 if (count > 0) {
                     const startIndex = threeDayEpoch % count;
-                    for (let i = 0; i < 5; i++) {
+                    for (let i = 0; i < Math.min(5, count); i++) {
                         selected.push(processed[(startIndex + i) % count]);
                     }
                 }
@@ -443,15 +454,9 @@ export default function Home() {
             }
         };
 
-        // ✅ requestIdleCallback로 지연 로딩 (페이지 초기 로딩 후에 실행)
-        const idle = (cb: () => void) =>
-            "requestIdleCallback" in window
-                ? (window as any).requestIdleCallback(cb, { timeout: 2000 })
-                : setTimeout(cb, 500);
-        idle(() => {
-            fetchHeroData();
-        });
-    }, []); // 마운트 시 한 번만 실행
+        // ✅ 즉시 로딩 (지연 제거로 빠른 표시) - 다른 데이터 로딩보다 우선
+        fetchHeroData();
+    }, []); // 마운트 시 한 번만 실행 (의존성 없음으로 최우선 실행)
 
     const topCourses = courses.slice(0, 5);
     const hotCourses = courses
@@ -583,6 +588,7 @@ export default function Home() {
                 </div>
             )}
             <CompletionModal isOpen={showRewardModal} onClose={() => setShowRewardModal(false)} />
+            <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
             {showWelcome && (
                 <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in hover:cursor-pointer">
                     <div className="flex items-center space-x-2">

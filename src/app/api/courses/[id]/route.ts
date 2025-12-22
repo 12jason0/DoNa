@@ -1,7 +1,7 @@
 // src/app/api/courses/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { resolveUserId } from "@/lib/auth"; // 🟢 resolveUserId 사용 (쿠키도 확인)
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +24,49 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // } catch (e) {
         //     console.warn("View count increment failed for course", courseId, e);
         // }
+
+        // 🟢 [수정] resolveUserId 사용: Authorization 헤더 + 쿠키 모두 확인
+        const userId = resolveUserId(request);
+        let userTier = "FREE";
+        let hasUnlocked = false;
+
+        if (userId) {
+            // 유저 등급 정보 조회
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { subscriptionTier: true },
+            });
+            if (user?.subscriptionTier) {
+                userTier = user.subscriptionTier;
+            }
+
+            // 🟢 [핵심] DB에 있는 구매 내역(CourseUnlock)을 다시 확인
+            const unlock = await (prisma as any).courseUnlock.findFirst({
+                where: {
+                    userId: userId,
+                    courseId: courseId,
+                },
+            });
+            hasUnlocked = !!unlock;
+
+            // 디버깅용 로그 (개발 환경에서만)
+            if (process.env.NODE_ENV === "development") {
+                console.log(
+                    `[Course ${courseId}] User ${userId}: hasUnlocked=${hasUnlocked}, userTier=${userTier}, unlock record:`,
+                    unlock
+                );
+            }
+        } else {
+            // 디버깅용 로그
+            if (process.env.NODE_ENV === "development") {
+                console.log(
+                    `[Course ${courseId}] No user ID found. Auth header:`,
+                    request.headers.get("authorization"),
+                    "Cookie:",
+                    request.cookies.get("auth")?.value ? "exists" : "none"
+                );
+            }
+        }
 
         const course = await (prisma as any).course.findUnique({
             where: { id: courseId },
@@ -49,6 +92,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (!course) {
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
+
+        // 🟢 권한 판별: FREE 코스이거나, PREMIUM/BASIC 등급이거나, 개별 구매 기록이 있으면 접근 가능
+        const courseGrade = course.grade || "FREE";
+        const hasAccess = courseGrade === "FREE" || userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked;
+        const isLocked = !hasAccess;
 
         // 기본 course 정보 가공
         const formattedCourse = {
@@ -117,6 +165,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             benefits: course.benefits || [],
             notices: course.courseNotices || [],
             coursePlaces,
+            // 🟢 권한 정보 추가
+            grade: courseGrade,
+            isLocked,
+            hasAccess,
+            userTier,
         };
 
         return NextResponse.json(payload);
@@ -134,7 +187,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const userIdStr = getUserIdFromRequest(request);
+        const userId = resolveUserId(request);
+        const userIdStr = userId ? String(userId) : null;
         if (!userIdStr) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
@@ -219,7 +273,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const userIdStr = getUserIdFromRequest(request);
+        const userId = resolveUserId(request);
+        const userIdStr = userId ? String(userId) : null;
         if (!userIdStr) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }

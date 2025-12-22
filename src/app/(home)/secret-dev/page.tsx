@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import KakaoChannelModal from "@/components/KakaoChannelModal";
+import ComingSoonModal from "@/components/ComingSoonModal";
 import Script from "next/script";
 
 // 두나 브랜드 컬러 및 에셋 (layout.tsx 참고함)
@@ -267,26 +268,7 @@ const LandingPage = () => {
 
             {/* ✅ 사건 파일 준비 중 모달 */}
             {showEscapeComingSoon && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[5000]"
-                    onClick={() => setShowEscapeComingSoon(false)}
-                >
-                    <div
-                        className="bg-white rounded-xl border border-gray-100 p-6 w-80 animate-fade-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="text-center mb-4">
-                            <div className="text-lg font-bold text-gray-900 mb-2">Coming soon</div>
-                            <p className="text-gray-600">곧 공개됩니다. 조금만 기다려 주세요!</p>
-                        </div>
-                        <button
-                            onClick={() => setShowEscapeComingSoon(false)}
-                            className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-all cursor-pointer tracking-tight"
-                        >
-                            닫기
-                        </button>
-                    </div>
-                </div>
+                <ComingSoonModal onClose={() => setShowEscapeComingSoon(false)} />
             )}
 
             {/* ✅ 로그인 시 카카오톡 채널 모달 */}

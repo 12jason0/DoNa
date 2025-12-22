@@ -41,7 +41,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 {/* 데스크톱용 좌측 다운로드 히어로 패널 */}
                 <section className="hidden min-[600px]:block relative w-[600px] h-full overflow-y-auto no-scrollbar">
                     <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/40 to-transparent" />
-                    <div className="relative min-h-full flex flex-col justify-center py-20">
+                    <div className="relative min-h-full flex flex-col justify-center">
                         <div className="px-10 max-w-[520px] text-white space-y-6">
                             {/* 1. 로고 및 앱 이름 */}
                             <div className="inline-block">
@@ -126,9 +126,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     <p>
                                         <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
                                     </p>
-
                                     <p>
                                         <strong>고객센터:</strong> 12jason@donacouse.com
+                                    </p>
+                                    <p>
+                                        <strong>유선번호:</strong> 010-2271-9824
                                     </p>
                                 </div>
                             </div>

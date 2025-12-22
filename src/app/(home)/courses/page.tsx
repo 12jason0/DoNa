@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // 60초 캐싱
+export const revalidate = 300; // 5분 캐싱 (성능 최적화)
 
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // Default params for initial load
@@ -32,21 +32,35 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         where.concept = { contains: concept, mode: "insensitive" };
     }
 
-    // ✅ [유저 등급 확인]
+    // ✅ [유저 등급 확인 및 잠금 해제된 코스 목록 조회]
     const cookieStore = await cookies();
     const token = cookieStore.get("auth")?.value;
     let userTier = "FREE";
+    let unlockedCourseIds: number[] = []; // 🟢 쿠폰으로 구매한 코스 ID 목록
 
     if (token) {
         try {
             const userId = verifyJwtAndGetUserId(token);
             if (userId) {
+                const userIdNum = Number(userId);
                 const user = await prisma.user.findUnique({
-                    where: { id: Number(userId) },
+                    where: { id: userIdNum },
                     select: { subscriptionTier: true },
                 });
                 if (user) {
                     userTier = user.subscriptionTier;
+                }
+
+                // 🟢 CourseUnlock 테이블에서 잠금 해제된 코스 ID 목록 가져오기
+                try {
+                    const unlocks = await (prisma as any).courseUnlock.findMany({
+                        where: { userId: userIdNum },
+                        select: { courseId: true },
+                    });
+                    unlockedCourseIds = unlocks.map((u: any) => u.courseId);
+                } catch (error) {
+                    console.error("[CourseUnlock 조회 실패]", error);
+                    // 에러가 나도 계속 진행 (빈 배열로 처리)
                 }
             }
         } catch (e) {
@@ -102,8 +116,15 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         // 잠금 계산
         let isLocked = false;
         const courseGrade = course.grade || "FREE";
+        const courseId = Number(course.id);
 
-        if (userTier === "PREMIUM") {
+        // 🟢 먼저 CourseUnlock 확인: 쿠폰으로 구매한 코스는 무조건 잠금 해제
+        const hasUnlocked = unlockedCourseIds.includes(courseId);
+
+        if (hasUnlocked) {
+            // 쿠폰으로 구매한 코스는 등급과 상관없이 열람 가능
+            isLocked = false;
+        } else if (userTier === "PREMIUM") {
             isLocked = false;
         } else if (userTier === "BASIC") {
             if (courseGrade === "PREMIUM") isLocked = true;

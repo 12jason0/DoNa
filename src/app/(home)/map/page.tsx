@@ -667,8 +667,8 @@ function MapPageInner() {
 
                 {/* 토스트 메시지 */}
                 <div
-                    className={`absolute bottom-24 left-1/2 transform -translate-x-1/2 z-[60] transition-all duration-300 pointer-events-none ${
-                        toastMessage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                    className={`absolute top-24 left-1/2 transform -translate-x-1/2 z-[60] transition-all duration-300 pointer-events-none ${
+                        toastMessage ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                     }`}
                 >
                     <div className="bg-gray-800/95 text-white px-5 py-3 rounded-full text-sm font-bold shadow-xl backdrop-blur-md whitespace-nowrap flex items-center gap-2 border border-gray-700">

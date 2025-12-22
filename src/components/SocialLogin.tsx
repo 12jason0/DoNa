@@ -13,7 +13,22 @@ export default function SocialLogin({ onSuccess, onError }: SocialLoginProps) {
     const handleKakaoLogin = async () => {
         setIsLoading("kakao");
         try {
-            // 카카오 OAuth 팝업 방식으로 변경
+            // 모바일 앱 환경 감지
+            // 1. ReactNativeWebView가 있으면 앱 환경
+            // 2. User-Agent에 특정 패턴이 있으면 앱 환경 (추가 체크)
+            const isMobileApp =
+                !!(window as any).ReactNativeWebView ||
+                /ReactNative|Expo/i.test(navigator.userAgent) ||
+                navigator.userAgent.includes("wv"); // Android WebView
+
+            // 모바일 앱에서는 팝업 대신 리디렉션 방식 사용
+            if (isMobileApp) {
+                // 리디렉션 방식: 현재 창에서 카카오 인증 페이지로 이동
+                window.location.href = "/api/auth/kakao";
+                return; // 리디렉션되므로 여기서 종료
+            }
+
+            // 웹 환경에서는 팝업 방식 사용
             const kakaoClientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
             const redirectUri = `${window.location.origin}/api/auth/kakao/callback`;
 

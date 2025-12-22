@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // 60초 캐싱
+export const revalidate = 300; // 5분 캐싱 (성능 최적화)
 
 async function getInitialNearbyCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // 1. URL 파라미터 파싱
