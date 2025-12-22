@@ -106,14 +106,17 @@ export default function WebScreen({ uri: initialUri }: Props) {
                             return false; // 웹뷰가 이 주소를 로드하려다 -1002 에러를 내는 것을 원천 봉쇄
                         }
 
-                        // 카카오톡 앱 실행 주소(딥링크) 처리
+                        // 🟢 카카오톡 앱 실행 주소(딥링크) 처리 (카카오톡 앱 인증 URL 추가)
                         if (
+                            url.startsWith("kakaokompassauth://") || // 🟢 카카오톡 앱 인증 (가장 중요!)
                             url.startsWith("kakaolink://") ||
+                            url.startsWith("kakaotalk://") || // 🟢 일반 카카오톡 실행 주소
                             url.startsWith("kakaokommunication://") ||
                             url.startsWith("intent://")
                         ) {
+                            // 시스템 브라우저/외부 앱으로 토스
                             openExternalBrowser(url);
-                            return false;
+                            return false; // 🔴 웹뷰 내부 로딩 차단하여 -1002 에러 방지
                         }
 
                         // 내부 도메인 허용
