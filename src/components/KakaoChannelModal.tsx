@@ -12,7 +12,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
     const router = useRouter();
 
     const handleKakaoChannel = () => {
-        window.open("https://pf.kakao.com/_xxxx/chat", "_blank");
+        window.open("https://pf.kakao.com/_uxnZHn/chat", "_blank");
         onClose();
     };
 

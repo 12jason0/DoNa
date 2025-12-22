@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, memo } from "react";
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -19,13 +19,13 @@ type HeroSliderProps = {
     items: SliderItem[];
 };
 
-// SliderItem 컴포넌트를 memo로 최적화
+// 🟢 성능 최적화: SliderItem 컴포넌트를 memo로 최적화 + 비교 함수 추가
 const SliderItemComponent = memo(
     ({ item, idx, realLength, items }: { item: SliderItem; idx: number; realLength: number; items: SliderItem[] }) => {
-        // 현재 보이는 슬라이드와 인접한 슬라이드만 이미지 로드
-        const isVisible = idx === realLength || idx === realLength - 1 || idx === realLength + 1;
-        const shouldLoad = items.length === 1 || isVisible || idx === 0 || idx === items.length * 2;
-        // 첫 번째 보이는 이미지는 최우선 로드
+        // 🟢 성능 최적화: 현재 보이는 슬라이드와 바로 다음 슬라이드만 이미지 로드
+        const isVisible = idx === realLength || idx === realLength + 1;
+        const shouldLoad = items.length === 1 || isVisible;
+        // 첫 번째 보이는 이미지만 priority
         const isFirstVisible = idx === realLength || (items.length === 1 && idx === 0);
 
         return (
@@ -42,11 +42,12 @@ const SliderItemComponent = memo(
                             alt={item.location || "Course Image"}
                             fill
                             className="object-cover"
-                            priority={isFirstVisible} // 첫 번째 보이는 이미지만 priority (가장 빠르게)
-                            loading={shouldLoad ? "eager" : "lazy"} // 보이는 것은 eager, 나머지는 lazy
-                            quality={70} // Next.js 설정에 맞춤 (70)
+                            priority={isFirstVisible} // 🟢 첫 번째 이미지만 priority
+                            loading={shouldLoad ? "eager" : "lazy"} // 🟢 보이는 것만 eager, 나머지는 lazy
+                            quality={60} // 🟢 성능 최적화: quality 낮춤 (60)
                             sizes="(max-width: 768px) 100vw, 400px"
-                            fetchPriority={isFirstVisible ? "high" : "auto"} // 🟢 첫 이미지 우선순위 최고
+                            fetchPriority={isFirstVisible ? "high" : "low"} // 🟢 첫 이미지만 high, 나머지는 low
+                            unoptimized={false} // Next.js 최적화 사용
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
@@ -75,6 +76,8 @@ const SliderItemComponent = memo(
                                         height={14}
                                         alt="icon"
                                         className="invert brightness-0"
+                                        loading="lazy" // 🟢 아이콘은 lazy loading
+                                        quality={50} // 🟢 작은 아이콘이므로 quality 낮춤
                                     />
                                 )}
                                 {item.concept}
@@ -86,10 +89,24 @@ const SliderItemComponent = memo(
                             (item.tags?.[0] ? `#${item.tags[0]} 핫플레이스` : `${item.location || "이곳"}의 매력`)}
                     </h4>
                     <p className="text-sm text-gray-200 font-medium opacity-90 line-clamp-1">
-                        {item.tags?.map((t) => `#${t}`).join(" ")}
+                        {item.tags
+                            ?.slice(0, 3)
+                            .map((t) => `#${t}`)
+                            .join(" ")}{" "}
+                        {/* 🟢 최대 3개만 표시 */}
                     </p>
                 </div>
             </Link>
+        );
+    },
+    // 🟢 성능 최적화: 비교 함수로 불필요한 리렌더링 방지
+    (prevProps, nextProps) => {
+        return (
+            prevProps.item.id === nextProps.item.id &&
+            prevProps.item.imageUrl === nextProps.item.imageUrl &&
+            prevProps.idx === nextProps.idx &&
+            prevProps.realLength === nextProps.realLength &&
+            prevProps.items.length === nextProps.items.length
         );
     }
 );
@@ -120,13 +137,13 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         }
     }, [realLength]);
 
-    // 무한 스크롤 보정 로직 (onScroll에서 처리) - throttle 적용
-    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const handleScroll = () => {
-        if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
+    // 🟢 성능 최적화: requestAnimationFrame 사용 + useCallback 메모이제이션
+    const rafRef = useRef<number | null>(null);
+    const handleScroll = useCallback(() => {
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
         }
-        scrollTimeoutRef.current = setTimeout(() => {
+        rafRef.current = requestAnimationFrame(() => {
             if (scrollRef.current && realLength > 1) {
                 const scrollLeftVal = scrollRef.current.scrollLeft;
                 const width = scrollRef.current.offsetWidth;
@@ -151,48 +168,57 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                     });
                 }
             }
-        }, 16); // ~60fps
-    };
+        });
+    }, [realLength]);
 
-    // cleanup
+    // 🟢 cleanup: requestAnimationFrame 정리
     useEffect(() => {
         return () => {
-            if (scrollTimeoutRef.current) {
-                clearTimeout(scrollTimeoutRef.current);
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
             }
         };
     }, []);
 
-    // --- Mouse Drag Handlers (복원됨) ---
-    const onMouseDown = (e: React.MouseEvent) => {
+    // 🟢 성능 최적화: Mouse Drag Handlers를 useCallback으로 메모이제이션
+    const onMouseDown = useCallback((e: React.MouseEvent) => {
         setIsDragging(true);
         if (scrollRef.current) {
             setStartX(e.pageX - scrollRef.current.offsetLeft);
             setScrollLeft(scrollRef.current.scrollLeft);
         }
-    };
+    }, []);
 
-    const onMouseLeave = () => {
+    const onMouseLeave = useCallback(() => {
         setIsDragging(false);
-    };
+    }, []);
 
-    const onMouseUp = () => {
+    const onMouseUp = useCallback(() => {
         setIsDragging(false);
-    };
+    }, []);
 
-    const onMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        if (scrollRef.current) {
-            const x = e.pageX - scrollRef.current.offsetLeft;
-            const walk = (x - startX) * 2; // scroll-fast
-            scrollRef.current.scrollLeft = scrollLeft - walk;
-        }
-    };
+    const onMouseMove = useCallback(
+        (e: React.MouseEvent) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            if (scrollRef.current) {
+                const x = e.pageX - scrollRef.current.offsetLeft;
+                const walk = (x - startX) * 2;
+                scrollRef.current.scrollLeft = scrollLeft - walk;
+            }
+        },
+        [isDragging, startX, scrollLeft]
+    );
 
-    // 자동 스크롤 - 드래그 중에는 일시정지
+    // 🟢 성능 최적화: 자동 스크롤 지연 시작 (초기 로딩 후 2초 후 시작)
+    const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
     useEffect(() => {
-        if (realLength <= 1 || isDragging) return;
+        const timer = setTimeout(() => setAutoScrollEnabled(true), 2000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (realLength <= 1 || isDragging || !autoScrollEnabled) return;
 
         const interval = setInterval(() => {
             if (scrollRef.current && !isDragging) {
@@ -204,10 +230,10 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                     behavior: "smooth",
                 });
             }
-        }, 4000);
+        }, 5000); // 🟢 자동 스크롤 간격 증가 (4초 -> 5초)
 
         return () => clearInterval(interval);
-    }, [currentIndex, realLength, isDragging]);
+    }, [currentIndex, realLength, isDragging, autoScrollEnabled]);
 
     if (!items || items.length === 0) return null;
 
