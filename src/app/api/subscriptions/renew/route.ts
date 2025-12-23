@@ -2,22 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { SubscriptionTier } from "@prisma/client";
 
+// 캐싱을 방지하고 항상 최신 데이터를 가져오도록 설정
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * 구독권 자동갱신 API
- * Vercel Cron Jobs로 매일 오전 2시에 실행됩니다.
- *
- * 처리 로직:
- * 1. 만료일이 1일 이내인 구독 찾기 (isAutoRenewal: true, billingKey 존재)
- * 2. 각 구독에 대해 빌링키로 자동결제 시도
- * 3. 결제 성공 시 구독 기간 연장 (30일)
- * 4. 결제 실패 시 등급을 FREE로 변경 및 알림
+ * [Vercel Cron Jobs용 API]
+ * 매일 정해진 시간에 실행되어 만료 예정 유저의 결제를 처리합니다.
  */
 export async function GET(req: NextRequest) {
     try {
-        // 🟢 보안: Vercel Cron Jobs에서만 호출 가능하도록 검증
+        // 1. 보안 검증: 외부인이 주소를 알아내어 강제로 결제를 실행하는 것을 방지합니다.
         const authHeader = req.headers.get("authorization");
         const cronSecret = process.env.CRON_SECRET || "default-secret-change-in-production";
 
@@ -25,21 +20,22 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // 2. 날짜 설정: 현재 시간으로부터 24시간(내일) 내에 만료되는 유저를 찾습니다.
         const now = new Date();
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // 🟢 만료일이 1일 이내인 구독 찾기 (자동갱신 활성화, 빌링키 존재)
+        // 3. 대상 유저 조회: 자동갱신이 켜져 있고, 빌링키가 있는 유료 멤버십 유저만 추출합니다.
         const expiringSubscriptions = await prisma.user.findMany({
             where: {
                 isAutoRenewal: true,
                 billingKey: { not: null },
                 subscriptionExpiresAt: {
-                    lte: tomorrow, // 내일까지 만료되는 구독
-                    gte: now, // 아직 만료되지 않은 구독
+                    lte: tomorrow, // 내일까지 만료되는 건
+                    gte: now, // 아직 만료되지 않은 건
                 },
                 subscriptionTier: {
-                    in: ["BASIC", "PREMIUM"], // FREE는 제외
+                    in: ["BASIC", "PREMIUM"],
                 },
             },
             select: {
@@ -59,7 +55,7 @@ export async function GET(req: NextRequest) {
             errors: [] as Array<{ userId: number; error: string }>,
         };
 
-        // 🟢 각 구독에 대해 자동결제 처리
+        // 4. 개별 결제 루프: 각 유저별로 토스 API를 호출하여 돈을 인출합니다.
         for (const user of expiringSubscriptions) {
             try {
                 await processSubscriptionRenewal(user.id, user.billingKey!, user.subscriptionTier);
@@ -72,7 +68,7 @@ export async function GET(req: NextRequest) {
                     error: error.message || "Unknown error",
                 });
 
-                // 🟢 결제 실패 시 등급을 FREE로 변경
+                // 결제 실패 시(카드 한도 초과 등) 유저 등급을 FREE로 강등하고 자동갱신을 끕니다.
                 try {
                     await prisma.user.update({
                         where: { id: user.id },
@@ -107,29 +103,31 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * 개별 구독 갱신 처리 함수
+ * 실제 토스 결제를 진행하고 DB를 업데이트하는 핵심 함수
  */
 async function processSubscriptionRenewal(userId: number, billingKey: string, currentTier: SubscriptionTier) {
-    // 🟢 플랜 정보 결정
+    // 1. 상품 정보 설정: 현재 유저의 등급에 맞춰 결제 금액을 결정합니다.
     const planInfo =
         currentTier === "PREMIUM"
             ? { amount: 9900, name: "프리미엄 멤버십", tier: "PREMIUM" }
             : { amount: 4900, name: "베이직 멤버십", tier: "BASIC" };
 
-    // 🟢 토스페이먼츠 API 인증
+    // 2. 토스 API 인증 정보 준비
     const secretKey = process.env.TOSS_SECRET_KEY || "test_sk_kYG57Eba3GPBnNXMe5d5VpWDOxmA";
     const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
 
-    // 🟢 주문 ID 생성
+    // 3. 고유 주문번호(orderId) 생성: 이 번호는 결제 시마다 항상 고유해야 합니다.
     const orderId = `renew_${currentTier.toLowerCase()}_${userId}_${Date.now()}`;
     const customerKey = `user_${userId}`;
 
-    // 🟢 빌링키로 자동결제 요청
+    // 4. 토스페이먼츠 자동결제 요청 실행
     const billingPaymentResponse = await fetch(`https://api.tosspayments.com/v1/billing/${billingKey}`, {
         method: "POST",
         headers: {
             Authorization: `Basic ${authHeader}`,
             "Content-Type": "application/json",
+            // ⭐ 멱등키 적용: 네트워크 문제로 중복 요청이 가더라도 토스 서버가 돈을 중복 인출하지 않게 보호합니다.
+            "Idempotency-Key": orderId,
         },
         body: JSON.stringify({
             customerKey: customerKey,
@@ -141,17 +139,18 @@ async function processSubscriptionRenewal(userId: number, billingKey: string, cu
 
     const billingPaymentData = await billingPaymentResponse.json();
 
+    // 토스 서버에서 에러를 보냈을 경우 중단하고 catch 블록으로 넘깁니다.
     if (!billingPaymentResponse.ok) {
         throw new Error(billingPaymentData.message || "빌링 결제 승인 실패");
     }
 
-    // 🟢 결제 성공 시 DB 업데이트
+    // 5. DB 업데이트: '결제 기록 생성'과 '유저 기간 연장'을 하나의 묶음(Transaction)으로 처리합니다.
     const now = new Date();
     const newExpiresAt = new Date(now);
-    newExpiresAt.setDate(newExpiresAt.getDate() + 30); // 30일 연장
+    newExpiresAt.setDate(newExpiresAt.getDate() + 30); // 구독 기간 30일 연장
 
     await prisma.$transaction(async (tx: any) => {
-        // 결제 기록 생성
+        // [작업 A] 결제 이력 테이블에 데이터 기록
         await tx.payment.create({
             data: {
                 orderId: orderId,
@@ -165,15 +164,16 @@ async function processSubscriptionRenewal(userId: number, billingKey: string, cu
             },
         });
 
-        // 구독 기간 연장
+        // [작업 B] 유저 테이블의 구독 만료일 업데이트
         await tx.user.update({
             where: { id: userId },
             data: {
                 subscriptionTier: planInfo.tier,
                 subscriptionExpiresAt: newExpiresAt,
-                isAutoRenewal: true, // 자동갱신 유지
+                isAutoRenewal: true,
             },
         });
+        // 트랜잭션 덕분에 A와 B 중 하나라도 실패하면 전체 작업이 취소되어 데이터 꼬임을 방지합니다.
     });
 
     console.log(
