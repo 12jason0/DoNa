@@ -76,8 +76,8 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
             if (res.ok) {
                 setHasNotification(true);
-                alert("오픈 알림이 신청되었습니다! 🔔");
-                onClose();
+        alert("오픈 알림이 신청되었습니다! 🔔");
+        onClose();
             } else {
                 const data = await res.json();
                 alert(data.error || "알림 신청에 실패했습니다.");
@@ -131,23 +131,23 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                 <div className="space-y-3">
                     {/* 🟢 이미 알림을 신청한 경우 버튼 숨김 */}
                     {!isLoading && !hasNotification && (
-                        <button
-                            onClick={handleNotification}
+                    <button
+                        onClick={handleNotification}
                             disabled={isSubmitting}
-                            style={{ backgroundColor: "#7aa06f" }}
+                        style={{ backgroundColor: "#7aa06f" }}
                             className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {/* 알림 종 아이콘 추가 */}
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="w-4 h-4"
                         >
-                            {/* 알림 종 아이콘 추가 */}
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="w-4 h-4"
-                            >
-                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                            </svg>
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                        </svg>
                             {isSubmitting ? "처리 중..." : "오픈 알림 받기"}
-                        </button>
+                    </button>
                     )}
 
                     {/* 🟢 이미 알림을 신청한 경우 안내 메시지 */}

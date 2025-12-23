@@ -6,11 +6,10 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300; // 5분 캐싱 (성능 최적화)
+export const revalidate = 600; // 🟢 10분 캐싱으로 증가 (성능 최적화)
 
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
-    // 🟢 성능 최적화: 초기 로딩은 20개만 (나머지는 클라이언트에서 로드)
-    const limit = 20;
+    // 🟢 전체 코스 로드: limit 제거 (전체 코스 표시)
 
     // Simplified query for initial load
     // We replicate the core logic of /api/courses
@@ -32,7 +31,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         where.concept = { contains: concept, mode: "insensitive" };
     }
 
-    // ✅ [유저 등급 확인 및 잠금 해제된 코스 목록 조회]
+    // ✅ [유저 등급 확인 및 잠금 해제된 코스 목록 조회] - 최적화: 로그인한 경우에만 조회
     const cookieStore = await cookies();
     const token = cookieStore.get("auth")?.value;
     let userTier = "FREE";
@@ -43,25 +42,23 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             const userId = verifyJwtAndGetUserId(token);
             if (userId) {
                 const userIdNum = Number(userId);
-                const user = await prisma.user.findUnique({
-                    where: { id: userIdNum },
-                    select: { subscriptionTier: true },
-                });
-                if (user) {
-                    userTier = user.subscriptionTier;
-                }
-
-                // 🟢 CourseUnlock 테이블에서 잠금 해제된 코스 ID 목록 가져오기
-                try {
-                    const unlocks = await (prisma as any).courseUnlock.findMany({
+                // 🟢 성능 최적화: 병렬 조회로 속도 향상
+                const [user, unlocks] = await Promise.all([
+                    prisma.user.findUnique({
+                        where: { id: userIdNum },
+                        select: { subscriptionTier: true },
+                    }),
+                    // CourseUnlock 조회는 선택적으로만 (에러 발생 시 무시)
+                    (prisma as any).courseUnlock.findMany({
                         where: { userId: userIdNum },
                         select: { courseId: true },
-                    });
-                    unlockedCourseIds = unlocks.map((u: any) => u.courseId);
-                } catch (error) {
-                    console.error("[CourseUnlock 조회 실패]", error);
-                    // 에러가 나도 계속 진행 (빈 배열로 처리)
+                    }).catch(() => []),
+                ]);
+                
+                if (user?.subscriptionTier) {
+                    userTier = user.subscriptionTier;
                 }
+                unlockedCourseIds = Array.isArray(unlocks) ? unlocks.map((u: any) => u.courseId) : [];
             }
         } catch (e) {
             // 토큰이 유효하지 않은 경우 무시 (FREE로 유지)
@@ -71,10 +68,11 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
     // isPublic 필터 추가 및 필요한 필드만 선택
     const whereWithPublic = { ...where, isPublic: true };
 
+    // 🟢 성능 최적화: 처음 30개만 로드 (무한 스크롤로 추가 로드)
     const courses = await prisma.course.findMany({
         where: whereWithPublic,
         orderBy: { id: "desc" },
-        take: limit,
+        take: 30, // 🟢 처음 30개만 로드
         select: {
             id: true,
             title: true,
@@ -92,14 +90,12 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
                 take: 1, // 첫 번째 장소만
                 orderBy: { order_index: "asc" },
                 select: {
-                    order_index: true,
                     place: {
                         select: {
                             id: true,
                             name: true,
                             imageUrl: true,
-                            // latitude, longitude는 리스트에서 불필요하므로 제거
-                            // opening_hours, closed_days도 리스트에서 불필요
+                            // 🟢 불필요한 필드 제거로 쿼리 속도 향상
                         },
                     },
                 },

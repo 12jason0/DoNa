@@ -8,7 +8,7 @@ import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData, Review } from "./CourseDetailClient";
 import { unstable_cache } from "next/cache";
 
-// 1. 데이터 페칭 함수 (코스 정보 캐싱)
+// 1. 데이터 페칭 함수 (코스 정보 캐싱) - 🟢 성능 최적화: include 사용 (안정성 우선)
 const getCourse = unstable_cache(
     async (id: string): Promise<CourseData | null> => {
         const courseId = Number(id);
@@ -19,14 +19,30 @@ const getCourse = unstable_cache(
                 include: {
                     highlights: true,
                     coursePlaces: {
-                        include: { place: { include: { closed_days: true } } },
+                        include: {
+                            place: {
+                                include: {
+                                    closed_days: true,
+                                },
+                            },
+                        },
                         orderBy: { order_index: "asc" },
                     },
                     courseDetail: true,
-                    _count: { select: { coursePlaces: true } },
+                    _count: {
+                        select: { coursePlaces: true },
+                    },
                 },
             });
-            if (!course) return null;
+            if (!course) {
+                console.error(`[CourseDetail] 코스를 찾을 수 없습니다: ${courseId}`);
+                return null;
+            }
+
+            // 🟢 에러 처리: courseDetail이 null일 수 있음
+            const courseDetail = course.courseDetail || null;
+            const highlights = course.highlights || [];
+            const coursePlaces = course.coursePlaces || [];
 
             return {
                 id: String(course.id),
@@ -42,15 +58,15 @@ const getCourse = unstable_cache(
                 rating: Number(course.rating),
                 isPopular: course.isPopular,
                 grade: course.grade || "FREE",
-                recommended_start_time: course.courseDetail?.recommended_start_time || "오후 2시",
-                season: course.courseDetail?.season || "사계절",
-                courseType: course.courseDetail?.course_type || "데이트",
-                transportation: course.courseDetail?.transportation || "도보",
-                reservationRequired: (course as any).reservationRequired || false,
+                recommended_start_time: courseDetail?.recommended_start_time || "오후 2시",
+                season: courseDetail?.season || "사계절",
+                courseType: courseDetail?.course_type || "데이트",
+                transportation: courseDetail?.transportation || "도보",
+                reservationRequired: coursePlaces.some((cp: any) => cp.place?.reservation_required) || false,
                 createdAt: course.createdAt.toISOString(),
                 updatedAt: course.updatedAt.toISOString(),
-                highlights: course.highlights,
-                coursePlaces: course.coursePlaces.map((cp: any) => ({
+                highlights: highlights,
+                coursePlaces: coursePlaces.map((cp: any) => ({
                     ...cp,
                     place: {
                         ...cp.place,
@@ -64,30 +80,43 @@ const getCourse = unstable_cache(
                 })),
             };
         } catch (e) {
+            console.error(`[CourseDetail] 코스 데이터 로드 실패 (ID: ${id}):`, e);
             return null;
         }
     },
     ["course-detail"],
-    { revalidate: 300, tags: ["course-detail"] } // 5분 캐싱 (성능 최적화)
+    { revalidate: 600, tags: ["course-detail"] } // 🟢 10분 캐싱으로 증가 (성능 최적화)
 );
 
-// 리뷰 페칭 함수
+// 리뷰 페칭 함수 - 🟢 성능 최적화: 필요한 필드만 선택
 async function getReviews(id: string): Promise<Review[]> {
     const courseId = Number(id);
     if (isNaN(courseId)) return [];
     try {
         const reviews = await prisma.review.findMany({
             where: { courseId: courseId },
-            include: { user: true },
+            select: {
+                id: true,
+                rating: true,
+                comment: true,
+                imageUrls: true,
+                createdAt: true,
+                user: {
+                    select: {
+                        username: true, // 🟢 nickname이 아니라 username 사용
+                    },
+                },
+            },
             orderBy: { createdAt: "desc" },
+            take: 20, // 🟢 최근 20개만 로드 (성능 최적화)
         });
         return reviews.map((r: any) => ({
             id: r.id,
             rating: r.rating,
-            userName: r.user?.nickname || "익명",
+            userName: r.user?.username || "익명", // 🟢 username 사용
             createdAt: r.createdAt.toISOString(),
             content: r.comment || "",
-            imageUrls: r.imageUrls || [],
+            imageUrls: Array.isArray(r.imageUrls) ? r.imageUrls : [],
         }));
     } catch (e) {
         return [];

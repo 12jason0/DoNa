@@ -8,11 +8,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // 1. 파라미터 가져오기
-    const keyword = (searchParams.get("keyword") || searchParams.get("region") || "").trim();
+    const keyword = (searchParams.get("keyword") || searchParams.get("region") || searchParams.get("q") || "").trim();
     const concept = (searchParams.get("concept") || "").trim();
     const tagIdsParam = searchParams.get("tagIds") || "";
+    // 🟢 무한 스크롤을 위한 offset/limit 추가
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
+    const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 100) : 30;
+    const offset = offsetParam ? Math.max(Number(offsetParam), 0) : 0;
 
-    console.log(`[API] 필터요청: 키워드="${keyword}" / 컨셉="${concept}" / 태그="${tagIdsParam}"`);
+    console.log(`[API] 필터요청: 키워드="${keyword}" / 컨셉="${concept}" / 태그="${tagIdsParam}" / limit=${limit} / offset=${offset}`);
 
     // 2. 검색 조건 구성 (AND 조건으로 하나씩 추가)
     const andConditions: any[] = [];
@@ -67,7 +72,9 @@ export async function GET(request: NextRequest) {
 
     // 3. 최종 Where 절 만들기
     // 조건이 하나라도 있으면 AND로 묶고, 없으면 빈 객체(전체 검색)
-    const whereClause = andConditions.length > 0 ? { AND: andConditions } : {};
+    // 🟢 공개된 코스만 필터링
+    andConditions.push({ isPublic: true });
+    const whereClause = andConditions.length > 0 ? { AND: andConditions } : { isPublic: true };
 
     // 4. Select 옵션 (동일)
     const courseSelect = {
@@ -96,14 +103,17 @@ export async function GET(request: NextRequest) {
     };
 
     try {
+        // 🟢 무한 스크롤을 위한 offset/limit 적용
         const courses = await prisma.course.findMany({
             where: whereClause,
             orderBy: { id: "desc" },
+            take: limit,
+            skip: offset,
             select: courseSelect,
         });
 
-        console.log(`✅ 응답: ${courses.length}개 찾음`);
-        return NextResponse.json({ success: true, courses });
+        console.log(`✅ 응답: ${courses.length}개 찾음 (limit=${limit}, offset=${offset})`);
+        return NextResponse.json(courses); // 🟢 배열로 직접 반환 (기존 API와 호환)
     } catch (error) {
         console.error("❌ API 오류:", error);
         return NextResponse.json({ success: false, error: "서버 오류 발생" }, { status: 500 });

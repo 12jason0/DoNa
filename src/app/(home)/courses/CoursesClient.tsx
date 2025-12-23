@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
@@ -66,6 +66,10 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     const [sortBy, setSortBy] = useState<"views" | "latest">("views");
     const [activeConcept, setActiveConcept] = useState<string>(conceptParam || "");
     const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+    // 🟢 무한 스크롤 관련 state
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(initialCourses.length >= 30);
+    const [offset, setOffset] = useState(30);
     // showSubscriptionModal 제거
 
     useEffect(() => {
@@ -78,7 +82,95 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
     useEffect(() => {
         setCourses(initialCourses);
+        setHasMore(initialCourses.length >= 30);
+        setOffset(30);
     }, [initialCourses]);
+
+    // 🟢 무한 스크롤: 추가 코스 로드 함수 (useCallback으로 최적화)
+    const loadMoreCourses = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+
+        setLoadingMore(true);
+        try {
+            const token = localStorage.getItem("authToken");
+            const headers: HeadersInit = { "Content-Type": "application/json" };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+
+            const params = new URLSearchParams();
+            params.set("limit", "30");
+            params.set("offset", String(offset));
+            if (conceptParam) {
+                params.set("concept", conceptParam);
+            }
+
+            const response = await fetch(`/api/courses?${params.toString()}`, {
+                headers,
+                cache: "force-cache",
+                next: { revalidate: 300 },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const coursesArray = Array.isArray(data) ? data : (data.courses || []);
+                
+                console.log(`[무한 스크롤] 추가 로드 성공: ${coursesArray.length}개 코스 (현재 offset: ${offset})`);
+                
+                if (coursesArray.length > 0) {
+                    setCourses((prev) => {
+                        // 🟢 중복 제거 (같은 ID가 있으면 제외)
+                        const existingIds = new Set(prev.map(c => c.id));
+                        const newUniqueCourses = coursesArray.filter((c: Course) => !existingIds.has(c.id));
+                        console.log(`[무한 스크롤] 기존 ${prev.length}개 + 새로 추가 ${newUniqueCourses.length}개 = 총 ${prev.length + newUniqueCourses.length}개`);
+                        return [...prev, ...newUniqueCourses];
+                    });
+                    setOffset((prev) => prev + 30);
+                    // 🟢 30개 미만이면 더 이상 없음
+                    setHasMore(coursesArray.length >= 30);
+                    console.log(`[무한 스크롤] 다음 offset: ${offset + 30}, hasMore: ${coursesArray.length >= 30}`);
+                } else {
+                    console.log(`[무한 스크롤] 더 이상 로드할 코스가 없습니다.`);
+                    setHasMore(false);
+                }
+            } else {
+                const errorText = await response.text().catch(() => "");
+                console.error(`[무한 스크롤] API 오류 (${response.status}):`, errorText);
+                setHasMore(false);
+            }
+        } catch (error) {
+            console.error("추가 코스 로드 실패:", error);
+            setHasMore(false);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [loadingMore, hasMore, offset, conceptParam]);
+
+    // 🟢 스크롤 감지: 바닥에 도달하면 추가 로드 (throttle 적용)
+    useEffect(() => {
+        let ticking = false;
+
+        const handleScroll = () => {
+            if (ticking || loadingMore || !hasMore) return;
+            ticking = true;
+
+            requestAnimationFrame(() => {
+                const scrollHeight = document.documentElement.scrollHeight;
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const clientHeight = document.documentElement.clientHeight;
+
+                // 🟢 바닥에서 300px 전에 미리 로드 (더 빠른 반응)
+                if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    console.log(`[무한 스크롤] 스크롤 감지: 바닥 근처 도달 (${Math.round(scrollTop + clientHeight)}/${scrollHeight})`);
+                    loadMoreCourses();
+                }
+                ticking = false;
+            });
+        };
+
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [loadMoreCourses, loadingMore, hasMore]);
 
     // --- Sorting Logic ---
     const sortedCourses = useMemo(() => {
@@ -287,6 +379,20 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                     <div className="text-center py-20">
                         <div className="text-5xl mb-4 grayscale opacity-50">🏝️</div>
                         <p className="text-gray-500 font-medium">조건에 맞는 코스가 없어요.</p>
+                    </div>
+                )}
+
+                {/* 🟢 무한 스크롤 로딩 인디케이터 */}
+                {loadingMore && (
+                    <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                        <p className="text-gray-500 text-sm mt-2">더 많은 코스를 불러오는 중...</p>
+                    </div>
+                )}
+
+                {!hasMore && visibleCourses.length > 0 && (
+                    <div className="text-center py-8">
+                        <p className="text-gray-400 text-sm">모든 코스를 불러왔습니다.</p>
                     </div>
                 )}
             </div>

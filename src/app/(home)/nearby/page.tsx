@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300; // 5분 캐싱 (성능 최적화)
+export const revalidate = 600; // 🟢 10분 캐싱으로 증가 (성능 최적화)
 
 async function getInitialNearbyCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // 1. URL 파라미터 파싱
@@ -80,11 +80,11 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 최종 Where 절
     const whereClause = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    // 🟢 성능 최적화: 초기 로딩은 20개만 (나머지는 클라이언트에서 로드)
+    // 🟢 성능 최적화: 처음 30개만 로드 (무한 스크롤로 추가 로드)
     const courses = await prisma.course.findMany({
         where: whereClause,
         orderBy: { id: "desc" },
-        take: 20,
+        take: 30, // 🟢 처음 30개만 로드
         select: {
             id: true,
             title: true,
@@ -98,18 +98,17 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             _count: {
                 select: { reviews: true },
             },
-            // 리스트에서는 첫 번째 장소의 이미지만 필요
+            // 🟢 리스트에서는 첫 번째 장소의 이미지만 필요 (불필요한 필드 제거)
             coursePlaces: {
                 take: 1,
                 orderBy: { order_index: "asc" as const },
                 select: {
-                    order_index: true,
                     place: {
                         select: {
                             id: true,
                             name: true,
                             imageUrl: true,
-                            // address, latitude, longitude, opening_hours, closed_days는 리스트에서 불필요
+                            // 🟢 성능 최적화: address, latitude, longitude, opening_hours, closed_days 제거
                         },
                     },
                 },
@@ -118,7 +117,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         // 인덱스 힌트: id, isPublic, region, concept에 인덱스가 있다고 가정
     });
 
-    // ✅ [유저 등급 확인]
+    // ✅ [유저 등급 확인] - 최적화: 로그인한 경우에만 조회
     const cookieStore = await cookies();
     const token = cookieStore.get("auth")?.value;
     let userTier = "FREE";
@@ -127,11 +126,12 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         try {
             const userId = verifyJwtAndGetUserId(token);
             if (userId) {
+                // 🟢 성능 최적화: 필요한 필드만 선택
                 const user = await prisma.user.findUnique({
                     where: { id: Number(userId) },
                     select: { subscriptionTier: true },
                 });
-                if (user) {
+                if (user?.subscriptionTier) {
                     userTier = user.subscriptionTier;
                 }
             }

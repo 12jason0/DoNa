@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { getPlaceStatus } from "@/lib/placeStatus";
@@ -162,6 +162,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const [allTags, setAllTags] = useState<Array<{ id: number; name: string }>>([]);
     const [refreshNonce, setRefreshNonce] = useState(0);
     const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+    // 🟢 무한 스크롤 관련 state
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(initialCourses.length >= 30);
+    const [offset, setOffset] = useState(30);
 
     // --- Effects & Logic (기존과 동일) ---
     useEffect(() => {
@@ -170,7 +174,85 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     useEffect(() => {
         setCourses(initialCourses);
         setLoading(false);
+        setHasMore(initialCourses.length >= 30);
+        setOffset(30);
     }, [initialCourses]);
+
+    // 🟢 무한 스크롤: 추가 코스 로드 함수 (useCallback으로 최적화)
+    const loadMoreCourses = useCallback(async () => {
+        if (loadingMore || !hasMore || loading) return;
+
+        setLoadingMore(true);
+        try {
+            const token = localStorage.getItem("authToken");
+            const headers: HeadersInit = { "Content-Type": "application/json" };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+
+            const params = new URLSearchParams();
+            params.set("limit", "30");
+            params.set("offset", String(offset));
+            
+            const q = searchInput.trim() || searchParams.get("q") || "";
+            const region = searchParams.get("region") || "";
+            const concept = searchParams.get("concept") || "";
+            const tagIds = searchParams.get("tagIds") || "";
+
+            if (q) params.set("q", q);
+            if (region) params.set("region", region);
+            if (concept) params.set("concept", concept);
+            if (tagIds) params.set("tagIds", tagIds);
+
+            const response = await fetch(`/api/courses/nearby?${params.toString()}`, {
+                headers,
+                cache: "force-cache",
+                next: { revalidate: 300 },
+            });
+
+            if (response.ok) {
+                const newCourses = await response.json();
+                // 🟢 nearby API는 배열을 직접 반환하므로 그대로 사용
+                const coursesArray = Array.isArray(newCourses) ? newCourses : [];
+                
+                if (coursesArray.length > 0) {
+                    setCourses((prev) => [...prev, ...coursesArray]);
+                    setOffset((prev) => prev + 30);
+                    setHasMore(coursesArray.length >= 30);
+                } else {
+                    setHasMore(false);
+                }
+            } else {
+                setHasMore(false);
+            }
+        } catch (error) {
+            console.error("추가 코스 로드 실패:", error);
+            setHasMore(false);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [loadingMore, hasMore, loading, offset, searchInput, searchParams]);
+
+    // 🟢 스크롤 감지: 바닥에 도달하면 추가 로드
+    useEffect(() => {
+        if (loading || !hasMore) return;
+
+        const handleScroll = () => {
+            if (loadingMore || !hasMore || loading) return;
+
+            const scrollHeight = document.documentElement.scrollHeight;
+            const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+            const clientHeight = document.documentElement.clientHeight;
+
+            // 바닥에서 200px 전에 미리 로드
+            if (scrollTop + clientHeight >= scrollHeight - 200) {
+                loadMoreCourses();
+            }
+        };
+
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [loadMoreCourses, loadingMore, hasMore, loading]);
     useEffect(() => {
         setSearchInput("");
     }, [searchParams]);
@@ -536,6 +618,20 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     showNewBadge={false}
                                 />
                             ))}
+
+                            {/* 🟢 무한 스크롤 로딩 인디케이터 */}
+                            {loadingMore && (
+                                <div className="text-center py-8">
+                                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                    <p className="text-gray-500 text-sm mt-2">더 많은 코스를 불러오는 중...</p>
+                                </div>
+                            )}
+
+                            {!hasMore && filtered.length > 0 && (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-400 text-sm">모든 코스를 불러왔습니다.</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

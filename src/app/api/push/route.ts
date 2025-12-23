@@ -11,16 +11,19 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "userId가 필요합니다" }, { status: 400 });
         }
 
-        const pushToken = await prisma.pushToken.findUnique({
-            where: { userId: parseInt(userId) },
-            select: { subscribed: true },
-        });
-
-        // 마케팅 수신 동의 상태도 함께 조회
-        const user = await prisma.user.findUnique({
-            where: { id: parseInt(userId) },
-            select: { isMarketingAgreed: true },
-        });
+        const userIdNum = parseInt(userId);
+        
+        // 🟢 성능 최적화: 병렬 쿼리로 속도 향상
+        const [pushToken, user] = await Promise.all([
+            prisma.pushToken.findUnique({
+                where: { userId: userIdNum },
+                select: { subscribed: true },
+            }),
+            prisma.user.findUnique({
+                where: { id: userIdNum },
+                select: { isMarketingAgreed: true },
+            }),
+        ]);
 
         return NextResponse.json({
             subscribed: pushToken?.subscribed ?? false,

@@ -161,9 +161,9 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, []);
 
-    const buildCourseListUrl = () => {
-        const params = new URLSearchParams();
-        params.set("limit", "20"); // 🟢 성능 최적화: 30 -> 20
+        const buildCourseListUrl = () => {
+            const params = new URLSearchParams();
+            params.set("limit", "15"); // 🟢 성능 최적화: 20 -> 15 (초기 로딩 속도 향상)
         params.set("imagePolicy", "any");
         const qTrim = query.trim();
         if (qTrim) params.set("q", qTrim);
