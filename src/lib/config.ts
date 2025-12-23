@@ -20,3 +20,24 @@ export function assertServerConfig(): void {
         throw new Error("JWT_SECRET (or NEXTAUTH_SECRET) is required");
     }
 }
+
+/**
+ * Apple Client Secret 생성 함수 (JWT 기반)
+ * Apple 인증 서버와 통신할 때 사용하는 클라이언트 시크릿을 동적으로 생성합니다.
+ */
+export function generateAppleClientSecret(
+    teamId: string,
+    keyId: string,
+    privateKey: string,
+    clientId: string
+): string {
+    const jwt = require("jsonwebtoken");
+    const token = jwt.sign({}, privateKey, {
+        algorithm: "ES256",
+        expiresIn: "180d", // 6개월
+        issuer: teamId,
+        subject: clientId,
+        keyid: keyId,
+    });
+    return token;
+}

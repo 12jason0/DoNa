@@ -54,6 +54,7 @@ model User {
   marketingAgreedAt     DateTime?              @map("marketing_agreed_at")
   hasSeenConsentModal   Boolean                @default(false) @map("has_seen_consent_modal")
   billingKey            String?                @map("billing_key") @db.VarChar(255)
+  appleRefreshToken     String?                @map("apple_refresh_token") @db.Text
   deletedAt             DateTime?              @map("deleted_at")
   completedCourses      CompletedCourse[]
   completedEscapes      CompletedEscape[]

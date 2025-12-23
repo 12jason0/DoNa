@@ -49,7 +49,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         // 2. 사용자 정보 조회 (소셜 연동 정보, 구독 상태, 이미지 URL 포함)
-        const user = await prisma.user.findUnique({
+        const user = await (prisma as any).user.findUnique({
             where: { id: userId },
             select: {
                 id: true,
@@ -58,6 +58,7 @@ export async function DELETE(request: NextRequest) {
                 subscriptionTier: true,
                 subscriptionExpiresAt: true,
                 profileImageUrl: true,
+                appleRefreshToken: true,
             },
         });
 
@@ -99,23 +100,33 @@ export async function DELETE(request: NextRequest) {
                 console.log("카카오 연동 해제 성공");
             } else if (user.provider === "apple") {
                 // 애플 연동 해제 (Revoke)
-                // Note: appleRefreshToken이 DB에 저장되어 있지 않으면 스킵
-                // Apple은 사용자가 직접 Apple ID 설정에서 앱 연동을 해제할 수 있음
-                console.log("애플 로그인 사용자 - Apple ID 설정에서 직접 해제 가능");
-                // 향후 appleRefreshToken 필드가 추가되면 아래 코드 활성화
-                /*
-                const clientSecret = getAppleClientSecret();
-                const params = new URLSearchParams();
-                params.append("client_id", process.env.APPLE_CLIENT_ID!);
-                params.append("client_secret", clientSecret);
-                params.append("token", user.appleRefreshToken);
-                params.append("token_type_hint", "refresh_token");
+                try {
+                    // appleRefreshToken이 DB에 저장되어 있는지 확인
+                    if ((user as any).appleRefreshToken) {
+                        const clientSecret = getAppleClientSecret();
+                        const params = new URLSearchParams();
+                        params.append(
+                            "client_id",
+                            process.env.APPLE_CLIENT_ID || process.env.NEXT_PUBLIC_APPLE_CLIENT_ID || ""
+                        );
+                        params.append("client_secret", clientSecret);
+                        params.append("token", (user as any).appleRefreshToken);
+                        params.append("token_type_hint", "refresh_token");
 
-                await axios.post("https://appleid.apple.com/auth/revoke", params, {
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                });
-                console.log("애플 연동 해제 성공");
-                */
+                        await axios.post("https://appleid.apple.com/auth/revoke", params, {
+                            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        });
+                        console.log(`[User Delete] 애플 연동 해제 성공 (User ID: ${userId})`);
+                    } else {
+                        console.log(`[User Delete] 애플 refresh_token이 없어 연동 해제 스킵 (User ID: ${userId})`);
+                        console.log("사용자는 Apple ID 설정에서 직접 앱 연동을 해제할 수 있습니다.");
+                    }
+                } catch (revokeError: any) {
+                    console.error(
+                        `[User Delete] 애플 연동 해제 중 오류 발생 (User ID: ${userId}, 무시하고 진행):`,
+                        revokeError.response?.data || revokeError.message
+                    );
+                }
             }
         } catch (socialError: any) {
             // 소셜 해제 실패 시 로그는 남기되 DB 삭제는 진행 (이미 플랫폼에서 앱을 삭제했을 수 있음)
