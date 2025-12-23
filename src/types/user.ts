@@ -6,6 +6,7 @@ export interface UserInfo {
     mbti?: string | null;
     age?: number | null;
     subscriptionTier?: "FREE" | "BASIC" | "PREMIUM";
+    subscriptionExpiresAt?: string | null;
 }
 
 export interface UserPreferences {

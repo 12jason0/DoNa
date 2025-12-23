@@ -20,6 +20,7 @@
         "@tosspayments/payment-sdk": "^1.9.2",
         "@tosspayments/payment-widget-sdk": "^0.12.1",
         "@types/jsonwebtoken": "^9.0.10",
+        "axios": "^1.13.2",
         "bcryptjs": "^3.0.2",
         "browser-image-compression": "^2.0.2",
         "expo-server-sdk": "^4.0.0",

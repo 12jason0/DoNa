@@ -345,6 +345,32 @@ export default function Home() {
         const initAuth = async () => {
             const token = localStorage.getItem("authToken");
             if (!token) return;
+            
+            // 스플래시가 끝났는지 확인하는 함수
+            const checkSplashDone = (): Promise<void> => {
+                return new Promise((resolve) => {
+                    // 스플래시가 이미 표시된 적이 있으면 즉시 진행
+                    const splashShown = sessionStorage.getItem("dona-splash-shown");
+                    if (splashShown === "1") {
+                        resolve();
+                        return;
+                    }
+                    
+                    // 스플래시가 표시 중이면 끝날 때까지 대기
+                    // 스플래시는 약 7초 동안 표시되므로, 최대 8초까지 대기
+                    let checkCount = 0;
+                    const maxChecks = 80; // 8초 (100ms * 80)
+                    const checkInterval = setInterval(() => {
+                        checkCount++;
+                        const isDone = sessionStorage.getItem("dona-splash-shown") === "1";
+                        if (isDone || checkCount >= maxChecks) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                });
+            };
+            
             try {
                 const res = await fetch("/api/users/profile", {
                     credentials: "include",
@@ -353,12 +379,18 @@ export default function Home() {
                 });
                 if (res.ok) {
                     const userData = await res.json();
+                    
+                    // 스플래시가 끝날 때까지 대기
+                    await checkSplashDone();
+                    
+                    // 홈 페이지가 완전히 로드된 후 추가 대기 (안정성)
+                    await new Promise((resolve) => setTimeout(resolve, 500));
+                    
                     // 🟢 혜택 동의 모달 체크: 한 번도 안 본 사람에게만 표시
                     if (userData.hasSeenConsentModal === false) {
-                        setTimeout(() => {
-                            setShowBenefitConsentModal(true);
-                        }, 1500); // 출석체크 모달보다 약간 늦게 표시
+                        setShowBenefitConsentModal(true);
                     }
+                    
                     // 출석체크 모달은 한 번만 열리도록 hasShownCheckinModalRef로 제어
                     if (!hasShownCheckinModalRef.current) {
                         setTimeout(() => {

@@ -675,7 +675,9 @@ const ProfileTab = ({
                     <DeleteUsersModal
                         isOpen={showWithdrawalModal}
                         onClose={() => setShowWithdrawalModal(false)}
-                        onConfirm={async () => {
+                        subscriptionTier={userInfo?.subscriptionTier}
+                        subscriptionExpiresAt={userInfo?.subscriptionExpiresAt}
+                        onConfirm={async (withdrawalReason?: string) => {
                             const token = localStorage.getItem("authToken");
 
                             if (!token) {
@@ -683,16 +685,25 @@ const ProfileTab = ({
                                 throw new Error("로그인이 필요합니다.");
                             }
 
+                            // 탈퇴 사유를 서버로 전송 (선택사항)
                             const response = await fetch("/api/users/delete", {
                                 method: "DELETE",
                                 headers: {
                                     Authorization: `Bearer ${token}`,
+                                    "Content-Type": "application/json",
                                 },
+                                body: JSON.stringify({
+                                    withdrawalReason: withdrawalReason || null,
+                                }),
                             });
 
                             const data = await response.json();
 
                             if (!response.ok) {
+                                // 구독 중인 경우 특별 처리
+                                if (response.status === 400 && data.hasActiveSubscription) {
+                                    throw new Error(data.details || data.error);
+                                }
                                 throw new Error(data.error || "탈퇴 처리에 실패했습니다.");
                             }
 

@@ -3,6 +3,10 @@
     {
       "path": "/api/subscriptions/renew",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/admin/legal-cleanup",
+      "schedule": "0 3 * * *"
     }
   ]
 }

@@ -141,6 +141,10 @@ const MyPage = () => {
                 );
                 console.log("[MyPage] 최종 등급 값 (setUserInfo에 전달):", tier);
 
+                // subscriptionExpiresAt 추출 (DB 필드명: subscription_expires_at)
+                const subscriptionExpiresAt =
+                    src.subscriptionExpiresAt || src.subscription_expires_at || raw?.subscriptionExpiresAt || raw?.subscription_expires_at || null;
+
                 const finalUserInfo = {
                     name: src.name || src.username || src.nickname || "",
                     email: src.email || src.userEmail || "",
@@ -153,6 +157,7 @@ const MyPage = () => {
                     mbti: src.mbti ?? null,
                     age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
                     subscriptionTier: tier, // 🟢 확정된 등급 삽입
+                    subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
                 };
                 console.log("[MyPage] setUserInfo 호출 전 최종 userInfo 객체:", finalUserInfo);
                 setUserInfo(finalUserInfo);

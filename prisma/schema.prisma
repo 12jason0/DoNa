@@ -19,7 +19,7 @@ model Payment {
   method      String?
   requestedAt DateTime      @default(now()) @map("requested_at")
   approvedAt  DateTime?     @map("approved_at")
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([orderId])
@@ -54,6 +54,7 @@ model User {
   marketingAgreedAt     DateTime?              @map("marketing_agreed_at")
   hasSeenConsentModal   Boolean                @default(false) @map("has_seen_consent_modal")
   billingKey            String?                @map("billing_key") @db.VarChar(255)
+  deletedAt             DateTime?              @map("deleted_at")
   completedCourses      CompletedCourse[]
   completedEscapes      CompletedEscape[]
   bookings              Booking[]
@@ -77,6 +78,7 @@ model User {
   userStoryProgress     UserStoryProgress[]
 
   @@index([provider, socialId])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -311,7 +313,7 @@ model LoginLog {
   userId    Int      @map("user_id")
   loginAt   DateTime @default(now()) @map("login_at")
   ipAddress String?  @map("ip_address") @db.VarChar(45)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@map("login_logs")

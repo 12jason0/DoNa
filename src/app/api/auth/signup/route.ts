@@ -55,43 +55,82 @@ export async function POST(request: NextRequest) {
         const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
         const initialCoupons = kstNow <= eventEndDate ? 3 : 1;
 
-        const created = await (prisma as any).user.create({
-            data: {
-                email,
-                password: hashedPassword,
-                username: nickname,
-                provider: "local",
-                phone: trimmedPhone,
-                ageRange: trimmedAgeRange,
-                birthday: birthdayDate,
-                age: computedAge,
-                couponCount: initialCoupons, // 🎁 이벤트 기간이면 3개, 아니면 1개
-                // [법적 필수] 마케팅 수신 동의
-                isMarketingAgreed: isMarketingAgreed === true,
-                marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
-            },
-            select: { id: true, email: true, username: true },
+        // 트랜잭션으로 사용자 생성 및 보상 기록
+        const created = await (prisma as any).$transaction(async (tx) => {
+            // 사용자 생성
+            const newUser = await tx.user.create({
+                data: {
+                    email,
+                    password: hashedPassword,
+                    username: nickname,
+                    provider: "local",
+                    phone: trimmedPhone,
+                    ageRange: trimmedAgeRange,
+                    birthday: birthdayDate,
+                    age: computedAge,
+                    couponCount: initialCoupons, // 🎁 이벤트 기간이면 3개, 아니면 1개
+                    // [법적 필수] 마케팅 수신 동의
+                    isMarketingAgreed: isMarketingAgreed === true,
+                    marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
+                },
+                select: { id: true, email: true, username: true },
+            });
+
+            // 보상 기록 남기기
+            try {
+                await tx.userReward.create({
+                    data: {
+                        userId: newUser.id,
+                        type: "signup",
+                        amount: initialCoupons,
+                        unit: "coupon",
+                    },
+                });
+            } catch (rewardError) {
+                console.error("보상 기록 실패 (무시하고 진행):", rewardError);
+                // 보상 기록 실패해도 회원가입은 성공 처리
+            }
+
+            return newUser;
         });
 
         const JWT_SECRET = getJwtSecret();
+        if (!JWT_SECRET) {
+            throw new Error("JWT_SECRET이 설정되지 않았습니다.");
+        }
+
         const token = jwt.sign({ userId: created.id, email, nickname }, JWT_SECRET, { expiresIn: "7d" });
 
         return NextResponse.json({
             success: true,
-            message: "회원가입이 완료되었습니다.",
+            message: `회원가입이 완료되었습니다. 쿠폰 ${initialCoupons}개가 지급되었습니다.`,
             token,
             user: { id: created.id, email, nickname },
         });
-    } catch (error) {
-        console.error("회원가입 오류:", error);
-        console.error("에러 상세:", {
-            message: error instanceof Error ? error.message : "Unknown error",
-            stack: error instanceof Error ? error.stack : undefined,
+    } catch (error: any) {
+        console.error("[회원가입 API] 오류 발생:", error);
+        console.error("[회원가입 API] 에러 상세:", {
+            message: error?.message || "Unknown error",
+            stack: error?.stack,
+            code: error?.code,
+            meta: error?.meta,
         });
+
+        // Prisma 에러 처리
+        if (error?.code === "P2002") {
+            const field = error?.meta?.target?.[0] || "필드";
+            return NextResponse.json(
+                {
+                    error: `이미 사용 중인 ${field === "email" ? "이메일" : field}입니다.`,
+                },
+                { status: 409 }
+            );
+        }
+
         return NextResponse.json(
             {
                 error: "회원가입 중 오류가 발생했습니다.",
-                details: error instanceof Error ? error.message : "Unknown error",
+                details: error?.message || "알 수 없는 오류",
             },
             { status: 500 }
         );
