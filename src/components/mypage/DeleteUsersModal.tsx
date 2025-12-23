@@ -17,8 +17,10 @@ export default function DeleteUsersModal({ isOpen, onClose, onConfirm }: DeleteU
         try {
             setIsLoading(true);
             await onConfirm();
-        } catch (error) {
+        } catch (error: any) {
             console.error("탈퇴 처리 오류:", error);
+            // 에러 메시지를 사용자에게 표시
+            alert(error.message || "탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
         } finally {
             setIsLoading(false);
         }

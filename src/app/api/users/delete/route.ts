@@ -22,21 +22,24 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
         }
 
-        // 사용자 삭제 (Cascade로 관련 데이터도 함께 삭제됨)
-        // Prisma 스키마에서 onDelete: Cascade로 설정된 관계 데이터들이 자동으로 삭제됩니다.
-        await prisma.user.delete({
-            where: { id: userId },
-        });
-
-        // 로그인 로그는 별도로 삭제 (Cascade가 없을 수 있음)
-        try {
-            await prisma.loginLog.deleteMany({
+        // 트랜잭션으로 사용자 및 관련 데이터 삭제
+        // Cascade가 없는 관계나 명시적으로 삭제가 필요한 데이터를 먼저 처리합니다.
+        await prisma.$transaction(async (tx) => {
+            // 1. 로그인 로그 삭제 (Cascade가 있지만 명시적으로 먼저 삭제)
+            await tx.loginLog.deleteMany({
                 where: { userId: userId },
             });
-        } catch (error) {
-            console.error("로그인 로그 삭제 실패:", error);
-            // 로그 삭제 실패해도 계정 삭제는 계속 진행
-        }
+
+            // 2. UserReward 삭제 (onDelete: Cascade가 없을 수 있음)
+            await tx.userReward.deleteMany({
+                where: { userId: userId },
+            });
+
+            // 3. 사용자 삭제 (Cascade로 다른 모든 관련 데이터도 함께 삭제됨)
+            await tx.user.delete({
+                where: { id: userId },
+            });
+        });
 
         return NextResponse.json({
             success: true,
@@ -44,6 +47,19 @@ export async function DELETE(request: NextRequest) {
         });
     } catch (error) {
         console.error("계정 삭제 오류:", error);
+        
+        // 더 자세한 에러 정보 로깅
+        if (error instanceof Error) {
+            console.error("에러 메시지:", error.message);
+            console.error("에러 스택:", error.stack);
+        }
+        
+        // Prisma 에러인 경우 더 자세한 정보 제공
+        if ((error as any).code) {
+            console.error("Prisma 에러 코드:", (error as any).code);
+            console.error("Prisma 에러 메타:", (error as any).meta);
+        }
+        
         return NextResponse.json(
             {
                 error: "계정 삭제 중 오류가 발생했습니다.",
