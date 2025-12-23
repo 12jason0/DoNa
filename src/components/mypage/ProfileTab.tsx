@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { UserInfo, UserPreferences } from "@/types/user";
+import DeleteUsersModal from "./DeleteUsersModal";
 
 interface ProfileTabProps {
     userInfo: UserInfo | null;
@@ -35,61 +36,71 @@ const ProfileTab = ({
     const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [notificationMessage, setNotificationMessage] = useState<string>("");
     const [showAppRequiredModal, setShowAppRequiredModal] = useState(false);
+    const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+    const [withdrawalLoading, setWithdrawalLoading] = useState(false);
 
-    // 알림 상태 초기 로드 (DB에서 가져오기)
+    // 🟢 알림 상태 초기 로드 최적화: 불필요한 API 호출 제거 및 캐싱
     useEffect(() => {
         const fetchNotificationStatus = async () => {
             try {
                 const token = localStorage.getItem("authToken");
-                if (!token) return;
-
-                // userId 가져오기
-                let userId: number | null = null;
-                try {
-                    const userStr = localStorage.getItem("user");
-                    if (userStr) {
-                        const userData = JSON.parse(userStr);
-                        userId = userData?.id || null;
-                    }
-                } catch (e) {
-                    console.error("localStorage user 파싱 오류:", e);
+                if (!token) {
+                    setNotificationEnabled(false);
+                    return;
                 }
 
-                // props에서 userId 가져오기 시도
-                if (!userId) {
+                // 🟢 최적화: userInfo prop에서 직접 userId 가져오기 (API 호출 제거)
+                let userId: number | null = null;
+
+                // 1순위: userInfo prop에서 가져오기
+                if (userInfo) {
                     userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
                 }
 
-                // API로 userId 가져오기
+                // 2순위: localStorage에서 가져오기
                 if (!userId) {
-                    const userResponse = await fetch("/api/users/profile", {
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                    if (userResponse.ok) {
-                        const userData = await userResponse.json();
-                        userId = userData?.user?.id || userData?.id || null;
+                    try {
+                        const userStr = localStorage.getItem("user");
+                        if (userStr) {
+                            const userData = JSON.parse(userStr);
+                            userId = userData?.id || null;
+                        }
+                    } catch (e) {
+                        // 파싱 오류 무시
                     }
                 }
 
-                // DB에서 알림 상태 조회 (push_tokens 테이블)
-                if (userId) {
-                    const statusResponse = await fetch(`/api/push?userId=${userId}`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                    if (statusResponse.ok) {
-                        const statusData = await statusResponse.json();
-                        // 2. 데이터가 로드되면 true/false 설정
-                        setNotificationEnabled(statusData.subscribed ?? false);
-                    }
+                // 🟢 userId가 없으면 기본값 설정하고 종료 (불필요한 API 호출 방지)
+                if (!userId) {
+                    setNotificationEnabled(false);
+                    return;
+                }
+
+                // 🟢 DB에서 알림 상태 조회 (캐싱 적용)
+                const statusResponse = await fetch(`/api/push?userId=${userId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    cache: "force-cache", // 🟢 브라우저 캐시 사용
+                    next: { revalidate: 300 }, // 🟢 5분 캐싱
+                });
+
+                if (statusResponse.ok) {
+                    const statusData = await statusResponse.json();
+                    setNotificationEnabled(statusData.subscribed ?? false);
+                } else {
+                    setNotificationEnabled(false);
                 }
             } catch (error) {
                 console.error("알림 상태 조회 오류:", error);
-                // 에러 발생 시 기본값 false로 설정하여 로딩 상태 해제
                 setNotificationEnabled(false);
             }
         };
 
-        fetchNotificationStatus();
+        // 🟢 userInfo가 있을 때만 실행 (불필요한 호출 방지)
+        if (userInfo) {
+            fetchNotificationStatus();
+        } else {
+            setNotificationEnabled(false);
+        }
     }, [userInfo]);
 
     // 앱 환경 체크 (웹에서는 알림 설정 비활성화)
@@ -608,6 +619,23 @@ const ProfileTab = ({
                                 →
                             </span>
                         </button>
+                        <div className="h-px bg-gray-100 my-2"></div>
+
+                        {/* 탈퇴 버튼 */}
+                        <button
+                            onClick={() => setShowWithdrawalModal(true)}
+                            className="w-full flex items-center justify-between px-6 py-4.5 rounded-xl bg-gray-50 border border-gray-200 hover:border-gray-300 hover:bg-gray-100 transition-all group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-white rounded-xl text-gray-500 group-hover:text-gray-600 shadow-sm">
+                                    🗑️
+                                </div>
+                                <span className="font-bold text-gray-600 group-hover:text-gray-700">계정 탈퇴</span>
+                            </div>
+                            <span className="text-gray-300 group-hover:text-gray-400 group-hover:translate-x-1 transition-transform">
+                                →
+                            </span>
+                        </button>
                     </div>
 
                     {/* 알림 설정 앱 필요 모달 */}
@@ -642,6 +670,45 @@ const ProfileTab = ({
                             </div>
                         </div>
                     )}
+
+                    {/* 탈퇴 확인 모달 */}
+                    <DeleteUsersModal
+                        isOpen={showWithdrawalModal}
+                        onClose={() => setShowWithdrawalModal(false)}
+                        onConfirm={async () => {
+                            const token = localStorage.getItem("authToken");
+
+                            if (!token) {
+                                alert("로그인이 필요합니다.");
+                                throw new Error("로그인이 필요합니다.");
+                            }
+
+                            const response = await fetch("/api/users/delete", {
+                                method: "DELETE",
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                },
+                            });
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+                                throw new Error(data.error || "탈퇴 처리에 실패했습니다.");
+                            }
+
+                            // 탈퇴 성공 - 모든 데이터 정리
+                            localStorage.removeItem("authToken");
+                            localStorage.removeItem("user");
+                            localStorage.removeItem("loginTime");
+
+                            // 인증 상태 변경 이벤트 발생
+                            window.dispatchEvent(new CustomEvent("authTokenChange"));
+
+                            // 메인 페이지로 리디렉션
+                            alert("계정이 성공적으로 삭제되었습니다.");
+                            window.location.href = "/";
+                        }}
+                    />
 
                     {/* 사업자 정보 */}
                     <div className="mt-6 pt-6 border-t border-gray-200">

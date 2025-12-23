@@ -3,6 +3,7 @@ import { BackHandler, Platform, StyleSheet, View, ActivityIndicator, Linking, St
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
@@ -168,6 +169,40 @@ export default function WebScreen({ uri: initialUri }: Props) {
                                 // 카카오 로그인 성공 시 토큰 저장
                                 if (data.token) {
                                     await saveAuthToken(String(data.token || ""));
+                                }
+                            } else if (data.type === "appleLogin" && data.action === "start") {
+                                // Apple 로그인 시작
+                                if (Platform.OS === "ios") {
+                                    try {
+                                        const credential = await AppleAuthentication.signInAsync({
+                                            requestedScopes: [
+                                                AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                                                AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                                            ],
+                                        });
+                                        
+                                        // 성공 시 WebView로 결과 전송
+                                        webRef.current?.injectJavaScript(`
+                                            window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
+                                                detail: ${JSON.stringify({
+                                                    identityToken: credential.identityToken,
+                                                    authorizationCode: credential.authorizationCode,
+                                                    user: credential.user,
+                                                    fullName: credential.fullName,
+                                                    email: credential.email,
+                                                })}
+                                            }));
+                                        `);
+                                    } catch (e: any) {
+                                        // 취소 또는 에러 처리
+                                        if (e.code !== "ERR_REQUEST_CANCELED") {
+                                            webRef.current?.injectJavaScript(`
+                                                window.dispatchEvent(new CustomEvent('appleLoginError', {
+                                                    detail: ${JSON.stringify({ error: e.message || "Apple 로그인 실패" })}
+                                                }));
+                                            `);
+                                        }
+                                    }
                                 }
                             }
                         } catch (e) {

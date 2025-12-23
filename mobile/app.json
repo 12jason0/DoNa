@@ -3,7 +3,7 @@
         "name": "두나(DoNa)",
         "slug": "duna",
         "owner": "dona-app",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "scheme": "duna",
         "orientation": "portrait",
         "icon": "./assets/icon.png",
@@ -15,9 +15,10 @@
         },
         "assetBundlePatterns": ["**/*"],
         "ios": {
-            "supportsTablet": true,
+            "supportsTablet": false,
             "bundleIdentifier": "kr.io.dona.dona",
-            "buildNumber": "3",
+            "buildNumber": "4",
+            "usesAppleSignIn": true,
             "infoPlist": {
                 "ITSAppUsesNonExemptEncryption": false,
                 "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",
@@ -42,7 +43,7 @@
             "favicon": "./assets/favicon.png",
             "bundler": "metro"
         },
-        "plugins": ["expo-sqlite", "expo-web-browser"],
+        "plugins": ["expo-sqlite", "expo-web-browser", "expo-apple-authentication"],
         "extra": {
             "eas": {
                 "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
