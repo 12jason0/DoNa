@@ -20,13 +20,31 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        const isValid = await checkAdminPassword(inputPassword);
+        setIsLoading(true);
+        setError("");
 
-        if (isValid) {
-            sessionStorage.setItem("admin_auth", "true");
-            setIsAuthenticated(true);
-        } else {
-            setError("비밀번호가 올바르지 않습니다.");
+        try {
+            // 🟢 서버 API를 통해 쿠키 설정 (서버 사이드 인증)
+            const res = await fetch("/api/admin/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include", // 쿠키 전송을 위해 필요
+                body: JSON.stringify({ password: inputPassword }),
+            });
+
+            if (res.ok) {
+                // 클라이언트 사이드에도 저장 (UI 상태 관리용)
+                sessionStorage.setItem("admin_auth", "true");
+                setIsAuthenticated(true);
+            } else {
+                const data = await res.json();
+                setError(data.error || "비밀번호가 올바르지 않습니다.");
+            }
+        } catch (err) {
+            console.error("관리자 로그인 오류:", err);
+            setError("로그인 중 오류가 발생했습니다.");
+        } finally {
+            setIsLoading(false);
         }
     };
 

@@ -1,5 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+
+// 관리자 인증 체크 헬퍼 함수
+function ensureAdmin(req: NextRequest) {
+    const ok = req.cookies.get("admin_auth")?.value === "true";
+    if (!ok) {
+        throw new Error("ADMIN_ONLY");
+    }
+}
 
 export async function GET() {
     try {
@@ -32,5 +40,68 @@ export async function GET() {
     } catch (error) {
         console.error("코스 목록 불러오기 실패:", error);
         return NextResponse.json({ error: "코스 목록을 가져오지 못했습니다." }, { status: 500 });
+    }
+}
+
+// 🟢 코스 생성 API (관리자 전용)
+export async function POST(req: NextRequest) {
+    try {
+        // 관리자 인증 체크
+        ensureAdmin(req);
+
+        const body = await req.json().catch(() => ({}));
+        const {
+            title,
+            description,
+            duration,
+            location,
+            imageUrl,
+            concept,
+            sub_title,
+            target_situation,
+            is_editor_pick,
+            grade,
+            isPublic,
+            tags,
+        } = body || {};
+
+        if (!title) {
+            return NextResponse.json({ error: "제목은 필수입니다." }, { status: 400 });
+        }
+
+        const created = await prisma.course.create({
+            data: {
+                title: title || "",
+                description: description || "",
+                duration: duration || "",
+                region: location || "",
+                imageUrl: imageUrl || "",
+                concept: concept || "",
+                sub_title: sub_title || "",
+                target_situation: target_situation || "",
+                is_editor_pick: is_editor_pick || false,
+                grade: grade || "FREE",
+                isPublic: isPublic ?? true,
+                tags: tags || {},
+            },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                duration: true,
+                region: true,
+                imageUrl: true,
+                concept: true,
+                createdAt: true,
+            },
+        });
+
+        return NextResponse.json({ success: true, course: created });
+    } catch (error: any) {
+        if (error.message === "ADMIN_ONLY") {
+            return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
+        }
+        console.error("API: 코스 생성 오류:", error);
+        return NextResponse.json({ error: "코스 생성 실패" }, { status: 500 });
     }
 }

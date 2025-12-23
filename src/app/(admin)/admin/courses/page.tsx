@@ -457,10 +457,10 @@ export default function AdminCoursesPage() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const token = localStorage.getItem("authToken");
 
         try {
-            const url = editingId ? `/api/courses/${editingId}` : "/api/courses";
+            // 🟢 admin API 사용 (쿠키 기반 인증)
+            const url = editingId ? `/api/admin/courses/${editingId}` : "/api/admin/courses";
             const method = editingId ? "PATCH" : "POST";
 
             // places는 별도 API로 관리하므로 body에서 제외
@@ -468,7 +468,8 @@ export default function AdminCoursesPage() {
 
             const res = await fetch(url, {
                 method: method,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json" },
+                credentials: "include", // 🟢 쿠키 전송을 위해 필요
                 body: JSON.stringify(bodyData),
             });
 

@@ -1,8 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+// 관리자 인증 체크 헬퍼 함수
+function ensureAdmin(req: NextRequest) {
+    const ok = req.cookies.get("admin_auth")?.value === "true";
+    if (!ok) {
+        throw new Error("ADMIN_ONLY");
+    }
+}
+
 export async function GET(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> } // Next.js 15+ 에서는 params가 Promise일 수 있음
 ) {
     try {
@@ -38,5 +46,75 @@ export async function GET(
     } catch (error) {
         console.error("코스 상세 조회 실패:", error);
         return NextResponse.json({ error: "Failed to fetch course" }, { status: 500 });
+    }
+}
+
+// 🟢 코스 수정 API (관리자 전용)
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        // 관리자 인증 체크
+        ensureAdmin(req);
+
+        const { id } = await params;
+        const courseId = parseInt(id);
+
+        if (!courseId || isNaN(courseId)) {
+            return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
+        }
+
+        const body = await req.json().catch(() => ({}));
+        const {
+            title,
+            description,
+            duration,
+            location,
+            imageUrl,
+            concept,
+            sub_title,
+            target_situation,
+            is_editor_pick,
+            grade,
+            isPublic,
+            tags,
+        } = body || {};
+
+        const updated = await prisma.course.update({
+            where: { id: courseId },
+            data: {
+                ...(title !== undefined ? { title } : {}),
+                ...(description !== undefined ? { description } : {}),
+                ...(duration !== undefined ? { duration } : {}),
+                ...(location !== undefined ? { region: location } : {}),
+                ...(imageUrl !== undefined ? { imageUrl } : {}),
+                ...(concept !== undefined ? { concept } : {}),
+                ...(sub_title !== undefined ? { sub_title } : {}),
+                ...(target_situation !== undefined ? { target_situation } : {}),
+                ...(is_editor_pick !== undefined ? { is_editor_pick } : {}),
+                ...(grade !== undefined ? { grade } : {}),
+                ...(isPublic !== undefined ? { isPublic } : {}),
+                ...(tags !== undefined ? { tags } : {}),
+            },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                duration: true,
+                region: true,
+                imageUrl: true,
+                concept: true,
+                updatedAt: true,
+            },
+        });
+
+        return NextResponse.json({ success: true, course: updated });
+    } catch (error: any) {
+        if (error.message === "ADMIN_ONLY") {
+            return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
+        }
+        console.error("API: 코스 수정 오류:", error);
+        return NextResponse.json({ error: "코스 수정 실패" }, { status: 500 });
     }
 }
