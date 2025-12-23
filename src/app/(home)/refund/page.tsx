@@ -4,8 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// PaymentHistory 인터페이스 정의 (기존과 동일)
 interface PaymentHistory {
     id: string;
+    orderId: string;
     orderName: string;
     amount: number;
     status: string;
@@ -21,14 +23,12 @@ export default function RefundPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
+    // 팝업(모달) 상태 관리
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPayment, setSelectedPayment] = useState<PaymentHistory | null>(null);
+
     useEffect(() => {
-        let mounted = true;
-        if (mounted) {
-            fetchPaymentHistory();
-        }
-        return () => {
-            mounted = false;
-        };
+        fetchPaymentHistory();
     }, []);
 
     const fetchPaymentHistory = async () => {
@@ -38,238 +38,193 @@ export default function RefundPage() {
                 router.push("/login");
                 return;
             }
-
             const response = await fetch("/api/payments/history", {
                 headers: { Authorization: `Bearer ${token}` },
             });
-
             if (response.ok) {
                 const data = await response.json();
                 setPaymentHistory(data.payments || []);
-            } else {
-                setError("결제 내역을 불러올 수 없습니다.");
             }
         } catch (err) {
-            setError("결제 내역을 불러오는 중 오류가 발생했습니다.");
+            setError("내역을 불러오는 중 오류가 발생했습니다.");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleRefund = async () => {
+    // 환불 실행 함수
+    const executeRefund = async () => {
+        if (!selectedPayment) return;
         setRefunding(true);
-        setError("");
-        setSuccess("");
+        setIsModalOpen(false); // 모달 닫기
 
         try {
             const token = localStorage.getItem("authToken");
-            if (!token) {
-                setError("로그인이 필요합니다.");
-                return;
-            }
-
             const response = await fetch("/api/ai-recommendation/refund", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    orderId: selectedPayment.orderId,
+                    cancelReason: "사용자 변심(이탈 방지 모달 거침)",
+                }),
             });
 
             const data = await response.json();
 
-            if (response.ok && data.success) {
-                setSuccess(
-                    `환불이 완료되었습니다. 환불된 쿠폰: ${data.refundedCoupons}개, 남은 쿠폰: ${data.ticketsRemaining}개`
-                );
-                // 결제 내역 새로고침
+            if (response.ok) {
+                setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다. 슬랙으로 알림이 전송되었습니다.`);
                 await fetchPaymentHistory();
             } else {
-                setError(data.error || data.message || "환불 처리 중 오류가 발생했습니다.");
+                setError(data.error || "환불 처리 중 오류가 발생했습니다.");
             }
-        } catch (err: any) {
-            setError(err.message || "환불 처리 중 오류가 발생했습니다.");
+        } catch (err) {
+            setError("서버와의 통신에 실패했습니다.");
         } finally {
             setRefunding(false);
         }
     };
 
-    // 환불 가능한 결제 내역 찾기 (쿠폰 결제 중 PAID 상태)
-    const refundablePayment = paymentHistory.find(
-        (p) => p.status === "PAID" && p.paymentKey && p.orderName.includes("쿠폰")
+    // 환불 가능 내역 찾기 (쿠폰 + 멤버십 통합)
+    const refundablePayments = paymentHistory.filter(
+        (p) =>
+            p.status === "PAID" &&
+            p.paymentKey &&
+            (p.orderName.includes("쿠폰") || p.orderName.includes("멤버십") || p.orderName.includes("프리미엄"))
     );
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-6xl mb-4">⏳</div>
-                    <p className="text-gray-600">로딩 중...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className="min-h-screen flex items-center justify-center">⏳ 로딩 중...</div>;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 typography-smooth">
-            <main className="max-w-4xl mx-auto px-4 py-8 ">
-                <div className="mb-6">
-                    <Link
-                        href="/mypage"
-                        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                            className="w-5 h-5"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                        </svg>
-                        마이페이지로 돌아가기
-                    </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">쿠폰 환불</h1>
-                    <p className="text-gray-600">구매하신 쿠폰을 환불할 수 있습니다.</p>
-                </div>
+        <div className="min-h-screen bg-[#F9FAFB] typography-smooth pb-20">
+            {/* ✅ 수정된 이탈 방지 모달 (팝업) */}
+            {isModalOpen && selectedPayment && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2rem] p-8 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="text-center">
+                            <div className="text-6xl mb-5">🥺</div>
+                            {/* 더 강력한 훅(Hook) 메시지 */}
+                            <h3 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
+                                잠시만요!
+                                <br />
+                                혜택이 사라져요
+                            </h3>
+                            <p className="text-gray-600 text-[15px] leading-relaxed mb-8">
+                                지금 환불하시면 <span className="text-green-600 font-bold">두나(DoNa)</span>가 준비한
+                                {selectedPayment.orderName.includes("쿠폰")
+                                    ? " 맞춤형 데이트 코스 추천"
+                                    : " 프리미엄 멤버십의 특별한 혜택"}
+                                을 더 이상 받으실 수 없어요. 정말 괜찮으신가요?
+                            </p>
 
-                {/* 환불 안내 */}
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                        <strong>⚠️ 환불 안내:</strong> 구매하신 쿠폰을 사용한 경우 환불이 불가능합니다. 환불하려면
-                        구매한 쿠폰 개수만큼 보유하고 있어야 합니다.
-                    </p>
+                            <div className="flex flex-col gap-3">
+                                {/* 시그니처 그린 컬러 적용 및 문구 변경 */}
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="w-full py-4 bg-green-500 text-white rounded-2xl font-bold text-lg hover:bg-green-600 shadow-lg shadow-green-200/50 transition-all active:scale-[0.98]"
+                                >
+                                    네, 혜택 유지할게요! 💚
+                                </button>
+                                {/* 부정적 선택지 강조 */}
+                                <button
+                                    onClick={executeRefund}
+                                    className="w-full py-3 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors underline-offset-4 hover:underline"
+                                >
+                                    혜택 포기하고 환불하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            )}
 
-                {/* 에러 메시지 */}
+            <main className="max-w-xl mx-auto px-6 py-12">
+                <Link
+                    href="/mypage"
+                    className="text-gray-400 flex items-center gap-1 mb-6 hover:text-gray-900 transition-all font-medium"
+                >
+                    ← 마이페이지
+                </Link>
+
+                <h1 className="text-3xl font-black text-gray-900 mb-2 italic">Refund Status</h1>
+                <p className="text-gray-500 mb-10 text-sm">결제하신 내역을 확인하고 환불을 진행하세요.</p>
+
+                {/* 메시지 영역 */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+                    <div className="bg-red-50 text-red-500 p-4 rounded-2xl mb-6 text-sm font-medium border border-red-100 animate-in fade-in slide-in-from-top-2">
                         {error}
                     </div>
                 )}
-
-                {/* 성공 메시지 */}
                 {success && (
-                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-6">
+                    <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl mb-6 text-sm font-medium border border-emerald-100 animate-in fade-in slide-in-from-top-2">
                         {success}
                     </div>
                 )}
 
-                {/* 환불 가능한 결제 내역 */}
-                {refundablePayment ? (
-                    <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8 mb-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">환불 가능한 결제 내역</h2>
-                        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                            <div className="flex justify-between items-start mb-2">
+                {/* 환불 가능 카드 */}
+                <h2 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">Available to Refund</h2>
+                {refundablePayments.length > 0 ? (
+                    refundablePayments.map((p) => (
+                        <div
+                            key={p.id}
+                            className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-4 hover:shadow-md transition-all"
+                        >
+                            <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <p className="font-semibold text-gray-900">{refundablePayment.orderName}</p>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        결제일: {new Date(refundablePayment.approvedAt).toLocaleDateString("ko-KR")}
+                                    {/* 뱃지 컬러도 그린 계열로 변경 */}
+                                    <span className="inline-block px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold mb-2 uppercase">
+                                        {p.orderName.includes("쿠폰") ? "Coupon" : "Membership"}
+                                    </span>
+                                    <h3 className="text-xl font-bold text-gray-900 leading-tight">{p.orderName}</h3>
+                                    <p className="text-gray-400 text-xs mt-1 font-medium">
+                                        {new Date(p.approvedAt).toLocaleDateString()} 결제
                                     </p>
                                 </div>
-                                <p className="text-lg font-bold text-gray-900">
-                                    {refundablePayment.amount.toLocaleString()}원
-                                </p>
+                                <p className="text-xl font-black text-gray-900">{p.amount.toLocaleString()}원</p>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setSelectedPayment(p);
+                                    setIsModalOpen(true);
+                                }}
+                                disabled={refunding}
+                                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all disabled:bg-gray-200 active:scale-[0.98]"
+                            >
+                                {refunding ? "처리 중..." : "환불 신청하기"}
+                            </button>
                         </div>
-                        <button
-                            onClick={handleRefund}
-                            disabled={refunding}
-                            className="w-full py-4 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {refunding ? "환불 처리 중..." : "환불하기"}
-                        </button>
-                    </div>
+                    ))
                 ) : (
-                    <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8 mb-6">
-                        <div className="text-center py-8">
-                            <div className="text-4xl mb-4">💳</div>
-                            <p className="text-gray-600 font-medium mb-2">환불 가능한 쿠폰 결제 내역이 없습니다.</p>
-                            <p className="text-sm text-gray-500">쿠폰을 구매하시면 여기에서 환불할 수 있습니다.</p>
-                        </div>
+                    <div className="bg-gray-50 rounded-3xl p-10 text-center text-gray-400 text-sm italic border border-gray-100">
+                        환불 가능한 최근 내역이 없습니다.
                     </div>
                 )}
 
-                {/* 결제 내역 목록 */}
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">전체 결제 내역</h2>
-                    {paymentHistory.length > 0 ? (
-                        <div className="space-y-3">
-                            {paymentHistory.map((payment) => (
-                                <div
-                                    key={payment.id}
-                                    className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:border-gray-200 transition-colors"
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-gray-900">{payment.orderName}</p>
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                {new Date(payment.approvedAt).toLocaleDateString("ko-KR", {
-                                                    year: "numeric",
-                                                    month: "long",
-                                                    day: "numeric",
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                })}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-bold text-gray-900">
-                                                {payment.amount.toLocaleString()}원
-                                            </p>
-                                            <span
-                                                className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
-                                                    payment.status === "PAID"
-                                                        ? "bg-emerald-100 text-emerald-700"
-                                                        : payment.status === "CANCELLED"
-                                                        ? "bg-gray-100 text-gray-600"
-                                                        : "bg-yellow-100 text-yellow-700"
-                                                }`}
-                                            >
-                                                {payment.status === "PAID"
-                                                    ? "결제 완료"
-                                                    : payment.status === "CANCELLED"
-                                                    ? "환불 완료"
-                                                    : payment.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">결제 내역이 없습니다.</div>
-                    )}
-                </div>
-
-                {/* 환불 정책 링크 */}
-                <div className="mt-6 text-center">
-                    <Link href="/terms" className="text-sm text-gray-500 hover:text-gray-700 underline">
-                        이용약관 및 환불 정책 보기
-                    </Link>
+                {/* 전체 내역 (간소화) */}
+                <div className="mt-12 opacity-50 hover:opacity-100 transition-opacity">
+                    <h2 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">Past History</h2>
+                    <div className="space-y-2">
+                        {paymentHistory.slice(0, 3).map((h) => (
+                            <div
+                                key={h.id}
+                                className="flex justify-between text-xs py-3 border-b border-gray-100 font-medium"
+                            >
+                                <span className="text-gray-600">{h.orderName}</span>
+                                <span className={h.status === "PAID" ? "text-green-500" : "text-gray-400"}>
+                                    {h.status === "PAID" ? "결제완료" : "환불완료"}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* 사업자 정보 */}
-                <div className="mt-8 bg-white rounded-xl border border-gray-100 p-6 md:p-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">사업자 정보</h2>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                        <p className="text-sm text-gray-700">
-                            <strong className="text-gray-900">상호:</strong> (주)두나 (DoNa)
-                        </p>
-                        <p className="text-sm text-gray-700">
-                            <strong className="text-gray-900">대표자명:</strong> 오승용
-                        </p>
-                        <p className="text-sm text-gray-700">
-                            <strong className="text-gray-900">사업자등록번호:</strong> 166-10-03081
-                        </p>
-                        <p className="text-sm text-gray-700">
-                            <strong className="text-gray-900">통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
-                        </p>
-                        <p className="text-sm text-gray-700">
-                            <strong className="text-gray-900">주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
-                        </p>
-                        <p className="text-sm text-gray-700">
-                            <strong className="text-gray-900">고객센터:</strong> 12jason@donacouse.com
-                        </p>
-                    </div>
+                <div className="mt-16 pt-10 border-t border-gray-100 text-[10px] text-gray-400 leading-loose font-medium">
+                    <p>상호: (주)두나 (DoNa) | 대표: 오승용 | 사업자번호: 166-10-03081</p>
+                    <p>통신판매: 제 2025-충남홍성-0193 호 | 주소: 충청남도 홍성군 홍북읍 신대로 33</p>
+                    <p>문의: 12jason@donacouse.com</p>
                 </div>
             </main>
         </div>

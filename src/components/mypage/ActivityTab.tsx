@@ -257,6 +257,16 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }
                 <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
                         <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">구매 내역</h3>
+                        {/* 🟢 환불 페이지 링크 추가 */}
+                        <Link
+                            href="/refund"
+                            className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                        >
+                            환불 관리
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </Link>
                     </div>
                     {payments.length > 0 ? (
                         <div className="space-y-4">
@@ -326,6 +336,30 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }
                                                 </p>
                                             </div>
                                         </div>
+                                        {/* 🟢 환불 버튼 추가 (PAID 상태이고 환불 가능한 경우만) */}
+                                        {payment.status === "PAID" && !isRefunded && (
+                                            <div className="mt-4 pt-4 border-t border-gray-100">
+                                                <Link
+                                                    href="/refund"
+                                                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                                >
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="2"
+                                                            d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                                        />
+                                                    </svg>
+                                                    환불 신청하기
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

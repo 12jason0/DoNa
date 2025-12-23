@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { extractBearerToken, verifyJwtAndGetUserId } from "@/lib/auth";
 import { PaymentStatus, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-// PLAN_DATA와 동일한 구조 (쿠폰 개수 매핑)
+// 1. 쿠폰 상품 이름과 개수 매핑 (사장님의 플랜과 일치해야 합니다)
 const COUPON_PLAN_MAPPING: Record<string, number> = {
     "AI 추천 쿠폰 3개 (Light)": 3,
     "AI 추천 쿠폰 5개 (Standard)": 5,
@@ -13,151 +13,119 @@ const COUPON_PLAN_MAPPING: Record<string, number> = {
 };
 
 /**
- * 쿠폰 환불 API
- * - 사용자의 최근 쿠폰 결제 내역을 찾아 환불 처리
- * - 토스페이먼츠 환불 API 호출
- * - DB에서 쿠폰 개수 차감 및 결제 상태 변경
+ * 슬랙 알림 전송 함수
  */
+async function sendSlackMessage(text: string) {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    if (!webhookUrl) return;
+    try {
+        await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+        });
+    } catch (err) {
+        console.error("슬랙 알림 실패:", err);
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
-        // 1. 인증 확인
+        // [인증] 토큰 확인
         const token = extractBearerToken(request);
-        if (!token) {
-            return NextResponse.json({ error: "인증 토큰이 필요합니다." }, { status: 401 });
-        }
-
-        let userId: string;
-        try {
-            userId = verifyJwtAndGetUserId(token);
-        } catch {
-            return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
-        }
-
+        if (!token) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+        const userId = verifyJwtAndGetUserId(token);
         const numericUserId = Number(userId);
-        if (!Number.isFinite(numericUserId)) {
-            return NextResponse.json({ error: "유효하지 않은 사용자 ID입니다." }, { status: 400 });
-        }
 
-        // 2. 환불 가능한 최근 쿠폰 결제 내역 조회
-        const refundablePayment = await prisma.payment.findFirst({
+        // [데이터] 요청에서 주문번호 추출
+        const { orderId, cancelReason } = await request.json().catch(() => ({}));
+
+        // 2. 환불 대상 조회 (최근 결제 건)
+        const payment = await prisma.payment.findFirst({
             where: {
                 userId: numericUserId,
                 status: PaymentStatus.PAID,
-                paymentKey: { not: null },
-                orderName: {
-                    contains: "쿠폰", // 쿠폰 결제만 환불 가능
-                },
+                ...(orderId ? { orderId } : {}),
             },
-            orderBy: {
-                approvedAt: "desc", // 최근 결제부터
-            },
+            orderBy: { approvedAt: "desc" },
+            include: { user: true },
         });
 
-        if (!refundablePayment) {
-            return NextResponse.json({ error: "환불 가능한 쿠폰 결제 내역이 없습니다." }, { status: 404 });
-        }
+        if (!payment) return NextResponse.json({ error: "환불 가능한 내역이 없습니다." }, { status: 404 });
 
-        if (!refundablePayment.paymentKey) {
-            return NextResponse.json({ error: "결제 정보가 올바르지 않습니다. (paymentKey 없음)" }, { status: 400 });
-        }
+        // 3. 상품 종류 판별
+        const isCoupon = payment.orderName.includes("쿠폰");
+        let retrieveCount = 0;
 
-        // 3. 쿠폰 개수 추출 (orderName에서)
-        const couponCount = COUPON_PLAN_MAPPING[refundablePayment.orderName] || null;
-        if (!couponCount) {
-            return NextResponse.json({ error: "환불할 쿠폰 개수를 확인할 수 없습니다." }, { status: 400 });
-        }
-
-        // 4. 현재 사용자의 쿠폰 개수 확인
-        const currentUser = await prisma.user.findUnique({
-            where: { id: numericUserId },
-            select: { couponCount: true },
-        });
-
-        if (!currentUser) {
-            return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
-        }
-
-        // 5. 환불 가능 여부 확인: 현재 쿠폰 개수가 구매한 쿠폰 개수 이상이어야 함
-        if (currentUser.couponCount < couponCount) {
-            return NextResponse.json(
-                {
-                    error: "쿠폰을 사용하여 환불할 수 없습니다.",
-                    message: `구매하신 쿠폰 ${couponCount}개 중 일부를 사용하셨습니다. 환불하려면 구매한 쿠폰 개수(${couponCount}개)만큼 보유하고 있어야 합니다.`,
-                    currentCoupons: currentUser.couponCount,
-                    requiredCoupons: couponCount,
-                },
-                { status: 400 }
-            );
-        }
-
-        // 6. 토스페이먼츠 환불 API 호출
-        // ✅ API 개별 연동 키 사용: test_sk_... (API 개별 연동용 시크릿 키)
-        const secretKey = "test_sk_50WRapdA8djeE7eMOeQAVo1zEqZK";
-
-        const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
-        const cancelRes = await fetch(
-            `https://api.tosspayments.com/v1/payments/${refundablePayment.paymentKey}/cancel`,
-            {
-                method: "POST",
-                headers: {
-                    Authorization: `Basic ${authHeader}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    cancelReason: "고객 요청에 의한 환불",
-                    cancelAmount: refundablePayment.amount,
-                }),
-                cache: "no-store",
+        if (isCoupon) {
+            retrieveCount = COUPON_PLAN_MAPPING[payment.orderName] || 0;
+            // 쿠폰을 이미 써버렸다면 환불 불가
+            if (payment.user.couponCount < retrieveCount) {
+                return NextResponse.json({ error: "이미 쿠폰을 사용하여 환불이 불가합니다." }, { status: 400 });
             }
-        );
-
-        const cancelData = await cancelRes.json().catch(() => ({}));
-
-        if (!cancelRes.ok) {
-            console.error("토스페이먼츠 환불 API 오류:", cancelData);
-            return NextResponse.json(
-                {
-                    error: "환불 처리 중 오류가 발생했습니다.",
-                    details: cancelData?.message || "UNKNOWN_ERROR",
-                },
-                { status: 400 }
-            );
         }
 
-        // 5. DB 트랜잭션: 쿠폰 개수 차감 및 결제 상태 변경
-        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            // 결제 상태를 CANCELLED로 변경
+        // 4. 토스페이먼츠 환불 요청
+        const secretKey = process.env.TOSS_SECRET_KEY || "test_sk_kYG57Eba3GPBnNXMe5d5VpWDOxmA";
+        const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
+
+        const tossRes = await fetch(`https://api.tosspayments.com/v1/payments/${payment.paymentKey}/cancel`, {
+            method: "POST",
+            headers: {
+                Authorization: `Basic ${authHeader}`,
+                "Content-Type": "application/json",
+                "Idempotency-Key": `refund_${payment.orderId}`, // 중복 환불 방지
+            },
+            body: JSON.stringify({
+                cancelReason: cancelReason || "고객 요청 환불",
+                cancelAmount: payment.amount,
+            }),
+        });
+
+        if (!tossRes.ok) throw new Error("토스 API 환불 실패");
+
+        // 5. DB 업데이트 (트랜잭션으로 일관성 보장)
+        await prisma.$transaction(async (tx) => {
+            // 결제 상태 변경
             await tx.payment.update({
-                where: { id: refundablePayment.id },
+                where: { id: payment.id },
                 data: { status: PaymentStatus.CANCELLED },
             });
 
-            // 쿠폰 개수 차감 (원자적 연산)
-            const updatedUser = await tx.user.update({
-                where: { id: numericUserId },
-                data: {
-                    couponCount: { decrement: couponCount },
-                },
-                select: { couponCount: true },
-            });
-
-            return updatedUser;
+            if (isCoupon) {
+                // 쿠폰 개수 차감
+                await tx.user.update({
+                    where: { id: numericUserId },
+                    data: { couponCount: { decrement: retrieveCount } },
+                });
+            } else {
+                // 구독 등급 강등 및 만료 처리
+                await tx.user.update({
+                    where: { id: numericUserId },
+                    data: {
+                        subscriptionTier: "FREE",
+                        subscriptionExpiresAt: null,
+                        isAutoRenewal: false,
+                    },
+                });
+            }
         });
 
-        // 8. 성공 응답
-        return NextResponse.json({
-            success: true,
-            message: "환불이 완료되었습니다.",
-            refundedCoupons: couponCount,
-            ticketsRemaining: Math.max(0, result.couponCount), // 음수 방지
-            paymentId: refundablePayment.id,
-            refundAmount: refundablePayment.amount,
-        });
+        // 6. 슬랙 알림 발송 (둘 다 옴!)
+        const typeEmoji = isCoupon ? "🎟️" : "💰";
+        const msg = `
+${typeEmoji} *[두나] ${isCoupon ? "쿠폰" : "멤버십"} 환불 완료*
+━━━━━━━━━━━━━━━━━━━━
+👤 *유저:* ${payment.user.email} (${numericUserId})
+📦 *상품:* ${payment.orderName}
+💸 *금액:* ${payment.amount.toLocaleString()}원
+━━━━━━━━━━━━━━━━━━━━
+✨ ${isCoupon ? `쿠폰 ${retrieveCount}개 회수 완료` : "유저 등급 FREE 변경 완료"}
+        `;
+        await sendSlackMessage(msg);
+
+        return NextResponse.json({ success: true, message: "환불 완료" });
     } catch (error: any) {
-        console.error("쿠폰 환불 API 오류:", error);
-        return NextResponse.json(
-            { error: "환불 처리 중 오류가 발생했습니다.", details: error?.message || "UNKNOWN_ERROR" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
