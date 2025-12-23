@@ -2,17 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { SubscriptionTier } from "@prisma/client";
 
-// 캐싱을 방지하고 항상 최신 데이터를 가져오도록 설정
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
  * [Vercel Cron Jobs용 API]
- * 매일 정해진 시간에 실행되어 만료 예정 유저의 결제를 처리합니다.
  */
 export async function GET(req: NextRequest) {
     try {
-        // 1. 보안 검증: 외부인이 주소를 알아내어 강제로 결제를 실행하는 것을 방지합니다.
         const authHeader = req.headers.get("authorization");
         const cronSecret = process.env.CRON_SECRET || "default-secret-change-in-production";
 
@@ -20,19 +17,17 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // 2. 날짜 설정: 현재 시간으로부터 24시간(내일) 내에 만료되는 유저를 찾습니다.
         const now = new Date();
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // 3. 대상 유저 조회: 자동갱신이 켜져 있고, 빌링키가 있는 유료 멤버십 유저만 추출합니다.
         const expiringSubscriptions = await prisma.user.findMany({
             where: {
                 isAutoRenewal: true,
                 billingKey: { not: null },
                 subscriptionExpiresAt: {
-                    lte: tomorrow, // 내일까지 만료되는 건
-                    gte: now, // 아직 만료되지 않은 건
+                    lte: tomorrow,
+                    gte: now,
                 },
                 subscriptionTier: {
                     in: ["BASIC", "PREMIUM"],
@@ -55,20 +50,33 @@ export async function GET(req: NextRequest) {
             errors: [] as Array<{ userId: number; error: string }>,
         };
 
-        // 4. 개별 결제 루프: 각 유저별로 토스 API를 호출하여 돈을 인출합니다.
         for (const user of expiringSubscriptions) {
             try {
                 await processSubscriptionRenewal(user.id, user.billingKey!, user.subscriptionTier);
                 results.success++;
             } catch (error: any) {
                 console.error(`[구독 자동갱신 실패] User ${user.id}:`, error);
+
+                // ❌ [슬랙 알림] 결제 실패 시 즉시 전송
+                const planName = user.subscriptionTier === "PREMIUM" ? "프리미엄 멤버십" : "베이직 멤버십";
+                const failureMessage = `
+⚠️ *[두나] 정기 결제 실패*
+━━━━━━━━━━━━━━━━━━━━
+👤 *유저 ID:* ${user.id}
+📦 *상품명:* ${planName}
+❌ *실패사유:* ${error.message || "알 수 없는 오류"}
+🛠️ *조치:* 유저 등급이 FREE로 변경되었습니다.
+━━━━━━━━━━━━━━━━━━━━
+확인 후 유저에게 안내가 필요할 수 있습니다.
+                `;
+                await sendSlackMessage(failureMessage);
+
                 results.failed++;
                 results.errors.push({
                     userId: user.id,
                     error: error.message || "Unknown error",
                 });
 
-                // 결제 실패 시(카드 한도 초과 등) 유저 등급을 FREE로 강등하고 자동갱신을 끕니다.
                 try {
                     await prisma.user.update({
                         where: { id: user.id },
@@ -92,11 +100,7 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         console.error("[구독 자동갱신 전체 오류]:", error);
         return NextResponse.json(
-            {
-                success: false,
-                error: "구독 자동갱신 처리 중 오류가 발생했습니다.",
-                details: error instanceof Error ? error.message : "Unknown error",
-            },
+            { success: false, error: "구독 자동갱신 처리 중 오류가 발생했습니다." },
             { status: 500 }
         );
     }
@@ -106,28 +110,23 @@ export async function GET(req: NextRequest) {
  * 실제 토스 결제를 진행하고 DB를 업데이트하는 핵심 함수
  */
 async function processSubscriptionRenewal(userId: number, billingKey: string, currentTier: SubscriptionTier) {
-    // 1. 상품 정보 설정: 현재 유저의 등급에 맞춰 결제 금액을 결정합니다.
     const planInfo =
         currentTier === "PREMIUM"
             ? { amount: 9900, name: "프리미엄 멤버십", tier: "PREMIUM" }
             : { amount: 4900, name: "베이직 멤버십", tier: "BASIC" };
 
-    // 2. 토스 API 인증 정보 준비
     const secretKey = process.env.TOSS_SECRET_KEY || "test_sk_kYG57Eba3GPBnNXMe5d5VpWDOxmA";
     const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
 
-    // 3. 고유 주문번호(orderId) 생성: 이 번호는 결제 시마다 항상 고유해야 합니다.
     const orderId = `renew_${currentTier.toLowerCase()}_${userId}_${Date.now()}`;
     const customerKey = `user_${userId}`;
 
-    // 4. 토스페이먼츠 자동결제 요청 실행
     const billingPaymentResponse = await fetch(`https://api.tosspayments.com/v1/billing/${billingKey}`, {
         method: "POST",
         headers: {
             Authorization: `Basic ${authHeader}`,
             "Content-Type": "application/json",
-            // ⭐ 멱등키 적용: 네트워크 문제로 중복 요청이 가더라도 토스 서버가 돈을 중복 인출하지 않게 보호합니다.
-            "Idempotency-Key": orderId,
+            "Idempotency-Key": orderId, // 멱등성 보장
         },
         body: JSON.stringify({
             customerKey: customerKey,
@@ -139,18 +138,16 @@ async function processSubscriptionRenewal(userId: number, billingKey: string, cu
 
     const billingPaymentData = await billingPaymentResponse.json();
 
-    // 토스 서버에서 에러를 보냈을 경우 중단하고 catch 블록으로 넘깁니다.
     if (!billingPaymentResponse.ok) {
         throw new Error(billingPaymentData.message || "빌링 결제 승인 실패");
     }
 
-    // 5. DB 업데이트: '결제 기록 생성'과 '유저 기간 연장'을 하나의 묶음(Transaction)으로 처리합니다.
     const now = new Date();
     const newExpiresAt = new Date(now);
-    newExpiresAt.setDate(newExpiresAt.getDate() + 30); // 구독 기간 30일 연장
+    newExpiresAt.setDate(newExpiresAt.getDate() + 30);
 
+    // DB 트랜잭션 처리
     await prisma.$transaction(async (tx: any) => {
-        // [작업 A] 결제 이력 테이블에 데이터 기록
         await tx.payment.create({
             data: {
                 orderId: orderId,
@@ -164,7 +161,6 @@ async function processSubscriptionRenewal(userId: number, billingKey: string, cu
             },
         });
 
-        // [작업 B] 유저 테이블의 구독 만료일 업데이트
         await tx.user.update({
             where: { id: userId },
             data: {
@@ -173,10 +169,39 @@ async function processSubscriptionRenewal(userId: number, billingKey: string, cu
                 isAutoRenewal: true,
             },
         });
-        // 트랜잭션 덕분에 A와 B 중 하나라도 실패하면 전체 작업이 취소되어 데이터 꼬임을 방지합니다.
     });
 
-    console.log(
-        `[구독 자동갱신 성공] User ${userId}: ${planInfo.name} 갱신 완료 (만료일: ${newExpiresAt.toISOString()})`
-    );
+    // ✅ [슬랙 알림] 결제 성공 시 DB 업데이트 후 전송
+    const successMessage = `
+🚀 *[두나] 정기 결제 성공*
+━━━━━━━━━━━━━━━━━━━━
+👤 *유저 ID:* ${userId}
+📦 *상품명:* ${planInfo.name}
+💰 *결제금액:* ${planInfo.amount.toLocaleString()}원
+🆔 *주문번호:* ${orderId}
+📅 *다음 만료일:* ${newExpiresAt.toLocaleDateString()}
+━━━━━━━━━━━━━━━━━━━━
+✨ 오늘도 두나가 한 건 했습니다!
+    `;
+    await sendSlackMessage(successMessage);
+
+    console.log(`[구독 자동갱신 성공] User ${userId}: 갱신 완료`);
+}
+
+/**
+ * 슬랙으로 알림을 보내는 도우미 함수
+ */
+async function sendSlackMessage(text: string) {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    try {
+        await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+        });
+    } catch (err) {
+        console.error("슬랙 전송 에러:", err);
+    }
 }
