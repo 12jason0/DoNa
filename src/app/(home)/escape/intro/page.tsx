@@ -2617,14 +2617,10 @@ function EscapeIntroPageInner() {
                 const br = await fetch(`/api/escape/badge?storyId=${storyId}`);
                 const bd = await br.json();
                 if (br.ok && bd?.badge && bd.badge.id) {
-                    const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-                    await fetch("/api/users/badges", {
+                    // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                    const { authenticatedFetch } = await import("@/lib/authClient");
+                    await authenticatedFetch("/api/users/badges", {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        },
-                        credentials: "include",
                         body: JSON.stringify({ badgeId: bd.badge.id }),
                     }).catch(() => {});
                     setBadge(bd.badge);
@@ -2636,14 +2632,10 @@ function EscapeIntroPageInner() {
                 try {
                     await autoSaveCollage();
                 } catch {}
-                const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-                await fetch("/api/escape/complete", {
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                await authenticatedFetch("/api/escape/complete", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    credentials: "include",
                     body: JSON.stringify({ storyId }),
                 }).catch(() => {});
             } catch {}
@@ -2964,17 +2956,12 @@ function EscapeIntroPageInner() {
                             const awarded = Array.isArray(obj.__couponAwardedPlaces) ? obj.__couponAwardedPlaces : [];
                             already = awarded.includes(Number(selectedPlaceId));
                             if (!already) {
-                                const token = localStorage.getItem("authToken");
-                                if (token) {
-                                    await fetch("/api/escape/award-coupon", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            Authorization: `Bearer ${token}`,
-                                        },
-                                        body: JSON.stringify({ placeId: Number(selectedPlaceId) }),
-                                    }).catch(() => {});
-                                }
+                                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                                const { authenticatedFetch } = await import("@/lib/authClient");
+                                await authenticatedFetch("/api/escape/award-coupon", {
+                                    method: "POST",
+                                    body: JSON.stringify({ placeId: Number(selectedPlaceId) }),
+                                }).catch(() => {});
                                 const next = Array.from(new Set([...(awarded || []), Number(selectedPlaceId)]));
                                 obj.__couponAwardedPlaces = next;
                                 localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
@@ -3064,17 +3051,12 @@ function EscapeIntroPageInner() {
                             const awarded = Array.isArray(obj.__couponAwardedPlaces) ? obj.__couponAwardedPlaces : [];
                             already = awarded.includes(Number(selectedPlaceId));
                             if (!already) {
-                                const token = localStorage.getItem("authToken");
-                                if (token) {
-                                    await fetch("/api/escape/award-coupon", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            Authorization: `Bearer ${token}`,
-                                        },
-                                        body: JSON.stringify({ placeId: Number(selectedPlaceId) }),
-                                    }).catch(() => {});
-                                }
+                                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                                const { authenticatedFetch } = await import("@/lib/authClient");
+                                await authenticatedFetch("/api/escape/award-coupon", {
+                                    method: "POST",
+                                    body: JSON.stringify({ placeId: Number(selectedPlaceId) }),
+                                }).catch(() => {});
                                 const next = Array.from(new Set([...(awarded || []), Number(selectedPlaceId)]));
                                 obj.__couponAwardedPlaces = next;
                                 localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
@@ -3224,14 +3206,10 @@ function EscapeIntroPageInner() {
 
             // [추가] 스토리 완료 기록 저장 (마이페이지 연동용)
             try {
-                const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-                await fetch("/api/escape/complete", {
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                await authenticatedFetch("/api/escape/complete", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    credentials: "include",
                     body: JSON.stringify({ storyId }),
                 });
             } catch (e) {
@@ -3244,14 +3222,10 @@ function EscapeIntroPageInner() {
                 if (br.ok && bd?.badge) {
                     setBadge(bd.badge);
                     if (bd.badge.id) {
-                        const token = localStorage.getItem("authToken");
-                        await fetch("/api/users/badges", {
+                        // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                        const { authenticatedFetch } = await import("@/lib/authClient");
+                        await authenticatedFetch("/api/users/badges", {
                             method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                            },
-                            credentials: "include",
                             body: JSON.stringify({ badgeId: bd.badge.id }),
                         });
                     }

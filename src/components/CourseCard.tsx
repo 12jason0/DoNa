@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { CONCEPTS } from "@/constants/onboardingData";
 import CourseLockOverlay from "./CourseLockOverlay";
 import TicketPlans from "@/components/TicketPlans";
+import LoginModal from "@/components/LoginModal";
 import { useRouter } from "next/navigation";
 
 interface PlaceClosedDay {
@@ -81,24 +82,31 @@ export default function CourseCard({
     const rawConcept = course.concept?.split(",")[0] || "";
     const displayConcept = CONCEPTS[rawConcept as keyof typeof CONCEPTS] || rawConcept;
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
     const router = useRouter();
 
     // ✅ 내부 잠금 클릭 핸들러
-    const handleLockedClick = (e: React.MouseEvent) => {
+    const handleLockedClick = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
-        // 1. 로그인 체크
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            if (confirm("로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?")) {
-                router.push("/login");
+        // 1. 로그인 체크 (쿠키 기반 인증 확인)
+        try {
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            if (!session.authenticated) {
+                // 비로그인 상태: LoginModal 표시
+                setShowLoginModal(true);
+                return;
             }
-            return;
-        }
 
-        // 2. 결제 모달 오픈
-        setShowSubscriptionModal(true);
+            // 2. 로그인 상태: 결제 모달 오픈
+            setShowSubscriptionModal(true);
+        } catch (error) {
+            console.error("로그인 상태 확인 실패:", error);
+            // 에러 발생 시에도 LoginModal 표시 (안전하게 처리)
+            setShowLoginModal(true);
+        }
     };
 
     // 조회수 포맷팅
@@ -242,6 +250,8 @@ export default function CourseCard({
             </div>
             {/* ✅ 결제 모달 렌더링 (각 카드마다 상태 가짐) */}
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {/* ✅ 로그인 모달 렌더링 */}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${course.id}`} />}
         </div>
     );
 }

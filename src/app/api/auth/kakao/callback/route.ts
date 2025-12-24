@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
                             type: 'loginSuccess',
                             token: data.token
                         }));
-                        window.location.href = '/?login_success=true';
+                        window.location.href = '/?login_success=true&provider=kakao';
                     } else {
                         window.location.href = '/login?error=' + encodeURIComponent(data.error || '로그인 실패');
                     }

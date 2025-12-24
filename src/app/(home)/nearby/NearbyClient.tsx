@@ -7,6 +7,7 @@ import { getPlaceStatus } from "@/lib/placeStatus";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CONCEPTS } from "@/constants/onboardingData";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
+import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 // TicketPlans 제거
 import CourseCard from "@/components/CourseCard";
 
@@ -184,12 +185,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
         setLoadingMore(true);
         try {
-            const token = localStorage.getItem("authToken");
-            const headers: HeadersInit = { "Content-Type": "application/json" };
-            if (token) {
-                headers.Authorization = `Bearer ${token}`;
-            }
-
+            // 🟢 쿠키 기반 인증: apiFetch 사용
             const params = new URLSearchParams();
             params.set("limit", "30");
             params.set("offset", String(offset));
@@ -204,8 +200,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             if (concept) params.set("concept", concept);
             if (tagIds) params.set("tagIds", tagIds);
 
-            const response = await fetch(`/api/courses/nearby?${params.toString()}`, {
-                headers,
+            const response = await apiFetch(`/api/courses/nearby?${params.toString()}`, {
                 cache: "force-cache",
                 next: { revalidate: 300 },
             });
@@ -268,35 +263,27 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     }, []);
 
     useEffect(() => {
-        try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            fetch("/api/users/favorites", {
-                headers: { Authorization: `Bearer ${token}` },
-                next: { revalidate: 300 },
-            })
-                .then((res) => (res.ok ? res.json() : []))
-                .then((list: any[]) => {
+        // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+        authenticatedFetch<any[]>("/api/users/favorites", {
+            next: { revalidate: 300 },
+        })
+            .then((list) => {
+                if (list) {
                     const ids = new Set<number>();
                     list.forEach((f: any) => {
                         const id = Number(f?.course?.id ?? f?.course_id ?? f?.courseId ?? f?.id);
                         if (Number.isFinite(id)) ids.add(id);
                     });
                     setFavoriteIds(ids);
-                })
-                .catch(() => {});
-        } catch {}
+                }
+            })
+            .catch(() => {});
     }, []);
 
     const toggleFavorite = async (e: React.MouseEvent, courseId: string | number) => {
         e.preventDefault();
         e.stopPropagation();
         const idNum = Number(courseId);
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            if (confirm("로그인이 필요합니다.")) router.push("/login");
-            return;
-        }
         const liked = favoriteIds.has(idNum);
         setFavoriteIds((prev) => {
             const next = new Set(prev);
@@ -305,14 +292,26 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             return next;
         });
         try {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
             const method = liked ? "DELETE" : "POST";
             const url = liked ? `/api/users/favorites?courseId=${idNum}` : "/api/users/favorites";
             const body = liked ? undefined : JSON.stringify({ courseId: idNum });
-            await fetch(url, {
+            
+            const result = await authenticatedFetch(url, {
                 method,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body,
             });
+            
+            if (result === null) {
+                // 인증 실패 시 원래 상태로 복구
+                setFavoriteIds((prev) => {
+                    const next = new Set(prev);
+                    if (liked) next.add(idNum);
+                    else next.delete(idNum);
+                    return next;
+                });
+                if (confirm("로그인이 필요합니다.")) router.push("/login");
+            }
         } catch {
             setFavoriteIds((prev) => {
                 const next = new Set(prev);

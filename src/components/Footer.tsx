@@ -15,73 +15,68 @@ export default function Footer() {
 
     useEffect(() => {
         if (typeof window !== "undefined") {
-            const token = localStorage.getItem("authToken");
-            setIsLoggedIn(!!token);
+            // 🟢 쿠키 기반 인증: fetchSession 사용
+            const { fetchSession } = require("@/lib/authClient");
+            fetchSession().then((session: any) => {
+                setIsLoggedIn(session.authenticated);
 
-            // 알림 상태 확인 함수
-            const checkNotificationStatus = async () => {
-                const currentToken = localStorage.getItem("authToken");
-                if (!currentToken) {
-                    setNotificationEnabled(null);
-                    return;
-                }
+                // 알림 상태 확인 함수
+                const checkNotificationStatus = async () => {
+                    if (!session.authenticated) {
+                        setNotificationEnabled(null);
+                        return;
+                    }
 
-                try {
-                    let userId: number | null = null;
                     try {
-                        const userStr = localStorage.getItem("user");
-                        if (userStr) {
-                            const userData = JSON.parse(userStr);
-                            userId = userData?.id || null;
+                        // 🟢 쿠키 기반 인증: userId 가져오기
+                        let userId: number | null = null;
+                        if (session.user) {
+                            userId = session.user.id || null;
                         }
-                    } catch (e) {
-                        console.error("localStorage user 파싱 오류:", e);
-                    }
 
-                    if (!userId) {
-                        const userResponse = await fetch("/api/users/profile", {
-                            headers: { Authorization: `Bearer ${currentToken}` },
-                        });
-                        if (userResponse.ok) {
-                            const userData = await userResponse.json();
-                            userId = userData?.user?.id || userData?.id || null;
+                        // API로 userId 가져오기
+                        if (!userId) {
+                            const { authenticatedFetch } = await import("@/lib/authClient");
+                            const userData = await authenticatedFetch("/api/users/profile");
+                            if (userData) {
+                                userId = (userData as any)?.user?.id || (userData as any)?.id || null;
+                            }
                         }
-                    }
 
-                    if (userId) {
-                        const statusResponse = await fetch(`/api/push?userId=${userId}`, {
-                            headers: { Authorization: `Bearer ${currentToken}` },
-                        });
-                        if (statusResponse.ok) {
-                            const statusData = await statusResponse.json();
-                            setNotificationEnabled(statusData.subscribed ?? false);
+                        if (userId) {
+                            // 🟢 쿠키 기반 인증: apiFetch 사용
+                            const { apiFetch } = await import("@/lib/authClient");
+                            const { data: statusData, response: statusResponse } = await apiFetch(`/api/push?userId=${userId}`);
+                            if (statusResponse.ok && statusData) {
+                                setNotificationEnabled((statusData as any).subscribed ?? false);
+                            }
                         }
+                    } catch (error) {
+                        console.error("알림 상태 조회 오류:", error);
+                        // 에러 시 기존 상태 유지 혹은 null
                     }
-                } catch (error) {
-                    console.error("알림 상태 조회 오류:", error);
-                    // 에러 시 기존 상태 유지 혹은 null
-                }
-            };
+                };
 
-            // 1. 초기 로드 시 확인
-            checkNotificationStatus();
+                // 1. 초기 로드 시 확인
+                checkNotificationStatus();
 
-            // 2. 주기적으로 상태 확인 (30초마다 - 기존 로직 유지)
-            const interval = setInterval(checkNotificationStatus, 30000);
+                // 2. 주기적으로 상태 확인 (30초마다 - 기존 로직 유지)
+                const interval = setInterval(checkNotificationStatus, 30000);
 
-            // 3. [추가됨] ProfileTab에서 변경 발생 시 즉시 반응하는 리스너
-            const handleNotificationUpdate = (event: CustomEvent) => {
-                if (event.detail && typeof event.detail.subscribed === "boolean") {
-                    setNotificationEnabled(event.detail.subscribed);
-                }
-            };
+                // 3. [추가됨] ProfileTab에서 변경 발생 시 즉시 반응하는 리스너
+                const handleNotificationUpdate = (event: CustomEvent) => {
+                    if (event.detail && typeof event.detail.subscribed === "boolean") {
+                        setNotificationEnabled(event.detail.subscribed);
+                    }
+                };
 
-            window.addEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
+                window.addEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
 
-            return () => {
-                clearInterval(interval);
-                window.removeEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
-            };
+                return () => {
+                    clearInterval(interval);
+                    window.removeEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
+                };
+            });
         }
     }, [pathname]);
 

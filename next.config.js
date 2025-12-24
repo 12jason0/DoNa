@@ -72,6 +72,8 @@ const nextConfig = {
                                 "https://t1.kakaocdn.net",
                                 "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com",
                                 "https://*.amazonaws.com",
+                                "https://*.pusher.com", // Pusher API 허용
+                                "wss://*.pusher.com", // 실시간 소켓(Websocket) 연결 허용 (중요!)
                                 ...(isDev
                                     ? [
                                           "http://oapi.map.naver.com",

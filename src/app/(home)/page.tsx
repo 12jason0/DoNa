@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { fetchWeekStamps, getLocalTodayKey, postCheckin } from "@/lib/checkinClient";
+import { apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
@@ -43,6 +44,7 @@ export default function Home() {
     const [searchNonce, setSearchNonce] = useState(0);
     const [, setLoading] = useState(true);
     const [showWelcome, setShowWelcome] = useState(false);
+    const [loginProvider, setLoginProvider] = useState<"apple" | "kakao" | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showAdModal, setShowAdModal] = useState(false);
     const [isSignup, setIsSignup] = useState(false);
@@ -72,40 +74,36 @@ export default function Home() {
     useEffect(() => {
         (async () => {
             try {
-                const token = localStorage.getItem("authToken");
-                if (!token) return;
-
+                // 🟢 쿠키 기반 인증: apiFetch 사용
                 const [profileRes, checkinRes, preferencesRes] = await Promise.all([
-                    fetch("/api/users/profile", {
-                        headers: { Authorization: `Bearer ${token}` },
+                    apiFetch("/api/users/profile", {
                         next: { revalidate: 300 },
                     }),
-                    fetch("/api/users/checkins", {
-                        headers: { Authorization: `Bearer ${token}` },
+                    apiFetch("/api/users/checkins", {
                         next: { revalidate: 60 },
                     }),
-                    fetch("/api/users/preferences", {
-                        headers: { Authorization: `Bearer ${token}` },
+                    apiFetch("/api/users/preferences", {
                         next: { revalidate: 300 },
                     }),
                 ]);
-                if (profileRes.ok) {
-                    const p = await profileRes.json().catch(() => ({}));
+                if (profileRes.response.ok && profileRes.data) {
+                    const p = profileRes.data as any;
                     const id =
                         Number(p?.user?.id ?? p?.id ?? p?.userId ?? p?.user_id) &&
                         Number.isFinite(Number(p?.user?.id ?? p?.id ?? p?.userId ?? p?.user_id))
                             ? Number(p?.user?.id ?? p?.id ?? p?.userId ?? p?.user_id)
                             : null;
                     if (id) setUserId(id);
-                    const name = p?.user?.nickname ?? p?.nickname ?? "두나";
+                    // 🟢 애플 로그인 시 username이 제대로 저장되었는지 확인
+                    const name = p?.user?.nickname ?? p?.user?.name ?? p?.nickname ?? p?.name ?? p?.username ?? "두나";
                     setUserName(name);
                 }
-                if (checkinRes.ok) {
-                    const c = await checkinRes.json().catch(() => ({}));
+                if (checkinRes.response.ok && checkinRes.data) {
+                    const c = checkinRes.data as any;
                     if (Number.isFinite(Number(c?.streak))) setStreak(Number(c.streak));
                 }
-                if (preferencesRes.ok) {
-                    const prefs = await preferencesRes.json().catch(() => ({}));
+                if (preferencesRes.response.ok && preferencesRes.data) {
+                    const prefs = preferencesRes.data as any;
                     const prefData = prefs?.preferences ?? prefs ?? {};
                     const s1 = localStorage.getItem("onboardingStep1") === "1";
                     const s2 = localStorage.getItem("onboardingStep2") === "1";
@@ -161,9 +159,9 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, []);
 
-        const buildCourseListUrl = () => {
-            const params = new URLSearchParams();
-            params.set("limit", "15"); // 🟢 성능 최적화: 20 -> 15 (초기 로딩 속도 향상)
+    const buildCourseListUrl = () => {
+        const params = new URLSearchParams();
+        params.set("limit", "15"); // 🟢 성능 최적화: 20 -> 15 (초기 로딩 속도 향상)
         params.set("imagePolicy", "any");
         const qTrim = query.trim();
         if (qTrim) params.set("q", qTrim);
@@ -174,7 +172,8 @@ export default function Home() {
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                const response = await fetch(buildCourseListUrl() as any, {
+                // 🟢 쿠키 기반 인증: apiFetch 사용 (쿠키 자동 포함)
+                const { data, response } = await apiFetch(buildCourseListUrl() as any, {
                     cache: "force-cache",
                     next: { revalidate: 300 },
                 });
@@ -182,7 +181,6 @@ export default function Home() {
                     setCourses([]);
                     return;
                 }
-                const data = await response.json().catch(() => null);
                 setCourses(
                     Array.isArray(data) ? data : Array.isArray((data as any)?.courses) ? (data as any).courses : []
                 );
@@ -210,28 +208,25 @@ export default function Home() {
             setTimeout(() => setShowWelcome(false), 3000);
         }
 
-        // 2. 로그인 성공 (✅ 여기를 수정했습니다)
+        // 2. 로그인 성공 (✅ 모달 제거)
         if (loginSuccess === "true") {
-            // 🚨 수정 포인트: 로그인했으니 로그인 창은 끄고(false), 환영 배너를 켭니다(true)
+            // 🟢 로그인 방식 확인 (애플 또는 카카오) - 모달 표시는 하지 않음
+            const provider = urlParams.get("provider") as "apple" | "kakao" | null;
+            setLoginProvider(provider);
+
+            // 🚨 수정 포인트: 로그인했으니 로그인 창은 끄고(false), 환영 배너는 표시하지 않음
+            // 🟢 애플 로그인 시에는 "로그인 성공!" 모달도 표시하지 않음
             setShowLoginModal(false);
-            setShowWelcome(true);
+            setShowWelcome(false); // 🟢 모달 표시 안 함
 
             maybeOpenCheckinModal(); // 출석체크 모달은 유지
 
-            // 토큰 이벤트 발생 (기존 유지)
-            const token = localStorage.getItem("authToken");
-            if (token) {
-                window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token } }));
-            } else {
-                window.dispatchEvent(new CustomEvent("authTokenChange"));
-            }
+            // 🟢 쿠키 기반 인증: authLoginSuccess 이벤트 발생
+            window.dispatchEvent(new CustomEvent("authLoginSuccess"));
 
             // URL 세탁 (기존 유지)
             const newUrl = window.location.pathname;
             window.history.replaceState({}, "", newUrl);
-
-            // ✨ 추가: 3초 뒤에 환영 배너 자동으로 끄기
-            setTimeout(() => setShowWelcome(false), 3000);
         }
 
         // 3. 회원가입 성공 (기존 유지)
@@ -240,7 +235,7 @@ export default function Home() {
             // 일단은 기존 코드대로 true(모달 띄움)로 두었습니다.
             setShowLoginModal(true);
             setIsSignup(true);
-            localStorage.setItem("loginTime", Date.now().toString());
+            // 🟢 쿠키 기반 인증: loginTime은 더 이상 사용하지 않음
             maybeOpenCheckinModal();
             const newUrl = window.location.pathname;
             window.history.replaceState({}, "", newUrl);
@@ -248,17 +243,22 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        const handleAuthChange = (event: Event) => {
-            const customEvent = event as CustomEvent;
-            const token = customEvent.detail?.token || localStorage.getItem("authToken");
-            if (token) {
+        const handleAuthChange = async () => {
+            // 🟢 쿠키 기반 인증: fetchSession으로 확인
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            if (session.authenticated) {
                 setTimeout(() => {
                     maybeOpenCheckinModal();
                 }, 500);
             }
         };
-        window.addEventListener("authTokenChange", handleAuthChange as EventListener);
-        return () => window.removeEventListener("authTokenChange", handleAuthChange as EventListener);
+        window.addEventListener("authLoginSuccess", handleAuthChange);
+        window.addEventListener("authTokenChange", handleAuthChange);
+        return () => {
+            window.removeEventListener("authLoginSuccess", handleAuthChange);
+            window.removeEventListener("authTokenChange", handleAuthChange);
+        };
     }, []);
 
     const fetchAndSetWeekStamps = async (): Promise<{
@@ -280,8 +280,10 @@ export default function Home() {
 
     const maybeOpenCheckinModal = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
+            // 🟢 쿠키 기반 인증: fetchSession으로 확인
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            if (!session.authenticated) return;
 
             const result = await fetchAndSetWeekStamps();
             if (!result) return;
@@ -291,13 +293,12 @@ export default function Home() {
 
             if (!already) {
                 try {
-                    const token2 = localStorage.getItem("authToken");
-                    const res = await fetch("/api/users/checkins", {
-                        headers: token2 ? { Authorization: `Bearer ${token2}` } : {},
+                    // 🟢 쿠키 기반 인증: apiFetch 사용
+                    const { data, response } = await apiFetch("/api/users/checkins", {
                         next: { revalidate: 60 },
                     });
-                    if (res.ok) {
-                        const d = await res.json().catch(() => ({}));
+                    if (response.ok && data) {
+                        const d = data as any;
                         if (Number.isFinite(Number(d?.streak))) {
                             setStreak(Number(d.streak));
                         }
@@ -343,9 +344,11 @@ export default function Home() {
 
     useEffect(() => {
         const initAuth = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            
+            // 🟢 쿠키 기반 인증: fetchSession으로 확인
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            if (!session.authenticated) return;
+
             // 스플래시가 끝났는지 확인하는 함수
             const checkSplashDone = (): Promise<void> => {
                 return new Promise((resolve) => {
@@ -355,7 +358,7 @@ export default function Home() {
                         resolve();
                         return;
                     }
-                    
+
                     // 스플래시가 표시 중이면 끝날 때까지 대기
                     // 스플래시는 약 7초 동안 표시되므로, 최대 8초까지 대기
                     let checkCount = 0;
@@ -370,45 +373,44 @@ export default function Home() {
                     }, 100);
                 });
             };
-            
+
             try {
-                const res = await fetch("/api/users/profile", {
-                    credentials: "include",
-                    headers: { Authorization: `Bearer ${token}` },
+                // 🟢 쿠키 기반 인증: apiFetch 사용
+                const { data, response } = await apiFetch("/api/users/profile", {
                     next: { revalidate: 300 },
                 });
-                if (res.ok) {
-                    const userData = await res.json();
-                    
+                if (response.ok && data) {
+                    const userData = data as any;
+
                     // 스플래시가 끝날 때까지 대기
                     await checkSplashDone();
-                    
+
                     // 홈 페이지가 완전히 로드된 후 추가 대기 (안정성)
                     await new Promise((resolve) => setTimeout(resolve, 500));
-                    
+
                     // 🟢 혜택 동의 모달 체크: 한 번도 안 본 사람에게만 표시
                     if (userData.hasSeenConsentModal === false) {
                         setShowBenefitConsentModal(true);
                     }
-                    
+
                     // 출석체크 모달은 한 번만 열리도록 hasShownCheckinModalRef로 제어
                     if (!hasShownCheckinModalRef.current) {
                         setTimeout(() => {
                             maybeOpenCheckinModal();
                         }, 800);
                     }
-                } else if (res.status === 401) {
-                    localStorage.removeItem("authToken");
                 }
             } catch {
-                localStorage.removeItem("authToken");
+                // 에러 발생 시 무시 (로그인하지 않은 상태로 처리)
             }
         };
         initAuth();
 
-        const handleFocus = () => {
-            const token = localStorage.getItem("authToken");
-            if (token && !hasShownCheckinModalRef.current) {
+        const handleFocus = async () => {
+            // 🟢 쿠키 기반 인증: fetchSession으로 확인
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            if (session.authenticated && !hasShownCheckinModalRef.current) {
                 setTimeout(() => {
                     maybeOpenCheckinModal();
                 }, 300);
@@ -430,12 +432,13 @@ export default function Home() {
             try {
                 // ✅ 최적화: 캐시 사용 + 최소 데이터만 가져오기 (5개만 필요하므로 limit=5)
                 // ✅ cache: 'force-cache'로 브라우저 캐시 강제 사용 (가장 빠름)
-                const res = await fetch("/api/courses?limit=5&imagePolicy=any&grade=FREE", {
+                // 🟢 쿠키 기반 인증: apiFetch 사용
+                const { data, response } = await apiFetch("/api/courses?limit=5&imagePolicy=any&grade=FREE", {
                     cache: "force-cache", // 브라우저 캐시 강제 사용 (가장 빠른 로딩)
                     next: { revalidate: 3600 }, // 1시간 캐시 (서버 캐시)
                 });
 
-                if (!res.ok) {
+                if (!response.ok || !data) {
                     // courses 상태에서 데이터 가져오기 시도
                     if (courses.length > 0) {
                         const processed = courses.slice(0, 5).map((c: any) => ({
@@ -447,8 +450,7 @@ export default function Home() {
                     return;
                 }
 
-                const data = await res.json();
-                const allCourses = Array.isArray(data) ? data : data.courses || [];
+                const allCourses = Array.isArray(data) ? data : (data as any).courses || [];
 
                 // FREE 등급 코스만 필터링 (API에서 이미 필터링했지만 이중 체크)
                 const freeCourses = allCourses.filter((c: any) => c.grade === "FREE");
@@ -515,17 +517,25 @@ export default function Home() {
     const fetchRecommendations = async () => {
         try {
             setIsLoadingRecs(true);
-            const token = localStorage.getItem("authToken");
-            setIsLoggedInForRecs(!!token);
+            // 🟢 쿠키 기반 인증: fetchSession으로 로그인 상태 확인
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            setIsLoggedInForRecs(session.authenticated);
+
             // 🟢 성능 최적화: 캐싱 추가
-            const res = await fetch("/api/recommendations?limit=6", {
+            // 🟢 쿠키 기반 인증: apiFetch 사용
+            // 🟢 mode=main 파라미터 추가: 모든 등급의 코스를 반환 (잠금은 프론트엔드에서 처리)
+            const { data, response } = await apiFetch("/api/recommendations?limit=6&mode=main", {
                 cache: "force-cache", // 브라우저 캐시 사용
                 next: { revalidate: 300 }, // 5분 캐시
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
-            const data = await res.json().catch(() => ({}));
-            if (Array.isArray(data?.recommendations)) {
-                setRecs(data.recommendations);
+
+            if (response.ok && data) {
+                if (Array.isArray((data as any)?.recommendations)) {
+                    setRecs((data as any).recommendations);
+                } else {
+                    setRecs([]);
+                }
             } else {
                 setRecs([]);
             }
@@ -548,8 +558,27 @@ export default function Home() {
         const handleAuthChange = () => {
             fetchRecommendations();
         };
+        const handleLogout = () => {
+            // 🟢 로그아웃 시 모든 상태 초기화
+            console.log("[Home] 로그아웃 이벤트 수신 - 상태 초기화");
+            setCourses([]);
+            setHeroCourses([]);
+            setRecs([]);
+            setUserId(null);
+            setUserName("");
+            setStreak(0);
+            setWeekStamps([false, false, false, false, false, false, false]);
+            setAlreadyToday(false);
+            setCycleProgress(0);
+            setIsOnboardingComplete(false);
+            // 추천 데이터는 비로그인 상태로 다시 가져올 필요 없음 (PersonalizedSection에서 처리)
+        };
         window.addEventListener("authTokenChange", handleAuthChange as EventListener);
-        return () => window.removeEventListener("authTokenChange", handleAuthChange as EventListener);
+        window.addEventListener("authLogout", handleLogout as EventListener);
+        return () => {
+            window.removeEventListener("authTokenChange", handleAuthChange as EventListener);
+            window.removeEventListener("authLogout", handleLogout as EventListener);
+        };
     }, []);
 
     useEffect(() => {
@@ -577,8 +606,11 @@ export default function Home() {
         } catch {}
     }, []);
 
-    const handleStartOnboarding = () => {
-        if (!localStorage.getItem("authToken")) {
+    const handleStartOnboarding = async () => {
+        // 🟢 쿠키 기반 인증: fetchSession으로 확인
+        const { fetchSession } = await import("@/lib/authClient");
+        const session = await fetchSession();
+        if (!session.authenticated) {
             setShowLoginRequiredModal(true);
             return;
         }
@@ -621,15 +653,8 @@ export default function Home() {
             )}
             <CompletionModal isOpen={showRewardModal} onClose={() => setShowRewardModal(false)} />
             <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
-            {showWelcome && (
-                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in hover:cursor-pointer">
-                    <div className="flex items-center space-x-2">
-                        <span className="text-xl">🌿</span>
-                        <span className="font-semibold">카카오 로그인에 성공했습니다!</span>
-                    </div>
-                </div>
-            )}
-            {showLoginModal && (
+            {/* 🟢 애플 로그인 시에는 "로그인 성공!" 모달을 표시하지 않음 */}
+            {showLoginModal && loginProvider !== "apple" && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center animate-fade-in relative">
                         <button

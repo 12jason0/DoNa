@@ -139,6 +139,8 @@ model Course {
   @@index([concept])
   @@index([region])
   @@index([title])
+  @@index([isPublic, grade]) // 🟢 성능 최적화: 공개 여부와 등급 복합 인덱스
+  @@index([isPublic, region]) // 🟢 성능 최적화: 공개 여부와 지역 복합 인덱스
   @@map("courses")
 }
 

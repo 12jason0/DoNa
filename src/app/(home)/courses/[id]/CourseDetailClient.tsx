@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
+import LoginModal from "@/components/LoginModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
+import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 
 // --- 아이콘 (SVG) 완벽 정의 ---
 const Icons = {
@@ -252,6 +254,8 @@ export default function CourseDetailClient({
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
     // 전체 지도 모달 State
     const [showFullMapModal, setShowFullMapModal] = useState(false);
@@ -271,31 +275,52 @@ export default function CourseDetailClient({
 
     // --- Effects ---
     useEffect(() => {
-        const token = localStorage.getItem("authToken");
-        if (token) {
-            fetch("/api/users/favorites", { headers: { Authorization: `Bearer ${token}` } })
-                .then((res) => (res.ok ? res.json() : []))
-                .then((favorites) => {
-                    const isFavorited = favorites.some((fav: any) => fav.course_id.toString() === courseId);
-                    setIsSaved(isFavorited);
-                })
-                .catch(() => {});
+        // 🟢 최적화: 로그인 상태와 즐겨찾기 확인을 병렬로 처리
+        const initializeData = async () => {
+            try {
+                const { fetchSession } = await import("@/lib/authClient");
+                const session = await fetchSession();
+                const authenticated = session.authenticated;
+                setIsLoggedIn(authenticated);
 
-            fetch("/api/users/interactions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ courseId: Number(courseId), action: "view" }),
-            }).catch(() => {});
-        }
+                // 로그인된 경우에만 즐겨찾기 확인
+                if (authenticated) {
+                    const favorites = await authenticatedFetch<any[]>("/api/users/favorites").catch(() => null);
+                    if (favorites) {
+                        const isFavorited = favorites.some((fav: any) => fav.course_id.toString() === courseId);
+                        setIsSaved(isFavorited);
+                    }
+                }
+            } catch (error) {
+                console.error("초기화 실패:", error);
+                setIsLoggedIn(false);
+            }
+        };
+        initializeData();
 
-        const key = `course_view_${courseId}`;
-        const now = Date.now();
-        const lastView = localStorage.getItem(key);
-        if (!lastView || now - parseInt(lastView) > 30 * 60 * 1000) {
-            fetch(`/api/courses/${courseId}/view`, { method: "POST" })
-                .then(() => localStorage.setItem(key, String(now)))
-                .catch(() => {});
-        }
+        // 🟢 최적화: 조회수 증가는 지연 처리 (requestIdleCallback 또는 setTimeout 사용)
+        const trackView = () => {
+            const key = `course_view_${courseId}`;
+            const now = Date.now();
+            const lastView = localStorage.getItem(key);
+            if (!lastView || now - parseInt(lastView) > 30 * 60 * 1000) {
+                // 🟢 브라우저가 idle 상태일 때 실행하여 초기 로딩에 영향 없도록
+                if (typeof window.requestIdleCallback !== "undefined") {
+                    window.requestIdleCallback(() => {
+                        fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
+                            .then(() => localStorage.setItem(key, String(now)))
+                            .catch(() => {});
+                    });
+                } else {
+                    setTimeout(() => {
+                        fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
+                            .then(() => localStorage.setItem(key, String(now)))
+                            .catch(() => {});
+                    }, 2000); // 2초 후 실행
+                }
+            }
+        };
+        trackView();
     }, [courseId]);
 
     useEffect(() => {
@@ -743,15 +768,49 @@ export default function CourseDetailClient({
                                                 </div>
                                             </div>
 
-                                            {/* Dona Pick - 팁이 있으면 항상 표시 */}
+                                            {/* Dona Pick - 팁은 BASIC 등급 이상만 표시 (코스 잠금과 별개) */}
                                             {coursePlace.coaching_tip && (
                                                 <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
-                                                    {/* 🟢 수정: 서버에서 보내준 isLocked 값을 최우선으로 사용 */}
-                                                    {courseData.isLocked ? (
+                                                    {/* 🟢 tip은 코스 잠금과 별개로 BASIC 등급 이상만 보여야 함 */}
+                                                    {/* 비로그인: LoginModal, 로그인+FREE: 결제 모달, 로그인+BASIC/PREMIUM: tip 표시 */}
+                                                    {!isLoggedIn ? (
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                console.log("팁 클릭 - 결제 모달 열기");
+                                                                console.log("팁 클릭 - 비로그인, 로그인 모달 열기");
+                                                                setShowLoginModal(true);
+                                                            }}
+                                                            className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
+                                                        >
+                                                            <div className="pt-0.5">
+                                                                <svg
+                                                                    className="w-5 h-5 text-gray-400"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth="2"
+                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                                    />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="flex-1 text-left">
+                                                                <p className="text-xs font-bold text-gray-600 mb-0.5">
+                                                                    🔒 DoNa's Tip 보기
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-400">
+                                                                    로그인이 필요합니다. 클릭하여 로그인하기
+                                                                </p>
+                                                            </div>
+                                                        </button>
+                                                    ) : userTier === "FREE" ? (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                console.log("팁 클릭 - FREE 등급, 결제 모달 열기");
                                                                 setShowSubscriptionModal(true);
                                                             }}
                                                             className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
@@ -967,6 +1026,7 @@ export default function CourseDetailClient({
                 courseName={courseData.title}
             />
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
             {/* Place Detail Modal */}
             {showPlaceModal && selectedPlace && (

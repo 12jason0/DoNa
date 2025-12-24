@@ -23,15 +23,12 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
         }
 
         setIsSubmitting(true);
-        const token = localStorage.getItem("authToken");
 
         try {
-            const res = await fetch("/api/users/notifications/consent", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const res = await authenticatedFetch("/api/users/notifications/consent", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
                 body: JSON.stringify({ topics: selected }),
             });
 

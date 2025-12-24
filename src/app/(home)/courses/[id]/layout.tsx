@@ -19,6 +19,8 @@ import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 
 import ReviewModal from "@/components/ReviewModal";
+import TicketPlans from "@/components/TicketPlans";
+import LoginModal from "@/components/LoginModal";
 const NaverMap = dynamic(() => import("@/components/NaverMap"), { ssr: false });
 import { Place as MapPlace, UserLocation } from "@/types/map";
 
@@ -226,6 +228,10 @@ function CourseDetailPage() {
     const [isShareLoading, setIsShareLoading] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [reviews, setReviews] = useState<any[]>([]);
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewsError, setReviewsError] = useState<string | null>(null);
@@ -378,20 +384,39 @@ function CourseDetailPage() {
         }
     }, [courseId]);
 
+    // 사용자 등급 확인 (tip 잠금 로직용)
+    useEffect(() => {
+        const fetchUserTier = async () => {
+            try {
+                const { authenticatedFetch, fetchSession } = await import("@/lib/authClient");
+                const session = await fetchSession();
+                setIsLoggedIn(session.authenticated);
+                
+                if (session.authenticated) {
+                    const data = await authenticatedFetch("/api/users/profile");
+                    if (data) {
+                        const tier = (data as any).user?.subscriptionTier || (data as any).subscriptionTier || "FREE";
+                        setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
+                    }
+                } else {
+                    setUserTier("FREE");
+                }
+            } catch (err) {
+                console.error("사용자 등급 가져오기 실패:", err);
+                setIsLoggedIn(false);
+                setUserTier("FREE");
+            }
+        };
+        fetchUserTier();
+    }, []);
+
     // 찜 상태 확인
     const checkFavoriteStatus = useCallback(async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-
-            const response = await fetch("/api/users/favorites", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const favorites = await response.json();
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const favorites = await authenticatedFetch<any[]>("/api/users/favorites");
+            if (favorites) {
                 const isFavorited = favorites.some((fav: any) => fav.course_id.toString() === courseId);
                 setIsSaved(isFavorited);
             }
@@ -431,52 +456,35 @@ function CourseDetailPage() {
 
     const handleSaveCourse = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                showToast("로그인이 필요합니다.", "error");
-                router.push("/login");
-                return;
-            }
-
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
             if (isSaved) {
-                // 찜 해제 로직 (기존과 동일)
-                const response = await fetch(`/api/users/favorites?courseId=${courseId}`, {
+                // 찜 해제 로직
+                const result = await authenticatedFetch(`/api/users/favorites?courseId=${courseId}`, {
                     method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
                 });
 
-                if (response.ok) {
+                if (result !== null) {
                     setIsSaved(false);
                     showToast("찜 목록에서 제거되었습니다.", "success");
                     window.dispatchEvent(new CustomEvent("favoritesChanged"));
                 } else {
-                    showToast("찜 삭제에 실패했습니다.", "error");
+                    showToast("로그인이 필요합니다.", "error");
+                    router.push("/login");
                 }
             } else {
-                // 찜 추가 로직 (method: 'POST' 추가)
-                const response = await fetch("/api/users/favorites", {
-                    method: "POST", // 이 부분을 추가합니다.
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
+                // 찜 추가 로직
+                const result = await authenticatedFetch("/api/users/favorites", {
+                    method: "POST",
                     body: JSON.stringify({ courseId: courseId }),
                 });
 
-                if (response.ok) {
+                if (result !== null) {
                     setIsSaved(true);
                     showToast("찜 목록에 추가되었습니다.", "success");
                     window.dispatchEvent(new CustomEvent("favoritesChanged"));
                 } else {
-                    const errorData = await response.json();
-                    if (errorData.error === "Already favorited") {
-                        setIsSaved(true);
-                        showToast("이미 찜한 코스입니다.", "info");
-                    } else {
-                        showToast("찜 추가에 실패했습니다.", "error");
-                    }
+                    showToast("로그인이 필요합니다.", "error");
+                    router.push("/login");
                 }
             }
         } catch (error) {
@@ -904,11 +912,70 @@ function CourseDetailPage() {
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        {/* 팁 - BASIC 등급 이상만 표시 */}
                                                         {coursePlace.coaching_tip && (
-                                                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                                                                <p className="text-sm text-blue-800">
-                                                                    💡 <strong>팁:</strong> {coursePlace.coaching_tip}
-                                                                </p>
+                                                            <div className="mt-4">
+                                                                {!isLoggedIn ? (
+                                                                    <button
+                                                                        onClick={() => setShowLoginModal(true)}
+                                                                        className="w-full bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-3"
+                                                                    >
+                                                                        <div className="pt-0.5">
+                                                                            <svg
+                                                                                className="w-5 h-5 text-gray-400"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                viewBox="0 0 24 24"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth="2"
+                                                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                                                />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div className="flex-1 text-left">
+                                                                            <p className="text-xs font-bold text-gray-600 mb-0.5">🔒 DoNa's Tip 보기</p>
+                                                                            <p className="text-[10px] text-gray-400">
+                                                                                로그인이 필요합니다. 클릭하여 로그인하기
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                ) : userTier === "FREE" ? (
+                                                                    <button
+                                                                        onClick={() => setShowSubscriptionModal(true)}
+                                                                        className="w-full bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-3"
+                                                                    >
+                                                                        <div className="pt-0.5">
+                                                                            <svg
+                                                                                className="w-5 h-5 text-gray-400"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                viewBox="0 0 24 24"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth="2"
+                                                                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                                                />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div className="flex-1 text-left">
+                                                                            <p className="text-xs font-bold text-gray-600 mb-0.5">🔒 DoNa's Tip 보기</p>
+                                                                            <p className="text-[10px] text-gray-400">
+                                                                                BASIC 등급 이상만 볼 수 있습니다. 클릭하여 멤버십 구독하기
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                                                                        <p className="text-sm text-blue-800">
+                                                                            💡 <strong>팁:</strong> {coursePlace.coaching_tip}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1199,6 +1266,8 @@ function CourseDetailPage() {
                 courseId={parseInt(courseId)}
                 courseName={courseData.title}
             />
+            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
             {/* JSON-LD 구조화 데이터 */}
             <script

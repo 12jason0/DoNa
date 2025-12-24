@@ -17,16 +17,17 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     useEffect(() => {
         const checkNotificationStatus = async () => {
             try {
-                const token = localStorage.getItem("authToken");
-                if (!token) {
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                const data = await authenticatedFetch("/api/users/notifications/interests");
+                
+                if (!data) {
                     setIsLoading(false);
                     return;
                 }
 
                 // 🟢 notification_interests 테이블에서 NEW_ESCAPE 확인
-                const interestRes = await fetch("/api/users/notifications/interests", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const interestRes = { ok: true, json: async () => data };
                 
                 if (interestRes.ok) {
                     const data = await interestRes.json();

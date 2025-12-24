@@ -8,171 +8,251 @@ import { verifyJwtAndGetUserId } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const revalidate = 600; // 🟢 10분 캐싱으로 증가 (성능 최적화)
 
-async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
-    // 🟢 전체 코스 로드: limit 제거 (전체 코스 표시)
-
-    // Simplified query for initial load
-    // We replicate the core logic of /api/courses
-    const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
-    const concept = typeof searchParams?.concept === "string" ? searchParams.concept : undefined;
-
-    const where: any = {};
-    if (q) {
-        where.OR = [
-            { title: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
-            { concept: { contains: q, mode: "insensitive" } },
-            { region: { contains: q, mode: "insensitive" } },
-        ];
-    }
-
-    // We ignore complex concept/tag filtering for Server Component initial load to keep it simple and fast.
-    if (concept) {
-        where.concept = { contains: concept, mode: "insensitive" };
-    }
-
-    // ✅ [유저 등급 확인 및 잠금 해제된 코스 목록 조회] - 최적화: 로그인한 경우에만 조회
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth")?.value;
-    let userTier = "FREE";
-    let unlockedCourseIds: number[] = []; // 🟢 쿠폰으로 구매한 코스 ID 목록
-
-    if (token) {
-        try {
-            const userId = verifyJwtAndGetUserId(token);
-            if (userId) {
-                const userIdNum = Number(userId);
-                // 🟢 성능 최적화: 병렬 조회로 속도 향상
-                const [user, unlocks] = await Promise.all([
-                    prisma.user.findUnique({
-                        where: { id: userIdNum },
-                        select: { subscriptionTier: true },
-                    }),
-                    // CourseUnlock 조회는 선택적으로만 (에러 발생 시 무시)
-                    (prisma as any).courseUnlock.findMany({
-                        where: { userId: userIdNum },
-                        select: { courseId: true },
-                    }).catch(() => []),
-                ]);
-                
-                if (user?.subscriptionTier) {
-                    userTier = user.subscriptionTier;
-                }
-                unlockedCourseIds = Array.isArray(unlocks) ? unlocks.map((u: any) => u.courseId) : [];
-            }
-        } catch (e) {
-            // 토큰이 유효하지 않은 경우 무시 (FREE로 유지)
-        }
-    }
-
-    // isPublic 필터 추가 및 필요한 필드만 선택
-    const whereWithPublic = { ...where, isPublic: true };
-
-    // 🟢 성능 최적화: 처음 30개만 로드 (무한 스크롤로 추가 로드)
-    const courses = await prisma.course.findMany({
-        where: whereWithPublic,
-        orderBy: { id: "desc" },
-        take: 30, // 🟢 처음 30개만 로드
+// 공통 select 옵션
+const courseSelectOptions = {
+    id: true,
+    title: true,
+    description: true,
+    duration: true,
+    region: true,
+    imageUrl: true,
+    concept: true,
+    rating: true,
+    view_count: true,
+    createdAt: true,
+    grade: true,
+    coursePlaces: {
+        take: 1,
+        orderBy: { order_index: "asc" as const },
         select: {
-            id: true,
-            title: true,
-            description: true,
-            duration: true,
-            region: true,
-            imageUrl: true,
-            concept: true,
-            rating: true,
-            view_count: true,
-            createdAt: true,
-            grade: true,
-            // coursePlaces는 첫 번째 장소의 이미지만 필요하므로 최소한만 가져옴
-            coursePlaces: {
-                take: 1, // 첫 번째 장소만
-                orderBy: { order_index: "asc" },
+            place: {
                 select: {
-                    place: {
-                        select: {
-                            id: true,
-                            name: true,
-                            imageUrl: true,
-                            // 🟢 불필요한 필드 제거로 쿼리 속도 향상
-                        },
-                    },
+                    id: true,
+                    name: true,
+                    imageUrl: true,
                 },
             },
         },
-        // 인덱스 힌트: id와 isPublic에 인덱스가 있다고 가정
-    });
+    },
+};
 
-    // Image Policy (default: any)
+// 공통 매핑 함수
+function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[]): any[] {
+    // 🟢 안전성 체크: courses가 배열인지 확인
+    if (!Array.isArray(courses)) {
+        console.warn("[courses/page.tsx] mapCourses: courses is not an array:", courses);
+        return [];
+    }
+
     const imagePolicyApplied = filterCoursesByImagePolicy(courses as unknown as CourseWithPlaces[], "any");
 
-    // 5. 데이터 매핑 & 잠금 계산 & 정렬
-    const mappedCourses = imagePolicyApplied.map((course: any) => {
-        // 잠금 계산
-        let isLocked = false;
-        const courseGrade = course.grade || "FREE";
-        const courseId = Number(course.id);
+    return imagePolicyApplied
+        .map((course: any) => {
+            // 🟢 안전성 체크: course가 유효한지 확인
+            if (!course || !course.id) {
+                console.warn("[courses/page.tsx] mapCourses: Invalid course data:", course);
+                return null;
+            }
 
-        // 🟢 먼저 CourseUnlock 확인: 쿠폰으로 구매한 코스는 무조건 잠금 해제
-        const hasUnlocked = unlockedCourseIds.includes(courseId);
+            const courseGrade = course.grade || "FREE";
+            const courseId = Number(course.id);
+            // 🟢 안전성 체크: courseId가 유효한 숫자인지 확인
+            if (!Number.isFinite(courseId)) {
+                console.warn("[courses/page.tsx] mapCourses: Invalid course ID:", course.id);
+                return null;
+            }
 
-        if (hasUnlocked) {
-            // 쿠폰으로 구매한 코스는 등급과 상관없이 열람 가능
-            isLocked = false;
-        } else if (userTier === "PREMIUM") {
-            isLocked = false;
-        } else if (userTier === "BASIC") {
-            if (courseGrade === "PREMIUM") isLocked = true;
-        } else {
-            // FREE 유저
-            if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+            let isLocked = false;
+
+            // 잠금 계산
+            const hasUnlocked = unlockedCourseIds.includes(courseId);
+            if (hasUnlocked) {
+                isLocked = false;
+            } else if (userTier === "PREMIUM") {
+                isLocked = false;
+            } else if (userTier === "BASIC") {
+                if (courseGrade === "PREMIUM") isLocked = true;
+            } else {
+                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+            }
+
+            return {
+                id: String(course.id),
+                title: course.title || "제목 없음",
+                description: course.description || "",
+                duration: course.duration || "",
+                location: course.region || "",
+                imageUrl: course.imageUrl || course.coursePlaces?.[0]?.place?.imageUrl || "",
+                concept: course.concept || "",
+                rating: Number(course.rating) || 0,
+                reviewCount: 0,
+                participants: 0,
+                viewCount: course.view_count || 0,
+                createdAt: course.createdAt ? course.createdAt.toISOString() : undefined,
+                grade: courseGrade,
+                isLocked: isLocked,
+                coursePlaces:
+                    course.coursePlaces?.map((cp: any) => ({
+                        order_index: cp.order_index,
+                        place: cp.place
+                            ? {
+                                  id: cp.place.id,
+                                  name: cp.place.name,
+                                  imageUrl: cp.place.imageUrl,
+                              }
+                            : null,
+                    })) || [],
+            };
+        })
+        .filter((course: any) => course !== null); // 🟢 null 값 제거
+}
+
+async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
+    const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
+    const concept = typeof searchParams?.concept === "string" ? searchParams.concept : undefined;
+
+    // ✅ [유저 등급 확인 및 잠금 해제된 코스 목록 조회]
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth")?.value;
+    let userTier = "FREE";
+    let unlockedCourseIds: number[] = [];
+
+    if (token) {
+        try {
+            const userIdStr = verifyJwtAndGetUserId(token);
+            if (userIdStr) {
+                const userIdNum = Number(userIdStr);
+                if (Number.isFinite(userIdNum) && userIdNum > 0) {
+                    const [user, unlocks] = await Promise.all([
+                        prisma.user
+                            .findUnique({
+                                where: { id: userIdNum },
+                                select: { subscriptionTier: true },
+                            })
+                            .catch(() => null),
+                        (prisma as any).courseUnlock
+                            .findMany({
+                                where: { userId: userIdNum },
+                                select: { courseId: true },
+                            })
+                            .catch(() => []),
+                    ]);
+
+                    if (user?.subscriptionTier) {
+                        userTier = user.subscriptionTier;
+                    }
+                    unlockedCourseIds = Array.isArray(unlocks) ? unlocks.map((u: any) => u.courseId) : [];
+                }
+            }
+        } catch (e) {
+            console.warn("[courses/page.tsx] JWT 검증 실패:", e instanceof Error ? e.message : String(e));
+        }
+    }
+
+    // 🟢 [조건 체크] 검색이나 필터가 없는 순수 초기 로드인지 확인
+    const isDefaultLoad = !q && !concept;
+
+    if (!isDefaultLoad) {
+        // 검색/필터가 있을 때는 기존처럼 최신순으로 30개만 가져옴
+        const where: any = { isPublic: true };
+        if (q) {
+            where.OR = [
+                { title: { contains: q, mode: "insensitive" } },
+                { description: { contains: q, mode: "insensitive" } },
+                { concept: { contains: q, mode: "insensitive" } },
+                { region: { contains: q, mode: "insensitive" } },
+            ];
+        }
+        if (concept) {
+            where.concept = { contains: concept, mode: "insensitive" };
         }
 
-        return {
-            id: String(course.id),
-            title: course.title || "제목 없음",
-            description: course.description || "",
-            duration: course.duration || "",
-            location: course.region || "",
-            imageUrl: course.imageUrl || course.coursePlaces?.[0]?.place?.imageUrl || "",
-            concept: course.concept || "",
-            rating: Number(course.rating) || 0,
-            reviewCount: 0, // Simplified
-            participants: 0,
-            viewCount: course.view_count || 0,
-            createdAt: course.createdAt ? course.createdAt.toISOString() : undefined,
-            grade: courseGrade,
-            isLocked: isLocked, // ✅ 잠금 상태 전달
-            // coursePlaces는 이미지 URL 추출용으로만 사용 (리스트에서는 상세 정보 불필요)
-            coursePlaces:
-                course.coursePlaces?.map((cp: any) => ({
-                    order_index: cp.order_index,
-                    place: cp.place
-                        ? {
-                              id: cp.place.id,
-                              name: cp.place.name,
-                              imageUrl: cp.place.imageUrl,
-                          }
-                        : null,
-                })) || [],
-        };
+        const courses = await prisma.course.findMany({
+            where,
+            orderBy: { id: "desc" },
+            take: 30,
+            select: courseSelectOptions,
+        });
+
+        console.log("=== [courses/page.tsx] 검색/필터 모드 ===");
+        console.log("검색어:", q || "없음", "| 컨셉:", concept || "없음");
+        console.log("DB에서 가져온 코스 개수:", courses.length);
+        const mapped = mapCourses(courses, userTier, unlockedCourseIds);
+        console.log("mapCourses 적용 후 최종 리스트 개수:", mapped.length);
+        console.log("==========================================");
+
+        return mapped;
+    }
+
+    // 🟢 [5:3:2 비율 로직] 초기 로드 시 실행 (FREE:15, BASIC:9, PREMIUM:6)
+    const TARGET_FREE = 15;
+    const TARGET_BASIC = 9;
+    const TARGET_PREMIUM = 6;
+
+    // 병렬 쿼리로 속도 최적화
+    const [freeRaw, basicRaw, premiumRaw] = await Promise.all([
+        prisma.course.findMany({
+            where: { isPublic: true, grade: "FREE" },
+            take: 30,
+            orderBy: { id: "desc" },
+            select: courseSelectOptions,
+        }),
+        prisma.course.findMany({
+            where: { isPublic: true, grade: "BASIC" },
+            take: TARGET_BASIC,
+            orderBy: { id: "desc" },
+            select: courseSelectOptions,
+        }),
+        prisma.course.findMany({
+            where: { isPublic: true, grade: "PREMIUM" },
+            take: TARGET_PREMIUM,
+            orderBy: { id: "desc" },
+            select: courseSelectOptions,
+        }),
+    ]);
+
+    // === [DB 데이터 확인] ===
+    console.log("=== [courses/page.tsx] DB 데이터 확인 ===");
+    console.log("FREE 가져온 개수:", freeRaw.length);
+    console.log("BASIC 가져온 개수:", basicRaw.length);
+    console.log("PREMIUM 가져온 개수:", premiumRaw.length);
+    console.log("목표 비율: FREE=" + TARGET_FREE + ", BASIC=" + TARGET_BASIC + ", PREMIUM=" + TARGET_PREMIUM);
+
+    // 부족분 보정: BASIC/PREMIUM이 부족하면 FREE에서 더 가져옴
+    const basicArr = basicRaw;
+    const premiumArr = premiumRaw;
+    const neededFromFree = TARGET_FREE + (TARGET_BASIC - basicArr.length) + (TARGET_PREMIUM - premiumArr.length);
+    const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
+
+    console.log("부족분 보정 후 FREE 사용 개수:", freeArr.length, "(필요:", neededFromFree + ")");
+
+    // 🟢 [Interleaving] 2(FREE):1(BASIC):1(PREMIUM) 패턴으로 섞기
+    const interleaved: any[] = [];
+    let fIdx = 0,
+        bIdx = 0,
+        pIdx = 0;
+
+    while (interleaved.length < 30 && (fIdx < freeArr.length || bIdx < basicArr.length || pIdx < premiumArr.length)) {
+        if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
+        if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]); // FREE 2개
+        if (bIdx < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[bIdx++]); // BASIC 1개
+        if (pIdx < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[pIdx++]); // PREMIUM 1개
+    }
+
+    console.log("인터리빙 후 개수:", interleaved.length);
+    console.log("인터리빙된 등급 분포:", {
+        FREE: interleaved.filter((c) => c.grade === "FREE").length,
+        BASIC: interleaved.filter((c) => c.grade === "BASIC").length,
+        PREMIUM: interleaved.filter((c) => c.grade === "PREMIUM").length,
     });
 
-    // ✅ 6. [정렬] FREE > BASIC > PREMIUM 순서
-    const gradeWeight: Record<string, number> = {
-        FREE: 1,
-        BASIC: 2,
-        PREMIUM: 3,
-    };
+    // 필터 적용 전후 비교
+    const mappedBeforeFilter = mapCourses(interleaved, userTier, unlockedCourseIds);
+    console.log("mapCourses 적용 후 최종 리스트 개수:", mappedBeforeFilter.length);
+    console.log("유저 등급:", userTier, "| 잠금 해제된 코스:", unlockedCourseIds.length + "개");
+    console.log("==========================================");
 
-    mappedCourses.sort((a, b) => {
-        const weightA = gradeWeight[a.grade] || 1;
-        const weightB = gradeWeight[b.grade] || 1;
-        return weightA - weightB;
-    });
-
-    return mappedCourses;
+    return mappedBeforeFilter;
 }
 
 export default async function CoursesPage({

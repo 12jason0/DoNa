@@ -5,7 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
+import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import TicketPlans from "@/components/TicketPlans";
+import LoginModal from "@/components/LoginModal";
 import {
     Sparkles,
     MapPin,
@@ -14,7 +16,6 @@ import {
     Star,
     Ticket,
     CheckCircle,
-    User,
     MessageCircle,
     RefreshCw,
     ChevronRight,
@@ -238,26 +239,20 @@ const AIRecommender = () => {
 
     // 유저 정보 가져오기
     const fetchUserData = async () => {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            setIsLoggedIn(false);
-            setUserName("");
-            setNickname("");
-            setProfileImageUrl(null);
-            setCoupons(0);
-            return;
-        }
-
         try {
-            const res = await fetch("/api/users/profile", {
-                headers: { Authorization: `Bearer ${token}` },
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const userData = await authenticatedFetch<any>("/api/users/profile", {
                 cache: "no-store",
             });
 
-            if (res.ok) {
-                const userData = await res.json();
+            if (userData) {
                 setIsLoggedIn(true);
-                const nick = userData.nickname || userData.name || userData.email?.split("@")[0] || "사용자";
+                const nick =
+                    (userData as any).nickname ||
+                    (userData as any).name ||
+                    (userData as any).email?.split("@")[0] ||
+                    "사용자";
                 setUserName(nick);
                 setNickname(nick);
 
@@ -270,9 +265,9 @@ const AIRecommender = () => {
                     return url;
                 };
 
-                const profileImage = userData.profileImage || userData.user?.profileImage || null;
+                const profileImage = (userData as any).profileImage || (userData as any).user?.profileImage || null;
                 setProfileImageUrl(convertToHttps(profileImage));
-                setCoupons(userData.couponCount || 0);
+                setCoupons((userData as any).couponCount || 0);
                 localStorage.setItem("user", JSON.stringify(userData));
             } else {
                 handleLogout();
@@ -410,6 +405,12 @@ const AIRecommender = () => {
 
     // 👇 [수정됨] 대화 시작 시 모달 띄우기
     const startConversation = () => {
+        // 비로그인 체크
+        if (!isLoggedIn) {
+            setShowLogin(true);
+            return;
+        }
+
         setShowChatModal(true);
         // 초기화가 필요하면 여기서 resetConversation 로직 일부 수행 가능
         if (messages.length === 0) {
@@ -424,34 +425,21 @@ const AIRecommender = () => {
     const useCoupon = async (): Promise<boolean> => {
         if (isUsingCoupon) return false;
 
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            setShowLogin(true);
-            return false;
-        }
-
         setIsUsingCoupon(true);
 
         try {
-            const response = await fetch("/api/ai-recommendation/use-ticket", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const data = await authenticatedFetch<{ ticketsRemaining: number }>("/api/ai-recommendation/use-ticket", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (data) {
                 setCoupons(data.ticketsRemaining);
                 setIsUsingCoupon(false);
                 return true;
             } else {
-                const errorData = await response.json();
                 setIsUsingCoupon(false);
-                if (response.status === 400) {
-                    setShowPaywall(true);
-                } else {
-                    alert(errorData.message || "쿠폰 사용 오류");
-                    setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-                }
+                setShowPaywall(true);
                 return false;
             }
         } catch (error) {
@@ -465,17 +453,13 @@ const AIRecommender = () => {
 
     // 쿠폰 환불 API
     const refundCoupon = async (): Promise<void> => {
-        const token = localStorage.getItem("authToken");
-        if (!token) return;
-
         try {
-            const response = await fetch("/api/ai-recommendation/refund", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const data = await authenticatedFetch<{ ticketsRemaining: number }>("/api/ai-recommendation/refund", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (data) {
                 setCoupons(data.ticketsRemaining);
             } else {
                 setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
@@ -617,15 +601,15 @@ const AIRecommender = () => {
                 strict: "true",
             }).toString();
 
-            const res = await fetch(`/api/recommendations?${params}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            // 🟢 쿠키 기반 인증: apiFetch 사용
+            const { data, response: res } = await apiFetch(`/api/recommendations?${params}`, {
                 cache: "no-store",
             });
 
-            if (res.ok) {
-                const data = await res.json();
-                if (data.recommendations && Array.isArray(data.recommendations)) {
-                    list = buildList(data.recommendations);
+            if (res.ok && data) {
+                const recommendations = (data as any)?.recommendations;
+                if (recommendations && Array.isArray(recommendations)) {
+                    list = buildList(recommendations);
                 }
             }
         } catch (error) {
@@ -698,26 +682,21 @@ const AIRecommender = () => {
     const executeCourseSelection = async () => {
         if (!pendingCourse || isSelecting) return;
 
-        const token = localStorage.getItem("authToken");
         setIsSelecting(true);
 
         try {
-            const res = await fetch("/api/users/me/courses", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const res = await authenticatedFetch("/api/users/me/courses", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify({ courseId: pendingCourse.id }),
             });
 
-            if (res.ok) {
+            if (res !== null) {
                 setSelectedCourseId(pendingCourse.id);
                 setShowConfirmModal(false); // 확인창 닫기
                 setShowSuccessModal(true); // 🟢 성공 알림 모달 오픈
             } else {
-                const data = await res.json();
-                alert(data.message || "코스 저장에 실패했습니다.");
+                alert("코스 저장에 실패했습니다.");
                 setShowConfirmModal(false);
             }
         } catch (error) {
@@ -971,64 +950,6 @@ const AIRecommender = () => {
         );
     };
 
-    const LoginModal = () => (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-[28px] max-w-md w-full p-7 relative shadow-2xl">
-                <button
-                    onClick={() => setShowLogin(false)}
-                    aria-label="닫기"
-                    className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center active:scale-95"
-                >
-                    x
-                </button>
-
-                <div className="text-center mb-5">
-                    <div className="w-20 h-20 rounded-full bg-emerald-500/90 mx-auto mb-4 flex items-center justify-center shadow-md">
-                        <User className="w-9 h-9 text-white" />
-                    </div>
-                    <h2 className="text-[22px] font-extrabold text-gray-900 mb-1">로그인하고 AI 추천받기</h2>
-                    <p className="text-gray-600 text-sm">로그인하면 무료 쿠폰 2개를 드려요! 🎁</p>
-                </div>
-
-                <button
-                    onClick={() => {
-                        if (loginNavigating) return;
-                        setLoginNavigating(true);
-                        try {
-                            sessionStorage.setItem("auth:loggingIn", "1");
-                            setAuthLoading(true);
-                            const next = pathname || "/personalized-home";
-                            router.push(`/login?next=${encodeURIComponent(next)}`);
-                        } catch {
-                            window.location.href = "/login";
-                        }
-                    }}
-                    disabled={loginNavigating}
-                    className={`w-full py-3.5 rounded-xl text-white font-extrabold shadow-sm transition-colors active:scale-95 ${
-                        loginNavigating ? "bg-emerald-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
-                    }`}
-                >
-                    {loginNavigating ? "이동 중..." : "로그인 하러 가기"}
-                </button>
-
-                <div className="mt-6 p-5 rounded-xl bg-emerald-50">
-                    <h4 className="font-extrabold text-emerald-700 mb-2 text-sm">로그인 혜택</h4>
-                    <ul className="text-[13px] text-emerald-700 space-y-2">
-                        <li className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" /> AI 추천 무료 쿠폰 2개
-                        </li>
-                        <li className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" /> 개인 맞춤 추천 서비스
-                        </li>
-                        <li className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" /> 코스 예약 할인 혜택
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    );
-
     const router = useRouter();
     const pathname = usePathname();
 
@@ -1092,7 +1013,7 @@ const AIRecommender = () => {
         <div className="min-h-screen bg-gradient-to-b from-emerald-50/20 to-white font-sans ">
             <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
-                {showLogin && <LoginModal />}
+                {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
                 {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
 
                 {/* 🟢 1단계: 선택 확인 모달 */}

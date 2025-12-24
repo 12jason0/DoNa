@@ -40,15 +40,16 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     useEffect(() => {
         const fetchUserTier = async () => {
             try {
-                const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-                if (!token) {
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                const data = await authenticatedFetch("/api/users/profile");
+                
+                if (!data) {
                     setCurrentTier("FREE");
                     return;
                 }
 
-                const response = await fetch("/api/users/profile", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const response = { ok: true, json: async () => data };
 
                 if (response.ok) {
                     const data = await response.json();

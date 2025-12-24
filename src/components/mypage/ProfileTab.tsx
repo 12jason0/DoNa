@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { UserInfo, UserPreferences } from "@/types/user";
+import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import DeleteUsersModal from "./DeleteUsersModal";
 
 interface ProfileTabProps {
@@ -77,14 +78,16 @@ const ProfileTab = ({
                 }
 
                 // 🟢 DB에서 알림 상태 조회 (캐싱 적용)
-                const statusResponse = await fetch(`/api/push?userId=${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                    cache: "force-cache", // 🟢 브라우저 캐시 사용
-                    next: { revalidate: 300 }, // 🟢 5분 캐싱
-                });
+                // 🟢 쿠키 기반 인증: apiFetch 사용
+                const { data: statusData, response: statusResponse } = await apiFetch<{ subscribed?: boolean }>(
+                    `/api/push?userId=${userId}`,
+                    {
+                        cache: "force-cache", // 🟢 브라우저 캐시 사용
+                        next: { revalidate: 300 }, // 🟢 5분 캐싱
+                    }
+                );
 
-                if (statusResponse.ok) {
-                    const statusData = await statusResponse.json();
+                if (statusResponse.ok && statusData) {
                     setNotificationEnabled(statusData.subscribed ?? false);
                 } else {
                     setNotificationEnabled(false);
@@ -140,40 +143,20 @@ const ProfileTab = ({
                 expoPushToken = localStorage.getItem("expoPushToken");
             }
 
-            // 2. 로그인 토큰 확인
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                setNotificationStatus("error");
-                setNotificationMessage("로그인이 필요합니다.");
-                return;
-            }
-
-            // 3. userId 가져오기
+            // 2. 🟢 쿠키 기반 인증: userId 가져오기
             let userId: number | null = null;
-            try {
-                const userStr = localStorage.getItem("user");
-                if (userStr) {
-                    const userData = JSON.parse(userStr);
-                    userId = userData?.id || null;
-                }
-            } catch (e) {
-                console.error("localStorage user 파싱 오류:", e);
-            }
 
             // props에서 userId 가져오기 시도
-            if (!userId) {
-                userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
-            }
+            userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
 
             // API로 userId 가져오기
             if (!userId) {
-                const userResponse = await fetch("/api/users/profile", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!userResponse.ok) {
-                    throw new Error("사용자 정보를 가져올 수 없습니다.");
+                const userData = await authenticatedFetch<{ user?: { id: number }; id?: number }>("/api/users/profile");
+                if (!userData) {
+                    setNotificationStatus("error");
+                    setNotificationMessage("로그인이 필요합니다.");
+                    return;
                 }
-                const userData = await userResponse.json();
                 userId = userData?.user?.id || userData?.id || null;
             }
 
@@ -182,12 +165,9 @@ const ProfileTab = ({
             }
 
             // 4. PushToken 서버에 업데이트 (subscribed 상태 토글)
-            const pushResponse = await fetch("/api/push", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const pushData = await authenticatedFetch("/api/push", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify({
                     userId: userId,
                     pushToken: expoPushToken || "", // 없으면 빈 문자열 (DB에 이미 있을 수 있음)
@@ -196,9 +176,7 @@ const ProfileTab = ({
                 }),
             });
 
-            // const pushData = await pushResponse.json(); // 사용하지 않는 변수라면 주석 처리 혹은 제거
-
-            if (pushResponse.ok) {
+            if (pushData !== null) {
                 setNotificationStatus("success");
                 setNotificationMessage(
                     newSubscribedState ? "✅ 알림이 활성화되었습니다!" : "🔕 알림이 비활성화되었습니다."
@@ -570,7 +548,7 @@ const ProfileTab = ({
 
                         {/* ✅ [최종 수정] 설명 없이 깔끔한 '한 줄' 스타일 */}
                         <button
-                            onClick={() => window.open("https://pf.kakao.com/_xxxx/chat", "_blank")}
+                            onClick={() => window.open("https://pf.kakao.com/_uxnZHn/chat", "_blank")}
                             className="w-full flex items-center justify-between px-6 py-5 bg-white rounded-xl border border-gray-100 hover:border-[#FEE500] hover:bg-yellow-50/10 transition-all duration-200 group"
                         >
                             <div className="flex items-center gap-4">
@@ -678,46 +656,45 @@ const ProfileTab = ({
                         subscriptionTier={userInfo?.subscriptionTier}
                         subscriptionExpiresAt={userInfo?.subscriptionExpiresAt}
                         onConfirm={async (withdrawalReason?: string) => {
-                            const token = localStorage.getItem("authToken");
+                            try {
+                                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                                const data = await authenticatedFetch<{
+                                    error?: string;
+                                    hasActiveSubscription?: boolean;
+                                    details?: string;
+                                }>("/api/users/delete", {
+                                    method: "DELETE",
+                                    body: JSON.stringify({
+                                        withdrawalReason: withdrawalReason || null,
+                                    }),
+                                });
 
-                            if (!token) {
-                                alert("로그인이 필요합니다.");
-                                throw new Error("로그인이 필요합니다.");
-                            }
-
-                            // 탈퇴 사유를 서버로 전송 (선택사항)
-                            const response = await fetch("/api/users/delete", {
-                                method: "DELETE",
-                                headers: {
-                                    Authorization: `Bearer ${token}`,
-                                    "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                    withdrawalReason: withdrawalReason || null,
-                                }),
-                            });
-
-                            const data = await response.json();
-
-                            if (!response.ok) {
-                                // 구독 중인 경우 특별 처리
-                                if (response.status === 400 && data.hasActiveSubscription) {
-                                    throw new Error(data.details || data.error);
+                                if (data === null) {
+                                    // 인증 실패
+                                    alert("로그인이 필요합니다.");
+                                    return;
                                 }
-                                throw new Error(data.error || "탈퇴 처리에 실패했습니다.");
+
+                                // authenticatedFetch는 성공 시 데이터를 반환하므로, null이 아니면 성공
+                                // 탈퇴 성공 - 모든 데이터 정리
+                                localStorage.removeItem("authToken");
+                                localStorage.removeItem("user");
+                                localStorage.removeItem("loginTime");
+
+                                // 인증 상태 변경 이벤트 발생
+                                window.dispatchEvent(new CustomEvent("authTokenChange"));
+
+                                // 메인 페이지로 리디렉션
+                                alert("계정이 성공적으로 삭제되었습니다.");
+                                window.location.href = "/";
+                            } catch (error: any) {
+                                // 구독 중인 경우 특별 처리
+                                if (error.message && error.message.includes("구독")) {
+                                    alert(error.message);
+                                } else {
+                                    alert("계정 삭제 중 오류가 발생했습니다.");
+                                }
                             }
-
-                            // 탈퇴 성공 - 모든 데이터 정리
-                            localStorage.removeItem("authToken");
-                            localStorage.removeItem("user");
-                            localStorage.removeItem("loginTime");
-
-                            // 인증 상태 변경 이벤트 발생
-                            window.dispatchEvent(new CustomEvent("authTokenChange"));
-
-                            // 메인 페이지로 리디렉션
-                            alert("계정이 성공적으로 삭제되었습니다.");
-                            window.location.href = "/";
                         }}
                     />
 

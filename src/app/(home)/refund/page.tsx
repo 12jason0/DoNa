@@ -33,17 +33,13 @@ export default function RefundPage() {
 
     const fetchPaymentHistory = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const data = await authenticatedFetch<{ payments?: PaymentHistory[] }>("/api/payments/history");
+            if (data) {
+                setPaymentHistory((data as any).payments || []);
+            } else {
                 router.push("/login");
-                return;
-            }
-            const response = await fetch("/api/payments/history", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setPaymentHistory(data.payments || []);
             }
         } catch (err) {
             setError("내역을 불러오는 중 오류가 발생했습니다.");
@@ -59,26 +55,21 @@ export default function RefundPage() {
         setIsModalOpen(false); // 모달 닫기
 
         try {
-            const token = localStorage.getItem("authToken");
-            const response = await fetch("/api/ai-recommendation/refund", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const data = await authenticatedFetch("/api/ai-recommendation/refund", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
                 body: JSON.stringify({
                     orderId: selectedPayment.orderId,
                     cancelReason: "사용자 변심(이탈 방지 모달 거침)",
                 }),
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (data) {
                 setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다. 슬랙으로 알림이 전송되었습니다.`);
                 await fetchPaymentHistory();
             } else {
-                setError(data.error || "환불 처리 중 오류가 발생했습니다.");
+                setError((data as any)?.error || "환불 처리 중 오류가 발생했습니다.");
             }
         } catch (err) {
             setError("서버와의 통신에 실패했습니다.");

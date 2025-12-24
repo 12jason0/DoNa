@@ -67,16 +67,16 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // 토큰 저장 로직 (기존 유지)
-                if (data?.token) {
-                    localStorage.setItem("authToken", data.token);
-                    if (data?.user) localStorage.setItem("user", JSON.stringify(data.user));
-                    localStorage.setItem("loginTime", Date.now().toString());
-                    window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
-                } else {
-                    await fetchSession();
-                    window.dispatchEvent(new CustomEvent("authTokenChange"));
-                }
+                // 🟢 쿠키 기반 인증: localStorage 제거
+                // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
+                
+                // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
+                window.dispatchEvent(new CustomEvent("authLoginSuccess"));
+                
+                // 🟢 기존 코드 호환성을 위한 localStorage 정리 (혹시 남아있을 수 있음)
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("user");
+                localStorage.removeItem("loginTime");
 
                 // 웹뷰 통신 (기존 유지)
                 try {
@@ -85,6 +85,7 @@ const Login = () => {
                             JSON.stringify({
                                 type: "loginSuccess",
                                 userId: data?.user?.id ?? null,
+                                // 🟢 token은 쿠키에 있으므로 필요시 세션 API에서 가져옴
                                 token: data?.token ?? null,
                             })
                         );
@@ -168,7 +169,7 @@ const Login = () => {
                         window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
 
                         cleanup();
-                        router.push("/");
+                        router.push("/?login_success=true&provider=kakao");
                     } catch (err: any) {
                         setError(err.message);
                         cleanup();

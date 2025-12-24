@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 // 🚨 경로 주의: constants 폴더 안에 recommendations.ts 파일이 있어야 합니다.
 import { RECOMMENDATION_MESSAGES, UserTagType } from "@/constants/recommendations";
-import { useRef } from "react";
 
 interface Course {
     id: number;
@@ -21,7 +20,7 @@ export default function PersonalizedSection() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("회원");
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // 🟢 null = 아직 확인 중
     const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
 
     // --- Mouse Drag State ---
@@ -56,32 +55,142 @@ export default function PersonalizedSection() {
         }
     };
 
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                // 1. 유저 이름 가져오기
-                const userStr = localStorage.getItem("user");
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    setUserName(user.name || user.nickname || "회원");
-                    setIsLoggedIn(true);
+    // 데이터 가져오기 함수 (재사용 가능하도록 useCallback으로 분리)
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const { fetchSession, authenticatedFetch, apiFetch } = await import("@/lib/authClient");
+
+            // 1. 세션 확인 (캐시 무시)
+            const session = await fetchSession();
+
+            // 🟢 세션 정보가 확실히 있을 때만 프로필 호출
+            if (session.authenticated && session.user) {
+                // 🟢 로그인 상태를 즉시 설정 (이름이 없어도 로그인 상태는 유지)
+                setIsLoggedIn(true);
+
+                // 🟢 세션에서 이름을 먼저 추출 (프로필 API 호출 전에)
+                const sessionName = (session.user.name || session.user.nickname || "").trim();
+
+                console.log("[PersonalizedSection] 세션 정보 확인:", {
+                    sessionName,
+                    sessionUser: session.user,
+                    authenticated: session.authenticated,
+                    userId: session.user.id,
+                });
+
+                // 🟢 세션에 이름이 있으면 임시로 사용, 없으면 "회원" 사용
+                if (sessionName) {
+                    setUserName(sessionName);
                 } else {
-                    setIsLoggedIn(false);
+                    // 이름이 없어도 로그인 상태는 유지, 이름은 "회원"으로 표시
+                    setUserName("회원");
+                    console.log("[PersonalizedSection] 세션에 이름 없음 - '회원' 사용");
                 }
 
-                // 🟢 성능 최적화: 캐싱 추가 + 빠른 로딩
-                const res = await fetch("/api/recommendations?limit=3", {
-                    cache: "force-cache", // 브라우저 캐시 사용
-                    next: { revalidate: 300 }, // 5분 캐시
-                });
-                const data = await res.json();
+                // 🟢 프로필 API 호출 (이름 업데이트용, 실패해도 무방)
+                try {
+                    const profileData = await authenticatedFetch<any>("/api/users/profile", {
+                        cache: "no-store", // 🟢 로그인 시 캐시 무시
+                    });
 
-                if (data.recommendations && data.recommendations.length > 0) {
-                    setCourses(data.recommendations);
+                    if (profileData) {
+                        // 🟢 프로필 API가 성공했으면 로그인 상태 확실히 설정
+                        setIsLoggedIn(true);
+
+                        // 🟢 프로필에서 이름 추출 (세션보다 우선)
+                        const profileName = (
+                            profileData.nickname ||
+                            profileData.user?.nickname ||
+                            profileData.user?.username ||
+                            profileData.name ||
+                            sessionName ||
+                            ""
+                        ).trim();
+
+                        console.log("[PersonalizedSection] 프로필에서 이름 추출:", {
+                            profileName,
+                            profileDataNickname: profileData.nickname,
+                            profileDataUserNickname: profileData.user?.nickname,
+                            profileDataUserUsername: profileData.user?.username,
+                            profileDataName: profileData.name,
+                            sessionName,
+                        });
+
+                        // 🟢 프로필 이름이 있으면 업데이트, 없으면 세션 이름 유지
+                        if (profileName && profileName !== "") {
+                            setUserName(profileName);
+                            console.log("[PersonalizedSection] 최종 이름 설정 (프로필):", profileName);
+                        } else if (sessionName && sessionName !== "") {
+                            // 세션 이름이 있으면 그대로 사용
+                            setUserName(sessionName);
+                            console.log("[PersonalizedSection] 최종 이름 설정 (세션):", sessionName);
+                        } else {
+                            // 둘 다 없으면 "회원" 사용
+                            setUserName("회원");
+                            console.log("[PersonalizedSection] 최종 이름 설정 (기본값): 회원");
+                        }
+                    } else {
+                        // 🟢 프로필 데이터가 없으면 세션 이름 사용, 그것도 없으면 "회원"
+                        if (sessionName && sessionName !== "") {
+                            setUserName(sessionName);
+                            console.log("[PersonalizedSection] 프로필 없음 - 세션 이름 사용:", sessionName);
+                        } else {
+                            setUserName("회원");
+                            console.log("[PersonalizedSection] 프로필 없음 - 기본값 사용: 회원");
+                        }
+                    }
+                } catch (profileError) {
+                    console.warn("[PersonalizedSection] 프로필 로드 실패 (세션 이름 사용):", profileError);
+                    // 🟢 프로필 실패해도 세션 이름이 있으면 사용, 없으면 "회원"
+                    if (sessionName && sessionName !== "") {
+                        setUserName(sessionName);
+                        console.log("[PersonalizedSection] 프로필 에러 - 세션 이름 사용:", sessionName);
+                    } else {
+                        setUserName("회원");
+                        console.log("[PersonalizedSection] 프로필 에러 - 기본값 사용: 회원");
+                    }
+                }
+            } else {
+                setIsLoggedIn(false);
+                setUserName("회원");
+                console.log("[PersonalizedSection] 세션 없음 - 비로그인 상태");
+            }
+
+            // 2. 추천 코스 가져오기 (로그인 상태에 따라 캐시 정책 변경)
+            // ✅ AI 추천은 BASIC 등급 코스만 추천 (mode 파라미터 없으면 BASIC만 반환)
+            const isUserAuthenticated = session.authenticated && session.user;
+            const { data, response } = await apiFetch("/api/recommendations?limit=3", {
+                // 🟢 로그인 상태면 캐시를 쓰지 않고 최신 개인화 데이터를 가져옴
+                cache: isUserAuthenticated ? "no-store" : "force-cache",
+                next: { revalidate: isUserAuthenticated ? 0 : 300 },
+            });
+
+            if (!response.ok || !data) {
+                setCourses([]);
+                setLoading(false);
+                return;
+            }
+
+            const recommendations = (data as any)?.recommendations || [];
+            if (recommendations.length > 0) {
+                setCourses(recommendations);
+
+                // 🟢 로그인 상태가 확인된 경우에만 태그 분석 수행
+                // (비로그인 시에는 guest 메시지 사용)
+                if (isUserAuthenticated) {
+                    // 🟢 로그인 상태 확실히 설정 (추천 API 호출 후에도 재확인)
+                    setIsLoggedIn(true);
 
                     // 3. 멘트 결정 로직 (1등 코스 태그 분석)
-                    const topCourse = data.recommendations[0];
+                    const topCourse = recommendations[0];
                     const topTags = topCourse.tags;
+
+                    console.log("[PersonalizedSection] 태그 분석 시작:", {
+                        topCourseTitle: topCourse.title,
+                        topTags,
+                        isUserAuthenticated,
+                    });
 
                     if (topTags) {
                         if (topTags.concept?.includes("힐링") || topTags.mood?.includes("조용한")) {
@@ -101,20 +210,85 @@ export default function PersonalizedSection() {
                         } else {
                             setCurrentTagType("default");
                         }
+                    } else {
+                        setCurrentTagType("default");
                     }
-                }
-            } catch (error) {
-                console.error("추천 로딩 실패:", error);
-            } finally {
-                setLoading(false);
-            }
-        }
 
+                    console.log("[PersonalizedSection] 태그 분석 완료");
+                } else {
+                    // 비로그인 상태이면 guest 타입 유지
+                    setIsLoggedIn(false);
+                    setCurrentTagType("guest");
+                    console.log("[PersonalizedSection] 비로그인 상태 - guest 메시지 사용");
+                }
+            } else {
+                setCourses([]);
+                // 추천이 없어도 로그인 상태는 유지
+                if (isUserAuthenticated) {
+                    setIsLoggedIn(true);
+                    setCurrentTagType("default");
+                }
+            }
+        } catch (error) {
+            console.error("추천 로딩 실패:", error);
+            setCourses([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []); // 의존성 없음 (setState 함수들은 안정적)
+
+    // 초기 로드
+    useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
+
+    // 🟢 로그인 성공/로그아웃 이벤트 리스너
+    useEffect(() => {
+        const handleAuthChange = () => {
+            console.log("[PersonalizedSection] 로그인/토큰 변경 이벤트 수신 - 데이터 재로드");
+            // 로그인 성공 시 데이터 다시 가져오기 (새로운 유저 정보로)
+            fetchData();
+        };
+
+        const handleLogout = () => {
+            console.log("[PersonalizedSection] 로그아웃 이벤트 수신 - 상태 초기화");
+            setCourses([]);
+            setUserName("회원");
+            setIsLoggedIn(false);
+            setCurrentTagType("guest");
+            setLoading(false); // 로그아웃 시에는 로딩 중이 아님
+        };
+
+        window.addEventListener("authLoginSuccess", handleAuthChange);
+        window.addEventListener("authTokenChange", handleAuthChange);
+        window.addEventListener("authLogout", handleLogout);
+
+        return () => {
+            window.removeEventListener("authLoginSuccess", handleAuthChange);
+            window.removeEventListener("authTokenChange", handleAuthChange);
+            window.removeEventListener("authLogout", handleLogout);
+        };
+    }, [fetchData]);
 
     // 로딩 중이거나 데이터 없으면 아무것도 안 보여줌
     if (!loading && courses.length === 0) return null;
+
+    // 🟢 로그인 상태 확인이 완료되지 않았으면 로딩 중으로 처리
+    if (isLoggedIn === null) {
+        return (
+            <section className="py-8 px-4">
+                <div className="mb-6">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse w-64 mb-2" />
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-48" />
+                </div>
+                <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4">
+                    {[1, 2, 3].map((n) => (
+                        <div key={n} className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse" />
+                    ))}
+                </div>
+            </section>
+        );
+    }
 
     // ✅ 여기서 멘트를 가져옵니다!
     // 비로그인 상태이면 무조건 guest 메시지 사용, 로그인 상태이면 태그 분석 결과 사용
@@ -166,7 +340,8 @@ export default function PersonalizedSection() {
                                       {(() => {
                                           // 코스 이미지가 없으면 1번 장소의 이미지 사용
                                           const courseImage = course.imageUrl?.trim() || "";
-                                          const firstPlaceImage = course.coursePlaces?.[0]?.place?.imageUrl?.trim() || "";
+                                          const firstPlaceImage =
+                                              course.coursePlaces?.[0]?.place?.imageUrl?.trim() || "";
                                           const imageUrl = courseImage || firstPlaceImage;
                                           return imageUrl ? (
                                               <Image

@@ -18,7 +18,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
 
     const andConditions: any[] = [];
 
-    // ✅ 공개된 코스만 필터링
+    // ✅ 공개된 코스만 필터링 (모든 등급 포함: FREE, BASIC, PREMIUM)
+    // FREE 유저도 모든 코스를 볼 수 있으며, 잠금은 프론트엔드에서 isLocked로 처리
     andConditions.push({ isPublic: true });
 
     // ✅ 장소 이름(name)과 주소(address)까지 검색 범위 확장

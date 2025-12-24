@@ -116,27 +116,25 @@ function useEscapeGame() {
     }, []);
 
     useEffect(() => {
-        const token = localStorage.getItem("authToken");
-        setIsLoggedIn(!!token);
-        if (token) {
-            fetch("/api/users/profile", {
-                headers: { Authorization: `Bearer ${token}` },
-                cache: "no-store",
-            })
-                .then((res) => {
-                    if (!res.ok) {
-                        localStorage.removeItem("authToken");
-                        setIsLoggedIn(false);
-                    }
-                })
-                .catch(() => {});
-        }
-        const handleAuthChange = () => {
-            const newToken = localStorage.getItem("authToken");
-            setIsLoggedIn(!!newToken);
+        // 🟢 쿠키 기반 인증: fetchSession 사용
+        const checkAuth = async () => {
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            setIsLoggedIn(session.authenticated);
         };
+        checkAuth();
+        
+        const handleAuthChange = async () => {
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            setIsLoggedIn(session.authenticated);
+        };
+        window.addEventListener("authLoginSuccess", handleAuthChange);
         window.addEventListener("authTokenChange", handleAuthChange);
-        return () => window.removeEventListener("authTokenChange", handleAuthChange);
+        return () => {
+            window.removeEventListener("authLoginSuccess", handleAuthChange);
+            window.removeEventListener("authTokenChange", handleAuthChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -165,8 +163,10 @@ function useEscapeGame() {
     );
 
     const handleStartStory = async (storyId: number) => {
-        const token = localStorage.getItem("authToken");
-        if (!token && !isLoggedIn) {
+        // 🟢 쿠키 기반 인증: fetchSession으로 확인
+        const { fetchSession } = await import("@/lib/authClient");
+        const session = await fetchSession();
+        if (!session.authenticated && !isLoggedIn) {
             router.push(`/login?message=${encodeURIComponent("로그인 후 이용 가능합니다.")}`);
             return;
         }

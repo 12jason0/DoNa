@@ -4,6 +4,8 @@ import React, { Suspense, useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ReviewModal from "@/components/ReviewModal";
+import TicketPlans from "@/components/TicketPlans";
+import LoginModal from "@/components/LoginModal";
 import { motion, PanInfo } from "framer-motion";
 
 // --- Types ---
@@ -79,6 +81,10 @@ function GuidePageInner() {
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const [couponAwarded, setCouponAwarded] = useState(false);
     const [couponMessage, setCouponMessage] = useState<string | null>(null);
+    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
     // ✅ 토스트(카드) 최소화 상태 관리
     const [isMinimized, setIsMinimized] = useState(false);
@@ -115,18 +121,23 @@ function GuidePageInner() {
     useEffect(() => {
         const fetchUserInfo = async () => {
             try {
-                const token = localStorage.getItem("authToken");
-                if (token) {
-                    const res = await fetch("/api/users/profile", {
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setUserEmail(data.email || data.user?.email || null);
-                    }
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                const data = await authenticatedFetch("/api/users/profile");
+                if (data) {
+                    setUserEmail((data as any).email || (data as any).user?.email || null);
+                    // 사용자 등급 확인 (tip 잠금 로직용)
+                    const tier = (data as any).user?.subscriptionTier || (data as any).subscriptionTier || "FREE";
+                    setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
+                    setIsLoggedIn(true);
+                } else {
+                    setIsLoggedIn(false);
+                    setUserTier("FREE");
                 }
             } catch (err) {
                 console.error("사용자 정보 가져오기 실패:", err);
+                setIsLoggedIn(false);
+                setUserTier("FREE");
             }
         };
         fetchUserInfo();
@@ -222,19 +233,18 @@ function GuidePageInner() {
 
     async function markCompleted() {
         try {
-            const token = localStorage.getItem("authToken");
-            const response = await fetch("/api/users/completions", {
+            // 🟢 쿠키 기반 인증: apiFetch 사용
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch("/api/users/completions", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ courseId: Number(courseId), title: course?.title }),
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (response.ok && data) {
                 // 🟢 쿠폰 지급 정보 저장
-                if (data.couponAwarded) {
+                if ((data as any).couponAwarded) {
                     setCouponAwarded(true);
-                    setCouponMessage(data.message || "쿠폰이 지급되었습니다!");
+                    setCouponMessage((data as any).message || "쿠폰이 지급되었습니다!");
                 } else {
                     setCouponAwarded(false);
                     setCouponMessage(null);
@@ -325,11 +335,69 @@ function GuidePageInner() {
                     <span>🗺️</span> {currentPlace.address}
                 </p>
 
-                {/* Editor's Note (간단 버전) */}
+                {/* Editor's Note (간단 버전) - BASIC 등급 이상만 표시 */}
                 {currentPlace.coaching_tip && (
-                    <div className="bg-indigo-50 rounded-xl p-4 mb-6 border-l-4 border-indigo-500">
-                        <p className="text-xs font-bold text-indigo-600 mb-1">TIP</p>
-                        <p className="text-sm text-gray-700">{currentPlace.coaching_tip}</p>
+                    <div className="mb-6">
+                        {!isLoggedIn ? (
+                            <button
+                                onClick={() => setShowLoginModal(true)}
+                                className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-3"
+                            >
+                                <div className="pt-0.5">
+                                    <svg
+                                        className="w-5 h-5 text-gray-400"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div className="flex-1 text-left">
+                                    <p className="text-xs font-bold text-gray-600 mb-0.5">🔒 DoNa's Tip 보기</p>
+                                    <p className="text-[10px] text-gray-400">
+                                        로그인이 필요합니다. 클릭하여 로그인하기
+                                    </p>
+                                </div>
+                            </button>
+                        ) : userTier === "FREE" ? (
+                            <button
+                                onClick={() => setShowSubscriptionModal(true)}
+                                className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-3"
+                            >
+                                <div className="pt-0.5">
+                                    <svg
+                                        className="w-5 h-5 text-gray-400"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div className="flex-1 text-left">
+                                    <p className="text-xs font-bold text-gray-600 mb-0.5">🔒 DoNa's Tip 보기</p>
+                                    <p className="text-[10px] text-gray-400">
+                                        BASIC 등급 이상만 볼 수 있습니다. 클릭하여 멤버십 구독하기
+                                    </p>
+                                </div>
+                            </button>
+                        ) : (
+                            <div className="bg-indigo-50 rounded-xl p-4 border-l-4 border-indigo-500">
+                                <p className="text-xs font-bold text-indigo-600 mb-1">TIP</p>
+                                <p className="text-sm text-gray-700">{currentPlace.coaching_tip}</p>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -432,6 +500,8 @@ function GuidePageInner() {
                 courseId={Number(courseId)}
                 courseName={course?.title || ""}
             />
+            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
         </div>
     );
 }

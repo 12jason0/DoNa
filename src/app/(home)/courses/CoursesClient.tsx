@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
 import CourseCard from "@/components/CourseCard";
+import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 // TicketPlans 제거
 // ✅ [필수] 한글 변환을 위해 CONCEPTS 가져오기
 import { CONCEPTS } from "@/constants/onboardingData";
@@ -92,12 +93,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
         setLoadingMore(true);
         try {
-            const token = localStorage.getItem("authToken");
-            const headers: HeadersInit = { "Content-Type": "application/json" };
-            if (token) {
-                headers.Authorization = `Bearer ${token}`;
-            }
-
+            // 🟢 쿠키 기반 인증: apiFetch 사용
             const params = new URLSearchParams();
             params.set("limit", "30");
             params.set("offset", String(offset));
@@ -105,24 +101,26 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                 params.set("concept", conceptParam);
             }
 
-            const response = await fetch(`/api/courses?${params.toString()}`, {
-                headers,
+            const { data, response } = await apiFetch(`/api/courses?${params.toString()}`, {
                 cache: "force-cache",
                 next: { revalidate: 300 },
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                const coursesArray = Array.isArray(data) ? data : (data.courses || []);
-                
+            if (response.ok && data) {
+                const coursesArray = Array.isArray(data) ? data : (data as any).courses || [];
+
                 console.log(`[무한 스크롤] 추가 로드 성공: ${coursesArray.length}개 코스 (현재 offset: ${offset})`);
-                
+
                 if (coursesArray.length > 0) {
                     setCourses((prev) => {
                         // 🟢 중복 제거 (같은 ID가 있으면 제외)
-                        const existingIds = new Set(prev.map(c => c.id));
+                        const existingIds = new Set(prev.map((c) => c.id));
                         const newUniqueCourses = coursesArray.filter((c: Course) => !existingIds.has(c.id));
-                        console.log(`[무한 스크롤] 기존 ${prev.length}개 + 새로 추가 ${newUniqueCourses.length}개 = 총 ${prev.length + newUniqueCourses.length}개`);
+                        console.log(
+                            `[무한 스크롤] 기존 ${prev.length}개 + 새로 추가 ${newUniqueCourses.length}개 = 총 ${
+                                prev.length + newUniqueCourses.length
+                            }개`
+                        );
                         return [...prev, ...newUniqueCourses];
                     });
                     setOffset((prev) => prev + 30);
@@ -134,8 +132,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                     setHasMore(false);
                 }
             } else {
-                const errorText = await response.text().catch(() => "");
-                console.error(`[무한 스크롤] API 오류 (${response.status}):`, errorText);
+                console.error(`[무한 스크롤] API 오류 (${response.status}):`, data);
                 setHasMore(false);
             }
         } catch (error) {
@@ -161,7 +158,11 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
                 // 🟢 바닥에서 300px 전에 미리 로드 (더 빠른 반응)
                 if (scrollTop + clientHeight >= scrollHeight - 300) {
-                    console.log(`[무한 스크롤] 스크롤 감지: 바닥 근처 도달 (${Math.round(scrollTop + clientHeight)}/${scrollHeight})`);
+                    console.log(
+                        `[무한 스크롤] 스크롤 감지: 바닥 근처 도달 (${Math.round(
+                            scrollTop + clientHeight
+                        )}/${scrollHeight})`
+                    );
                     loadMoreCourses();
                 }
                 ticking = false;
@@ -230,60 +231,49 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
     // --- Favorites Logic ---
     useEffect(() => {
-        try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            fetch("/api/users/favorites", {
-                headers: { Authorization: `Bearer ${token}` },
-                next: { revalidate: 300 },
-            })
-                .then((res) => (res.ok ? res.json() : []))
-                .then((list: any[]) => {
+        // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+        authenticatedFetch<any[]>("/api/users/favorites", {
+            next: { revalidate: 300 },
+        })
+            .then((list) => {
+                if (list) {
                     const ids = new Set<number>();
                     (list || []).forEach((f: any) => {
                         const id = Number(f?.course?.id ?? f?.course_id ?? f?.courseId ?? f?.id);
                         if (Number.isFinite(id)) ids.add(id);
                     });
                     setFavoriteIds(ids);
-                })
-                .catch(() => {});
-        } catch {}
+                }
+            })
+            .catch(() => {});
     }, []);
 
     const toggleFavorite = async (e: React.MouseEvent, courseId: string | number) => {
         e.stopPropagation();
         const idNum = Number(courseId);
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            if (confirm("로그인이 필요합니다.")) router.push("/login");
-            return;
-        }
         const liked = favoriteIds.has(idNum);
         try {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
             if (!liked) {
-                const res = await fetch("/api/users/favorites", {
-                    next: { revalidate: 300 },
+                const success = await authenticatedFetch("/api/users/favorites", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
                     body: JSON.stringify({ courseId: idNum }),
                 });
-                if (res.ok) {
+                if (success !== null) {
                     setFavoriteIds((prev) => {
                         const s = new Set(prev);
                         s.add(idNum);
                         return s;
                     });
+                } else {
+                    // 인증 실패 시 로그인 페이지로 이동
+                    if (confirm("로그인이 필요합니다.")) router.push("/login");
                 }
             } else {
-                const res = await fetch(`/api/users/favorites?courseId=${idNum}`, {
-                    next: { revalidate: 300 },
+                const success = await authenticatedFetch(`/api/users/favorites?courseId=${idNum}`, {
                     method: "DELETE",
-                    headers: { Authorization: `Bearer ${token}` },
                 });
-                if (res.ok) {
+                if (success !== null) {
                     setFavoriteIds((prev) => {
                         const s = new Set(prev);
                         s.delete(idNum);

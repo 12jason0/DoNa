@@ -27,21 +27,9 @@ if (!global.__prisma) {
 
 // 연결 확인 (빌드 시에는 건너뛰기)
 // Next.js 빌드 중에는 데이터베이스 연결을 시도하지 않음
-const isBuildTime = process.env.NEXT_PHASE === "phase-production-build" || 
-                    process.env.NEXT_PHASE === "phase-development-build" ||
-                    typeof window === "undefined" && process.argv.includes("build");
-
-if (!isBuildTime) {
-    prisma
-        .$connect()
-        .then(() => logger.info("Prisma connected successfully"))
-        .catch((error) => {
-            logger.error("Prisma connection failed", { error });
-            // 프로덕션 런타임에서만 연결 실패 시 종료
-            if (process.env.NODE_ENV === "production" && !isBuildTime) {
-                process.exit(1);
-            }
-        });
-}
+const isBuildTime =
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.NEXT_PHASE === "phase-development-build" ||
+    (typeof window === "undefined" && process.argv.includes("build"));
 
 export default prisma;

@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { resolveUserId } from "@/lib/auth"; // 🟢 쿠키 기반 인증 통일
 
 export const dynamic = "force-dynamic";
 
 // 내 저장된 코스 목록 조회
 export async function GET(req: NextRequest) {
     try {
-        const userId = getUserIdFromRequest(req);
+        // 🟢 쿠키 기반 인증: resolveUserId 사용
+        const userId = resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const savedCourses = await prisma.savedCourse.findMany({
-            where: { userId: Number(userId) },
+            where: { userId: userId },
             include: {
                 course: {
                     select: {
@@ -64,7 +65,8 @@ export async function GET(req: NextRequest) {
 // 코스 저장
 export async function POST(req: NextRequest) {
     try {
-        const userId = getUserIdFromRequest(req);
+        // 🟢 쿠키 기반 인증: resolveUserId 사용
+        const userId = resolveUserId(req);
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
         }
 
-        const uId = Number(userId);
+        const uId = userId;
         const cId = Number(courseId);
 
         // 🟢 [상업적 로직] 트랜잭션으로 저장과 잠금 해제를 동시에 처리

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 
-export const dynamic = "force-dynamic";
-// ❌ export const revalidate = 300; // 캐싱 제거 (실시간 반영을 위해)
+export const dynamic = "force-dynamic"; // 🟢 실시간 인증 정보를 위해 필수
+export const revalidate = 0; // 🟢 캐시 완전 비활성화
 
 export async function GET(request: NextRequest) {
     try {
@@ -34,12 +34,19 @@ export async function GET(request: NextRequest) {
 
         const profileImageUrl = convertToHttps(user.profileImageUrl);
 
+        // 🟢 username이 user_로 시작하면 임시 이름이므로 이메일 앞부분 사용
+        let displayName = user.username;
+        if (!displayName || displayName.trim() === "" || displayName.trim().startsWith("user_")) {
+            displayName = user.email && user.email.includes("@") ? user.email.split("@")[0] : user.username || "";
+        }
+
         // 프론트엔드 ProfileTab에서 필드명 혼선이 없도록 두 가지 케이스 모두 전달
+        // 🟢 Redundancy 강화: 외부/내부 어디서든 이름을 가져올 수 있도록 nickname 필드 명시적 추가
         const responseData = {
             id: user.id,
             email: user.email,
-            name: user.username,
-            nickname: user.username,
+            name: displayName, // 🟢 외부 name (임시 이름이면 이메일 앞부분)
+            nickname: displayName, // 🟢 외부 nickname
             profileImage: profileImageUrl,
             createdAt: user.createdAt,
             mbti: user.mbti,
@@ -50,7 +57,8 @@ export async function GET(request: NextRequest) {
             hasSeenConsentModal: user.hasSeenConsentModal ?? false,
             user: {
                 ...user,
-                name: user.username,
+                name: displayName, // 🟢 내부 user.name (임시 이름이면 이메일 앞부분)
+                nickname: displayName, // 🟢 내부 user.nickname 추가 (핵심!)
                 profileImage: profileImageUrl,
             },
         };

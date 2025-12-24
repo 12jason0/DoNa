@@ -75,8 +75,25 @@ export async function POST(request: NextRequest) {
     }
 }
 
-function generateHtmlResponse(script: string) {
-    return new Response(`<html><head><meta charset="UTF-8"></head><body><script>${script}</script></body></html>`, {
+function generateHtmlResponse(script: string, token?: string) {
+    const html = `<html><head><meta charset="UTF-8"></head><body><script>${script}</script></body></html>`;
+
+    // 🟢 쿠키 설정 (토큰이 있는 경우)
+    if (token) {
+        const response = new NextResponse(html, {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+        response.cookies.set("auth", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 7일
+        });
+        return response;
+    }
+
+    return new Response(html, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
     });
 }
@@ -151,26 +168,36 @@ async function handleWebAppleAuthLogic(code: string, request: NextRequest, userD
             expiresIn: "7d",
         });
 
-        // 5. [핵심 수정] 팝업 닫기 및 부모 창 제어 스크립트
-        return generateHtmlResponse(`
+        // 5. 🟢 쿠키 설정 및 HTML 응답 생성
+        return generateHtmlResponse(
+            `
             (function() {
-                const token = "${serviceToken}";
-                localStorage.setItem('authToken', token);
+                // 🟢 localStorage 제거 (쿠키만 사용)
+                // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
+                
+                // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
+                window.dispatchEvent(new CustomEvent('authLoginSuccess'));
                 
                 if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'loginSuccess', token: token }));
+                    // 앱에서는 토큰이 필요할 수 있으므로 전달 (앱 내부 처리용)
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ 
+                        type: 'loginSuccess', 
+                        token: "${serviceToken}" 
+                    }));
                 }
 
                 // 부모 창(window.opener)이 있다면 부모 창을 이동시키고 현재 팝업을 닫음
                 if (window.opener) {
-                    window.opener.location.href = '/?login_success=true';
+                    window.opener.location.href = '/?login_success=true&provider=apple';
                     window.close();
                 } else {
                     // 팝업이 아닌 일반 리다이렉트인 경우 현재 창 이동
-                    window.location.href = '/?login_success=true';
+                    window.location.href = '/?login_success=true&provider=apple';
                 }
             })();
-        `);
+        `,
+            serviceToken // 🟢 쿠키 설정을 위한 토큰 전달
+        );
     } catch (err: any) {
         console.error("Web Auth Logic Error:", err);
         return generateHtmlResponse(`
@@ -322,9 +349,12 @@ async function handleAppAppleAuthLogic(
             console.error("로그인 로그 저장 실패:", logError);
         }
 
-        return NextResponse.json({
+        // 🟢 쿠키 설정 (앱 네이티브용)
+        const res = NextResponse.json({
             success: true,
-            token,
+            // 🟢 token은 제거 (쿠키만 사용)
+            // 기존 코드 호환성을 위해 선택적으로 반환 (앱에서 필요할 수 있음)
+            ...(process.env.ENABLE_TOKEN_RESPONSE === "true" && { token }),
             user: {
                 id: user.id,
                 email: user.email,
@@ -333,6 +363,16 @@ async function handleAppAppleAuthLogic(
                 coins: user.couponCount ?? 0,
             },
         });
+
+        res.cookies.set("auth", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 7일
+        });
+
+        return res;
     } catch (err: any) {
         console.error("[Apple Auth] App Auth Logic Error:", err);
         return NextResponse.json(

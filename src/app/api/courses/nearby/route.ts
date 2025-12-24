@@ -73,6 +73,8 @@ export async function GET(request: NextRequest) {
     // 3. 최종 Where 절 만들기
     // 조건이 하나라도 있으면 AND로 묶고, 없으면 빈 객체(전체 검색)
     // 🟢 공개된 코스만 필터링
+    // ✅ 공개된 코스만 필터링 (모든 등급 포함: FREE, BASIC, PREMIUM)
+    // FREE 유저도 모든 코스를 볼 수 있으며, 잠금은 프론트엔드에서 isLocked로 처리
     andConditions.push({ isPublic: true });
     const whereClause = andConditions.length > 0 ? { AND: andConditions } : { isPublic: true };
 

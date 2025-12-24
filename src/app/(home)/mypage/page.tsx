@@ -68,17 +68,22 @@ const MyPage = () => {
 
     // ----- Data Fetching Logic (기존 유지) -----
     useEffect(() => {
-        // 모든 데이터를 병렬로 불러오지는 않지만, 기존 로직대로 순차 호출
-        fetchUserInfo();
-        fetchUserPreferences();
-        fetchFavorites();
-        fetchSavedCourses();
-        fetchBadges();
-        fetchCompleted();
-        fetchCasefiles();
-        fetchRewards();
-        fetchCheckins();
-        fetchPayments();
+        // 🟢 fetchUserInfo가 먼저 실행되어 인증 상태를 확인한 후, 성공하면 나머지 데이터 로드
+        // fetchUserInfo에서 401이면 router.push("/login")을 하므로 다른 fetch는 실행되지 않음
+        fetchUserInfo().then((shouldContinue) => {
+            // fetchUserInfo가 성공한 경우에만 나머지 데이터 로드
+            if (shouldContinue) {
+                fetchUserPreferences();
+                fetchFavorites();
+                fetchSavedCourses();
+                fetchBadges();
+                fetchCompleted();
+                fetchCasefiles();
+                fetchRewards();
+                fetchCheckins();
+                fetchPayments();
+            }
+        });
 
         try {
             const url = new URL(window.location.href);
@@ -96,74 +101,82 @@ const MyPage = () => {
         return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
     }, []);
 
-    const fetchUserInfo = async () => {
+    const fetchUserInfo = async (): Promise<boolean> => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                router.push("/login");
-                return;
-            }
-            const response = await fetch("/api/users/profile", {
-                headers: { Authorization: `Bearer ${token}` },
+            // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data: raw, response } = await apiFetch<any>("/api/users/profile", {
                 cache: "no-store", // 🟢 서버 캐시 방지 추가
             });
-            if (response.ok) {
-                const raw = await response.json();
-                // 🟢 디버깅 로그: 여기서 BASIC이 찍히는지 확인
-                console.log("[MyPage] 서버 원본 응답:", raw);
 
-                const src: any = raw?.user ?? raw ?? {};
-
-                // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
-                const convertToHttps = (url: string | null | undefined): string => {
-                    if (!url) return "";
-                    if (url.startsWith("http://")) {
-                        return url.replace(/^http:\/\//, "https://");
-                    }
-                    return url;
-                };
-
-                const profileImageUrl = src.profileImage || src.profileImageUrl || src.profile_image_url || "";
-
-                // 🟢 subscriptionTier 확인: DB의 subscription_tier와 코드의 subscriptionTier 모두 체크
-                const tier =
-                    src.subscription_tier ||
-                    src.subscriptionTier ||
-                    raw?.subscription_tier ||
-                    raw?.subscriptionTier ||
-                    "FREE";
-                console.log("[MyPage] API 응답 subscriptionTier:", tier, "src:", src, "raw:", raw);
-                console.log(
-                    "[MyPage] 필드명 확인 - subscription_tier:",
-                    src.subscription_tier,
-                    "subscriptionTier:",
-                    src.subscriptionTier
-                );
-                console.log("[MyPage] 최종 등급 값 (setUserInfo에 전달):", tier);
-
-                // subscriptionExpiresAt 추출 (DB 필드명: subscription_expires_at)
-                const subscriptionExpiresAt =
-                    src.subscriptionExpiresAt || src.subscription_expires_at || raw?.subscriptionExpiresAt || raw?.subscription_expires_at || null;
-
-                const finalUserInfo = {
-                    name: src.name || src.username || src.nickname || "",
-                    email: src.email || src.userEmail || "",
-                    joinDate: src.joinDate
-                        ? new Date(src.joinDate).toLocaleDateString()
-                        : src.createdAt
-                        ? new Date(src.createdAt).toLocaleDateString()
-                        : "",
-                    profileImage: convertToHttps(profileImageUrl),
-                    mbti: src.mbti ?? null,
-                    age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
-                    subscriptionTier: tier, // 🟢 확정된 등급 삽입
-                    subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
-                };
-                console.log("[MyPage] setUserInfo 호출 전 최종 userInfo 객체:", finalUserInfo);
-                setUserInfo(finalUserInfo);
+            // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
+            if (response.status === 401 || !raw) {
+                router.push("/login");
+                return false; // 🟢 다른 fetch 함수들이 실행되지 않도록 false 반환
             }
+
+            // 🟢 authenticatedFetch가 이미 JSON을 파싱해서 반환함
+            // 🟢 디버깅 로그: 여기서 BASIC이 찍히는지 확인
+            console.log("[MyPage] 서버 원본 응답:", raw);
+
+            const src: any = (raw as any)?.user ?? raw ?? {};
+
+            // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+            const convertToHttps = (url: string | null | undefined): string => {
+                if (!url) return "";
+                if (url.startsWith("http://")) {
+                    return url.replace(/^http:\/\//, "https://");
+                }
+                return url;
+            };
+
+            const profileImageUrl = src.profileImage || src.profileImageUrl || src.profile_image_url || "";
+
+            // 🟢 subscriptionTier 확인: DB의 subscription_tier와 코드의 subscriptionTier 모두 체크
+            const tier =
+                src.subscription_tier ||
+                src.subscriptionTier ||
+                (raw as any)?.subscription_tier ||
+                (raw as any)?.subscriptionTier ||
+                "FREE";
+            console.log("[MyPage] API 응답 subscriptionTier:", tier, "src:", src, "raw:", raw);
+            console.log(
+                "[MyPage] 필드명 확인 - subscription_tier:",
+                src.subscription_tier,
+                "subscriptionTier:",
+                src.subscriptionTier
+            );
+            console.log("[MyPage] 최종 등급 값 (setUserInfo에 전달):", tier);
+
+            // subscriptionExpiresAt 추출 (DB 필드명: subscription_expires_at)
+            const subscriptionExpiresAt =
+                src.subscriptionExpiresAt ||
+                src.subscription_expires_at ||
+                (raw as any)?.subscriptionExpiresAt ||
+                (raw as any)?.subscription_expires_at ||
+                null;
+
+            const finalUserInfo = {
+                name: src.name || src.username || src.nickname || "",
+                email: src.email || src.userEmail || "",
+                joinDate: src.joinDate
+                    ? new Date(src.joinDate).toLocaleDateString()
+                    : src.createdAt
+                    ? new Date(src.createdAt).toLocaleDateString()
+                    : "",
+                profileImage: convertToHttps(profileImageUrl),
+                mbti: src.mbti ?? null,
+                age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
+                subscriptionTier: tier, // 🟢 확정된 등급 삽입
+                subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
+            };
+            console.log("[MyPage] setUserInfo 호출 전 최종 userInfo 객체:", finalUserInfo);
+            setUserInfo(finalUserInfo);
+            return true; // 🟢 성공 시 true 반환하여 다른 fetch 함수들이 실행되도록 함
         } catch (error) {
             console.error(error);
+            router.push("/login"); // 🟢 에러 발생 시 로그인 페이지로 이동
+            return false;
         } finally {
             setLoading(false);
         }
@@ -171,14 +184,16 @@ const MyPage = () => {
 
     const fetchBadges = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/users/badges", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                const list = Array.isArray(data?.badges) ? data.badges : Array.isArray(data) ? data : [];
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/badges");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (data) {
+                const list = Array.isArray((data as any)?.badges)
+                    ? (data as any).badges
+                    : Array.isArray(data)
+                    ? data
+                    : [];
                 setBadges(
                     list.map((b: any) => ({
                         id: b.id,
@@ -196,14 +211,12 @@ const MyPage = () => {
 
     const fetchUserPreferences = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const response = await fetch("/api/users/preferences", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.ok) {
-                const raw = await response.json();
-                const prefs: any = raw?.preferences ?? raw ?? {};
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data: raw, response } = await apiFetch<any>("/api/users/preferences");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (raw) {
+                const prefs: any = (raw as any)?.preferences ?? raw ?? {};
                 const hasPreferences =
                     Object.keys(prefs).length > 0 &&
                     ((prefs.concept && Array.isArray(prefs.concept) && prefs.concept.length > 0) ||
@@ -257,14 +270,16 @@ const MyPage = () => {
 
     const fetchCasefiles = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/users/casefiles", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                const list = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/casefiles");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (data) {
+                const list = Array.isArray((data as any)?.items)
+                    ? (data as any).items
+                    : Array.isArray(data)
+                    ? data
+                    : [];
                 setCasefiles(
                     list.map((it: any) => ({
                         story_id: it.story_id || it.storyId || it.id,
@@ -287,14 +302,12 @@ const MyPage = () => {
 
     const fetchSavedCourses = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/users/me/courses", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setSavedCourses(data.savedCourses || []);
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/me/courses");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (data) {
+                setSavedCourses((data as any).savedCourses || []);
             }
         } catch (e) {
             setSavedCourses([]);
@@ -303,14 +316,16 @@ const MyPage = () => {
 
     const fetchFavorites = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const response = await fetch("/api/users/favorites", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.ok) {
-                const raw = await response.json();
-                const arr = Array.isArray(raw?.favorites) ? raw.favorites : Array.isArray(raw) ? raw : [];
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data: raw, response } = await apiFetch<any>("/api/users/favorites");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (raw) {
+                const arr = Array.isArray((raw as any)?.favorites)
+                    ? (raw as any).favorites
+                    : Array.isArray(raw)
+                    ? raw
+                    : [];
                 setFavorites(
                     arr.map((f: any) => ({
                         id: f.id || f.favorite_id || f.course_id,
@@ -337,16 +352,15 @@ const MyPage = () => {
 
     const fetchCompleted = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/users/completions", {
-                headers: { Authorization: `Bearer ${token}` },
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data: raw, response } = await apiFetch<any>("/api/users/completions", {
                 cache: "no-store", // 🟢 캐시 방지
             });
-            if (res.ok) {
-                const raw = await res.json();
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (raw) {
                 // 🟢 API 응답 구조: { courses: [...], escapes: [...] }
-                const coursesList = Array.isArray(raw?.courses) ? raw.courses : [];
+                const coursesList = Array.isArray((raw as any)?.courses) ? (raw as any).courses : [];
                 console.log("[MyPage] 완료 코스 데이터:", coursesList);
 
                 setCompleted(
@@ -361,7 +375,7 @@ const MyPage = () => {
                     }))
                 );
             } else {
-                console.error("[MyPage] 완료 코스 조회 실패:", res.status);
+                console.error("[MyPage] 완료 코스 조회 실패");
                 setCompleted([]);
             }
         } catch (error) {
@@ -372,39 +386,34 @@ const MyPage = () => {
 
     const fetchRewards = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/users/rewards", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            if (res.ok && data?.success) setRewards(data.rewards || []);
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/rewards");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if ((data as any)?.success) setRewards((data as any).rewards || []);
         } catch {}
     };
 
     const fetchCheckins = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/users/checkins", {
-                headers: { Authorization: `Bearer ${token}` },
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/checkins", {
                 cache: "no-store",
             });
-            const data = await res.json();
-            if (res.ok && data?.success) setCheckins(data.checkins || []);
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if ((data as any)?.success) setCheckins((data as any).checkins || []);
         } catch {}
     };
 
     const fetchPayments = async () => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const res = await fetch("/api/payments/history", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setPayments(data.payments || []);
+            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/payments/history");
+            if (response.status === 401) return; // 401이면 조용히 실패
+            if (data) {
+                setPayments((data as any).payments || []);
             }
         } catch {}
     };
@@ -429,35 +438,21 @@ const MyPage = () => {
 
     const handleLogoutClick = () => setShowLogoutModal(true);
     const handleLogout = async () => {
+        // 🟢 모달 닫기
+        setShowLogoutModal(false);
+
         try {
-            // 🟢 서버 측 로그아웃 API 호출 (쿠키 삭제)
-            await fetch("/api/auth/logout", { method: "POST" });
+            // 🟢 쿠키 기반 인증: logout 함수 사용 (스플래시 화면 포함)
+            const { logout } = await import("@/lib/authClient");
+            await logout();
         } catch (error) {
             console.error("로그아웃 처리 중 오류 발생:", error);
+            // 에러 발생 시에도 메인으로 이동
+            if (typeof window !== "undefined") {
+                sessionStorage.removeItem("dona-splash-shown");
+                window.location.href = "/";
+            }
         }
-
-        // 🟢 localStorage 완전 정리
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("loginTime");
-
-        // 🟢 모든 상태 초기화 (UI에 데이터가 남지 않도록)
-        setUserInfo(null);
-        setUserPreferences(null);
-        setFavorites([]);
-        setSavedCourses([]);
-        setCompleted([]);
-        setBadges([]);
-        setCasefiles([]);
-        setRewards([]);
-        setCheckins([]);
-        setPayments([]);
-
-        // 🟢 인증 상태 변경 이벤트 발생
-        window.dispatchEvent(new CustomEvent("authTokenChange"));
-
-        setShowLogoutModal(false);
-        router.push("/");
     };
 
     const handleEditClick = () => {
@@ -478,18 +473,13 @@ const MyPage = () => {
         setEditLoading(true);
         setEditError("");
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const response = await fetch("/api/users/profile", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const data = await authenticatedFetch("/api/users/profile", {
                 method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify(editForm),
             });
-            const data = await response.json();
-            if (response.ok) {
+            if (data) {
                 setUserInfo({
                     ...userInfo!,
                     name: editForm.name,
@@ -500,7 +490,7 @@ const MyPage = () => {
                 setShowEditModal(false);
                 alert("프로필이 성공적으로 수정되었습니다.");
             } else {
-                setEditError(data.error || "프로필 수정에 실패했습니다.");
+                setEditError((data as any)?.error || "프로필 수정에 실패했습니다.");
             }
         } catch (error) {
             setEditError("프로필 수정 중 오류가 발생했습니다.");
@@ -515,13 +505,12 @@ const MyPage = () => {
 
     const removeFavorite = async (courseId: number) => {
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-            const response = await fetch(`/api/users/favorites?courseId=${courseId}`, {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const result = await authenticatedFetch(`/api/users/favorites?courseId=${courseId}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
             });
-            if (response.ok) {
+            if (result !== null) {
                 setFavorites((prev) => prev.filter((fav) => fav.course_id !== courseId));
             }
         } catch (error) {
@@ -535,14 +524,12 @@ const MyPage = () => {
         setCasePhotoUrls([]);
         setCasePhotoLoading(true);
         try {
-            const token = localStorage.getItem("authToken");
+            // 🟢 쿠키 기반 인증: apiFetch 사용
+            const { apiFetch } = await import("@/lib/authClient");
             // 1) 콜라주 확인
-            const resCollages = await fetch(`/api/collages?storyId=${storyId}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            });
-            if (resCollages.ok) {
-                const data = await resCollages.json();
-                const items: any[] = Array.isArray((data as any)?.items) ? (data as any).items : [];
+            const { data: collageData, response: resCollages } = await apiFetch(`/api/collages?storyId=${storyId}`);
+            if (resCollages.ok && collageData) {
+                const items: any[] = Array.isArray((collageData as any)?.items) ? (collageData as any).items : [];
                 const urls = items.map((it) => String(it?.thumbnailUrl || it?.collageUrl || "")).filter(Boolean);
                 if (urls.length > 0) {
                     setCasePhotoUrls(urls);
@@ -550,11 +537,11 @@ const MyPage = () => {
                 }
             }
             // 2) 폴백: 제출 사진
-            const res = await fetch(`/api/escape/submissions?storyId=${storyId}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            });
-            if (res.ok) {
-                const data = await res.json();
+            const { data: submissionData, response: res } = await apiFetch(
+                `/api/escape/submissions?storyId=${storyId}`
+            );
+            if (res.ok && submissionData) {
+                const data = submissionData;
                 const urls = Array.isArray(data) ? data : Array.isArray((data as any)?.urls) ? (data as any).urls : [];
                 setCasePhotoUrls(urls);
             }
@@ -803,20 +790,17 @@ const MyPage = () => {
                         setPwLoading(true);
                         setPwError("");
                         try {
-                            const token = localStorage.getItem("authToken");
-                            if (!token) throw new Error("로그인이 필요합니다.");
-
-                            const res = await fetch("/api/users/password/verify", {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    Authorization: `Bearer ${token}`,
-                                },
-                                body: JSON.stringify({ currentPassword: password }),
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (!res.ok || !data?.ok) {
-                                throw new Error(data?.error || "현재 비밀번호가 올바르지 않습니다.");
+                            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                            const { authenticatedFetch } = await import("@/lib/authClient");
+                            const result = await authenticatedFetch<{ ok?: boolean; error?: string }>(
+                                "/api/users/password/verify",
+                                {
+                                    method: "POST",
+                                    body: JSON.stringify({ currentPassword: password }),
+                                }
+                            );
+                            if (!result || !result.ok) {
+                                throw new Error(result?.error || "현재 비밀번호가 올바르지 않습니다.");
                             }
                             // 현재 비밀번호 저장하고 다음 단계로
                             setPwState((s) => ({ ...s, current: password }));
@@ -857,27 +841,23 @@ const MyPage = () => {
                                 setPwLoading(true);
                                 setPwError("");
                                 try {
-                                    const token = localStorage.getItem("authToken");
-                                    if (!token) throw new Error("로그인이 필요합니다.");
+                                    // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                                    const { authenticatedFetch } = await import("@/lib/authClient");
 
                                     if (pwState.next.length < 6)
                                         throw new Error("새 비밀번호는 최소 6자 이상이어야 합니다.");
                                     if (pwState.next !== pwState.confirm)
                                         throw new Error("새 비밀번호가 일치하지 않습니다.");
 
-                                    const res = await fetch("/api/users/password", {
+                                    const data = await authenticatedFetch("/api/users/password", {
                                         method: "PUT",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            Authorization: `Bearer ${token}`,
-                                        },
                                         body: JSON.stringify({
                                             currentPassword: pwState.current,
                                             newPassword: pwState.next,
                                         }),
                                     });
-                                    const data = await res.json().catch(() => ({}));
-                                    if (!res.ok || !data?.success) throw new Error(data?.error || "변경 실패");
+                                    if (!data || !(data as any)?.success)
+                                        throw new Error((data as any)?.error || "변경 실패");
 
                                     setPwModalOpen(false);
                                     setPwState({ current: "", next: "", confirm: "" });

@@ -64,16 +64,11 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     const savePreferences = useCallback(async (prefsToSave: UserPreferences, silent = true) => {
         if (isSavingRef.current) return;
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) return;
-
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
             isSavingRef.current = true;
-            await fetch("/api/users/preferences", {
+            await authenticatedFetch("/api/users/preferences", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify({ preferences: prefsToSave }),
             });
             if (!silent) console.log("Saved.");
@@ -110,35 +105,32 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
         const init = async () => {
             try {
-                const token = localStorage.getItem("authToken");
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
                 let serverPrefs: UserPreferences | null = null;
 
                 // 1. 서버 데이터 가져오기
-                if (token) {
-                    try {
-                        const res = await fetch("/api/users/preferences", {
-                            method: "GET",
-                            headers: { Authorization: `Bearer ${token}` },
-                        });
-                        if (res.ok) {
-                            const data = await res.json();
-                            const raw = data?.preferences ?? data;
-                            const normalized: UserPreferences = {
-                                concept: Array.isArray(raw?.concept) ? raw.concept : [],
-                                companion: typeof raw?.companion === "string" ? raw.companion : "",
-                                mood: Array.isArray(raw?.mood) ? raw.mood : [],
-                                regions: Array.isArray(raw?.regions) ? raw.regions : [],
-                            };
-                            serverPrefs = normalized;
-                            setPreferences(normalized);
+                try {
+                    const raw = await authenticatedFetch<{ preferences?: UserPreferences } | UserPreferences>(
+                        "/api/users/preferences"
+                    );
+                    if (raw) {
+                        const prefsData = (raw as any)?.preferences ?? raw;
+                        const normalized: UserPreferences = {
+                            concept: Array.isArray(prefsData?.concept) ? prefsData.concept : [],
+                            companion: typeof prefsData?.companion === "string" ? prefsData.companion : "",
+                            mood: Array.isArray(prefsData?.mood) ? prefsData.mood : [],
+                            regions: Array.isArray(prefsData?.regions) ? prefsData.regions : [],
+                        };
+                        serverPrefs = normalized;
+                        setPreferences(normalized);
 
-                            // 서버 데이터 기반으로 UI 상태 복구 (선택 표시 등)
-                            if (normalized.companion) setSelectedCrew(normalized.companion);
-                            // vibeIds나 valueId는 DB에 정확히 매핑 안 될 수 있어 스킵하거나 로직 추가 필요
-                        }
-                    } catch {
-                        /* ignore */
+                        // 서버 데이터 기반으로 UI 상태 복구 (선택 표시 등)
+                        if (normalized.companion) setSelectedCrew(normalized.companion);
+                        // vibeIds나 valueId는 DB에 정확히 매핑 안 될 수 있어 스킵하거나 로직 추가 필요
                     }
+                } catch {
+                    /* ignore */
                 }
 
                 // 2. 로컬 진행 상황 체크

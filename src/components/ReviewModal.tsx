@@ -27,23 +27,10 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
         setError("");
 
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                setError("로그인이 필요합니다. 로그인 페이지로 이동합니다.");
-                setIsSubmitting(false);
-                // 2초 후 로그인 페이지로 이동
-                setTimeout(() => {
-                    window.location.href = "/login";
-                }, 2000);
-                return;
-            }
-
-            const response = await fetch("/api/reviews", {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const response = await authenticatedFetch("/api/reviews", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify({
                     courseId,
                     placeId,

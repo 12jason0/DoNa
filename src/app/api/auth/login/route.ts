@@ -94,26 +94,29 @@ export async function POST(request: NextRequest) {
             console.error("로그인 로그 저장 실패:", logError);
         }
 
-        const response = {
+        // 🟢 쿠키 기반 인증: httpOnly 쿠키에 토큰 저장
+        const res = NextResponse.json({
             success: true,
             message: "로그인이 완료되었습니다.",
-            token,
+            // 🟢 token은 제거 (쿠키만 사용)
+            // 기존 코드 호환성을 위해 선택적으로 반환 (앱에서 필요할 수 있음)
+            ...(process.env.ENABLE_TOKEN_RESPONSE === "true" && { token }),
             user: {
                 id: user.id,
                 email: user.email,
                 name: user.nickname,
                 nickname: user.nickname,
             },
-        };
-        // httpOnly 쿠키에 토큰 저장
-        const res = NextResponse.json(response);
+        });
+        
         res.cookies.set("auth", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24 * 7, // 7일
         });
+        
         return res;
     } catch (error) {
         console.error("로그인 오류:", error);
