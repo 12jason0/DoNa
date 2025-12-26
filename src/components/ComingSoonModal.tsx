@@ -28,10 +28,10 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                 }
 
                 // 🟢 notification_interests 테이블에서 NEW_ESCAPE 확인
-                const hasNewEscape = data?.interests?.some(
-                    (item: any) => item.topic === "NEW_ESCAPE"
-                );
-                setHasNotification(hasNewEscape || false);
+                    const hasNewEscape = data?.interests?.some(
+                        (item: any) => item.topic === "NEW_ESCAPE"
+                    );
+                    setHasNotification(hasNewEscape || false);
             } catch (error) {
                 console.error("알림 상태 확인 실패:", error);
             } finally {
@@ -76,8 +76,8 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
             if (response.ok) {
                 setHasNotification(true);
-                alert("오픈 알림이 신청되었습니다! 🔔");
-                onClose();
+        alert("오픈 알림이 신청되었습니다! 🔔");
+        onClose();
             } else {
                 const errorMsg = data?.error || "알림 신청에 실패했습니다.";
                 alert(errorMsg);

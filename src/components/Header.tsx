@@ -268,7 +268,7 @@ const Header = () => {
                                 onClick={() => {
                                     closeMenu();
                                     if (isLoggedIn) {
-                                        setShowComingSoon("escape");
+                                    setShowComingSoon("escape");
                                     } else {
                                         setShowLoginModal(true);
                                     }

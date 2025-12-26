@@ -13,14 +13,14 @@ function getBaseUrl(): string {
         // Fallback: S3 직접 URL (Private 버킷이면 접근 불가)
         return "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/concept-Icon";
     }
-    
+
     // 클라이언트 사이드: NEXT_PUBLIC_ 환경 변수 사용
     const publicBase = process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN;
     if (publicBase) {
         const baseUrl = publicBase.startsWith("http") ? publicBase : `https://${publicBase}`;
         return `${baseUrl.replace(/\/$/, "")}/concept-Icon`;
     }
-    
+
     // Fallback: CloudFront 도메인이 설정되지 않은 경우
     return "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/concept-Icon";
 }

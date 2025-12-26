@@ -434,7 +434,7 @@ export default function AdminDashboard() {
             {/* 메뉴 카드 그리드 */}
             <section className="space-y-4">
                 <h2 className="text-2xl font-bold text-gray-800">관리 메뉴</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* 1. 코스 관리 */}
                 <Link href="/admin/courses" className="block group">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
@@ -478,7 +478,7 @@ export default function AdminDashboard() {
                         <p className="text-gray-500 mt-2 text-sm">방탈출 게임 시나리오와 스토리를 관리합니다.</p>
                     </div>
                 </Link>
-                </div>
+            </div>
             </section>
         </div>
     );
