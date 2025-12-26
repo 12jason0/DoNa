@@ -74,15 +74,18 @@ export default function Home() {
     useEffect(() => {
         (async () => {
             try {
-                // 🟢 쿠키 기반 인증: apiFetch 사용
+                // 🟢 쿠키 기반 인증: apiFetch 사용 (성능 최적화: 캐싱 강화)
                 const [profileRes, checkinRes, preferencesRes] = await Promise.all([
                     apiFetch("/api/users/profile", {
+                        cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
                         next: { revalidate: 300 },
                     }),
                     apiFetch("/api/users/checkins", {
+                        cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
                         next: { revalidate: 60 },
                     }),
                     apiFetch("/api/users/preferences", {
+                        cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
                         next: { revalidate: 300 },
                     }),
                 ]);
@@ -158,10 +161,10 @@ export default function Home() {
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                // 🟢 쿠키 기반 인증: apiFetch 사용 (쿠키 자동 포함)
+                // 🟢 쿠키 기반 인증: apiFetch 사용 (쿠키 자동 포함) - 성능 최적화
                 const { data, response } = await apiFetch(buildCourseListUrl() as any, {
-                    cache: "force-cache",
-                    next: { revalidate: 300 },
+                    cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
+                    next: { revalidate: 180 }, // 🟢 성능 최적화: 300초 -> 180초 (3분)
                 });
                 if (!response.ok) {
                     setCourses([]);
@@ -1173,9 +1176,11 @@ function TabbedConcepts({
                                         return (
                                             <button
                                                 key={item.name}
-                                                onClick={() =>
-                                                    router.push(`/courses?concept=${encodeURIComponent(item.name)}`)
-                                                }
+                                                onClick={() => {
+                                                    // 🟢 성능 최적화: prefetch 후 이동
+                                                    router.prefetch(`/courses?concept=${encodeURIComponent(item.name)}`);
+                                                    router.push(`/courses?concept=${encodeURIComponent(item.name)}`);
+                                                }}
                                                 className="flex flex-col items-center gap-2 group"
                                             >
                                                 {/* Icon Container: Increased to w-20 (80px) */}
@@ -1187,6 +1192,8 @@ function TabbedConcepts({
                                                                 alt={koreanName}
                                                                 width={80}
                                                                 height={80}
+                                                                loading="lazy" // 🟢 성능 최적화: lazy loading 추가
+                                                                quality={60} // 🟢 성능 최적화: 작은 아이콘이므로 quality 낮춤
                                                                 className="object-contain w-full h-full transform scale-110 group-hover:scale-125 transition-transform duration-500 p-1"
                                                             />
                                                         ) : (
@@ -1245,6 +1252,7 @@ function TabbedConcepts({
                                 <Link
                                     key={c.id}
                                     href={`/courses/${c.id}`}
+                                    prefetch={true} // 🟢 성능 최적화: prefetch 추가
                                     // Increased width to w-24 (96px) to allow text to breathe
                                     className="flex flex-col items-center gap-2 group shrink-0 w-24"
                                     draggable={false}
@@ -1258,6 +1266,9 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
+                                                    loading="lazy" // 🟢 성능 최적화: lazy loading 추가
+                                                    quality={65} // 🟢 성능 최적화: quality 최적화
+                                                    sizes="80px" // 🟢 성능 최적화: 고정 크기 명시
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (
@@ -1296,6 +1307,7 @@ function TabbedConcepts({
                                 <Link
                                     key={c.id}
                                     href={`/courses/${c.id}`}
+                                    prefetch={true} // 🟢 성능 최적화: prefetch 추가
                                     // Increased width to w-24 (96px)
                                     className="flex flex-col items-center gap-2 group shrink-0 w-24"
                                     draggable={false}
@@ -1309,6 +1321,9 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
+                                                    loading="lazy" // 🟢 성능 최적화: lazy loading 추가
+                                                    quality={65} // 🟢 성능 최적화: quality 최적화
+                                                    sizes="80px" // 🟢 성능 최적화: 고정 크기 명시
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (

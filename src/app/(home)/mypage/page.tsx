@@ -134,7 +134,16 @@ const MyPage = () => {
                 return url;
             };
 
-            const profileImageUrl = src.profileImage || src.profileImageUrl || src.profile_image_url || "";
+            // 🟢 카카오 프로필 이미지 URL 추출 (여러 필드명 체크)
+            const profileImageUrl =
+                src.profileImage ||
+                src.profileImageUrl ||
+                src.profile_image_url ||
+                (raw as any)?.profileImage ||
+                (raw as any)?.profileImageUrl ||
+                (raw as any)?.user?.profileImage ||
+                (raw as any)?.user?.profileImageUrl ||
+                "";
 
             // 🟢 subscriptionTier 확인: DB의 subscription_tier와 코드의 subscriptionTier 모두 체크
             const tier =

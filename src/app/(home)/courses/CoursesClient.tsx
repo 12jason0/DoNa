@@ -102,8 +102,8 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             }
 
             const { data, response } = await apiFetch(`/api/courses?${params.toString()}`, {
-                cache: "force-cache",
-                next: { revalidate: 300 },
+                cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
+                next: { revalidate: 180 }, // 🟢 성능 최적화: 300초 -> 180초 (3분)
             });
 
             if (response.ok && data) {

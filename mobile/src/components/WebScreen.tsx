@@ -21,7 +21,8 @@ export default function WebScreen({ uri: initialUri }: Props) {
     const [isSplashDone, setIsSplashDone] = useState(false);
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsSplashDone(true), 7000);
+        // 🟢 성능 최적화: 7초는 너무 깁니다. 2초로 단축하여 체감 속도 향상
+        const timer = setTimeout(() => setIsSplashDone(true), 2000);
         return () => clearTimeout(timer);
     }, []);
 
@@ -96,7 +97,7 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     geolocationEnabled={true} // 네이버 지도 위치 정확도 및 거리 계산 오류 해결
                     domStorageEnabled={true} // 웹 리소스 저장을 위한 필수 설정
                     cacheEnabled={true} // 2030 세대가 선호하는 빠른 로딩 속도 확보
-                    cacheMode="LOAD_CACHE_ELSE_NETWORK" // CloudFront 이미지 캐싱 최적화
+                    cacheMode="LOAD_DEFAULT" // 🟢 캐시 설정을 기본으로 하여 안정성 확보
                     allowsInlineMediaPlayback={true}
                     mediaPlaybackRequiresUserAction={false}
                     allowsBackForwardNavigationGestures={true}
@@ -146,10 +147,11 @@ export default function WebScreen({ uri: initialUri }: Props) {
                         const { nativeEvent } = syntheticEvent;
                         if (nativeEvent.code === -1002) return;
                     }}
+                    // 🟢 카카오 로그인을 위해 UserAgent 끝에 'KAKAOTALK' 명시
                     userAgent={
                         Platform.OS === "android"
-                            ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-                            : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                            ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36; KAKAOTALK"
+                            : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1; KAKAOTALK"
                     }
                     injectedJavaScriptBeforeContentLoaded={initialScript || ""}
                     onMessage={async (ev) => {
@@ -159,23 +161,71 @@ export default function WebScreen({ uri: initialUri }: Props) {
                                 await saveAuthToken(String(data.payload || ""));
                             } else if (data.type === "appleLogin" && data.action === "start") {
                                 if (Platform.OS === "ios") {
-                                    const credential = await AppleAuthentication.signInAsync({
-                                        requestedScopes: [
-                                            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                                            AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                                        ],
-                                    });
-                                    webRef.current?.injectJavaScript(`
-                                        window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
-                                            detail: ${JSON.stringify(credential)}
-                                        }));
-                                    `);
+                                    try {
+                                        const credential = await AppleAuthentication.signInAsync({
+                                            requestedScopes: [
+                                                AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                                                AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                                            ],
+                                        });
+
+                                        // 🟢 서버에 Apple 로그인 요청 전송 (쿠키 설정을 위해)
+                                        const loginResponse = await fetch("https://dona.io.kr/api/auth/apple", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            credentials: "include", // 🟢 쿠키 동기화를 위해 필수
+                                            body: JSON.stringify({
+                                                identityToken: credential.identityToken,
+                                                authorizationCode: credential.authorizationCode,
+                                                fullName: credential.fullName,
+                                                email: credential.email,
+                                            }),
+                                        });
+
+                                        if (loginResponse.ok) {
+                                            // 🟢 로그인 성공: 이벤트 발생 및 웹뷰에 정보 전달
+                                            webRef.current?.injectJavaScript(`
+                                                // 🟢 쿠키 기반 인증: localStorage 제거
+                                                localStorage.removeItem('authToken');
+                                                localStorage.removeItem('user');
+                                                localStorage.removeItem('loginTime');
+                                                
+                                                // 🟢 로그인 성공 이벤트 발생
+                                                window.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                                                
+                                                window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
+                                                    detail: ${JSON.stringify(credential)}
+                                                }));
+                                            `);
+
+                                            // 🟢 서버 세션(쿠키)이 생성될 시간을 충분히 주기 위해 1.5초 후 reload
+                                            setTimeout(() => {
+                                                webRef.current?.reload();
+                                            }, 1500);
+                                        } else {
+                                            // 로그인 실패
+                                            webRef.current?.injectJavaScript(`
+                                                window.dispatchEvent(new CustomEvent('appleLoginError', {
+                                                    detail: { message: 'Apple 로그인 처리에 실패했습니다.' }
+                                                }));
+                                            `);
+                                        }
+                                    } catch (error) {
+                                        console.error("Apple 로그인 오류:", error);
+                                        webRef.current?.injectJavaScript(`
+                                            window.dispatchEvent(new CustomEvent('appleLoginError', {
+                                                detail: { message: 'Apple 로그인 중 오류가 발생했습니다.' }
+                                            }));
+                                        `);
+                                    }
                                 }
                             }
                         } catch (e) {
                             console.error("WebView message error:", e);
                         }
                     }}
+                    // 🟢 성능 최적화: 하드웨어 가속
+                    androidLayerType="hardware"
                 />
 
                 {loading && (

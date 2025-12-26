@@ -120,10 +120,11 @@ export default function CourseCard({
         <div className="block group relative cursor-pointer">
             {/* Link or Div based on Lock status */}
             {course.isLocked ? (
-                <div onClick={handleLockedClick} className="absolute inset-0 z-[25] cursor-pointer" />
+                <div onClick={handleLockedClick} className="absolute inset-0 z-[15] cursor-pointer" />
             ) : (
                 <Link
                     href={`/courses/${course.id}`}
+                    prefetch={true}
                     className="absolute inset-0 z-[25]"
                     onClick={() => {
                         try {
@@ -195,7 +196,7 @@ export default function CourseCard({
                     e.stopPropagation();
                     onToggleFavorite(e, course.id);
                 }}
-                className="absolute top-3 right-3 z-[40] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
+                className="absolute top-3 right-3 z-[20] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
             >
                 <svg
                     className={`w-7 h-7 drop-shadow-sm transition-colors ${

@@ -441,14 +441,15 @@ const Login = () => {
                                             throw new Error(data.error || "Apple 로그인 처리 실패");
                                         }
 
-                                        localStorage.setItem("authToken", data.token);
-                                        localStorage.setItem("user", JSON.stringify(data.user));
-                                        localStorage.setItem("loginTime", Date.now().toString());
+                                        // 🟢 쿠키 기반 인증: localStorage 제거 (쿠키는 서버에서 이미 설정됨)
+                                        localStorage.removeItem("authToken");
+                                        localStorage.removeItem("user");
+                                        localStorage.removeItem("loginTime");
+                                        
+                                        // 🟢 로그인 성공 이벤트 발생
+                                        window.dispatchEvent(new CustomEvent("authLoginSuccess"));
+                                        
                                         sessionStorage.setItem("login_success_trigger", "true");
-
-                                        window.dispatchEvent(
-                                            new CustomEvent("authTokenChange", { detail: { token: data.token } })
-                                        );
 
                                         // 🟢 애플 로그인 성공 시 무조건 메인 페이지(/)로 이동
                                         router.replace("/");

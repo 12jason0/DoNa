@@ -101,6 +101,7 @@ export default function FrameRenderer({
                 <img
                     src={bg}
                     alt="frame"
+                    loading="lazy" // 🟢 성능 최적화: lazy loading 추가
                     style={{
                         position: "absolute",
                         inset: 0,
@@ -128,6 +129,7 @@ export default function FrameRenderer({
                         key={i}
                         src={src}
                         alt={`photo-${i + 1}`}
+                        loading="lazy" // 🟢 성능 최적화: lazy loading 추가
                         style={{
                             position: "absolute",
                             left: `${leftPct}%`,

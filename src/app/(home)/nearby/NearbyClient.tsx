@@ -200,15 +200,14 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             if (concept) params.set("concept", concept);
             if (tagIds) params.set("tagIds", tagIds);
 
-            const response = await apiFetch(`/api/courses/nearby?${params.toString()}`, {
-                cache: "force-cache",
-                next: { revalidate: 300 },
+            const { data, response } = await apiFetch(`/api/courses/nearby?${params.toString()}`, {
+                cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
+                next: { revalidate: 180 }, // 🟢 성능 최적화: 300초 -> 180초 (3분)
             });
 
-            if (response.ok) {
-                const newCourses = await response.json();
+            if (response.ok && data) {
                 // 🟢 nearby API는 배열을 직접 반환하므로 그대로 사용
-                const coursesArray = Array.isArray(newCourses) ? newCourses : [];
+                const coursesArray = Array.isArray(data) ? data : [];
                 
                 if (coursesArray.length > 0) {
                     setCourses((prev) => [...prev, ...coursesArray]);

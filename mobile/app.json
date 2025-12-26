@@ -17,7 +17,7 @@
         "ios": {
             "supportsTablet": false,
             "bundleIdentifier": "kr.io.dona.dona",
-            "buildNumber": "5",
+            "buildNumber": "6",
             "usesAppleSignIn": true,
             "associatedDomains": ["applinks:dona.io.kr"],
             "infoPlist": {
@@ -44,7 +44,17 @@
             "favicon": "./assets/favicon.png",
             "bundler": "metro"
         },
-        "plugins": ["expo-sqlite", "expo-web-browser", "expo-apple-authentication"],
+        "plugins": [
+            "expo-sqlite",
+            "expo-web-browser",
+            "expo-apple-authentication",
+            [
+                "@react-native-kakao/core",
+                {
+                    "nativeAppKey": "a6c31213198b3d562121ddace8d1b65f"
+                }
+            ]
+        ],
         "extra": {
             "eas": {
                 "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"

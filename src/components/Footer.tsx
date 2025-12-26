@@ -115,6 +115,7 @@ export default function Footer() {
                     {/* 1. 홈 */}
                     <Link
                         href="/"
+                        prefetch={true}
                         aria-label="메인"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/") ? "#7aa06f" : "#99c08e" }}
@@ -128,6 +129,7 @@ export default function Footer() {
                     {/* 2. 코스 */}
                     <Link
                         href="/courses"
+                        prefetch={true}
                         aria-label="코스"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/courses") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/courses") ? "#7aa06f" : "#99c08e" }}
@@ -142,6 +144,7 @@ export default function Footer() {
                     {/* 3. 맵 */}
                     <Link
                         href="/map"
+                        prefetch={true}
                         aria-label="맵"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/map") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/map") ? "#7aa06f" : "#99c08e" }}
@@ -174,6 +177,7 @@ export default function Footer() {
                     {/* 5. 마이페이지 */}
                     <Link
                         href="/mypage"
+                        prefetch={true}
                         aria-label="마이페이지"
                         className={`p-2 rounded-md hover:bg-green-50 relative ${
                             isActive("/mypage") ? "bg-green-50" : ""

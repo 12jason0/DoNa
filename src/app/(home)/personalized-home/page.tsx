@@ -238,16 +238,17 @@ const AIRecommender = () => {
         scrollToBottom();
     }, [messages, isTyping, showChatModal]); // showChatModal 추가
 
-    // 유저 정보 가져오기
+    // 유저 정보 가져오기 (성능 최적화: 캐싱 추가)
     const fetchUserData = async () => {
         try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const { authenticatedFetch } = await import("@/lib/authClient");
-            const userData = await authenticatedFetch<any>("/api/users/profile", {
-                cache: "no-store",
+            // 🟢 쿠키 기반 인증: apiFetch 사용하여 캐싱 활용
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data: userData, response } = await apiFetch<any>("/api/users/profile", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 60 }, // 🟢 1분 캐싱
             });
 
-            if (userData) {
+            if (response.ok && userData) {
                 setIsLoggedIn(true);
                 const nick =
                     (userData as any).nickname ||
@@ -1006,29 +1007,36 @@ const AIRecommender = () => {
         };
     }, []);
 
-    // 트렌딩 코스 (TOP 3)
+    // 트렌딩 코스 (TOP 3) - 성능 최적화: 지연 로딩 및 캐싱
     useEffect(() => {
-        (async () => {
-            try {
-                const sp = new URLSearchParams();
-                sp.set("limit", "20");
-                sp.set("nocache", "1");
-                sp.set("imagePolicy", "any");
-                const res = await fetch(`/api/courses?${sp.toString()}`, { cache: "no-store" });
-                const data = await res.json().catch(() => null);
-                const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.courses) ? data.courses : [];
-                const norm: TrendingCourse[] = list.map((c: any) => ({
-                    id: c.id,
-                    title: c.title,
-                    imageUrl: c.imageUrl,
-                    location: c.location,
-                    duration: c.duration,
-                    viewCount: Number(c.viewCount ?? c.view_count ?? 0),
-                }));
-                norm.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-                setTrending(norm.slice(0, 3));
-            } catch {}
-        })();
+        // 🟢 성능 최적화: 초기 렌더링 후 1초 지연하여 로드
+        const timer = setTimeout(() => {
+            (async () => {
+                try {
+                    const sp = new URLSearchParams();
+                    sp.set("limit", "20");
+                    sp.set("imagePolicy", "any");
+                    // 🟢 성능 최적화: 캐싱 활용
+                    const res = await fetch(`/api/courses?${sp.toString()}`, {
+                        cache: "force-cache",
+                        next: { revalidate: 300 }, // 🟢 5분 캐싱
+                    });
+                    const data = await res.json().catch(() => null);
+                    const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.courses) ? data.courses : [];
+                    const norm: TrendingCourse[] = list.map((c: any) => ({
+                        id: c.id,
+                        title: c.title,
+                        imageUrl: c.imageUrl,
+                        location: c.location,
+                        duration: c.duration,
+                        viewCount: Number(c.viewCount ?? c.view_count ?? 0),
+                    }));
+                    norm.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+                    setTrending(norm.slice(0, 3));
+                } catch {}
+            })();
+        }, 1000); // 🟢 1초 지연
+        return () => clearTimeout(timer);
     }, []);
 
     return (

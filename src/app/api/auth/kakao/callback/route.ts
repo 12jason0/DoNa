@@ -67,26 +67,38 @@ export async function GET(request: NextRequest) {
                 fetch('/api/auth/kakao', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // 🟢 쿠키 동기화를 위해 필수
                     body: JSON.stringify({ code: code, next: next })
                 })
                 .then(res => {
                     // 리다이렉트 응답인 경우
                     if (res.redirected || res.url) {
+                        // 🟢 쿠키 기반 인증: localStorage 제거, 이벤트 발생 후 이동
+                        window.dispatchEvent(new CustomEvent('authLoginSuccess'));
                         window.location.href = res.url || next;
                         return;
                     }
                     return res.json();
                 })
                 .then(data => {
-                    if (data && data.success && data.token) {
-                        localStorage.setItem('authToken', data.token);
-                        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+                    if (data && data.success) {
+                        // 🟢 쿠키 기반 인증: localStorage 제거 (쿠키는 서버에서 이미 설정됨)
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('user');
+                        localStorage.removeItem('loginTime');
+                        
+                        // 🟢 로그인 성공 이벤트 발생
+                        window.dispatchEvent(new CustomEvent('authLoginSuccess'));
                         
                         window.ReactNativeWebView.postMessage(JSON.stringify({
                             type: 'loginSuccess',
-                            token: data.token
+                            token: data.token || null
                         }));
-                        window.location.href = next;
+                        
+                        // 🟢 쿠키 동기화를 위해 약간의 지연 후 이동
+                        setTimeout(() => {
+                            window.location.href = next;
+                        }, 300);
                     } else if (data && !data.success) {
                         const errorMsg = data.error || '로그인 실패';
                         const encodedError = encodeURIComponent(errorMsg);
@@ -95,6 +107,7 @@ export async function GET(request: NextRequest) {
                     }
                 })
                 .catch(err => {
+                    console.error('카카오 로그인 오류:', err);
                     const errorMsg = '서버 통신 오류';
                     const encodedError = encodeURIComponent(errorMsg);
                     const encodedNext = encodeURIComponent(next);
@@ -136,6 +149,7 @@ export async function GET(request: NextRequest) {
                     fetch('/api/auth/kakao', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include', // 🟢 쿠키 동기화를 위해 필수
                         body: JSON.stringify({ code: code, next: next }),
                         redirect: 'manual' // 리다이렉트를 수동으로 처리
                     })
@@ -169,6 +183,14 @@ export async function GET(request: NextRequest) {
                         }
                         
                         if (data.success) {
+                            // 🟢 쿠키 기반 인증: localStorage 제거, 이벤트 발생
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('user');
+                            localStorage.removeItem('loginTime');
+                            
+                            // 🟢 로그인 성공 이벤트 발생
+                            window.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                            
                             // 로그인 성공: next 경로로 리다이렉트
                             window.location.href = next;
                         } else {

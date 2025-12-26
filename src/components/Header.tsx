@@ -231,6 +231,7 @@ const Header = () => {
                         <div className="pl-6 pt-2 pr-6 space-y-2">
                             <Link
                                 href="/"
+                                prefetch={true}
                                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                 onClick={closeMenu}
                             >
@@ -238,6 +239,7 @@ const Header = () => {
                             </Link>
                             <Link
                                 href="/courses"
+                                prefetch={true}
                                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                 onClick={closeMenu}
                             >
@@ -245,6 +247,7 @@ const Header = () => {
                             </Link>
                             <Link
                                 href="/nearby"
+                                prefetch={true}
                                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                 onClick={closeMenu}
                             >
@@ -252,6 +255,7 @@ const Header = () => {
                             </Link>
                             <Link
                                 href="/personalized-home"
+                                prefetch={true}
                                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                 onClick={closeMenu}
                             >
@@ -259,6 +263,7 @@ const Header = () => {
                             </Link>
                             <Link
                                 href="/map"
+                                prefetch={true}
                                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                 onClick={closeMenu}
                             >
@@ -268,7 +273,7 @@ const Header = () => {
                                 onClick={() => {
                                     closeMenu();
                                     if (isLoggedIn) {
-                                    setShowComingSoon("escape");
+                                        setShowComingSoon("escape");
                                     } else {
                                         setShowLoginModal(true);
                                     }
@@ -282,6 +287,7 @@ const Header = () => {
                                 {isLoggedIn ? (
                                     <Link
                                         href="/mypage"
+                                        prefetch={true}
                                         className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                         onClick={closeMenu}
                                     >
@@ -291,6 +297,7 @@ const Header = () => {
                                     <>
                                         <Link
                                             href="/login?next=/"
+                                            prefetch={true}
                                             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                             onClick={closeMenu}
                                         >
@@ -298,6 +305,7 @@ const Header = () => {
                                         </Link>
                                         <Link
                                             href="/signup"
+                                            prefetch={true}
                                             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                                             onClick={closeMenu}
                                         >
@@ -335,6 +343,7 @@ const Header = () => {
                             <div className="grid grid-cols-2 gap-y-3 gap-x-2 pb-6 pt-4">
                                 <Link
                                     href="/about"
+                                    prefetch={true}
                                     onClick={closeMenu}
                                     className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
                                 >
@@ -342,6 +351,7 @@ const Header = () => {
                                 </Link>
                                 <Link
                                     href="/help"
+                                    prefetch={true}
                                     onClick={closeMenu}
                                     className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
                                 >
@@ -349,6 +359,7 @@ const Header = () => {
                                 </Link>
                                 <Link
                                     href="/privacy"
+                                    prefetch={true}
                                     onClick={closeMenu}
                                     className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
                                 >
@@ -356,6 +367,7 @@ const Header = () => {
                                 </Link>
                                 <Link
                                     href="/terms"
+                                    prefetch={true}
                                     onClick={closeMenu}
                                     className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
                                 >

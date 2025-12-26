@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
             name: displayName, // 🟢 외부 name (임시 이름이면 이메일 앞부분)
             nickname: displayName, // 🟢 외부 nickname
             profileImage: profileImageUrl,
+            profileImageUrl: profileImageUrl, // 🟢 카카오 프로필 이미지 표시를 위해 추가
             createdAt: user.createdAt,
             mbti: user.mbti,
             age: user.age,
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
                 name: displayName, // 🟢 내부 user.name (임시 이름이면 이메일 앞부분)
                 nickname: displayName, // 🟢 내부 user.nickname 추가 (핵심!)
                 profileImage: profileImageUrl,
+                profileImageUrl: profileImageUrl, // 🟢 카카오 프로필 이미지 표시를 위해 추가
             },
         };
 
