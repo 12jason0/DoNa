@@ -46,17 +46,19 @@ const nextConfig = {
                                 "https://cdn.jsdelivr.net",
                             ].join(" ");
 
-                            // ✅ 이미지 허용 목록 (Unsplash + 네이버 지도 타일 서버 통합)
+                            // ✅ 이미지 허용 목록 (Vercel 및 Google 추가)
                             const imgSrc = [
                                 "'self'",
                                 "data:",
                                 "blob:",
-                                "https://d13xx6k6chk2in.cloudfront.net", // CloudFront
-                                "https://images.unsplash.com", // 🟢 Unsplash 이미지 허용
-                                "https://*.pstatic.net", // 🟢 네이버 지도 타일 이미지 허용
-                                "https://*.naver.com", // 🟢 네이버 지도 관련 도메인 허용
-                                "https://ssl.pstatic.net", // 🟢 네이버 정적 리소스 허용
-                                "https://nrbe.pstatic.net", // 🟢 네이버 지도 서버 허용
+                                "https://d13xx6k6chk2in.cloudfront.net",
+                                "https://images.unsplash.com",
+                                "https://*.pstatic.net",
+                                "https://*.naver.com",
+                                "https://ssl.pstatic.net",
+                                "https://nrbe.pstatic.net",
+                                "https://*.vercel.com", // 🟢 Vercel 아바타 이미지 허용 추가
+                                "https://*.googleusercontent.com", // 🟢 구글 로그인 프로필 이미지 대비 추가
                                 ...(isDev ? ["http:", "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"] : []),
                             ].join(" ");
 
@@ -136,6 +138,8 @@ const nextConfig = {
         remotePatterns: [
             { protocol: "https", hostname: "images.unsplash.com" },
             { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" },
+            { protocol: "https", hostname: "*.vercel.com" }, // 🟢 Vercel 이미지 호스트 추가
+            { protocol: "https", hostname: "*.googleusercontent.com" }, // 🟢 구글 이미지 호스트 추가
         ],
         unoptimized: true,
     },
