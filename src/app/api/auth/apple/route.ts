@@ -11,6 +11,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
     const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
     const APPLE_REDIRECT_URI = "https://dona.io.kr/api/auth/apple";
+    
+    // next 파라미터 가져오기 및 검증
+    const nextParam = request.nextUrl.searchParams.get("next");
+    const { getSafeRedirectPath } = await import("@/lib/redirect");
+    const next = getSafeRedirectPath(nextParam, "/");
 
     if (!APPLE_CLIENT_ID) {
         console.error("APPLE_CLIENT_ID가 설정되지 않았습니다.");
@@ -23,7 +28,7 @@ export async function GET(request: NextRequest) {
         response_type: "code",
         response_mode: "form_post",
         scope: "name email",
-        state: "apple_login_state",
+        state: encodeURIComponent(next), // next 값을 state로 전달
     });
 
     const appleAuthUrl = `https://appleid.apple.com/auth/authorize?${params.toString()}`;
@@ -42,10 +47,15 @@ export async function POST(request: NextRequest) {
             const params = new URLSearchParams(formDataText);
             const code = params.get("code");
             const userJson = params.get("user");
+            const state = params.get("state"); // state 파라미터에서 next 추출
+            
+            // state에서 next 경로 추출 및 검증
+            const { getSafeRedirectPath } = await import("@/lib/redirect");
+            const next = getSafeRedirectPath(state, "/");
 
             if (!code) {
                 return generateHtmlResponse(
-                    "if(window.opener){window.opener.location.href='/login?error=no_code';window.close();}else{window.location.href='/login?error=no_code';}"
+                    `if(window.opener){window.opener.location.href='/login?error=no_code&next=${encodeURIComponent(next)}';window.close();}else{window.location.href='/login?error=no_code&next=${encodeURIComponent(next)}';}`
                 );
             }
 
@@ -58,7 +68,7 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            return await handleWebAppleAuthLogic(code, request, userData);
+            return await handleWebAppleAuthLogic(code, request, userData, next);
         }
 
         const body = await request.json();
@@ -101,7 +111,7 @@ function generateHtmlResponse(script: string, token?: string) {
 /**
  * 웹/웹뷰용 실제 인증 로직 (팝업 닫기 및 부모 창 제어 추가)
  */
-async function handleWebAppleAuthLogic(code: string, request: NextRequest, userData: any) {
+async function handleWebAppleAuthLogic(code: string, request: NextRequest, userData: any, next: string = "/") {
     try {
         // 1. 애플 서버와 code를 실제 token으로 교환
         const tokenResponse = await fetch("https://appleid.apple.com/auth/token", {
@@ -187,12 +197,13 @@ async function handleWebAppleAuthLogic(code: string, request: NextRequest, userD
                 }
 
                 // 부모 창(window.opener)이 있다면 부모 창을 이동시키고 현재 팝업을 닫음
+                const redirectPath = '${next}' || '/';
                 if (window.opener) {
-                    window.opener.location.href = '/?login_success=true&provider=apple';
+                    window.opener.location.href = redirectPath;
                     window.close();
                 } else {
                     // 팝업이 아닌 일반 리다이렉트인 경우 현재 창 이동
-                    window.location.href = '/?login_success=true&provider=apple';
+                    window.location.href = redirectPath;
                 }
             })();
         `,
@@ -200,12 +211,14 @@ async function handleWebAppleAuthLogic(code: string, request: NextRequest, userD
         );
     } catch (err: any) {
         console.error("Web Auth Logic Error:", err);
+        const errorMessage = err?.message || "인증 처리 중 오류가 발생했습니다.";
         return generateHtmlResponse(`
+            const next = '${next}' || '/';
             if(window.opener) {
-                window.opener.location.href='/login?error=${encodeURIComponent(err.message)}';
+                window.opener.location.href='/login?error=${encodeURIComponent(errorMessage)}&next=' + encodeURIComponent(next);
                 window.close();
             } else {
-                window.location.href='/login?error=${encodeURIComponent(err.message)}';
+                window.location.href='/login?error=${encodeURIComponent(errorMessage)}&next=' + encodeURIComponent(next);
             }
         `);
     }

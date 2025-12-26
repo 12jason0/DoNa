@@ -10,7 +10,6 @@ const nextConfig = {
                     { key: "X-Content-Type-Options", value: "nosniff" },
                     { key: "Referrer-Policy", value: "origin-when-cross-origin" },
                     { key: "X-XSS-Protection", value: "1; mode=block" },
-                    // Hide Vercel Toolbar on deployed site
                     { key: "x-vercel-toolbar", value: "disabled" },
                     {
                         key: "Content-Security-Policy",
@@ -47,20 +46,25 @@ const nextConfig = {
                                 "https://cdn.jsdelivr.net",
                             ].join(" ");
 
-                            // ✅ 이미지 허용 목록 (CloudFront만 사용)
+                            // ✅ 이미지 허용 목록 (Unsplash + 네이버 지도 타일 서버 통합)
                             const imgSrc = [
                                 "'self'",
                                 "data:",
                                 "blob:",
-                                "https://d13xx6k6chk2in.cloudfront.net", // 🟢 CloudFront (S3 직접 접근 제거)
-                                ...(isDev ? ["http:", "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"] : []), // 개발 환경에서만 S3 허용
+                                "https://d13xx6k6chk2in.cloudfront.net", // CloudFront
+                                "https://images.unsplash.com", // 🟢 Unsplash 이미지 허용
+                                "https://*.pstatic.net", // 🟢 네이버 지도 타일 이미지 허용
+                                "https://*.naver.com", // 🟢 네이버 지도 관련 도메인 허용
+                                "https://ssl.pstatic.net", // 🟢 네이버 정적 리소스 허용
+                                "https://nrbe.pstatic.net", // 🟢 네이버 지도 서버 허용
+                                ...(isDev ? ["http:", "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"] : []),
                             ].join(" ");
 
-                            // ✅ API 및 소켓 연결 허용 (CloudFront 및 배포 도메인 추가)
+                            // ✅ API 및 소켓 연결 허용
                             const connectSrc = [
                                 "'self'",
-                                "https://dona.io.kr", // 🟢 메인 API 도메인
-                                "https://d13xx6k6chk2in.cloudfront.net", // 🟢 CloudFront (S3 직접 접근 제거)
+                                "https://dona.io.kr",
+                                "https://d13xx6k6chk2in.cloudfront.net",
                                 "https://vercel.live",
                                 "https://*.vercel.live",
                                 "https://*.tosspayments.com",
@@ -86,18 +90,17 @@ const nextConfig = {
                                           "http://oapi.map.naver.com",
                                           "http://nrbe.map.naver.net",
                                           "https://nrbe.map.naver.net",
-                                          "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com", // 개발 환경에서만 S3 허용
+                                          "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com",
                                           "https://*.amazonaws.com",
                                       ]
                                     : []),
                             ].join(" ");
 
-                            // ✅ 폰트 허용 목록 (Vercel 폰트 에러 해결)
                             const fontSrc = [
                                 "'self'",
                                 "data:",
-                                "https://vercel.live", // 🟢 추가
-                                "https://*.vercel.live", // 🟢 추가
+                                "https://vercel.live",
+                                "https://*.vercel.live",
                                 "https://cdn.jsdelivr.net",
                                 "https://*.tosspayments.com",
                             ].join(" ");
@@ -113,7 +116,6 @@ const nextConfig = {
 
                             const workerSrc = ["'self'", "blob:"].join(" ");
 
-                            // ✅ 최종 CSP 헤더 조립
                             return [
                                 `default-src 'self'`,
                                 `script-src ${scriptSrc}`,
@@ -133,10 +135,9 @@ const nextConfig = {
     images: {
         remotePatterns: [
             { protocol: "https", hostname: "images.unsplash.com" },
-            { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" }, // 🟢 CloudFront만 사용 (S3 직접 접근 제거)
+            { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" },
         ],
         unoptimized: true,
-        qualities: [70],
     },
 };
 

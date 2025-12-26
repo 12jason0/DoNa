@@ -7,7 +7,6 @@ import * as AppleAuthentication from "expo-apple-authentication";
 
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
-import { registerPushToken } from "../utils/registerPushToken";
 
 type Props = { uri: string };
 
@@ -60,19 +59,20 @@ export default function WebScreen({ uri: initialUri }: Props) {
 
     useEffect(() => {
         (async () => {
-            const authToken = await loadAuthToken();
             const lines: string[] = [];
             lines.push("(function(){");
-            // ReactNativeWebView 객체를 명시적으로 주입 (카카오 로그인 감지용)
+            // Native Bridge 설정
             lines.push(
                 `if (!window.ReactNativeWebView) { window.ReactNativeWebView = { postMessage: function(msg) { window.__nativeBridge?.post('webview', JSON.parse(msg || '{}')); } }; }`
             );
             lines.push(
                 `window.__nativeBridge = { post: function(t,p){ window.ReactNativeWebView.postMessage(JSON.stringify({type:t, payload:p})); } };`
             );
+
+            // 🟢 푸시 토큰은 유지하되, 보안 취약점인 'authToken' localStorage 주입은 삭제했습니다.
             if (pushToken) lines.push(`try{ localStorage.setItem('expoPushToken', '${pushToken}'); }catch(e){}`);
-            if (authToken) lines.push(`try{ localStorage.setItem('authToken', '${authToken}'); }catch(e){}`);
-            // 🟢 성능 최적화: SafeArea 업데이트 간격 증가 (500ms -> 2000ms)
+
+            // SafeArea 업데이트 로직
             lines.push(
                 `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`
             );
@@ -90,15 +90,16 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     ref={webRef}
                     style={{ flex: 1 }}
                     source={{ uri: initialUri }}
-                    // 🟢 모바일 성능 최적화 설정
-                    cacheEnabled={true} // 캐시 활성화
-                    cacheMode="LOAD_CACHE_ELSE_NETWORK" // 캐시 우선 사용
-                    incognito={false} // 캐시 사용
-                    sharedCookiesEnabled={true} // 쿠키 공유
-                    thirdPartyCookiesEnabled={false} // 서드파티 쿠키 비활성화 (성능 향상)
-                    allowsInlineMediaPlayback={true} // 인라인 미디어 재생
-                    mediaPlaybackRequiresUserAction={false} // 자동 재생 허용
-                    allowsBackForwardNavigationGestures={true} // 제스처 네비게이션
+                    // 🟢 핵심 설정: 보안 및 기능 최적화
+                    sharedCookiesEnabled={true} // 서버 사이드 보안 쿠키 동기화 활성화
+                    thirdPartyCookiesEnabled={true} // 인증 도메인 간 쿠키 전달 허용
+                    geolocationEnabled={true} // 네이버 지도 위치 정확도 및 거리 계산 오류 해결
+                    domStorageEnabled={true} // 웹 리소스 저장을 위한 필수 설정
+                    cacheEnabled={true} // 2030 세대가 선호하는 빠른 로딩 속도 확보
+                    cacheMode="LOAD_CACHE_ELSE_NETWORK" // CloudFront 이미지 캐싱 최적화
+                    allowsInlineMediaPlayback={true}
+                    mediaPlaybackRequiresUserAction={false}
+                    allowsBackForwardNavigationGestures={true}
                     onNavigationStateChange={(nav: WebViewNavigation) => {
                         setCanGoBack(nav.canGoBack);
                         setCurrentUrl(nav.url);
@@ -106,22 +107,17 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     }}
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
-
-                        // 1. 카카오톡 앱 인증 및 앱 자체 스킴(duna://) 처리 ⭐
+                        // 앱 스킴 및 카카오톡 리다이렉트 처리
                         if (
                             url.startsWith("kakaokompassauth://") ||
                             url.startsWith("kakaolink://") ||
                             url.startsWith("kakaotalk://") ||
-                            url.startsWith("duna://") // 🟢 대표님의 앱 스킴을 추가하여 마지막 리다이렉트 에러 방지
+                            url.startsWith("duna://")
                         ) {
-                            // 앱 외부(시스템)에서 처리하도록 던짐
-                            Linking.openURL(url).catch(() => {
-                                // 카카오톡이 없을 경우 웹 로그인을 계속 진행하도록 true 반환
-                            });
-                            return false; // 🔴 웹뷰가 이 주소를 로드하려다 -1002 에러를 내는 것을 원천 봉쇄
+                            Linking.openURL(url).catch(() => {});
+                            return false;
                         }
 
-                        // 2. 이미 성공하신 기존 #webTalkLogin 처리 로직 (그대로 유지)
                         if (url.includes("#webTalkLogin")) {
                             const cleanUrl = url.split("#")[0];
                             setTimeout(() => {
@@ -130,88 +126,56 @@ export default function WebScreen({ uri: initialUri }: Props) {
                             return false;
                         }
 
-                        // 3. 내부 도메인 허용 로직 (그대로 유지)
+                        // 🟢 CloudFront 이미지 도메인 허용 (웹의 CloudFront 마이그레이션 지원)
+                        const isCloudFront =
+                            url.includes("d13xx6k6chk2in.cloudfront.net") || url.includes("cloudfront.net");
+
                         const isInternal =
                             url.includes("dona.io.kr") ||
                             url.includes("auth.kakao.com") ||
                             url.includes("kauth.kakao.com") ||
-                            url.includes("accounts.kakao.com");
+                            url.includes("accounts.kakao.com") ||
+                            isCloudFront; // CloudFront 이미지 허용
 
                         if (isInternal) return true;
 
-                        // 그 외 외부 링크는 외부 브라우저로 열기
                         openExternalBrowser(url);
                         return false;
                     }}
-                    // 🚩 -1002 에러가 나더라도 경고창을 띄우지 않도록 설정
                     onError={(syntheticEvent) => {
                         const { nativeEvent } = syntheticEvent;
-                        if (nativeEvent.code === -1002) {
-                            console.log("지원되지 않는 URL 무시됨:", nativeEvent.url);
-                            return;
-                        }
+                        if (nativeEvent.code === -1002) return;
                     }}
-                    setSupportMultipleWindows={false}
-                    javaScriptCanOpenWindowsAutomatically={true}
                     userAgent={
                         Platform.OS === "android"
                             ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
                             : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
                     }
-                    contentInsetAdjustmentBehavior="never"
                     injectedJavaScriptBeforeContentLoaded={initialScript || ""}
                     onMessage={async (ev) => {
                         try {
                             const data = JSON.parse(ev.nativeEvent.data || "{}");
                             if (data.type === "setAuthToken") {
                                 await saveAuthToken(String(data.payload || ""));
-                            } else if (data.type === "loginSuccess") {
-                                // 카카오 로그인 성공 시 토큰 저장
-                                if (data.token) {
-                                    await saveAuthToken(String(data.token || ""));
-                                }
                             } else if (data.type === "appleLogin" && data.action === "start") {
-                                // Apple 로그인 시작
                                 if (Platform.OS === "ios") {
-                                    try {
-                                        const credential = await AppleAuthentication.signInAsync({
-                                            requestedScopes: [
-                                                AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                                                AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                                            ],
-                                        });
-                                        
-                                        // 성공 시 WebView로 결과 전송
-                                        webRef.current?.injectJavaScript(`
-                                            window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
-                                                detail: ${JSON.stringify({
-                                                    identityToken: credential.identityToken,
-                                                    authorizationCode: credential.authorizationCode,
-                                                    user: credential.user,
-                                                    fullName: credential.fullName,
-                                                    email: credential.email,
-                                                })}
-                                            }));
-                                        `);
-                                    } catch (e: any) {
-                                        // 취소 또는 에러 처리
-                                        if (e.code !== "ERR_REQUEST_CANCELED") {
-                                            webRef.current?.injectJavaScript(`
-                                                window.dispatchEvent(new CustomEvent('appleLoginError', {
-                                                    detail: ${JSON.stringify({ error: e.message || "Apple 로그인 실패" })}
-                                                }));
-                                            `);
-                                        }
-                                    }
+                                    const credential = await AppleAuthentication.signInAsync({
+                                        requestedScopes: [
+                                            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                                            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                                        ],
+                                    });
+                                    webRef.current?.injectJavaScript(`
+                                        window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
+                                            detail: ${JSON.stringify(credential)}
+                                        }));
+                                    `);
                                 }
                             }
                         } catch (e) {
-                            console.error("WebView message 처리 오류:", e);
+                            console.error("WebView message error:", e);
                         }
                     }}
-                    originWhitelist={["*"]}
-                    javaScriptEnabled
-                    domStorageEnabled
                 />
 
                 {loading && (

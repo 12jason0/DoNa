@@ -190,8 +190,12 @@ export default function CourseCard({
 
             {/* Favorite Button (Moved outside Image Section to ensure clickability) */}
             <button
-                onClick={(e) => onToggleFavorite(e, course.id)}
-                className="absolute top-3 right-3 z-[29] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleFavorite(e, course.id);
+                }}
+                className="absolute top-3 right-3 z-[40] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
             >
                 <svg
                     className={`w-7 h-7 drop-shadow-sm transition-colors ${

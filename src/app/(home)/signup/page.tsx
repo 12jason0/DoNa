@@ -4,6 +4,10 @@ import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSafeRedirectPath } from "@/lib/redirect";
+import dynamic from "next/dynamic";
+
+// 모바일 앱 환경에서만 Apple 로그인 컴포넌트 로드
+const AppleLoginButton = dynamic(() => import("@/components/AppleLoginButton"), { ssr: false });
 
 const Signup = () => {
     const router = useRouter();
@@ -143,7 +147,7 @@ const Signup = () => {
                 )}
 
                 {/* 소셜 로그인 */}
-                <div className="mt-6">
+                <div className="mt-6 space-y-3">
                     <button
                         type="button"
                         onClick={() => {
@@ -157,6 +161,58 @@ const Signup = () => {
                         </svg>
                         카카오로 3초 만에 시작하기
                     </button>
+                    
+                    {/* Apple 로그인 버튼 (웹 및 모바일 앱 모두 지원) */}
+                    <AppleLoginButton
+                        next={next}
+                        onSuccess={async (credential: any) => {
+                            try {
+                                setLoading(true);
+                                setError("");
+
+                                // Apple 인증 정보를 서버로 전송
+                                const response = await fetch("/api/auth/apple", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        identityToken: credential.identityToken,
+                                        authorizationCode: credential.authorizationCode,
+                                        user: credential.user,
+                                        fullName: credential.fullName,
+                                    }),
+                                });
+
+                                const data = await response.json();
+
+                                if (!response.ok) {
+                                    throw new Error(data.error || "Apple 로그인 처리 실패");
+                                }
+
+                                // 🟢 쿠키 기반 인증: localStorage 제거
+                                localStorage.removeItem("authToken");
+                                localStorage.removeItem("user");
+                                localStorage.removeItem("loginTime");
+                                
+                                // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
+                                window.dispatchEvent(new CustomEvent("authLoginSuccess"));
+                                
+                                sessionStorage.setItem("login_success_trigger", "true");
+
+                                const redirectPath = next || "/";
+                                router.replace(redirectPath);
+                            } catch (err: any) {
+                                setError(err.message || "Apple 로그인에 실패했습니다.");
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        onError={(error: any) => {
+                            if (error.code !== "ERR_REQUEST_CANCELED") {
+                                setError("Apple 로그인에 실패했습니다.");
+                            }
+                        }}
+                        disabled={loading}
+                    />
                 </div>
 
                 {/* 구분선 */}

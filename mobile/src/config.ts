@@ -5,3 +5,8 @@
 
 // 프로덕션: 배포된 URL
 export const WEB_BASE = "https://dona.io.kr";
+
+// 🟢 CloudFront 이미지 CDN 도메인 (웹의 CloudFront 마이그레이션과 일치)
+// 웹에서 사용하는 CloudFront 도메인과 동일하게 설정
+export const CLOUDFRONT_DOMAIN = "d13xx6k6chk2in.cloudfront.net";
+export const CLOUDFRONT_BASE_URL = `https://${CLOUDFRONT_DOMAIN}`;

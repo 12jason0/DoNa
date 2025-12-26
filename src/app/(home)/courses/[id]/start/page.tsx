@@ -300,7 +300,10 @@ function GuidePageInner() {
         }
     }
 
-    if (loading || !course || !currentPlace) return <LoadingSpinner />;
+    // 🟢 스플래시 제거: 로딩 중이거나 데이터가 없으면 아무것도 렌더링하지 않음
+    if (loading || !course || !currentPlace) {
+        return null;
+    }
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-hidden overscroll-none">
@@ -552,7 +555,7 @@ function GuidePageInner() {
 
 export default function GuidePage() {
     return (
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense fallback={null}>
             <GuidePageInner />
         </Suspense>
     );

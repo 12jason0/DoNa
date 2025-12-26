@@ -1033,7 +1033,20 @@ export default function CourseDetailClient({
                         </button>
                     </div>
                     <button
-                        onClick={() => router.push(`/courses/${courseId}/start`)}
+                        onClick={async () => {
+                            // 🟢 로그인 체크
+                            if (isLoggedIn === null) {
+                                // 로그인 상태 확인 중이면 대기
+                                return;
+                            }
+                            if (!isLoggedIn) {
+                                // 로그인하지 않은 경우 로그인 모달 표시
+                                setShowLoginModal(true);
+                                return;
+                            }
+                            // 로그인한 경우 코스 시작 페이지로 이동
+                            router.push(`/courses/${courseId}/start`);
+                        }}
                         className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] 
                shadow-lg shadow-gray-300/50 transition-all 
                hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
@@ -1086,7 +1099,7 @@ export default function CourseDetailClient({
                 courseName={courseData.title}
             />
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
-            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${courseId}`} />}
 
             {/* 이미지 미리보기 모달 */}
             {previewImage && previewImages.length > 0 && (
@@ -1198,12 +1211,16 @@ export default function CourseDetailClient({
                                 />
                             )}
                             <button
-                                onClick={() => setShowPlaceModal(false)}
-                                className="absolute top-4 right-4 bg-black/30 backdrop-blur-md text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/50 transition-colors"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowPlaceModal(false);
+                                }}
+                                className="absolute top-4 right-4 z-50 bg-black/30 backdrop-blur-md text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/50 transition-colors pointer-events-auto"
                             >
                                 ×
                             </button>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                             <div className="absolute bottom-6 left-6 text-white">
                                 <h3 className="text-2xl font-bold mb-1">{selectedPlace.name}</h3>
                                 <p className="opacity-90 text-sm font-medium">{selectedPlace.address}</p>

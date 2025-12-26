@@ -6,9 +6,10 @@ interface AppleLoginButtonProps {
     onSuccess: (credential: any) => void;
     onError?: (error: any) => void;
     disabled?: boolean;
+    next?: string; // 리다이렉트 경로
 }
 
-export default function AppleLoginButton({ onSuccess, onError, disabled }: AppleLoginButtonProps) {
+export default function AppleLoginButton({ onSuccess, onError, disabled, next }: AppleLoginButtonProps) {
     const [isMobileApp, setIsMobileApp] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
 
@@ -65,7 +66,13 @@ export default function AppleLoginButton({ onSuccess, onError, disabled }: Apple
         // 웹 환경에서는 Apple 웹 인증 사용
         try {
             // Apple 인증 URL로 리디렉션 (팝업 방식)
-            const appleAuthUrl = "/api/auth/apple";
+            // next 파라미터를 전달
+            const appleAuthUrl = next ? `/api/auth/apple?next=${encodeURIComponent(next)}` : "/api/auth/apple";
+            
+            // next 값을 sessionStorage에 저장 (팝업 인증 후 사용)
+            if (next) {
+                sessionStorage.setItem("auth:next", next);
+            }
 
             // 팝업 열기
             const popup = window.open(
@@ -142,7 +149,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled }: Apple
             type="button"
             onClick={handleAppleLogin}
             disabled={disabled}
-            className="w-full flex items-center justify-center px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-semibold shadow"
+            className="w-full flex items-center justify-center px-4 py-4 bg-black text-white rounded-2xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-bold shadow-sm text-[15px]"
         >
             {/* Apple 공식 로고 SVG (공식 가이드라인 준수) */}
             <svg

@@ -2,6 +2,9 @@
 // 1. DB 태그와 100% 일치하는 상수 (Single Source of Truth)
 // ------------------------------------------------------
 
+// ✅ CloudFront를 통한 개념 아이콘 URL 생성
+import { getS3StaticUrl } from "@/lib/s3Static";
+
 export const CONCEPTS = {
     COST_EFFECTIVE: "가성비",
     EMOTIONAL: "감성데이트",
@@ -169,9 +172,6 @@ export const CREW_OPTIONS = [
 // ------------------------------------------------------
 // 3. 아이콘 매핑 (S3 이미지 연결) - 수정됨
 // ------------------------------------------------------
-
-// ✅ CloudFront를 통한 개념 아이콘 URL 생성
-import { getS3StaticUrl } from "@/lib/s3Static";
 
 const S3_BASE_URL = getS3StaticUrl("concept-Icon");
 

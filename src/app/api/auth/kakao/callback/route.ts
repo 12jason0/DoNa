@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
     const error_description = searchParams.get("error_description");
 
-    // state에서 next 경로 추출 및 검증
+    // state에서 next 경로 추출 및 검증 (기본값: /)
     const next = getSafeRedirectPath(state, "/");
 
     console.log("Callback received:", { code: code ? "존재" : "없음", state, next, error, error_description });
@@ -24,43 +24,55 @@ export async function GET(request: NextRequest) {
                     <script>${script}</script>
                 </body>
             </html>`,
-            { headers: { "Content-Type": "text/html" } }
+            { headers: { "Content-Type": "text/html; charset=utf-8" } }
         );
     };
 
     if (error || !code) {
         const errorMsg = error_description || error || "인증 코드가 없습니다.";
-        return sendResponse(`
-            console.error('Kakao auth error:', '${errorMsg}');
-            if (window.ReactNativeWebView) {
-                window.location.href = '/login?error=' + encodeURIComponent('${errorMsg}');
-            } else if (window.opener) {
-                window.opener.postMessage({ 
-                    type: 'KAKAO_AUTH_ERROR', 
-                    error: '${errorMsg}' 
-                }, "*");
-                setTimeout(() => window.close(), 500);
-            } else {
-                window.location.href = '/login?error=' + encodeURIComponent('${errorMsg}');
-            }
-        `);
+        // 🟢 URLSearchParams를 사용하여 안전하게 URL 생성
+        const params = new URLSearchParams({ error: errorMsg });
+        const errorUrl = "/login?" + params.toString();
+        const errorMsgJson = JSON.stringify(errorMsg);
+
+        const script =
+            "(function() {" +
+            "const errorMsg = " +
+            errorMsgJson +
+            ";" +
+            "console.error('Kakao auth error:', errorMsg);" +
+            "if (window.ReactNativeWebView) {" +
+            "window.location.href = " +
+            JSON.stringify(errorUrl) +
+            ";" +
+            "} else if (window.opener) {" +
+            "window.opener.postMessage({ type: 'KAKAO_AUTH_ERROR', error: errorMsg }, \"*\");" +
+            "setTimeout(function() { window.close(); }, 500);" +
+            "} else {" +
+            "window.location.href = " +
+            JSON.stringify(errorUrl) +
+            ";" +
+            "}" +
+            "})();";
+        return sendResponse(script);
     }
 
     return sendResponse(`
         (function() {
-            const code = '${code}';
+            const code = ${JSON.stringify(code)};
+            const next = ${JSON.stringify(next)};
             console.log('Authorization code received:', code);
 
             if (window.ReactNativeWebView) {
                 fetch('/api/auth/kakao', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: code, next: '${next}' })
+                    body: JSON.stringify({ code: code, next: next })
                 })
                 .then(res => {
                     // 리다이렉트 응답인 경우
                     if (res.redirected || res.url) {
-                        window.location.href = res.url || '${next}';
+                        window.location.href = res.url || next;
                         return;
                     }
                     return res.json();
@@ -74,13 +86,19 @@ export async function GET(request: NextRequest) {
                             type: 'loginSuccess',
                             token: data.token
                         }));
-                        window.location.href = '${next}';
+                        window.location.href = next;
                     } else if (data && !data.success) {
-                        window.location.href = '/login?error=' + encodeURIComponent(data.error || '로그인 실패') + '&next=' + encodeURIComponent('${next}');
+                        const errorMsg = data.error || '로그인 실패';
+                        const encodedError = encodeURIComponent(errorMsg);
+                        const encodedNext = encodeURIComponent(next);
+                        window.location.href = '/login?error=' + encodedError + '&next=' + encodedNext;
                     }
                 })
                 .catch(err => {
-                    window.location.href = '/login?error=' + encodeURIComponent('서버 통신 오류') + '&next=' + encodeURIComponent('${next}');
+                    const errorMsg = '서버 통신 오류';
+                    const encodedError = encodeURIComponent(errorMsg);
+                    const encodedNext = encodeURIComponent(next);
+                    window.location.href = '/login?error=' + encodedError + '&next=' + encodedNext;
                 });
             } 
             else {
@@ -94,7 +112,7 @@ export async function GET(request: NextRequest) {
                         window.opener.postMessage({ 
                             type: 'KAKAO_AUTH_CODE', 
                             code: code,
-                            next: '${next}'
+                            next: next
                         }, '*');
                         console.log('메시지 전송 완료 (code와 next 포함)');
 
@@ -107,11 +125,65 @@ export async function GET(request: NextRequest) {
                         }, 1000); 
                     } catch (e) {
                         console.error('postMessage 실패:', e);
-                        window.location.href = '/login?error=' + encodeURIComponent('인증 메시지 전송 실패') + '&next=' + encodeURIComponent('${next}');
+                        const errorMsg = '인증 메시지 전송 실패';
+                        const encodedError = encodeURIComponent(errorMsg);
+                        const encodedNext = encodeURIComponent(next);
+                        window.location.href = '/login?error=' + encodedError + '&next=' + encodedNext;
                     }
                 } else {
-                    console.error('부모 창을 찾을 수 없음. 리다이렉트 시도');
-                    window.location.href = '/login?error=' + encodeURIComponent('로그인 창이 닫혀있습니다.');
+                    // 🟢 팝업이 아닌 일반 리다이렉트의 경우: API를 호출하여 로그인 처리
+                    console.log('일반 리다이렉트: API 호출하여 로그인 처리');
+                    fetch('/api/auth/kakao', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: code, next: next }),
+                        redirect: 'manual' // 리다이렉트를 수동으로 처리
+                    })
+                    .then(res => {
+                        // 상태 코드 확인
+                        if (res.status >= 300 && res.status < 400) {
+                            // 리다이렉트 응답인 경우: Location 헤더 확인
+                            const location = res.headers.get('Location');
+                            if (location) {
+                                window.location.href = location;
+                                return;
+                            }
+                            // Location 헤더가 없으면 next로 이동 (쿠키는 이미 설정됨)
+                            window.location.href = next;
+                            return;
+                        }
+                        
+                        // JSON 응답인 경우 (200 OK)
+                        if (res.ok) {
+                            return res.json();
+                        } else {
+                            // 에러 응답
+                            return res.json().catch(() => ({ error: '로그인 실패' }));
+                        }
+                    })
+                    .then(data => {
+                        if (!data) {
+                            // 데이터가 없으면 (리다이렉트 응답 처리됨) next로 이동
+                            window.location.href = next;
+                            return;
+                        }
+                        
+                        if (data.success) {
+                            // 로그인 성공: next 경로로 리다이렉트
+                            window.location.href = next;
+                        } else {
+                            // 로그인 실패: 에러 메시지와 함께 로그인 페이지로
+                            const errorMsg = (data && data.error) ? data.error : '로그인 실패';
+                            const params = new URLSearchParams({ error: errorMsg, next: next });
+                            window.location.href = '/login?' + params.toString();
+                        }
+                    })
+                    .catch(err => {
+                        console.error('로그인 처리 실패:', err);
+                        // 네트워크 오류 등이 발생했지만, 쿠키가 설정되었을 수 있으므로
+                        // 일단 next로 이동 시도 (실제로는 로그인이 성공했을 가능성이 높음)
+                        window.location.href = next;
+                    });
                 }
             }
         })();

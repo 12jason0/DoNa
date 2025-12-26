@@ -14,7 +14,7 @@ const AppleLoginButton = dynamic(() => import("@/components/AppleLoginButton"), 
 const Login = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    // next 파라미터가 없으면 메인 페이지로 이동
+    // next 파라미터가 없으면 메인 페이지(/)로 이동
     const nextParam = searchParams.get("next");
     const next = nextParam ? getSafeRedirectPath(nextParam, "/") : "/";
     const [formData, setFormData] = useState({
@@ -32,15 +32,30 @@ const Login = () => {
         window.scrollTo(0, 0);
     }, []);
 
-    // URL 파라미터에서 메시지 확인
+    // URL 파라미터에서 메시지 및 에러 확인
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const urlMessage = urlParams.get("message");
+        const urlError = urlParams.get("error");
 
         if (urlMessage) {
             setMessage(decodeURIComponent(urlMessage));
-            // URL에서 메시지 파라미터 제거
-            const cleanUrl = window.location.pathname;
+        }
+        
+        if (urlError) {
+            // 🟢 한글 에러 메시지 안전하게 디코딩
+            try {
+                setError(decodeURIComponent(urlError));
+            } catch (e) {
+                // 디코딩 실패 시 원본 사용
+                setError(urlError);
+            }
+        }
+
+        // URL에서 메시지 및 에러 파라미터 제거
+        if (urlMessage || urlError) {
+            const currentNext = urlParams.get("next");
+            const cleanUrl = window.location.pathname + (currentNext ? `?next=${encodeURIComponent(currentNext)}` : '');
             window.history.replaceState({}, "", cleanUrl);
         }
     }, []);
@@ -101,8 +116,8 @@ const Login = () => {
                 // URL에 표시하지 않고, sessionStorage에 '로그인 성공' 흔적을 남깁니다.
                 sessionStorage.setItem("login_success_trigger", "true");
 
-                // 원래 가려던 페이지로 리다이렉트 (next가 없으면 메인 페이지 "/"로)
-                const redirectPath = next || "/";
+                // 🟢 목적지가 없거나 로그인 페이지 자체라면 메인으로, 있다면 그곳으로 이동
+                const redirectPath = (!next || next.startsWith("/login")) ? "/" : next;
                 router.replace(redirectPath);
             } else {
                 setError(data.error || "로그인에 실패했습니다.");
@@ -157,8 +172,8 @@ const Login = () => {
 
                 if (type === "KAKAO_AUTH_CODE" && code) {
                     authReceived.current = true; // ✅ 수신 확인
-                    // 콜백에서 전달받은 next 사용, 없으면 현재 next, 둘 다 없으면 메인 페이지
-                    const receivedNext = (event.data as any).next || next || "/";
+                    // 콜백에서 전달받은 next 사용, 없으면 sessionStorage에서 가져오기, 둘 다 없으면 현재 next, 마지막으로 메인 페이지
+                    const receivedNext = (event.data as any).next || sessionStorage.getItem("auth:next") || next || "/";
                     console.log("✅ 인증 코드 수신 성공:", code, "next:", receivedNext);
 
                     try {
@@ -180,17 +195,20 @@ const Login = () => {
 
                         if (!response.ok) throw new Error(data.error || "로그인 처리 실패");
 
-                        localStorage.setItem("authToken", data.token);
-                        localStorage.setItem("user", JSON.stringify(data.user));
-                        localStorage.setItem("loginTime", Date.now().toString());
+                        // 🟢 쿠키 기반 인증: localStorage 제거
+                        // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
+                        localStorage.removeItem("authToken");
+                        localStorage.removeItem("user");
+                        localStorage.removeItem("loginTime");
+                        
+                        // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
+                        window.dispatchEvent(new CustomEvent("authLoginSuccess"));
+                        
                         sessionStorage.setItem("login_success_trigger", "true");
 
-                        // ✅ Header와 다른 컴포넌트에 로그인 상태 변경 알림
-                        window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
-
                         cleanup();
-                        // next가 "/"이거나 없으면 메인 페이지로, 그 외에는 해당 페이지로
-                        const redirectPath = receivedNext && receivedNext !== "/" ? receivedNext : "/";
+                        // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
+                        const redirectPath = (!receivedNext || receivedNext.startsWith("/login")) ? "/" : receivedNext;
                         router.replace(redirectPath);
                     } catch (err: any) {
                         setError(err.message);
@@ -399,6 +417,7 @@ const Login = () => {
 
                             {/* Apple 로그인 버튼 (웹 및 모바일 앱 모두 지원) */}
                             <AppleLoginButton
+                                next={next}
                                 onSuccess={async (credential: any) => {
                                     try {
                                         setLoading(true);
@@ -431,7 +450,8 @@ const Login = () => {
                                             new CustomEvent("authTokenChange", { detail: { token: data.token } })
                                         );
 
-                                        const redirectPath = next || "/";
+                                        // 🟢 목적지가 없거나 로그인 페이지 자체라면 메인으로, 있다면 그곳으로 이동
+                                        const redirectPath = (!next || next.startsWith("/login")) ? "/" : next;
                                         router.replace(redirectPath);
                                     } catch (err: any) {
                                         setError(err.message || "Apple 로그인에 실패했습니다.");

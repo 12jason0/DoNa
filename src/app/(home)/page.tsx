@@ -105,42 +105,28 @@ export default function Home() {
                 if (preferencesRes.response.ok && preferencesRes.data) {
                     const prefs = preferencesRes.data as any;
                     const prefData = prefs?.preferences ?? prefs ?? {};
-                    const s1 = localStorage.getItem("onboardingStep1") === "1";
-                    const s2 = localStorage.getItem("onboardingStep2") === "1";
-                    const s3 = localStorage.getItem("onboardingStep3") === "1";
+
+                    // 서버에 preferences 데이터가 있고 필수 필드가 있으면 온보딩 완료로 간주
+                    const hasServerData =
+                        prefData &&
+                        ((Array.isArray(prefData?.mood) && prefData.mood.length > 0) ||
+                            (Array.isArray(prefData?.concept) && prefData.concept.length > 0)) &&
+                        typeof prefData?.companion === "string" &&
+                        prefData.companion !== "";
+
+                    // localStorage 완료 플래그 확인
                     const doneFlag = localStorage.getItem("onboardingComplete") === "1";
-                    const step1 =
-                        s1 ||
-                        (Array.isArray(prefData?.mood) && prefData.mood.length > 0) ||
-                        (Array.isArray(prefData?.concept) && prefData.concept.length > 0);
-                    const step2 = s2;
-                    const step3 = s3 || (typeof prefData?.companion === "string" && prefData.companion !== "");
-                    setIsOnboardingComplete(doneFlag || (step1 && step2 && step3));
+
+                    // 서버 데이터가 있거나 localStorage 플래그가 있으면 완료
+                    setIsOnboardingComplete(hasServerData || doneFlag);
+                } else {
+                    // API 요청 실패 시 localStorage 플래그만 확인
+                    const doneFlag = localStorage.getItem("onboardingComplete") === "1";
+                    setIsOnboardingComplete(doneFlag);
                 }
             } catch {}
         })();
     }, []);
-
-    const sendAttendancePush = async () => {
-        try {
-            if (!userId) {
-                setErrorMessage("사용자 정보를 불러오지 못했습니다. 다시 시도해 주세요.");
-                return;
-            }
-            await fetch("/api/push/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    userId,
-                    title: "출석 체크 알림",
-                    body: "오늘도 새싹 도장 찍고 보상 받아가세요!",
-                    data: { screen: "mypage", tab: "checkins" },
-                }),
-            });
-        } catch {
-            setErrorMessage("알림 전송에 실패했습니다.");
-        }
-    };
 
     // 🟢 모바일 성능 최적화: 태그 목록은 지연 로딩 (초기 로딩 후 2초 후)
     useEffect(() => {
@@ -984,39 +970,9 @@ export default function Home() {
                     <div className="max-w-7xl mx-auto px-4">
                         <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <button
-                                    aria-label="출석 탭으로 이동"
-                                    onClick={async () => {
-                                        const todayKey = getLocalTodayKey();
-                                        const checkinButtonPressed =
-                                            localStorage.getItem(`checkinButtonPressed_${todayKey}`) === "true";
-                                        const shownDate = localStorage.getItem("checkinModalShownDate");
-                                        const result = await fetchAndSetWeekStamps();
-                                        const already = Boolean(result?.todayChecked);
-
-                                        if (checkinButtonPressed) {
-                                            router.push("/mypage?tab=checkins");
-                                            return;
-                                        }
-
-                                        if (shownDate === todayKey && showCheckinModal === false) {
-                                            router.push("/mypage?tab=checkins");
-                                            return;
-                                        }
-
-                                        if (!already || (already && !checkinButtonPressed)) {
-                                            setShowCheckinModal(true);
-                                            hasShownCheckinModalRef.current = true;
-                                            localStorage.setItem("checkinModalShownDate", todayKey);
-                                        } else {
-                                            router.push("/mypage?tab=checkins");
-                                        }
-                                    }}
-                                    className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl hover:shadow cursor-pointer"
-                                    title="출석 탭으로 이동"
-                                >
+                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl">
                                     🌱
-                                </button>
+                                </div>
                                 <div>
                                     <div className="text-sm text-gray-600">출석 현황</div>
                                     <div className="text-base md:text-lg font-bold text-gray-900">
@@ -1030,10 +986,22 @@ export default function Home() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={sendAttendancePush}
+                                    onClick={async () => {
+                                        try {
+                                            const { fetchSession } = await import("@/lib/authClient");
+                                            const session = await fetchSession();
+                                            if (!session.authenticated) {
+                                                router.push("/login");
+                                                return;
+                                            }
+                                            router.push("/mypage?tab=checkins");
+                                        } catch (error) {
+                                            router.push("/login");
+                                        }
+                                    }}
                                     className="w-10 h-10 rounded-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 cursor-pointer flex items-center justify-center"
-                                    title="출석 알림 푸시 보내기"
-                                    aria-label="출석 알림 푸시"
+                                    title="출석 탭으로 이동"
+                                    aria-label="출석 탭으로 이동"
                                 >
                                     🔔
                                 </button>
