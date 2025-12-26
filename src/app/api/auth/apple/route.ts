@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     });
 
     const appleAuthUrl = `https://appleid.apple.com/auth/authorize?${params.toString()}`;
-    return NextResponse.redirect(appleAuthUrl);
+    return NextResponse.redirect(new URL(appleAuthUrl));
 }
 
 /**
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
             if (!code) {
                 return generateHtmlResponse(
-                    `if(window.opener){window.opener.location.href='/login?error=no_code&next=${encodeURIComponent(next)}';window.close();}else{window.location.href='/login?error=no_code&next=${encodeURIComponent(next)}';}`
+                    `if(window.opener){window.opener.location.href='/login?error=no_code';window.close();}else{window.location.href='/login?error=no_code';}`
                 );
             }
 
@@ -197,7 +197,8 @@ async function handleWebAppleAuthLogic(code: string, request: NextRequest, userD
                 }
 
                 // 부모 창(window.opener)이 있다면 부모 창을 이동시키고 현재 팝업을 닫음
-                const redirectPath = '${next}' || '/';
+                // 애플 로그인 성공 시 무조건 메인 페이지(/)로 이동
+                const redirectPath = '/';
                 if (window.opener) {
                     window.opener.location.href = redirectPath;
                     window.close();
@@ -213,12 +214,11 @@ async function handleWebAppleAuthLogic(code: string, request: NextRequest, userD
         console.error("Web Auth Logic Error:", err);
         const errorMessage = err?.message || "인증 처리 중 오류가 발생했습니다.";
         return generateHtmlResponse(`
-            const next = '${next}' || '/';
             if(window.opener) {
-                window.opener.location.href='/login?error=${encodeURIComponent(errorMessage)}&next=' + encodeURIComponent(next);
+                window.opener.location.href='/login?error=${encodeURIComponent(errorMessage)}';
                 window.close();
             } else {
-                window.location.href='/login?error=${encodeURIComponent(errorMessage)}&next=' + encodeURIComponent(next);
+                window.location.href='/login?error=${encodeURIComponent(errorMessage)}';
             }
         `);
     }

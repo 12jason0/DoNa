@@ -450,9 +450,8 @@ const Login = () => {
                                             new CustomEvent("authTokenChange", { detail: { token: data.token } })
                                         );
 
-                                        // 🟢 목적지가 없거나 로그인 페이지 자체라면 메인으로, 있다면 그곳으로 이동
-                                        const redirectPath = (!next || next.startsWith("/login")) ? "/" : next;
-                                        router.replace(redirectPath);
+                                        // 🟢 애플 로그인 성공 시 무조건 메인 페이지(/)로 이동
+                                        router.replace("/");
                                     } catch (err: any) {
                                         setError(err.message || "Apple 로그인에 실패했습니다.");
                                     } finally {

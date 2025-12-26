@@ -57,7 +57,8 @@ const nextConfig = {
                                 "https://*.naver.com",
                                 "https://ssl.pstatic.net",
                                 "https://nrbe.pstatic.net",
-                                "https://*.vercel.com", // 🟢 Vercel 아바타 이미지 허용 추가
+                                "https://vercel.com", // 🟢 Vercel 아바타 이미지 허용 (서브도메인 없음)
+                                "https://*.vercel.com", // 🟢 Vercel 아바타 이미지 허용 (서브도메인 포함)
                                 "https://*.googleusercontent.com", // 🟢 구글 로그인 프로필 이미지 대비 추가
                                 ...(isDev ? ["http:", "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"] : []),
                             ].join(" ");
