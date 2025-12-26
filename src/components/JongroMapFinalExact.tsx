@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 type FlowLike = {
     intro?: Array<{ ids?: number[] }>;
@@ -664,10 +665,11 @@ export default function JongroMapFinalExact({ data }: Props) {
 
     const displayTitle = tokens?.title || "1919 DM";
     const displaySubtitle = tokens?.subtitle || "익선동 리얼타임 미스터리";
+    const defaultMapUrl = getS3StaticUrl("escape/jongro/jongroMap.png");
     const mapUrl =
         (flow as any)?.map?.image ||
         (tokens as any)?.mapImage ||
-        "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/escape/jongro/jongroMap.png";
+        defaultMapUrl;
     const combinedCategories: any[] = fallbackMarkers as any[];
     const selectedCategoryData = combinedCategories.find((c: any) => c.id === selectedCategory);
 
@@ -1317,6 +1319,7 @@ export default function JongroMapFinalExact({ data }: Props) {
 
             <style>{`
     /* 1. 구글 폰트(@import)는 보안 정책상 막혔으므로 제거하고, 아래의 'cdn.jsdelivr.net' 폰트만 사용합니다. */
+    /* 지도 배경 이미지 URL: ${defaultMapUrl} */
     
     /* component-local fonts */
     @font-face {
@@ -1473,7 +1476,7 @@ export default function JongroMapFinalExact({ data }: Props) {
         .map-top-left-back-exact { position: absolute; left: 16px; top: 16px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); border: 1px solid #c8aa64; color: #c8aa64; border-radius: 9999px; z-index: 5; font-size: 18px; }
         .map-top-left-back-exact:hover { background: rgba(200,170,100,0.2); }
     .map-container-exact.overlay { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; margin: 0; transform: none; }
-        .map-background-exact { position: absolute; z-index: 0; width: 100%; height: 100%; background-image: url('https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/escape/jongro/jongroMap.png'); background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 1; }
+        .map-background-exact { position: absolute; z-index: 0; width: 100%; height: 100%; background-image: url('${defaultMapUrl}'); background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 1; }
         .markers-container-exact { position: absolute; z-index: 20; width: 100%; height: 100%; top: 0; left: 0; }
         .map-marker-exact { position: absolute; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 15; transition: transform 0.3s ease; padding: 0; transform: translate(-50%, -100%); }
         .map-marker-exact:hover { transform: translate(-50%, -100%) scale(1.15); z-index: 20; }

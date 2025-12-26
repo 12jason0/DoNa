@@ -47,22 +47,20 @@ const nextConfig = {
                                 "https://cdn.jsdelivr.net",
                             ].join(" ");
 
-                            // ✅ 이미지 허용 목록 (CloudFront 추가됨)
+                            // ✅ 이미지 허용 목록 (CloudFront만 사용)
                             const imgSrc = [
                                 "'self'",
                                 "data:",
                                 "blob:",
-                                "https://d13xx6k6chk2in.cloudfront.net", // 🟢 CloudFront 추가
-                                "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com",
-                                "https:",
-                                ...(isDev ? ["http:"] : []),
+                                "https://d13xx6k6chk2in.cloudfront.net", // 🟢 CloudFront (S3 직접 접근 제거)
+                                ...(isDev ? ["http:", "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"] : []), // 개발 환경에서만 S3 허용
                             ].join(" ");
 
                             // ✅ API 및 소켓 연결 허용 (CloudFront 및 배포 도메인 추가)
                             const connectSrc = [
                                 "'self'",
                                 "https://dona.io.kr", // 🟢 메인 API 도메인
-                                "https://d13xx6k6chk2in.cloudfront.net", // 🟢 CloudFront 추가
+                                "https://d13xx6k6chk2in.cloudfront.net", // 🟢 CloudFront (S3 직접 접근 제거)
                                 "https://vercel.live",
                                 "https://*.vercel.live",
                                 "https://*.tosspayments.com",
@@ -81,8 +79,6 @@ const nextConfig = {
                                 "https://api.tosspayments.com",
                                 "https://kauth.kakao.com",
                                 "https://t1.kakaocdn.net",
-                                "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com",
-                                "https://*.amazonaws.com",
                                 "https://*.pusher.com",
                                 "wss://*.pusher.com",
                                 ...(isDev
@@ -90,6 +86,8 @@ const nextConfig = {
                                           "http://oapi.map.naver.com",
                                           "http://nrbe.map.naver.net",
                                           "https://nrbe.map.naver.net",
+                                          "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com", // 개발 환경에서만 S3 허용
+                                          "https://*.amazonaws.com",
                                       ]
                                     : []),
                             ].join(" ");
@@ -135,9 +133,7 @@ const nextConfig = {
     images: {
         remotePatterns: [
             { protocol: "https", hostname: "images.unsplash.com" },
-            { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" }, // 🟢 CloudFront 추가
-            { protocol: "https", hostname: "stylemap-seoul.s3.ap-northeast-2.amazonaws.com" },
-            { protocol: "https", hostname: "stylemap-images.s3.ap-southeast-2.amazonaws.com" },
+            { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" }, // 🟢 CloudFront만 사용 (S3 직접 접근 제거)
         ],
         unoptimized: true,
         qualities: [70],

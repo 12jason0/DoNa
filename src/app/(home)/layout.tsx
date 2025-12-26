@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import ClientBodyLayout from "./ClientBodyLayout"; // 경로가 한 단계 깊어졌으니 ../ 확인 필요 (파일 위치에 따라 수정)
+import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
+
+const logoUrl = getS3StaticUrlForMetadata("logo/donalogo_512.png");
 
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr"),
@@ -32,7 +35,7 @@ export const metadata: Metadata = {
         url: process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr",
         images: [
             {
-                url: "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png",
+                url: logoUrl,
                 width: 512,
                 height: 512,
                 alt: "DoNa 로고",
@@ -43,7 +46,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "DoNa - 데이트 코스 추천",
         description: "특별한 데이트를 위한 맞춤 코스 추천",
-        images: ["https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"],
+        images: [logoUrl],
     },
     verification: {
         google: ["b1a43bde06d184c8", "xhBJt4-Q66AzounvtMTRw9qUJwusvg_p83BG-DGTLhg"],
@@ -63,9 +66,9 @@ export const metadata: Metadata = {
         canonical: process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr",
     },
     icons: {
-        icon: "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png",
-        apple: "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png",
-        shortcut: "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png",
+        icon: logoUrl,
+        apple: logoUrl,
+        shortcut: logoUrl,
     },
 };
 
@@ -104,10 +107,19 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/stylesheet.css" />
             <link
                 rel="preconnect"
-                href="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"
+                href={
+                    process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL ||
+                    `https://${process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN || "d13xx6k6chk2in.cloudfront.net"}`
+                }
                 crossOrigin="anonymous"
             />
-            <link rel="dns-prefetch" href="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com" />
+            <link
+                rel="dns-prefetch"
+                href={
+                    process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL ||
+                    `https://${process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN || "d13xx6k6chk2in.cloudfront.net"}`
+                }
+            />
             <link rel="preconnect" href="https://oapi.map.naver.com" crossOrigin="anonymous" />
             <link rel="dns-prefetch" href="https://oapi.map.naver.com" />
             <link rel="preconnect" href="https://openapi.map.naver.com" crossOrigin="anonymous" />

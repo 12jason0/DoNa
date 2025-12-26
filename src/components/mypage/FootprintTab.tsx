@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import MyFootprintMap from "@/components/MyFootprintMap";
 import { CasefileItem, CompletedCourse } from "@/types/user";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 // 🟢 코스 이미지 로더 컴포넌트 (이미지가 없을 때 백그라운드에서 로드)
 const CourseImageLoader = ({
@@ -147,7 +148,7 @@ const FootprintTab = ({ casefiles, completed }: FootprintTabProps) => {
         path: [],
     }));
 
-    const bannerImageUrl = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/mypage/mypageMap.jpg";
+    const bannerImageUrl = getS3StaticUrl("mypage/mypageMap.jpg");
 
     return (
         <div className="space-y-6">

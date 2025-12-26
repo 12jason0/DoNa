@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import dynamicImport from "next/dynamic";
 import imageCompression from "browser-image-compression";
 import JongroMapFinalExact from "@/components/JongroMapFinalExact";
+import { getS3StaticUrl } from "@/lib/s3Static";
 function EpilogueFromDB({
     storyId,
     step,
@@ -362,8 +363,7 @@ function WebtoonScrollToMap({
                     <div
                         className="absolute inset-0"
                         style={{
-                            backgroundImage:
-                                "url('https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/escape/joro/jongroMap.png')",
+                            backgroundImage: `url('${getS3StaticUrl("escape/jongro/jongroMap.png")}')`,
                             backgroundSize: "cover",
                             backgroundPosition: "center",
                         }}
@@ -752,7 +752,7 @@ function PostLoadClockSplash({ text = "시간을 거슬러 이동 중..." }: { t
                 .tw3-bg {
                     position: absolute;
                     inset: 0;
-                    background-image: url("https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/escape/jongro/jongroMap.png");
+                    background-image: url("${getS3StaticUrl("escape/jongro/jongroMap.png")}");
                     background-size: cover;
                     background-position: center;
                     filter: brightness(0.35) saturate(0.85);
@@ -2307,7 +2307,7 @@ function EscapeIntroPageInner() {
         const FRAME_OVERLAP = 0;
 
         // DB에서 템플릿 조회
-        let bgUrl = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/hongdaeEscape_tamplete.png";
+        let bgUrl = getS3StaticUrl("hongdaeEscape_tamplete.png");
         let framesFromDB: Array<{ x: number; y: number; w: number; h: number }> | null = null;
         let templateWidth: number | null = null;
         let templateHeight: number | null = null;
@@ -2538,7 +2538,7 @@ function EscapeIntroPageInner() {
 
     // 템플릿 배경 이미지 URL 해석 (DB 템플릿 우선, 없으면 기본값)
     const resolveTemplateBackgroundUrl = async (): Promise<string> => {
-        let bgUrl = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/hongdaeEscape_tamplete.png";
+        let bgUrl = getS3StaticUrl("hongdaeEscape_tamplete.png");
         try {
             const res = await fetch("/api/collages/templates", { cache: "no-store" });
             const data = await res.json();
@@ -3445,7 +3445,7 @@ function EscapeIntroPageInner() {
             (Array.isArray(uiFlow?.flow) && uiFlow.flow[0]) ||
             uiFlow ||
             null;
-        const bgUrl = story?.imageUrl || "https://stylemap-images.s3.ap-southeast-2.amazonaws.com/homepage.png";
+        const bgUrl = story?.imageUrl || getS3StaticUrl("homepage.png");
         return (
             <>
                 <div className="fixed inset-0 z-[1000]">
@@ -3463,7 +3463,7 @@ function EscapeIntroPageInner() {
     }
 
     if (useNewIntroUI) {
-        const bgUrl = story?.imageUrl || "https://stylemap-images.s3.ap-southeast-2.amazonaws.com/homepage.png";
+        const bgUrl = story?.imageUrl || getS3StaticUrl("homepage.png");
         // 편지는 맨 처음(prologue)과 맨 마지막(epilogue)에만 표시
         // prologue 단계이고 첫 챕터일 때는 편지 표시 (처음 진입 시)
         // 단, 카테고리에서 뒤로 가기로 돌아온 경우는 제외 (flowStep이 "category"로 변경되면 편지 안 보임)
@@ -4062,8 +4062,7 @@ function EscapeIntroPageInner() {
                                                     onClick={async () => {
                                                         if (selectedGallery.length !== requiredPhotoCount) return;
                                                         try {
-                                                            let bgUrl =
-                                                                "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/hongdaeEscape_tamplete.png";
+                                                            let bgUrl = getS3StaticUrl("hongdaeEscape_tamplete.png");
                                                             let frames: Array<{
                                                                 x: number;
                                                                 y: number;

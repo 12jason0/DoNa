@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
+import { getS3StaticUrl } from "@/lib/s3Static";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import {
@@ -1185,7 +1186,7 @@ const AIRecommender = () => {
                                         {message.type === "ai" && (
                                             <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-gray-100 bg-white p-0.5">
                                                 <img
-                                                    src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
+                                                    src={getS3StaticUrl("logo/donalogo_512.png")}
                                                     alt="DoNa"
                                                     className="w-full h-full object-cover rounded-full"
                                                 />
@@ -1371,10 +1372,7 @@ const AIRecommender = () => {
                             <div className="flex flex-col items-end gap-2">
                                 <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
                                     <img
-                                        src={
-                                            profileImageUrl ||
-                                            "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png"
-                                        }
+                                        src={profileImageUrl || getS3StaticUrl("profileLogo.png")}
                                         alt="프로필"
                                         className="w-full h-full object-cover"
                                     />

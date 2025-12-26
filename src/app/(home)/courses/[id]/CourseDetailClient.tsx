@@ -517,8 +517,7 @@ export default function CourseDetailClient({
                 content: {
                     title: courseData.title,
                     description: courseData.description,
-                    imageUrl:
-                        heroImageUrl || getS3StaticUrl("logo/donalogo_512.png"),
+                    imageUrl: heroImageUrl || getS3StaticUrl("logo/donalogo_512.png"),
                     link: { mobileWebUrl: url, webUrl: url },
                 },
                 buttons: [{ title: "코스 보러가기", link: { mobileWebUrl: url, webUrl: url } }],

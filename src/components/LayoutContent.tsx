@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AppInstallQR from "@/components/AppInstallQR";
 import DonaSplashFinal from "@/components/DonaSplashFinal";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -25,8 +26,23 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         } catch {}
     }, []);
 
+    const homepageBgUrl = getS3StaticUrl("homepage.png");
+    
     return (
-        <div className="min-h-screen bg-white min-[600px]:bg-[url('https://stylemap-images.s3.ap-southeast-2.amazonaws.com/homepage.png')] min-[600px]:bg-cover min-[600px]:bg-center">
+        <>
+            <style>{`
+                .homepage-bg-container {
+                    background-image: none;
+                }
+                @media (min-width: 600px) {
+                    .homepage-bg-container {
+                        background-image: url('${homepageBgUrl}');
+                        background-size: cover;
+                        background-position: center;
+                    }
+                }
+            `}</style>
+            <div className="min-h-screen bg-white homepage-bg-container">
             <div className="h-screen min-[600px]:max-w-[1180px] min-[600px]:mx-auto min-[600px]:flex min-[600px]:items-stretch min-[600px]:gap-6">
                 {showSplash && (
                     <DonaSplashFinal
@@ -47,7 +63,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             <div className="inline-block">
                                 <div className="w-32 h-32 p-4 flex items-center justify-center">
                                     <img
-                                        src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
+                                        src={getS3StaticUrl("logo/donalogo_512.png")}
                                         alt="DoNa Logo"
                                         className="w-full h-full object-contain"
                                         loading="lazy"
@@ -166,6 +182,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 }

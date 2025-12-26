@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
     const [fadeOut, setFadeOut] = useState(false);
@@ -234,7 +235,7 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
                             }}
                         >
                             <img
-                                src="https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png"
+                                src={getS3StaticUrl("logo/donalogo_512.png")}
                                 alt="DoNa"
                                 style={{ width: "300px", height: "auto", margin: "0 auto 12px", display: "block" }}
                             />

@@ -23,6 +23,7 @@ import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 const NaverMap = dynamic(() => import("@/components/NaverMap"), { ssr: false });
 import { Place as MapPlace, UserLocation } from "@/types/map";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 // 인터페이스 정의
 interface Place {
@@ -530,7 +531,7 @@ function CourseDetailPage() {
             const shareImage =
                 heroImageUrl ||
                 courseData?.imageUrl ||
-                "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png";
+                getS3StaticUrl("logo/donalogo_512.png");
             const title = courseData?.title || "DoNa 코스";
             const desc = courseData?.description || "DoNa에서 코스를 확인해 보세요";
 
