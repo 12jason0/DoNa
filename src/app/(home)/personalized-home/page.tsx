@@ -278,13 +278,25 @@ const AIRecommender = () => {
         }
     };
 
-    // 로그인 상태 확인
+    // 🟢 로그인 상태 확인 (쿠키 기반 인증)
     useEffect(() => {
-        const checkLoginStatus = () => {
-            const token = localStorage.getItem("authToken");
-            if (token) {
-                fetchUserData();
-            } else {
+        const checkLoginStatus = async () => {
+            try {
+                const { fetchSession } = await import("@/lib/authClient");
+                const session = await fetchSession();
+
+                if (session.authenticated && session.user) {
+                    setIsLoggedIn(true);
+                    fetchUserData();
+                } else {
+                    setIsLoggedIn(false);
+                    setUserName("");
+                    setNickname("");
+                    setProfileImageUrl(null);
+                    setCoupons(0);
+                }
+            } catch (error) {
+                console.error("로그인 상태 확인 실패:", error);
                 setIsLoggedIn(false);
                 setUserName("");
                 setNickname("");
@@ -295,22 +307,31 @@ const AIRecommender = () => {
 
         checkLoginStatus();
 
-        const handleStorageChange = (e: StorageEvent) => {
-            if (e.key === "authToken" || e.key === "user") {
-                checkLoginStatus();
-            }
-        };
-
-        const handleCustomStorageChange = () => {
+        // 🟢 쿠키 기반 인증 이벤트 리스너
+        const handleAuthLoginSuccess = () => {
             checkLoginStatus();
         };
 
-        window.addEventListener("storage", handleStorageChange);
-        window.addEventListener("authTokenChange", handleCustomStorageChange);
+        const handleAuthLogout = () => {
+            setIsLoggedIn(false);
+            setUserName("");
+            setNickname("");
+            setProfileImageUrl(null);
+            setCoupons(0);
+        };
+
+        const handleAuthTokenChange = () => {
+            checkLoginStatus();
+        };
+
+        window.addEventListener("authLoginSuccess", handleAuthLoginSuccess);
+        window.addEventListener("authLogout", handleAuthLogout);
+        window.addEventListener("authTokenChange", handleAuthTokenChange);
 
         return () => {
-            window.removeEventListener("storage", handleStorageChange);
-            window.removeEventListener("authTokenChange", handleCustomStorageChange);
+            window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
+            window.removeEventListener("authLogout", handleAuthLogout);
+            window.removeEventListener("authTokenChange", handleAuthTokenChange);
         };
     }, []);
 

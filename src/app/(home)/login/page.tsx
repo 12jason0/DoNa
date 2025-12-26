@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import { fetchSession } from "@/lib/authClient";
+import { getSafeRedirectPath } from "@/lib/redirect";
 import dynamic from "next/dynamic";
 
 // 모바일 앱 환경에서만 Apple 로그인 컴포넌트 로드
@@ -12,6 +13,10 @@ const AppleLoginButton = dynamic(() => import("@/components/AppleLoginButton"), 
 
 const Login = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    // next 파라미터가 없으면 메인 페이지로 이동
+    const nextParam = searchParams.get("next");
+    const next = nextParam ? getSafeRedirectPath(nextParam, "/") : "/";
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -96,8 +101,9 @@ const Login = () => {
                 // URL에 표시하지 않고, sessionStorage에 '로그인 성공' 흔적을 남깁니다.
                 sessionStorage.setItem("login_success_trigger", "true");
 
-                // 깔끔하게 메인으로 이동! (?login_success=true 없음)
-                router.push("/");
+                // 원래 가려던 페이지로 리다이렉트 (next가 없으면 메인 페이지 "/"로)
+                const redirectPath = next || "/";
+                router.replace(redirectPath);
             } else {
                 setError(data.error || "로그인에 실패했습니다.");
             }
@@ -123,7 +129,7 @@ const Login = () => {
             // 1. 웹뷰 환경 체크
             const isMobileApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
             if (isMobileApp) {
-                window.location.href = "/api/auth/kakao";
+                window.location.href = `/api/auth/kakao?next=${encodeURIComponent(next)}`;
                 return;
             }
 
@@ -135,6 +141,9 @@ const Login = () => {
                 setLoading(false);
                 return;
             }
+            
+            // next 값을 sessionStorage에 저장 (팝업 인증 후 사용)
+            sessionStorage.setItem("auth:next", next);
 
             // 2. 메시지 핸들러 정의 (팝업을 열기 전에 미리 정의)
             const messageHandler = async (event: MessageEvent) => {
@@ -148,14 +157,25 @@ const Login = () => {
 
                 if (type === "KAKAO_AUTH_CODE" && code) {
                     authReceived.current = true; // ✅ 수신 확인
-                    console.log("✅ 인증 코드 수신 성공:", code);
+                    // 콜백에서 전달받은 next 사용, 없으면 현재 next, 둘 다 없으면 메인 페이지
+                    const receivedNext = (event.data as any).next || next || "/";
+                    console.log("✅ 인증 코드 수신 성공:", code, "next:", receivedNext);
 
                     try {
                         const response = await fetch("/api/auth/kakao", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ code }),
+                            body: JSON.stringify({ code, next: receivedNext }),
                         });
+                        
+                        // 리다이렉트 응답인 경우
+                        if (response.redirected || response.url) {
+                            const redirectPath = response.url || receivedNext || "/";
+                            window.location.href = redirectPath;
+                            cleanup();
+                            return;
+                        }
+                        
                         const data = await response.json();
 
                         if (!response.ok) throw new Error(data.error || "로그인 처리 실패");
@@ -169,7 +189,9 @@ const Login = () => {
                         window.dispatchEvent(new CustomEvent("authTokenChange", { detail: { token: data.token } }));
 
                         cleanup();
-                        router.push("/?login_success=true&provider=kakao");
+                        // next가 "/"이거나 없으면 메인 페이지로, 그 외에는 해당 페이지로
+                        const redirectPath = receivedNext && receivedNext !== "/" ? receivedNext : "/";
+                        router.replace(redirectPath);
                     } catch (err: any) {
                         setError(err.message);
                         cleanup();
@@ -195,7 +217,8 @@ const Login = () => {
                 client_id: kakaoClientId,
                 redirect_uri: redirectUri,
                 response_type: "code",
-                scope: "profile_nickname, profile_image",
+                scope: "profile_nickname, profile_image, age_range, gender",
+                state: encodeURIComponent(next || "/"), // next 값을 state로 전달
             }).toString()}`;
 
             const popup = window.open(
@@ -344,7 +367,7 @@ const Login = () => {
                         <div className="mt-6 text-center">
                             <p className="text-gray-600">
                                 계정이 없으신가요?{" "}
-                                <Link href="/signup" className="text-emerald-600 hover:text-emerald-700 font-medium">
+                                <Link href={`/signup?next=${encodeURIComponent(next)}`} className="text-emerald-600 hover:text-emerald-700 font-medium">
                                     회원가입
                                 </Link>
                             </p>
@@ -408,7 +431,8 @@ const Login = () => {
                                             new CustomEvent("authTokenChange", { detail: { token: data.token } })
                                         );
 
-                                        router.push("/");
+                                        const redirectPath = next || "/";
+                                        router.replace(redirectPath);
                                     } catch (err: any) {
                                         setError(err.message || "Apple 로그인에 실패했습니다.");
                                     } finally {

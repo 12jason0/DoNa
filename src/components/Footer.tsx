@@ -6,10 +6,12 @@ import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import ComingSoonModal from "@/components/ComingSoonModal";
+import LoginModal from "@/components/LoginModal";
 
 export default function Footer() {
     const pathname = usePathname();
     const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
 
@@ -152,7 +154,13 @@ export default function Footer() {
 
                     {/* 4. Escape */}
                     <button
-                        onClick={() => setShowEscapeComingSoon(true)}
+                        onClick={() => {
+                            if (isLoggedIn) {
+                                setShowEscapeComingSoon(true);
+                            } else {
+                                setShowLoginModal(true);
+                            }
+                        }}
                         aria-label="Escape"
                         className={`p-2 rounded-md hover:bg-green-50 ${isActive("/escape") ? "bg-green-50" : ""}`}
                         style={{ color: isActive("/escape") ? "#7aa06f" : "#99c08e" }}
@@ -187,8 +195,10 @@ export default function Footer() {
                 </nav>
             </div>
 
-            {/* ✅ 사건 파일 준비 중 모달 */}
+            {/* ✅ 사건 파일 준비 중 모달 (로그인한 경우) */}
             {showEscapeComingSoon && <ComingSoonModal onClose={() => setShowEscapeComingSoon(false)} />}
+            {/* ✅ 로그인 모달 (로그인하지 않은 경우) */}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
         </footer>
     );
 }

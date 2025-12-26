@@ -256,6 +256,9 @@ export default function CourseDetailClient({
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [previewImages, setPreviewImages] = useState<string[]>([]);
+    const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
     // 전체 지도 모달 State
     const [showFullMapModal, setShowFullMapModal] = useState(false);
@@ -373,30 +376,86 @@ export default function CourseDetailClient({
 
     // ✅ [최적화] 초기 리뷰는 서버에서 이미 가져왔으므로 추가 fetch는 리뷰 작성/업데이트 시에만 수행
     const fetchReviews = useCallback(async () => {
-        if (!courseId) return;
+        if (!courseId) {
+            console.warn("[CourseDetailClient] courseId가 없어 리뷰를 가져올 수 없습니다.");
+            return;
+        }
         try {
+            console.log(`[CourseDetailClient] 리뷰 가져오기 시작: courseId=${courseId}`);
             const response = await fetch(`/api/reviews?courseId=${courseId}`, {
-                // 캐시 사용으로 중복 요청 방지
-                next: { revalidate: 30 },
+                cache: "no-store", // 🟢 리뷰 작성 후 즉시 반영을 위해 캐시 비활성화
             });
             if (response.ok) {
                 const data = await response.json();
-                if (Array.isArray(data))
-                    setReviews(
-                        data.map((r: any) => ({
-                            id: r.id,
-                            rating: r.rating,
-                            userName: r.user?.nickname || "익명",
-                            createdAt: r.createdAt,
-                            content: r.comment,
-                            imageUrls: r.imageUrls || [],
-                        }))
-                    );
+                console.log(`[CourseDetailClient] 리뷰 응답:`, data);
+                if (Array.isArray(data)) {
+                    const formattedReviews = data.map((r: any) => ({
+                        id: r.id,
+                        rating: r.rating,
+                        userName: r.user?.nickname || "익명",
+                        createdAt: r.createdAt,
+                        content: r.comment,
+                        imageUrls: r.imageUrls || [],
+                    }));
+                    console.log(`[CourseDetailClient] 포맷된 리뷰 ${formattedReviews.length}개:`, formattedReviews);
+                    setReviews(formattedReviews);
+                } else {
+                    console.warn("[CourseDetailClient] 리뷰 데이터가 배열이 아닙니다:", data);
+                    setReviews([]);
+                }
+            } else {
+                console.error(`[CourseDetailClient] 리뷰 가져오기 실패: ${response.status} ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({}));
+                console.error("[CourseDetailClient] 에러 상세:", errorData);
             }
         } catch (error) {
-            console.error(error);
+            console.error("[CourseDetailClient] 리뷰 가져오기 오류:", error);
         }
     }, [courseId]);
+
+    // 🟢 초기 로드 시 리뷰 가져오기
+    useEffect(() => {
+        fetchReviews();
+    }, [fetchReviews]);
+
+    // 🟢 리뷰 작성 후 목록 새로고침
+    useEffect(() => {
+        const handleReviewSubmitted = () => {
+            console.log("[CourseDetailClient] 리뷰 작성 이벤트 감지, 목록 새로고침");
+            fetchReviews();
+        };
+
+        window.addEventListener("reviewSubmitted", handleReviewSubmitted);
+        return () => {
+            window.removeEventListener("reviewSubmitted", handleReviewSubmitted);
+        };
+    }, [fetchReviews]);
+
+    // 🟢 이미지 미리보기 키보드 네비게이션 (화살표 키)
+    useEffect(() => {
+        if (!previewImage || previewImages.length <= 1) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "ArrowLeft" && previewImageIndex > 0) {
+                const newIndex = previewImageIndex - 1;
+                setPreviewImageIndex(newIndex);
+                setPreviewImage(previewImages[newIndex]);
+            } else if (e.key === "ArrowRight" && previewImageIndex < previewImages.length - 1) {
+                const newIndex = previewImageIndex + 1;
+                setPreviewImageIndex(newIndex);
+                setPreviewImage(previewImages[newIndex]);
+            } else if (e.key === "Escape") {
+                setPreviewImage(null);
+                setPreviewImages([]);
+                setPreviewImageIndex(0);
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [previewImage, previewImages, previewImageIndex]);
 
     const handleSaveCourse = async () => {
         const token = localStorage.getItem("authToken");
@@ -915,8 +974,9 @@ export default function CourseDetailClient({
                                                         key={idx}
                                                         className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
                                                         onClick={() => {
-                                                            // 이미지 확대 보기 (선택사항)
-                                                            window.open(url, "_blank");
+                                                            setPreviewImages(review.imageUrls || []);
+                                                            setPreviewImageIndex(idx);
+                                                            setPreviewImage(url);
                                                         }}
                                                     >
                                                         <Image
@@ -1027,6 +1087,96 @@ export default function CourseDetailClient({
             />
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+
+            {/* 이미지 미리보기 모달 */}
+            {previewImage && previewImages.length > 0 && (
+                <div
+                    className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
+                    onClick={() => {
+                        setPreviewImage(null);
+                        setPreviewImages([]);
+                        setPreviewImageIndex(0);
+                    }}
+                >
+                    <button
+                        onClick={() => {
+                            setPreviewImage(null);
+                            setPreviewImages([]);
+                            setPreviewImageIndex(0);
+                        }}
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-2"
+                        aria-label="닫기"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+
+                    {/* 왼쪽 버튼 (이전 사진) */}
+                    {previewImages.length > 1 && previewImageIndex > 0 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const newIndex = previewImageIndex - 1;
+                                setPreviewImageIndex(newIndex);
+                                setPreviewImage(previewImages[newIndex]);
+                            }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-3"
+                            aria-label="이전 사진"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 19l-7-7 7-7"
+                                />
+                            </svg>
+                        </button>
+                    )}
+
+                    {/* 오른쪽 버튼 (다음 사진) */}
+                    {previewImages.length > 1 && previewImageIndex < previewImages.length - 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const newIndex = previewImageIndex + 1;
+                                setPreviewImageIndex(newIndex);
+                                setPreviewImage(previewImages[newIndex]);
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-3"
+                            aria-label="다음 사진"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    )}
+
+                    {/* 이미지 카운터 */}
+                    {previewImages.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white bg-black/50 rounded-full px-4 py-2 text-sm z-10">
+                            {previewImageIndex + 1} / {previewImages.length}
+                        </div>
+                    )}
+
+                    <div
+                        className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={previewImage}
+                            alt={`리뷰 사진 ${previewImageIndex + 1}`}
+                            className="max-w-full max-h-full object-contain"
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Place Detail Modal */}
             {showPlaceModal && selectedPlace && (

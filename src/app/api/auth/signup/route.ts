@@ -3,16 +3,28 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
+import { getSafeRedirectPath } from "@/lib/redirect";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, password, nickname, phone, birthday, ageRange, isMarketingAgreed } = await request.json();
-        console.log("회원가입 시도:", { email, nickname, phone, birthday, ageRange, isMarketingAgreed });
+        const { email, password, nickname, phone, birthday, ageRange, gender, isMarketingAgreed, next } = await request.json();
+        const safeNext = getSafeRedirectPath(next, "/");
+        console.log("회원가입 시도:", { email, nickname, phone, birthday, ageRange, gender, isMarketingAgreed });
 
         // 입력 검증
         if (!email || !password || !nickname) {
             return NextResponse.json({ error: "이메일, 비밀번호, 닉네임을 모두 입력해주세요." }, { status: 400 });
+        }
+        
+        // 연령대 필수 검증
+        if (!ageRange || typeof ageRange !== "string" || !ageRange.trim()) {
+            return NextResponse.json({ error: "연령대를 선택해주세요." }, { status: 400 });
+        }
+        
+        // 성별 필수 검증
+        if (!gender || (gender !== "M" && gender !== "F")) {
+            return NextResponse.json({ error: "성별을 선택해주세요." }, { status: 400 });
         }
 
         // 이메일 형식 검증
@@ -34,7 +46,8 @@ export async function POST(request: NextRequest) {
 
         // 선택 항목 정리 및 나이 계산
         const trimmedPhone = typeof phone === "string" && phone.trim() ? phone.trim() : undefined;
-        const trimmedAgeRange = typeof ageRange === "string" && ageRange.trim() ? ageRange.trim() : undefined;
+        const trimmedAgeRange = ageRange.trim(); // 이미 필수로 검증됨
+        const trimmedGender = gender; // 이미 필수로 검증됨 ("M" 또는 "F")
         const birthdayTs = typeof birthday === "string" && birthday.trim() ? Date.parse(birthday.trim()) : NaN;
         const birthdayDate = Number.isNaN(birthdayTs) ? undefined : new Date(birthdayTs);
 
@@ -66,6 +79,7 @@ export async function POST(request: NextRequest) {
                     provider: "local",
                     phone: trimmedPhone,
                     ageRange: trimmedAgeRange,
+                    gender: trimmedGender,
                     birthday: birthdayDate,
                     age: computedAge,
                     couponCount: initialCoupons, // 🎁 이벤트 기간이면 3개, 아니면 1개
@@ -101,12 +115,17 @@ export async function POST(request: NextRequest) {
 
         const token = jwt.sign({ userId: created.id, email, nickname }, JWT_SECRET, { expiresIn: "7d" });
 
-        return NextResponse.json({
-            success: true,
-            message: `회원가입이 완료되었습니다. 쿠폰 ${initialCoupons}개가 지급되었습니다.`,
-            token,
-            user: { id: created.id, email, nickname },
+        // 🟢 쿠키 설정 및 리다이렉트 (자동 로그인)
+        const res = NextResponse.redirect(new URL(safeNext, request.url));
+        res.cookies.set("auth", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 7일
         });
+        
+        return res;
     } catch (error: any) {
         console.error("[회원가입 API] 오류 발생:", error);
         console.error("[회원가입 API] 에러 상세:", {

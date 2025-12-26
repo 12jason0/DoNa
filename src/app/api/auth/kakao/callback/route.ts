@@ -2,13 +2,19 @@ import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+import { getSafeRedirectPath } from "@/lib/redirect";
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
+    const state = searchParams.get("state"); // 카카오가 돌려준 next 값
     const error = searchParams.get("error");
     const error_description = searchParams.get("error_description");
 
-    console.log("Callback received:", { code: code ? "존재" : "없음", error, error_description });
+    // state에서 next 경로 추출 및 검증
+    const next = getSafeRedirectPath(state, "/");
+
+    console.log("Callback received:", { code: code ? "존재" : "없음", state, next, error, error_description });
 
     const sendResponse = (script: string) => {
         return new Response(
@@ -49,11 +55,18 @@ export async function GET(request: NextRequest) {
                 fetch('/api/auth/kakao', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: code })
+                    body: JSON.stringify({ code: code, next: '${next}' })
                 })
-                .then(res => res.json())
+                .then(res => {
+                    // 리다이렉트 응답인 경우
+                    if (res.redirected || res.url) {
+                        window.location.href = res.url || '${next}';
+                        return;
+                    }
+                    return res.json();
+                })
                 .then(data => {
-                    if (data.success && data.token) {
+                    if (data && data.success && data.token) {
                         localStorage.setItem('authToken', data.token);
                         if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
                         
@@ -61,13 +74,13 @@ export async function GET(request: NextRequest) {
                             type: 'loginSuccess',
                             token: data.token
                         }));
-                        window.location.href = '/?login_success=true&provider=kakao';
-                    } else {
-                        window.location.href = '/login?error=' + encodeURIComponent(data.error || '로그인 실패');
+                        window.location.href = '${next}';
+                    } else if (data && !data.success) {
+                        window.location.href = '/login?error=' + encodeURIComponent(data.error || '로그인 실패') + '&next=' + encodeURIComponent('${next}');
                     }
                 })
                 .catch(err => {
-                    window.location.href = '/login?error=' + encodeURIComponent('서버 통신 오류');
+                    window.location.href = '/login?error=' + encodeURIComponent('서버 통신 오류') + '&next=' + encodeURIComponent('${next}');
                 });
             } 
             else {
@@ -77,11 +90,13 @@ export async function GET(request: NextRequest) {
                     try {
                         // 🟢 수정된 부분: 메시지를 여러 번 전송(setTimeout)하던 로직을 삭제하고
                         // 단 한 번만 전송하여 인가 코드 중복 사용 에러(400)를 방지합니다.
+                        // next 값도 함께 전달
                         window.opener.postMessage({ 
                             type: 'KAKAO_AUTH_CODE', 
-                            code: code 
+                            code: code,
+                            next: '${next}'
                         }, '*');
-                        console.log('메시지 전송 완료');
+                        console.log('메시지 전송 완료 (code와 next 포함)');
 
                         // 🟢 수정된 부분: 팝업을 닫기 전 부모 창이 데이터를 처리할 최소한의 시간을 줍니다.
                         setTimeout(() => {
@@ -92,7 +107,7 @@ export async function GET(request: NextRequest) {
                         }, 1000); 
                     } catch (e) {
                         console.error('postMessage 실패:', e);
-                        window.location.href = '/login?error=' + encodeURIComponent('인증 메시지 전송 실패');
+                        window.location.href = '/login?error=' + encodeURIComponent('인증 메시지 전송 실패') + '&next=' + encodeURIComponent('${next}');
                     }
                 } else {
                     console.error('부모 창을 찾을 수 없음. 리다이렉트 시도');

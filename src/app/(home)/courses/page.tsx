@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 600; // 🟢 10분 캐싱으로 증가 (성능 최적화)
+export const revalidate = 1800; // 🟢 30분 캐싱으로 증가 (성능 최적화)
 
 // 공통 select 옵션
 const courseSelectOptions = {

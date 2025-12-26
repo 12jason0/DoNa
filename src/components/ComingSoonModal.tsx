@@ -17,25 +17,21 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     useEffect(() => {
         const checkNotificationStatus = async () => {
             try {
-                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-                const { authenticatedFetch } = await import("@/lib/authClient");
-                const data = await authenticatedFetch("/api/users/notifications/interests");
+                // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 로그아웃하지 않도록)
+                const { apiFetch } = await import("@/lib/authClient");
+                const { data, response } = await apiFetch<any>("/api/users/notifications/interests");
                 
-                if (!data) {
+                // 401이거나 데이터가 없으면 알림 신청 안 한 것으로 간주
+                if (response.status === 401 || !data) {
                     setIsLoading(false);
                     return;
                 }
 
                 // 🟢 notification_interests 테이블에서 NEW_ESCAPE 확인
-                const interestRes = { ok: true, json: async () => data };
-                
-                if (interestRes.ok) {
-                    const data = await interestRes.json();
-                    const hasNewEscape = data?.interests?.some(
-                        (item: any) => item.topic === "NEW_ESCAPE"
-                    );
-                    setHasNotification(hasNewEscape || false);
-                }
+                const hasNewEscape = data?.interests?.some(
+                    (item: any) => item.topic === "NEW_ESCAPE"
+                );
+                setHasNotification(hasNewEscape || false);
             } catch (error) {
                 console.error("알림 상태 확인 실패:", error);
             } finally {
@@ -58,30 +54,33 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     const handleNotification = async () => {
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
+            // 🟢 쿠키 기반 인증: 로그인 여부 확인
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            
+            if (!session.authenticated) {
                 alert("로그인이 필요합니다.");
                 setIsSubmitting(false);
                 return;
             }
 
-            // 🟢 NEW_ESCAPE 알림 신청 API 호출
-            const res = await fetch("/api/users/notifications/consent", {
+            // 🟢 NEW_ESCAPE 알림 신청 API 호출 (쿠키 기반)
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/notifications/consent", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ topics: ["NEW_ESCAPE"] }),
             });
 
-            if (res.ok) {
+            if (response.ok) {
                 setHasNotification(true);
-        alert("오픈 알림이 신청되었습니다! 🔔");
-        onClose();
+                alert("오픈 알림이 신청되었습니다! 🔔");
+                onClose();
             } else {
-                const data = await res.json();
-                alert(data.error || "알림 신청에 실패했습니다.");
+                const errorMsg = data?.error || "알림 신청에 실패했습니다.";
+                alert(errorMsg);
             }
         } catch (error) {
             console.error("알림 신청 실패:", error);

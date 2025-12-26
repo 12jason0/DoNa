@@ -55,13 +55,6 @@ export default function PrivacyPolicyPage() {
                                 계정 탈퇴 / 데이터 삭제
                             </a>
                         </div>
-                        {/* 베타 서비스 안내 */}
-                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-                            <p className="text-sm text-blue-800">
-                                🚀 현재 베타 서비스 운영 중입니다. 개인정보보호위원회 가이드라인을 참고하여
-                                작성하였으며, 정식 서비스 전환 시 전문가 검토를 통해 보완할 예정입니다.
-                            </p>
-                        </div>
 
                         <p className="text-gray-700 mb-6">
                             DoNa(이하 '서비스')은 개인정보보호법 제30조에 따라 정보주체의 개인정보를 보호하고 이와
@@ -79,7 +72,10 @@ export default function PrivacyPolicyPage() {
                         </p>
                         <ul className="list-disc pl-6 mb-6 text-gray-700">
                             <li>회원 가입 및 관리: 회원 식별, 본인 확인, 중복가입 방지</li>
-                            <li>서비스 제공: 맞춤형 여행 코스 추천, 지도 서비스 제공</li>
+                            <li>
+                                서비스 제공: 사용자의 서비스 이용 패턴 분석을 통한 맞춤형 데이트 코스 및 탈출방 추천
+                                서비스 제공, 지도 서비스 제공
+                            </li>
                             {/* [수정된 부분] 서비스 개선 목적을 더 구체화합니다. */}
                             <li>
                                 서비스 개선 및 신규 서비스 개발: 서비스 이용 기록 및 접속 빈도 분석, 서비스 이용에 대한
@@ -92,20 +88,103 @@ export default function PrivacyPolicyPage() {
                             제2조 개인정보의 처리 및 보유기간
                         </h2>
                         <p className="text-gray-700 mb-4">
-                            DoNa는는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에
-                            동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.
+                            DoNa는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보 수집 시에 동의받은
+                            보유·이용기간 내에서 개인정보를 처리·보유합니다. 각각의 개인정보 처리 및 보유 기간은 다음과
+                            같습니다.
                         </p>
-                        <ul className="list-disc pl-6 mb-6 text-gray-700">
+
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-6">
+                            1. 서비스 이용 및 내부 방침에 의한 보관
+                        </h3>
+                        <ul className="list-disc pl-6 mb-6 text-gray-700 space-y-2">
                             <li>
-                                <strong>회원정보:</strong> 회원탈퇴 시까지 (단, 관계법령 위반에 따른 수사·조사 등이
-                                진행중인 경우 해당 조사 종료 시까지)
+                                <strong>회원 가입 정보:</strong> 회원 탈퇴 시까지 보관합니다. 단, 관계법령 위반에 따른
+                                수사·조사 등이 진행 중인 경우에는 해당 조사 종료 시까지 보관합니다.
                             </li>
-                            {/* [수정된 부분] GA 데이터 보유 기간을 명시합니다. */}
                             <li>
-                                <strong>서비스 이용기록 (로그 데이터, 행태정보):</strong> 개인을 식별할 수 없도록
-                                비식별화 처리 후 통계 및 분석 목적으로 최대 26개월 보관 후 파기
+                                <strong>사용자 활동 로그 (식별 가능한 형태):</strong> 코스 조회, 클릭, 좋아요, 체류 시간
+                                등 사용자 식별 정보와 결합된 활동 로그는 회원 탈퇴 시 즉시 파기합니다. 다만, 서비스
+                                고도화를 위한 통계 분석 목적으로 필요한 경우, 특정 개인을 알아볼 수 없는 형태로{" "}
+                                <strong>비식별화(가명화) 처리</strong>하여 별도 보관할 수 있습니다.
+                            </li>
+                            <li>
+                                <strong>S3 업로드 이미지 데이터:</strong> 유저가 업로드한 사진은 파일명 중복 방지 및
+                                인덱싱 성능 최적화를 위해 고유한 파일명으로 저장되며, 회원 탈퇴 시 또는 해당 콘텐츠 삭제
+                                시 즉시 파기됩니다.
+                            </li>
+                            <li>
+                                <strong>서비스 이용기록 (비식별화된 행태정보):</strong> 개인을 식별할 수 없도록 비식별화
+                                처리된 로그 데이터 및 행태정보는 통계 및 분석 목적으로 최대 26개월 보관 후 파기합니다.
                             </li>
                         </ul>
+
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 mt-6">
+                            2. 관련 법령에 의한 보관 (탈퇴 후에도 예외적으로 보관)
+                        </h3>
+                        <p className="text-gray-700 mb-4">
+                            상법, 전자상거래 등에서의 소비자보호에 관한 법률 등 관련 법령의 규정에 의하여 보존할 필요가
+                            있는 경우, 회사는 아래와 같이 법령에서 정한 일정한 기간 동안 회원정보를 보관합니다.
+                        </p>
+                        <div className="overflow-x-auto mb-6">
+                            <table className="min-w-full border-collapse border border-gray-300 text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">
+                                            보관 항목
+                                        </th>
+                                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">
+                                            보관 근거
+                                        </th>
+                                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">
+                                            보관 기간
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-gray-700">
+                                    <tr>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            계약 또는 청약철회 등에 관한 기록
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            전자상거래 등에서의 소비자보호에 관한 법률
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3 font-semibold">5년</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            대금결제 및 재화 등의 공급에 관한 기록
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            전자상거래 등에서의 소비자보호에 관한 법률
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3 font-semibold">5년</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            소비자의 불만 또는 분쟁처리에 관한 기록
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            전자상거래 등에서의 소비자보호에 관한 법률
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3 font-semibold">3년</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            서비스 접속 로그, 접속 IP 정보
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3">통신비밀보호법</td>
+                                        <td className="border border-gray-300 px-4 py-3 font-semibold">3개월</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-gray-300 px-4 py-3">표시/광고에 관한 기록</td>
+                                        <td className="border border-gray-300 px-4 py-3">
+                                            전자상거래 등에서의 소비자보호에 관한 법률
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-3 font-semibold">6개월</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
                         <h2 id="items" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
                             제3조 처리하는 개인정보 항목
@@ -139,10 +218,15 @@ export default function PrivacyPolicyPage() {
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
                             3. 서비스 이용과정에서 자동 생성 및 수집되는 정보
                         </h3>
-                        <ul className="list-disc pl-6 mb-6 text-gray-700">
+                        <ul className="list-disc pl-6 mb-4 text-gray-700">
                             <li>
-                                IP 주소, 쿠키, 서비스 이용 기록(방문 기록, 페이지 조회, 클릭 기록 등), 기기
+                                IP 주소, 쿠키, 서비스 이용 기록(방문 기록, 페이지 조회, 클릭 기록 등), 접속 로그, 기기
                                 정보(브라우저 종류, OS 정보)
+                            </li>
+                            <li className="mt-2 font-semibold text-gray-900">
+                                <strong>활동 로그 (코스 조회, 클릭, 좋아요, 공유, 체류 시간 등):</strong> 로그인
+                                상태에서 수집될 경우 사용자 식별 정보와 결합되어 개인정보로 관리됩니다. 비로그인
+                                상태에서 수집된 활동 로그는 개인을 식별할 수 없는 형태로 처리됩니다.
                             </li>
                         </ul>
 

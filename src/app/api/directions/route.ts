@@ -3,210 +3,91 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        const coords = searchParams.get("coords"); // "lng,lat;lng,lat"
-        let mode = (searchParams.get("mode") || "driving").toLowerCase();
+        const coords = searchParams.get("coords");
+        const points = coords?.split(";").filter((p) => p.trim()) || [];
 
-        if (!coords) {
-            return NextResponse.json({ error: "coords are required" }, { status: 400 });
-        }
+        if (points.length < 2) return NextResponse.json({ error: "좌표 부족" }, { status: 400 });
 
-        const clientId = process.env.NAVER_MAP_API_KEY_ID;
-        const clientSecret = process.env.NAVER_MAP_API_KEY;
+        // 🟢 네이버 제한 대응: 좌표가 너무 많으면 7개까지만 끊어서 처리 (안정성 확보)
+        // 네이버 Driving API는 출발지 + 도착지 + 경유지 5개 = 총 7개까지만 지원
+        const limitedPoints = points.length > 7 ? points.slice(0, 7) : points;
 
-        const [start, goal] = coords.split(";");
-        if (!start || !goal) {
-            return NextResponse.json({ error: "coords must include start and goal" }, { status: 400 });
-        }
+        const start = limitedPoints[0];
+        const goal = limitedPoints[limitedPoints.length - 1];
+        const waypoints = limitedPoints.length > 2 ? limitedPoints.slice(1, -1).slice(0, 5).join("|") : undefined;
 
-        // 좌표 유효성 검사
-        const [startLng, startLat] = start.split(",").map(Number);
-        const [goalLng, goalLat] = goal.split(",").map(Number);
-
-        if (!startLng || !startLat || !goalLng || !goalLat) {
-            console.error("❌ 좌표 파싱 실패");
-            return NextResponse.json({ coordinates: [], error: "INVALID_COORDS" });
-        }
-
-        // 거리 계산 (대략)
-        const distance =
-            Math.sqrt(Math.pow((goalLng - startLng) * 88.8, 2) + Math.pow((goalLat - startLat) * 111, 2)) * 1000;
-
-        // 🟢 직선 폴백 경로 생성 (9개 포인트)
-        const createFallbackPath = (): Array<[number, number]> => {
-            const points: Array<[number, number]> = [];
-            for (let i = 0; i <= 8; i++) {
-                const ratio = i / 8;
-                const lng = startLng + (goalLng - startLng) * ratio;
-                const lat = startLat + (goalLat - startLat) * ratio;
-                points.push([lng, lat]);
-            }
-            return points;
+        const headers = {
+            "X-NCP-APIGW-API-KEY-ID": process.env.NAVER_MAP_API_KEY_ID || "",
+            "X-NCP-APIGW-API-KEY": process.env.NAVER_MAP_API_KEY || "",
         };
 
-        // ✅ 도보 모드인데 거리가 15km 이상이면 운전 모드로 변경
-        if (mode === "walking" && distance > 15000) {
-            mode = "driving";
+        // API 키 확인
+        if (!headers["X-NCP-APIGW-API-KEY-ID"] || !headers["X-NCP-APIGW-API-KEY"]) {
+            console.error("❌ API 키 설정 오류");
+            return NextResponse.json({ error: "API 키 설정 오류" }, { status: 500 });
         }
 
-        // API 키가 없으면 직선 폴백 대신 경로 없음 반환 (건물 통과 방지)
-        if (!clientId || !clientSecret) {
-            return NextResponse.json({ coordinates: [], fallback: true, error: "NO_API_KEYS" });
-        }
-        // --- API 선택 ---
-        const endpoint =
-            mode === "walking"
-                ? `https://naveropenapi.apigw.ntruss.com/map-direction/v1/walking?start=${start}&goal=${goal}`
-                : `https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=${start}&goal=${goal}&option=trafast`;
+        // 🟢 1단계: Directions 15 시도 (정교한 경로, 월 3,000회 한도)
+        const url15 = `https://maps.apigw.ntruss.com/map-direction-15/v1/driving?start=${start}&goal=${goal}${
+            waypoints ? `&waypoints=${waypoints}` : ""
+        }&option=traoptimal`;
 
-        try {
-            const doFetch = async (ep: string) =>
-                await fetch(ep, {
-                    headers: {
-                        "X-NCP-APIGW-API-KEY-ID": clientId,
-                        "X-NCP-APIGW-API-KEY": clientSecret,
-                    },
-                    cache: "no-store",
-                });
-            let response = await doFetch(endpoint);
+        console.log("🌐 Directions 15 시도:", url15);
+        let response = await fetch(url15, { headers, cache: "no-store" });
             let data = await response.json().catch(() => ({}));
 
-            // 운전 경로에서 오류 발생 시(403/404/에러코드 230,300 등) 도보로 한 번 더 시도
-            if (!response.ok && mode === "driving") {
-                const errCode = (data?.error?.errorCode || data?.errorCode) as string | undefined;
-                if (response.status === 403 || response.status === 404 || errCode === "230" || errCode === "300") {
-                    const walkingEp = `https://naveropenapi.apigw.ntruss.com/map-direction/v1/walking?start=${start}&goal=${goal}`;
-                    response = await doFetch(walkingEp);
+        // 🟢 서버 터미널에서 네이버의 진짜 응답을 확인하기 위한 로그
+        console.log("📍 네이버 API 최종 응답 코드:", data.code);
+        console.log("📍 네이버 API 메시지:", data.message);
+
+        // 🟢 2단계: 15가 실패하거나(404, 429 등) 응답 코드가 0이 아니면 Directions 5 시도
+        if (!response.ok || data.code !== 0) {
+            console.log("🔄 Directions 15 실패 → Directions 5로 전환", {
+                status: response.status,
+                code: data.code,
+                message: data.message,
+            });
+            const url5 = `https://maps.apigw.ntruss.com/map-direction/v1/driving?start=${start}&goal=${goal}${
+                waypoints ? `&waypoints=${waypoints}` : ""
+            }&option=traoptimal`;
+
+            console.log("🌐 Directions 5 시도:", url5);
+            response = await fetch(url5, { headers, cache: "no-store" });
                     data = await response.json().catch(() => ({}));
-                    mode = "walking";
-                }
+
+            // 🟢 Directions 5 응답도 로깅
+            console.log("📍 네이버 API 최종 응답 코드 (Directions 5):", data.code);
+            console.log("📍 네이버 API 메시지 (Directions 5):", data.message);
             }
 
-            // 🟢 에러(3xx/4xx/5xx) 시 직선 폴백 대신 경로 생략
-            if (!response.ok) {
-                const errCode = (data?.error?.errorCode || data?.errorCode) as string | undefined;
-                const errMsg = (data?.error?.message || data?.message) as string | undefined;
-                const errDetails = (data?.error?.details || data?.details) as string | undefined;
-                const isNotFoundUrl =
-                    errCode === "300" ||
-                    /not\s*found/i.test(String(errMsg || "")) ||
-                    /url\s*not\s*found/i.test(String(errDetails || ""));
-                if (isNotFoundUrl) {
-                    console.warn("⚠️ Naver API URL not found - 경로 생략:", { errCode, errMsg, errDetails });
-                } else {
-                    console.error("❌ Naver API 에러:", data);
-                }
-                return NextResponse.json({ coordinates: [], fallback: true, error: data?.message || response.status });
-            }
-
-            // API 응답에 route가 없으면 (짧은 거리 포함)
-            if (!data?.route || data.route === null) {
-                if (mode !== "walking") {
-                    const walkingEp = `https://naveropenapi.apigw.ntruss.com/map-direction/v1/walking?start=${start}&goal=${goal}`;
-                    const r = await doFetch(walkingEp);
-                    const d = await r.json().catch(() => ({}));
-                    if (r.ok && d?.route) {
-                        data = d;
-                        mode = "walking";
-                    } else {
-                        return NextResponse.json({ coordinates: [], fallback: true, reason: "NO_ROUTE" });
-                    }
-                } else {
-                    return NextResponse.json({ coordinates: [], fallback: true, reason: "NO_ROUTE" });
-                }
-            }
-
-            // --- 경로 추출 (모드별로 다른 구조 처리) ---
-            let path: Array<[number, number]> | undefined = undefined;
-
-            const route = data.route;
-
-            // ✅ 수정: Walking과 Driving 모두 동일한 구조 처리
-            // 응답 구조: { route: { traoptimal/trafast: [{ path: [[lng,lat], ...], summary: {...} }] } }
-
-            if (mode === "walking") {
-                // traoptimal 우선 확인
-                if (Array.isArray(route.traoptimal) && route.traoptimal.length > 0) {
-                    const routePath = route.traoptimal[0]?.path;
-                    if (Array.isArray(routePath) && routePath.length > 0) {
-                        path = routePath;
-                    }
-                }
-
-                // trafast 백업
-                if (!path && Array.isArray(route.trafast) && route.trafast.length > 0) {
-                    const routePath = route.trafast[0]?.path;
-                    if (Array.isArray(routePath) && routePath.length > 0) {
-                        path = routePath;
-                    }
-                }
-            } else {
-                // trafast 우선 확인
-                if (Array.isArray(route.trafast) && route.trafast.length > 0) {
-                    const routePath = route.trafast[0]?.path;
-                    if (Array.isArray(routePath) && routePath.length > 0) {
-                        path = routePath;
-                    }
-                }
-
-                // traoptimal 백업
-                if (!path && Array.isArray(route.traoptimal) && route.traoptimal.length > 0) {
-                    const routePath = route.traoptimal[0]?.path;
-                    if (Array.isArray(routePath) && routePath.length > 0) {
-                        path = routePath;
-                    }
-                }
-
-                // tracomfort 백업
-                if (!path && Array.isArray(route.tracomfort) && route.tracomfort.length > 0) {
-                    const routePath = route.tracomfort[0]?.path;
-                    if (Array.isArray(routePath) && routePath.length > 0) {
-                        path = routePath;
-                    }
-                }
-            }
-
-            // 백업: 모든 키를 순회하며 경로 찾기
-            if (!path) {
-                for (const key of Object.keys(route)) {
-                    const routeData = route[key];
-
-                    // 배열인지 확인
-                    if (Array.isArray(routeData) && routeData.length > 0) {
-                        const firstItem = routeData[0];
-
-                        // path 속성이 있는지 확인
-                        if (firstItem?.path && Array.isArray(firstItem.path) && firstItem.path.length > 0) {
-                            path = firstItem.path;
-                            break;
-                        }
-
-                        // 직접 좌표 배열인지 확인
-                        if (Array.isArray(firstItem) && firstItem.length === 2 && typeof firstItem[0] === "number") {
-                            path = routeData;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 🟢 경로를 찾았으면 반환, 너무 짧거나 없으면 직선 폴백
-            if (path && Array.isArray(path) && path.length > 2) {
+        // 🟢 최종 결과 반환
+        if (data.code === 0 && data.route?.traoptimal?.[0]) {
+            const source = response.url?.includes("direction-15") ? "Directions 15" : "Directions 5";
+            console.log(`✅ 경로 추출 성공 (${source}):`, data.route.traoptimal[0].path.length, "개 포인트");
                 return NextResponse.json({
-                    coordinates: path,
-                    summary: route.traoptimal?.[0]?.summary || route.trafast?.[0]?.summary,
+                coordinates: data.route.traoptimal[0].path,
+                summary: data.route.traoptimal[0].summary,
+                source, // 사용된 API 표시
                 });
             }
+
+        // trafast 백업 시도 (Directions 5에서 traoptimal이 없을 경우)
+        if (data.code === 0 && data.route?.trafast?.[0]) {
+            const source = "Directions 5 (trafast)";
+            console.log(`✅ 경로 추출 성공 (${source}):`, data.route.trafast[0].path.length, "개 포인트");
             return NextResponse.json({
-                coordinates: createFallbackPath(),
-                fallback: true,
-                reason: "TOO_CLOSE_OR_NO_ROUTE",
+                coordinates: data.route.trafast[0].path,
+                summary: data.route.trafast[0].summary,
+                source,
             });
-        } catch (fetchError: any) {
-            console.error("❌ API 요청 실패:", fetchError);
-            return NextResponse.json({ coordinates: [], fallback: true, error: fetchError.message });
         }
+
+        // 🔴 여기서 에러 코드가 무엇인지 서버 터미널에서 확인하세요.
+        // 예: 2001(출발지/도착지 동일), 2002(도로 주변 아님) 등
+        console.error("❌ 경로 검색 실패 상세:", data);
+        return NextResponse.json({ coordinates: [], fallback: true, error: data.message || "NO_ROUTE" });
     } catch (error: any) {
-        console.error("❌ Directions API error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("❌ API Error:", error.message);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

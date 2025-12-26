@@ -77,14 +77,6 @@ const CookiesPolicyPage = () => {
                         쿠키의 사용 목적과 관리 방법을 한눈에 확인할 수 있도록 정리했습니다.
                     </p>
 
-                    {/* 베타 서비스 안내 */}
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-                        <p className="text-sm text-blue-800">
-                            🚀 현재 베타 서비스 운영 중입니다. 정식 서비스 시작 시 더 상세한 쿠키 정책으로 업데이트될
-                            예정입니다.
-                        </p>
-                    </div>
-
                     <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
                         {/* 빠른 이동 */}
                         <div className="mb-6 flex flex-wrap gap-2">

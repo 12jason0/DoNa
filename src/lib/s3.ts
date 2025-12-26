@@ -60,12 +60,40 @@ export function getS3Bucket(): string {
     return getS3Config().bucket;
 }
 
+/**
+ * S3 객체의 공개 URL을 생성합니다.
+ * 
+ * CloudFront + OAC 설정 시:
+ * - S3_PUBLIC_BASE_URL 환경 변수에 CloudFront 도메인 설정
+ * - 예: S3_PUBLIC_BASE_URL=https://d1234567890abc.cloudfront.net
+ * 
+ * 이렇게 설정하면:
+ * 1. S3 버킷은 Private으로 유지 (보안)
+ * 2. CloudFront를 통해서만 접근 가능 (OAC)
+ * 3. CDN을 통한 빠른 이미지 로딩 (성능)
+ * 
+ * @param key - S3 객체 키 (경로)
+ * @returns 공개 접근 가능한 URL
+ */
 export function getS3PublicUrl(key: string): string {
     const { region, bucket } = getS3Config();
-    const customBase = process.env.S3_PUBLIC_BASE_URL; // e.g. https://cdn.example.com
+    
+    // CloudFront URL 우선 사용 (보안 및 성능 최적화)
+    const customBase = process.env.S3_PUBLIC_BASE_URL || process.env.CLOUDFRONT_DOMAIN;
     if (customBase) {
-        return `${customBase.replace(/\/$/, "")}/${key}`;
+        // 도메인만 있는 경우 https:// 추가
+        const baseUrl = customBase.startsWith("http") 
+            ? customBase 
+            : `https://${customBase}`;
+        return `${baseUrl.replace(/\/$/, "")}/${key}`;
     }
+    
+    // Fallback: S3 직접 URL (Private 버킷이면 접근 불가)
+    // ⚠️ 경고: CloudFront 설정 후에는 이 경로로 접근할 수 없습니다.
+    console.warn(
+        "[S3] S3_PUBLIC_BASE_URL이 설정되지 않았습니다. " +
+        "CloudFront URL을 사용하려면 환경 변수를 설정하세요."
+    );
     return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
 }
 

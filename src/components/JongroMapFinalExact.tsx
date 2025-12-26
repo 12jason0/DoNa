@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type FlowLike = {
     intro?: Array<{ ids?: number[] }>;
@@ -66,6 +67,8 @@ const THEME_LABEL_KO: Record<string, string> = {
 };
 
 export default function JongroMapFinalExact({ data }: Props) {
+    const searchParams = useSearchParams();
+    const storyId = Number(searchParams.get("id")) || 0;
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
     const [mapOverlay, setMapOverlay] = useState<boolean>(false);
@@ -453,7 +456,18 @@ export default function JongroMapFinalExact({ data }: Props) {
                 }
                 const form = new FormData();
                 files.forEach((f) => form.append("photos", f, f.name));
-                const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
+                
+                // 탈출방 업로드를 위한 파라미터 추가
+                if (storyId) {
+                    form.append("type", "escape");
+                    form.append("escapeId", storyId.toString());
+                }
+                
+                const uploadRes = await fetch("/api/upload", { 
+                    method: "POST", 
+                    body: form,
+                    credentials: "include", // 쿠키를 포함하여 userId를 서버에서 가져올 수 있도록
+                });
                 if (!uploadRes.ok) {
                     const err = await uploadRes.json().catch(() => ({} as any));
                     setValidationError(err?.message || "업로드에 실패했습니다.");

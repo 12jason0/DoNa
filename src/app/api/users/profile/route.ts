@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
                 createdAt: true,
                 mbti: true,
                 age: true,
+                ageRange: true,
+                gender: true,
                 couponCount: true,
                 subscriptionTier: true, // 🟢 camelCase 확인
                 hasSeenConsentModal: true,
@@ -51,6 +53,8 @@ export async function GET(request: NextRequest) {
             createdAt: user.createdAt,
             mbti: user.mbti,
             age: user.age,
+            ageRange: user.ageRange,
+            gender: user.gender,
             couponCount: user.couponCount ?? 0,
             subscriptionTier: user.subscriptionTier, // camelCase
             subscription_tier: user.subscriptionTier, // 🟢 snake_case 추가 (DB 대응)
@@ -84,12 +88,23 @@ export async function PUT(request: NextRequest) {
             body.age !== undefined && body.age !== null && String(body.age).trim() !== ""
                 ? Number.parseInt(String(body.age), 10)
                 : null;
+        const ageRange = typeof body.ageRange === "string" ? body.ageRange.trim() : undefined;
+        const gender = typeof body.gender === "string" ? body.gender.trim() : undefined;
 
         const data: any = {};
         if (name !== undefined) data.username = name;
         if (email !== undefined) data.email = email || null;
         if (mbti !== undefined) data.mbti = mbti || null;
         if (age !== undefined) data.age = age;
+        if (ageRange !== undefined) {
+            // 연령대 검증
+            const validAgeRanges = ["10대", "20대", "30대", "40대", "50대 이상"];
+            data.ageRange = validAgeRanges.includes(ageRange) ? ageRange : null;
+        }
+        if (gender !== undefined) {
+            // 성별 검증
+            data.gender = gender === "M" || gender === "F" ? gender : null;
+        }
 
         const updated = await prisma.user.update({ where: { id: userId }, data });
 
@@ -101,6 +116,8 @@ export async function PUT(request: NextRequest) {
                 name: updated.username,
                 mbti: updated.mbti,
                 age: updated.age,
+                ageRange: updated.ageRange,
+                gender: updated.gender,
                 createdAt: updated.createdAt,
                 subscriptionTier: updated.subscriptionTier, // 🟢 수정 후에도 등급이 유지되도록 추가
                 subscription_tier: updated.subscriptionTier, // 🟢 추가

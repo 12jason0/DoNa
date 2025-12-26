@@ -171,21 +171,65 @@ function GuidePageInner() {
     // Fetch Course
     useEffect(() => {
         if (!courseId) return;
+
         const fetchCourse = async () => {
             try {
-                const res = await fetch(`/api/courses/${courseId}`);
-                if (!res.ok) throw new Error("Failed");
-                const data = await res.json();
-                data.coursePlaces.sort((a: CoursePlace, b: CoursePlace) => a.order_index - b.order_index);
-                setCourse(data);
-            } catch (err) {
-                console.error(err);
+                // 🟢 가이드 페이지 전용 API 사용
+                const { apiFetch } = await import("@/lib/authClient");
+                const { data, response } = await apiFetch<Course>(`/api/courses/${courseId}/start`);
+
+                if (!response.ok) {
+                    const errorMessage = (data as any)?.error || `HTTP ${response.status}: ${response.statusText}`;
+                    console.error("Course API 응답 오류:", {
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: errorMessage,
+                        courseId,
+                    });
+                    throw new Error(errorMessage || "Failed to fetch course");
+                }
+
+                if (!data) {
+                    console.error("Course 데이터가 null입니다:", { courseId, response });
+                    throw new Error("Course data is null");
+                }
+
+                // 🟢 이제 TypeScript가 data.coursePlaces를 인식합니다.
+                const sortedPlaces = data.coursePlaces
+                    ? [...data.coursePlaces].sort((a, b) => a.order_index - b.order_index)
+                    : [];
+
+                // 정렬된 데이터를 포함하여 상태 업데이트
+                setCourse({
+                    ...data,
+                    coursePlaces: sortedPlaces,
+                });
+            } catch (err: any) {
+                console.error("Course load failed:", err);
+                console.error("에러 상세:", {
+                    message: err?.message,
+                    stack: err?.stack,
+                    courseId,
+                });
+                // 에러 발생 시 사용자에게 알림을 주거나 이전 페이지로 리다이렉트할 수 있습니다.
+                // 코스가 없거나 접근할 수 없는 경우 이전 페이지로 이동
+                if (err?.message?.includes("not found") || err?.message?.includes("404")) {
+                    alert("코스를 찾을 수 없습니다.");
+                    router.push("/");
+                } else if (err?.message?.includes("Locked") || err?.message?.includes("403")) {
+                    alert("이 코스는 프리미엄 멤버십이 필요합니다.");
+                    router.push(`/courses/${courseId}`);
+                } else {
+                    alert("코스를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.");
+                    router.push(`/courses/${courseId}`);
+                }
             } finally {
                 setLoading(false);
             }
         };
+
         fetchCourse();
-    }, [courseId]);
+    }, [courseId, router]);
 
     // Geolocation
     useEffect(() => {

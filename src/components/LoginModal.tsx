@@ -24,8 +24,11 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
         try {
             sessionStorage.setItem("auth:loggingIn", "1");
             const redirectPath = next || pathname || "/personalized-home";
+            // 모달을 먼저 닫고 페이지 이동
+            onClose();
             router.push(`/login?next=${encodeURIComponent(redirectPath)}`);
         } catch {
+            onClose();
             window.location.href = "/login";
         }
     };

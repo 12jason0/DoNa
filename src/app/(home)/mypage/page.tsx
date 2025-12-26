@@ -45,7 +45,7 @@ const MyPage = () => {
 
     // Modal States
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editForm, setEditForm] = useState({ name: "", email: "", mbti: "", age: "" });
+    const [editForm, setEditForm] = useState({ name: "", email: "", mbti: "", age: "", ageRange: "", gender: "" });
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState("");
 
@@ -66,22 +66,26 @@ const MyPage = () => {
     const [pwLoading, setPwLoading] = useState(false);
     const [pwError, setPwError] = useState("");
 
-    // ----- Data Fetching Logic (기존 유지) -----
+    // 🟢 Data Fetching Logic (성능 최적화: 병렬 처리)
     useEffect(() => {
-        // 🟢 fetchUserInfo가 먼저 실행되어 인증 상태를 확인한 후, 성공하면 나머지 데이터 로드
-        // fetchUserInfo에서 401이면 router.push("/login")을 하므로 다른 fetch는 실행되지 않음
+        // 🟢 fetchUserInfo가 먼저 실행되어 인증 상태를 확인한 후, 성공하면 나머지 데이터 병렬 로드
         fetchUserInfo().then((shouldContinue) => {
-            // fetchUserInfo가 성공한 경우에만 나머지 데이터 로드
+            // fetchUserInfo가 성공한 경우에만 나머지 데이터 병렬 로드
             if (shouldContinue) {
-                fetchUserPreferences();
-                fetchFavorites();
-                fetchSavedCourses();
-                fetchBadges();
-                fetchCompleted();
-                fetchCasefiles();
-                fetchRewards();
-                fetchCheckins();
-                fetchPayments();
+                // 🟢 성능 최적화: 모든 데이터를 병렬로 로드 (Promise.all 사용)
+                Promise.all([
+                    fetchUserPreferences(),
+                    fetchFavorites(),
+                    fetchSavedCourses(),
+                    fetchBadges(),
+                    fetchCompleted(),
+                    fetchCasefiles(),
+                    fetchRewards(),
+                    fetchCheckins(),
+                    fetchPayments(),
+                ]).catch((error) => {
+                    console.error("[MyPage] 데이터 로드 중 일부 실패:", error);
+                });
             }
         });
 
@@ -167,6 +171,8 @@ const MyPage = () => {
                 profileImage: convertToHttps(profileImageUrl),
                 mbti: src.mbti ?? null,
                 age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
+                ageRange: src.ageRange || src.age_range || null,
+                gender: src.gender || null,
                 subscriptionTier: tier, // 🟢 확정된 등급 삽입
                 subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
             };
@@ -186,7 +192,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/badges");
+            const { data, response } = await apiFetch<any>("/api/users/badges", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (data) {
                 const list = Array.isArray((data as any)?.badges)
@@ -213,7 +222,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data: raw, response } = await apiFetch<any>("/api/users/preferences");
+            const { data: raw, response } = await apiFetch<any>("/api/users/preferences", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (raw) {
                 const prefs: any = (raw as any)?.preferences ?? raw ?? {};
@@ -272,7 +284,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/casefiles");
+            const { data, response } = await apiFetch<any>("/api/users/casefiles", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (data) {
                 const list = Array.isArray((data as any)?.items)
@@ -304,7 +319,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/me/courses");
+            const { data, response } = await apiFetch<any>("/api/users/me/courses", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (data) {
                 setSavedCourses((data as any).savedCourses || []);
@@ -318,7 +336,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data: raw, response } = await apiFetch<any>("/api/users/favorites");
+            const { data: raw, response } = await apiFetch<any>("/api/users/favorites", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (raw) {
                 const arr = Array.isArray((raw as any)?.favorites)
@@ -364,15 +385,26 @@ const MyPage = () => {
                 console.log("[MyPage] 완료 코스 데이터:", coursesList);
 
                 setCompleted(
-                    coursesList.map((c: any) => ({
-                        course_id: c.courseId || c.course_id || c.course?.id || c.id,
-                        title: c.course?.title || c.title || "",
-                        description: c.course?.description || c.description || "",
-                        imageUrl: c.course?.imageUrl || c.course?.image_url || c.imageUrl || c.image_url || "",
-                        rating: Number(c.rating ?? 0),
-                        concept: c.course?.concept || c.concept || "",
-                        completedAt: c.completedAt || c.completed_at || null,
-                    }))
+                    coursesList.map((c: any) => {
+                        // 코스 이미지가 없으면 첫 번째 장소의 이미지 사용
+                        const courseImageUrl =
+                            c.course?.imageUrl || c.course?.image_url || c.imageUrl || c.image_url || "";
+                        const firstPlaceImageUrl =
+                            c.course?.coursePlaces?.[0]?.place?.imageUrl ||
+                            c.course?.coursePlaces?.[0]?.place?.image_url ||
+                            "";
+                        const finalImageUrl = courseImageUrl || firstPlaceImageUrl || "";
+
+                        return {
+                            course_id: c.courseId || c.course_id || c.course?.id || c.id,
+                            title: c.course?.title || c.title || "",
+                            description: c.course?.description || c.description || "",
+                            imageUrl: finalImageUrl,
+                            rating: Number(c.rating ?? 0),
+                            concept: c.course?.concept || c.concept || "",
+                            completedAt: c.completedAt || c.completed_at || null,
+                        };
+                    })
                 );
             } else {
                 console.error("[MyPage] 완료 코스 조회 실패");
@@ -388,7 +420,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/rewards");
+            const { data, response } = await apiFetch<any>("/api/users/rewards", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if ((data as any)?.success) setRewards((data as any).rewards || []);
         } catch {}
@@ -410,7 +445,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/payments/history");
+            const { data, response } = await apiFetch<any>("/api/payments/history", {
+                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
+                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (data) {
                 setPayments((data as any).payments || []);
@@ -462,6 +500,8 @@ const MyPage = () => {
                 email: userInfo.email || "",
                 mbti: userInfo.mbti || "",
                 age: userInfo.age?.toString() || "",
+                ageRange: userInfo.ageRange || "",
+                gender: userInfo.gender || "",
             });
             setShowEditModal(true);
             setEditError("");
@@ -486,6 +526,8 @@ const MyPage = () => {
                     email: editForm.email,
                     mbti: editForm.mbti || null,
                     age: editForm.age ? parseInt(editForm.age) : null,
+                    ageRange: editForm.ageRange || null,
+                    gender: editForm.gender || null,
                 });
                 setShowEditModal(false);
                 alert("프로필이 성공적으로 수정되었습니다.");
@@ -1005,6 +1047,37 @@ const MyPage = () => {
                                     max="120"
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">연령대 <span className="text-red-500">*</span></label>
+                                <select
+                                    name="ageRange"
+                                    value={editForm.ageRange || ""}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                >
+                                    <option value="">선택</option>
+                                    <option value="10대">10대</option>
+                                    <option value="20대">20대</option>
+                                    <option value="30대">30대</option>
+                                    <option value="40대">40대</option>
+                                    <option value="50대 이상">50대 이상</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
+                                <select
+                                    name="gender"
+                                    value={editForm.gender || ""}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                >
+                                    <option value="">선택</option>
+                                    <option value="M">남성</option>
+                                    <option value="F">여성</option>
+                                </select>
                             </div>
                             <div className="flex space-x-3">
                                 <button

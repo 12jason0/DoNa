@@ -2834,6 +2834,11 @@ function EscapeIntroPageInner() {
 
                 const formData = new FormData();
                 compressedFiles.forEach((f) => formData.append("photos", f, f.name));
+                
+                // 탈출방 업로드를 위한 파라미터 추가
+                formData.append("type", "escape");
+                formData.append("escapeId", storyId.toString());
+                
                 try {
                     console.log(
                         "[Upload] files",

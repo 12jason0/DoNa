@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getS3Bucket, getS3Client, getS3PublicUrl } from "@/lib/s3";
+import { resolveUserId } from "@/lib/auth";
 import { randomBytes } from "crypto";
 
 export const runtime = "nodejs";
@@ -10,14 +11,49 @@ export async function POST(request: NextRequest) {
 
     try {
         const form = await request.formData();
-        const files = form.getAll("photos") as File[];
+        const formFiles = form.getAll("photos");
+        const files: File[] = [];
+
+        for (const item of formFiles) {
+            if (item instanceof File) {
+                files.push(item);
+            }
+        }
 
         if (!files || files.length === 0) {
             console.log("[/api/upload] No files found in the request."); // 로그 추가
             return NextResponse.json({ message: "업로드할 파일이 없습니다." }, { status: 400 });
         }
 
+        // 타입, userId, courseId/escapeId 파라미터 가져오기
+        const typeValue = (form as any).get("type") as FormDataEntryValue | null;
+        const type = typeValue instanceof File ? null : typeValue?.toString() || null; // "review" or "escape"
+        const userIdValue = (form as any).get("userId") as FormDataEntryValue | null;
+        const userId = resolveUserId(request) || (userIdValue instanceof File ? null : userIdValue?.toString() || null);
+        const courseIdValue = (form as any).get("courseId") as FormDataEntryValue | null;
+        const courseId = courseIdValue instanceof File ? null : courseIdValue?.toString() || null;
+        const escapeIdValue = (form as any).get("escapeId") as FormDataEntryValue | null;
+        const escapeId = escapeIdValue instanceof File ? null : escapeIdValue?.toString() || null;
+
+        // 타입이 지정된 경우 필수 파라미터 검증
+        if (type === "review") {
+            if (!userId || !courseId) {
+                return NextResponse.json(
+                    { message: "리뷰 업로드에는 userId와 courseId가 필요합니다." },
+                    { status: 400 }
+                );
+            }
+        } else if (type === "escape") {
+            if (!userId || !escapeId) {
+                return NextResponse.json(
+                    { message: "탈출방 업로드에는 userId와 escapeId가 필요합니다." },
+                    { status: 400 }
+                );
+            }
+        }
+
         console.log(`[/api/upload] Found ${files.length} file(s) to process.`); // 로그 추가
+        console.log(`[/api/upload] Type: ${type}, UserId: ${userId}, CourseId: ${courseId}, EscapeId: ${escapeId}`);
 
         const s3 = getS3Client();
         const bucket = getS3Bucket();
@@ -25,6 +61,8 @@ export async function POST(request: NextRequest) {
         console.log(`[/api/upload] Attempting to upload to S3 bucket: ${bucket}`); // 로그 추가
 
         const uploadedUrls: string[] = [];
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD 형식
+
         for (const file of files) {
             const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -35,9 +73,18 @@ export async function POST(request: NextRequest) {
             const safeExt = originalExt.replace(/[^a-z0-9]/g, "").slice(0, 10);
 
             const uniqueFileName = `${Date.now()}-${randomBytes(8).toString("hex")}.${safeExt}`;
-            const key = `uploads/${new Date().toISOString().slice(0, 10)}/${uniqueFileName}`;
 
-            // ❗ 어떤 Key가 생성되었는지 로그로 확인
+            // 경로 생성: 타입에 따라 다른 경로 사용
+            let key: string;
+            if (type === "review" && userId && courseId) {
+                key = `reviews/user_${userId}/course_${courseId}/${dateStr}_${uniqueFileName}`;
+            } else if (type === "escape" && userId && escapeId) {
+                key = `escape/user_${userId}/escape_${escapeId}/${dateStr}_${uniqueFileName}`;
+            } else {
+                // 타입이 지정되지 않은 경우 기존 형식 유지 (하위 호환성)
+                key = `uploads/${dateStr}/${uniqueFileName}`;
+            }
+
             console.log(`[/api/upload] Generated S3 Key: ${key}`);
             console.log(`[/api/upload] File MIME type: ${file.type}`);
 
@@ -57,7 +104,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, photo_urls: uploadedUrls });
     } catch (error: any) {
-        // ❗ 어떤 오류가 발생했는지 정확히 로그로 확인
         console.error("[/api/upload] CRITICAL ERROR:", error);
         console.error("[/api/upload] Error Name:", error.name);
         console.error("[/api/upload] Error Message:", error.message);

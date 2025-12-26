@@ -49,13 +49,6 @@ export default function TermsOfServicePage() {
                                 저작권
                             </a>
                         </div>
-                        {/* 베타 서비스 안내 */}
-                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-                            <p className="text-sm text-blue-800">
-                                🚀 현재 베타 서비스 운영 중입니다. 중소벤처기업부 스타트업 가이드라인을 참고하여
-                                작성하였으며, 정식 서비스 전환 시 전문가 검토를 통해 보완할 예정입니다.
-                            </p>
-                        </div>
 
                         <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제1조 (목적)</h2>
                         <p className="text-gray-700 mb-6">
@@ -105,14 +98,43 @@ export default function TermsOfServicePage() {
                         <h2 id="service" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
                             제4조 (서비스의 제공)
                         </h2>
+                        <p className="text-gray-700 mb-4">
+                            DoNa는 사용자 맞춤형 추천을 기반으로 한 서비스를 제공합니다. 서비스 품질 향상 및 사용자
+                            맞춤형 추천 서비스 제공을 위해 사용자의 서비스 이용 기록(코스 조회, 클릭, 좋아요, 체류 시간
+                            등)을 수집하고 활용할 수 있으며, 이러한 데이터 활용은 서비스의 핵심 기능을 수행하기 위한
+                            필수적인 과정입니다.
+                        </p>
                         <p className="text-gray-700 mb-4">서비스는 다음과 같은 업무를 제공합니다.</p>
                         <ul className="list-disc pl-6 mb-6 text-gray-700 space-y-1">
                             <li>AI 기반 여행 코스 추천 서비스</li>
+                            <li>사용자 활동 패턴 분석을 통한 맞춤형 데이트 코스 추천</li>
+                            <li>탈출방 게임 추천 및 진행 관리</li>
                             <li>지역별 맛집, 카페, 관광지 정보 제공</li>
                             <li>사용자 맞춤형 여행 경로 생성</li>
                             <li>여행 후기 및 평점 서비스</li>
                             <li>지도 기반 장소 검색 및 안내</li>
                             <li>기타 여행 관련 부가 서비스</li>
+                        </ul>
+
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">제4-1조 (정보의 제공 및 활용)</h3>
+                        <ul className="list-disc pl-6 mb-6 text-gray-700 space-y-2">
+                            <li>
+                                회사는 서비스 품질 향상 및 사용자 맞춤형 서비스 제공을 위해 사용자의 서비스 이용
+                                기록(코스 조회, 클릭, 좋아요, 공유, 체류 시간, 검색 기록 등)을 수집하고 활용할 수
+                                있습니다.
+                            </li>
+                            <li>
+                                수집된 이용 기록은 다음 목적으로 활용됩니다:
+                                <ul className="list-disc pl-6 mt-2 space-y-1">
+                                    <li>사용자 맞춤형 데이트 코스 및 탈출방 추천 서비스 제공</li>
+                                    <li>서비스 이용 패턴 분석을 통한 추천 알고리즘 개선</li>
+                                    <li>서비스 통계 분석 및 기능 개선</li>
+                                </ul>
+                            </li>
+                            <li>
+                                이용 기록의 구체적인 수집 항목, 수집 목적, 보유 기간 등은 개인정보처리방침에 따르며,
+                                회원은 개인정보처리방침에서 해당 내용을 확인할 수 있습니다.
+                            </li>
                         </ul>
 
                         <h2 id="signup" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">

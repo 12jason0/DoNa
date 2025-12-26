@@ -115,6 +115,21 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "평점은 1부터 5까지의 정수만 가능합니다." }, { status: 400 });
         }
 
+        // [단계 1] 코스를 실제로 완료했는지 먼저 확인 (분리의 핵심)
+        const isCompleted = await prisma.completedCourse.findFirst({
+            where: { userId: numericUserId, courseId: numericCourseId },
+        });
+
+        if (!isCompleted) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "코스를 완료한 후에만 리뷰 보상을 받을 수 있습니다! 🏃‍♂️",
+                },
+                { status: 400 }
+            );
+        }
+
         // [기능 개선] 중복 리뷰 체크 (같은 사용자가 같은 코스에 리뷰를 여러 번 작성하는 것 방지)
         const existingReview = await prisma.review.findFirst({
             where: {
@@ -123,28 +138,6 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        if (existingReview) {
-            // 기존 리뷰가 있으면 업데이트
-            const finalComment: string =
-                typeof comment === "string" && comment.trim().length > 0
-                    ? comment.trim()
-                    : typeof content === "string"
-                    ? content.trim()
-                    : "";
-
-            const updatedReview = await prisma.review.update({
-                where: { id: existingReview.id },
-                data: {
-                    rating: numericRating,
-                    comment: finalComment,
-                    imageUrls: Array.isArray(imageUrls) ? imageUrls : existingReview.imageUrls || [],
-                },
-            });
-
-            return NextResponse.json(updatedReview, { status: 200 });
-        }
-        // --- 👆 여기까지 추가 ---
-
         const finalComment: string =
             typeof comment === "string" && comment.trim().length > 0
                 ? comment.trim()
@@ -152,17 +145,100 @@ export async function POST(request: NextRequest) {
                 ? content.trim()
                 : "";
 
-        const newReview = await prisma.review.create({
-            data: {
-                userId: numericUserId,
-                courseId: numericCourseId,
-                rating: numericRating,
-                comment: finalComment,
-                imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
-            },
+        // 🟢 트랜잭션으로 리뷰 저장 + 쿠폰 지급 처리
+        const result = await prisma.$transaction(async (tx) => {
+            let review;
+            let isNewReview = false;
+
+            if (existingReview) {
+                // 기존 리뷰가 있으면 업데이트
+                review = await tx.review.update({
+                    where: { id: existingReview.id },
+                    data: {
+                        rating: numericRating,
+                        comment: finalComment,
+                        imageUrls: Array.isArray(imageUrls) ? imageUrls : existingReview.imageUrls || [],
+                    },
+                });
+            } else {
+                // 새 리뷰 생성
+                review = await tx.review.create({
+                    data: {
+                        userId: numericUserId,
+                        courseId: numericCourseId,
+                        rating: numericRating,
+                        comment: finalComment,
+                        imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
+                    },
+                });
+                isNewReview = true;
+            }
+
+            // [단계 3] 새 리뷰 작성 시에만 쿠폰 지급 체크
+            let couponAwarded = false;
+            let reviewCount = 0;
+
+            if (isNewReview) {
+                // 리뷰 작성한 코스 개수 확인 (중복 제거)
+                const reviews = await tx.review.findMany({
+                    where: { userId: numericUserId },
+                    select: { courseId: true },
+                });
+                const uniqueCourseIds = new Set(reviews.map((r) => r.courseId));
+                reviewCount = uniqueCourseIds.size;
+
+                // 🟢 리뷰 작성한 코스가 5개가 되면 쿠폰 1개 지급 (5, 10, 15, 20...)
+                if (reviewCount % 5 === 0 && reviewCount > 0) {
+                    // 중복 지급 방지: 이미 해당 마일스톤에 대한 보상이 지급되었는지 확인
+                    const milestoneRewardExists = await tx.userReward.findFirst({
+                        where: {
+                            userId: numericUserId,
+                            type: "course_completion_milestone" as any,
+                            amount: reviewCount / 5, // 몇 번째 마일스톤인지 (1, 2, 3...)
+                        },
+                    });
+
+                    if (!milestoneRewardExists) {
+                        // 쿠폰 지급
+                        await tx.user.update({
+                            where: { id: numericUserId },
+                            data: { couponCount: { increment: 1 } },
+                        });
+
+                        // 보상 기록 저장 (리뷰 보상)
+                        await tx.userReward.create({
+                            data: {
+                                userId: numericUserId,
+                                courseId: numericCourseId,
+                                type: "course_completion_milestone" as any,
+                                amount: reviewCount / 5,
+                                unit: "coupon" as any,
+                            },
+                        } as any);
+
+                        couponAwarded = true;
+                    }
+                }
+            }
+
+            return { review, couponAwarded, isNewReview, reviewCount };
         });
 
-        return NextResponse.json(newReview, { status: 201 });
+        // 응답 반환
+        if (result.isNewReview) {
+            return NextResponse.json(
+                {
+                    ...result.review,
+                    couponAwarded: result.couponAwarded,
+                    message: result.couponAwarded
+                        ? `다녀온 코스에 리뷰를 5개 남기면 쿠폰을 드려요! 현재 ${result.reviewCount}개 작성 완료`
+                        : undefined,
+                },
+                { status: 201 }
+            );
+        } else {
+            return NextResponse.json(result.review, { status: 200 });
+        }
     } catch (error) {
         // [보안] 상세한 에러 메시지는 서버 로그에만 기록하고, 클라이언트에는 일반적인 메시지만 반환
         console.error("리뷰 생성 오류:", error);

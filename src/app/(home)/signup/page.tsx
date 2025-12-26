@@ -1,11 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { getSafeRedirectPath } from "@/lib/redirect";
 
 const Signup = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    // next 파라미터가 없으면 메인 페이지로 이동
+    const nextParam = searchParams.get("next");
+    const next = nextParam ? getSafeRedirectPath(nextParam, "/") : "/";
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -14,6 +19,7 @@ const Signup = () => {
         phone: "",
         birthday: "",
         ageRange: "",
+        gender: "",
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -47,6 +53,16 @@ const Signup = () => {
             setLoading(false);
             return;
         }
+        if (!formData.ageRange) {
+            setError("연령대를 선택해주세요.");
+            setLoading(false);
+            return;
+        }
+        if (!formData.gender) {
+            setError("성별을 선택해주세요.");
+            setLoading(false);
+            return;
+        }
 
         try {
             const response = await fetch("/api/auth/signup", {
@@ -58,9 +74,23 @@ const Signup = () => {
                     nickname: formData.nickname.trim(),
                     phone: formData.phone.trim() || undefined,
                     birthday: formData.birthday.trim() || undefined,
-                    ageRange: formData.ageRange || undefined,
+                    ageRange: formData.ageRange,
+                    gender: formData.gender,
+                    next, // next 파라미터 전달
                 }),
             });
+
+                    // 리다이렉트 응답인 경우 자동으로 처리됨
+            if (response.redirected || response.url) {
+                try {
+                    localStorage.setItem("userCoupons", "2");
+                    localStorage.setItem("userCoins", "2");
+                } catch {}
+                // 서버에서 리다이렉트 처리됨 (next가 없으면 메인 페이지 "/"로)
+                const redirectPath = response.url || next || "/";
+                window.location.href = redirectPath;
+                return;
+            }
 
             const data = await response.json();
 
@@ -69,7 +99,10 @@ const Signup = () => {
                     localStorage.setItem("userCoupons", "2");
                     localStorage.setItem("userCoins", "2");
                 } catch {}
-                router.push("/login?message=회원가입이 완료되었습니다. 로그인해주세요.");
+                // 회원가입 후 원래 가려던 페이지로 리다이렉트 (로그인은 이미 자동 완료됨)
+                // next가 없으면 메인 페이지 "/"로 이동
+                const redirectPath = next || "/";
+                router.replace(redirectPath);
             } else {
                 setError(data.error || "회원가입에 실패했습니다.");
             }
@@ -81,9 +114,6 @@ const Signup = () => {
         }
     };
 
-    const handleSocialSignup = async (provider: "kakao") => {
-        console.log("Social signup:", provider);
-    };
 
     return (
         // 배경: 아주 연한 회색으로 깔끔하게 (초록색이 돋보이게 함)
@@ -116,7 +146,9 @@ const Signup = () => {
                 <div className="mt-6">
                     <button
                         type="button"
-                        onClick={() => handleSocialSignup("kakao")}
+                        onClick={() => {
+                            window.location.href = `/api/auth/kakao?next=${encodeURIComponent(next)}`;
+                        }}
                         disabled={loading}
                         className="w-full flex items-center justify-center px-4 py-4 border border-transparent rounded-2xl shadow-sm text-[15px] font-bold text-[#3C1E1E] bg-[#FEE500] hover:bg-[#FDD835] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FEE500] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -208,6 +240,47 @@ const Signup = () => {
                         />
                     </div>
 
+                    {/* 연령대 */}
+                    <div>
+                        <label htmlFor="ageRange" className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">
+                            연령대 <span className="text-emerald-500">*</span>
+                        </label>
+                        <select
+                            id="ageRange"
+                            name="ageRange"
+                            required
+                            value={formData.ageRange}
+                            onChange={handleChange}
+                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm tracking-tight"
+                        >
+                            <option value="">연령대를 선택해주세요</option>
+                            <option value="10대">10대</option>
+                            <option value="20대">20대</option>
+                            <option value="30대">30대</option>
+                            <option value="40대">40대</option>
+                            <option value="50대 이상">50대 이상</option>
+                        </select>
+                    </div>
+
+                    {/* 성별 */}
+                    <div>
+                        <label htmlFor="gender" className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">
+                            성별 <span className="text-emerald-500">*</span>
+                        </label>
+                        <select
+                            id="gender"
+                            name="gender"
+                            required
+                            value={formData.gender}
+                            onChange={handleChange}
+                            className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all font-medium sm:text-sm tracking-tight"
+                        >
+                            <option value="">성별을 선택해주세요</option>
+                            <option value="M">남성</option>
+                            <option value="F">여성</option>
+                        </select>
+                    </div>
+
                     <div className="pt-4">
                         {/* ✅ 버튼: 두나의 메인 컬러(Emerald-600) 적용 */}
                         <button
@@ -251,7 +324,7 @@ const Signup = () => {
                     <p className="text-sm text-gray-500 font-medium">
                         이미 계정이 있으신가요? {/* 로그인 링크도 두나 그린 컬러 */}
                         <Link
-                            href="/login"
+                            href={`/login?next=${encodeURIComponent(next)}`}
                             className="font-bold text-emerald-600 hover:text-emerald-700 transition-colors ml-1"
                         >
                             로그인하기

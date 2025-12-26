@@ -3,7 +3,7 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth"; // 🟢 쿠키 기반 인증 통일
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300; // 5분 캐싱
+export const revalidate = 60; // 🟢 1분 캐싱으로 단축 (성능 최적화)
 
 // 공공데이터포털 인증 키
 const PUBLIC_DATA_API_KEY = process.env.KMA_API_KEY || process.env.AIRKOREA_API_KEY;
@@ -128,8 +128,16 @@ function calculateMoodMatch(courseTags: any, longTermMoods: string[], moodToday:
 
 function calculateRegionMatch(courseRegion: string | null, longTermRegions: string[], regionToday: string): number {
     if (!courseRegion) return 0;
-    if (regionToday) return courseRegion.includes(regionToday) || regionToday.includes(courseRegion) ? 1.0 : 0;
-    return longTermRegions.some((r) => courseRegion.includes(r) || r.includes(courseRegion)) ? 0.8 : 0.3;
+    // 🟢 regionToday가 있으면 우선 적용 (오늘 선택한 지역이 최우선)
+    if (regionToday) {
+        return courseRegion.includes(regionToday) || regionToday.includes(courseRegion) ? 1.0 : 0;
+    }
+    // 🟢 관심 지역(longTermRegions)이 있으면 그것을 중심으로 추천 (0.8 점수 부여)
+    if (longTermRegions && longTermRegions.length > 0) {
+        return longTermRegions.some((r) => courseRegion.includes(r) || r.includes(courseRegion)) ? 0.8 : 0.3;
+    }
+    // 관심 지역이 없으면 기본 점수
+    return 0.3;
 }
 
 function calculateGoalMatch(courseTags: any, goal: string, companionToday: string): number {

@@ -10,6 +10,7 @@ import NotificationModal from "@/components/NotificationModal";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import KakaoChannelModal from "@/components/KakaoChannelModal";
 import LogoutModal from "@/components/LogoutModal";
+import LoginModal from "@/components/LoginModal";
 
 // 🟢 [추가] 로그아웃 스플래시 UI
 const LogoutSplash = () => (
@@ -39,6 +40,7 @@ const Header = () => {
     const [showComingSoon, setShowComingSoon] = useState<null | string>(null);
     const [showNotiModal, setShowNotiModal] = useState(false);
     const [showKakaoChannelModal, setShowKakaoChannelModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     const pathname = usePathname();
     const router = useRouter();
@@ -265,7 +267,11 @@ const Header = () => {
                             <button
                                 onClick={() => {
                                     closeMenu();
-                                    setShowComingSoon("escape");
+                                    if (isLoggedIn) {
+                                        setShowComingSoon("escape");
+                                    } else {
+                                        setShowLoginModal(true);
+                                    }
                                 }}
                                 className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:bg-gray-50 flex items-center gap-2"
                             >
@@ -371,6 +377,7 @@ const Header = () => {
             {isLoggedIn && showKakaoChannelModal && (
                 <KakaoChannelModal onClose={() => setShowKakaoChannelModal(false)} />
             )}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
         </>
     );
 };

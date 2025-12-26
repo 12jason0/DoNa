@@ -3,6 +3,14 @@
 import React, { useState, useRef } from "react";
 import Image from "@/components/ImageFallback";
 
+// 🟢 1. 서버 응답 데이터의 타입을 정의합니다.
+interface ReviewResponse {
+    success?: boolean;
+    couponAwarded?: boolean;
+    message?: string;
+    error?: string;
+}
+
 interface ReviewModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -21,15 +29,18 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
     const [error, setError] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // 🟢 2. 후기 제출 함수 (쿠폰 지급 로직 포함)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setError("");
 
         try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            // 쿠키 기반 인증: authenticatedFetch 동적 임포트
             const { authenticatedFetch } = await import("@/lib/authClient");
-            const response = await authenticatedFetch("/api/reviews", {
+
+            // API 호출 및 타입 캐스팅 (as ReviewResponse)
+            const data = (await authenticatedFetch("/api/reviews", {
                 method: "POST",
                 body: JSON.stringify({
                     courseId,
@@ -38,31 +49,37 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     content: content.trim(),
                     imageUrls: images,
                 }),
-            });
+            })) as ReviewResponse;
 
-            const data = await response.json();
+            // 응답 데이터 기반 처리
+            if (data && !data.error) {
+                // 🎁 서버에서 보낸 쿠폰 지급 여부에 따른 알림 처리 (리뷰 5개 마일스톤)
+                if (data.couponAwarded) {
+                    alert(data.message || "🎁 리뷰 5개 작성을 축하합니다! 쿠폰이 지급되었습니다.");
+                } else {
+                    alert("후기가 성공적으로 작성되었습니다!");
+                }
 
-            if (response.ok) {
-                alert("후기가 성공적으로 작성되었습니다!");
-                onClose();
+                handleClose(); // 상태 초기화 및 모달 닫기
                 // 후기 목록 새로고침을 위한 이벤트 발생
                 window.dispatchEvent(new CustomEvent("reviewSubmitted"));
             } else {
-                setError(data.error || "후기 작성에 실패했습니다.");
+                // 서버 에러 메시지 표시
+                setError(data?.error || data?.message || "후기 작성에 실패했습니다.");
             }
-        } catch (error) {
-            console.error("후기 작성 오류:", error);
+        } catch (err) {
+            console.error("후기 작성 오류:", err);
             setError("후기 작성 중 오류가 발생했습니다.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    // 🟢 3. 이미지 업로드 함수 (S3 연동)
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        // 최대 5개까지만 업로드 가능
         const filesToUpload = Array.from(files).slice(0, 5 - images.length);
         if (filesToUpload.length === 0) {
             setError("최대 5개까지 사진을 업로드할 수 있습니다.");
@@ -75,20 +92,21 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                // 파일 크기 검증 (5MB 제한)
-                if (file.size > 5 * 1024 * 1024) {
-                    throw new Error(`${file.name}의 크기가 5MB를 초과합니다.`);
-                }
-                // 파일 타입 검증
-                if (!file.type.startsWith("image/")) {
-                    throw new Error(`${file.name}은(는) 이미지 파일이 아닙니다.`);
-                }
+                if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name}의 크기가 5MB를 초과합니다.`);
+                if (!file.type.startsWith("image/")) throw new Error(`${file.name}은(는) 이미지 파일이 아닙니다.`);
                 formData.append("photos", file);
             });
+
+            // 리뷰 업로드를 위한 파라미터 추가
+            if (courseId) {
+                formData.append("type", "review");
+                formData.append("courseId", courseId.toString());
+            }
 
             const response = await fetch("/api/upload", {
                 method: "POST",
                 body: formData,
+                credentials: "include", // 쿠키를 포함하여 userId를 서버에서 가져올 수 있도록
             });
 
             const data = await response.json();
@@ -103,10 +121,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
             setError(error.message || "이미지 업로드 중 오류가 발생했습니다.");
         } finally {
             setUploadingImages(false);
-            // 파일 입력 초기화
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
@@ -114,15 +129,14 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
         setImages(images.filter((_, i) => i !== index));
     };
 
+    // 🟢 4. 모달 닫기 및 초기화 함수
     const handleClose = () => {
         if (!isSubmitting) {
             setRating(5);
             setContent("");
             setImages([]);
             setError("");
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
+            if (fileInputRef.current) fileInputRef.current.value = "";
             onClose();
         }
     };
@@ -130,9 +144,10 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-hidden">
-            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-hidden">
+            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-xl">
                 <div className="p-6 min-w-0">
+                    {/* 헤더 */}
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-gray-900 tracking-tight">후기 작성하기</h2>
                         <button
@@ -140,12 +155,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                             disabled={isSubmitting}
                             className="text-gray-400 hover:text-gray-600 transition-colors"
                         >
-                            <svg
-                                className="hover:cursor-pointer w-6 h-6"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -157,7 +167,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     </div>
 
                     {/* 대상 정보 */}
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg min-w-0">
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                         <p className="text-sm text-gray-600 mb-1">후기 대상</p>
                         <p className="font-medium text-gray-900 break-words">
                             {courseName || placeName || "알 수 없는 대상"}
@@ -180,7 +190,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                         key={star}
                                         type="button"
                                         onClick={() => setRating(star)}
-                                        className={`hover:cursor-pointer text-2xl transition-colors ${
+                                        className={`text-2xl transition-colors ${
                                             star <= rating ? "text-yellow-400" : "text-gray-300"
                                         }`}
                                     >
@@ -204,7 +214,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                 minLength={10}
                                 maxLength={500}
                                 rows={4}
-                                className="text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                className="text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none"
                                 placeholder="이 곳에 대한 솔직한 후기를 작성해주세요. (최소 10자)"
                             />
                             <div className="mt-1 text-right">
@@ -218,7 +228,6 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">사진 추가 (선택)</label>
                             <div className="space-y-3">
-                                {/* 이미지 미리보기 */}
                                 {images.length > 0 && (
                                     <div className="grid grid-cols-3 gap-2">
                                         {images.map((url, index) => (
@@ -235,82 +244,24 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveImage(index)}
-                                                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                                                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center"
                                                 >
-                                                    <svg
-                                                        className="w-4 h-4"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M6 18L18 6M6 6l12 12"
-                                                        />
-                                                    </svg>
+                                                    ✕
                                                 </button>
                                             </div>
                                         ))}
                                     </div>
                                 )}
-
-                                {/* 업로드 버튼 */}
                                 {images.length < 5 && (
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploadingImages}
-                                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600"
+                                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 flex items-center justify-center gap-2 text-gray-600 disabled:opacity-50"
                                     >
-                                        {uploadingImages ? (
-                                            <>
-                                                <svg
-                                                    className="animate-spin h-5 w-5"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <circle
-                                                        className="opacity-25"
-                                                        cx="12"
-                                                        cy="12"
-                                                        r="10"
-                                                        stroke="currentColor"
-                                                        strokeWidth="4"
-                                                    ></circle>
-                                                    <path
-                                                        className="opacity-75"
-                                                        fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                    ></path>
-                                                </svg>
-                                                <span className="text-sm">업로드 중...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg
-                                                    className="w-5 h-5"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M12 4v16m8-8H4"
-                                                    />
-                                                </svg>
-                                                <span className="text-sm font-medium">
-                                                    사진 추가 ({images.length}/5)
-                                                </span>
-                                            </>
-                                        )}
+                                        {uploadingImages ? "업로드 중..." : `사진 추가 (${images.length}/5)`}
                                     </button>
                                 )}
-
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -322,20 +273,20 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                             </div>
                         </div>
 
-                        {/* 버튼 */}
+                        {/* 버튼 섹션 */}
                         <div className="flex space-x-3 pt-4">
                             <button
                                 type="button"
                                 onClick={handleClose}
                                 disabled={isSubmitting}
-                                className="hover:cursor-pointer flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                             >
                                 취소
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || content.trim().length < 10}
-                                className="hover:cursor-pointer flex-1 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
+                                className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isSubmitting ? "작성 중..." : "후기 작성"}
                             </button>

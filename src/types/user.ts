@@ -5,6 +5,8 @@ export interface UserInfo {
     profileImage: string;
     mbti?: string | null;
     age?: number | null;
+    ageRange?: string | null;
+    gender?: string | null;
     subscriptionTier?: "FREE" | "BASIC" | "PREMIUM";
     subscriptionExpiresAt?: string | null;
 }

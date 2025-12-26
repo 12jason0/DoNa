@@ -971,9 +971,9 @@ function CourseDetailPage() {
                                                                     </button>
                                                                 ) : (
                                                                     <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                                                                        <p className="text-sm text-blue-800">
-                                                                            💡 <strong>팁:</strong> {coursePlace.coaching_tip}
-                                                                        </p>
+                                                                <p className="text-sm text-blue-800">
+                                                                    💡 <strong>팁:</strong> {coursePlace.coaching_tip}
+                                                                </p>
                                                                     </div>
                                                                 )}
                                                             </div>

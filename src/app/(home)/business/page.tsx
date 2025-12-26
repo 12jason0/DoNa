@@ -73,35 +73,6 @@ export default function BusinessPage() {
                             </ul>
                         </div>
 
-                        {/* 베타 서비스 안내 */}
-                        <div className="mt-8 bg-yellow-50 rounded-lg p-6 border border-yellow-200">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">🚧 베타 서비스 안내</h2>
-                            <div className="space-y-3 text-gray-700">
-                                <p>
-                                    <strong>현재 상태:</strong> 베타 테스트 운영 중
-                                </p>
-                                <p>
-                                    <strong>정식 오픈:</strong> 2025년 9월 오픈 예정
-                                </p>
-                                <p>
-                                    <strong>베타 기간 혜택:</strong>
-                                </p>
-                                <ul className="list-disc pl-6 space-y-1">
-                                    <li>모든 서비스 무료 이용</li>
-                                    <li>AI 추천 기능 무제한 체험</li>
-                                    <li>정식 서비스 전환 시 할인 혜택</li>
-                                </ul>
-                                <p>
-                                    <strong>주의사항:</strong>
-                                </p>
-                                <ul className="list-disc pl-6 space-y-1">
-                                    <li>베타 기간 중 일부 기능이 제한될 수 있습니다</li>
-                                    <li>서비스 안정성을 위해 정기 점검을 실시합니다</li>
-                                    <li>사용자 피드백을 바탕으로 지속적으로 개선하고 있습니다</li>
-                                </ul>
-                            </div>
-                        </div>
-
                         {/* 연락처 및 문의 */}
                         <div className="mt-8 bg-gray-50 rounded-lg p-6">
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">📞 연락처 및 문의</h2>
@@ -136,8 +107,7 @@ export default function BusinessPage() {
                                 배포를 금지합니다.
                             </p>
                             <p className="mb-2">
-                                <strong>면책조항:</strong> DoNa는 베타 서비스 운영 중으로, 서비스 이용으로 인한 직간접적
-                                손해에 대해 제한적 책임을 집니다.
+                                <strong>면책조항:</strong> 서비스 이용으로 인한 직간접적 손해에 대해 제한적 책임을 집니다.
                             </p>
                             <p>
                                 <strong>분쟁해결:</strong> 서비스 이용 관련 분쟁 발생 시 서비스 운영자 소재지 관할

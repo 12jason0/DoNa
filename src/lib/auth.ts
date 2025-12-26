@@ -8,15 +8,11 @@ import { User } from "@prisma/client";
 
 export function getJwtSecret(): string {
     const secret = process.env.JWT_SECRET;
-    // 개발 환경에서는 기본 시크릿을 사용해 회원가입/로그인이 막히지 않도록 처리
     if (!secret) {
-        if (process.env.NODE_ENV !== "production") {
-            return "dev-insecure-jwt-secret-change-me-please";
-        }
-        throw new Error("JWT_SECRET environment variable is required for production");
+        throw new Error("JWT_SECRET environment variable is required");
     }
-    if (process.env.NODE_ENV === "production" && secret.length < 32) {
-        throw new Error("JWT_SECRET must be at least 32 characters in production");
+    if (secret.length < 32) {
+        throw new Error("JWT_SECRET must be at least 32 characters");
     }
     return secret;
 }
