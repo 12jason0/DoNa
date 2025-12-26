@@ -8,6 +8,7 @@ import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 // --- 아이콘 (SVG) 완벽 정의 ---
 const Icons = {
@@ -517,7 +518,7 @@ export default function CourseDetailClient({
                     title: courseData.title,
                     description: courseData.description,
                     imageUrl:
-                        heroImageUrl || "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/logo/donalogo_512.png",
+                        heroImageUrl || getS3StaticUrl("logo/donalogo_512.png"),
                     link: { mobileWebUrl: url, webUrl: url },
                 },
                 buttons: [{ title: "코스 보러가기", link: { mobileWebUrl: url, webUrl: url } }],

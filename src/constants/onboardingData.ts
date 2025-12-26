@@ -170,8 +170,32 @@ export const CREW_OPTIONS = [
 // 3. 아이콘 매핑 (S3 이미지 연결) - 수정됨
 // ------------------------------------------------------
 
-// ✅ 분석한 정확한 S3 경로 (폴더명 포함)
-const S3_BASE_URL = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/concept-Icon";
+// ✅ CloudFront 또는 S3 버킷 기본 경로 (환경 변수 기반)
+// 클라이언트/서버 양쪽에서 사용 가능하도록 환경 변수 기반으로 설정
+function getS3BaseUrl(): string {
+    // 서버 사이드: 환경 변수 직접 사용
+    if (typeof window === "undefined") {
+        const customBase = process.env.S3_PUBLIC_BASE_URL || process.env.CLOUDFRONT_DOMAIN;
+        if (customBase) {
+            const baseUrl = customBase.startsWith("http") ? customBase : `https://${customBase}`;
+            return `${baseUrl.replace(/\/$/, "")}/concept-Icon`;
+        }
+        // Fallback: S3 직접 URL (Private 버킷이면 접근 불가)
+        return "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/concept-Icon";
+    }
+    
+    // 클라이언트 사이드: NEXT_PUBLIC_ 환경 변수 사용
+    const publicBase = process.env.NEXT_PUBLIC_S3_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN;
+    if (publicBase) {
+        const baseUrl = publicBase.startsWith("http") ? publicBase : `https://${publicBase}`;
+        return `${baseUrl.replace(/\/$/, "")}/concept-Icon`;
+    }
+    
+    // Fallback: CloudFront 도메인이 설정되지 않은 경우
+    return "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/concept-Icon";
+}
+
+const S3_BASE_URL = getS3BaseUrl();
 
 export const CATEGORY_ICONS: Record<string, string> = {
     // 파일명이 한글이 아니라, 영어 Key값(예: EMOTIONAL.png)으로 되어 있으므로 맞춰줍니다.
