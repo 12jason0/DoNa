@@ -39,6 +39,7 @@ const MyPage = () => {
     const [payments, setPayments] = useState<any[]>([]);
 
     const [activeTab, setActiveTab] = useState("profile");
+    const [activitySubTab, setActivitySubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
     const tabsTrackRef = useRef<HTMLDivElement | null>(null);
 
     const [loading, setLoading] = useState(true);
@@ -92,7 +93,11 @@ const MyPage = () => {
         try {
             const url = new URL(window.location.href);
             const tab = url.searchParams.get("tab");
-            if (["profile", "footprint", "records", "activity"].includes(tab || "")) {
+            if (tab === "checkins") {
+                // 🟢 checkins는 activity 탭의 subTab
+                setActiveTab("activity");
+                setActivitySubTab("checkins");
+            } else if (["profile", "footprint", "records", "activity"].includes(tab || "")) {
                 setActiveTab(tab || "profile");
             }
         } catch {}
@@ -755,6 +760,7 @@ const MyPage = () => {
                         checkins={checkins}
                         payments={payments}
                         onSelectBadge={setSelectedBadge}
+                        initialSubTab={activitySubTab}
                     />
                 )}
             </main>

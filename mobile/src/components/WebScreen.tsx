@@ -104,7 +104,9 @@ export default function WebScreen({ uri: initialUri }: Props) {
                     onNavigationStateChange={(nav: WebViewNavigation) => {
                         setCanGoBack(nav.canGoBack);
                         setCurrentUrl(nav.url);
-                        if (!nav.loading) setLoading(false);
+                        if (!nav.loading) {
+                            setLoading(false);
+                        }
                     }}
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
@@ -170,46 +172,55 @@ export default function WebScreen({ uri: initialUri }: Props) {
                                         });
 
                                         // 🟢 서버에 Apple 로그인 요청 전송 (쿠키 설정을 위해)
-                                        const loginResponse = await fetch("https://dona.io.kr/api/auth/apple", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            credentials: "include", // 🟢 쿠키 동기화를 위해 필수
-                                            body: JSON.stringify({
-                                                identityToken: credential.identityToken,
-                                                authorizationCode: credential.authorizationCode,
-                                                fullName: credential.fullName,
-                                                email: credential.email,
-                                            }),
-                                        });
-
-                                        if (loginResponse.ok) {
-                                            // 🟢 로그인 성공: 이벤트 발생 및 웹뷰에 정보 전달
-                                            webRef.current?.injectJavaScript(`
-                                                // 🟢 쿠키 기반 인증: localStorage 제거
-                                                localStorage.removeItem('authToken');
-                                                localStorage.removeItem('user');
-                                                localStorage.removeItem('loginTime');
-                                                
-                                                // 🟢 로그인 성공 이벤트 발생
-                                                window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                                                
-                                                window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
-                                                    detail: ${JSON.stringify(credential)}
-                                                }));
-                                            `);
-
-                                            // 🟢 서버 세션(쿠키)이 생성될 시간을 충분히 주기 위해 1.5초 후 reload
-                                            setTimeout(() => {
-                                                webRef.current?.reload();
-                                            }, 1500);
-                                        } else {
-                                            // 로그인 실패
-                                            webRef.current?.injectJavaScript(`
-                                                window.dispatchEvent(new CustomEvent('appleLoginError', {
-                                                    detail: { message: 'Apple 로그인 처리에 실패했습니다.' }
-                                                }));
-                                            `);
-                                        }
+                                        // WebView에서 fetch 요청 시 쿠키가 제대로 전달되지 않을 수 있으므로
+                                        // WebView 내부에서 직접 API를 호출하도록 JavaScript를 주입
+                                        webRef.current?.injectJavaScript(`
+                                            (async function() {
+                                                try {
+                                                    const response = await fetch('/api/auth/apple', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        credentials: 'include',
+                                                        body: JSON.stringify({
+                                                            identityToken: ${JSON.stringify(credential.identityToken)},
+                                                            authorizationCode: ${JSON.stringify(
+                                                                credential.authorizationCode
+                                                            )},
+                                                            fullName: ${JSON.stringify(credential.fullName)},
+                                                            email: ${JSON.stringify(credential.email)}
+                                                        })
+                                                    });
+                                                    
+                                                    if (response.ok) {
+                                                        // 🟢 쿠키 기반 인증: localStorage 제거
+                                                        localStorage.removeItem('authToken');
+                                                        localStorage.removeItem('user');
+                                                        localStorage.removeItem('loginTime');
+                                                        
+                                                        // 🟢 로그인 성공 이벤트 발생
+                                                        window.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                                                        
+                                                        window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
+                                                            detail: ${JSON.stringify(credential)}
+                                                        }));
+                                                        
+                                                        // 🟢 서버 세션(쿠키)이 생성될 시간을 충분히 주기 위해 1초 후 reload
+                                                        setTimeout(() => {
+                                                            window.location.reload();
+                                                        }, 1000);
+                                                    } else {
+                                                        window.dispatchEvent(new CustomEvent('appleLoginError', {
+                                                            detail: { message: 'Apple 로그인 처리에 실패했습니다.' }
+                                                        }));
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Apple 로그인 오류:', error);
+                                                    window.dispatchEvent(new CustomEvent('appleLoginError', {
+                                                        detail: { message: 'Apple 로그인 중 오류가 발생했습니다.' }
+                                                    }));
+                                                }
+                                            })();
+                                        `);
                                     } catch (error) {
                                         console.error("Apple 로그인 오류:", error);
                                         webRef.current?.injectJavaScript(`

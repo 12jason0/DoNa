@@ -34,7 +34,9 @@ export async function GET(request: NextRequest) {
             return url.startsWith("http://") ? url.replace(/^http:\/\//, "https://") : url;
         };
 
-        const profileImageUrl = convertToHttps(user.profileImageUrl);
+        // 🟢 프로필 이미지가 없으면 기본 이미지 사용 (로컬 로그인과 동일하게 처리)
+        const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+        const profileImageUrl = convertToHttps(user.profileImageUrl) || DEFAULT_PROFILE_IMG;
 
         // 🟢 username이 user_로 시작하면 임시 이름이므로 이메일 앞부분 사용
         let displayName = user.username;

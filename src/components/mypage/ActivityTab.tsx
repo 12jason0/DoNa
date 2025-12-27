@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { UserBadgeItem, UserRewardRow, UserCheckinRow } from "@/types/user";
 
@@ -19,14 +19,20 @@ interface ActivityTabProps {
     checkins: UserCheckinRow[];
     payments?: PaymentHistory[];
     onSelectBadge: (badge: UserBadgeItem) => void;
+    initialSubTab?: "badges" | "rewards" | "checkins" | "payments";
 }
 
-const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge }: ActivityTabProps) => {
-    const [subTab, setSubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
+const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, initialSubTab = "badges" }: ActivityTabProps) => {
+    const [subTab, setSubTab] = useState<"badges" | "rewards" | "checkins" | "payments">(initialSubTab);
     const [currentMonth, setCurrentMonth] = useState<Date>(() => {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), 1);
     });
+
+    // 🟢 initialSubTab prop이 변경되면 subTab 상태도 업데이트
+    useEffect(() => {
+        setSubTab(initialSubTab);
+    }, [initialSubTab]);
 
     const subTabs = [
         { id: "badges" as const, label: "뱃지", count: badges.length },

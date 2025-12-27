@@ -230,7 +230,7 @@ export default function PersonalizedSection() {
                               className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse"
                           />
                       ))
-                    : courses.map((course) => (
+                    : courses.map((course, idx) => (
                           <Link
                               key={course.id}
                               href={`/courses/${course.id}`}
@@ -253,8 +253,10 @@ export default function PersonalizedSection() {
                                                   alt={course.title}
                                                   className="object-cover"
                                                   sizes="200px"
-                                                  loading="lazy" // 🟢 lazy loading
-                                                  quality={75} // 🟢 적절한 quality
+                                                  priority={idx < 3} // 🟢 첫 3개는 priority
+                                                  loading={idx < 3 ? undefined : "lazy"} // 🟢 첫 3개는 eager, 나머지는 lazy
+                                                  quality={70} // 🟢 성능 최적화: quality 조정
+                                                  fetchPriority={idx < 3 ? "high" : "auto"} // 🟢 첫 3개는 high priority
                                               />
                                           ) : (
                                               <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">

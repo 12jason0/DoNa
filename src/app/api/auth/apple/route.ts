@@ -2,37 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
+import { getSafeRedirectPath } from "@/lib/redirect";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 💡 Redirect URI 생성 (애플 설정과 100% 일치)
+ * image_e89e4a에서 설정하신 주소와 토씨 하나 안 틀리고 똑같이 맞춰줍니다.
+ */
+const getAppleRedirectUri = (origin: string) => {
+    const base = process.env.NODE_ENV === "production" ? "https://dona.io.kr" : origin;
+    return `${base}/api/auth/apple/callback`;
+};
 
 /**
  * 1. Apple 인증 시작 (GET)
  */
 export async function GET(request: NextRequest) {
     const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
-    const APPLE_REDIRECT_URI = "https://dona.io.kr/api/auth/apple";
-    
-    // next 파라미터 가져오기 및 검증
-    const nextParam = request.nextUrl.searchParams.get("next");
-    const { getSafeRedirectPath } = await import("@/lib/redirect");
-    const next = getSafeRedirectPath(nextParam, "/");
+    const next = getSafeRedirectPath(request.nextUrl.searchParams.get("next"), "/");
 
     if (!APPLE_CLIENT_ID) {
-        console.error("APPLE_CLIENT_ID가 설정되지 않았습니다.");
-        return NextResponse.json({ error: "Apple 로그인 설정이 누락되었습니다." }, { status: 500 });
+        return NextResponse.json({ error: "Apple 로그인 설정 누락" }, { status: 500 });
     }
+
+    const origin = request.nextUrl.origin.includes("0.0.0.0") ? "http://localhost:3000" : request.nextUrl.origin;
+    const APPLE_REDIRECT_URI = getAppleRedirectUri(origin);
 
     const params = new URLSearchParams({
         client_id: APPLE_CLIENT_ID,
-        redirect_uri: APPLE_REDIRECT_URI,
-        response_type: "code",
+        redirect_uri: APPLE_REDIRECT_URI, // 👈 invalid_request 해결 핵심
+        response_type: "code id_token",
         response_mode: "form_post",
         scope: "name email",
-        state: encodeURIComponent(next), // next 값을 state로 전달
+        state: next,
     });
 
     const appleAuthUrl = `https://appleid.apple.com/auth/authorize?${params.toString()}`;
-    return NextResponse.redirect(new URL(appleAuthUrl));
+    return NextResponse.redirect(appleAuthUrl);
 }
 
 /**
@@ -42,191 +49,98 @@ export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") || "";
 
+        // A. 웹/웹뷰 콜백 (Form POST 방식)
         if (contentType.includes("application/x-www-form-urlencoded")) {
             const formDataText = await request.text();
             const params = new URLSearchParams(formDataText);
-            const code = params.get("code");
-            const userJson = params.get("user");
-            const state = params.get("state"); // state 파라미터에서 next 추출
-            
-            // state에서 next 경로 추출 및 검증
-            const { getSafeRedirectPath } = await import("@/lib/redirect");
+            const id_token = params.get("id_token");
+            const state = params.get("state") || "/";
             const next = getSafeRedirectPath(state, "/");
 
-            if (!code) {
-                return generateHtmlResponse(
-                    `if(window.opener){window.opener.location.href='/login?error=no_code';window.close();}else{window.location.href='/login?error=no_code';}`
-                );
+            if (!id_token) {
+                return generateHtmlResponse(`alert('토큰이 없습니다.'); window.location.href='/login';`);
             }
-
-            let userData = null;
-            if (userJson) {
-                try {
-                    userData = JSON.parse(userJson);
-                } catch (e) {
-                    console.error("User JSON 파싱 실패:", e);
-                }
-            }
-
-            return await handleWebAppleAuthLogic(code, request, userData, next);
+            return await handleWebAppleAuthLogic(id_token, next);
         }
 
+        // B. 앱 네이티브 (Face ID 인증 데이터 - JSON 방식)
         const body = await request.json();
-        const { identityToken, authorizationCode, fullName, email: appEmail } = body;
+        const { identityToken, fullName, email: appEmail, authorizationCode } = body;
 
         if (!identityToken) {
-            return NextResponse.json({ error: "Apple 인증 토큰이 필요합니다." }, { status: 400 });
+            return NextResponse.json({ error: "인증 토큰 누락" }, { status: 400 });
         }
-
         return await handleAppAppleAuthLogic(request, identityToken, fullName, appEmail, authorizationCode);
     } catch (error) {
         console.error("Apple POST API 오류:", error);
-        return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+        return NextResponse.json({ error: "서버 오류" }, { status: 500 });
     }
-}
-
-function generateHtmlResponse(script: string, token?: string) {
-    const html = `<html><head><meta charset="UTF-8"></head><body><script>${script}</script></body></html>`;
-
-    // 🟢 쿠키 설정 (토큰이 있는 경우)
-    if (token) {
-        const response = new NextResponse(html, {
-            headers: { "Content-Type": "text/html; charset=utf-8" },
-        });
-        response.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 7일
-        });
-        return response;
-    }
-
-    return new Response(html, {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
 }
 
 /**
- * 웹/웹뷰용 실제 인증 로직 (팝업 닫기 및 부모 창 제어 추가)
+ * 💡 웹 전용 로직 (신규 가입 혜택 및 리다이렉트 포함)
  */
-async function handleWebAppleAuthLogic(code: string, request: NextRequest, userData: any, next: string = "/") {
+async function handleWebAppleAuthLogic(idToken: string, next: string) {
     try {
-        // 1. 애플 서버와 code를 실제 token으로 교환
-        const tokenResponse = await fetch("https://appleid.apple.com/auth/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                client_id: process.env.APPLE_CLIENT_ID!,
-                client_secret: process.env.APPLE_CLIENT_SECRET!,
-                code: code,
-                grant_type: "authorization_code",
-                redirect_uri: "https://dona.io.kr/api/auth/apple",
-            }).toString(),
-        });
-
-        const tokenData = await tokenResponse.json();
-        if (!tokenResponse.ok) {
-            throw new Error(tokenData.error_description || "애플 토큰 교환 실패");
-        }
-
-        // 2. ID 토큰 디코딩 및 정보 획득
-        const decoded: any = jwt.decode(tokenData.id_token);
+        const decoded: any = jwt.decode(idToken);
         const appleUserId = decoded.sub;
-        const email = decoded.email || userData?.email;
-        // 탈퇴(Revoke)를 위해 꼭 저장해야 하는 리프레시 토큰
-        const appleRefreshToken = tokenData.refresh_token;
+        const email = decoded.email;
 
-        // 3. DB 유저 확인 및 업데이트/생성
+        // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
+        const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+
         let user = await (prisma as any).user.findFirst({
             where: { provider: "apple", socialId: appleUserId },
         });
 
         if (!user) {
-            // 신규 가입
+            // [기능 유지] 신규 가입 시 쿠키 3개 지급 로직
             user = await (prisma as any).user.create({
                 data: {
                     email,
-                    username: userData?.name
-                        ? `${userData.name.lastName}${userData.name.firstName}`.trim()
-                        : `user_${appleUserId.substring(0, 6)}`,
+                    username: `user_${appleUserId.substring(0, 6)}`,
                     socialId: appleUserId,
                     provider: "apple",
-                    appleRefreshToken: appleRefreshToken, // 토큰 저장
                     couponCount: 3,
+                    profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                 },
             });
-
-            try {
-                await (prisma as any).userReward.create({
-                    data: { userId: user.id, type: "signup", amount: 3, unit: "coupon" },
-                });
-            } catch (e) {
-                console.error("보상 기록 실패:", e);
-            }
-        } else {
-            // 기존 유저인 경우 리프레시 토큰 갱신 (탈퇴 기능 위해 항상 최신화)
-            await (prisma as any).user.update({
-                where: { id: user.id },
-                data: { appleRefreshToken: appleRefreshToken },
+            await (prisma as any).userReward.create({
+                data: { userId: user.id, type: "signup", amount: 3, unit: "coupon" },
             });
+        } else {
+            // 🟢 기존 사용자의 경우 프로필 이미지가 없으면 기본 이미지로 업데이트
+            if (!user.profileImageUrl) {
+                await (prisma as any).user.update({
+                    where: { id: user.id },
+                    data: { profileImageUrl: DEFAULT_PROFILE_IMG },
+                });
+                user.profileImageUrl = DEFAULT_PROFILE_IMG;
+            }
         }
 
-        // 4. 서비스 JWT 생성
-        const serviceToken = jwt.sign({ userId: user.id, email: user.email, name: user.username }, getJwtSecret(), {
-            expiresIn: "7d",
-        });
+        const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
+        const decodedNext = decodeURIComponent(next).replace(/^%2F/, "/"); // 👈 %2F 404 해결
 
-        // 5. 🟢 쿠키 설정 및 HTML 응답 생성
         return generateHtmlResponse(
-            `
-            (function() {
-                // 🟢 localStorage 제거 (쿠키만 사용)
-                // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
-                
-                // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
+            `(function() {
                 window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                
-                if (window.ReactNativeWebView) {
-                    // 앱에서는 토큰이 필요할 수 있으므로 전달 (앱 내부 처리용)
-                    window.ReactNativeWebView.postMessage(JSON.stringify({ 
-                        type: 'loginSuccess', 
-                        token: "${serviceToken}" 
-                    }));
-                }
-
-                // 부모 창(window.opener)이 있다면 부모 창을 이동시키고 현재 팝업을 닫음
-                // 애플 로그인 성공 시 무조건 메인 페이지(/)로 이동
-                const redirectPath = '/';
                 if (window.opener) {
-                    window.opener.location.href = redirectPath;
+                    window.opener.location.href = "${decodedNext}";
                     window.close();
                 } else {
-                    // 팝업이 아닌 일반 리다이렉트인 경우 현재 창 이동
-                    window.location.href = redirectPath;
+                    window.location.href = "${decodedNext}";
                 }
-            })();
-        `,
-            serviceToken // 🟢 쿠키 설정을 위한 토큰 전달
+            })();`,
+            serviceToken
         );
-    } catch (err: any) {
-        console.error("Web Auth Logic Error:", err);
-        const errorMessage = err?.message || "인증 처리 중 오류가 발생했습니다.";
-        return generateHtmlResponse(`
-            if(window.opener) {
-                window.opener.location.href='/login?error=${encodeURIComponent(errorMessage)}';
-                window.close();
-            } else {
-                window.location.href='/login?error=${encodeURIComponent(errorMessage)}';
-            }
-        `);
+    } catch (err) {
+        return generateHtmlResponse(`alert('인증 실패'); window.location.href='/login';`);
     }
 }
 
 /**
- * 앱 네이티브용 인증 로직 (refresh_token 저장 추가)
- * 앱에서 보낸 authorizationCode를 사용해 refresh_token을 발급받고 저장합니다.
+ * 💡 앱 네이티브 로직 (Face ID 지원 및 로그 저장)
  */
 async function handleAppAppleAuthLogic(
     request: NextRequest,
@@ -237,163 +151,85 @@ async function handleAppAppleAuthLogic(
 ) {
     try {
         const decoded: any = jwt.decode(identityToken);
-        if (!decoded) {
-            throw new Error("토큰 디코딩 실패");
-        }
-
         const appleUserId = decoded.sub;
         const email = appEmail || decoded.email;
-        let appleRefreshToken: string | null = null;
 
-        // 1. 앱에서 보낸 authorizationCode가 있다면 애플 서버와 통신해서 refresh_token 획득
-        if (authorizationCode) {
-            try {
-                // Apple Client Secret 생성 (동적 생성)
-                const { generateAppleClientSecret } = await import("@/lib/config");
-                const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID;
-                const APPLE_KEY_ID = process.env.APPLE_KEY_ID;
-                const APPLE_PRIVATE_KEY = process.env.APPLE_PRIVATE_KEY;
-                const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
+        // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
+        const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
 
-                if (!APPLE_TEAM_ID || !APPLE_KEY_ID || !APPLE_PRIVATE_KEY || !APPLE_CLIENT_ID) {
-                    console.error("Apple 환경 변수가 설정되지 않았습니다.");
-                } else {
-                    const clientSecret = generateAppleClientSecret(
-                        APPLE_TEAM_ID,
-                        APPLE_KEY_ID,
-                        APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-                        APPLE_CLIENT_ID
-                    );
-
-                    const tokenResponse = await fetch("https://appleid.apple.com/auth/token", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: new URLSearchParams({
-                            client_id: APPLE_CLIENT_ID, // 앱용: Bundle ID (kr.io.dona.dona)
-                            client_secret: clientSecret,
-                            code: authorizationCode,
-                            grant_type: "authorization_code",
-                        }).toString(),
-                    });
-
-                    const tokenData = await tokenResponse.json();
-
-                    if (tokenResponse.ok && tokenData.refresh_token) {
-                        appleRefreshToken = tokenData.refresh_token;
-                        console.log("[Apple Auth] refresh_token 획득 성공");
-                    } else {
-                        console.error("[Apple Auth] refresh_token 획득 실패:", tokenData);
-                        // refresh_token 획득 실패해도 로그인은 진행 (기존 토큰 사용)
-                    }
-                }
-            } catch (tokenError) {
-                console.error("[Apple Auth] refresh_token 획득 중 오류:", tokenError);
-                // refresh_token 획득 실패해도 로그인은 진행
-            }
-        }
-
-        // 2. DB 유저 확인 및 생성/업데이트
         let user = await (prisma as any).user.findFirst({
             where: { provider: "apple", socialId: appleUserId },
-            select: { id: true, email: true, username: true, couponCount: true },
         });
 
         if (!user) {
-            // 신규 가입
-            const newUserData = await (prisma as any).$transaction(async (tx: any) => {
-                const newUser = await tx.user.create({
-                    data: {
-                        email,
-                        username: fullName
-                            ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim() ||
-                              `user_${appleUserId.substring(0, 6)}`
-                            : `user_${appleUserId.substring(0, 6)}`,
-                        socialId: appleUserId,
-                        provider: "apple",
-                        appleRefreshToken: appleRefreshToken, // 탈퇴용 토큰 저장
-                        couponCount: 3,
-                    },
-                    select: { id: true, email: true, username: true, couponCount: true },
-                });
-
-                // 보상 기록
-                try {
-                    await tx.userReward.create({
-                        data: { userId: newUser.id, type: "signup", amount: 3, unit: "coupon" },
-                    });
-                } catch (e) {
-                    console.error("보상 기록 실패:", e);
-                }
-
-                return newUser;
-            });
-
-            user = newUserData;
-        } else if (appleRefreshToken) {
-            // 기존 유저도 로그인할 때마다 토큰 최신화 (탈퇴 기능을 위해)
-            await (prisma as any).user.update({
-                where: { id: user.id },
-                data: { appleRefreshToken },
-            });
-            console.log(`[Apple Auth] User ${user.id}의 refresh_token 갱신 완료`);
-        }
-
-        // 3. 서비스 JWT 생성
-        const token = jwt.sign({ userId: user.id, email: user.email, name: user.username }, getJwtSecret(), {
-            expiresIn: "7d",
-        });
-
-        // 4. 로그인 로그 저장
-        try {
-            const ip =
-                request.headers.get("x-forwarded-for") ||
-                request.headers.get("x-real-ip") ||
-                (request as any).socket?.remoteAddress ||
-                "unknown";
-            const ipAddress = Array.isArray(ip) ? ip[0] : ip;
-
-            await (prisma as any).loginLog.create({
+            user = await (prisma as any).user.create({
                 data: {
-                    userId: user.id,
-                    ipAddress: ipAddress,
+                    email,
+                    username: fullName
+                        ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim()
+                        : `user_${appleUserId.substring(0, 6)}`,
+                    socialId: appleUserId,
+                    provider: "apple",
+                    couponCount: 3,
+                    profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                 },
             });
-        } catch (logError) {
-            console.error("로그인 로그 저장 실패:", logError);
+            await (prisma as any).userReward.create({
+                data: { userId: user.id, type: "signup", amount: 3, unit: "coupon" },
+            });
+        } else {
+            // 🟢 기존 사용자의 경우 프로필 이미지가 없으면 기본 이미지로 업데이트
+            if (!user.profileImageUrl) {
+                await (prisma as any).user.update({
+                    where: { id: user.id },
+                    data: { profileImageUrl: DEFAULT_PROFILE_IMG },
+                });
+                user.profileImageUrl = DEFAULT_PROFILE_IMG;
+            }
         }
 
-        // 🟢 쿠키 설정 (앱 네이티브용)
-        const res = NextResponse.json({
-            success: true,
-            // 🟢 token은 제거 (쿠키만 사용)
-            // 기존 코드 호환성을 위해 선택적으로 반환 (앱에서 필요할 수 있음)
-            ...(process.env.ENABLE_TOKEN_RESPONSE === "true" && { token }),
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.username,
-                nickname: user.username,
-                coins: user.couponCount ?? 0,
-            },
+        const token = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
+
+        // [기능 유지] 로그인 로그 저장 로직
+        const ip = request.headers.get("x-forwarded-for") || "unknown";
+        await (prisma as any).loginLog.create({
+            data: { userId: user.id, ipAddress: Array.isArray(ip) ? ip[0] : ip },
         });
 
+        const res = NextResponse.json({ success: true, user: { id: user.id, name: user.username } });
+
+        // 🟢 보안 쿠키 설정 (2025-12-24 개편 내용)
         res.cookies.set("auth", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 7일
+            maxAge: 60 * 60 * 24 * 7,
         });
 
         return res;
-    } catch (err: any) {
-        console.error("[Apple Auth] App Auth Logic Error:", err);
-        return NextResponse.json(
-            {
-                error: "인증 처리 중 오류 발생",
-                details: err?.message || "알 수 없는 오류",
-            },
-            { status: 401 }
-        );
+    } catch (err) {
+        return NextResponse.json({ error: "App 인증 실패" }, { status: 401 });
     }
+}
+
+/**
+ * 💡 공통 응답 처리 (보안 쿠키 발급)
+ */
+function generateHtmlResponse(script: string, token?: string) {
+    const html = `<html><head><meta charset="UTF-8"></head><body><script>${script}</script></body></html>`;
+    const response = new NextResponse(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+
+    if (token) {
+        response.cookies.set("auth", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7,
+        });
+    }
+    return response;
 }

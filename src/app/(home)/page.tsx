@@ -74,7 +74,21 @@ export default function Home() {
     useEffect(() => {
         (async () => {
             try {
-                // 🟢 쿠키 기반 인증: apiFetch 사용 (성능 최적화: 캐싱 강화)
+                // 🟢 쿠키 기반 인증: 세션 정보 먼저 확인
+                const { fetchSession } = await import("@/lib/authClient");
+                const session = await fetchSession();
+
+                if (!session.authenticated) {
+                    // 🚨 로그인이 안 된 경우 모든 유저 데이터 초기화
+                    setUserId(null);
+                    setUserName("");
+                    setStreak(0);
+                    setWeekStamps([false, false, false, false, false, false, false]);
+                    setIsOnboardingComplete(false);
+                    return; // 더 이상 데이터를 가져오지 않음
+                }
+
+                // 로그인이 확인된 경우에만 프로필과 출석 정보 가져오기
                 const [profileRes, checkinRes, preferencesRes] = await Promise.all([
                     apiFetch("/api/users/profile", {
                         cache: "force-cache", // 🟢 성능 최적화: 브라우저 캐시 활용
@@ -127,7 +141,14 @@ export default function Home() {
                     const doneFlag = localStorage.getItem("onboardingComplete") === "1";
                     setIsOnboardingComplete(doneFlag);
                 }
-            } catch {}
+            } catch (error) {
+                console.error("데이터 로딩 중 오류:", error);
+                // 🟢 에러 시에도 안전하게 초기화
+                setUserId(null);
+                setStreak(0);
+                setUserName("");
+                setWeekStamps([false, false, false, false, false, false, false]);
+            }
         })();
     }, []);
 
@@ -814,34 +835,60 @@ export default function Home() {
                                                         setWeekStamps(data.weekStamps as boolean[]);
                                                     if (typeof data.weekCount === "number")
                                                         setCycleProgress(((data.weekCount as number) % 7) as number);
+                                                    // 🟢 이미 출석한 경우에도 스트릭 업데이트
+                                                    if (typeof (data as any).streak === "number") {
+                                                        setStreak((data as any).streak);
+                                                    }
                                                     setAlreadyToday(true);
                                                     setIsStamping(false);
                                                     setStampCompleted(true);
                                                     const todayKey = getLocalTodayKey();
                                                     localStorage.setItem("checkinModalDismissedDate", todayKey);
                                                     localStorage.setItem(`checkinButtonPressed_${todayKey}`, "true");
-                                                    return;
-                                                }
-                                                if (typeof data.weekCount === "number") {
-                                                    setCycleProgress((data.weekCount % 7) as number);
-                                                }
-                                                if (typeof (data as any).streak === "number") {
-                                                    setStreak((data as any).streak);
+                                                    // 🟢 checkinUpdated 이벤트 dispatch하여 메인 페이지 즉시 반영
                                                     try {
                                                         window.dispatchEvent(
                                                             new CustomEvent("checkinUpdated", {
                                                                 detail: {
                                                                     streak: (data as any).streak,
                                                                     weekStamps: data.weekStamps,
-                                                                    todayChecked: false,
+                                                                    todayChecked: true,
                                                                 },
                                                             })
                                                         );
                                                     } catch {}
+                                                    return;
                                                 }
+                                                if (typeof data.weekCount === "number") {
+                                                    setCycleProgress((data.weekCount % 7) as number);
+                                                }
+                                                // 🟢 스트릭 즉시 업데이트 (메인 페이지 반영)
+                                                if (typeof (data as any).streak === "number") {
+                                                    setStreak((data as any).streak);
+                                                }
+                                                // 🟢 weekStamps 즉시 업데이트 (메인 페이지 반영)
+                                                if (Array.isArray(data.weekStamps)) {
+                                                    setWeekStamps(data.weekStamps as boolean[]);
+                                                }
+                                                try {
+                                                    window.dispatchEvent(
+                                                        new CustomEvent("checkinUpdated", {
+                                                            detail: {
+                                                                streak: (data as any).streak,
+                                                                weekStamps: data.weekStamps,
+                                                                todayChecked: false,
+                                                            },
+                                                        })
+                                                    );
+                                                } catch {}
 
                                                 const targetIdx =
                                                     typeof data.todayIndex === "number" ? data.todayIndex : null;
+
+                                                // 🟢 스트릭 즉시 업데이트 (메인 페이지 반영)
+                                                if (typeof (data as any).streak === "number") {
+                                                    setStreak((data as any).streak);
+                                                }
 
                                                 if (targetIdx === null) {
                                                     if (Array.isArray(data.weekStamps)) {
@@ -851,6 +898,7 @@ export default function Home() {
                                                     setStampCompleted(true);
                                                     const todayKey = getLocalTodayKey();
                                                     localStorage.setItem(`checkinButtonPressed_${todayKey}`, "true");
+                                                    // 🟢 checkinUpdated 이벤트 dispatch하여 메인 페이지 즉시 반영
                                                     try {
                                                         window.dispatchEvent(
                                                             new CustomEvent("checkinUpdated", {
@@ -887,8 +935,13 @@ export default function Home() {
                                                         return next;
                                                     });
                                                     setTimeout(() => {
+                                                        // 🟢 최종 weekStamps 업데이트
                                                         if (Array.isArray(data.weekStamps)) {
                                                             setWeekStamps(data.weekStamps as boolean[]);
+                                                        }
+                                                        // 🟢 스트릭 최종 업데이트 (메인 페이지 반영)
+                                                        if (typeof (data as any).streak === "number") {
+                                                            setStreak((data as any).streak);
                                                         }
                                                         setAnimStamps(null);
                                                         setIsStamping(false);
@@ -898,6 +951,7 @@ export default function Home() {
                                                             `checkinButtonPressed_${todayKey}`,
                                                             "true"
                                                         );
+                                                        // 🟢 checkinUpdated 이벤트 dispatch하여 메인 페이지 즉시 반영
                                                         try {
                                                             window.dispatchEvent(
                                                                 new CustomEvent("checkinUpdated", {
@@ -979,11 +1033,14 @@ export default function Home() {
                                 <div>
                                     <div className="text-sm text-gray-600">출석 현황</div>
                                     <div className="text-base md:text-lg font-bold text-gray-900">
-                                        {streak >= 5
-                                            ? `🔥 ${streak}일 연속 출석 중!`
-                                            : streak > 0
-                                            ? `${streak}일 연속 출석 중`
-                                            : "오늘도 새싹 도장 찍어보세요!"}
+                                        {/* 💡 userId가 있을 때만 스트릭 표시 */}
+                                        {userId
+                                            ? streak >= 5
+                                                ? `🔥 ${streak}일 연속 출석 중!`
+                                                : streak > 0
+                                                ? `${streak}일 연속 출석 중`
+                                                : "오늘도 새싹 도장 찍어보세요!"
+                                            : "로그인하고 도장을 찍어보세요!"}
                                     </div>
                                 </div>
                             </div>
@@ -1160,7 +1217,7 @@ function TabbedConcepts({
                                 {conceptItems
                                     // Logic: Show only 8 items if not expanded
                                     .slice(0, isExpanded ? undefined : 8)
-                                    .map((item) => {
+                                    .map((item, idx) => {
                                         // 1. item.name이 영어(키)인지 한글(값)인지 판단하여 한글 라벨(koreanName)을 찾습니다.
                                         // 예: "EXHIBITION" -> "공연·전시" / "전시" -> "전시"
                                         const rawName = item.name;
@@ -1178,7 +1235,9 @@ function TabbedConcepts({
                                                 key={item.name}
                                                 onClick={() => {
                                                     // 🟢 성능 최적화: prefetch 후 이동
-                                                    router.prefetch(`/courses?concept=${encodeURIComponent(item.name)}`);
+                                                    router.prefetch(
+                                                        `/courses?concept=${encodeURIComponent(item.name)}`
+                                                    );
                                                     router.push(`/courses?concept=${encodeURIComponent(item.name)}`);
                                                 }}
                                                 className="flex flex-col items-center gap-2 group"
@@ -1192,8 +1251,11 @@ function TabbedConcepts({
                                                                 alt={koreanName}
                                                                 width={80}
                                                                 height={80}
-                                                                loading="lazy" // 🟢 성능 최적화: lazy loading 추가
+                                                                priority={idx < 8} // 🟢 첫 8개는 priority
+                                                                loading={idx < 8 ? undefined : "lazy"} // 🟢 첫 8개는 eager, 나머지는 lazy
                                                                 quality={60} // 🟢 성능 최적화: 작은 아이콘이므로 quality 낮춤
+                                                                sizes="80px" // 🟢 고정 크기 명시
+                                                                fetchPriority={idx < 8 ? "high" : "auto"} // 🟢 첫 8개는 high priority
                                                                 className="object-contain w-full h-full transform scale-110 group-hover:scale-125 transition-transform duration-500 p-1"
                                                             />
                                                         ) : (
@@ -1248,7 +1310,7 @@ function TabbedConcepts({
                             onMouseUp={handleMouseUp}
                             onMouseMove={handleMouseMove}
                         >
-                            {hotCourses.map((c) => (
+                            {hotCourses.map((c, idx) => (
                                 <Link
                                     key={c.id}
                                     href={`/courses/${c.id}`}
@@ -1266,9 +1328,11 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
-                                                    loading="lazy" // 🟢 성능 최적화: lazy loading 추가
+                                                    priority={idx < 4} // 🟢 첫 4개는 priority
+                                                    loading={idx < 4 ? undefined : "lazy"} // 🟢 첫 4개는 eager, 나머지는 lazy
                                                     quality={65} // 🟢 성능 최적화: quality 최적화
-                                                    sizes="80px" // 🟢 성능 최적화: 고정 크기 명시
+                                                    sizes="80px" // 🟢 고정 크기 명시
+                                                    fetchPriority={idx < 4 ? "high" : "auto"} // 🟢 첫 4개는 high priority
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (
@@ -1303,7 +1367,7 @@ function TabbedConcepts({
                             onMouseUp={handleMouseUp}
                             onMouseMove={handleMouseMove}
                         >
-                            {newCourses.map((c) => (
+                            {newCourses.map((c, idx) => (
                                 <Link
                                     key={c.id}
                                     href={`/courses/${c.id}`}
@@ -1321,9 +1385,11 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
-                                                    loading="lazy" // 🟢 성능 최적화: lazy loading 추가
+                                                    priority={idx < 4} // 🟢 첫 4개는 priority
+                                                    loading={idx < 4 ? undefined : "lazy"} // 🟢 첫 4개는 eager, 나머지는 lazy
                                                     quality={65} // 🟢 성능 최적화: quality 최적화
-                                                    sizes="80px" // 🟢 성능 최적화: 고정 크기 명시
+                                                    sizes="80px" // 🟢 고정 크기 명시
+                                                    fetchPriority={idx < 4 ? "high" : "auto"} // 🟢 첫 4개는 high priority
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (

@@ -8,7 +8,6 @@ interface BenefitConsentModalProps {
 }
 
 export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentModalProps) {
-    // 유저가 선택한 알림 항목들 (기본값: 모두 선택)
     const [selected, setSelected] = useState<string[]>(["COURSE", "NEW_ESCAPE"]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,24 +23,29 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
 
         setIsSubmitting(true);
 
+        // 🟢 Optimistic update: UI를 먼저 닫아서 빠른 반응성 제공
+        // API 호출은 백그라운드에서 진행
+        const originalOnClose = onClose;
+        onClose();
+
         try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const { authenticatedFetch } = await import("@/lib/authClient");
-            const res = await authenticatedFetch("/api/users/notifications/consent", {
+            // 🟢 성능 최적화: apiFetch 사용하여 빠른 응답 처리
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/users/notifications/consent", {
                 method: "POST",
                 body: JSON.stringify({ topics: selected }),
+                // 🟢 캐시 없이 최신 데이터 처리
+                cache: "no-store",
             });
 
-            if (res.ok) {
-                onClose();
-                // 성공 시 부드러운 피드백 (토스트는 나중에 추가 가능)
-            } else {
-                const data = await res.json();
-                alert(data.error || "설정에 실패했습니다. 다시 시도해주세요.");
+            if (!response.ok) {
+                // ❌ 실패 시 사용자에게 알림 (모달은 이미 닫혀있음)
+                console.error("알림 동의 처리 실패:", data?.error);
+                // 실패 시 나중에 다시 표시할 수 있도록 처리 (필요시)
             }
         } catch (error) {
             console.error("알림 동의 처리 오류:", error);
-            alert("오류가 발생했습니다. 다시 시도해주세요.");
+            // 에러는 콘솔에만 기록 (UI는 이미 닫혀있음)
         } finally {
             setIsSubmitting(false);
         }
@@ -61,7 +65,6 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                     </h2>
                 </div>
 
-                {/* --- 개별 선택 영역 --- */}
                 <div className="space-y-3 mb-8">
                     <button
                         onClick={() => toggleTopic("COURSE")}
@@ -76,7 +79,9 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                             <span className="text-xl">📍</span>
                             <div className="text-left">
                                 <p className="font-bold text-gray-900 text-sm tracking-tight">새로운 데이트 코스</p>
-                                <p className="text-[11px] text-gray-500 leading-relaxed">취향 저격 코스가 올라오면 알림</p>
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    취향 저격 코스가 올라오면 알림
+                                </p>
                             </div>
                         </div>
                         {selected.includes("COURSE") && (
@@ -99,7 +104,9 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                             <span className="text-xl">🔑</span>
                             <div className="text-left">
                                 <p className="font-bold text-gray-900 text-sm tracking-tight">신규 Escape 오픈</p>
-                                <p className="text-[11px] text-gray-500 leading-relaxed">새로운 실외 방탈출 오픈 즉시 알림</p>
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    새로운 실외 방탈출 오픈 즉시 알림
+                                </p>
                             </div>
                         </div>
                         {selected.includes("NEW_ESCAPE") && (
@@ -127,7 +134,6 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                     </button>
                 </div>
 
-                {/* ⚖️ 법적 방어막 문구 */}
                 <p className="mt-6 text-[10px] text-gray-300 text-center leading-tight">
                     *혜택 선택 시 서비스 소식 수신을 위한
                     <br />
@@ -137,4 +143,3 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
         </div>
     );
 }
-

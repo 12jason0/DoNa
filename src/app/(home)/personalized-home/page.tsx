@@ -276,6 +276,10 @@ const AIRecommender = () => {
             }
         } catch (error) {
             console.error("사용자 정보 조회 오류:", error);
+            // 🟢 에러 발생 시 localStorage 정리
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("user");
+            localStorage.removeItem("loginTime");
             setIsLoggedIn(false);
         }
     };
@@ -291,6 +295,10 @@ const AIRecommender = () => {
                     setIsLoggedIn(true);
                     fetchUserData();
                 } else {
+                    // 🟢 로그인되지 않은 경우 localStorage 정리 (이전 데이터 제거)
+                    localStorage.removeItem("authToken");
+                    localStorage.removeItem("user");
+                    localStorage.removeItem("loginTime");
                     setIsLoggedIn(false);
                     setUserName("");
                     setNickname("");
@@ -299,6 +307,10 @@ const AIRecommender = () => {
                 }
             } catch (error) {
                 console.error("로그인 상태 확인 실패:", error);
+                // 🟢 에러 발생 시에도 localStorage 정리
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("user");
+                localStorage.removeItem("loginTime");
                 setIsLoggedIn(false);
                 setUserName("");
                 setNickname("");
@@ -315,6 +327,10 @@ const AIRecommender = () => {
         };
 
         const handleAuthLogout = () => {
+            // 🟢 로그아웃 시 localStorage 정리 (이전 데이터 제거)
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("user");
+            localStorage.removeItem("loginTime");
             setIsLoggedIn(false);
             setUserName("");
             setNickname("");

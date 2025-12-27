@@ -36,22 +36,24 @@ export async function POST(req: NextRequest) {
                 },
             });
 
-            // 2. 개별 관심사 등록: 선택한 모든 주제를 DB에 저장
-            for (const topic of topics) {
-                await (tx as any).notificationInterest.upsert({
-                    where: {
-                        userId_topic: {
+            // 2. 개별 관심사 등록: 선택한 모든 주제를 DB에 저장 (🟢 성능 최적화: 병렬 처리)
+            await Promise.all(
+                topics.map((topic) =>
+                    (tx as any).notificationInterest.upsert({
+                        where: {
+                            userId_topic: {
+                                userId,
+                                topic,
+                            },
+                        },
+                        update: {}, // 이미 있으면 업데이트할 내용 없음
+                        create: {
                             userId,
                             topic,
                         },
-                    },
-                    update: {}, // 이미 있으면 업데이트할 내용 없음
-                    create: {
-                        userId,
-                        topic,
-                    },
-                });
-            }
+                    })
+                )
+            );
 
             // 3. 법적 기록 및 다시 안 뜨게 설정
             await tx.user.update({

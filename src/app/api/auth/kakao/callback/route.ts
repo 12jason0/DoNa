@@ -1,213 +1,59 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSafeRedirectPath } from "@/lib/redirect";
 
 export const dynamic = "force-dynamic";
 
-import { getSafeRedirectPath } from "@/lib/redirect";
-
 export async function GET(request: NextRequest) {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams, origin } = request.nextUrl;
     const code = searchParams.get("code");
-    const state = searchParams.get("state"); // 카카오가 돌려준 next 값
-    const error = searchParams.get("error");
-    const error_description = searchParams.get("error_description");
+    const state = searchParams.get("state");
 
-    // state에서 next 경로 추출 및 검증 (기본값: /)
-    const next = getSafeRedirectPath(state, "/");
+    if (!code) return NextResponse.redirect(new URL("/login?error=no_code", origin));
 
-    console.log("Callback received:", { code: code ? "존재" : "없음", state, next, error, error_description });
+    try {
+        // state(원래 가려던 주소)를 안전하게 디코딩 및 검증
+        const decodedState = state ? decodeURIComponent(state) : "/";
+        // %2F 같은 잘못된 인코딩이 남아있으면 정규화
+        const normalizedState = decodedState.replace(/^%2F/, "/").replace(/\/+/g, "/");
+        const next = getSafeRedirectPath(normalizedState, "/");
 
-    const sendResponse = (script: string) => {
+        const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+        const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+        const apiUrl = `${protocol}://${host}/api/auth/kakao`;
+
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, next }),
+        });
+
+        const setCookie = response.headers.get("set-cookie");
+
+        // 💡 팝업창을 닫으면서 부모 창을 정상적인 주소로 이동시킵니다.
+        // next 값을 JSON.stringify로 안전하게 문자열로 변환 (XSS 방지)
+        const safeNext = JSON.stringify(next);
+
         return new Response(
-            `<html>
-                <head><title>카카오 로그인 처리 중...</title></head>
-                <body>
-                    <script>${script}</script>
-                </body>
-            </html>`,
-            { headers: { "Content-Type": "text/html; charset=utf-8" } }
-        );
-    };
-
-    if (error || !code) {
-        const errorMsg = error_description || error || "인증 코드가 없습니다.";
-        // 🟢 URLSearchParams를 사용하여 안전하게 URL 생성
-        const params = new URLSearchParams({ error: errorMsg });
-        const errorUrl = "/login?" + params.toString();
-        const errorMsgJson = JSON.stringify(errorMsg);
-
-        const script =
-            "(function() {" +
-            "const errorMsg = " +
-            errorMsgJson +
-            ";" +
-            "console.error('Kakao auth error:', errorMsg);" +
-            "if (window.ReactNativeWebView) {" +
-            "window.location.href = " +
-            JSON.stringify(errorUrl) +
-            ";" +
-            "} else if (window.opener) {" +
-            "window.opener.postMessage({ type: 'KAKAO_AUTH_ERROR', error: errorMsg }, \"*\");" +
-            "setTimeout(function() { window.close(); }, 500);" +
-            "} else {" +
-            "window.location.href = " +
-            JSON.stringify(errorUrl) +
-            ";" +
-            "}" +
-            "})();";
-        return sendResponse(script);
-    }
-
-    return sendResponse(`
-        (function() {
-            const code = ${JSON.stringify(code)};
-            const next = ${JSON.stringify(next)};
-            console.log('Authorization code received:', code);
-
-            if (window.ReactNativeWebView) {
-                fetch('/api/auth/kakao', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', // 🟢 쿠키 동기화를 위해 필수
-                    body: JSON.stringify({ code: code, next: next })
-                })
-                .then(res => {
-                    // 리다이렉트 응답인 경우
-                    if (res.redirected || res.url) {
-                        // 🟢 쿠키 기반 인증: localStorage 제거, 이벤트 발생 후 이동
-                        window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        window.location.href = res.url || next;
-                        return;
+            `<html><body><script>
+                (function() {
+                    const redirectPath = ${safeNext};
+                    if (window.opener) {
+                        window.opener.location.href = redirectPath;
+                        window.close();
+                    } else {
+                        window.location.href = redirectPath;
                     }
-                    return res.json();
-                })
-                .then(data => {
-                    if (data && data.success) {
-                        // 🟢 쿠키 기반 인증: localStorage 제거 (쿠키는 서버에서 이미 설정됨)
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('user');
-                        localStorage.removeItem('loginTime');
-                        
-                        // 🟢 로그인 성공 이벤트 발생
-                        window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        
-                        window.ReactNativeWebView.postMessage(JSON.stringify({
-                            type: 'loginSuccess',
-                            token: data.token || null
-                        }));
-                        
-                        // 🟢 쿠키 동기화를 위해 약간의 지연 후 이동
-                        setTimeout(() => {
-                            window.location.href = next;
-                        }, 300);
-                    } else if (data && !data.success) {
-                        const errorMsg = data.error || '로그인 실패';
-                        const encodedError = encodeURIComponent(errorMsg);
-                        const encodedNext = encodeURIComponent(next);
-                        window.location.href = '/login?error=' + encodedError + '&next=' + encodedNext;
-                    }
-                })
-                .catch(err => {
-                    console.error('카카오 로그인 오류:', err);
-                    const errorMsg = '서버 통신 오류';
-                    const encodedError = encodeURIComponent(errorMsg);
-                    const encodedNext = encodeURIComponent(next);
-                    window.location.href = '/login?error=' + encodedError + '&next=' + encodedNext;
-                });
-            } 
-            else {
-                if (window.opener && !window.opener.closed) {
-                    console.log('부모 창으로 메시지 전송 시작, code:', code);
-                    
-                    try {
-                        // 🟢 수정된 부분: 메시지를 여러 번 전송(setTimeout)하던 로직을 삭제하고
-                        // 단 한 번만 전송하여 인가 코드 중복 사용 에러(400)를 방지합니다.
-                        // next 값도 함께 전달
-                        window.opener.postMessage({ 
-                            type: 'KAKAO_AUTH_CODE', 
-                            code: code,
-                            next: next
-                        }, '*');
-                        console.log('메시지 전송 완료 (code와 next 포함)');
-
-                        // 🟢 수정된 부분: 팝업을 닫기 전 부모 창이 데이터를 처리할 최소한의 시간을 줍니다.
-                        setTimeout(() => {
-                            console.log('팝업 닫기 실행');
-                            if (window.opener && !window.opener.closed) {
-                                window.close();
-                            }
-                        }, 1000); 
-                    } catch (e) {
-                        console.error('postMessage 실패:', e);
-                        const errorMsg = '인증 메시지 전송 실패';
-                        const encodedError = encodeURIComponent(errorMsg);
-                        const encodedNext = encodeURIComponent(next);
-                        window.location.href = '/login?error=' + encodedError + '&next=' + encodedNext;
-                    }
-                } else {
-                    // 🟢 팝업이 아닌 일반 리다이렉트의 경우: API를 호출하여 로그인 처리
-                    console.log('일반 리다이렉트: API 호출하여 로그인 처리');
-                    fetch('/api/auth/kakao', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include', // 🟢 쿠키 동기화를 위해 필수
-                        body: JSON.stringify({ code: code, next: next }),
-                        redirect: 'manual' // 리다이렉트를 수동으로 처리
-                    })
-                    .then(res => {
-                        // 상태 코드 확인
-                        if (res.status >= 300 && res.status < 400) {
-                            // 리다이렉트 응답인 경우: Location 헤더 확인
-                            const location = res.headers.get('Location');
-                            if (location) {
-                                window.location.href = location;
-                                return;
-                            }
-                            // Location 헤더가 없으면 next로 이동 (쿠키는 이미 설정됨)
-                            window.location.href = next;
-                            return;
-                        }
-                        
-                        // JSON 응답인 경우 (200 OK)
-                        if (res.ok) {
-                            return res.json();
-                        } else {
-                            // 에러 응답
-                            return res.json().catch(() => ({ error: '로그인 실패' }));
-                        }
-                    })
-                    .then(data => {
-                        if (!data) {
-                            // 데이터가 없으면 (리다이렉트 응답 처리됨) next로 이동
-                            window.location.href = next;
-                            return;
-                        }
-                        
-                        if (data.success) {
-                            // 🟢 쿠키 기반 인증: localStorage 제거, 이벤트 발생
-                            localStorage.removeItem('authToken');
-                            localStorage.removeItem('user');
-                            localStorage.removeItem('loginTime');
-                            
-                            // 🟢 로그인 성공 이벤트 발생
-                            window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                            
-                            // 로그인 성공: next 경로로 리다이렉트
-                            window.location.href = next;
-                        } else {
-                            // 로그인 실패: 에러 메시지와 함께 로그인 페이지로
-                            const errorMsg = (data && data.error) ? data.error : '로그인 실패';
-                            const params = new URLSearchParams({ error: errorMsg, next: next });
-                            window.location.href = '/login?' + params.toString();
-                        }
-                    })
-                    .catch(err => {
-                        console.error('로그인 처리 실패:', err);
-                        // 네트워크 오류 등이 발생했지만, 쿠키가 설정되었을 수 있으므로
-                        // 일단 next로 이동 시도 (실제로는 로그인이 성공했을 가능성이 높음)
-                        window.location.href = next;
-                    });
-                }
+                })();
+            </script></body></html>`,
+            {
+                headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Set-Cookie": setCookie || "", // 💡 여기서 쿠키를 확실히 심어줘야 합니다.
+                },
             }
-        })();
-    `);
+        );
+    } catch (err) {
+        console.error("Callback 처리 중 오류:", err);
+        return NextResponse.redirect(new URL("/login?error=server_error", origin));
+    }
 }

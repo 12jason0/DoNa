@@ -4,72 +4,63 @@ import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
+
 export const dynamic = "force-dynamic";
 
+/**
+ * 🟢 회원가입 및 자동 로그인 처리 (보안 쿠키 기반)
+ */
 export async function POST(request: NextRequest) {
     try {
-        const { email, password, nickname, phone, birthday, ageRange, gender, isMarketingAgreed, next } = await request.json();
+        const body = await request.json();
+        const { email, password, nickname, phone, birthday, ageRange, gender, isMarketingAgreed, next } = body;
+
+        // 리다이렉트 경로 검증
         const safeNext = getSafeRedirectPath(next, "/");
-        console.log("회원가입 시도:", { email, nickname, phone, birthday, ageRange, gender, isMarketingAgreed });
 
-        // 입력 검증
-        if (!email || !password || !nickname) {
-            return NextResponse.json({ error: "이메일, 비밀번호, 닉네임을 모두 입력해주세요." }, { status: 400 });
-        }
-        
-        // 연령대 필수 검증
-        if (!ageRange || typeof ageRange !== "string" || !ageRange.trim()) {
-            return NextResponse.json({ error: "연령대를 선택해주세요." }, { status: 400 });
-        }
-        
-        // 성별 필수 검증
-        if (!gender || (gender !== "M" && gender !== "F")) {
-            return NextResponse.json({ error: "성별을 선택해주세요." }, { status: 400 });
+        // 1. 필수 입력값 검증 (백엔드 이중 체크)
+        if (!email || !password || !nickname || !ageRange || !gender) {
+            return NextResponse.json({ error: "필수 정보를 모두 입력해주세요." }, { status: 400 });
         }
 
-        // 이메일 형식 검증
+        // 2. 이메일 형식 검증
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return NextResponse.json({ error: "올바른 이메일 형식을 입력해주세요." }, { status: 400 });
         }
 
-        // 비밀번호 길이 검증
-        if (password.length < 6) {
-            return NextResponse.json({ error: "비밀번호는 최소 6자 이상이어야 합니다." }, { status: 400 });
+        // 3. 이메일 중복 확인
+        const existing = await (prisma as any).user.findFirst({
+            where: { email },
+            select: { id: true },
+        });
+        if (existing) {
+            return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
         }
 
-        // 이메일 중복 확인
-        const existing = await (prisma as any).user.findFirst({ where: { email }, select: { id: true } });
-        if (existing) return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
-
+        // 4. 비밀번호 암호화
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // 선택 항목 정리 및 나이 계산
-        const trimmedPhone = typeof phone === "string" && phone.trim() ? phone.trim() : undefined;
-        const trimmedAgeRange = ageRange.trim(); // 이미 필수로 검증됨
-        const trimmedGender = gender; // 이미 필수로 검증됨 ("M" 또는 "F")
-        const birthdayTs = typeof birthday === "string" && birthday.trim() ? Date.parse(birthday.trim()) : NaN;
-        const birthdayDate = Number.isNaN(birthdayTs) ? undefined : new Date(birthdayTs);
-
+        // 5. 나이 계산 및 데이터 정제
+        const birthdayDate = birthday ? new Date(birthday) : undefined;
         let computedAge: number | undefined = undefined;
-        if (birthdayDate) {
+        if (birthdayDate && !isNaN(birthdayDate.getTime())) {
             const now = new Date();
             let age = now.getFullYear() - birthdayDate.getFullYear();
             const m = now.getMonth() - birthdayDate.getMonth();
             if (m < 0 || (m === 0 && now.getDate() < birthdayDate.getDate())) age--;
-            if (Number.isFinite(age) && age >= 0 && age <= 120) computedAge = age;
+            computedAge = age;
         }
 
-        // ⚠️ [시간대 수정] 서버가 UTC일 수 있으므로 한국 시간(KST)으로 변환하여 비교
+        // 6. 🎁 이벤트 쿠키 지급 로직 (KST 기준)
         const now = new Date();
         const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        const kstNow = new Date(utc + 9 * 60 * 60 * 1000); // 한국 시간(UTC+9)
-
+        const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
         const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
         const initialCoupons = kstNow <= eventEndDate ? 3 : 1;
 
-        // 트랜잭션으로 사용자 생성 및 보상 기록
-        const created = await (prisma as any).$transaction(async (tx) => {
+        // 7. Prisma 트랜잭션: 유저 생성 + 보상 기록 (성능 최적화) [cite: 2025-12-24]
+        const createdUser = await (prisma as any).$transaction(async (tx: any) => {
             // 사용자 생성
             const newUser = await tx.user.create({
                 data: {
@@ -77,80 +68,68 @@ export async function POST(request: NextRequest) {
                     password: hashedPassword,
                     username: nickname,
                     provider: "local",
-                    phone: trimmedPhone,
-                    ageRange: trimmedAgeRange,
-                    gender: trimmedGender,
+                    phone: phone || undefined,
+                    ageRange: ageRange.trim(),
+                    gender,
                     birthday: birthdayDate,
                     age: computedAge,
-                    couponCount: initialCoupons, // 🎁 이벤트 기간이면 3개, 아니면 1개
-                    // [법적 필수] 마케팅 수신 동의
+                    couponCount: initialCoupons,
                     isMarketingAgreed: isMarketingAgreed === true,
                     marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
                 },
                 select: { id: true, email: true, username: true },
             });
 
-            // 보상 기록 남기기
-            try {
-                await tx.userReward.create({
-                    data: {
-                        userId: newUser.id,
-                        type: "signup",
-                        amount: initialCoupons,
-                        unit: "coupon",
-                    },
-                });
-            } catch (rewardError) {
-                console.error("보상 기록 실패 (무시하고 진행):", rewardError);
-                // 보상 기록 실패해도 회원가입은 성공 처리
-            }
+            // 보상 로그 생성
+            await tx.userReward.create({
+                data: {
+                    userId: newUser.id,
+                    type: "signup",
+                    amount: initialCoupons,
+                    unit: "coupon",
+                },
+            });
 
             return newUser;
         });
 
+        // 8. JWT 토큰 생성
         const JWT_SECRET = getJwtSecret();
-        if (!JWT_SECRET) {
-            throw new Error("JWT_SECRET이 설정되지 않았습니다.");
-        }
+        if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
 
-        const token = jwt.sign({ userId: created.id, email, nickname }, JWT_SECRET, { expiresIn: "7d" });
+        const token = jwt.sign(
+            { userId: createdUser.id, email: createdUser.email, name: createdUser.username },
+            JWT_SECRET,
+            { expiresIn: "7d" }
+        );
 
-        // 🟢 쿠키 설정 및 리다이렉트 (자동 로그인)
-        const res = NextResponse.redirect(new URL(safeNext, request.url));
+        // 9. 🟢 JSON 응답 및 보안 쿠키 설정 [cite: 2025-12-24]
+        // 클라이언트 fetch에서 credentials: "include"를 사용하므로 쿠키가 저장됩니다.
+        const res = NextResponse.json({
+            success: true,
+            message: "회원가입이 완료되었습니다.",
+            next: safeNext,
+        });
+
         res.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            httpOnly: true, // XSS 공격 방지 [cite: 2025-12-24]
+            secure: process.env.NODE_ENV === "production", // HTTPS 환경 강제
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 7일
-        });
-        
-        return res;
-    } catch (error: any) {
-        console.error("[회원가입 API] 오류 발생:", error);
-        console.error("[회원가입 API] 에러 상세:", {
-            message: error?.message || "Unknown error",
-            stack: error?.stack,
-            code: error?.code,
-            meta: error?.meta,
+            maxAge: 60 * 60 * 24 * 7, // 7일 유지
         });
 
-        // Prisma 에러 처리
+        return res;
+    } catch (error: any) {
+        console.error("[Signup API Error]:", error);
+
+        // Prisma 유니크 제약 조건 에러 처리 (이중 방어)
         if (error?.code === "P2002") {
-            const field = error?.meta?.target?.[0] || "필드";
-            return NextResponse.json(
-                {
-                    error: `이미 사용 중인 ${field === "email" ? "이메일" : field}입니다.`,
-                },
-                { status: 409 }
-            );
+            return NextResponse.json({ error: "이미 사용 중인 이메일 또는 정보입니다." }, { status: 409 });
         }
 
         return NextResponse.json(
-            {
-                error: "회원가입 중 오류가 발생했습니다.",
-                details: error?.message || "알 수 없는 오류",
-            },
+            { error: "회원가입 처리 중 서버 오류가 발생했습니다.", details: error?.message },
             { status: 500 }
         );
     }
