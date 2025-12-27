@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
         const email = decoded.email;
 
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
-        const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+        const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
         let user = await (prisma as any).user.findFirst({
             where: { provider: "apple", socialId: appleUserId },
@@ -155,7 +156,7 @@ async function handleAppAppleAuthLogic(
         const email = appEmail || decoded.email;
 
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
-        const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+        const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
         let user = await (prisma as any).user.findFirst({
             where: { provider: "apple", socialId: appleUserId },

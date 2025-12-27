@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { extractBearerToken, verifyJwtAndGetUserId } from "@/lib/auth";
+import { resolveUserId } from "@/lib/auth"; // 🟢 12.24 개편된 보안 세션 유틸 사용
 
 export const dynamic = "force-dynamic";
 
@@ -9,25 +9,15 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
     try {
-        // 인증 확인
-        const token = extractBearerToken(request);
-        if (!token) {
-            return NextResponse.json({ error: "인증 토큰이 필요합니다." }, { status: 401 });
+        // 1. 인증 확인 (Bearer 토큰 대신 보안 쿠키 세션 사용)
+        // 🟢 [보안] 클라이언트가 보낸 토큰을 신뢰하지 않고 서버 세션에서 직접 ID를 추출합니다.
+        const numericUserId = await resolveUserId(request);
+
+        if (!numericUserId) {
+            return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        let userId: string;
-        try {
-            userId = verifyJwtAndGetUserId(token);
-        } catch {
-            return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
-        }
-
-        const numericUserId = Number(userId);
-        if (!Number.isFinite(numericUserId)) {
-            return NextResponse.json({ error: "유효하지 않은 사용자 ID입니다." }, { status: 400 });
-        }
-
-        // 결제 내역 조회 (최신순)
+        // 2. 결제 내역 조회 (기존 로직 100% 유지)
         const payments = await prisma.payment.findMany({
             where: {
                 userId: numericUserId,
@@ -48,6 +38,7 @@ export async function GET(request: NextRequest) {
             },
         });
 
+        // 3. 데이터 반환 (기존 매핑 로직 100% 유지)
         return NextResponse.json({
             success: true,
             payments: payments.map((p) => ({

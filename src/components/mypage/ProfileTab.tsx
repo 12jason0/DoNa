@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { UserInfo, UserPreferences } from "@/types/user";
 import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
+import { getS3StaticUrl } from "@/lib/s3Static";
 import DeleteUsersModal from "./DeleteUsersModal";
 
 interface ProfileTabProps {
@@ -24,7 +25,7 @@ const ProfileTab = ({
     onLogout,
 }: ProfileTabProps) => {
     // 기본 프로필 이미지
-    const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+    const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
     // 🟢 로그를 보면 subscriptionTier(camelCase)로 정확히 오고 있습니다.
     const displayTier = userInfo?.subscriptionTier || "FREE";
@@ -71,16 +72,10 @@ const ProfileTab = ({
                     }
                 }
 
-                // 🟢 userId가 없으면 기본값 설정하고 종료 (불필요한 API 호출 방지)
-                if (!userId) {
-                    setNotificationEnabled(false);
-                    return;
-                }
-
                 // 🟢 DB에서 알림 상태 조회 (캐싱 적용)
-                // 🟢 쿠키 기반 인증: apiFetch 사용
+                // 🟢 [보안] 쿠키 기반 인증: userId를 쿼리 파라미터로 보내지 않음 (서버 세션에서 추출)
                 const { data: statusData, response: statusResponse } = await apiFetch<{ subscribed?: boolean }>(
-                    `/api/push?userId=${userId}`,
+                    `/api/push`,
                     {
                         cache: "force-cache", // 🟢 브라우저 캐시 사용
                         next: { revalidate: 300 }, // 🟢 5분 캐싱
@@ -136,40 +131,32 @@ const ProfileTab = ({
             // 1. 앱에서 저장한 pushToken 가져오기 (localStorage)
             let expoPushToken = localStorage.getItem("expoPushToken");
 
-            // 1-1. localStorage에 없으면 앱에 요청
+            // 1-1. localStorage에 없으면 앱에 요청 (🟢 성능 최적화: 2초 -> 최대 500ms로 단축, 토큰이 오면 즉시 진행)
             if (!expoPushToken && (window as any).ReactNativeWebView) {
                 (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "requestPushToken" }));
-                await new Promise((resolve) => setTimeout(resolve, 2000));
+                // 🟢 최적화: 짧은 대기 시간으로 빠른 응답 (최대 500ms, 토큰이 오면 즉시 진행)
+                await new Promise((resolve) => {
+                    const checkInterval = setInterval(() => {
+                        const token = localStorage.getItem("expoPushToken");
+                        if (token) {
+                            clearInterval(checkInterval);
+                            clearTimeout(timeout);
+                            resolve(null);
+                        }
+                    }, 100); // 100ms마다 체크
+                    const timeout = setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve(null);
+                    }, 500); // 최대 500ms 대기
+                });
                 expoPushToken = localStorage.getItem("expoPushToken");
             }
 
-            // 2. 🟢 쿠키 기반 인증: userId 가져오기
-            let userId: number | null = null;
-
-            // props에서 userId 가져오기 시도
-            userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
-
-            // API로 userId 가져오기
-            if (!userId) {
-                const userData = await authenticatedFetch<{ user?: { id: number }; id?: number }>("/api/users/profile");
-                if (!userData) {
-                    setNotificationStatus("error");
-                    setNotificationMessage("로그인이 필요합니다.");
-                    return;
-                }
-                userId = userData?.user?.id || userData?.id || null;
-            }
-
-            if (!userId) {
-                throw new Error("사용자 ID를 찾을 수 없습니다.");
-            }
-
+            // 🟢 [보안] 쿠키 기반 인증: userId를 body에 포함하지 않음 (서버 세션에서 추출)
             // 4. PushToken 서버에 업데이트 (subscribed 상태 토글)
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
             const pushData = await authenticatedFetch("/api/push", {
                 method: "POST",
                 body: JSON.stringify({
-                    userId: userId,
                     pushToken: expoPushToken || "", // 없으면 빈 문자열 (DB에 이미 있을 수 있음)
                     platform: "expo",
                     subscribed: newSubscribedState, // 토글된 상태

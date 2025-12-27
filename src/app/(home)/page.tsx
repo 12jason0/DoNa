@@ -1251,11 +1251,11 @@ function TabbedConcepts({
                                                                 alt={koreanName}
                                                                 width={80}
                                                                 height={80}
-                                                                priority={idx < 8} // 🟢 첫 8개는 priority
-                                                                loading={idx < 8 ? undefined : "lazy"} // 🟢 첫 8개는 eager, 나머지는 lazy
+                                                                priority={idx < 4} // 🟢 LCP 최적화: 첫 4개만 priority (8개→4개로 축소)
+                                                                loading={idx < 4 ? undefined : "lazy"} // 🟢 첫 4개는 eager, 나머지는 lazy
                                                                 quality={60} // 🟢 성능 최적화: 작은 아이콘이므로 quality 낮춤
                                                                 sizes="80px" // 🟢 고정 크기 명시
-                                                                fetchPriority={idx < 8 ? "high" : "auto"} // 🟢 첫 8개는 high priority
+                                                                fetchPriority={idx < 4 ? "high" : "auto"} // 🟢 첫 4개만 high priority
                                                                 className="object-contain w-full h-full transform scale-110 group-hover:scale-125 transition-transform duration-500 p-1"
                                                             />
                                                         ) : (
@@ -1328,11 +1328,11 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
-                                                    priority={idx < 4} // 🟢 첫 4개는 priority
-                                                    loading={idx < 4 ? undefined : "lazy"} // 🟢 첫 4개는 eager, 나머지는 lazy
+                                                    priority={idx === 0} // 🟢 LCP 최적화: 첫 번째 이미지만 priority (4개→1개로 축소)
+                                                    loading={idx === 0 ? undefined : "lazy"} // 🟢 첫 번째만 eager, 나머지는 lazy
                                                     quality={65} // 🟢 성능 최적화: quality 최적화
                                                     sizes="80px" // 🟢 고정 크기 명시
-                                                    fetchPriority={idx < 4 ? "high" : "auto"} // 🟢 첫 4개는 high priority
+                                                    fetchPriority={idx === 0 ? "high" : "auto"} // 🟢 첫 번째만 high priority
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (
@@ -1385,11 +1385,11 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
-                                                    priority={idx < 4} // 🟢 첫 4개는 priority
-                                                    loading={idx < 4 ? undefined : "lazy"} // 🟢 첫 4개는 eager, 나머지는 lazy
+                                                    priority={idx === 0} // 🟢 LCP 최적화: 첫 번째 이미지만 priority (4개→1개로 축소)
+                                                    loading={idx === 0 ? undefined : "lazy"} // 🟢 첫 번째만 eager, 나머지는 lazy
                                                     quality={65} // 🟢 성능 최적화: quality 최적화
                                                     sizes="80px" // 🟢 고정 크기 명시
-                                                    fetchPriority={idx < 4 ? "high" : "auto"} // 🟢 첫 4개는 high priority
+                                                    fetchPriority={idx === 0 ? "high" : "auto"} // 🟢 첫 번째만 high priority
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (

@@ -144,20 +144,61 @@ const getCourse = unstable_cache(
 
 // 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드하므로 서버에서 제거
 
+// 🔒 권한 확인 함수 (캐싱 및 최적화)
+const getUserPermission = unstable_cache(
+    async (userIdNum: number, courseId: number): Promise<{ userTier: string; hasUnlocked: boolean }> => {
+        try {
+            // 🟢 최적화: 유저 정보와 구매 기록을 한 번에 조회 (병렬)
+            const [user, unlockRecord] = await Promise.all([
+                prisma.user
+                    .findUnique({
+                        where: { id: userIdNum },
+                        select: { subscriptionTier: true },
+                    })
+                    .catch(() => null),
+                (prisma as any).courseUnlock
+                    .findFirst({
+                        where: {
+                            userId: userIdNum,
+                            courseId: courseId,
+                        },
+                        select: { id: true }, // 🟢 최적화: id만 조회
+                    })
+                    .catch(() => null),
+            ]);
+
+            return {
+                userTier: user?.subscriptionTier || "FREE",
+                hasUnlocked: !!unlockRecord,
+            };
+        } catch (e) {
+            return { userTier: "FREE", hasUnlocked: false };
+        }
+    },
+    [],
+    {
+        revalidate: 300, // 🟢 5분 캐싱 (권한 정보는 자주 변경되지 않음)
+        tags: ["user-permission"],
+    }
+);
+
 // 2. 메인 페이지 컴포넌트
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const courseId = Number(id);
 
-    // 🟢 데이터 페칭
-    const courseData = await getCourse(id);
+    // 🟢 데이터 페칭 (병렬 처리로 속도 향상)
+    const [courseData, cookieStore] = await Promise.all([
+        getCourse(id),
+        cookies(), // 🟢 쿠키도 병렬로 가져오기
+    ]);
+
     if (!courseData) {
         console.error(`[CourseDetailPage] 코스 ID ${id}를 찾을 수 없습니다.`);
         notFound();
     }
 
     // 🔒 [권한 확인 로직 시작] - 최적화: 토큰이 있을 때만 조회
-    const cookieStore = await cookies();
     const token = cookieStore.get("auth")?.value;
     let userTier = "FREE";
     let hasUnlocked = false;
@@ -168,27 +209,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             if (userIdStr) {
                 const userIdNum = Number(userIdStr);
                 if (Number.isFinite(userIdNum) && userIdNum > 0) {
-                    // 🟢 최적화: 유저 정보와 구매 기록을 한 번에 조회 (병렬)
-                    const [user, unlockRecord] = await Promise.all([
-                        prisma.user
-                            .findUnique({
-                                where: { id: userIdNum },
-                                select: { subscriptionTier: true },
-                            })
-                            .catch(() => null),
-                        (prisma as any).courseUnlock
-                            .findFirst({
-                                where: {
-                                    userId: userIdNum,
-                                    courseId: courseId,
-                                },
-                                select: { id: true }, // 🟢 최적화: id만 조회
-                            })
-                            .catch(() => null),
-                    ]);
-
-                    if (user?.subscriptionTier) userTier = user.subscriptionTier;
-                    if (unlockRecord) hasUnlocked = true;
+                    // 🟢 캐싱된 권한 확인 함수 사용
+                    const permission = await getUserPermission(userIdNum, courseId);
+                    userTier = permission.userTier;
+                    hasUnlocked = permission.hasUnlocked;
                 }
             }
         } catch (e) {

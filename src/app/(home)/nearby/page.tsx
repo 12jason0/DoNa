@@ -206,9 +206,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                               : null,
                       }))
                     : [],
-                tags: Array.isArray(c?.courseTags)
-                    ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                    : [],
+                tags: Array.isArray(c?.courseTags) ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean) : [],
             };
         });
 
@@ -313,9 +311,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                           : null,
                   }))
                 : [],
-            tags: Array.isArray(c?.courseTags)
-                ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                : [],
+            tags: Array.isArray(c?.courseTags) ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean) : [],
         };
     });
 

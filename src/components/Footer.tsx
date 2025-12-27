@@ -45,13 +45,11 @@ export default function Footer() {
                             }
                         }
 
-                        if (userId) {
-                            // 🟢 쿠키 기반 인증: apiFetch 사용
-                            const { apiFetch } = await import("@/lib/authClient");
-                            const { data: statusData, response: statusResponse } = await apiFetch(`/api/push?userId=${userId}`);
-                            if (statusResponse.ok && statusData) {
-                                setNotificationEnabled((statusData as any).subscribed ?? false);
-                            }
+                        // 🟢 [보안] 쿠키 기반 인증: userId를 쿼리 파라미터로 보내지 않음
+                        const { apiFetch } = await import("@/lib/authClient");
+                        const { data: statusData, response: statusResponse } = await apiFetch(`/api/push`);
+                        if (statusResponse.ok && statusData) {
+                            setNotificationEnabled((statusData as any).subscribed ?? false);
                         }
                     } catch (error) {
                         console.error("알림 상태 조회 오류:", error);

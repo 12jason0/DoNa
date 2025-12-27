@@ -1,42 +1,28 @@
 // src/app/(home)/courses/[id]/loading.tsx
 export default function CourseDetailLoading() {
     return (
-        <div className="min-h-screen bg-[#F8F9FA] animate-pulse">
-            {/* Hero Section Skeleton */}
-            <div className="relative h-[400px] w-full max-w-[600px] mx-auto bg-gray-200">
-                <div className="absolute bottom-0 left-0 w-full p-6 pb-14 space-y-4">
-                    <div className="flex gap-2">
-                        <div className="w-16 h-6 bg-white/30 rounded-full" />
-                        <div className="w-20 h-6 bg-white/30 rounded-full" />
+        <main className="min-h-screen bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center fixed inset-0 z-[9999]">
+            <div className="flex flex-col items-center gap-6 animate-fadeIn">
+                {/* 1. 브랜드 로고 느낌의 스피너 */}
+                <div className="relative">
+                    {/* 바깥쪽 링 */}
+                    <div className="h-16 w-16 rounded-full border-[6px] border-emerald-100"></div>
+                    {/* 빙글빙글 도는 링 */}
+                    <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-[6px] border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                    {/* 중앙 아이콘 (선택 사항 - 하트나 핀) */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-2xl animate-pulse">
+                        📍
                     </div>
-                    <div className="w-3/4 h-8 bg-white/30 rounded-lg" />
-                    <div className="flex gap-3">
-                        <div className="w-20 h-8 bg-white/30 rounded-xl" />
-                        <div className="w-20 h-8 bg-white/30 rounded-xl" />
-                        <div className="w-20 h-8 bg-white/30 rounded-xl" />
-                    </div>
+                </div>
+
+                {/* 2. 감성 멘트 (랜덤으로 보여줘도 좋지만, 일단 하나로 통일) */}
+                <div className="text-center space-y-1">
+                    <h3 className="text-emerald-900 font-extrabold text-lg tracking-tight">DoNa</h3>
+                    <p className="text-emerald-600/80 text-xs font-medium tracking-wide animate-pulse">
+                        설레는 데이트를 준비하고 있어요...
+                    </p>
                 </div>
             </div>
-
-            {/* Content Skeleton */}
-            <main className="max-w-[600px] mx-auto -mt-8 relative z-10 px-5 space-y-10">
-                {/* Intro Card */}
-                <div className="bg-white rounded-[2rem] p-8 h-40" />
-
-                {/* Map Skeleton */}
-                <div className="bg-white rounded-[2rem] p-4">
-                    <div className="w-full h-[320px] bg-gray-100 rounded-3xl flex items-center justify-center text-gray-300 font-medium">
-                        지도를 불러오는 중...
-                    </div>
-                </div>
-
-                {/* Timeline Skeleton */}
-                <div className="relative px-4 pb-20 space-y-8">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="relative ml-12 bg-white rounded-3xl p-4 h-24 border border-gray-100" />
-                    ))}
-                </div>
-            </main>
-        </div>
+        </main>
     );
 }

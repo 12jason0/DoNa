@@ -3,7 +3,7 @@ import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { sendPushNotificationToUsers } from "@/lib/push-notifications";
-import { resolveUserId } from "@/lib/auth"; // 🟢 쿠키 기반 인증 통일
+import { resolveUserId } from "@/lib/auth";
 import { defaultCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
@@ -58,12 +58,11 @@ export async function GET(request: NextRequest) {
         const parsedOffset = Number(offsetParam ?? 0);
         const effectiveOffset = Math.max(parsedOffset, 0);
 
-        // 🟢 [핵심 분기] 초기 로드(offset 0) + 검색어 없음 = 5:3:2 비율 로직 적용
+        // 🟢 [원본 로직 유지] 초기 로드 5:3:2 비율 로직 판단 조건
         const isDefaultLoad = effectiveOffset === 0 && !q && !concept && !regionQuery && !tagIdsParam && !gradeParam;
 
-        // 공통으로 사용할 매핑 함수 (원본 로직 그대로 유지)
+        // 🟢 [원본 로직 유지] 공통 포맷팅 함수 (safety checks 포함)
         const formatCourse = (course: any) => {
-            // 🟢 안전성 체크: course가 유효한지 확인
             if (!course || !course.id) {
                 console.warn("[formatCourse] Invalid course data:", course);
                 return null;
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
             let isLocked = false;
             const courseGrade = course.grade || "FREE";
             const courseId = Number(course.id);
-            // 🟢 안전성 체크: courseId가 유효한 숫자인지 확인
+
             if (!Number.isFinite(courseId)) {
                 console.warn("[formatCourse] Invalid course ID:", course.id);
                 return null;
@@ -129,6 +128,7 @@ export async function GET(request: NextRequest) {
             };
         };
 
+        // 🟢 [원본 로직 유지] 5:3:2 비율 초기 로드 로직
         if (isDefaultLoad) {
             const TARGET = { FREE: 15, BASIC: 9, PREMIUM: 6 };
             const commonSelect = {
@@ -198,17 +198,17 @@ export async function GET(request: NextRequest) {
                 if (p < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[p++]);
             }
 
-            const response = interleaved.map(formatCourse).filter((course) => course !== null); // 🟢 null 값 제거
+            const response = interleaved.map(formatCourse).filter((course) => course !== null);
             return NextResponse.json(response);
         }
 
-        // 🟢 [기존 전체 로직 복구] 검색, 필터, 무한 스크롤
+        // 🟢 [검색 로직] q 파라미터 처리 - 각 키워드를 OR 조건으로 검색하고 AND로 결합
         const andWhere: any[] = [{ isPublic: true }];
 
         if (q) {
             const keywords = q.split(/\s+/).filter(Boolean);
             keywords.forEach((keyword) => {
-                const cleanKeyword = keyword.replace("동", "");
+                const cleanKeyword = keyword.replace(/동$/, ""); // "성수동" -> "성수"
                 andWhere.push({
                     OR: [
                         { title: { contains: cleanKeyword, mode: "insensitive" } },
@@ -220,7 +220,6 @@ export async function GET(request: NextRequest) {
                                 some: {
                                     place: {
                                         OR: [
-                                            { name: { contains: cleanKeyword, mode: "insensitive" } },
                                             { address: { contains: cleanKeyword, mode: "insensitive" } },
                                             { category: { contains: cleanKeyword, mode: "insensitive" } },
                                         ],
@@ -233,6 +232,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
+        // 🟢 [원본 로직 유지] 컨셉, 지역, 태그 필터링
         if (concept) {
             const tokens = concept
                 .split(",")
@@ -251,9 +251,7 @@ export async function GET(request: NextRequest) {
                 });
             }
         }
-
         if (regionQuery) andWhere.push({ region: { contains: regionQuery, mode: "insensitive" } });
-
         if (tagIdsParam) {
             const tagIdsArr = tagIdsParam
                 .split(",")
@@ -263,9 +261,9 @@ export async function GET(request: NextRequest) {
                 andWhere.push({ CourseTagToCourses: { some: { course_tags: { id: { in: tagIdsArr } } } } });
             }
         }
-
         if (gradeParam === "FREE") andWhere.push({ grade: "FREE" });
 
+        // 🟢 [원본 로직 유지] 캐싱 및 데이터 조회
         const cacheKey = `courses_v2:${concept || "*"}:${regionQuery || "*"}:${q || "*"}:${
             tagIdsParam || "*"
         }:${imagePolicyParam}:${effectiveLimit}:${effectiveOffset}`;
@@ -291,6 +289,7 @@ export async function GET(request: NextRequest) {
                                     latitude: true,
                                     longitude: true,
                                     opening_hours: true,
+                                    category: true,
                                 },
                             },
                         },
@@ -300,16 +299,13 @@ export async function GET(request: NextRequest) {
             if (!noCache) defaultCache.set(cacheKey, results);
         }
 
-        // 🟢 안전성 체크: results가 배열인지 확인
         if (!Array.isArray(results)) {
-            console.error("[courses/route.ts] results is not an array:", results);
             return NextResponse.json([], { status: 200 });
         }
 
+        // 🟢 [원본 로직 유지] 이미지 정책 필터 및 등급별 정렬
         const filtered = filterCoursesByImagePolicy(results as CourseWithPlaces[], imagePolicy);
-        const finalData = filtered.map(formatCourse).filter((course) => course !== null); // 🟢 null 값 제거
-
-        // 마지막 등급순 정렬 로직 유지
+        const finalData = filtered.map(formatCourse).filter((course) => course !== null);
         const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
         finalData.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
 
@@ -320,7 +316,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// 🟢 [POST 로직 복구] 푸시 알림 및 모든 필드 포함
+// 🟢 [원본 로직 유지] 코스 생성 및 푸시 알림 POST API
 export async function POST(request: NextRequest) {
     try {
         const userId = resolveUserId(request);
@@ -364,19 +360,18 @@ export async function POST(request: NextRequest) {
 
         defaultCache.clear?.();
 
-        // 🔔 원본 푸시 알림 로직
+        // 🔔 [원본 유지] 푸시 알림 로직
         try {
             const region = created.region?.trim();
             if (region) {
-                const usersByProfile = await prisma.user.findMany({
-                    where: { location: region },
-                    select: { id: true },
-                });
-                const usersByInteraction = await prisma.userInteraction.findMany({
-                    where: { course: { region } },
-                    select: { userId: true },
-                    distinct: ["userId"],
-                });
+                const [usersByProfile, usersByInteraction] = await Promise.all([
+                    prisma.user.findMany({ where: { location: region }, select: { id: true } }),
+                    prisma.userInteraction.findMany({
+                        where: { course: { region } },
+                        select: { userId: true },
+                        distinct: ["userId"],
+                    }),
+                ]);
                 const targetIds = Array.from(
                     new Set([...usersByProfile.map((u) => u.id), ...usersByInteraction.map((u) => u.userId)])
                 );

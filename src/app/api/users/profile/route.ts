@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 export const dynamic = "force-dynamic"; // 🟢 실시간 인증 정보를 위해 필수
 export const revalidate = 0; // 🟢 캐시 완전 비활성화
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         };
 
         // 🟢 프로필 이미지가 없으면 기본 이미지 사용 (로컬 로그인과 동일하게 처리)
-        const DEFAULT_PROFILE_IMG = "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com/profileLogo.png";
+        const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
         const profileImageUrl = convertToHttps(user.profileImageUrl) || DEFAULT_PROFILE_IMG;
 
         // 🟢 username이 user_로 시작하면 임시 이름이므로 이메일 앞부분 사용
