@@ -23,6 +23,8 @@ interface Place {
     longitude?: number;
     opening_hours?: string | null;
     closed_days?: PlaceClosedDay[];
+    // 캐치테이블 예약 URL 필드
+    reservationUrl?: string | null;
 }
 
 interface CoursePlace {
@@ -50,7 +52,6 @@ export interface CourseCardProps {
     isPriority?: boolean; // LCP 최적화를 위해 상단 이미지는 priority=true
     onToggleFavorite: (e: React.MouseEvent, courseId: string | number) => void;
     isFavorite: boolean;
-    // onLockedClick removed
     hasClosedPlace?: (course: any) => boolean;
     getClosedPlaceCount?: (course: any) => number;
     showNewBadge?: boolean;
@@ -61,7 +62,7 @@ const PlaceholderImage = () => (
         <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
                 strokeLinecap="round"
-                strokeLinejoin="round"
+                strokeLinejoin="round" // 중복 제거됨
                 strokeWidth={1.5}
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
@@ -85,12 +86,43 @@ export default function CourseCard({
     const [showLoginModal, setShowLoginModal] = useState(false);
     const router = useRouter();
 
-    // ✅ 내부 잠금 클릭 핸들러
+    // 코스 내 장소 중 하나라도 예약 링크가 있는지 확인
+    const hasReservation = course.coursePlaces?.some((cp) => cp.place?.reservationUrl);
+
+    // 예약 링크가 있는 첫 번째 장소의 예약 URL 가져오기
+    const reservationUrl = course.coursePlaces?.find((cp) => cp.place?.reservationUrl)?.place?.reservationUrl;
+
+    // 🟢 디버깅: 예약 URL 확인 (개발 환경에서만) - 모든 코스 확인
+    if (process.env.NODE_ENV === "development") {
+        const placesWithReservation = course.coursePlaces?.filter((cp) => cp.place?.reservationUrl) || [];
+        if (placesWithReservation.length > 0) {
+            console.log(`[CourseCard] ✅ 예약 가능: "${course.title}"`, {
+                courseId: course.id,
+                hasReservation,
+                reservationUrl,
+                places: placesWithReservation.map((cp) => ({
+                    name: cp.place?.name,
+                    reservationUrl: cp.place?.reservationUrl,
+                })),
+            });
+        } else if (course.coursePlaces && course.coursePlaces.length > 0) {
+            // 예약 URL이 없는 경우도 로그 (디버깅용)
+            console.log(`[CourseCard] ❌ 예약 불가: "${course.title}"`, {
+                courseId: course.id,
+                places: course.coursePlaces.map((cp) => ({
+                    name: cp.place?.name,
+                    hasReservationUrl: !!cp.place?.reservationUrl,
+                })),
+            });
+        }
+    }
+
+    // 내부 잠금 클릭 핸들러
     const handleLockedClick = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
-        // 1. 로그인 체크 (쿠키 기반 인증 확인)
+        // 보안 강화: LocalStorage 대신 서버 세션 기반 인증 확인
         try {
             const { fetchSession } = await import("@/lib/authClient");
             const session = await fetchSession();
@@ -100,11 +132,10 @@ export default function CourseCard({
                 return;
             }
 
-            // 2. 로그인 상태: 결제 모달 오픈
+            // 로그인 상태: 결제 모달 오픈
             setShowSubscriptionModal(true);
         } catch (error) {
             console.error("로그인 상태 확인 실패:", error);
-            // 에러 발생 시에도 LoginModal 표시 (안전하게 처리)
             setShowLoginModal(true);
         }
     };
@@ -128,6 +159,7 @@ export default function CourseCard({
                     className="absolute inset-0 z-[25]"
                     onClick={() => {
                         try {
+                            // 성능 최적화: 불필요한 헤더 없이 데이터만 전달
                             fetch(`/api/courses/${course.id}/view`, {
                                 method: "POST",
                                 keepalive: true,
@@ -149,18 +181,18 @@ export default function CourseCard({
                         }`}
                         sizes="(max-width: 768px) 100vw, 500px"
                         priority={isPriority}
+                        loading={isPriority ? undefined : "lazy"} // 🟢 priority가 없으면 lazy
+                        quality={isPriority ? 75 : 60} // 🟢 priority 이미지는 높은 품질, 나머지는 낮은 품질로 빠른 로딩
+                        fetchPriority={isPriority ? "high" : "auto"} // 🟢 priority 이미지만 high
                     />
                 ) : (
                     <PlaceholderImage />
                 )}
 
-                {/* Lock Overlay */}
                 {course.isLocked && <CourseLockOverlay grade={course.grade} />}
 
-                {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
 
-                {/* Closed Place Indicator (Optional) */}
                 {hasClosedPlace && getClosedPlaceCount && hasClosedPlace(course) && (
                     <div className="absolute bottom-3 right-3 z-10">
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm border border-red-100">
@@ -171,25 +203,33 @@ export default function CourseCard({
                     </div>
                 )}
 
-                {/* Badges */}
-                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10 pointer-events-none">
+                {/* Badges Section - z-index를 30으로 높여 오버레이 위로 올림 */}
+                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-[20] pointer-events-auto">
+                    {/* 캐치테이블 예약 배지 (상업적 유도) */}
+                    {hasReservation && (
+                        <span className="bg-[#00b3a3] text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-[#00a394] flex items-center gap-1">
+                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" />
+                            </svg>
+                            실시간 예약
+                        </span>
+                    )}
+
                     {!course.isLocked && course.grade && course.grade !== "FREE" && (
                         <span className="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-emerald-500">
                             {course.grade}
                         </span>
                     )}
-                    {/* Concept Badge */}
                     <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
                         #{displayConcept}
                     </span>
-                    {/* New Badge */}
                     {showNewBadge && course.reviewCount === 0 && (
                         <span className="bg-[#7aa06f] text-white text-[10px] px-2 py-1 rounded-md font-bold">NEW</span>
                     )}
                 </div>
             </div>
 
-            {/* Favorite Button (Moved outside Image Section to ensure clickability) */}
+            {/* Favorite Button */}
             <button
                 onClick={(e) => {
                     e.preventDefault();
@@ -253,9 +293,8 @@ export default function CourseCard({
                     })()}
                 </div>
             </div>
-            {/* ✅ 결제 모달 렌더링 (각 카드마다 상태 가짐) */}
+            {/* 결제 및 로그인 모달 */}
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
-            {/* ✅ 로그인 모달 렌더링 */}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${course.id}`} />}
         </div>
     );

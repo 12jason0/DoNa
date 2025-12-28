@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useCallback } from "react";
 // 장소용 태그도 types/tag.ts에 있다면 import 하세요. 여기선 일단 텍스트 입력으로 둡니다.
 
 // --- 타입 정의 (DB 스키마 기준) ---
@@ -47,13 +47,17 @@ export default function AdminPlacesPage() {
     const [totalCount, setTotalCount] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const itemsPerPage = 10;
+    
+    // 검색 상태
+    const [searchQuery, setSearchQuery] = useState("");
 
     // --- 데이터 조회 ---
-    const fetchPlaces = async (page: number = 1, append: boolean = false) => {
+    const fetchPlaces = useCallback(async (page: number = 1, append: boolean = false) => {
         setLoading(true);
         try {
             const offset = (page - 1) * itemsPerPage;
-            const res = await fetch(`/api/places?all=1&limit=${itemsPerPage}&offset=${offset}`);
+            const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : "";
+            const res = await fetch(`/api/places?all=1&limit=${itemsPerPage}&offset=${offset}${searchParam}`);
             const data = await res.json();
 
             if (append) {
@@ -68,11 +72,16 @@ export default function AdminPlacesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchQuery, itemsPerPage]);
+
+    useEffect(() => {
+        setCurrentPage(1); // 검색 시 첫 페이지로 리셋
+        fetchPlaces(1, false);
+    }, [searchQuery, fetchPlaces]);
 
     useEffect(() => {
         fetchPlaces(currentPage, false);
-    }, [currentPage]);
+    }, [currentPage, fetchPlaces]);
 
     // 다음 페이지 로드
     const loadNextPage = () => {
@@ -133,9 +142,15 @@ export default function AdminPlacesPage() {
         if (!confirm("정말 이 장소를 삭제하시겠습니까?")) return;
         const token = localStorage.getItem("authToken");
         try {
+            const headers: HeadersInit = {};
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+
             const res = await fetch(`/api/places/${id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
+                headers,
+                credentials: "include", // 쿠키도 함께 전송 (admin 인증용)
             });
             if (res.ok) {
                 alert("삭제되었습니다.");
@@ -155,9 +170,15 @@ export default function AdminPlacesPage() {
             const url = editingId ? `/api/places/${editingId}` : "/api/places";
             const method = editingId ? "PATCH" : "POST";
 
+            const headers: HeadersInit = { "Content-Type": "application/json" };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+
             const res = await fetch(url, {
                 method: method,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers,
+                credentials: "include", // 쿠키도 함께 전송 (admin 인증용)
                 body: JSON.stringify(formData),
             });
             if (res.ok) {
@@ -337,6 +358,47 @@ export default function AdminPlacesPage() {
                     <h2 className="text-lg font-bold text-gray-700">
                         장소 목록 (전체 {totalCount}개, 현재 {places.length}개 표시)
                     </h2>
+                </div>
+                
+                {/* 검색 입력 필드 */}
+                <div className="mb-4">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="장소 이름으로 검색..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none pl-10"
+                        />
+                        <svg
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                        </svg>
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
                 {loading && places.length === 0 ? (
                     <p className="text-center py-8 text-gray-500">로딩 중...</p>

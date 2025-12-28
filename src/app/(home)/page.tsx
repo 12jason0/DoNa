@@ -460,7 +460,7 @@ export default function Home() {
                     return;
                 }
 
-                const allCourses = Array.isArray(data) ? data : (data as any).courses || [];
+                const allCourses = Array.isArray(data) ? data : (data as any).data || (data as any).courses || [];
 
                 // FREE 등급 코스만 필터링 (API에서 이미 필터링했지만 이중 체크)
                 const freeCourses = allCourses.filter((c: any) => c.grade === "FREE");
@@ -1251,11 +1251,11 @@ function TabbedConcepts({
                                                                 alt={koreanName}
                                                                 width={80}
                                                                 height={80}
-                                                                priority={idx < 4} // 🟢 LCP 최적화: 첫 4개만 priority (8개→4개로 축소)
-                                                                loading={idx < 4 ? undefined : "lazy"} // 🟢 첫 4개는 eager, 나머지는 lazy
-                                                                quality={60} // 🟢 성능 최적화: 작은 아이콘이므로 quality 낮춤
+                                                                priority={idx < 2} // 🟢 성능 최적화: 첫 2개만 priority로 더 줄임
+                                                                loading={idx < 2 ? undefined : "lazy"} // 🟢 첫 2개만 eager
+                                                                quality={50} // 🟢 성능 최적화: quality 더 낮춤 (60→50)
                                                                 sizes="80px" // 🟢 고정 크기 명시
-                                                                fetchPriority={idx < 4 ? "high" : "auto"} // 🟢 첫 4개만 high priority
+                                                                fetchPriority={idx < 2 ? "high" : "low"} // 🟢 첫 2개만 high, 나머지는 low
                                                                 className="object-contain w-full h-full transform scale-110 group-hover:scale-125 transition-transform duration-500 p-1"
                                                             />
                                                         ) : (
@@ -1328,11 +1328,11 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
-                                                    priority={idx === 0} // 🟢 LCP 최적화: 첫 번째 이미지만 priority (4개→1개로 축소)
+                                                    priority={idx === 0} // 🟢 LCP 최적화: 첫 번째 이미지만 priority
                                                     loading={idx === 0 ? undefined : "lazy"} // 🟢 첫 번째만 eager, 나머지는 lazy
-                                                    quality={65} // 🟢 성능 최적화: quality 최적화
+                                                    quality={55} // 🟢 성능 최적화: quality 더 낮춤 (65→55)
                                                     sizes="80px" // 🟢 고정 크기 명시
-                                                    fetchPriority={idx === 0 ? "high" : "auto"} // 🟢 첫 번째만 high priority
+                                                    fetchPriority={idx === 0 ? "high" : "low"} // 🟢 첫 번째만 high, 나머지는 low
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (
@@ -1385,11 +1385,11 @@ function TabbedConcepts({
                                                     alt={c.title}
                                                     width={80}
                                                     height={80}
-                                                    priority={idx === 0} // 🟢 LCP 최적화: 첫 번째 이미지만 priority (4개→1개로 축소)
+                                                    priority={idx === 0} // 🟢 LCP 최적화: 첫 번째 이미지만 priority
                                                     loading={idx === 0 ? undefined : "lazy"} // 🟢 첫 번째만 eager, 나머지는 lazy
-                                                    quality={65} // 🟢 성능 최적화: quality 최적화
+                                                    quality={55} // 🟢 성능 최적화: quality 더 낮춤 (65→55)
                                                     sizes="80px" // 🟢 고정 크기 명시
-                                                    fetchPriority={idx === 0 ? "high" : "auto"} // 🟢 첫 번째만 high priority
+                                                    fetchPriority={idx === 0 ? "high" : "low"} // 🟢 첫 번째만 high, 나머지는 low
                                                     className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (

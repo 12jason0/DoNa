@@ -5,8 +5,9 @@ interface CourseLockOverlayProps {
 }
 
 export default function CourseLockOverlay({ grade = "PREMIUM" }: CourseLockOverlayProps) {
+    // 🟢 z-index를 20으로 설정하여 뱃지(z-[30]) 아래에 위치하도록 보장
     return (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[1px] pointer-events-none">
+        <div className="absolute inset-0 z-[20] flex flex-col items-center justify-center bg-black/40 backdrop-blur-[1px] pointer-events-none">
             <div className="rounded-full bg-white/20 p-3 backdrop-blur-md mb-2">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path

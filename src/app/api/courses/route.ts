@@ -13,10 +13,10 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const concept = searchParams.get("concept");
+        const concept = (searchParams.get("concept") || "").trim();
         const q = (searchParams.get("q") || "").trim();
         const tagIdsParam = (searchParams.get("tagIds") || "").trim();
-        const regionQuery = searchParams.get("region");
+        const regionQuery = (searchParams.get("region") || "").trim();
         const limitParam = searchParams.get("limit");
         const offsetParam = searchParams.get("offset");
         const noCache = searchParams.get("nocache");
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         const parsedOffset = Number(offsetParam ?? 0);
         const effectiveOffset = Math.max(parsedOffset, 0);
 
-        // 🟢 [원본 로직 유지] 초기 로드 5:3:2 비율 로직 판단 조건
+        // 🟢 [수정] 필터(concept, tagIds, region)가 하나라도 있으면 초기 로드(5:3:2)를 건너뜀
         const isDefaultLoad = effectiveOffset === 0 && !q && !concept && !regionQuery && !tagIdsParam && !gradeParam;
 
         // 🟢 [원본 로직 유지] 공통 포맷팅 함수 (safety checks 포함)
@@ -107,9 +107,14 @@ export async function GET(request: NextRequest) {
                 view_count: course.view_count || 0,
                 viewCount: course.view_count || 0,
                 createdAt: course.createdAt || new Date().toISOString(),
-                tags: Array.isArray(course?.courseTags)
-                    ? course.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                    : [],
+                tags: (() => {
+                    // courseTags 관계 테이블에서만 태그 추출
+                    const tagsFromRelation = Array.isArray(course?.courseTags)
+                        ? course.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
+                        : [];
+
+                    return tagsFromRelation;
+                })(),
                 coursePlaces: Array.isArray(course.coursePlaces)
                     ? course.coursePlaces.map((cp: any) => ({
                           order_index: cp.order_index,
@@ -121,6 +126,7 @@ export async function GET(request: NextRequest) {
                                     latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
                                     longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
                                     opening_hours: cp.place.opening_hours || null,
+                                    // reservationUrl: cp.place.reservationUrl || null, // 🟢 임시 주석 처리 - 에러 확인용
                                 }
                               : null,
                       }))
@@ -156,6 +162,7 @@ export async function GET(request: NextRequest) {
                                 latitude: true,
                                 longitude: true,
                                 opening_hours: true,
+                                // reservationUrl: true, // 🟢 임시 주석 처리 - 에러 확인용
                             },
                         },
                     },
@@ -215,6 +222,16 @@ export async function GET(request: NextRequest) {
                         { description: { contains: cleanKeyword, mode: "insensitive" } },
                         { concept: { contains: cleanKeyword, mode: "insensitive" } },
                         { region: { contains: cleanKeyword, mode: "insensitive" } },
+                        // courseTags 관계 테이블에서 태그 이름으로 검색
+                        {
+                            courseTags: {
+                                some: {
+                                    tag: {
+                                        name: { contains: cleanKeyword, mode: "insensitive" },
+                                    },
+                                },
+                            },
+                        },
                         {
                             coursePlaces: {
                                 some: {
@@ -232,22 +249,35 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // 🟢 [원본 로직 유지] 컨셉, 지역, 태그 필터링
-        if (concept) {
+        // 🟢 [수정] 필터링(concept) 검색 - courseTags 관계 테이블 사용
+        if (concept && concept.trim() !== "") {
             const tokens = concept
                 .split(",")
                 .map((s) => s.trim())
                 .filter(Boolean);
             if (tokens.length > 0) {
-                andWhere.push({
-                    OR: [
-                        { concept: { contains: concept, mode: "insensitive" } },
-                        {
-                            courseDetail: {
-                                is: { OR: tokens.map((t) => ({ course_type: { contains: t, mode: "insensitive" } })) },
+                // 각 토큰마다 OR 조건 생성 (하나의 토큰이라도 매칭되면 포함)
+                tokens.forEach((token) => {
+                    andWhere.push({
+                        OR: [
+                            { concept: { contains: token, mode: "insensitive" } },
+                            {
+                                courseDetail: {
+                                    is: { course_type: { contains: token, mode: "insensitive" } },
+                                },
                             },
-                        },
-                    ],
+                            // courseTags 관계 테이블에서 태그 이름으로 검색
+                            {
+                                courseTags: {
+                                    some: {
+                                        tag: {
+                                            name: { contains: token, mode: "insensitive" },
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    });
                 });
             }
         }
@@ -275,7 +305,19 @@ export async function GET(request: NextRequest) {
                 orderBy: { id: "desc" },
                 take: effectiveLimit,
                 skip: effectiveOffset,
-                include: {
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    duration: true,
+                    region: true,
+                    imageUrl: true,
+                    concept: true,
+                    tags: true, // JSON 필드 포함
+                    grade: true,
+                    rating: true,
+                    view_count: true,
+                    createdAt: true,
                     courseTags: { select: { tag: { select: { name: true } } } },
                     coursePlaces: {
                         orderBy: { order_index: "asc" },
@@ -290,6 +332,7 @@ export async function GET(request: NextRequest) {
                                     longitude: true,
                                     opening_hours: true,
                                     category: true,
+                                    reservationUrl: true,
                                 },
                             },
                         },
@@ -300,19 +343,80 @@ export async function GET(request: NextRequest) {
         }
 
         if (!Array.isArray(results)) {
-            return NextResponse.json([], { status: 200 });
+            return NextResponse.json({ data: [], isRecommendation: false }, { status: 200 });
         }
 
         // 🟢 [원본 로직 유지] 이미지 정책 필터 및 등급별 정렬
         const filtered = filterCoursesByImagePolicy(results as CourseWithPlaces[], imagePolicy);
-        const finalData = filtered.map(formatCourse).filter((course) => course !== null);
+        let finalData = filtered.map(formatCourse).filter((course) => course !== null);
         const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
         finalData.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
 
-        return NextResponse.json(finalData);
-    } catch (error) {
+        let isRecommendation = false;
+
+        // 🟢 [상업적 로직] 검색 결과가 0개인 경우 추천 데이터 조회
+        if (finalData.length === 0 && effectiveOffset === 0) {
+            isRecommendation = true;
+            const recommendedRaw = await prisma.course.findMany({
+                where: { isPublic: true, is_editor_pick: true },
+                take: 4,
+                orderBy: { view_count: "desc" },
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    duration: true,
+                    region: true,
+                    imageUrl: true,
+                    concept: true,
+                    tags: true,
+                    grade: true,
+                    rating: true,
+                    view_count: true,
+                    createdAt: true,
+                    courseTags: { select: { tag: { select: { name: true } } } },
+                    coursePlaces: {
+                        orderBy: { order_index: "asc" },
+                        select: {
+                            order_index: true,
+                            place: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    imageUrl: true,
+                                    latitude: true,
+                                    longitude: true,
+                                    opening_hours: true,
+                                    category: true,
+                                    reservationUrl: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+            const recommendedFiltered = filterCoursesByImagePolicy(
+                recommendedRaw as unknown as CourseWithPlaces[],
+                imagePolicy
+            );
+            finalData = recommendedFiltered.map(formatCourse).filter((course) => course !== null);
+            finalData.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
+        }
+
+        return NextResponse.json({ data: finalData, isRecommendation });
+    } catch (error: any) {
         console.error("GET Error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        console.error("GET Error Message:", error?.message);
+        console.error("GET Error Stack:", error?.stack);
+        console.error("GET Error Code:", error?.code);
+        return NextResponse.json(
+            {
+                error: "Internal Server Error",
+                message: process.env.NODE_ENV === "development" ? error?.message : undefined,
+                code: process.env.NODE_ENV === "development" ? error?.code : undefined,
+            },
+            { status: 500 }
+        );
     }
 }
 

@@ -147,7 +147,7 @@ function PaymentSuccessContent() {
                     <p className="text-gray-600 mb-2">{errorMessage}</p>
                     <p className="text-xs text-gray-400 mb-8">오류가 반복되면 고객센터로 문의해주세요.</p>
                     <button
-                        onClick={() => router.back()}
+                        onClick={() => window.history.back()}
                         className="w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold transition-all active:scale-95"
                     >
                         뒤로 가기

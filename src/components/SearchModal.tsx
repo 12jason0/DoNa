@@ -6,7 +6,7 @@ import { Search, X, ArrowLeft, TrendingUp } from "lucide-react";
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 
 // [인기 검색어 데이터 예시]
-const POPULAR_KEYWORDS = ["성수동 카페", "비오는날 데이트", "전시회", "야장", "을지로", "실내 데이트 "];
+const POPULAR_KEYWORDS = ["성수동 카페", "비오는날 데이트", "전시회", "야경 명소", "실내 데이트"];
 
 // [추천 태그 데이터 예시]
 const RECOMMEND_TAGS = [

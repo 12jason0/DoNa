@@ -11,15 +11,25 @@ export async function GET(request: NextRequest) {
         const lng = searchParams.get("lng");
         const region = searchParams.get("region");
 
-        // Admin 등에서 전체 목록이 필요한 경우: /api/places?all=1&limit=10&offset=0
+        // Admin 등에서 전체 목록이 필요한 경우: /api/places?all=1&limit=10&offset=0&search=검색어
         if (all === "1") {
             const limitParam = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 100);
             const offsetParam = Math.max(Number(searchParams.get("offset") ?? 0), 0);
+            const searchQuery = (searchParams.get("search") || "").trim();
 
-            // 전체 개수 조회
-            const totalCount = await (prisma as any).place.count();
+            // 검색 조건 구성
+            const whereClause: any = {};
+            if (searchQuery) {
+                whereClause.name = { contains: searchQuery, mode: "insensitive" };
+            }
+
+            // 전체 개수 조회 (검색 조건 포함)
+            const totalCount = await (prisma as any).place.count({
+                where: whereClause,
+            });
 
             const places = (await (prisma as any).place.findMany({
+                where: whereClause,
                 skip: offsetParam,
                 take: limitParam,
                 orderBy: { id: "asc" }, // id 오름차순 (1번부터)
@@ -131,10 +141,20 @@ export async function GET(request: NextRequest) {
     }
 }
 
+// Admin 인증 체크 헬퍼 함수
+function ensureAdminOrUser(req: NextRequest): boolean {
+    // Admin 인증 확인 (admin_auth 쿠키)
+    const adminAuth = req.cookies.get("admin_auth")?.value;
+    if (adminAuth === "true") return true;
+    
+    // 일반 사용자 인증 확인
+    const userId = resolveUserId(req);
+    return userId !== null;
+}
+
 export async function POST(request: NextRequest) {
     try {
-        const userId = resolveUserId(request);
-        if (!userId) {
+        if (!ensureAdminOrUser(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 

@@ -607,7 +607,7 @@ export default function CourseDetailClient({
                         </button>
 
                         <button
-                            onClick={() => router.back()}
+                            onClick={() => window.history.back()}
                             className="w-full py-3 rounded-xl text-gray-500 font-medium text-[14px] hover:text-gray-800 hover:bg-gray-50 transition-colors"
                         >
                             다음에 볼래요

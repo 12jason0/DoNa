@@ -4,10 +4,22 @@ import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+// Admin 인증 체크 헬퍼 함수
+function ensureAdminOrUser(req: NextRequest): boolean {
+    // Admin 인증 확인 (admin_auth 쿠키)
+    const adminAuth = req.cookies.get("admin_auth")?.value;
+    if (adminAuth === "true") return true;
+    
+    // 일반 사용자 인증 확인
+    const userId = resolveUserId(req);
+    return userId !== null;
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const userId = resolveUserId(request);
-        if (!userId) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+        if (!ensureAdminOrUser(request)) {
+            return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+        }
 
         const { id } = await params;
         const placeId = Number(id);
@@ -87,8 +99,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const userId = resolveUserId(request);
-        if (!userId) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+        if (!ensureAdminOrUser(request)) {
+            return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+        }
 
         const { id } = await params;
         const placeId = Number(id);

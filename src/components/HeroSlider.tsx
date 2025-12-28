@@ -44,9 +44,9 @@ const SliderItemComponent = memo(
                             className="object-cover"
                             priority={isFirstVisible} // 🟢 첫 번째 이미지만 priority
                             loading={shouldLoad ? "eager" : "lazy"} // 🟢 보이는 것만 eager, 나머지는 lazy
-                            quality={70} // 🟢 성능 최적화: 75 -> 70 (더 빠른 로딩)
+                            quality={isFirstVisible ? 75 : 60} // 🟢 성능 최적화: 첫 이미지는 높은 품질, 나머지는 낮은 품질
                             sizes="(max-width: 768px) 100vw, 400px"
-                            fetchPriority={isFirstVisible ? "high" : "auto"} // 🟢 첫 이미지만 high
+                            fetchPriority={isFirstVisible ? "high" : "low"} // 🟢 첫 이미지만 high, 나머지는 low
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">

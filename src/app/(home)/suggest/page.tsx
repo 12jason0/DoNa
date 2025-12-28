@@ -256,7 +256,7 @@ export default function SuggestCoursePage() {
                     <div className="bg-gray-50 px-8 py-6 border-t border-gray-200">
                         <div className="flex gap-4 justify-end">
                             <button
-                                onClick={() => router.back()}
+                                onClick={() => window.history.back()}
                                 className="px-6 py-3 border-2 border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-100 transition-colors"
                             >
                                 취소

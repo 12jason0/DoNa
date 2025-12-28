@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
                         latitude: true,
                         longitude: true,
                         address: true,
+                        reservationUrl: true, // 🟢 예약 URL 추가
                     },
                 },
             },

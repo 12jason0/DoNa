@@ -304,7 +304,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         window.location.href = "/";
     };
 
-    // 🔥 [수정] 닫기 동작 개선
+    // 🔥 [수정] 닫기 동작 개선 - 빠른 뒤로 가기
     const handleClose = () => {
         if (onClose) {
             // 부모 컴포넌트가 제어권을 가진 경우
@@ -313,7 +313,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             // 단독 페이지 혹은 라우팅 기반일 경우
             // "다음에 하기" 느낌을 주기 위해 뒤로가기 혹은 홈으로
             if (window.history.length > 1) {
-                router.back();
+                window.history.back(); // 빠른 뒤로 가기
             } else {
                 router.push("/");
             }
