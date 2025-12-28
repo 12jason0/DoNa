@@ -147,7 +147,7 @@ const nextConfig = {
         // 🟢 이미지 품질 및 크기 최적화 (콘솔 경고 방지 및 성능 향상)
         deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
         imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-        qualities: [60, 65, 70, 75], // 🟢 사용 중인 품질값 명시 [cite: 2025-12-24]
+        qualities: [50, 55, 60, 65, 70, 75], // 🟢 사용 중인 품질값 명시 [cite: 2025-12-24]
 
         remotePatterns: [
             { protocol: "https", hostname: "images.unsplash.com" },
@@ -159,8 +159,7 @@ const nextConfig = {
             { protocol: "https", hostname: "www.google.co.kr" },
             { protocol: "https", hostname: "google.co.kr" },
         ],
-        // 💡 CloudFront의 자체 최적화를 사용한다면 true, Next.js 서버 부하를 줄이려면 true가 유리합니다.
-        unoptimized: true,
+        unoptimized: false,
     },
 };
 

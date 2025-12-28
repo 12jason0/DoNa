@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
                                     latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
                                     longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
                                     opening_hours: cp.place.opening_hours || null,
-                                    // reservationUrl: cp.place.reservationUrl || null, // 🟢 임시 주석 처리 - 에러 확인용
+                                    reservationUrl: cp.place.reservationUrl || null,
                                 }
                               : null,
                       }))
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
                                 latitude: true,
                                 longitude: true,
                                 opening_hours: true,
-                                // reservationUrl: true, // 🟢 임시 주석 처리 - 에러 확인용
+                                reservationUrl: true,
                             },
                         },
                     },

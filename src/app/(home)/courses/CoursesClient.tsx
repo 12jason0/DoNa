@@ -109,26 +109,17 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             if (response.ok && data) {
                 const coursesArray = Array.isArray(data) ? data : (data as any).courses || [];
 
-                console.log(`[무한 스크롤] 추가 로드 성공: ${coursesArray.length}개 코스 (현재 offset: ${offset})`);
-
                 if (coursesArray.length > 0) {
                     setCourses((prev) => {
                         // 🟢 중복 제거 (같은 ID가 있으면 제외)
                         const existingIds = new Set(prev.map((c) => c.id));
                         const newUniqueCourses = coursesArray.filter((c: Course) => !existingIds.has(c.id));
-                        console.log(
-                            `[무한 스크롤] 기존 ${prev.length}개 + 새로 추가 ${newUniqueCourses.length}개 = 총 ${
-                                prev.length + newUniqueCourses.length
-                            }개`
-                        );
                         return [...prev, ...newUniqueCourses];
                     });
                     setOffset((prev) => prev + 30);
                     // 🟢 30개 미만이면 더 이상 없음
                     setHasMore(coursesArray.length >= 30);
-                    console.log(`[무한 스크롤] 다음 offset: ${offset + 30}, hasMore: ${coursesArray.length >= 30}`);
                 } else {
-                    console.log(`[무한 스크롤] 더 이상 로드할 코스가 없습니다.`);
                     setHasMore(false);
                 }
             } else {
@@ -316,6 +307,12 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                 {/* Concept Chips */}
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5">
                     <button
+                        onMouseEnter={() => {
+                            // 🟢 호버 시 prefetch로 빠른 전환
+                            if (activeConcept !== "") {
+                                router.prefetch("/courses");
+                            }
+                        }}
                         onClick={() => {
                             router.push("/courses");
                         }}
@@ -331,6 +328,12 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                     {STATIC_CONCEPTS.map((tag) => (
                         <button
                             key={tag}
+                            onMouseEnter={() => {
+                                // 🟢 호버 시 prefetch로 빠른 전환
+                                if (activeConcept !== tag) {
+                                    router.prefetch(`/courses?concept=${encodeURIComponent(tag)}`);
+                                }
+                            }}
                             onClick={() => {
                                 if (activeConcept === tag) {
                                     router.push("/courses");

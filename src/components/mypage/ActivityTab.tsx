@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { UserBadgeItem, UserRewardRow, UserCheckinRow } from "@/types/user";
 
 interface PaymentHistory {
@@ -99,10 +100,14 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                 >
                                     {b.image_url ? (
                                         <div className="w-20 h-20 mb-3 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-                                            <img
+                                            <Image
                                                 src={b.image_url}
                                                 alt={b.name}
+                                                width={80}
+                                                height={80}
                                                 className="w-full h-full object-contain"
+                                                loading="lazy" // 🟢 성능 최적화: lazy loading 적용
+                                                quality={70} // 🟢 성능 최적화: quality 설정
                                                 onError={(e) => {
                                                     e.currentTarget.style.display = "none";
                                                 }}

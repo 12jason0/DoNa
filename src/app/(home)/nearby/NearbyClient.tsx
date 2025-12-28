@@ -236,7 +236,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             params.set("offset", String(offset));
 
             const { data, response } = await apiFetch(`/api/courses/nearby?${params.toString()}`, {
-                cache: "no-store",
+                cache: "force-cache", // 🟢 성능 최적화: 캐시 활용
+                next: { revalidate: 60 }, // 🟢 60초 캐시
             });
             if (response.ok && data) {
                 const responseData = Array.isArray(data)

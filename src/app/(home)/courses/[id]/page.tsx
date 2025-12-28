@@ -137,7 +137,7 @@ const getCourse = unstable_cache(
     // 🟢 빈 배열: 함수 파라미터(id)가 자동으로 캐시 키에 포함됨
     [],
     {
-        revalidate: 3600, // 🟢 1시간 캐싱
+        revalidate: 300, // 🟢 성능 최적화: 5분 캐싱 (3600 -> 300)
         tags: ["course-detail"],
     }
 );
@@ -177,7 +177,7 @@ const getUserPermission = unstable_cache(
     },
     [],
     {
-        revalidate: 300, // 🟢 5분 캐싱 (권한 정보는 자주 변경되지 않음)
+        revalidate: 180, // 🟢 성능 최적화: 3분 캐싱 (300 -> 180)
         tags: ["user-permission"],
     }
 );

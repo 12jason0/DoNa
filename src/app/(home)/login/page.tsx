@@ -30,7 +30,9 @@ const Login = () => {
     // 페이지 로드 시 스크롤을 맨 위로
     useEffect(() => {
         window.scrollTo(0, 0);
-    }, []);
+        // 🟢 로그인 페이지 로드 시 메인 페이지 prefetch (빠른 이동을 위해)
+        router.prefetch("/");
+    }, [router]);
 
     // URL 파라미터에서 메시지 및 에러 확인
     useEffect(() => {
@@ -174,7 +176,6 @@ const Login = () => {
                     authReceived.current = true; // ✅ 수신 확인
                     // 콜백에서 전달받은 next 사용, 없으면 sessionStorage에서 가져오기, 둘 다 없으면 현재 next, 마지막으로 메인 페이지
                     const receivedNext = (event.data as any).next || sessionStorage.getItem("auth:next") || next || "/";
-                    console.log("✅ 인증 코드 수신 성공:", code, "next:", receivedNext);
 
                     try {
                         const response = await fetch("/api/auth/kakao", {

@@ -92,31 +92,6 @@ export default function CourseCard({
     // 예약 링크가 있는 첫 번째 장소의 예약 URL 가져오기
     const reservationUrl = course.coursePlaces?.find((cp) => cp.place?.reservationUrl)?.place?.reservationUrl;
 
-    // 🟢 디버깅: 예약 URL 확인 (개발 환경에서만) - 모든 코스 확인
-    if (process.env.NODE_ENV === "development") {
-        const placesWithReservation = course.coursePlaces?.filter((cp) => cp.place?.reservationUrl) || [];
-        if (placesWithReservation.length > 0) {
-            console.log(`[CourseCard] ✅ 예약 가능: "${course.title}"`, {
-                courseId: course.id,
-                hasReservation,
-                reservationUrl,
-                places: placesWithReservation.map((cp) => ({
-                    name: cp.place?.name,
-                    reservationUrl: cp.place?.reservationUrl,
-                })),
-            });
-        } else if (course.coursePlaces && course.coursePlaces.length > 0) {
-            // 예약 URL이 없는 경우도 로그 (디버깅용)
-            console.log(`[CourseCard] ❌ 예약 불가: "${course.title}"`, {
-                courseId: course.id,
-                places: course.coursePlaces.map((cp) => ({
-                    name: cp.place?.name,
-                    hasReservationUrl: !!cp.place?.reservationUrl,
-                })),
-            });
-        }
-    }
-
     // 내부 잠금 클릭 핸들러
     const handleLockedClick = async (e: React.MouseEvent) => {
         e.preventDefault();

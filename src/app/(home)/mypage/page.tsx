@@ -125,9 +125,6 @@ const MyPage = () => {
             }
 
             // 🟢 authenticatedFetch가 이미 JSON을 파싱해서 반환함
-            // 🟢 디버깅 로그: 여기서 BASIC이 찍히는지 확인
-            console.log("[MyPage] 서버 원본 응답:", raw);
-
             const src: any = (raw as any)?.user ?? raw ?? {};
 
             // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
@@ -157,14 +154,6 @@ const MyPage = () => {
                 (raw as any)?.subscription_tier ||
                 (raw as any)?.subscriptionTier ||
                 "FREE";
-            console.log("[MyPage] API 응답 subscriptionTier:", tier, "src:", src, "raw:", raw);
-            console.log(
-                "[MyPage] 필드명 확인 - subscription_tier:",
-                src.subscription_tier,
-                "subscriptionTier:",
-                src.subscriptionTier
-            );
-            console.log("[MyPage] 최종 등급 값 (setUserInfo에 전달):", tier);
 
             // subscriptionExpiresAt 추출 (DB 필드명: subscription_expires_at)
             const subscriptionExpiresAt =
@@ -190,7 +179,6 @@ const MyPage = () => {
                 subscriptionTier: tier, // 🟢 확정된 등급 삽입
                 subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
             };
-            console.log("[MyPage] setUserInfo 호출 전 최종 userInfo 객체:", finalUserInfo);
             setUserInfo(finalUserInfo);
             return true; // 🟢 성공 시 true 반환하여 다른 fetch 함수들이 실행되도록 함
         } catch (error) {
@@ -396,7 +384,6 @@ const MyPage = () => {
             if (raw) {
                 // 🟢 API 응답 구조: { courses: [...], escapes: [...] }
                 const coursesList = Array.isArray((raw as any)?.courses) ? (raw as any).courses : [];
-                console.log("[MyPage] 완료 코스 데이터:", coursesList);
 
                 setCompleted(
                     coursesList.map((c: any) => {
@@ -739,7 +726,9 @@ const MyPage = () => {
                     />
                 )}
 
-                {activeTab === "footprint" && <FootprintTab casefiles={casefiles} completed={completed} />}
+                {activeTab === "footprint" && (
+                    <FootprintTab casefiles={casefiles} completed={completed} userName={userInfo?.name || ""} />
+                )}
 
                 {activeTab === "records" && (
                     <RecordsTab

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import CourseCard from "@/components/CourseCard";
 import Image from "@/components/ImageFallback";
 import { Favorite, CompletedCourse, CasefileItem } from "@/types/user";
@@ -42,7 +43,16 @@ const CourseImageLoader = ({
 
     // 이미지가 로드되면 Image 컴포넌트로 표시
     if (loadedImageUrl) {
-        return <Image src={loadedImageUrl} alt="Course" fill className="object-cover rounded-none" />;
+        return (
+            <Image
+                src={loadedImageUrl}
+                alt="Course"
+                fill
+                className="object-cover rounded-none"
+                loading="lazy" // 🟢 성능 최적화: lazy loading 적용
+                quality={70} // 🟢 성능 최적화: quality 설정
+            />
+        );
     }
 
     return (
@@ -153,7 +163,10 @@ const RecordsTab = ({
                             <h4 className="text-lg font-semibold text-gray-900 mb-2">찜한 코스가 없어요</h4>
                             <p className="text-gray-600 mb-4">마음에 드는 코스를 찜해보세요!</p>
                             <button
-                                onClick={() => router.push("/courses")}
+                                onClick={() => {
+                                    router.prefetch("/courses"); // 🟢 성능 최적화: prefetch 추가
+                                    router.push("/courses");
+                                }}
                                 className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
                             >
                                 코스 둘러보기
@@ -222,10 +235,11 @@ const RecordsTab = ({
                                 const displayImageUrl = c.imageUrl || courseImages[c.course_id] || "";
 
                                 return (
-                                    <div
+                                    <Link
                                         key={c.course_id}
-                                        className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors cursor-pointer"
-                                        onClick={() => router.push(`/courses/${c.course_id}`)}
+                                        href={`/courses/${c.course_id}`}
+                                        prefetch={true} // 🟢 성능 최적화: prefetch 추가
+                                        className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors cursor-pointer block"
                                     >
                                         <div className="relative">
                                             <div className="relative h-48">
@@ -235,6 +249,8 @@ const RecordsTab = ({
                                                         alt={c.title}
                                                         fill
                                                         className="object-cover rounded-none"
+                                                        loading="lazy" // 🟢 성능 최적화: lazy loading 적용
+                                                        quality={70} // 🟢 성능 최적화: quality 설정
                                                         onError={async () => {
                                                             // 이미지 로드 실패 시 코스 상세에서 가져오기
                                                             if (!courseImages[c.course_id]) {
@@ -292,7 +308,7 @@ const RecordsTab = ({
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>

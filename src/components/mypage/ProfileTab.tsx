@@ -30,9 +30,6 @@ const ProfileTab = ({
     // 🟢 로그를 보면 subscriptionTier(camelCase)로 정확히 오고 있습니다.
     const displayTier = userInfo?.subscriptionTier || "FREE";
 
-    // 🟢 화면에 아예 안 보인다면, 이 로그가 'BASIC'으로 찍히는지 콘솔에서 꼭 보세요.
-    console.log("[ProfileTab Render] 실제 배지에 표시될 등급:", displayTier);
-
     // 1. 초기값을 null로 변경 (데이터를 불러오기 전 상태)
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
     const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -250,10 +247,12 @@ const ProfileTab = ({
                                 <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white bg-gray-50">
                                     <Image
                                         src={userInfo.profileImage || DEFAULT_PROFILE_IMG}
+                                        loading="eager" // 🟢 프로필 이미지는 우선 로드 (활성 탭이므로)
+                                        priority // 🟢 프로필 이미지는 priority 적용
                                         alt={userInfo.name || "프로필"}
                                         fill
                                         className="object-cover"
-                                        priority
+                                        sizes="(max-width: 768px) 64px, (max-width: 1200px) 128px, 256px"
                                     />
                                 </div>
                             </div>

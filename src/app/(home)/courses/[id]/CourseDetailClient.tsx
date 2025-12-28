@@ -382,13 +382,11 @@ export default function CourseDetailClient({
             return;
         }
         try {
-            console.log(`[CourseDetailClient] 리뷰 가져오기 시작: courseId=${courseId}`);
             const response = await fetch(`/api/reviews?courseId=${courseId}`, {
                 cache: "no-store", // 🟢 리뷰 작성 후 즉시 반영을 위해 캐시 비활성화
             });
             if (response.ok) {
                 const data = await response.json();
-                console.log(`[CourseDetailClient] 리뷰 응답:`, data);
                 if (Array.isArray(data)) {
                     const formattedReviews = data.map((r: any) => ({
                         id: r.id,
@@ -398,7 +396,6 @@ export default function CourseDetailClient({
                         content: r.comment,
                         imageUrls: r.imageUrls || [],
                     }));
-                    console.log(`[CourseDetailClient] 포맷된 리뷰 ${formattedReviews.length}개:`, formattedReviews);
                     setReviews(formattedReviews);
                 } else {
                     console.warn("[CourseDetailClient] 리뷰 데이터가 배열이 아닙니다:", data);
@@ -422,7 +419,6 @@ export default function CourseDetailClient({
     // 🟢 리뷰 작성 후 목록 새로고침
     useEffect(() => {
         const handleReviewSubmitted = () => {
-            console.log("[CourseDetailClient] 리뷰 작성 이벤트 감지, 목록 새로고침");
             fetchReviews();
         };
 
@@ -619,7 +615,6 @@ export default function CourseDetailClient({
                 {showSubscriptionModal && (
                     <TicketPlans
                         onClose={() => {
-                            console.log("결제 모달 닫기");
                             setShowSubscriptionModal(false);
                         }}
                     />
@@ -836,7 +831,6 @@ export default function CourseDetailClient({
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                console.log("팁 클릭 - 비로그인, 로그인 모달 열기");
                                                                 setShowLoginModal(true);
                                                             }}
                                                             className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
@@ -869,7 +863,6 @@ export default function CourseDetailClient({
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                console.log("팁 클릭 - FREE 등급, 결제 모달 열기");
                                                                 setShowSubscriptionModal(true);
                                                             }}
                                                             className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
@@ -1316,7 +1309,7 @@ export default function CourseDetailClient({
                                             <p className="text-xs font-medium text-gray-500 mb-0.5 uppercase">
                                                 {modalSelectedPlace.category}
                                             </p>
-                                            <h4 className="text-lg font-bold truncate mb-1">
+                                            <h4 className="text-lg font-bold text-gray-900 truncate mb-1">
                                                 {modalSelectedPlace.name}
                                             </h4>
                                             <p className="text-sm text-gray-600 truncate">

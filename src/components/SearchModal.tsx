@@ -45,6 +45,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         if (!keyword.trim()) return;
         const sp = new URLSearchParams();
         sp.set("q", keyword.trim());
+        // 🟢 prefetch로 빠른 전환
+        router.prefetch(`/nearby?${sp.toString()}`);
         router.push(`/nearby?${sp.toString()}`);
         setQuery(""); // [추가] 검색 완료 후 입력창 초기화
         onClose();
@@ -95,6 +97,12 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                         {POPULAR_KEYWORDS.map((keyword, index) => (
                             <button
                                 key={index}
+                                onMouseEnter={() => {
+                                    // 🟢 호버 시 prefetch로 빠른 전환
+                                    const sp = new URLSearchParams();
+                                    sp.set("q", keyword);
+                                    router.prefetch(`/nearby?${sp.toString()}`);
+                                }}
                                 onClick={() => handleSearch(keyword)}
                                 className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-colors shadow-sm"
                             >
@@ -111,6 +119,12 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                         {RECOMMEND_TAGS.map((tag) => (
                             <button
                                 key={tag.id}
+                                onMouseEnter={() => {
+                                    // 🟢 호버 시 prefetch로 빠른 전환
+                                    const sp = new URLSearchParams();
+                                    sp.set("q", tag.label);
+                                    router.prefetch(`/nearby?${sp.toString()}`);
+                                }}
                                 onClick={() => handleSearch(tag.label)}
                                 className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
                             >

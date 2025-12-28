@@ -88,6 +88,13 @@ const Header = () => {
         };
     }, []);
 
+    // 🟢 메인 페이지 prefetch (성능 최적화)
+    useEffect(() => {
+        if (pathname !== "/") {
+            router.prefetch("/");
+        }
+    }, [router, pathname]);
+
     // --- 🟢 기능 4: 드로어 위치 및 너비 계산 (recomputeAnchor) ---
     const recomputeAnchor = () => {
         try {
@@ -152,7 +159,7 @@ const Header = () => {
             <header className="relative z-50 bg-white shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <Link href="/" className="flex items-center space-x-2" onClick={closeMenu}>
+                        <Link href="/" prefetch={true} className="flex items-center space-x-2" onClick={closeMenu}>
                             <span className="text-xl font-bold text-gray-900">DoNa</span>
                         </Link>
 

@@ -21,6 +21,7 @@ export default function PersonalizedSection() {
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("회원");
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // 🟢 null = 아직 확인 중
+    const [hasOnboardingData, setHasOnboardingData] = useState(false); // 온보딩 데이터 보유 여부
     const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
 
     // --- Mouse Drag State ---
@@ -74,6 +75,7 @@ export default function PersonalizedSection() {
             } else {
                 setIsLoggedIn(false);
                 setUserName("회원");
+                setHasOnboardingData(false);
             }
 
             // 3. 추천 API 호출 (로그인 상태에 따라 캐싱 정책 분리)
@@ -84,12 +86,13 @@ export default function PersonalizedSection() {
             const { data, response } = await apiFetch("/api/recommendations?limit=3", {
                 // 🟢 로그인 사용자: 짧은 캐싱 (최근 상호작용 반영을 위해)
                 // 🟢 비로그인 사용자: 긴 캐싱 (인기순 정렬이므로 동일 결과)
-                cache: isUserAuthenticated ? "force-cache" : "force-cache",
-                next: { revalidate: isUserAuthenticated ? 30 : 300 }, // 로그인: 30초, 비로그인: 5분
+                cache: isUserAuthenticated ? "no-store" : "force-cache", // 🟢 로그인 사용자: no-store로 최신 데이터 가져오기
+                next: { revalidate: isUserAuthenticated ? 0 : 300 }, // 로그인: 0초 (즉시 갱신), 비로그인: 5분
             });
 
             if (!response.ok || !data) {
                 setCourses([]);
+                setHasOnboardingData(false);
                 setLoading(false);
                 return;
             }
@@ -97,6 +100,22 @@ export default function PersonalizedSection() {
             const recommendations = (data as any)?.recommendations || [];
             if (recommendations.length > 0) {
                 setCourses(recommendations);
+
+                // 🟢 API 응답에 matchScore가 있는 코스가 하나라도 있으면 온보딩 데이터 있음으로 간주
+                // matchScore는 로그인 + 온보딩 완료 시에만 서버에서 계산되어 반환됨
+                if (
+                    isUserAuthenticated &&
+                    recommendations.some((c: any) => c.matchScore !== undefined && c.matchScore !== null)
+                ) {
+                    setHasOnboardingData(true);
+                } else if (isUserAuthenticated) {
+                    // 로그인했지만 matchScore가 없으면 온보딩 미완료
+                    const localOnboarding =
+                        typeof window !== "undefined" && localStorage.getItem("onboardingComplete") === "1";
+                    setHasOnboardingData(localOnboarding);
+                } else {
+                    setHasOnboardingData(false);
+                }
 
                 // 🟢 태그 분석 로직 (로그인 상태에 따라)
                 if (isUserAuthenticated) {
@@ -148,18 +167,19 @@ export default function PersonalizedSection() {
     // 🟢 로그인 성공/로그아웃 이벤트 리스너
     useEffect(() => {
         const handleAuthChange = () => {
-            console.log("[PersonalizedSection] 로그인/토큰 변경 이벤트 수신 - 데이터 재로드");
             // 로그인 성공 시 데이터 다시 가져오기 (새로운 유저 정보로)
+            // 🟢 상태 초기화 후 재로드하여 온보딩 데이터 확인
+            setHasOnboardingData(false);
             fetchData();
         };
 
         const handleLogout = () => {
-            console.log("[PersonalizedSection] 로그아웃 이벤트 수신 - 상태 초기화");
             setCourses([]);
             setUserName("회원");
             setIsLoggedIn(false);
             setCurrentTagType("guest");
             setLoading(false); // 로그아웃 시에는 로딩 중이 아님
+            setHasOnboardingData(false);
         };
 
         window.addEventListener("authLoginSuccess", handleAuthChange);
@@ -203,14 +223,32 @@ export default function PersonalizedSection() {
         <section className="py-8 px-4">
             {/* 1. 멘트 영역 (여기에 멘트가 나옵니다) */}
             <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in tracking-tight">
-                    {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
-                    {content.title(userName)}
-                </h2>
-                <p className="text-sm text-gray-500 mt-1 font-medium">
-                    {/* 👇 부제목: "마음이 차분해지는..." */}
-                    {content.subtitle}
-                </p>
+                {loading && isLoggedIn ? (
+                    // 🟢 로그인 상태에서 로딩 중일 때
+                    <div className="flex items-center gap-3 animate-fade-in">
+                        <div className="relative">
+                            {/* 스피너 */}
+                            <div className="h-8 w-8 rounded-full border-[3px] border-emerald-100"></div>
+                            <div className="absolute top-0 left-0 h-8 w-8 rounded-full border-[3px] border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-emerald-600 tracking-tight">
+                                DoNa가 {userName}님한테 맞는 코스 계산 중입니다...
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in tracking-tight">
+                            {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
+                            {content.title(userName)}
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-1 font-medium">
+                            {/* 👇 부제목: "마음이 차분해지는..." */}
+                            {content.subtitle}
+                        </p>
+                    </>
+                )}
             </div>
 
             {/* 2. 카드 리스트 (가로 스크롤) */}
@@ -270,13 +308,23 @@ export default function PersonalizedSection() {
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
                                   {/* 뱃지 */}
-                                  <div className="absolute top-3 left-3">
-                                      <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
-                                          {course.matchScore
-                                              ? `🎯 취향저격 ${Math.round(course.matchScore * 100)}%`
-                                              : content.badge}
-                                      </span>
-                                  </div>
+                                  {isLoggedIn && hasOnboardingData ? (
+                                      <div className="absolute top-3 left-3">
+                                          <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
+                                              🎯 취향저격{" "}
+                                              {course.matchScore !== undefined && course.matchScore !== null
+                                                  ? Math.round(course.matchScore * 100)
+                                                  : 0}
+                                              %
+                                          </span>
+                                      </div>
+                                  ) : (
+                                      <div className="absolute top-3 left-3">
+                                          <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
+                                              {content.badge}
+                                          </span>
+                                      </div>
+                                  )}
 
                                   {/* 텍스트 */}
                                   <div className="absolute bottom-4 left-4 right-4 text-left">

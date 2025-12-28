@@ -152,7 +152,7 @@ export default function Home() {
         })();
     }, []);
 
-    // 🟢 모바일 성능 최적화: 태그 목록은 지연 로딩 (초기 로딩 후 2초 후)
+    // 🟢 모바일 성능 최적화: 태그 목록은 지연 로딩 (초기 로딩 후 3초 후)
     useEffect(() => {
         const timer = setTimeout(() => {
             (async () => {
@@ -165,13 +165,13 @@ export default function Home() {
                     if (data?.success && Array.isArray(data.tags)) setAllTags(data.tags);
                 } catch {}
             })();
-        }, 2000); // 🟢 2초 지연
+        }, 3000); // 🟢 3초 지연 (초기 화면 표시 후)
         return () => clearTimeout(timer);
     }, []);
 
     const buildCourseListUrl = () => {
         const params = new URLSearchParams();
-        params.set("limit", "15"); // 🟢 성능 최적화: 20 -> 15 (초기 로딩 속도 향상)
+        params.set("limit", "10"); // 🟢 성능 최적화: 15 -> 10 (초기 로딩 속도 더 향상)
         params.set("imagePolicy", "any");
         const qTrim = query.trim();
         if (qTrim) params.set("q", qTrim);
@@ -189,15 +189,19 @@ export default function Home() {
                 });
                 if (!response.ok) {
                     setCourses([]);
+                    setLoading(false); // 🟢 빠른 초기 렌더링: 에러 시 즉시 loading 해제
                     return;
                 }
-                setCourses(
-                    Array.isArray(data) ? data : Array.isArray((data as any)?.courses) ? (data as any).courses : []
-                );
+                const courseData = Array.isArray(data)
+                    ? data
+                    : Array.isArray((data as any)?.courses)
+                    ? (data as any).courses
+                    : [];
+                setCourses(courseData);
+                setLoading(false); // 🟢 빠른 초기 렌더링: 데이터 설정 후 즉시 loading 해제
             } catch {
                 setCourses([]);
-            } finally {
-                setLoading(false);
+                setLoading(false); // 🟢 빠른 초기 렌더링: 에러 시 즉시 loading 해제
             }
         };
         fetchCourses();
@@ -445,7 +449,7 @@ export default function Home() {
                 // 🟢 쿠키 기반 인증: apiFetch 사용
                 const { data, response } = await apiFetch("/api/courses?limit=5&imagePolicy=any&grade=FREE", {
                     cache: "force-cache", // 브라우저 캐시 강제 사용 (가장 빠른 로딩)
-                    next: { revalidate: 3600 }, // 1시간 캐시 (서버 캐시)
+                    next: { revalidate: 7200 }, // 🟢 성능 최적화: 2시간 캐시로 연장 (3600→7200)
                 });
 
                 if (!response.ok || !data) {
@@ -556,11 +560,11 @@ export default function Home() {
         }
     };
 
-    // 🟢 모바일 성능 최적화: 추천 데이터는 지연 로딩 (초기 로딩 후 3초 후)
+    // 🟢 모바일 성능 최적화: 추천 데이터는 지연 로딩 (초기 로딩 후 5초 후)
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchRecommendations();
-        }, 3000); // 🟢 3초 지연 (초기 렌더링 완료 후)
+        }, 5000); // 🟢 5초 지연 (초기 화면 표시 후)
         return () => clearTimeout(timer);
     }, []);
 
@@ -570,7 +574,6 @@ export default function Home() {
         };
         const handleLogout = () => {
             // 🟢 로그아웃 시 모든 상태 초기화
-            console.log("[Home] 로그아웃 이벤트 수신 - 상태 초기화");
             setCourses([]);
             setHeroCourses([]);
             setRecs([]);
@@ -1113,7 +1116,7 @@ function TabbedConcepts({
                 } catch {}
             };
             fetchCounts();
-        }, 4000); // 🟢 4초 지연
+        }, 6000); // 🟢 6초 지연 (초기 화면 표시 후)
         return () => clearTimeout(timer);
     }, []);
 

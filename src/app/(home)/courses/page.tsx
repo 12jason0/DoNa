@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300; // 🟢 성능 최적화: 1800초 -> 300초 (5분)로 단축하여 최신 데이터 반영
+export const revalidate = 60; // 🟢 성능 최적화: 검색/필터 결과는 60초로 단축하여 빠른 반영
 
 // 공통 select 옵션
 const courseSelectOptions = {
@@ -174,13 +174,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             select: courseSelectOptions,
         });
 
-        console.log("=== [courses/page.tsx] 검색/필터 모드 ===");
-        console.log("검색어:", q || "없음", "| 컨셉:", concept || "없음");
-        console.log("DB에서 가져온 코스 개수:", courses.length);
         const mapped = mapCourses(courses, userTier, unlockedCourseIds);
-        console.log("mapCourses 적용 후 최종 리스트 개수:", mapped.length);
-        console.log("==========================================");
-
         return mapped;
     }
 
@@ -211,20 +205,11 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         }),
     ]);
 
-    // === [DB 데이터 확인] ===
-    console.log("=== [courses/page.tsx] DB 데이터 확인 ===");
-    console.log("FREE 가져온 개수:", freeRaw.length);
-    console.log("BASIC 가져온 개수:", basicRaw.length);
-    console.log("PREMIUM 가져온 개수:", premiumRaw.length);
-    console.log("목표 비율: FREE=" + TARGET_FREE + ", BASIC=" + TARGET_BASIC + ", PREMIUM=" + TARGET_PREMIUM);
-
     // 부족분 보정: BASIC/PREMIUM이 부족하면 FREE에서 더 가져옴
     const basicArr = basicRaw;
     const premiumArr = premiumRaw;
     const neededFromFree = TARGET_FREE + (TARGET_BASIC - basicArr.length) + (TARGET_PREMIUM - premiumArr.length);
     const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
-
-    console.log("부족분 보정 후 FREE 사용 개수:", freeArr.length, "(필요:", neededFromFree + ")");
 
     // 🟢 [Interleaving] 2(FREE):1(BASIC):1(PREMIUM) 패턴으로 섞기
     const interleaved: any[] = [];
@@ -239,19 +224,8 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         if (pIdx < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[pIdx++]); // PREMIUM 1개
     }
 
-    console.log("인터리빙 후 개수:", interleaved.length);
-    console.log("인터리빙된 등급 분포:", {
-        FREE: interleaved.filter((c) => c.grade === "FREE").length,
-        BASIC: interleaved.filter((c) => c.grade === "BASIC").length,
-        PREMIUM: interleaved.filter((c) => c.grade === "PREMIUM").length,
-    });
-
     // 필터 적용 전후 비교
     const mappedBeforeFilter = mapCourses(interleaved, userTier, unlockedCourseIds);
-    console.log("mapCourses 적용 후 최종 리스트 개수:", mappedBeforeFilter.length);
-    console.log("유저 등급:", userTier, "| 잠금 해제된 코스:", unlockedCourseIds.length + "개");
-    console.log("==========================================");
-
     return mappedBeforeFilter;
 }
 
