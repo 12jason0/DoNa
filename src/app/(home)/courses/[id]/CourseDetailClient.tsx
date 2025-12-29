@@ -747,12 +747,46 @@ export default function CourseDetailClient({
                                                             onClick={(e) => {
                                                                 e.stopPropagation(); // 부모 클릭 이벤트 차단
                                                             }}
-                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit"
+                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit mb-2"
                                                         >
                                                             <Icons.ExternalLink className="w-3 h-3" />
                                                             예약하기
                                                         </a>
                                                     )}
+                                                    {/* 🟢 팁 섹션 */}
+                                                    {coursePlace.coaching_tip ? (
+                                                        userTier === "FREE" ? (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setShowSubscriptionModal(true);
+                                                                }}
+                                                                className="mt-2 w-full text-left p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
+                                                            >
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <Icons.Bulb />
+                                                                    <span className="text-xs font-bold text-amber-700">
+                                                                        💡 팁
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-600 line-clamp-2">
+                                                                    BASIC 등급이면 볼 수 있어요
+                                                                </p>
+                                                            </button>
+                                                        ) : (
+                                                            <div className="mt-2 p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <Icons.Bulb />
+                                                                    <span className="text-xs font-bold text-amber-700">
+                                                                        💡 팁
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                                                    {coursePlace.coaching_tip}
+                                                                </p>
+                                                            </div>
+                                                        )
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </div>
@@ -1086,28 +1120,17 @@ export default function CourseDetailClient({
                             </p>
                             <div className="flex flex-col gap-3">
                                 {/* 🟢 예약 버튼 추가 */}
-                                {(() => {
-                                    // 🟢 [Debug]: reservationUrl 확인
-                                    if (process.env.NODE_ENV === "development") {
-                                        console.log("[PlaceModal] selectedPlace:", {
-                                            id: selectedPlace.id,
-                                            name: selectedPlace.name,
-                                            reservationUrl: selectedPlace.reservationUrl,
-                                            hasReservationUrl: !!selectedPlace.reservationUrl,
-                                        });
-                                    }
-                                    return selectedPlace.reservationUrl ? (
-                                        <a
-                                            href={selectedPlace.reservationUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="w-full py-4 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Icons.ExternalLink className="w-5 h-5" />
-                                            예약하기
-                                        </a>
-                                    ) : null;
-                                })()}
+                                {selectedPlace.reservationUrl && (
+                                    <a
+                                        href={selectedPlace.reservationUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full py-4 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Icons.ExternalLink className="w-5 h-5" />
+                                        예약하기
+                                    </a>
+                                )}
                                 <button
                                     className="w-full py-4 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all"
                                     onClick={() => setShowPlaceModal(false)}

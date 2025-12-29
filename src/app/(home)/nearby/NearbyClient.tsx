@@ -154,27 +154,25 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     // 🟢 URL 파라미터 업데이트 (통합 관리) - 성능 최적화
     const pushUrlFromState = useCallback(
         (next: any) => {
-            // 🟢 [Performance]: 다음 프레임에서 실행하여 부드러운 전환
-            requestAnimationFrame(() => {
-                const sp = new URLSearchParams();
-                const acts = next.activities ?? selectedActivities;
-                const regs = next.regions ?? selectedRegions;
-                const tags = next.tagIds ?? selectedTagIds;
-                const q = next.q !== undefined ? next.q : searchParams.get("q") || "";
-                const hide = next.hideClosed ?? hideClosedPlaces;
+            // 🟢 [Performance]: 즉시 URL 변경하여 빠른 전환 (로딩 상태는 서버에서 처리)
+            const sp = new URLSearchParams();
+            const acts = next.activities ?? selectedActivities;
+            const regs = next.regions ?? selectedRegions;
+            const tags = next.tagIds ?? selectedTagIds;
+            const q = next.q !== undefined ? next.q : searchParams.get("q") || "";
+            const hide = next.hideClosed ?? hideClosedPlaces;
 
-                if (q.trim()) sp.set("q", q.trim());
-                if (acts[0]) sp.set("concept", acts[0]);
-                if (regs[0]) sp.set("region", regs[0]);
-                if (tags.length > 0) sp.set("tagIds", String(tags.join(",")));
-                if (hide) sp.set("hideClosed", "1");
+            if (q.trim()) sp.set("q", q.trim());
+            if (acts[0]) sp.set("concept", acts[0]);
+            if (regs[0]) sp.set("region", regs[0]);
+            if (tags.length > 0) sp.set("tagIds", String(tags.join(",")));
+            if (hide) sp.set("hideClosed", "1");
 
-                const targetPath = sp.toString() ? `/nearby?${sp.toString()}` : "/nearby";
-                // 🟢 prefetch로 미리 로드하여 빠른 전환
-                router.prefetch(targetPath);
-                setLoading(true);
-                router.push(targetPath);
-            });
+            const targetPath = sp.toString() ? `/nearby?${sp.toString()}` : "/nearby";
+            // 🟢 prefetch로 미리 로드하여 빠른 전환
+            router.prefetch(targetPath);
+            // 🟢 [Performance]: 로딩 상태는 서버 컴포넌트가 처리하므로 클라이언트에서는 즉시 이동
+            router.push(targetPath);
         },
         [selectedActivities, selectedRegions, selectedTagIds, hideClosedPlaces, searchParams, router]
     );
@@ -435,40 +433,38 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     };
 
     const applyCategorySelection = () => {
-        // 🟢 [Performance]: 다음 프레임에서 실행하여 부드러운 전환
-        requestAnimationFrame(() => {
-            const cleanedLabels = modalSelectedLabels.map((raw) =>
-                String(raw || "")
-                    .replace(/^#/, "")
-                    .trim()
-            );
+        // 🟢 [Performance]: 즉시 실행하여 빠른 전환
+        const cleanedLabels = modalSelectedLabels.map((raw) =>
+            String(raw || "")
+                .replace(/^#/, "")
+                .trim()
+        );
 
-            // 태그로 변환 가능한 필터와 태그로 변환되지 않은 필터 분리
-            const tagIds = Array.from(
-                new Set(
-                    cleanedLabels
-                        .map((name) => allTags.find((t) => String(t?.name || "").trim() === name)?.id)
-                        .filter((id): id is number => !!id && id > 0)
-                )
-            );
+        // 태그로 변환 가능한 필터와 태그로 변환되지 않은 필터 분리
+        const tagIds = Array.from(
+            new Set(
+                cleanedLabels
+                    .map((name) => allTags.find((t) => String(t?.name || "").trim() === name)?.id)
+                    .filter((id): id is number => !!id && id > 0)
+            )
+        );
 
-            // 태그로 변환되지 않은 필터는 concept으로 사용 (Concept/Mood 카테고리의 필터들)
-            const conceptFilters = cleanedLabels.filter(
-                (name) => !allTags.some((t) => String(t?.name || "").trim() === name)
-            );
+        // 태그로 변환되지 않은 필터는 concept으로 사용 (Concept/Mood 카테고리의 필터들)
+        const conceptFilters = cleanedLabels.filter(
+            (name) => !allTags.some((t) => String(t?.name || "").trim() === name)
+        );
 
-            // 선택한 모든 필터 라벨 저장 (태그로 변환되지 않은 것도 포함)
-            setSelectedFilterLabels([...modalSelectedLabels]);
-            setSelectedTagIds(tagIds);
-            setSelectedFilterConcepts(conceptFilters);
-            setShowCategoryModal(false);
+        // 선택한 모든 필터 라벨 저장 (태그로 변환되지 않은 것도 포함)
+        setSelectedFilterLabels([...modalSelectedLabels]);
+        setSelectedTagIds(tagIds);
+        setSelectedFilterConcepts(conceptFilters);
+        setShowCategoryModal(false);
 
-            // concept 필터가 있으면 첫 번째 것을 concept 파라미터로 전달
-            const conceptParam = conceptFilters.length > 0 ? conceptFilters[0] : undefined;
-            pushUrlFromState({
-                tagIds: tagIds,
-                activities: conceptParam ? [conceptParam] : selectedActivities,
-            });
+        // concept 필터가 있으면 첫 번째 것을 concept 파라미터로 전달
+        const conceptParam = conceptFilters.length > 0 ? conceptFilters[0] : undefined;
+        pushUrlFromState({
+            tagIds: tagIds,
+            activities: conceptParam ? [conceptParam] : selectedActivities,
         });
     };
 
@@ -550,8 +546,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             setSelectedFilterConcepts([]);
                                             setHideClosedPlaces(false);
 
-                                            // URL 변경 및 로딩 시작
-                                            setLoading(true);
+                                            // URL 변경 (로딩은 서버 컴포넌트가 처리)
                                             router.push("/nearby");
                                         }}
                                         className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 border border-gray-200 text-gray-600 active:scale-95 transition-transform"
@@ -618,7 +613,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             확인해보세요!
                                         </p>
                                         <button
-                                            onClick={() => router.push("/nearby")}
+                                            onClick={() => {
+                                                window.location.href = "/nearby";
+                                            }}
                                             className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-transform active:scale-95"
                                         >
                                             전체 코스 탐색하기
@@ -670,7 +667,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             {/* 하단에 전체보기 버튼 (상업적 유도) */}
                             {isRecommendation && (
                                 <button
-                                    onClick={() => router.push("/nearby")}
+                                    onClick={() => {
+                                        window.location.href = "/nearby";
+                                    }}
                                     className="mt-10 w-full py-4 bg-slate-900 text-white text-[15px] font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all"
                                 >
                                     전체 코스 탐색하기

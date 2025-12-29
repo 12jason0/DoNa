@@ -153,7 +153,7 @@ const CourseCard = memo(
                     <Link
                         href={`/courses/${course.id}`}
                         prefetch={true}
-                        className="absolute inset-0 z-[25]"
+                        className="absolute inset-0 z-[10]"
                         onClick={() => {
                             try {
                                 fetch(`/api/courses/${course.id}/view`, {
@@ -201,7 +201,7 @@ const CourseCard = memo(
                     )}
 
                     {/* 배지 섹션 */}
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-[30] pointer-events-auto">
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-[20] pointer-events-auto">
                         {reservationInfo.hasReservation && (
                             <span className="bg-[#00b3a3] text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-[#00a394] flex items-center gap-1">
                                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">

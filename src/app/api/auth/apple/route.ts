@@ -110,7 +110,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                 update: {
                     // 기존 유저의 경우 프로필 정보만 업데이트
                     email: email || undefined,
-                    profileImageUrl: (prev: string | null) => prev || DEFAULT_PROFILE_IMG,
+                    // 🟢 [Fix]: Prisma update에서는 함수를 사용할 수 없으므로, upsert 후 별도로 처리
                 },
                 create: {
                     email,
@@ -211,7 +211,7 @@ async function handleAppAppleAuthLogic(
                     // 기존 유저의 경우 프로필 정보만 업데이트
                     email: email || undefined,
                     username: fullName ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim() : undefined,
-                    profileImageUrl: (prev: string | null) => prev || DEFAULT_PROFILE_IMG,
+                    // 🟢 [Fix]: Prisma update에서는 함수를 사용할 수 없으므로, upsert 후 별도로 처리
                 },
                 create: {
                     email,
