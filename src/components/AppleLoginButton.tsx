@@ -48,6 +48,15 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
     const handleAppleLogin = async () => {
         if (disabled) return;
 
+        // 🟢 [Debug]: 환경 변수 확인 (클라이언트 사이드)
+        if (process.env.NODE_ENV === "development") {
+            console.log("[AppleLogin] 클라이언트 환경 변수:", {
+                NEXT_PUBLIC_APPLE_REDIRECT_URI:
+                    process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI || "미설정 (서버에서 fallback 사용)",
+                NEXT_PUBLIC_APPLE_CLIENT_ID: process.env.NEXT_PUBLIC_APPLE_CLIENT_ID || "미설정",
+            });
+        }
+
         // 모바일 앱 환경에서는 WebView를 통해 네이티브 Apple 로그인 호출
         if (isMobileApp && (window as any).ReactNativeWebView) {
             try {
@@ -68,7 +77,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
             // Apple 인증 URL로 리디렉션 (팝업 방식)
             // next 파라미터를 전달
             const appleAuthUrl = next ? `/api/auth/apple?next=${encodeURIComponent(next)}` : "/api/auth/apple";
-            
+
             // next 값을 sessionStorage에 저장 (팝업 인증 후 사용)
             if (next) {
                 sessionStorage.setItem("auth:next", next);

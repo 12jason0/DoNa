@@ -28,7 +28,17 @@ export async function GET(request: NextRequest) {
     const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
     const next = getSafeRedirectPath(request.nextUrl.searchParams.get("next"), "/");
 
+    // 🟢 [Debug]: 환경 변수 확인
+    if (process.env.NODE_ENV === "development") {
+        console.log("[Apple Auth] 환경 변수 확인:", {
+            APPLE_CLIENT_ID: APPLE_CLIENT_ID ? "설정됨" : "누락",
+            NEXT_PUBLIC_APPLE_CLIENT_ID: process.env.NEXT_PUBLIC_APPLE_CLIENT_ID ? "설정됨" : "누락",
+            NEXT_PUBLIC_APPLE_REDIRECT_URI: process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI || "미설정 (fallback 사용)",
+        });
+    }
+
     if (!APPLE_CLIENT_ID) {
+        console.error("[Apple Auth] ❌ APPLE_CLIENT_ID 환경 변수가 설정되지 않았습니다.");
         return NextResponse.json({ error: "Apple 로그인 설정 누락" }, { status: 500 });
     }
 
