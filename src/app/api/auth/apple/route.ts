@@ -12,6 +12,11 @@ export const dynamic = "force-dynamic";
  * image_e89e4a에서 설정하신 주소와 토씨 하나 안 틀리고 똑같이 맞춰줍니다.
  */
 const getAppleRedirectUri = (origin: string) => {
+    // 🟢 [Fix]: 환경변수로 Redirect URI 직접 설정 (애플 개발자 포털과 정확히 일치)
+    if (process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI) {
+        return process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI;
+    }
+    // 🟢 Fallback: 프로덕션은 고정 도메인, 개발은 동적 origin
     const base = process.env.NODE_ENV === "production" ? "https://dona.io.kr" : origin;
     return `${base}/api/auth/apple/callback`;
 };
