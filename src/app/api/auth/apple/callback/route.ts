@@ -87,18 +87,30 @@ export async function POST(request: NextRequest) {
 
         const user = result.user;
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
-        const decodedNext = decodeURIComponent(next).replace(/^%2F/, "/");
+        // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
+        const decodedNext = next && !next.startsWith("/login") ? decodeURIComponent(next).replace(/^%2F/, "/") : "/";
 
         return generateHtmlResponse(
             `(function() {
                 try {
-                    // 🟢 [Fix]: 부모 창으로 로그인 성공 메시지 전송
+                    // 🟢 [Fix]: 부모 창으로 로그인 성공 메시지 전송 및 리다이렉트
                     if (window.opener && !window.opener.closed) {
+                        // 부모 창에 메시지 전송
                         window.opener.postMessage({ type: 'APPLE_LOGIN_SUCCESS', token: '${serviceToken}' }, window.location.origin);
+                        // 부모 창에 이벤트 발생
                         window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        window.opener.location.href = "${decodedNext}";
-                        window.close();
+                        // 🟢 [Fix]: 부모 창 리다이렉트 (약간의 지연을 두어 메시지 전송 완료 보장)
+                        setTimeout(function() {
+                            if (window.opener && !window.opener.closed) {
+                                window.opener.location.href = "${decodedNext}";
+                            }
+                        }, 100);
+                        // 팝업 닫기
+                        setTimeout(function() {
+                            window.close();
+                        }, 200);
                     } else {
+                        // 팝업이 아닌 경우 직접 리다이렉트
                         window.dispatchEvent(new CustomEvent('authLoginSuccess'));
                         window.location.href = "${decodedNext}";
                     }

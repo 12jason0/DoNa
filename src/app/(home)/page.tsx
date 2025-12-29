@@ -610,10 +610,19 @@ function TabbedConcepts({
                         {/* 🟢 [Optimization] 에러 해결: item 매개변수에 ConceptItem 타입 명시 (7006 해결) */}
                         {conceptItems.slice(0, isExpanded ? undefined : 8).map((item: ConceptItem) => {
                             const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
+                            const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
                             return (
                                 <button
                                     key={item.name}
-                                    onClick={() => router.push(`/courses?concept=${encodeURIComponent(item.name)}`)}
+                                    onMouseEnter={() => {
+                                        // 🟢 [Performance]: 마우스 hover 시 prefetch로 미리 로드
+                                        router.prefetch(targetPath);
+                                    }}
+                                    onClick={() => {
+                                        // 🟢 [Performance]: 클릭 시 즉시 prefetch 후 push
+                                        router.prefetch(targetPath);
+                                        router.push(targetPath);
+                                    }}
                                     className="flex flex-col items-center gap-2"
                                 >
                                     <div className="w-16 h-16 rounded-full p-1 bg-white border border-gray-100 shadow-md">

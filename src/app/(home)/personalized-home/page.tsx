@@ -242,20 +242,6 @@ const AIRecommender = () => {
     // 유저 정보 가져오기 (성능 최적화: 캐싱 추가 및 즉시 표시)
     const fetchUserData = async () => {
         try {
-            // 🟢 [Performance]: localStorage에서 캐시된 사용자 정보 먼저 표시
-            const cachedUser = localStorage.getItem("user");
-            if (cachedUser) {
-                try {
-                    const parsed = JSON.parse(cachedUser);
-                    const nick = parsed.nickname || parsed.name || parsed.email?.split("@")[0] || "사용자";
-                    setUserName(nick);
-                    setNickname(nick);
-                    setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
-                    setCoupons(parsed.couponCount || 0);
-                    setIsLoggedIn(true);
-                } catch {}
-            }
-
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 캐싱 활용
             const { apiFetch } = await import("@/lib/authClient");
             const { data: userData, response } = await apiFetch<any>("/api/users/profile", {
@@ -263,41 +249,40 @@ const AIRecommender = () => {
                 next: { revalidate: 60 }, // 🟢 1분 캐싱
             });
 
-            // 🟢 [Performance]: 다음 프레임에서 상태 업데이트하여 렌더링 부하 분산
-            requestAnimationFrame(() => {
-                if (response.ok && userData) {
-                    setIsLoggedIn(true);
-                    const nick =
-                        (userData as any).nickname ||
-                        (userData as any).name ||
-                        (userData as any).email?.split("@")[0] ||
-                        "사용자";
-                    setUserName(nick);
-                    setNickname(nick);
+            if (response.ok && userData) {
+                const nick =
+                    (userData as any).nickname ||
+                    (userData as any).name ||
+                    (userData as any).email?.split("@")[0] ||
+                    "사용자";
 
-                    // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
-                    const convertToHttps = (url: string | null | undefined): string | null => {
-                        if (!url) return null;
-                        if (url.startsWith("http://")) {
-                            return url.replace(/^http:\/\//, "https://");
-                        }
-                        return url;
-                    };
+                // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+                const convertToHttps = (url: string | null | undefined): string | null => {
+                    if (!url) return null;
+                    if (url.startsWith("http://")) {
+                        return url.replace(/^http:\/\//, "https://");
+                    }
+                    return url;
+                };
 
-                    const profileImage = (userData as any).profileImage || (userData as any).user?.profileImage || null;
-                    setProfileImageUrl(convertToHttps(profileImage));
-                    setCoupons((userData as any).couponCount || 0);
-                    localStorage.setItem("user", JSON.stringify(userData));
-                } else {
-                    // 🟢 response.ok가 false인 경우에도 handleLogout 대신 로그인 상태만 변경 (리다이렉트 방지)
-                    setIsLoggedIn(false);
-                    setUserName("");
-                    setNickname("");
-                    setProfileImageUrl(null);
-                    setCoupons(0);
-                }
-                setIsUserDataLoading(false);
-            });
+                const profileImage = (userData as any).profileImage || (userData as any).user?.profileImage || null;
+
+                // 🟢 [Performance]: 즉시 상태 업데이트 (requestAnimationFrame 제거)
+                setIsLoggedIn(true);
+                setUserName(nick);
+                setNickname(nick);
+                setProfileImageUrl(convertToHttps(profileImage));
+                setCoupons((userData as any).couponCount || 0);
+                localStorage.setItem("user", JSON.stringify(userData));
+            } else {
+                // 🟢 response.ok가 false인 경우에도 handleLogout 대신 로그인 상태만 변경 (리다이렉트 방지)
+                setIsLoggedIn(false);
+                setUserName("");
+                setNickname("");
+                setProfileImageUrl(null);
+                setCoupons(0);
+            }
+            setIsUserDataLoading(false);
         } catch (error) {
             console.error("사용자 정보 조회 오류:", error);
             // 🟢 에러 발생 시 localStorage 정리
@@ -312,49 +297,37 @@ const AIRecommender = () => {
     // 🟢 로그인 상태 확인 (쿠키 기반 인증) - 성능 최적화
     useEffect(() => {
         const checkLoginStatus = async () => {
-            // 🟢 [Performance]: localStorage에서 캐시된 사용자 정보 먼저 표시
+            // 🟢 [Performance]: localStorage에서 캐시된 사용자 정보 즉시 표시 (동기적으로)
             const cachedUser = localStorage.getItem("user");
             if (cachedUser) {
                 try {
                     const parsed = JSON.parse(cachedUser);
                     const nick = parsed.nickname || parsed.name || parsed.email?.split("@")[0] || "사용자";
-                    requestAnimationFrame(() => {
-                        setUserName(nick);
-                        setNickname(nick);
-                        setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
-                        setCoupons(parsed.couponCount || 0);
-                        setIsLoggedIn(true);
-                    });
+                    // 🟢 [Performance]: 즉시 표시 (requestAnimationFrame 제거로 지연 없음)
+                    setUserName(nick);
+                    setNickname(nick);
+                    setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
+                    setCoupons(parsed.couponCount || 0);
+                    setIsLoggedIn(true);
+                    setIsUserDataLoading(false); // 🟢 캐시가 있으면 즉시 로딩 완료로 표시
                 } catch {}
             }
 
             try {
-                // 🟢 [Performance]: fetchSession과 fetchUserData를 병렬로 실행
+                // 🟢 [Performance]: fetchSession만 먼저 확인 (가볍게)
                 const { fetchSession } = await import("@/lib/authClient");
-                const [session] = await Promise.all([fetchSession()]);
+                const session = await fetchSession();
 
-                // 🟢 [Performance]: 다음 프레임에서 상태 업데이트
-                requestAnimationFrame(() => {
-                    if (session.authenticated && session.user) {
-                        setIsLoggedIn(true);
-                        fetchUserData(); // fetchUserData 내부에서도 requestAnimationFrame 사용
-                    } else {
-                        // 🟢 로그인되지 않은 경우 localStorage 정리 (이전 데이터 제거)
-                        localStorage.removeItem("authToken");
-                        localStorage.removeItem("user");
-                        localStorage.removeItem("loginTime");
-                        setIsLoggedIn(false);
-                        setUserName("");
-                        setNickname("");
-                        setProfileImageUrl(null);
-                        setCoupons(0);
-                        setIsUserDataLoading(false);
+                if (session.authenticated && session.user) {
+                    setIsLoggedIn(true);
+                    // 🟢 [Performance]: 캐시가 없을 때만 로딩 상태 유지, 있으면 백그라운드에서 업데이트
+                    if (!cachedUser) {
+                        setIsUserDataLoading(true);
                     }
-                });
-            } catch (error) {
-                console.error("로그인 상태 확인 실패:", error);
-                // 🟢 에러 발생 시에도 localStorage 정리
-                requestAnimationFrame(() => {
+                    // 🟢 [Performance]: 백그라운드에서 사용자 정보 업데이트 (비동기)
+                    fetchUserData();
+                } else {
+                    // 🟢 로그인되지 않은 경우 localStorage 정리 (이전 데이터 제거)
                     localStorage.removeItem("authToken");
                     localStorage.removeItem("user");
                     localStorage.removeItem("loginTime");
@@ -364,7 +337,15 @@ const AIRecommender = () => {
                     setProfileImageUrl(null);
                     setCoupons(0);
                     setIsUserDataLoading(false);
-                });
+                }
+            } catch (error) {
+                console.error("로그인 상태 확인 실패:", error);
+                // 🟢 에러 발생 시에도 localStorage 정리
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("user");
+                localStorage.removeItem("loginTime");
+                setIsLoggedIn(false);
+                setIsUserDataLoading(false);
             }
         };
 
@@ -889,17 +870,10 @@ const AIRecommender = () => {
                     });
 
                     if (res.ok && data) {
-                        // 🟢 [Optimization]: 상태 업데이트를 프레임 단위로 분산
-                        requestAnimationFrame(() => {
-                            setDetail(data);
-                            setLoading(false);
-                            // 🟢 장소 정보는 약간의 지연 후 표시 (사용자 경험 개선)
-                            setTimeout(() => {
-                                requestAnimationFrame(() => {
-                                    setPlacesLoading(false);
-                                });
-                            }, 50); // 🟢 100ms -> 50ms로 단축
-                        });
+                        // 🟢 [Performance]: 즉시 표시 (지연 제거)
+                        setDetail(data);
+                        setLoading(false);
+                        setPlacesLoading(false); // 🟢 장소 정보도 즉시 표시
                     } else {
                         // 🟢 에러 응답 처리
                         console.error("코스 상세 조회 실패:", res.status);
@@ -1038,6 +1012,18 @@ const AIRecommender = () => {
         const isRevealed = revealedCards[course.id];
         const isSelected = selectedCourseId === course.id;
 
+        // 🟢 [Performance]: 카드에 마우스를 올렸을 때 코스 상세 정보 prefetch
+        const handleMouseEnter = async () => {
+            if (!isRevealed) return; // 카드가 뒤집혀있을 때만 prefetch
+            try {
+                const { apiFetch } = await import("@/lib/authClient");
+                await apiFetch(`/api/courses/${course.id}`, {
+                    cache: "force-cache",
+                    next: { revalidate: 300 },
+                });
+            } catch {} // 에러는 무시 (백그라운드 prefetch)
+        };
+
         // 🟢 [Logic]: 매칭률 동적 보정 (60% ~ 98% Scaling)
         const displayScore = useMemo(() => {
             // API 점수가 있으면 사용, 없으면 기본값 0.5(50%)를 기준으로 보정
@@ -1075,6 +1061,7 @@ const AIRecommender = () => {
                     isSelected ? "scale-105" : "hover:-translate-y-2"
                 }`}
                 onClick={() => !isSelected && handleFlipCard(course.id)}
+                onMouseEnter={handleMouseEnter}
             >
                 <div
                     className={`relative w-full h-full transition-all duration-1000 transform-style-3d ${
