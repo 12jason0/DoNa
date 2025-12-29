@@ -40,6 +40,11 @@ export async function GET(request: NextRequest) {
     });
 
     const appleAuthUrl = `https://appleid.apple.com/auth/authorize?${params.toString()}`;
+    // 🟢 [Debug]: 리다이렉트 URI 확인
+    if (process.env.NODE_ENV === "development") {
+        console.log("[Apple Auth] Redirect URI:", APPLE_REDIRECT_URI);
+        console.log("[Apple Auth] Full URL:", appleAuthUrl);
+    }
     return NextResponse.redirect(appleAuthUrl);
 }
 
@@ -157,18 +162,48 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
 
         return generateHtmlResponse(
             `(function() {
-                window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                if (window.opener) {
-                    window.opener.location.href = "${decodedNext}";
-                    window.close();
-                } else {
+                try {
+                    // 🟢 [Fix]: 부모 창으로 로그인 성공 메시지 전송
+                    if (window.opener && !window.opener.closed) {
+                        // 부모 창에 로그인 성공 이벤트 전달
+                        window.opener.postMessage({ type: 'APPLE_LOGIN_SUCCESS', token: '${serviceToken}' }, window.location.origin);
+                        window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                        // 부모 창 리다이렉트
+                        window.opener.location.href = "${decodedNext}";
+                        window.close();
+                    } else {
+                        // 팝업이 아닌 경우 직접 리다이렉트
+                        window.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                        window.location.href = "${decodedNext}";
+                    }
+                } catch (err) {
+                    console.error('Apple 로그인 후처리 오류:', err);
                     window.location.href = "${decodedNext}";
                 }
             })();`,
             serviceToken
         );
     } catch (err) {
-        return generateHtmlResponse(`alert('인증 실패'); window.location.href='/login';`);
+        console.error("[Apple Auth] 웹 인증 오류:", err);
+        const errorMsg = err instanceof Error ? err.message : "알 수 없는 오류";
+        return generateHtmlResponse(
+            `(function() {
+                try {
+                    if (window.opener && !window.opener.closed) {
+                        window.opener.postMessage({ type: 'APPLE_LOGIN_ERROR', error: ${JSON.stringify(
+                            errorMsg
+                        )} }, window.location.origin);
+                        window.close();
+                    } else {
+                        alert('인증 실패: ' + ${JSON.stringify(errorMsg)});
+                        window.location.href = '/login';
+                    }
+                } catch (e) {
+                    console.error('에러 처리 중 오류:', e);
+                    window.location.href = '/login';
+                }
+            })();`
+        );
     }
 }
 

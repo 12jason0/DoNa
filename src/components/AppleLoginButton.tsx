@@ -87,46 +87,30 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
             }
 
             // 팝업에서 메시지 수신 대기
-            const messageHandler = async (event: MessageEvent) => {
+            const messageHandler = (event: MessageEvent) => {
+                // 🟢 [Fix]: origin 검증 강화
                 if (event.origin !== window.location.origin) {
                     return;
                 }
 
-                const { type, code: authCode, error: authError } = event.data;
+                const { type, token, error } = event.data;
 
-                if (type === "APPLE_AUTH_CODE" && authCode) {
+                // 🟢 [Fix]: Apple 로그인 성공 메시지 처리
+                if (type === "APPLE_LOGIN_SUCCESS") {
+                    console.log("[AppleLogin] 로그인 성공 메시지 수신");
                     window.removeEventListener("message", messageHandler);
-                    popup.close();
-
-                    try {
-                        // authorization code를 서버로 전송하여 토큰 교환
-                        const response = await fetch("/api/auth/apple", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                code: authCode,
-                                user: event.data.user || null, // 최초 1회만 제공되는 user 데이터
-                            }),
-                        });
-
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(data.error || "Apple 로그인 처리 실패");
-                        }
-
-                        // 성공 이벤트 발생
-                        onSuccess({
-                            identityToken: data.token,
-                            user: data.user,
-                        });
-                    } catch (err: any) {
-                        onError?.(err);
+                    if (popup && !popup.closed) {
+                        popup.close();
                     }
-                } else if (type === "APPLE_AUTH_ERROR") {
+                    // 서버에서 이미 쿠키를 설정했으므로 성공 이벤트만 발생
+                    onSuccess({ success: true, token });
+                } else if (type === "APPLE_LOGIN_ERROR") {
+                    console.error("[AppleLogin] 로그인 에러:", error);
                     window.removeEventListener("message", messageHandler);
-                    popup.close();
-                    onError?.({ message: authError || "Apple 로그인에 실패했습니다." });
+                    if (popup && !popup.closed) {
+                        popup.close();
+                    }
+                    onError?.({ message: error || "Apple 로그인에 실패했습니다." });
                 }
             };
 
