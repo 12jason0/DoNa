@@ -3,9 +3,10 @@ import NearbyClient from "./NearbyClient";
 import prisma from "@/lib/db";
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // 🟢 성능 최적화: 검색/필터 결과는 60초로 단축하여 빠른 반영
+export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐시 시간 증가
 
 async function getInitialNearbyCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // 1. URL 파라미터 파싱
@@ -107,6 +108,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                         latitude: true,
                         longitude: true,
                         opening_hours: true,
+                        reservationUrl: true, // 🟢 예약 URL 추가
                     },
                 },
             },
@@ -151,22 +153,83 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         }
     }
 
-    // 🟢 [검색/필터 모드] 검색이나 필터가 있을 때는 기존처럼 최신순으로 30개만 가져옴
+    // 🟢 [검색/필터 모드] 검색이나 필터가 있을 때는 캐싱된 데이터 사용
     if (!isDefaultLoad) {
-        const whereClause = andConditions.length > 0 ? { AND: andConditions } : { isPublic: true };
-        const courses = await prisma.course.findMany({
-            where: whereClause,
-            orderBy: { id: "desc" },
-            take: 30,
-            select: courseSelectOptions,
-        });
+        // 🟢 [Performance]: 검색/필터 모드도 캐싱 적용
+        const getCachedFilteredCourses = unstable_cache(
+            async (
+                keyword: string,
+                concept: string | undefined,
+                tagIds: string | undefined,
+                userTier: string,
+                unlockedIds: number[]
+            ) => {
+                // 🟢 검색 조건 재구성 (캐싱 함수 내부에서)
+                const filterConditions: any[] = [{ isPublic: true }];
 
-        // 매핑 함수
-        const mappedCourses = courses.map((c: any) => {
-            let isLocked = false;
-            const courseGrade = c.grade || "FREE";
-            const courseId = Number(c.id);
-            const hasUnlocked = Number.isFinite(courseId) && unlockedCourseIds.includes(courseId);
+                if (keyword) {
+                    const keywords = keyword.split(/\s+/).filter(Boolean);
+                    keywords.forEach((k) => {
+                        const cleanKeyword = k.replace("동", "");
+                        filterConditions.push({
+                            OR: [
+                                { region: { contains: cleanKeyword, mode: "insensitive" } },
+                                { title: { contains: cleanKeyword, mode: "insensitive" } },
+                                { concept: { contains: cleanKeyword, mode: "insensitive" } },
+                                { description: { contains: cleanKeyword, mode: "insensitive" } },
+                                {
+                                    coursePlaces: {
+                                        some: {
+                                            place: {
+                                                OR: [
+                                                    { name: { contains: cleanKeyword, mode: "insensitive" } },
+                                                    { address: { contains: cleanKeyword, mode: "insensitive" } },
+                                                ],
+                                            },
+                                        },
+                                    },
+                                },
+                            ],
+                        });
+                    });
+                }
+
+                if (concept) {
+                    filterConditions.push({
+                        concept: { contains: concept, mode: "insensitive" },
+                    });
+                }
+
+                if (tagIds) {
+                    const tagIdArray = tagIds
+                        .split(",")
+                        .map(Number)
+                        .filter((n) => !isNaN(n) && n > 0);
+                    if (tagIdArray.length > 0) {
+                        filterConditions.push({
+                            courseTags: {
+                                some: {
+                                    tagId: { in: tagIdArray },
+                                },
+                            },
+                        });
+                    }
+                }
+
+                const whereClause = filterConditions.length > 0 ? { AND: filterConditions } : { isPublic: true };
+                const courses = await prisma.course.findMany({
+                    where: whereClause,
+                    orderBy: { id: "desc" },
+                    take: 30,
+                    select: courseSelectOptions,
+                });
+
+                // 매핑 함수
+                const mappedCourses = courses.map((c: any) => {
+                    let isLocked = false;
+                    const courseGrade = c.grade || "FREE";
+                    const courseId = Number(c.id);
+                    const hasUnlocked = Number.isFinite(courseId) && unlockedIds.includes(courseId);
 
             if (hasUnlocked || userTier === "PREMIUM") {
                 isLocked = false;
@@ -202,6 +265,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                                     latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
                                     longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
                                     opening_hours: cp.place.opening_hours || null,
+                                    reservationUrl: cp.place.reservationUrl || null, // 🟢 예약 URL 추가
                                 }
                               : null,
                       }))
@@ -210,116 +274,139 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             };
         });
 
-        // 등급순 정렬
-        const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
-        mappedCourses.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
+                    // 등급순 정렬
+                    const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
+                    mappedCourses.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
 
-        return mappedCourses;
-    }
+                    return mappedCourses;
+                },
+                [`nearby-filter-${keywordRaw || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}`],
+                {
+                    revalidate: 120, // 🟢 2분 캐시
+                    tags: ["nearby-filtered-courses"],
+                }
+            );
 
-    // 🟢 [5:3:2 비율 로직] 초기 로드 시 실행 (FREE:15, BASIC:9, PREMIUM:6)
-    const TARGET_FREE = 15;
-    const TARGET_BASIC = 9;
-    const TARGET_PREMIUM = 6;
-
-    // 병렬 쿼리로 속도 최적화
-    const [freeRaw, basicRaw, premiumRaw] = await Promise.all([
-        prisma.course.findMany({
-            where: { isPublic: true, grade: "FREE" },
-            take: 30,
-            orderBy: { id: "desc" },
-            select: courseSelectOptions,
-        }),
-        prisma.course.findMany({
-            where: { isPublic: true, grade: "BASIC" },
-            take: TARGET_BASIC,
-            orderBy: { id: "desc" },
-            select: courseSelectOptions,
-        }),
-        prisma.course.findMany({
-            where: { isPublic: true, grade: "PREMIUM" },
-            take: TARGET_PREMIUM,
-            orderBy: { id: "desc" },
-            select: courseSelectOptions,
-        }),
-    ]);
-
-    // 부족분 보정: BASIC/PREMIUM이 부족하면 FREE에서 더 가져옴
-    const basicArr = basicRaw;
-    const premiumArr = premiumRaw;
-    const neededFromFree = TARGET_FREE + (TARGET_BASIC - basicArr.length) + (TARGET_PREMIUM - premiumArr.length);
-    const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
-
-    // 🟢 [Interleaving] 2(FREE):1(BASIC):1(PREMIUM) 패턴으로 섞기
-    const interleaved: any[] = [];
-    let fIdx = 0,
-        bIdx = 0,
-        pIdx = 0;
-
-    while (interleaved.length < 30 && (fIdx < freeArr.length || bIdx < basicArr.length || pIdx < premiumArr.length)) {
-        if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
-        if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]); // FREE 2개
-        if (bIdx < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[bIdx++]); // BASIC 1개
-        if (pIdx < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[pIdx++]); // PREMIUM 1개
-    }
-
-    // 매핑 함수 적용
-    const courses = interleaved;
-
-    // 5. 데이터 매핑 & 잠금 계산 & 정렬 (공통 함수)
-    const mappedCourses = courses.map((c: any) => {
-        let isLocked = false;
-        const courseGrade = c.grade || "FREE";
-        const courseId = Number(c.id);
-        const hasUnlocked = Number.isFinite(courseId) && unlockedCourseIds.includes(courseId);
-
-        if (hasUnlocked || userTier === "PREMIUM") {
-            isLocked = false;
-        } else if (userTier === "BASIC") {
-            if (courseGrade === "PREMIUM") isLocked = true;
-        } else {
-            if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+            return getCachedFilteredCourses(keywordRaw, concept, tagIdsParam, userTier, unlockedCourseIds);
         }
 
-        return {
-            id: String(c.id),
-            title: c.title || "제목 없음",
-            description: c.description || "",
-            duration: c.duration || "",
-            location: c.region || "",
-            imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
-            concept: c.concept || "",
-            rating: Number(c.rating) || 0,
-            reviewCount: 0,
-            participants: 0,
-            viewCount: c.view_count || 0,
-            createdAt: c.createdAt ? c.createdAt.toISOString() : undefined,
-            grade: courseGrade,
-            isLocked: isLocked,
-            coursePlaces: Array.isArray(c.coursePlaces)
-                ? c.coursePlaces.map((cp: any) => ({
-                      order_index: cp.order_index,
-                      place: cp.place
-                          ? {
-                                id: cp.place.id,
-                                name: cp.place.name,
-                                imageUrl: cp.place.imageUrl,
-                                latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
-                                longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
-                                opening_hours: cp.place.opening_hours || null,
-                            }
-                          : null,
-                  }))
-                : [],
-            tags: Array.isArray(c?.courseTags) ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean) : [],
-        };
-    });
+    // 🟢 [Performance]: 초기 로드 데이터 캐싱
+    const getCachedDefaultNearbyCourses = unstable_cache(
+        async (userTier: string, unlockedCourseIds: number[]) => {
+            // 🟢 [5:3:2 비율 로직] 초기 로드 시 실행 (FREE:15, BASIC:9, PREMIUM:6)
+            const TARGET_FREE = 15;
+            const TARGET_BASIC = 9;
+            const TARGET_PREMIUM = 6;
 
-    // ✅ 6. [정렬] FREE > BASIC > PREMIUM 순서
-    const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
-    mappedCourses.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
+            // 병렬 쿼리로 속도 최적화
+            const [freeRaw, basicRaw, premiumRaw] = await Promise.all([
+                prisma.course.findMany({
+                    where: { isPublic: true, grade: "FREE" },
+                    take: 30,
+                    orderBy: { id: "desc" },
+                    select: courseSelectOptions,
+                }),
+                prisma.course.findMany({
+                    where: { isPublic: true, grade: "BASIC" },
+                    take: TARGET_BASIC,
+                    orderBy: { id: "desc" },
+                    select: courseSelectOptions,
+                }),
+                prisma.course.findMany({
+                    where: { isPublic: true, grade: "PREMIUM" },
+                    take: TARGET_PREMIUM,
+                    orderBy: { id: "desc" },
+                    select: courseSelectOptions,
+                }),
+            ]);
 
-    return mappedCourses;
+            // 부족분 보정: BASIC/PREMIUM이 부족하면 FREE에서 더 가져옴
+            const basicArr = basicRaw;
+            const premiumArr = premiumRaw;
+            const neededFromFree = TARGET_FREE + (TARGET_BASIC - basicArr.length) + (TARGET_PREMIUM - premiumArr.length);
+            const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
+
+            // 🟢 [Interleaving] 2(FREE):1(BASIC):1(PREMIUM) 패턴으로 섞기
+            const interleaved: any[] = [];
+            let fIdx = 0,
+                bIdx = 0,
+                pIdx = 0;
+
+            while (interleaved.length < 30 && (fIdx < freeArr.length || bIdx < basicArr.length || pIdx < premiumArr.length)) {
+                if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
+                if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]); // FREE 2개
+                if (bIdx < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[bIdx++]); // BASIC 1개
+                if (pIdx < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[pIdx++]); // PREMIUM 1개
+            }
+
+            // 매핑 함수 적용
+            const courses = interleaved;
+
+            // 5. 데이터 매핑 & 잠금 계산 & 정렬 (공통 함수)
+            const mappedCourses = courses.map((c: any) => {
+                let isLocked = false;
+                const courseGrade = c.grade || "FREE";
+                const courseId = Number(c.id);
+                const hasUnlocked = Number.isFinite(courseId) && unlockedCourseIds.includes(courseId);
+
+                if (hasUnlocked || userTier === "PREMIUM") {
+                    isLocked = false;
+                } else if (userTier === "BASIC") {
+                    if (courseGrade === "PREMIUM") isLocked = true;
+                } else {
+                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                }
+
+                return {
+                    id: String(c.id),
+                    title: c.title || "제목 없음",
+                    description: c.description || "",
+                    duration: c.duration || "",
+                    location: c.region || "",
+                    imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+                    concept: c.concept || "",
+                    rating: Number(c.rating) || 0,
+                    reviewCount: 0,
+                    participants: 0,
+                    viewCount: c.view_count || 0,
+                    createdAt: c.createdAt ? c.createdAt.toISOString() : undefined,
+                    grade: courseGrade,
+                    isLocked: isLocked,
+                    coursePlaces: Array.isArray(c.coursePlaces)
+                        ? c.coursePlaces.map((cp: any) => ({
+                              order_index: cp.order_index,
+                              place: cp.place
+                                  ? {
+                                        id: cp.place.id,
+                                        name: cp.place.name,
+                                        imageUrl: cp.place.imageUrl,
+                                        latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
+                                        longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
+                                        opening_hours: cp.place.opening_hours || null,
+                                        reservationUrl: cp.place.reservationUrl || null, // 🟢 예약 URL 추가
+                                    }
+                                  : null,
+                          }))
+                        : [],
+                    tags: Array.isArray(c?.courseTags) ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean) : [],
+                };
+            });
+
+            // ✅ 6. [정렬] FREE > BASIC > PREMIUM 순서
+            const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
+            mappedCourses.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
+
+            return mappedCourses;
+        },
+        [],
+        {
+            revalidate: 180, // 🟢 3분 캐시
+            tags: ["nearby-courses"],
+        }
+    );
+
+    // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
+    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds);
 }
 
 export default async function NearbyPage({

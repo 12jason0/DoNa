@@ -107,91 +107,111 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
+    const startX = useRef(0);
+    const scrollLeft = useRef(0);
 
-    // 모든 기능 유지: 무한 스크롤을 위한 3배수 렌더링
-    const renderItems = useMemo(() => (items.length > 1 ? [...items, ...items, ...items] : items), [items]);
+    // 🟢 [Optimization]: 너비를 ref에 저장하여 강제 리플로우 방지
+    const containerWidthRef = useRef<number>(0);
     const realLength = items.length;
 
+    // 🟢 [Optimization]: ResizeObserver를 사용하여 너비 캐싱 (브라우저 부하 최소화)
     useEffect(() => {
-        if (scrollRef.current && realLength > 1) {
-            const width = scrollRef.current.offsetWidth;
-            scrollRef.current.scrollTo({
-                left: width * realLength,
-                behavior: "auto",
-            });
-            setCurrentIndex(realLength);
-        }
+        if (!scrollRef.current) return;
+
+        let isInitialized = false;
+
+        const observer = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                containerWidthRef.current = entry.contentRect.width;
+                // 초기 위치 설정 (1번 세트의 시작점) - 한 번만 실행
+                if (!isInitialized && realLength > 1 && scrollRef.current) {
+                    isInitialized = true;
+                    scrollRef.current.scrollTo({
+                        left: containerWidthRef.current * realLength,
+                        behavior: "auto",
+                    });
+                    setCurrentIndex(realLength);
+                }
+            }
+        });
+
+        observer.observe(scrollRef.current);
+        return () => observer.disconnect();
     }, [realLength]);
+
+    const renderItems = useMemo(() => (items.length > 1 ? [...items, ...items, ...items] : items), [items]);
 
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // 🟢 성능 최적화: 스크롤 핸들러에서 console.log 전량 제거
+    // 🟢 [Optimization]: offsetWidth 호출 제거 및 멱등성 보장
     const handleScroll = useCallback(() => {
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
 
         scrollTimeoutRef.current = setTimeout(() => {
-            if (scrollRef.current && realLength > 1) {
-                const scrollLeftVal = scrollRef.current.scrollLeft;
-                const width = scrollRef.current.offsetWidth;
+            const container = scrollRef.current;
+            const width = containerWidthRef.current; // 캐싱된 너비 사용
+
+            if (container && width > 0 && realLength > 1) {
+                const scrollLeftVal = container.scrollLeft;
                 const index = Math.round(scrollLeftVal / width);
                 setCurrentIndex(index);
 
-                // 무한 스크롤 점프 로직 (기능 유지)
+                // 무한 스크롤 루프 로직
                 if (scrollLeftVal >= width * (realLength * 2)) {
-                    scrollRef.current.scrollTo({
+                    container.scrollTo({
                         left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
                         behavior: "auto",
                     });
                 } else if (scrollLeftVal <= width * 0.5) {
-                    scrollRef.current.scrollTo({
+                    container.scrollTo({
                         left: scrollLeftVal + width * realLength,
                         behavior: "auto",
                     });
                 }
             }
-        }, 50);
+        }, 100); // 🟢 빈도를 조절하여 메인 스레드 점유율 완화
     }, [realLength]);
 
-    // 모든 기능 유지: 마우스 드래그 핸들러
+    // 마우스 드래그 핸들러 (Ref 활용으로 리렌더링 제거)
     const onMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         if (scrollRef.current) {
-            setStartX(e.pageX - scrollRef.current.offsetLeft);
-            setScrollLeft(scrollRef.current.scrollLeft);
+            startX.current = e.pageX - scrollRef.current.offsetLeft;
+            scrollLeft.current = scrollRef.current.scrollLeft;
         }
     };
 
     const onMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
+        if (!isDragging || !scrollRef.current) return;
         e.preventDefault();
-        if (scrollRef.current) {
-            const x = e.pageX - scrollRef.current.offsetLeft;
-            const walk = (x - startX) * 2;
-            scrollRef.current.scrollLeft = scrollLeft - walk;
-        }
+        const x = e.pageX - scrollRef.current.offsetLeft;
+        const walk = (x - startX.current) * 2;
+        scrollRef.current.scrollLeft = scrollLeft.current - walk;
     };
 
-    // 모든 기능 유지: 자동 스크롤
+    // 🟢 [Optimization]: 자동 스크롤 로직 최적화
     useEffect(() => {
         if (realLength <= 1 || isDragging) return;
+
         const interval = setInterval(() => {
-            if (scrollRef.current && !isDragging) {
-                const width = scrollRef.current.offsetWidth;
-                scrollRef.current.scrollTo({
+            const container = scrollRef.current;
+            const width = containerWidthRef.current;
+
+            if (container && width > 0 && !isDragging) {
+                container.scrollTo({
                     left: width * (currentIndex + 1),
                     behavior: "smooth",
                 });
             }
-        }, 4000);
+        }, 4500); // 🟢 간격을 살짝 늘려 Scheduler 부하 경감
+
         return () => clearInterval(interval);
     }, [currentIndex, realLength, isDragging]);
 
     if (!items || items.length === 0) return null;
 
     return (
-        <section className="relative w-full pb-6 pt-2">
+        <section className="relative w-full pb-6 pt-2 overflow-hidden">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
@@ -199,7 +219,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 onMouseLeave={() => setIsDragging(false)}
                 onMouseUp={() => setIsDragging(false)}
                 onMouseMove={onMouseMove}
-                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 cursor-grab active:cursor-grabbing"
+                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 cursor-grab active:cursor-grabbing will-change-scroll"
                 style={{ scrollBehavior: isDragging ? "auto" : "smooth" }}
             >
                 {renderItems.map((item, idx) => (

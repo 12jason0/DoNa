@@ -14,9 +14,11 @@
 :root {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    --font-sans: var(--font-geist-sans);
+    /* 🟢 최적화: Tailwind 기본 샌스 폰트에 LINE Seed 변수 연결 */
+    --font-sans: var(--font-line-seed), var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
 }
+
 /* 다크모드도 자연 그린톤 유지 (채도/명도 보정) */
 @media (prefers-color-scheme: dark) {
     :root {
@@ -28,10 +30,10 @@
 body {
     background: var(--background);
     color: var(--foreground);
-    /* 기본 본문 폰트: Pretendard Variable, 폴백 지정 */
-    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", Dotum, "돋움",
-        sans-serif;
+    /* 🟢 최적화: var(--font-line-seed)를 최우선으로 배치하여 프리로드 경고 해결 */
+    font-family: var(--font-line-seed), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", Dotum,
+        "돋움", sans-serif;
 }
 
 @font-face {
@@ -65,10 +67,10 @@ body {
 .typography-smooth h4 {
     letter-spacing: -0.02em;
     line-height: 1.3;
-    /* 제목용 SUIT 우선 적용 */
-    font-family: "SUIT Variable", "SUIT", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕",
-        Dotum, "돋움", sans-serif;
+    /* 🟢 최적화: 제목 영역에도 LINE Seed 우선 적용 */
+    font-family: var(--font-line-seed), "SUIT Variable", "SUIT", "Pretendard Variable", Pretendard, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR",
+        "Malgun Gothic", "맑은 고딕", Dotum, "돋움", sans-serif;
 }
 
 .typography-smooth p,
@@ -157,9 +159,10 @@ body {
 
     /* 제목/브랜드 영역에 사용하는 폰트 유틸 */
     .font-brand {
-        font-family: "GmarketSans", "SUIT Variable", "SUIT", "Pretendard Variable", Pretendard, -apple-system,
-            BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR",
-            "Malgun Gothic", "맑은 고딕", Dotum, "돋움", sans-serif;
+        /* 🟢 최적화: 브랜드 폰트 스택 최상단에 LINE Seed 추가 */
+        font-family: var(--font-line-seed), "GmarketSans", "SUIT Variable", "SUIT", "Pretendard Variable", Pretendard,
+            -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo",
+            "Noto Sans KR", "Malgun Gothic", "맑은 고딕", Dotum, "돋움", sans-serif;
         letter-spacing: -0.02em;
     }
 }

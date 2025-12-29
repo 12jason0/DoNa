@@ -1,10 +1,15 @@
-// src/components/Providers.tsx
-
-"use client"; // 이 파일이 클라이언트 컴포넌트임을 명시합니다.
+"use client";
 
 import { NavermapsProvider } from "react-naver-maps";
+import { AuthProvider } from "@/context/AuthContext"; // 🟢 AuthProvider 추가
 
 export function Providers({ children }: { children: React.ReactNode }) {
-    const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID || process.env.NEXT_PUBLIC_NAVER_CLIENT_ID || "";
-    return <NavermapsProvider ncpClientId={clientId}>{children}</NavermapsProvider>;
+    const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID || "";
+
+    return (
+        /* 🟢 인증 시스템으로 지도와 앱 전체를 감싸서 세션 중복 요청 차단 */
+        <AuthProvider>
+            <NavermapsProvider ncpClientId={clientId}>{children}</NavermapsProvider>
+        </AuthProvider>
+    );
 }

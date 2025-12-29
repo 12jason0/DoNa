@@ -1,5 +1,5 @@
 export default function BusinessPage() {
-    const CONTACT_EMAIL = "12jason@donacouse.com";
+    const CONTACT_EMAIL = "12jason@donacourse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white">
             <main className="flex-grow container mx-auto px-4 py-8 bg-white">
@@ -36,7 +36,7 @@ export default function BusinessPage() {
 
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">고객센터</h3>
-                                    <p className="text-gray-700">12jason@donacouse.com</p>
+                                    <p className="text-gray-700">12jason@donacourse.com</p>
                                 </div>
 
                                 <div>
@@ -46,7 +46,7 @@ export default function BusinessPage() {
 
                                 <div className="md:col-span-2">
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">개인정보보호책임자</h3>
-                                    <p className="text-gray-700">오승용 (12jason@donacouse.com)</p>
+                                    <p className="text-gray-700">오승용 (12jason@donacourse.com)</p>
                                 </div>
                             </div>
                         </div>
@@ -79,22 +79,22 @@ export default function BusinessPage() {
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-2">일반 문의</h3>
-                                    <p className="text-gray-700">12jason@donacouse.com</p>
+                                    <p className="text-gray-700">12jason@donacourse.com</p>
                                     <p className="text-sm text-gray-500">24시간 내 답변 (평일 기준)</p>
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-2">개인정보 관련 문의</h3>
-                                    <p className="text-gray-700">12jason@donacouse.com</p>
+                                    <p className="text-gray-700">12jason@donacourse.com</p>
                                     <p className="text-sm text-gray-500">개인정보보호책임자 직접 처리</p>
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-2">기술 지원</h3>
-                                    <p className="text-gray-700">12jason@donacouse.com</p>
+                                    <p className="text-gray-700">12jason@donacourse.com</p>
                                     <p className="text-sm text-gray-500">버그 신고 및 기능 제안</p>
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-2">제휴 및 협력</h3>
-                                    <p className="text-gray-700">12jason@donacouse.com</p>
+                                    <p className="text-gray-700">12jason@donacourse.com</p>
                                     <p className="text-sm text-gray-500">사업 제휴 관련 문의</p>
                                 </div>
                             </div>

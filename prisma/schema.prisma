@@ -80,6 +80,8 @@ model User {
 
   @@index([provider, socialId])
   @@index([deletedAt])
+  // 🟢 [Fix]: 복합 유니크 인덱스 추가 (중복 가입 원천 차단)
+  @@unique([socialId, provider], name: "unique_social_provider")
   @@map("users")
 }
 

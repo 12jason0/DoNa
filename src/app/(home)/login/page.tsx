@@ -43,7 +43,7 @@ const Login = () => {
         if (urlMessage) {
             setMessage(decodeURIComponent(urlMessage));
         }
-        
+
         if (urlError) {
             // 🟢 한글 에러 메시지 안전하게 디코딩
             try {
@@ -57,7 +57,7 @@ const Login = () => {
         // URL에서 메시지 및 에러 파라미터 제거
         if (urlMessage || urlError) {
             const currentNext = urlParams.get("next");
-            const cleanUrl = window.location.pathname + (currentNext ? `?next=${encodeURIComponent(currentNext)}` : '');
+            const cleanUrl = window.location.pathname + (currentNext ? `?next=${encodeURIComponent(currentNext)}` : "");
             window.history.replaceState({}, "", cleanUrl);
         }
     }, []);
@@ -73,6 +73,9 @@ const Login = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // 🟢 [Fix]: 중복 클릭 방지 - 이미 로딩 중이면 요청 무시
+        if (loading) return;
+
         setLoading(true);
         setError("");
         setMessage("");
@@ -91,10 +94,10 @@ const Login = () => {
             if (response.ok) {
                 // 🟢 쿠키 기반 인증: localStorage 제거
                 // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
-                
+
                 // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
                 window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-                
+
                 // 🟢 기존 코드 호환성을 위한 localStorage 정리 (혹시 남아있을 수 있음)
                 localStorage.removeItem("authToken");
                 localStorage.removeItem("user");
@@ -119,7 +122,7 @@ const Login = () => {
                 sessionStorage.setItem("login_success_trigger", "true");
 
                 // 🟢 목적지가 없거나 로그인 페이지 자체라면 메인으로, 있다면 그곳으로 이동
-                const redirectPath = (!next || next.startsWith("/login")) ? "/" : next;
+                const redirectPath = !next || next.startsWith("/login") ? "/" : next;
                 router.replace(redirectPath);
             } else {
                 setError(data.error || "로그인에 실패했습니다.");
@@ -158,7 +161,7 @@ const Login = () => {
                 setLoading(false);
                 return;
             }
-            
+
             // next 값을 sessionStorage에 저장 (팝업 인증 후 사용)
             sessionStorage.setItem("auth:next", next);
 
@@ -183,7 +186,7 @@ const Login = () => {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ code, next: receivedNext }),
                         });
-                        
+
                         // 리다이렉트 응답인 경우
                         if (response.redirected || response.url) {
                             const redirectPath = response.url || receivedNext || "/";
@@ -191,7 +194,7 @@ const Login = () => {
                             cleanup();
                             return;
                         }
-                        
+
                         const data = await response.json();
 
                         if (!response.ok) throw new Error(data.error || "로그인 처리 실패");
@@ -201,15 +204,15 @@ const Login = () => {
                         localStorage.removeItem("authToken");
                         localStorage.removeItem("user");
                         localStorage.removeItem("loginTime");
-                        
+
                         // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
                         window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-                        
+
                         sessionStorage.setItem("login_success_trigger", "true");
 
                         cleanup();
                         // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
-                        const redirectPath = (!receivedNext || receivedNext.startsWith("/login")) ? "/" : receivedNext;
+                        const redirectPath = !receivedNext || receivedNext.startsWith("/login") ? "/" : receivedNext;
                         router.replace(redirectPath);
                     } catch (err: any) {
                         setError(err.message);
@@ -307,6 +310,7 @@ const Login = () => {
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
+                                    autoComplete="username"
                                     className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                     placeholder="이메일을 입력하세요"
                                 />
@@ -324,6 +328,7 @@ const Login = () => {
                                         value={formData.password}
                                         onChange={handleChange}
                                         required
+                                        autoComplete="current-password"
                                         className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg bg-white focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                         placeholder="비밀번호를 입력하세요"
                                         disabled={loading}
@@ -386,7 +391,10 @@ const Login = () => {
                         <div className="mt-6 text-center">
                             <p className="text-gray-600">
                                 계정이 없으신가요?{" "}
-                                <Link href={`/signup?next=${encodeURIComponent(next)}`} className="text-emerald-600 hover:text-emerald-700 font-medium">
+                                <Link
+                                    href={`/signup?next=${encodeURIComponent(next)}`}
+                                    className="text-emerald-600 hover:text-emerald-700 font-medium"
+                                >
                                     회원가입
                                 </Link>
                             </p>
@@ -446,10 +454,10 @@ const Login = () => {
                                         localStorage.removeItem("authToken");
                                         localStorage.removeItem("user");
                                         localStorage.removeItem("loginTime");
-                                        
+
                                         // 🟢 로그인 성공 이벤트 발생
                                         window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-                                        
+
                                         sessionStorage.setItem("login_success_trigger", "true");
 
                                         // 🟢 애플 로그인 성공 시 무조건 메인 페이지(/)로 이동

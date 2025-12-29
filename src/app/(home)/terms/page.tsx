@@ -1,5 +1,5 @@
 export default function TermsOfServicePage() {
-    const CONTACT_EMAIL = "12jason@donacouse.com";
+    const CONTACT_EMAIL = "12jason@donacourse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white">
             <main className="flex-grow container mx-auto px-4 py-8 bg-white">

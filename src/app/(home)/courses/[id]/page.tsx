@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
-import CourseDetailClient, { CourseData } from "./CourseDetailClient";
+import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
 
 // 1. 데이터 페칭 함수 (코스 정보 캐싱) - 🟢 성능 최적화: select 사용으로 필요한 필드만 가져오기
@@ -61,6 +61,7 @@ const getCourse = unstable_cache(
                                     phone: true,
                                     parking_available: true,
                                     reservation_required: true,
+                                    reservationUrl: true, // 🟢 예약 URL 추가
                                     latitude: true,
                                     longitude: true,
                                     imageUrl: true,
@@ -122,6 +123,7 @@ const getCourse = unstable_cache(
                     place: cp.place
                         ? {
                               ...cp.place,
+                              reservationUrl: cp.place.reservationUrl || null, // 🟢 reservationUrl 명시적으로 포함
                               latitude: cp.place.latitude ? Number(cp.place.latitude) : null,
                               longitude: cp.place.longitude ? Number(cp.place.longitude) : null,
                               closed_days: closedDaysMap[cp.place.id] || [],
@@ -137,12 +139,10 @@ const getCourse = unstable_cache(
     // 🟢 빈 배열: 함수 파라미터(id)가 자동으로 캐시 키에 포함됨
     [],
     {
-        revalidate: 300, // 🟢 성능 최적화: 5분 캐싱 (3600 -> 300)
+        revalidate: 180, // 🟢 성능 최적화: 3분 캐싱 (300 -> 180)
         tags: ["course-detail"],
     }
 );
-
-// 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드하므로 서버에서 제거
 
 // 🔒 권한 확인 함수 (캐싱 및 최적화)
 const getUserPermission = unstable_cache(
@@ -177,7 +177,7 @@ const getUserPermission = unstable_cache(
     },
     [],
     {
-        revalidate: 180, // 🟢 성능 최적화: 3분 캐싱 (300 -> 180)
+        revalidate: 120, // 🟢 성능 최적화: 2분 캐싱 (180 -> 120)
         tags: ["user-permission"],
     }
 );
@@ -234,7 +234,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         // (2) 베이직 유저가 베이직 코스를 볼 때 통과
         if (userTier === "BASIC" && courseGrade === "BASIC") isLocked = false;
 
-        // (3) ⭐️ 가장 중요: 등급이 낮아도 '구매 기록'이 있으면 무조건 잠금 해제!
+        // (3) ⭐️ 구매 기록이 있으면 무조건 잠금 해제
         if (hasUnlocked) isLocked = false;
     }
 

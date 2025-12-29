@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         const utc = now.getTime() + now.getTimezoneOffset() * 60000;
         const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
         const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
-        const initialCoupons = kstNow <= eventEndDate ? 3 : 1;
+        const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 10일 이전: 2개, 이후: 1개
 
         // 7. Prisma 트랜잭션: 유저 생성 + 보상 기록 (성능 최적화) [cite: 2025-12-24]
         const createdUser = await (prisma as any).$transaction(async (tx: any) => {

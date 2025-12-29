@@ -1,7 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // 빌드 시 타입 오류 무시 (빠른 배포 환경 구축)
+    // 1. 기존 유지: 빌드 오류 무시
     typescript: { ignoreBuildErrors: true },
+
+    // 🟢 [추가]: 개발 모드 이중 렌더링 방지 (Violation 및 setInterval 지연 해결 핵심)
+    reactStrictMode: false,
+
+    // 2. 기존 유지: 개발 툴 배지 비활성화
+    devIndicators: {
+        buildActivity: false,
+        appIsrStatus: false,
+    },
+
+    // 🟢 [추가]: 패키지 임포트 최적화 (Fast Refresh 속도 개선)
+    experimental: {
+        optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "lodash"],
+    },
 
     async headers() {
         return [
@@ -12,35 +26,31 @@ const nextConfig = {
                     { key: "X-Content-Type-Options", value: "nosniff" },
                     { key: "Referrer-Policy", value: "origin-when-cross-origin" },
                     { key: "X-XSS-Protection", value: "1; mode=block" },
-                    { key: "x-vercel-toolbar", value: "disabled" },
                     {
                         key: "Content-Security-Policy",
                         value: (() => {
                             const isDev = process.env.NODE_ENV !== "production";
 
-                            // ✅ 스크립트 허용 목록 (네이버, 구글, 카카오, 토스 등)
+                            // 1. 스크립트 허용 (구글 태그 매니저 추가)
                             const scriptSrc = [
                                 "'self'",
                                 "'unsafe-inline'",
-                                ...(isDev ? ["'unsafe-eval'"] : []),
+                                "'unsafe-eval'",
                                 "blob:",
+                                "https://*.naver.com",
+                                "https://*.navercorp.com",
+                                "https://*.pstatic.net",
                                 "https://cdn.jsdelivr.net",
                                 "https://vercel.live",
                                 "https://*.tosspayments.com",
-                                "https://*.vercel.live",
-                                "https://oapi.map.naver.com",
-                                "https://openapi.map.naver.com",
-                                "https://ssl.pstatic.net",
-                                "https://nrbe.pstatic.net",
-                                "https://*.pstatic.net",
                                 "https://www.googletagmanager.com",
                                 "https://www.google-analytics.com",
-                                "https://t1.kakaocdn.net",
                                 "https://developers.kakao.com",
-                                ...(isDev ? ["http://oapi.map.naver.com", "http://nrbe.map.naver.net"] : []),
+                                "https://t1.kakaocdn.net",
+                                ...(isDev ? ["http://*.naver.com", "http://*.map.naver.net"] : []),
                             ].join(" ");
 
-                            // ✅ 스타일 허용 목록
+                            // 2. 스타일 및 폰트 허용 (jsDelivr 차단 해결)
                             const styleSrc = [
                                 "'self'",
                                 "'unsafe-inline'",
@@ -48,93 +58,37 @@ const nextConfig = {
                                 "https://cdn.jsdelivr.net",
                             ].join(" ");
 
-                            // ✅ 이미지 허용 목록 (CloudFront, S3, 카카오, 구글 등)
-                            const imgSrc = [
-                                "'self'",
-                                "data:",
-                                "blob:",
-                                "https://d13xx6k6chk2in.cloudfront.net", // CloudFront (필수) [cite: 2025-12-24]
-                                "https://images.unsplash.com",
-                                "https://*.pstatic.net",
-                                "https://*.naver.com",
-                                "https://ssl.pstatic.net",
-                                "https://nrbe.pstatic.net",
-                                "https://vercel.com",
-                                "https://*.vercel.com",
-                                "https://*.googleusercontent.com",
-                                "https://k.kakaocdn.net", // 카카오 루트
-                                "https://*.kakaocdn.net", // 카카오 CDN
-                                "https://*.kakao.com",
-                                "https://www.google.co.kr", // 구글 광고/분석
-                                "https://*.google.co.kr",
-                                "https://*.google.com",
-                                "https://analytics.google.com",
-                                "https://stats.g.doubleclick.net",
-                                "https://*.google-analytics.com",
-                                "https://*.googletagmanager.com",
-                                ...(isDev ? ["http:", "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com"] : []),
-                            ].join(" ");
-
-                            // ✅ API 및 소켓 연결 허용 (오타 수정됨)
-                            const connectSrc = [
-                                "'self'",
-                                "https://dona.io.kr",
-                                "https://d13xx6k6chk2in.cloudfront.net",
-                                "https://vercel.live",
-                                "https://*.vercel.live",
-                                "https://*.tosspayments.com",
-                                "https://nrbe.pstatic.net",
-                                "https://*.pstatic.net",
-                                "https://oapi.map.naver.com",
-                                "https://openapi.map.naver.com",
-                                "https://naveropenapi.apigw.ntruss.com",
-                                "https://kr-col-ext.nelo.navercorp.com",
-                                "https://www.google-analytics.com",
-                                "https://www.googletagmanager.com",
-                                "https://analytics.google.com",
-                                "https://stats.g.doubleclick.net",
-                                "https://region1.google-analytics.com",
-                                "https://*.kakao.com",
-                                "https://api.tosspayments.com",
-                                "https://kauth.kakao.com",
-                                "https://t1.kakaocdn.net",
-                                "https://*.pusher.com", // 🟢 Pusher HTTPS 허용
-                                "wss://*.pusher.com", // 🟢 Pusher WebSocket 허용 (오타 수정 완료)
-                                ...(isDev
-                                    ? [
-                                          "http://oapi.map.naver.com",
-                                          "http://nrbe.map.naver.net",
-                                          "https://*.amazonaws.com",
-                                      ]
-                                    : []),
-                            ].join(" ");
-
                             const fontSrc = [
                                 "'self'",
                                 "data:",
-                                "https://vercel.live",
+                                "https://ssl.pstatic.net",
                                 "https://cdn.jsdelivr.net",
                                 "https://*.tosspayments.com",
                             ].join(" ");
-                            const frameSrc = [
+
+                            // 3. API 및 소켓 연결 허용
+                            const connectSrc = [
                                 "'self'",
-                                "https://vercel.live",
-                                "https://www.googletagmanager.com",
-                                "https://payment-widget.tosspayments.com",
-                                "https://*.tosspayments.com",
-                                "https://toss.im",
+                                "https://*.naver.com",
+                                "https://*.navercorp.com",
+                                "https://*.pstatic.net",
+                                "https://dona.io.kr",
+                                "https://*.pusher.com",
+                                "wss://*.pusher.com",
+                                "https://www.google-analytics.com",
+                                "https://region1.google-analytics.com",
+                                "https://analytics.google.com", // 👈 추가
+                                "https://stats.g.doubleclick.net",
                             ].join(" ");
-                            const workerSrc = ["'self'", "blob:"].join(" ");
 
                             return [
                                 `default-src 'self'`,
                                 `script-src ${scriptSrc}`,
                                 `style-src ${styleSrc}`,
-                                `img-src ${imgSrc}`,
-                                `connect-src ${connectSrc}`,
                                 `font-src ${fontSrc}`,
-                                `frame-src ${frameSrc}`,
-                                `worker-src ${workerSrc}`,
+                                `connect-src ${connectSrc}`,
+                                `img-src 'self' data: blob: https: http:`,
+                                `frame-src 'self' https:`,
                             ].join("; ");
                         })(),
                     },
@@ -144,22 +98,10 @@ const nextConfig = {
     },
 
     images: {
-        // 🟢 이미지 품질 및 크기 최적화 (콘솔 경고 방지 및 성능 향상)
-        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-        imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-        qualities: [50, 55, 60, 65, 70, 75], // 🟢 사용 중인 품질값 명시 [cite: 2025-12-24]
-
-        remotePatterns: [
-            { protocol: "https", hostname: "images.unsplash.com" },
-            { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" }, // CloudFront 통합 [cite: 2025-12-24]
-            { protocol: "https", hostname: "*.vercel.com" },
-            { protocol: "https", hostname: "*.googleusercontent.com" },
-            { protocol: "https", hostname: "k.kakaocdn.net" },
-            { protocol: "https", hostname: "*.kakaocdn.net" },
-            { protocol: "https", hostname: "www.google.co.kr" },
-            { protocol: "https", hostname: "google.co.kr" },
-        ],
-        unoptimized: false,
+        // 🟢 이미지 500 에러 차단을 위한 품질 설정 명시
+        qualities: [50, 60, 65, 70, 75, 80, 85, 90],
+        minimumCacheTTL: 3600,
+        remotePatterns: [{ protocol: "https", hostname: "**" }],
     },
 };
 

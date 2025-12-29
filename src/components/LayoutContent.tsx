@@ -143,7 +143,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
                                     </p>
                                     <p>
-                                        <strong>고객센터:</strong> 12jason@donacouse.com
+                                        <strong>고객센터:</strong> 12jason@donacourse.com
                                     </p>
                                     <p>
                                         <strong>유선번호:</strong> 010-2271-9824

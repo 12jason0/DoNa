@@ -357,7 +357,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     <div className="flex flex-col items-start text-left space-y-6">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/30 bg-white/10 backdrop-blur-md text-white/90 text-xs font-medium tracking-wider uppercase">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            AI Curation
+                            AI DONA
                         </div>
                         <h1 className="text-4xl font-light text-white leading-[1.15] tracking-tight">
                             어디로 떠날지
@@ -398,7 +398,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     </button>
                     {/* ... (생략된 내용) ... */}
                     <div className="mt-8">
-                        <h2 className="text-2xl font-bold mb-2">분석 완료!</h2>
+                        <h2 className="text-gray-900 text-2xl font-bold mb-2">분석 완료!</h2>
                         <p className="text-gray-500 mb-6">회원님의 취향 DNA가 추출되었습니다.</p>
                         <button
                             onClick={completeOnboarding}
@@ -466,7 +466,14 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                         onClick={() => handleVibeSelect(opt)}
                                         className="relative group overflow-hidden rounded-xl aspect-square border border-gray-100"
                                     >
-                                        <Image src={opt.img} alt={opt.title} fill className="object-cover" />
+                                        <Image
+                                            src={opt.img}
+                                            alt={opt.title}
+                                            fill
+                                            sizes="(max-width: 768px) 50vw, 400px"
+                                            className="object-cover"
+                                            priority
+                                        />
                                         <span className="absolute bottom-4 left-4 text-white font-bold text-sm drop-shadow">
                                             {opt.title}
                                         </span>
@@ -535,28 +542,45 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     )}
 
                     {currentStep === 4 && (
-                        <div className="animate-slideUp flex flex-col h-full">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2 mt-4">자주 출몰하는 지역은?</h1>
-                            <div className="flex-1 flex content-start flex-wrap gap-2.5 overflow-y-auto pb-4">
-                                {REGION_GROUPS.map((group) => (
-                                    <button
-                                        key={group.id}
-                                        onClick={() => handleRegionSelect(group)}
-                                        className={`px-3 py-3 rounded-xl text-sm font-medium flex-grow text-center shadow-sm ${
-                                            preferences.regions.includes(group.dbValues[0])
-                                                ? "bg-white border-2 border-[#7aa06f]"
-                                                : "bg-white border hover:bg-gray-50"
-                                        }`}
-                                        style={{ flexBasis: "45%" }}
-                                    >
-                                        {group.label}
-                                    </button>
-                                ))}
+                        <div className="animate-slideUp flex flex-col h-full px-1">
+                            {/* 헤더 섹션: 가이드 텍스트 추가 */}
+                            <div className="mb-8 mt-4">
+                                <h1 className="text-2xl font-extrabold text-gray-900 mb-2">자주 출몰하는 지역은?</h1>
+                                <p className="text-gray-500 text-sm font-medium">최대 3개까지 선택할 수 있어요 📍</p>
                             </div>
-                            <div className="shrink-0 mt-auto pb-6 pt-4">
+
+                            {/* 지역 선택 그리드: 고정 2열 그리드로 정밀 정렬 */}
+                            <div className="flex-1 grid grid-cols-2 gap-3 content-start overflow-y-auto pb-4 scrollbar-hide">
+                                {REGION_GROUPS.map((group) => {
+                                    const isSelected = preferences.regions.includes(group.dbValues[0]);
+                                    return (
+                                        <button
+                                            key={group.id}
+                                            onClick={() => handleRegionSelect(group)}
+                                            className={`group relative flex items-center justify-center px-4 py-4 rounded-2xl text-sm font-bold transition-all duration-200 shadow-sm border ${
+                                                isSelected
+                                                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-1 ring-emerald-500"
+                                                    : "bg-white border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                            }`}
+                                        >
+                                            <span className={`${isSelected ? "scale-105" : ""} transition-transform`}>
+                                                {group.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* 하단 고정 버튼 섹션: 그라데이션 및 그림자 추가 */}
+                            <div className="shrink-0 mt-auto pb-8 pt-4 bg-white">
                                 <button
                                     onClick={nextStep}
-                                    className="w-full py-4 bg-slate-900 text-white rounded-lg font-bold tracking-tight"
+                                    disabled={preferences.regions.length === 0}
+                                    className={`w-full py-4.5 rounded-2xl font-extrabold text-[16px] tracking-tight transition-all shadow-lg ${
+                                        preferences.regions.length > 0
+                                            ? "bg-slate-900 text-white active:scale-[0.98]"
+                                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                    }`}
                                 >
                                     분석 시작하기 ✨
                                 </button>

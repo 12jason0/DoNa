@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ProfileTab from "@/components/mypage/ProfileTab";
 import FootprintTab from "@/components/mypage/FootprintTab";
@@ -39,8 +39,17 @@ const MyPage = () => {
     const [payments, setPayments] = useState<any[]>([]);
 
     const [activeTab, setActiveTab] = useState("profile");
+
+    // 🟢 [Performance]: 탭 변경 시 부드러운 전환을 위한 최적화
+    const handleTabChange = useCallback((tab: string) => {
+        // 🟢 다음 프레임에서 탭 변경하여 렌더링 부하 분산
+        requestAnimationFrame(() => {
+            setActiveTab(tab);
+        });
+    }, []);
     const [activitySubTab, setActivitySubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
     const tabsTrackRef = useRef<HTMLDivElement | null>(null);
+    const redirectingRef = useRef(false); // 🟢 리다이렉트 중복 방지
 
     const [loading, setLoading] = useState(true);
 
@@ -110,7 +119,10 @@ const MyPage = () => {
         return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
     }, []);
 
-    const fetchUserInfo = async (): Promise<boolean> => {
+    const fetchUserInfo = useCallback(async (): Promise<boolean> => {
+        // 🟢 이미 리다이렉트 중이면 중복 실행 방지
+        if (redirectingRef.current) return false;
+
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
             const { apiFetch } = await import("@/lib/authClient");
@@ -120,7 +132,15 @@ const MyPage = () => {
 
             // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
             if (response.status === 401 || !raw) {
-                router.push("/login");
+                // 🟢 중복 리다이렉트 방지
+                if (
+                    !redirectingRef.current &&
+                    typeof window !== "undefined" &&
+                    !window.location.pathname.includes("/login")
+                ) {
+                    redirectingRef.current = true;
+                    router.push("/login");
+                }
                 return false; // 🟢 다른 fetch 함수들이 실행되지 않도록 false 반환
             }
 
@@ -183,12 +203,20 @@ const MyPage = () => {
             return true; // 🟢 성공 시 true 반환하여 다른 fetch 함수들이 실행되도록 함
         } catch (error) {
             console.error(error);
-            router.push("/login"); // 🟢 에러 발생 시 로그인 페이지로 이동
+            // 🟢 중복 리다이렉트 방지
+            if (
+                !redirectingRef.current &&
+                typeof window !== "undefined" &&
+                !window.location.pathname.includes("/login")
+            ) {
+                redirectingRef.current = true;
+                router.push("/login"); // 🟢 에러 발생 시 로그인 페이지로 이동
+            }
             return false;
         } finally {
             setLoading(false);
         }
-    };
+    }, [router]);
 
     const fetchBadges = async () => {
         try {
@@ -403,6 +431,7 @@ const MyPage = () => {
                             imageUrl: finalImageUrl,
                             rating: Number(c.rating ?? 0),
                             concept: c.course?.concept || c.concept || "",
+                            region: c.course?.region || c.region || null,
                             completedAt: c.completedAt || c.completed_at || null,
                         };
                     })
@@ -460,7 +489,10 @@ const MyPage = () => {
     // ----- Handlers -----
 
     const handleSelectTab = (id: string, ev: React.MouseEvent<HTMLButtonElement>) => {
-        setActiveTab(id);
+        // 🟢 [Performance]: 탭 변경을 다음 프레임으로 지연하여 부드러운 전환
+        requestAnimationFrame(() => {
+            setActiveTab(id);
+        });
         try {
             const container = tabsTrackRef.current;
             const button = ev.currentTarget as HTMLButtonElement;
@@ -727,7 +759,12 @@ const MyPage = () => {
                 )}
 
                 {activeTab === "footprint" && (
-                    <FootprintTab casefiles={casefiles} completed={completed} userName={userInfo?.name || ""} />
+                    <FootprintTab
+                        casefiles={casefiles}
+                        completed={completed}
+                        aiRecommendations={savedCourses}
+                        userName={userInfo?.name || ""}
+                    />
                 )}
 
                 {activeTab === "records" && (
@@ -1053,7 +1090,9 @@ const MyPage = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">연령대 <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    연령대 <span className="text-red-500">*</span>
+                                </label>
                                 <select
                                     name="ageRange"
                                     value={editForm.ageRange || ""}
@@ -1070,7 +1109,9 @@ const MyPage = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    성별 <span className="text-red-500">*</span>
+                                </label>
                                 <select
                                     name="gender"
                                     value={editForm.gender || ""}

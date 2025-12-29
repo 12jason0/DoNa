@@ -42,6 +42,7 @@ export async function postCheckin(): Promise<{
     rewardAmount: number;
     success: boolean;
     alreadyChecked: boolean;
+    streak?: number; // 🟢 출석 연속일수 추가
     weekStamps?: boolean[];
     weekCount?: number;
     todayIndex?: number | null;
@@ -60,9 +61,11 @@ export async function postCheckin(): Promise<{
             rewardAmount: Number(data?.rewardAmount || 0),
             success: Boolean(data?.success ?? res.ok),
             alreadyChecked: Boolean(data?.alreadyChecked),
+            streak: Number.isFinite(Number(data?.streak)) ? Number(data?.streak) : undefined, // 🟢 출석 연속일수 추가
             weekStamps: Array.isArray(data?.weekStamps) ? (data.weekStamps as boolean[]) : undefined,
             weekCount: Number.isFinite(Number(data?.weekCount)) ? Number(data?.weekCount) : undefined,
-            todayIndex: typeof data?.todayIndex === "number" ? data.todayIndex : (data?.todayIndex === null ? null : undefined),
+            todayIndex:
+                typeof data?.todayIndex === "number" ? data.todayIndex : data?.todayIndex === null ? null : undefined,
         };
     } catch {
         return { ok: false, awarded: false, rewardAmount: 0, success: false, alreadyChecked: false };

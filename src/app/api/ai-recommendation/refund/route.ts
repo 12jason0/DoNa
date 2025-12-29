@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import prisma from "@/lib/db";
-import { extractBearerToken, verifyJwtAndGetUserId } from "@/lib/auth";
+import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { PaymentStatus, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -31,10 +32,17 @@ async function sendSlackMessage(text: string) {
 
 export async function POST(request: NextRequest) {
     try {
-        // [인증] 토큰 확인
-        const token = extractBearerToken(request);
+        // 🟢 [인증] 쿠키 기반 인증으로 변경
+        const cookieStore = await cookies();
+        const token = cookieStore.get("auth")?.value;
         if (!token) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-        const userId = verifyJwtAndGetUserId(token);
+        
+        let userId: string;
+        try {
+            userId = verifyJwtAndGetUserId(token);
+        } catch {
+            return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
+        }
         const numericUserId = Number(userId);
 
         // [데이터] 요청에서 주문번호 추출
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
         if (!tossRes.ok) throw new Error("토스 API 환불 실패");
 
         // 5. DB 업데이트 (트랜잭션으로 일관성 보장)
-        await prisma.$transaction(async (tx) => {
+        const updatedUser = await prisma.$transaction(async (tx) => {
             // 결제 상태 변경
             await tx.payment.update({
                 where: { id: payment.id },
@@ -93,11 +101,13 @@ export async function POST(request: NextRequest) {
             });
 
             if (isCoupon) {
-                // 쿠폰 개수 차감
-                await tx.user.update({
+                // 쿠폰 개수 차감 후 최신 값 반환
+                const updated = await tx.user.update({
                     where: { id: numericUserId },
                     data: { couponCount: { decrement: retrieveCount } },
+                    select: { couponCount: true },
                 });
+                return updated;
             } else {
                 // 구독 등급 강등 및 만료 처리
                 await tx.user.update({
@@ -108,6 +118,12 @@ export async function POST(request: NextRequest) {
                         isAutoRenewal: false,
                     },
                 });
+                // 구독 환불 시에도 쿠폰 개수 반환
+                const user = await tx.user.findUnique({
+                    where: { id: numericUserId },
+                    select: { couponCount: true },
+                });
+                return user;
             }
         });
 
@@ -124,7 +140,12 @@ ${typeEmoji} *[두나] ${isCoupon ? "쿠폰" : "멤버십"} 환불 완료*
         `;
         await sendSlackMessage(msg);
 
-        return NextResponse.json({ success: true, message: "환불 완료" });
+        // 🟢 [수정]: 쿠폰 환불 시 최신 쿠폰 개수 반환
+        return NextResponse.json({
+            success: true,
+            message: "환불 완료",
+            ticketsRemaining: updatedUser?.couponCount ?? 0,
+        });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

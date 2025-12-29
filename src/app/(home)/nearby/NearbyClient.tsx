@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { getPlaceStatus } from "@/lib/placeStatus";
@@ -9,67 +9,14 @@ import { CONCEPTS } from "@/constants/onboardingData";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import CourseCard from "@/components/CourseCard";
+// 🟢 [Performance]: 필터링 로직과 모달을 별도 파일로 분리
+import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
+import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
 
-// --- Types (기존과 동일) ---
-type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
-type Place = {
-    id: number;
-    name: string;
-    imageUrl?: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-    opening_hours?: string | null;
-    closed_days?: PlaceClosedDay[];
-    category?: string;
-};
-type CoursePlace = { order_index: number; place: Place | null };
-export type Course = {
-    id: string;
-    title: string;
-    description?: string;
-    imageUrl?: string;
-    concept?: string;
-    region?: string;
-    coursePlaces?: CoursePlace[];
-    location?: string;
-    distance?: number;
-    duration?: string;
-    viewCount?: number;
-    reviewCount?: number;
-    grade?: "FREE" | "BASIC" | "PREMIUM";
-    rating?: number;
-    isLocked?: boolean;
-    tags?: string[];
-};
+// 🟢 [Performance]: Course 타입은 useCourseFilter에서 import
+// 기존 Course 타입 export는 제거 (useCourseFilter에서 제공)
 
-// --- 태그 카테고리 정의 (course_tags 테이블 기반) ---
-const TAG_CATEGORIES = {
-    MANDATORY: {
-        label: "활동",
-        tags: ["맛집투어", "카페투어", "주점", "액티비티", "전시관람"] as string[],
-    },
-    VIBE: {
-        label: "분위기",
-        tags: ["힙스터", "감성", "로맨틱", "인생샷", "핫플", "신상"] as string[],
-    },
-    CONTEXT: {
-        label: "상황",
-        tags: ["데이트", "기념일", "가성비", "친구", "혼자"] as string[],
-    },
-    CONDITION: {
-        label: "조건",
-        tags: ["실내", "야외", "야경", "비오는날"] as string[],
-    },
-};
-
-// --- Constants (기존 호환성 유지) ---
-const tagCategories: Record<string, string[]> = {
-    Concept: TAG_CATEGORIES.MANDATORY.tags,
-    Mood: TAG_CATEGORIES.VIBE.tags,
-    Target: TAG_CATEGORIES.CONTEXT.tags,
-    Condition: TAG_CATEGORIES.CONDITION.tags,
-};
+// 🟢 TAG_CATEGORIES는 CategoryFilterModal로 이동됨
 
 const activities = [
     { key: "카페투어", label: "☕ 카페투어" },
@@ -204,24 +151,30 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
-    // 🟢 URL 파라미터 업데이트 (통합 관리)
+    // 🟢 URL 파라미터 업데이트 (통합 관리) - 성능 최적화
     const pushUrlFromState = useCallback(
         (next: any) => {
-            const sp = new URLSearchParams();
-            const acts = next.activities ?? selectedActivities;
-            const regs = next.regions ?? selectedRegions;
-            const tags = next.tagIds ?? selectedTagIds;
-            const q = next.q !== undefined ? next.q : searchParams.get("q") || "";
-            const hide = next.hideClosed ?? hideClosedPlaces;
+            // 🟢 [Performance]: 다음 프레임에서 실행하여 부드러운 전환
+            requestAnimationFrame(() => {
+                const sp = new URLSearchParams();
+                const acts = next.activities ?? selectedActivities;
+                const regs = next.regions ?? selectedRegions;
+                const tags = next.tagIds ?? selectedTagIds;
+                const q = next.q !== undefined ? next.q : searchParams.get("q") || "";
+                const hide = next.hideClosed ?? hideClosedPlaces;
 
-            if (q.trim()) sp.set("q", q.trim());
-            if (acts[0]) sp.set("concept", acts[0]);
-            if (regs[0]) sp.set("region", regs[0]);
-            if (tags.length > 0) sp.set("tagIds", String(tags.join(",")));
-            if (hide) sp.set("hideClosed", "1");
+                if (q.trim()) sp.set("q", q.trim());
+                if (acts[0]) sp.set("concept", acts[0]);
+                if (regs[0]) sp.set("region", regs[0]);
+                if (tags.length > 0) sp.set("tagIds", String(tags.join(",")));
+                if (hide) sp.set("hideClosed", "1");
 
-            setLoading(true);
-            router.push(sp.toString() ? `/nearby?${sp.toString()}` : "/nearby");
+                const targetPath = sp.toString() ? `/nearby?${sp.toString()}` : "/nearby";
+                // 🟢 prefetch로 미리 로드하여 빠른 전환
+                router.prefetch(targetPath);
+                setLoading(true);
+                router.push(targetPath);
+            });
         },
         [selectedActivities, selectedRegions, selectedTagIds, hideClosedPlaces, searchParams, router]
     );
@@ -235,7 +188,11 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             params.set("limit", "30");
             params.set("offset", String(offset));
 
-            const { data, response } = await apiFetch(`/api/courses/nearby?${params.toString()}`, {
+            // 🟢 [Performance]: prefetch로 미리 로드
+            const apiUrl = `/api/courses/nearby?${params.toString()}`;
+            router.prefetch(apiUrl);
+
+            const { data, response } = await apiFetch(apiUrl, {
                 cache: "force-cache", // 🟢 성능 최적화: 캐시 활용
                 next: { revalidate: 60 }, // 🟢 60초 캐시
             });
@@ -260,51 +217,64 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         }
     }, [loadingMore, hasMore, loading, offset, searchParams]);
 
-    // 🟢 스크롤 이벤트 throttle 최적화
+    // 🟢 [Performance]: IntersectionObserver로 무한 스크롤 최적화 (스크롤 이벤트 대신)
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
-        if (loading || !hasMore) return;
-        
-        let ticking = false;
-        const handleScroll = () => {
-            if (ticking) return;
-            ticking = true;
-            requestAnimationFrame(() => {
-                if (loadingMore || !hasMore || loading) {
-                    ticking = false;
-                    return;
-                }
-                const scrollHeight = document.documentElement.scrollHeight;
-                const scrollTop = document.documentElement.scrollTop;
-                const clientHeight = document.documentElement.clientHeight;
-                if (scrollTop + clientHeight >= scrollHeight - 200) {
-                    loadMoreCourses();
-                }
-                ticking = false;
-            });
-        };
-        
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, [loadMoreCourses, loadingMore, hasMore, loading]);
+        if (!loadMoreRef.current || loading || !hasMore) return;
+        const sentinel = loadMoreRef.current;
+        let pending = false;
 
-    // 태그 리스트 및 즐겨찾기 목록 로드
-    useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetch("/api/course-tags");
-                const data = await res.json();
-                if (data?.success) setAllTags(data.tags);
-            } catch {}
-        })();
-        authenticatedFetch<any[]>("/api/users/favorites").then((list) => {
-            if (list) {
-                const ids = new Set<number>();
-                list.forEach((f: any) => {
-                    const id = Number(f?.course?.id ?? f?.courseId ?? f?.id);
-                    if (Number.isFinite(id)) ids.add(id);
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (!entry || !entry.isIntersecting) return;
+                if (pending || loadingMore || !hasMore || loading) return;
+                pending = true;
+                Promise.resolve(loadMoreCourses()).finally(() => {
+                    pending = false;
                 });
-                setFavoriteIds(ids);
-            }
+            },
+            { root: null, rootMargin: "400px", threshold: 0 }
+        );
+
+        observer.observe(sentinel);
+        return () => {
+            observer.disconnect();
+        };
+    }, [loadMoreRef, loadMoreCourses, loadingMore, hasMore, loading]);
+
+    // 🟢 [Performance]: 태그 리스트 및 즐겨찾기 목록 지연 로드
+    useEffect(() => {
+        const ric = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 100));
+        
+        // 태그 리스트 로드
+        ric(() => {
+            (async () => {
+                try {
+                    const res = await fetch("/api/course-tags", {
+                        cache: "force-cache", // 🟢 캐싱으로 성능 향상
+                        next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
+                    });
+                    const data = await res.json();
+                    if (data?.success) setAllTags(data.tags);
+                } catch {}
+            })();
+        });
+
+        // 즐겨찾기 목록 로드 (더 긴 지연)
+        ric(() => {
+            setTimeout(() => {
+                authenticatedFetch<any[]>("/api/users/favorites").then((list) => {
+                    if (list) {
+                        const ids = new Set<number>();
+                        list.forEach((f: any) => {
+                            const id = Number(f?.course?.id ?? f?.courseId ?? f?.id);
+                            if (Number.isFinite(id)) ids.add(id);
+                        });
+                        setFavoriteIds(ids);
+                    }
+                }).catch(() => {}); // 실패 시 무시
+            }, 500); // 🟢 500ms 추가 지연으로 초기 렌더링 우선
         });
     }, []);
 
@@ -329,99 +299,34 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         }
     }, [tagIdToNameMap, selectedTagIds, selectedFilterLabels.length]);
 
-    // 🟢 [원본 로직 완벽 복구] 가중치 기반 정렬 및 다중 키워드 필터링 - 성능 최적화
-    const filtered = useMemo(() => {
-        // 로딩 중이면 기존 데이터 유지 (빈 화면 방지)
-        if (loading && courses.length > 0) {
-            return courses;
-        }
-
+    // 🟢 [Performance]: 키워드 계산 (메모이제이션)
+    const keywords = useMemo(() => {
         const activeK = searchParams.get("q") || selectedRegions[0] || "";
-        const keywords = activeK
+        return activeK
             .split(/\s+/)
             .filter(Boolean)
             .map((k) => k.replace(/동$/, "").toLowerCase());
+    }, [searchParams, selectedRegions]);
 
-        // 🟢 태그 이름 미리 계산 (Map 사용으로 최적화)
-        const selectedTagNames = selectedTagIds.length > 0 && tagIdToNameMap.size > 0
-            ? selectedTagIds
-                .map((id) => tagIdToNameMap.get(id))
-                .filter((name): name is string => !!name)
-            : [];
+    // 🟢 태그 이름 미리 계산 (Map 사용으로 최적화)
+    const selectedTagNames = useMemo(() => {
+        if (selectedTagIds.length === 0 || tagIdToNameMap.size === 0) return [];
+        return selectedTagIds
+            .map((id) => tagIdToNameMap.get(id))
+            .filter((name): name is string => !!name);
+    }, [selectedTagIds, tagIdToNameMap]);
 
-        let result = courses.filter((c) => {
-            // (1) 컨셉/활동 필터링 - concept 컬럼과 tags JSON 필드 모두 확인
-            if (selectedActivities.length > 0) {
-                const matchConcept = selectedActivities.some((a) => (c.concept || "").includes(a));
-                // tags는 배열이므로 직접 includes로 확인
-                const courseTags = Array.isArray(c.tags) ? c.tags : [];
-                const matchTags = selectedActivities.some((a) => courseTags.includes(a));
-
-                if (!matchConcept && !matchTags) return false;
-            }
-            // (2) 휴무 필터링
-            if (hideClosedPlaces && hasClosedPlace(c)) return false;
-
-            // (3) 태그 필터링 (최적화: 미리 계산된 selectedTagNames 사용)
-            if (selectedTagNames.length > 0) {
-                const courseTags = Array.isArray(c.tags) ? c.tags : [];
-                // 선택한 태그 중 하나라도 코스에 포함되어 있어야 함
-                const hasMatchingTag = selectedTagNames.some((tagName) => courseTags.includes(tagName));
-                if (!hasMatchingTag) return false;
-            }
-
-            // (5) 키워드 AND 검색 (성수동 + 카페 모두 포함 확인) - tags도 포함
-            if (keywords.length > 0) {
-                const courseTags = Array.isArray(c.tags) ? c.tags : [];
-                const courseContent = [
-                    c.title,
-                    c.region,
-                    c.concept,
-                    c.description,
-                    ...courseTags, // tags 배열도 검색에 포함
-                    ...(c.coursePlaces?.map(
-                        (cp) =>
-                            (cp.place?.name || "") + " " + (cp.place?.address || "") + " " + (cp.place?.category || "") // 🟢 category 포함
-                    ) || []),
-                ]
-                    .join(" ")
-                    .toLowerCase();
-
-                return keywords.every((k) => courseContent.includes(k));
-            }
-            return true;
-        });
-
-        // (4) 가중치 정렬 (홍대 검색 시 용산 코스 뒤로 밀기)
-        if (keywords.length > 0) {
-            result = [...result].sort((a, b) => {
-                const getScore = (course: Course) => {
-                    let score = 0;
-                    keywords.forEach((k) => {
-                        if (course.region?.toLowerCase() === k) score += 100; // 지역명 일치 최우선
-                        else if (course.region?.toLowerCase().includes(k)) score += 50;
-                        if (course.title?.toLowerCase().includes(k)) score += 20;
-                        // 카테고리 매칭 가중치
-                        if (course.coursePlaces?.some((cp) => cp.place?.category?.toLowerCase().includes(k)))
-                            score += 30;
-                    });
-                    return score;
-                };
-                return getScore(b) - getScore(a);
-            });
-        }
-        return result;
-    }, [
+    // 🟢 [Performance]: 필터링 로직을 별도 hook으로 분리
+    const { filtered, hasClosedPlace } = useCourseFilter({
         courses,
         loading,
         selectedActivities,
-        hideClosedPlaces,
-        searchParams,
         selectedRegions,
         selectedTagIds,
-        tagIdToNameMap,
-        // selectedFilterLabels는 filtered 계산에 직접 사용되지 않으므로 제거
-    ]);
+        selectedTagNames,
+        hideClosedPlaces,
+        keywords,
+    });
 
     // 🟢 화면에 표시할 검색어 (searchInput이 비어도 URL의 q를 참조)
     const displayKeyword = useMemo(() => {
@@ -440,15 +345,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         return null;
     }, [searchInput, searchParams, selectedRegions, selectedActivities, selectedTagIds, tagIdToNameMap]);
 
-    // 🟢 보조 함수들 - useCallback으로 최적화
-    const hasClosedPlace = useCallback((course: Course) => {
-        if (!course.coursePlaces) return false;
-        return course.coursePlaces.some((cp) => {
-            const place = cp.place;
-            if (!place) return false;
-            return getPlaceStatus(place.opening_hours || null, place.closed_days || []).status === "휴무";
-        });
-    }, []);
+    // 🟢 hasClosedPlace는 useCourseFilter에서 제공됨
 
     const getClosedPlaceCount = (course: Course) => {
         if (!course.coursePlaces) return 0;
@@ -538,37 +435,40 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     };
 
     const applyCategorySelection = () => {
-        const cleanedLabels = modalSelectedLabels.map((raw) =>
-            String(raw || "")
-                .replace(/^#/, "")
-                .trim()
-        );
+        // 🟢 [Performance]: 다음 프레임에서 실행하여 부드러운 전환
+        requestAnimationFrame(() => {
+            const cleanedLabels = modalSelectedLabels.map((raw) =>
+                String(raw || "")
+                    .replace(/^#/, "")
+                    .trim()
+            );
 
-        // 태그로 변환 가능한 필터와 태그로 변환되지 않은 필터 분리
-        const tagIds = Array.from(
-            new Set(
-                cleanedLabels
-                    .map((name) => allTags.find((t) => String(t?.name || "").trim() === name)?.id)
-                    .filter((id): id is number => !!id && id > 0)
-            )
-        );
+            // 태그로 변환 가능한 필터와 태그로 변환되지 않은 필터 분리
+            const tagIds = Array.from(
+                new Set(
+                    cleanedLabels
+                        .map((name) => allTags.find((t) => String(t?.name || "").trim() === name)?.id)
+                        .filter((id): id is number => !!id && id > 0)
+                )
+            );
 
-        // 태그로 변환되지 않은 필터는 concept으로 사용 (Concept/Mood 카테고리의 필터들)
-        const conceptFilters = cleanedLabels.filter(
-            (name) => !allTags.some((t) => String(t?.name || "").trim() === name)
-        );
+            // 태그로 변환되지 않은 필터는 concept으로 사용 (Concept/Mood 카테고리의 필터들)
+            const conceptFilters = cleanedLabels.filter(
+                (name) => !allTags.some((t) => String(t?.name || "").trim() === name)
+            );
 
-        // 선택한 모든 필터 라벨 저장 (태그로 변환되지 않은 것도 포함)
-        setSelectedFilterLabels([...modalSelectedLabels]);
-        setSelectedTagIds(tagIds);
-        setSelectedFilterConcepts(conceptFilters);
-        setShowCategoryModal(false);
+            // 선택한 모든 필터 라벨 저장 (태그로 변환되지 않은 것도 포함)
+            setSelectedFilterLabels([...modalSelectedLabels]);
+            setSelectedTagIds(tagIds);
+            setSelectedFilterConcepts(conceptFilters);
+            setShowCategoryModal(false);
 
-        // concept 필터가 있으면 첫 번째 것을 concept 파라미터로 전달
-        const conceptParam = conceptFilters.length > 0 ? conceptFilters[0] : undefined;
-        pushUrlFromState({
-            tagIds: tagIds,
-            activities: conceptParam ? [conceptParam] : selectedActivities,
+            // concept 필터가 있으면 첫 번째 것을 concept 파라미터로 전달
+            const conceptParam = conceptFilters.length > 0 ? conceptFilters[0] : undefined;
+            pushUrlFromState({
+                tagIds: tagIds,
+                activities: conceptParam ? [conceptParam] : selectedActivities,
+            });
         });
     };
 
@@ -746,7 +646,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     <CourseCard
                                         key={c.id}
                                         course={c}
-                                        isPriority={i < 2}
+                                        isPriority={i < 20} // 🟢 상위 20개 이미지만 우선 로딩 (preload 경고 방지)
                                         isFavorite={favoriteIds.has(Number(c.id))}
                                         onToggleFavorite={toggleFavorite}
                                         hasClosedPlace={hasClosedPlace}
@@ -763,6 +663,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                         모든 코스를 불러왔습니다.
                                     </div>
                                 )}
+                                {/* 🟢 [Performance]: IntersectionObserver용 센티넬 */}
+                                <div ref={loadMoreRef} aria-hidden="true" className="h-1"></div>
                             </div>
 
                             {/* 하단에 전체보기 버튼 (상업적 유도) */}
@@ -779,79 +681,16 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                 </div>
             </section>
 
-            {/* --- Filter Modal (Original UI) --- */}
-            {showCategoryModal && (
-                <div className="fixed inset-0 z-[100] flex justify-center items-end sm:items-center">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setShowCategoryModal(false)}
-                    />
-                    <div className="bg-white w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl border border-gray-100 relative flex flex-col max-h-[85vh] animate-slide-up">
-                        <div className="pt-3 pb-4 px-6 border-b border-gray-100 flex-shrink-0">
-                            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
-                            <h3 className="text-[19px] font-bold text-gray-900">필터 설정</h3>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                            {/* course_tags 테이블의 태그를 카테고리별로 표시 */}
-                            {Object.entries(TAG_CATEGORIES).map(([key, category]) => {
-                                // allTags에서 해당 카테고리에 속하는 태그만 필터링
-                                const categoryTags = allTags.filter((tag) => category.tags.includes(tag.name));
-
-                                // allTags에 없는 경우 하드코딩된 태그 사용 (fallback)
-                                const displayTags =
-                                    categoryTags.length > 0
-                                        ? categoryTags
-                                        : category.tags.map((name) => ({ id: 0, name }));
-
-                                return (
-                                    <div key={key}>
-                                        <div className="text-[15px] font-bold mb-3 text-gray-900">
-                                            {category.label}{" "}
-                                            <span className="text-[12px] font-normal text-gray-500">({key})</span>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {displayTags.map((tag) => {
-                                                const tagName = typeof tag === "string" ? tag : tag.name;
-                                                const isSelected = modalSelectedLabels.includes(tagName);
-
-                                                return (
-                                                    <button
-                                                        key={tagName}
-                                                        onClick={() => handleCategoryClick(tagName)}
-                                                        className={`px-3.5 py-2.5 rounded-lg text-[14px] border transition-colors ${
-                                                            isSelected
-                                                                ? "bg-emerald-600 text-white border-emerald-600"
-                                                                : "bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
-                                                        }`}
-                                                    >
-                                                        {tagName}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="p-5 border-t border-gray-100 bg-white">
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setModalSelectedLabels([])}
-                                    className="flex-1 py-4 rounded-lg bg-gray-100 text-gray-500 font-bold"
-                                >
-                                    초기화
-                                </button>
-                                <button
-                                    onClick={applyCategorySelection}
-                                    className="flex-[2.5] py-4 rounded-lg bg-slate-900 text-white font-bold"
-                                >
-                                    적용하기
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* 🟢 [Performance]: 카테고리 필터 모달을 별도 컴포넌트로 분리 */}
+            <CategoryFilterModal
+                isOpen={showCategoryModal}
+                onClose={() => setShowCategoryModal(false)}
+                allTags={allTags}
+                modalSelectedLabels={modalSelectedLabels}
+                onCategoryClick={handleCategoryClick}
+                onApply={applyCategorySelection}
+                onReset={() => setModalSelectedLabels([])}
+            />
         </div>
     );
 }

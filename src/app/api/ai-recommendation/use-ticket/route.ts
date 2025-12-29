@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import prisma from "@/lib/db";
-import { extractBearerToken, verifyJwtAndGetUserId } from "@/lib/auth";
+import { verifyJwtAndGetUserId } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
     try {
-        const token = extractBearerToken(request);
+        // 🟢 쿠키 기반 인증으로 변경
+        const cookieStore = await cookies();
+        const token = cookieStore.get("auth")?.value;
         if (!token) return NextResponse.json({ error: "인증 토큰이 필요합니다." }, { status: 401 });
 
         let userId: string;

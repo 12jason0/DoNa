@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
@@ -216,6 +216,7 @@ const AIRecommender = () => {
     const [trending, setTrending] = useState<TrendingCourse[]>([]);
     const [isSelecting, setIsSelecting] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+    const [isUserDataLoading, setIsUserDataLoading] = useState(true); // 🟢 사용자 정보 로딩 상태
 
     // --- [추가] 게임 효과 및 모달 상태 ---
     const [isAnalyzing, setIsAnalyzing] = useState(false); // 분석 화면 표시 여부
@@ -238,9 +239,23 @@ const AIRecommender = () => {
         scrollToBottom();
     }, [messages, isTyping, showChatModal]); // showChatModal 추가
 
-    // 유저 정보 가져오기 (성능 최적화: 캐싱 추가)
+    // 유저 정보 가져오기 (성능 최적화: 캐싱 추가 및 즉시 표시)
     const fetchUserData = async () => {
         try {
+            // 🟢 [Performance]: localStorage에서 캐시된 사용자 정보 먼저 표시
+            const cachedUser = localStorage.getItem("user");
+            if (cachedUser) {
+                try {
+                    const parsed = JSON.parse(cachedUser);
+                    const nick = parsed.nickname || parsed.name || parsed.email?.split("@")[0] || "사용자";
+                    setUserName(nick);
+                    setNickname(nick);
+                    setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
+                    setCoupons(parsed.couponCount || 0);
+                    setIsLoggedIn(true);
+                } catch {}
+            }
+
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 캐싱 활용
             const { apiFetch } = await import("@/lib/authClient");
             const { data: userData, response } = await apiFetch<any>("/api/users/profile", {
@@ -248,32 +263,41 @@ const AIRecommender = () => {
                 next: { revalidate: 60 }, // 🟢 1분 캐싱
             });
 
-            if (response.ok && userData) {
-                setIsLoggedIn(true);
-                const nick =
-                    (userData as any).nickname ||
-                    (userData as any).name ||
-                    (userData as any).email?.split("@")[0] ||
-                    "사용자";
-                setUserName(nick);
-                setNickname(nick);
+            // 🟢 [Performance]: 다음 프레임에서 상태 업데이트하여 렌더링 부하 분산
+            requestAnimationFrame(() => {
+                if (response.ok && userData) {
+                    setIsLoggedIn(true);
+                    const nick =
+                        (userData as any).nickname ||
+                        (userData as any).name ||
+                        (userData as any).email?.split("@")[0] ||
+                        "사용자";
+                    setUserName(nick);
+                    setNickname(nick);
 
-                // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
-                const convertToHttps = (url: string | null | undefined): string | null => {
-                    if (!url) return null;
-                    if (url.startsWith("http://")) {
-                        return url.replace(/^http:\/\//, "https://");
-                    }
-                    return url;
-                };
+                    // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
+                    const convertToHttps = (url: string | null | undefined): string | null => {
+                        if (!url) return null;
+                        if (url.startsWith("http://")) {
+                            return url.replace(/^http:\/\//, "https://");
+                        }
+                        return url;
+                    };
 
-                const profileImage = (userData as any).profileImage || (userData as any).user?.profileImage || null;
-                setProfileImageUrl(convertToHttps(profileImage));
-                setCoupons((userData as any).couponCount || 0);
-                localStorage.setItem("user", JSON.stringify(userData));
-            } else {
-                handleLogout();
-            }
+                    const profileImage = (userData as any).profileImage || (userData as any).user?.profileImage || null;
+                    setProfileImageUrl(convertToHttps(profileImage));
+                    setCoupons((userData as any).couponCount || 0);
+                    localStorage.setItem("user", JSON.stringify(userData));
+                } else {
+                    // 🟢 response.ok가 false인 경우에도 handleLogout 대신 로그인 상태만 변경 (리다이렉트 방지)
+                    setIsLoggedIn(false);
+                    setUserName("");
+                    setNickname("");
+                    setProfileImageUrl(null);
+                    setCoupons(0);
+                }
+                setIsUserDataLoading(false);
+            });
         } catch (error) {
             console.error("사용자 정보 조회 오류:", error);
             // 🟢 에러 발생 시 localStorage 정리
@@ -281,21 +305,56 @@ const AIRecommender = () => {
             localStorage.removeItem("user");
             localStorage.removeItem("loginTime");
             setIsLoggedIn(false);
+            setIsUserDataLoading(false);
         }
     };
 
-    // 🟢 로그인 상태 확인 (쿠키 기반 인증)
+    // 🟢 로그인 상태 확인 (쿠키 기반 인증) - 성능 최적화
     useEffect(() => {
         const checkLoginStatus = async () => {
-            try {
-                const { fetchSession } = await import("@/lib/authClient");
-                const session = await fetchSession();
+            // 🟢 [Performance]: localStorage에서 캐시된 사용자 정보 먼저 표시
+            const cachedUser = localStorage.getItem("user");
+            if (cachedUser) {
+                try {
+                    const parsed = JSON.parse(cachedUser);
+                    const nick = parsed.nickname || parsed.name || parsed.email?.split("@")[0] || "사용자";
+                    requestAnimationFrame(() => {
+                        setUserName(nick);
+                        setNickname(nick);
+                        setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
+                        setCoupons(parsed.couponCount || 0);
+                        setIsLoggedIn(true);
+                    });
+                } catch {}
+            }
 
-                if (session.authenticated && session.user) {
-                    setIsLoggedIn(true);
-                    fetchUserData();
-                } else {
-                    // 🟢 로그인되지 않은 경우 localStorage 정리 (이전 데이터 제거)
+            try {
+                // 🟢 [Performance]: fetchSession과 fetchUserData를 병렬로 실행
+                const { fetchSession } = await import("@/lib/authClient");
+                const [session] = await Promise.all([fetchSession()]);
+
+                // 🟢 [Performance]: 다음 프레임에서 상태 업데이트
+                requestAnimationFrame(() => {
+                    if (session.authenticated && session.user) {
+                        setIsLoggedIn(true);
+                        fetchUserData(); // fetchUserData 내부에서도 requestAnimationFrame 사용
+                    } else {
+                        // 🟢 로그인되지 않은 경우 localStorage 정리 (이전 데이터 제거)
+                        localStorage.removeItem("authToken");
+                        localStorage.removeItem("user");
+                        localStorage.removeItem("loginTime");
+                        setIsLoggedIn(false);
+                        setUserName("");
+                        setNickname("");
+                        setProfileImageUrl(null);
+                        setCoupons(0);
+                        setIsUserDataLoading(false);
+                    }
+                });
+            } catch (error) {
+                console.error("로그인 상태 확인 실패:", error);
+                // 🟢 에러 발생 시에도 localStorage 정리
+                requestAnimationFrame(() => {
                     localStorage.removeItem("authToken");
                     localStorage.removeItem("user");
                     localStorage.removeItem("loginTime");
@@ -304,18 +363,8 @@ const AIRecommender = () => {
                     setNickname("");
                     setProfileImageUrl(null);
                     setCoupons(0);
-                }
-            } catch (error) {
-                console.error("로그인 상태 확인 실패:", error);
-                // 🟢 에러 발생 시에도 localStorage 정리
-                localStorage.removeItem("authToken");
-                localStorage.removeItem("user");
-                localStorage.removeItem("loginTime");
-                setIsLoggedIn(false);
-                setUserName("");
-                setNickname("");
-                setProfileImageUrl(null);
-                setCoupons(0);
+                    setIsUserDataLoading(false);
+                });
             }
         };
 
@@ -353,24 +402,33 @@ const AIRecommender = () => {
         };
     }, []);
 
-    // 출석 정보 가져오기
+    // 출석 정보 가져오기 (성능 최적화: 로그인 확인 후 지연 로드)
     useEffect(() => {
-        if (!isLoggedIn) return;
-        const fetchCheckins = async () => {
-            try {
-                const res = await fetchWeekStamps();
-                if (!res) return;
-                setWeekStamps(res.stamps);
-                setTodayIndex(typeof res.todayIndex === "number" ? res.todayIndex : null);
-                setTodayChecked(Boolean(res.todayChecked));
-                if (typeof res.weekCount === "number") setWeekCount(res.weekCount);
-            } catch (error) {
-                console.error("출석 정보 조회 오류:", error);
-            }
-        };
+        if (!isLoggedIn || isUserDataLoading) return;
 
-        fetchCheckins();
-    }, [isLoggedIn]);
+        // 🟢 [Performance]: 사용자 정보 로딩 완료 후 출석 정보 로드 (지연 로드)
+        const timer = setTimeout(() => {
+            const fetchCheckins = async () => {
+                try {
+                    const res = await fetchWeekStamps();
+                    if (!res) return;
+                    // 🟢 [Performance]: 다음 프레임에서 상태 업데이트
+                    requestAnimationFrame(() => {
+                        setWeekStamps(res.stamps);
+                        setTodayIndex(typeof res.todayIndex === "number" ? res.todayIndex : null);
+                        setTodayChecked(Boolean(res.todayChecked));
+                        if (typeof res.weekCount === "number") setWeekCount(res.weekCount);
+                    });
+                } catch (error) {
+                    console.error("출석 정보 조회 오류:", error);
+                }
+            };
+
+            fetchCheckins();
+        }, 200); // 🟢 200ms 지연으로 초기 렌더링 우선
+
+        return () => clearTimeout(timer);
+    }, [isLoggedIn, isUserDataLoading]);
 
     // 출석 체크
     const doHomeCheckin = async () => {
@@ -467,24 +525,34 @@ const AIRecommender = () => {
         setIsUsingCoupon(true);
 
         try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const data = await authenticatedFetch<{ ticketsRemaining: number }>("/api/ai-recommendation/use-ticket", {
-                method: "POST",
-            });
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용 (shouldRedirect: false로 설정하여 로그아웃 방지)
+            const data = await authenticatedFetch<{ ticketsRemaining?: number; success?: boolean; error?: string }>(
+                "/api/ai-recommendation/use-ticket",
+                {
+                    method: "POST",
+                },
+                false // 🟢 401 발생 시 자동 로그아웃 및 리다이렉트 방지
+            );
 
-            if (data) {
+            if (data && typeof data.ticketsRemaining === "number") {
                 setCoupons(data.ticketsRemaining);
                 setIsUsingCoupon(false);
                 return true;
             } else {
                 setIsUsingCoupon(false);
-                setShowPaywall(true);
+                // 🟢 ticketsRemaining이 없으면 프로필 API로 최신 값 가져오기
+                if (data && data.success) {
+                    await fetchUserData();
+                    return true;
+                }
+                // 🟢 401 등의 인증 오류인 경우 로그인 모달 표시
+                setShowLogin(true);
+                setNetError("로그인이 필요합니다.");
                 return false;
             }
         } catch (error) {
             console.error("쿠폰 사용 API 오류:", error);
             setIsUsingCoupon(false);
-            alert("네트워크 오류");
             setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
             return false;
         }
@@ -494,17 +562,32 @@ const AIRecommender = () => {
     const refundCoupon = async (): Promise<void> => {
         try {
             // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const data = await authenticatedFetch<{ ticketsRemaining: number }>("/api/ai-recommendation/refund", {
-                method: "POST",
-            });
+            const data = await authenticatedFetch<{ ticketsRemaining?: number; success?: boolean }>(
+                "/api/ai-recommendation/refund",
+                {
+                    method: "POST",
+                }
+            );
 
             if (data) {
-                setCoupons(data.ticketsRemaining);
+                // 🟢 [수정]: ticketsRemaining이 있으면 사용, 없으면 fetchUserData로 최신 값 가져오기
+                if (typeof data.ticketsRemaining === "number") {
+                    setCoupons(data.ticketsRemaining);
+                } else {
+                    // ticketsRemaining이 없으면 프로필 API로 최신 값 가져오기
+                    await fetchUserData();
+                }
             } else {
                 setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
             }
         } catch (error) {
             console.error("쿠폰 환불 API 오류:", error);
+            // 🟢 에러 발생 시에도 최신 쿠폰 개수 가져오기 시도
+            try {
+                await fetchUserData();
+            } catch (fetchError) {
+                console.error("쿠폰 개수 갱신 실패:", fetchError);
+            }
             setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
     };
@@ -599,7 +682,8 @@ const AIRecommender = () => {
                 reviewCount: c.reviewCount || 0,
                 participants: c.participants || 0,
                 highlights: c.highlights || [],
-                score: c.viewCount || c.view_count || 0,
+                // 🟢 matchScore를 score로 매핑 (0.0~1.0 범위, 이미 UX 스케일링 적용됨)
+                score: c.matchScore !== undefined && c.matchScore !== null ? Number(c.matchScore) : 0.5,
             }));
 
         const fetchCourses = async (query: Record<string, string>) => {
@@ -632,6 +716,7 @@ const AIRecommender = () => {
         try {
             const token = localStorage.getItem("authToken");
             const params = new URLSearchParams({
+                mode: "ai", // 🟢 BASIC 코스 추천을 위한 mode 파라미터
                 goal,
                 companion_today: companionToday,
                 mood_today: moodToday,
@@ -702,6 +787,67 @@ const AIRecommender = () => {
         setSelectedDetailCourse(null);
     };
 
+    // 🟢 [Logic]: 모든 기능을 하나로 묶은 원스톱 핸들러 (선언적 액션)
+    const handleCourseCommit = async (courseId: string, courseTitle: string) => {
+        // 1. 초기 상태 검증
+        if (isSelecting || !courseId) return;
+
+        // 2. 권한 및 자산 검증
+        if (!isLoggedIn) {
+            setShowLogin(true);
+            return;
+        }
+        if (coupons < 1) {
+            setShowConfirmModal(false);
+            setShowPaywall(true);
+            return;
+        }
+
+        setIsSelecting(true);
+
+        try {
+            // [Step 1]: 쿠폰 차감 API 호출 (useCoupon 함수 내부 호출)
+            const couponSuccess = await useCoupon();
+            if (!couponSuccess) {
+                alert("쿠폰 차감에 실패했습니다. 잔액을 확인해주세요.");
+                setIsSelecting(false);
+                return;
+            }
+
+            // [Step 2]: 마이페이지 저장 API 호출
+            // 🟢 httpOnly Cookie 기반 인증 (보안 강화 지침 준수)
+            const saveRes = await authenticatedFetch("/api/users/me/courses", {
+                method: "POST",
+                body: JSON.stringify({ courseId }),
+            });
+
+            if (saveRes !== null) {
+                // [Step 3]: 성공 시 상태 업데이트 및 즉시 이동
+                setSelectedCourseId(courseId);
+                setShowConfirmModal(false);
+                setSelectedDetailCourse(null); // 모달이 열려있다면 닫기
+
+                // 🚀 브라우저 히스토리에 남지 않도록 replace 또는 push 사용
+                router.push(`/courses/${courseId}`);
+            } else {
+                // 저장 단계 실패 시 사용자 보호를 위해 쿠폰 환불 처리
+                await refundCoupon();
+                alert("저장 중 오류가 발생하여 쿠폰이 복구되었습니다.");
+            }
+        } catch (error) {
+            console.error("Critical Selection Error:", error);
+            // 🟢 에러 발생 시 쿠폰 환불 시도
+            try {
+                await refundCoupon();
+            } catch (refundError) {
+                console.error("쿠폰 환불 실패:", refundError);
+            }
+            alert("시스템 오류로 인해 처리가 중단되었습니다.");
+        } finally {
+            setIsSelecting(false);
+        }
+    };
+
     // 1. '선택하기' 버튼 클릭 시 실행 (확인 모달만 띄움)
     const handleSelectCourse = (courseId: string, courseTitle: string) => {
         if (isSelecting || selectedCourseId) return;
@@ -717,36 +863,6 @@ const AIRecommender = () => {
         setShowConfirmModal(true);
     };
 
-    // 2. 모달 내 '결정' 버튼 클릭 시 실제 저장 수행
-    const executeCourseSelection = async () => {
-        if (!pendingCourse || isSelecting) return;
-
-        setIsSelecting(true);
-
-        try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const res = await authenticatedFetch("/api/users/me/courses", {
-                method: "POST",
-                body: JSON.stringify({ courseId: pendingCourse.id }),
-            });
-
-            if (res !== null) {
-                setSelectedCourseId(pendingCourse.id);
-                setShowConfirmModal(false); // 확인창 닫기
-                setShowSuccessModal(true); // 🟢 성공 알림 모달 오픈
-            } else {
-                alert("코스 저장에 실패했습니다.");
-                setShowConfirmModal(false);
-            }
-        } catch (error) {
-            console.error("코스 저장 오류:", error);
-            alert("오류가 발생했습니다.");
-            setShowConfirmModal(false);
-        } finally {
-            setIsSelecting(false);
-        }
-    };
-
     const handleFlipCard = (courseId: string) => {
         if (!revealedCards[courseId]) {
             setRevealedCards((prev) => ({ ...prev, [courseId]: true }));
@@ -757,20 +873,45 @@ const AIRecommender = () => {
     const CourseDetailModal = ({ course, onClose }: { course: Course; onClose: () => void }) => {
         const [detail, setDetail] = useState<any>(null);
         const [loading, setLoading] = useState(true);
+        const [placesLoading, setPlacesLoading] = useState(true); // 🟢 장소 정보 별도 로딩 상태
 
         useEffect(() => {
             const fetchCourseDetail = async () => {
                 try {
                     setLoading(true);
-                    const res = await fetch(`/api/courses/${course.id}`, { cache: "no-store" });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setDetail(data);
+                    setPlacesLoading(true);
+
+                    // 🟢 [Optimization]: apiFetch 사용하여 캐싱 활용
+                    const { apiFetch } = await import("@/lib/authClient");
+                    const { data, response: res } = await apiFetch<any>(`/api/courses/${course.id}`, {
+                        cache: "force-cache", // 🟢 캐싱으로 성능 향상
+                        next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
+                    });
+
+                    if (res.ok && data) {
+                        // 🟢 [Optimization]: 상태 업데이트를 프레임 단위로 분산
+                        requestAnimationFrame(() => {
+                            setDetail(data);
+                            setLoading(false);
+                            // 🟢 장소 정보는 약간의 지연 후 표시 (사용자 경험 개선)
+                            setTimeout(() => {
+                                requestAnimationFrame(() => {
+                                    setPlacesLoading(false);
+                                });
+                            }, 50); // 🟢 100ms -> 50ms로 단축
+                        });
+                    } else {
+                        // 🟢 에러 응답 처리
+                        console.error("코스 상세 조회 실패:", res.status);
+                        setDetail(null); // 에러 시 detail을 null로 설정
+                        setLoading(false);
+                        setPlacesLoading(false);
                     }
                 } catch (error) {
                     console.error("코스 상세 조회 실패:", error);
-                } finally {
+                    setDetail(null); // 에러 시 detail을 null로 설정
                     setLoading(false);
+                    setPlacesLoading(false);
                 }
             };
             fetchCourseDetail();
@@ -818,6 +959,18 @@ const AIRecommender = () => {
                                 <div className="flex items-center justify-center py-10">
                                     <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
                                 </div>
+                            ) : placesLoading ? (
+                                // 🟢 [Optimization]: 장소 정보 로딩 중 스켈레톤 UI
+                                Array.from({ length: detail?.coursePlaces?.length || 3 }).map((_, index) => (
+                                    <div key={`skeleton-${index}`} className="relative flex items-start">
+                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-gray-200 animate-pulse z-10"></div>
+                                        <div className="ml-14 flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                            <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
+                                            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+                                            <div className="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                ))
                             ) : detail?.coursePlaces?.length > 0 ? (
                                 detail.coursePlaces.map((cp: any, index: number) => (
                                     <div key={cp.id} className="relative flex items-start group">
@@ -854,19 +1007,20 @@ const AIRecommender = () => {
                     {/* Footer Action */}
                     <div className="p-4 bg-white border-t border-gray-100">
                         <button
-                            onClick={() => {
-                                onClose();
-                                handleSelectCourse(course.id, course.title);
-                            }}
-                            disabled={!!selectedCourseId}
+                            onClick={() => handleCourseCommit(course.id, course.title)}
+                            disabled={isSelecting || !!selectedCourseId}
                             className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                                selectedCourseId
+                                selectedCourseId || isSelecting
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                     : "bg-gray-900 text-white hover:bg-gray-800"
                             }`}
                         >
-                            {selectedCourseId ? (
-                                "이미 선택된 코스입니다"
+                            {selectedCourseId || isSelecting ? (
+                                isSelecting ? (
+                                    "처리 중..."
+                                ) : (
+                                    "이미 선택된 코스입니다"
+                                )
                             ) : (
                                 <>
                                     <span>이 코스로 결정하기</span>
@@ -884,103 +1038,122 @@ const AIRecommender = () => {
         const isRevealed = revealedCards[course.id];
         const isSelected = selectedCourseId === course.id;
 
+        // 🟢 [Logic]: 매칭률 동적 보정 (60% ~ 98% Scaling)
+        const displayScore = useMemo(() => {
+            // API 점수가 있으면 사용, 없으면 기본값 0.5(50%)를 기준으로 보정
+            // 🟢 score는 이미 0.0~1.0 범위이므로, 1.0을 초과하면 1.0으로 제한
+            let baseScore = course.score && course.score > 0 ? Number(course.score) : 0.5;
+
+            // 🟢 1.0을 초과하는 값은 1.0으로 제한 (100% 초과 방지)
+            if (baseScore > 1.0) {
+                baseScore = 1.0;
+            }
+
+            // 🟢 API에서 이미 UX 스케일링이 적용된 경우를 고려
+            // matchScore가 이미 0.6~0.98 범위일 수 있으므로, 1.0보다 작으면 그대로 사용
+            // 1.0이면 다시 스케일링 적용
+            let scaledScore: number;
+            if (baseScore >= 0.6 && baseScore <= 0.98) {
+                // 이미 스케일링된 값으로 보임
+                scaledScore = baseScore;
+            } else {
+                // UX 보정 공식: 0.6(60%) + (원본점수 * 0.38)
+                // 예: 0.1(10%) -> 63.8%, 1.0(100%) -> 98%
+                scaledScore = 0.6 + baseScore * 0.38;
+            }
+
+            // 🟢 최종적으로 100%를 넘지 않도록 제한
+            const finalScore = Math.min(scaledScore, 1.0);
+            return Math.round(finalScore * 100);
+        }, [course.score]);
+
         if (selectedCourseId && !isSelected) return null;
 
         return (
             <div
-                className={`group h-[420px] w-full cursor-pointer perspective-1000 transition-all duration-500 ${
-                    isSelected ? "scale-105" : ""
+                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 ${
+                    isSelected ? "scale-105" : "hover:-translate-y-2"
                 }`}
                 onClick={() => !isSelected && handleFlipCard(course.id)}
             >
                 <div
-                    className={`relative w-full h-full text-left transition-all duration-700 transform-style-3d ${
+                    className={`relative w-full h-full transition-all duration-1000 transform-style-3d ${
                         isRevealed ? "rotate-y-180" : ""
                     }`}
                 >
-                    {/* 앞면 */}
-                    <div className="absolute w-full h-full backface-hidden rounded-2xl shadow-xl bg-gradient-to-br from-[#2A3B5F] to-[#1E2A44] flex flex-col items-center justify-center border-4 border-[#C8A97E] overflow-hidden">
-                        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                        <div className="z-10 text-center p-6">
-                            <div className="w-20 h-20 mx-auto mb-4 bg-[#C8A97E] rounded-full flex items-center justify-center shadow-lg animate-pulse-fast">
-                                <Sparkles className="w-10 h-10 text-[#1E2A44]" />
+                    {/* 🟢 [Front]: 커스텀 닉네임이 적용된 설계안 디자인 */}
+                    <div className="absolute w-full h-full backface-hidden rounded-[2rem] shadow-2xl bg-[#1a1a1a] flex flex-col items-center justify-center border-[3px] border-emerald-500/30 overflow-hidden">
+                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500 via-transparent to-transparent"></div>
+                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+
+                        <div className="z-10 text-center px-8">
+                            <div className="relative w-24 h-24 mx-auto mb-6">
+                                <div className="absolute inset-0 bg-emerald-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                                <div className="relative w-full h-full bg-gradient-to-br from-emerald-400 to-teal-600 rounded-full flex items-center justify-center shadow-lg">
+                                    <Bot className="w-12 h-12 text-white" />
+                                </div>
                             </div>
-                            <h3 className="text-[#C8A97E] text-xl font-bold tracking-widest mb-2">
-                                SECRET
-                                <br />
-                                COURSE
-                            </h3>
-                            <p className="text-gray-300 text-sm">터치하여 확인하기</p>
+
+                            <div className="space-y-2">
+                                <span className="text-emerald-400 text-[10px] font-black tracking-[0.3em] uppercase">
+                                    AI Analysis Result
+                                </span>
+                                <h3 className="text-white text-2xl font-black tracking-tight leading-tight">
+                                    {/* 닉네임 반영 커스텀 문구 */}
+                                    <span className="text-emerald-400">{nickname}님</span>을 위한 <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-300">
+                                        맞춤 코스 설계안
+                                    </span>
+                                </h3>
+                            </div>
+
+                            <div className="mt-10">
+                                <div className="inline-block px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                                    <p className="text-gray-400 text-xs font-medium">터치하여 봉인 해제 🔓</p>
+                                </div>
+                            </div>
                         </div>
+                        <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
                     </div>
 
-                    {/* 뒷면 */}
-                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
-                        <div className="p-6 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="inline-block px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">
-                                    추천 매칭 95%
+                    {/* 🟢 [Back]: 보정된 매칭 점수가 적용된 상세 정보 */}
+                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-[2rem] bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
+                        <div className="p-7 flex flex-col h-full">
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-black rounded-lg border border-emerald-100">
+                                    {nickname}님 취향 저격 {displayScore}%
                                 </span>
-                                {isRevealed && (
-                                    <span className="animate-ping absolute top-6 right-6 inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75"></span>
-                                )}
+                                <Sparkles className="w-4 h-4 text-emerald-500" />
                             </div>
 
-                            <h3 className="text-xl font-bold mb-3 text-gray-900 leading-snug">{course.title}</h3>
-                            <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">{course.description}</p>
+                            <h3 className="text-2xl font-bold mb-3 text-gray-900 leading-tight tracking-tighter">
+                                {course.title}
+                            </h3>
+                            <p className="text-gray-500 text-[14px] leading-relaxed mb-6 line-clamp-3">
+                                {course.description}
+                            </p>
 
-                            <div className="space-y-3 mb-6 bg-gray-50 p-3 rounded-xl">
-                                <div className="flex items-center text-sm text-gray-700">
-                                    <MapPin className="w-4 h-4 mr-2 text-emerald-500" />
-                                    {course.location}
+                            <div className="grid grid-cols-2 gap-3 mb-8">
+                                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-2xl">
+                                    <MapPin className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-xs font-bold text-gray-700 truncate">{course.location}</span>
                                 </div>
-                                <div className="flex items-center text-sm text-gray-700">
-                                    <Clock className="w-4 h-4 mr-2 text-emerald-500" />
-                                    {course.duration}
-                                </div>
-                                <div className="flex items-center text-sm text-gray-700">
-                                    {course.rating > 0 && course.reviewCount > 0 ? (
-                                        <>
-                                            <Star className="w-4 h-4 mr-2 text-yellow-400 fill-yellow-400" />
-                                            <span className="font-bold">{course.rating}</span>
-                                            <span className="text-gray-400 text-xs ml-1">({course.reviewCount})</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="w-4 h-4 mr-2 text-emerald-500" />
-                                            <span className="text-emerald-600 font-semibold">두나's PICK</span>
-                                        </>
-                                    )}
+                                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-2xl">
+                                    <Clock className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-xs font-bold text-gray-700">{course.duration}</span>
                                 </div>
                             </div>
 
-                            {/* 하단 버튼 */}
-                            <div className="mt-auto flex gap-2">
+                            <div className="mt-auto flex gap-2.5">
                                 <button
                                     onClick={(e) => {
-                                        e.stopPropagation(); // 카드 뒤집기 방지
-                                        setSelectedDetailCourse(course); // 상세 모달 열기
+                                        e.stopPropagation();
+                                        setSelectedDetailCourse(course);
                                     }}
-                                    className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold text-center text-sm hover:bg-gray-200 transition-colors"
+                                    className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-all active:scale-95"
                                 >
                                     상세보기
                                 </button>
-
-                                {!selectedCourseId ? (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSelectCourse(course.id, course.title);
-                                        }}
-                                        className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 shadow-md transition-colors"
-                                    >
-                                        선택하기
-                                    </button>
-                                ) : (
-                                    <div className="flex-1 py-3 bg-emerald-100 text-emerald-700 rounded-xl font-bold text-center text-sm border border-emerald-200">
-                                        저장됨 ✅
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -1089,11 +1262,15 @@ const AIRecommender = () => {
                                     취소
                                 </button>
                                 <button
-                                    onClick={executeCourseSelection}
-                                    disabled={isSelecting}
+                                    onClick={() => {
+                                        if (pendingCourse) {
+                                            handleCourseCommit(pendingCourse.id, pendingCourse.title);
+                                        }
+                                    }}
+                                    disabled={isSelecting || !pendingCourse}
                                     className="flex-1 py-5 bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors active:brightness-90 disabled:opacity-50"
                                 >
-                                    {isSelecting ? "저장 중..." : "결정하기"}
+                                    {isSelecting ? "처리 중..." : "쿠폰 사용 및 결정"}
                                 </button>
                             </div>
                         </div>
@@ -1247,12 +1424,6 @@ const AIRecommender = () => {
                                     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                         <div className="flex justify-between items-center mb-4 px-1">
                                             <h3 className="text-lg font-bold text-gray-900">🎁 추천 결과</h3>
-                                            <button
-                                                onClick={handleResetAndRecommend}
-                                                className="text-xs text-gray-500 underline hover:text-emerald-600"
-                                            >
-                                                다시 하기
-                                            </button>
                                         </div>
 
                                         {recommendedCourses.length > 0 ? (
@@ -1380,10 +1551,16 @@ const AIRecommender = () => {
                             <div>
                                 <p className="text-gray-500 text-sm mb-1 font-medium">오늘도 즐거운 여행 되세요!</p>
                                 <h2 className="text-2xl font-bold text-gray-900 leading-tight">
-                                    {isLoggedIn ? (
+                                    {isUserDataLoading ? (
+                                        <>
+                                            <span className="inline-block w-32 h-7 bg-gray-200 rounded animate-pulse"></span>
+                                            <br />
+                                            <span className="inline-block w-24 h-7 bg-gray-200 rounded animate-pulse mt-1"></span>
+                                        </>
+                                    ) : isLoggedIn ? (
                                         <>
                                             안녕하세요, <br />
-                                            <span className="text-emerald-600">{nickname}님</span> 👋
+                                            <span className="text-emerald-600">{nickname || "사용자"}님</span> 👋
                                         </>
                                     ) : (
                                         <>
@@ -1395,25 +1572,26 @@ const AIRecommender = () => {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
-                                    <img
-                                        src={profileImageUrl || getS3StaticUrl("profileLogo.png")}
-                                        alt="프로필"
-                                        className="w-full h-full object-cover"
-                                    />
+                                    {isUserDataLoading ? (
+                                        <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+                                    ) : (
+                                        <img
+                                            src={profileImageUrl || getS3StaticUrl("profileLogo.png")}
+                                            alt="프로필"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    )}
                                 </div>
-                                {isLoggedIn && (
-                                    <button
-                                        onClick={handleLogout}
-                                        className="text-xs text-gray-400 underline hover:text-gray-600"
-                                    >
-                                        로그아웃
-                                    </button>
-                                )}
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2 mb-6">
-                            {isLoggedIn ? (
+                            {isUserDataLoading ? (
+                                <div className="inline-flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                                    <div className="w-3.5 h-3.5 bg-gray-200 rounded animate-pulse"></div>
+                                    <div className="w-16 h-3.5 bg-gray-200 rounded animate-pulse"></div>
+                                </div>
+                            ) : isLoggedIn ? (
                                 <div className="inline-flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 text-xs font-bold text-gray-600">
                                     <Ticket className="w-3.5 h-3.5 text-emerald-500" />
                                     <span>쿠폰 {coupons}개</span>
@@ -1494,7 +1672,6 @@ const AIRecommender = () => {
                                     프라이빗 코스 설계
                                 </span>
                             </h2>
-
                             <p className="text-gray-500 text-[15px] leading-relaxed mb-10 max-w-[260px] mx-auto">
                                 복잡한 검색은 그만하세요.
                                 <br />

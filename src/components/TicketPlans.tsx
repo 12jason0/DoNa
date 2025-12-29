@@ -307,7 +307,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                             <p className="font-bold text-gray-500 mb-1">두나(DoNa) 사업자 정보</p>
                             <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
                             <p>주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                            <p>통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacouse.com</p>
+                            <p>통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacourse.com</p>
                             <p className="mt-1 text-emerald-500 font-bold font-sans">고객센터: 010-2271-9824</p>
                         </div>
                     </div>

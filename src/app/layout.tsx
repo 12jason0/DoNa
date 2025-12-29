@@ -1,9 +1,10 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import localFont from "next/font/local"; // localFont로 변경
+import localFont from "next/font/local";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
+import Script from "next/script"; // 🟢 카카오 SDK 로드를 위해 추가
 
-// 1. LINE Seed Sans KR 폰트 정의 (경로는 image_dfbe42.png 기준)
 const lineSeed = localFont({
     src: [
         {
@@ -22,8 +23,9 @@ const lineSeed = localFont({
             style: "normal",
         },
     ],
-    variable: "--font-line-seed", // Tailwind에서 사용할 변수
-    display: "swap", // 폰트 로딩 중 텍스트 숨김 방지
+    variable: "--font-line-seed",
+    display: "swap",
+    preload: false,
 });
 
 export const metadata: Metadata = {
@@ -31,22 +33,15 @@ export const metadata: Metadata = {
     description: "데이트 코스 추천 서비스",
 };
 
-export const viewport = {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-};
-
-export default function RootLayout({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="ko" className={`${lineSeed.variable}`}>
-            {/* 2. body에 font-sans를 적용하여 앱 전체 서체 변경 */}
-            <body className="font-sans antialiased">{children}</body>
+        <html lang="ko" className={lineSeed.variable}>
+            <body className={`${lineSeed.className} font-sans antialiased`}>
+                <Providers>{children}</Providers>
+
+                {/* 🟢 [Kakao SDK]: 공유하기 기능을 위해 추가 - 초기화는 각 컴포넌트에서 처리 */}
+                <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" strategy="afterInteractive" />
+            </body>
         </html>
     );
 }

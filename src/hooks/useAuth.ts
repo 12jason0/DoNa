@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchSession, logout as logoutApi, type AuthUser } from "@/lib/authClient";
 
 interface UseAuthReturn {
@@ -59,6 +59,12 @@ export function useAuth(): UseAuthReturn {
         }
     }, []);
 
+    // [Optimization] checkSession을 ref로 저장하여 이벤트 리스너에서 안정적으로 참조
+    const checkSessionRef = useRef(checkSession);
+    useEffect(() => {
+        checkSessionRef.current = checkSession;
+    }, [checkSession]);
+
     /**
      * 로그아웃 처리
      */
@@ -87,7 +93,7 @@ export function useAuth(): UseAuthReturn {
     // 🟢 로그인 성공 이벤트 리스너 (다른 컴포넌트에서 로그인 성공 시 호출)
     useEffect(() => {
         const handleLoginSuccess = () => {
-            checkSession();
+            checkSessionRef.current();
         };
 
         window.addEventListener("authLoginSuccess", handleLoginSuccess);
@@ -97,7 +103,7 @@ export function useAuth(): UseAuthReturn {
             window.removeEventListener("authLoginSuccess", handleLoginSuccess);
             window.removeEventListener("authLogout", handleLoginSuccess);
         };
-    }, [checkSession]);
+    }, []); // 이벤트 리스너는 마운트 시에만 등록하고, checkSession은 ref로 안정적으로 참조
 
     return {
         user,

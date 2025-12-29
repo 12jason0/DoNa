@@ -239,14 +239,14 @@ export default function PersonalizedSection() {
                     </div>
                 ) : (
                     <>
-                        <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in tracking-tight">
-                            {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
-                            {content.title(userName)}
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-1 font-medium">
-                            {/* 👇 부제목: "마음이 차분해지는..." */}
-                            {content.subtitle}
-                        </p>
+                <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in tracking-tight">
+                    {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
+                    {content.title(userName)}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1 font-medium">
+                    {/* 👇 부제목: "마음이 차분해지는..." */}
+                    {content.subtitle}
+                </p>
                     </>
                 )}
             </div>
@@ -319,11 +319,11 @@ export default function PersonalizedSection() {
                                           </span>
                                       </div>
                                   ) : (
-                                      <div className="absolute top-3 left-3">
-                                          <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
+                                  <div className="absolute top-3 left-3">
+                                      <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
                                               {content.badge}
-                                          </span>
-                                      </div>
+                                      </span>
+                                  </div>
                                   )}
 
                                   {/* 텍스트 */}

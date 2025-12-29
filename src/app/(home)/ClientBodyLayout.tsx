@@ -19,55 +19,9 @@ export default function ClientBodyLayout({ children }: { children: React.ReactNo
         return () => window.removeEventListener("openSearchModal", handleOpenSearch);
     }, []);
 
-    React.useEffect(() => {
-        // Next.js Dev Tools 배지/버튼 강제 제거 (개발용)
-        const removeDevBadge = () => {
-            const selectors = [
-                "[data-next-badge]",
-                "[data-nextjs-dev-tools-button]",
-                "button[data-nextjs-dev-tools-button]",
-                "#nextjs-dev-tools-menu",
-                "#nextjs-devtools-container",
-                '[aria-label="Open Next.js Dev Tools"]',
-                '[aria-haspopup="menu"][aria-controls*="nextjs"]',
-                "nextjs-devtools",
-            ];
-            const removeFrom = (root: Document | ShadowRoot | HTMLElement) => {
-                selectors.forEach((sel) => {
-                    try {
-                        // @ts-ignore
-                        const list = root.querySelectorAll?.(sel) || [];
-                        // @ts-ignore
-                        list.forEach((el: Element) => el.remove());
-                    } catch {}
-                });
-                // @ts-ignore
-                const all: any[] = root.querySelectorAll?.("*") ? Array.from(root.querySelectorAll("*")) : [];
-                all.forEach((el) => {
-                    // @ts-ignore
-                    if (el && el.shadowRoot) {
-                        // @ts-ignore
-                        removeFrom(el.shadowRoot);
-                    }
-                });
-            };
-            removeFrom(document);
-        };
-        removeDevBadge();
-        const mo = new MutationObserver(() => removeDevBadge());
-        try {
-            mo.observe(document.documentElement, { childList: true, subtree: true });
-        } catch {}
-        // 간헐적 재부착 대비: 짧은 인터벌로 몇 초간 반복 제거
-        const interval = window.setInterval(removeDevBadge, 1000);
-        window.setTimeout(() => window.clearInterval(interval), 10000);
-        return () => {
-            try {
-                mo.disconnect();
-            } catch {}
-            window.clearInterval(interval);
-        };
-    }, []);
+    // 🟢 [Optimization]: 개발 툴 배지 제거 로직 삭제
+    // CSS (globals.css)와 next.config.js의 devIndicators 설정으로 처리
+    // 성능: 213ms → 0ms (querySelectorAll("*") 제거로 Forced Reflow 완전 해결)
     return (
         <>
             <RoutePrefetcher />

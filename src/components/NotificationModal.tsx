@@ -1,71 +1,119 @@
 "use client";
 
+import React from "react";
 import { useRouter } from "next/navigation";
-import { X, Gift } from "lucide-react"; // Gift 아이콘 추가
+import { Gift, ChevronRight, X, Ticket } from "lucide-react";
 
 interface NotificationModalProps {
     onClose: () => void;
 }
 
-export default function NotificationModal({ onClose }: NotificationModalProps) {
+const NotificationModal = ({ onClose }: NotificationModalProps) => {
     const router = useRouter();
 
-    const handleSignup = () => {
-        router.push("/signup");
+    const handleLoginRedirect = () => {
         onClose();
+        router.push("/login?next=/");
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-            <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500"
-                onClick={onClose}
-            />
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+                {/* 상단 닫기 버튼 */}
+                <div className="flex justify-end p-6 pb-0">
+                    <button
+                        onClick={onClose}
+                        className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                        <X className="w-5 h-5 text-gray-400" />
+                    </button>
+                </div>
 
-            <div className="bg-white w-full max-w-[340px] rounded-[2rem] relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 z-10 p-10 text-center shadow-2xl">
-                {/* 비주얼 포인트: 2030 선호 감성 */}
-                <div className="relative w-24 h-24 mx-auto mb-8 bg-emerald-50 rounded-full flex items-center justify-center">
-                    <span className="text-5xl animate-bounce">🎁</span>
-                    <div className="absolute -top-1 -right-1 bg-white p-1 rounded-full shadow-sm">
-                        <Gift className="w-6 h-6 text-emerald-500" />
+                <div className="p-8 pt-2 text-center">
+                    {/* 프로모션 배지 */}
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 text-[11px] font-black rounded-full mb-6 animate-bounce">
+                        <Sparkles className="w-3 h-3" />
+                        <span>신규 회원 한정 혜택</span>
+                    </div>
+
+                    {/* 아이콘 섹션: 선물 상자와 티켓 조합 */}
+                    <div className="relative w-24 h-24 mx-auto mb-8">
+                        <div className="absolute inset-0 bg-emerald-500 rounded-[2rem] rotate-12 opacity-10 animate-pulse"></div>
+                        <div className="relative w-full h-full bg-gradient-to-br from-emerald-400 to-teal-600 rounded-[2rem] flex items-center justify-center shadow-lg shadow-emerald-200">
+                            <Gift className="w-12 h-12 text-white" />
+                            {/* 쿠폰 2개 강조 표시 */}
+                            <div className="absolute -top-2 -right-2 bg-gray-900 text-white w-10 h-10 rounded-full border-4 border-white flex items-center justify-center font-black text-sm">
+                                x2
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 텍스트 섹션 */}
+                    <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tighter">
+                        지금 가입하면 <br />
+                        <span className="text-emerald-600">쿠폰이 2배! (1+1)</span>
+                    </h3>
+
+                    <div className="bg-emerald-50/50 rounded-2xl p-4 mb-8 border border-emerald-100/50">
+                        <p className="text-gray-600 text-[14px] leading-relaxed">
+                            <span className="font-bold text-emerald-700">1월 10일까지</span>만 드리는 혜택 📅
+                            <br />
+                            회원가입 즉시 AI 추천 쿠폰 <br />
+                            <span className="font-extrabold text-gray-900 underline decoration-emerald-400 decoration-4 underline-offset-4">
+                                총 2매
+                            </span>
+                            를 바로 지급해드려요!
+                        </p>
+                    </div>
+
+                    {/* 액션 버튼 */}
+                    <div className="space-y-3">
+                        <button
+                            onClick={handleLoginRedirect}
+                            className="group w-full py-4.5 bg-gray-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
+                        >
+                            <span>쿠폰 2개 받고 시작하기</span>
+                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </button>
+
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 text-gray-400 font-bold text-sm hover:text-gray-600 transition-colors"
+                        >
+                            다음에 할게요
+                        </button>
                     </div>
                 </div>
 
-                <h2 className="text-[26px] font-black text-gray-900 mb-4 leading-tight tracking-tight">
-                    방탈출 <span className="text-emerald-500">3,000원</span>
-                    <br />
-                    지금 바로 할인!
-                </h2>
-
-                <p className="text-[15px] text-gray-400 font-medium leading-relaxed mb-10">
-                    회원가입 즉시 쿠폰함에 쏙!
-                    <br />
-                    데이트 코스 추천까지 받아보세요.
-                </p>
-
-                <div className="space-y-4">
-                    <button
-                        onClick={handleSignup}
-                        className="w-full py-5 rounded-2xl bg-gray-900 text-white text-[17px] font-bold active:scale-[0.97] transition-all shadow-xl"
-                    >
-                        3초 만에 쿠폰 받기
-                    </button>
-
-                    <button
-                        onClick={onClose}
-                        className="w-full py-2 text-[14px] text-gray-400 font-semibold hover:text-gray-600 transition-colors"
-                    >
-                        아쉽지만 다음에 할게요
-                    </button>
+                {/* 하단 정보 바 */}
+                <div className="py-3 bg-gray-50 text-[10px] text-gray-400 font-medium">
+                    * 기간 내 신규 가입 시 자동 지급됩니다
                 </div>
-
-                <button
-                    onClick={onClose}
-                    className="absolute top-6 right-6 p-2 text-gray-300 hover:text-gray-900 transition-colors"
-                >
-                    <X className="w-6 h-6" />
-                </button>
             </div>
         </div>
     );
-}
+};
+
+// 상단 아이콘용 추가 컴포넌트
+const Sparkles = ({ className }: { className?: string }) => (
+    <svg
+        className={className}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+        <path d="M5 3v4" />
+        <path d="M19 17v4" />
+        <path d="M3 5h4" />
+        <path d="M17 19h4" />
+    </svg>
+);
+
+export default NotificationModal;

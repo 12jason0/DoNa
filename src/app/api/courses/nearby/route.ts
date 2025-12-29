@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { defaultCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 60; // 🟢 60초 캐시
 
 // 주요 지역 리스트 (NearbyClient와 동기화)
 const majorRegions = ["강남", "성수", "홍대", "종로", "연남", "한남", "서초", "건대", "송파", "신촌"];
@@ -25,8 +27,6 @@ export async function GET(request: NextRequest) {
     const offsetParam = searchParams.get("offset");
     const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 100) : 30;
     const offset = offsetParam ? Math.max(Number(offsetParam), 0) : 0;
-
-    console.log(`[API] 필터요청: 키워드="${cleanKeyword}" / 컨셉="${concept}" / 태그="${tagIdsParam}"`);
 
     // 2. 검색 조건 구성
     const andConditions: any[] = [];
@@ -84,6 +84,15 @@ export async function GET(request: NextRequest) {
     // 공개된 코스만 필터링
     andConditions.push({ isPublic: true });
     const whereClause = { AND: andConditions };
+
+    // 🟢 [Performance]: 캐시 키 생성 (필터별로 캐싱)
+    const cacheKey = `nearby:${cleanKeyword || ""}:${concept || ""}:${tagIdsParam || ""}:${limit}:${offset}`;
+
+    // 🟢 캐시에서 먼저 확인
+    const cached = defaultCache.get<any[]>(cacheKey);
+    if (cached) {
+        return NextResponse.json(cached);
+    }
 
     const courseSelect = {
         id: true,
@@ -149,7 +158,9 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        console.log(`✅ 응답: ${courses.length}개 찾음 (정렬완료, limit=${limit})`);
+        // 🟢 [Performance]: 응답 데이터 캐싱 (60초)
+        defaultCache.set(cacheKey, courses, 60 * 1000);
+
         return NextResponse.json(courses);
     } catch (error) {
         console.error("❌ API 오류:", error);

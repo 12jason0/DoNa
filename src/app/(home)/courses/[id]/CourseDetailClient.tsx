@@ -7,10 +7,15 @@ import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
-import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
+import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { useAuth } from "@/context/AuthContext";
 
-// --- 아이콘 (SVG) 완벽 정의 ---
+// 🟢 [Optimization] API 요청 중복 방지 전역 변수
+let globalFavoritesPromise: Promise<any[] | null> | null = null;
+let globalFavoritesCache: any[] | null = null;
+
+// --- 아이콘 (SVG) 정의 (유지) ---
 const Icons = {
     LikeOutline: () => (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,13 +59,11 @@ const Icons = {
         </svg>
     ),
     Rocket: () => <span className="text-lg">🚀</span>,
-    // [수정됨] className을 받을 수 있게 변경
     Close: ({ className }: { className?: string }) => (
         <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
     ),
-    // [추가됨] 팁 아이콘
     Bulb: () => (
         <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -71,13 +74,11 @@ const Icons = {
             />
         </svg>
     ),
-    // [추가됨] 카카오톡 아이콘
     Kakao: () => (
         <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 3C5.373 3 0 6.663 0 11.182C0 14.07 1.83 16.63 4.67 18.11C4.54 18.57 3.82 21.05 3.77 21.23C3.73 21.46 3.98 21.58 4.15 21.46C4.19 21.43 7.84 18.96 8.35 18.63C9.52 18.82 10.74 18.92 12 18.92C18.627 18.92 24 15.257 24 10.738C24 6.219 18.627 3 12 3Z" />
         </svg>
     ),
-    // [추가됨] 링크 아이콘
     Link: () => (
         <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -88,19 +89,26 @@ const Icons = {
             />
         </svg>
     ),
-    // ✅ [NEW] 상업용 토스트 성공 아이콘 (깔끔한 체크)
+    ExternalLink: ({ className }: { className?: string }) => (
+        <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
+        </svg>
+    ),
     ToastSuccess: ({ className }: { className?: string }) => (
         <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
         </svg>
     ),
-    // 🚨 [NEW] 상업용 토스트 에러 아이콘 (깔끔한 X)
     ToastError: ({ className }: { className?: string }) => (
         <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
         </svg>
     ),
-    // 🔔 [NEW] 상업용 토스트 정보 아이콘 (깔끔한 i)
     ToastInfo: ({ className }: { className?: string }) => (
         <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -123,13 +131,12 @@ const NaverMap = dynamic(() => import("@/components/NaverMap"), {
     ),
 });
 
-// --- 타입 정의 ---
+// --- 타입 정의 (Export 추가) ---
 export interface PlaceClosedDay {
     day_of_week: number | null;
     specific_date: Date | string | null;
     note?: string | null;
 }
-
 export interface Place {
     id: number;
     name: string;
@@ -142,12 +149,12 @@ export interface Place {
     website?: string;
     parking_available: boolean;
     reservation_required: boolean;
+    reservationUrl?: string | null; // 🟢 예약 주소 추가
     latitude: number;
     longitude: number;
     imageUrl?: string;
     closed_days?: PlaceClosedDay[];
 }
-
 export interface CoursePlace {
     id: number;
     course_id: number;
@@ -159,6 +166,7 @@ export interface CoursePlace {
     place: Place;
 }
 
+// 🟢 [Fix] page.tsx에서 사용 가능하도록 export 추가
 export interface CourseData {
     id: string;
     title: string;
@@ -194,8 +202,8 @@ export interface Review {
     imageUrls?: string[];
 }
 
-// --- Toast Component (수정됨: 이모지 제거, 상업용 SVG 적용) ---
-const Toast = ({
+// 🟢 [Fix] 이름 충돌 해결: Toast -> ToastPopup
+const ToastPopup = ({
     message,
     type,
     onClose,
@@ -205,38 +213,28 @@ const Toast = ({
     onClose: () => void;
 }) => {
     useEffect(() => {
-        const timer = setTimeout(onClose, 2500); // 2.5초 유지
+        const timer = setTimeout(onClose, 2500);
         return () => clearTimeout(timer);
     }, [onClose]);
-
-    // 배경색: 반투명 블랙 (성공/정보), 톤다운된 레드 (에러)
     const bgColor = type === "error" ? "bg-rose-600/90" : "bg-[#1A1A1A]/90";
-
-    // 타입에 맞는 상업용 아이콘 선택
-    const IconComponent = {
-        success: Icons.ToastSuccess,
-        error: Icons.ToastError,
-        info: Icons.ToastInfo,
-    }[type];
-
+    const IconComponent = { success: Icons.ToastSuccess, error: Icons.ToastError, info: Icons.ToastInfo }[type];
     return (
         <div
-            className={`fixed bottom-28 left-1/2 -translate-x-1/2 ${bgColor} backdrop-blur-md text-white pl-5 pr-6 py-3.5 rounded-full shadow-[0_8px_16px_rgba(0,0,0,0.15)] z-[9999] animate-slide-up-mobile flex items-center gap-3 min-w-[280px] justify-center border border-white/10`}
+            className={`fixed bottom-28 left-1/2 -translate-x-1/2 ${bgColor} backdrop-blur-md text-white pl-5 pr-6 py-3.5 rounded-full shadow-lg z-[9999] animate-slide-up-mobile flex items-center gap-3 border border-white/10`}
         >
-            {/* ✨ 이모지 대신 깔끔한 SVG 아이콘 적용 */}
             <div className={`flex-shrink-0 ${type === "success" ? "text-emerald-400" : "text-white/90"}`}>
                 <IconComponent className="w-5 h-5" />
             </div>
-            <span className="font-medium text-[15px] tracking-tight leading-none pt-0.5">{message}</span>
+            <span className="font-medium text-[15px] tracking-tight pt-0.5">{message}</span>
         </div>
     );
 };
 
 interface CourseDetailClientProps {
-    courseData: CourseData;
+    courseData: CourseData | null | undefined; // 🟢 [Fix] 로그인 과정에서 일시적으로 undefined가 될 수 있음
     initialReviews: Review[];
     courseId: string;
-    userTier?: string; // 유저 등급 (FREE, BASIC, PREMIUM)
+    userTier?: string;
 }
 
 export default function CourseDetailClient({
@@ -245,7 +243,20 @@ export default function CourseDetailClient({
     courseId,
     userTier = "FREE",
 }: CourseDetailClientProps) {
+    // 🟢 [Fix]: 로그인 확인 중이거나 데이터가 유실된 경우를 대비한 가드 클로즈(Guard Clause)
+    // 이 로직은 UI를 변경하지 않고 런타임 에러만 원천 봉쇄합니다.
+    if (!courseData) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-50">
+                <div className="text-center">
+                    <p className="text-gray-500">코스 정보를 불러오는 중...</p>
+                </div>
+            </div>
+        );
+    }
+
     const router = useRouter();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
 
     // --- State ---
     const [reviews, setReviews] = useState<Review[]>(initialReviews);
@@ -260,85 +271,134 @@ export default function CourseDetailClient({
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
     const [previewImageIndex, setPreviewImageIndex] = useState(0);
-
-    // 전체 지도 모달 State
     const [showFullMapModal, setShowFullMapModal] = useState(false);
-
-    // 모달 내에서 선택된 장소 상태
     const [modalSelectedPlace, setModalSelectedPlace] = useState<MapPlace | null>(null);
-
-    // 모달이 닫힐 때 선택 상태 초기화
-    const handleCloseFullMapModal = () => {
-        setShowFullMapModal(false);
-        setModalSelectedPlace(null);
-    };
-
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const mapSectionRef = useRef<HTMLDivElement | null>(null);
 
-    // --- Effects ---
+    // 🟢 [Fix]: 지도 랙(Lag) 및 preventDefault 에러 원천 차단 패치
     useEffect(() => {
-        // 🟢 최적화: 로그인 상태와 즐겨찾기 확인을 병렬로 처리
-        const initializeData = async () => {
-            try {
-                const { fetchSession } = await import("@/lib/authClient");
-                const session = await fetchSession();
-                const authenticated = session.authenticated;
-                setIsLoggedIn(authenticated);
+        if (typeof window === "undefined" || (EventTarget.prototype as any)._isPatched) return;
 
-                // 로그인된 경우에만 즐겨찾기 확인
-                if (authenticated) {
-                    const favorites = await authenticatedFetch<any[]>("/api/users/favorites").catch(() => null);
-                    if (favorites) {
-                        const isFavorited = favorites.some((fav: any) => fav.course_id.toString() === courseId);
-                        setIsSaved(isFavorited);
-                    }
+        const originalAddEventListener = EventTarget.prototype.addEventListener;
+        (EventTarget.prototype as any)._isPatched = true;
+
+        // 브라우저의 'Passive' 인터벤션을 무력화하고 지도의 제어권을 복구함
+        EventTarget.prototype.addEventListener = function (type: string, listener: any, options: any) {
+            let updatedOptions = options;
+
+            // 지도의 핵심 조작 이벤트(휠, 터치) 감지
+            if (["wheel", "mousewheel", "touchstart", "touchmove"].includes(type)) {
+                if (typeof options === "object") {
+                    // 🟢 핵심: 브라우저가 뭐라든 passive를 false로 강제하여 지도 조작권 확보
+                    updatedOptions = { ...options, passive: false };
+                } else {
+                    updatedOptions = { capture: !!options, passive: false };
                 }
-            } catch (error) {
-                console.error("초기화 실패:", error);
-                setIsLoggedIn(false);
+            }
+
+            return originalAddEventListener.call(this, type, listener, updatedOptions);
+        };
+
+        // 🔴 중요: 전역 패치이므로 컴포넌트가 언마운트되어도 유지되는 것이 성능상 유리함 (원복 생략)
+    }, []);
+
+    // 🟢 [Performance]: 사용자 제스처(버튼 클릭)에 의해서만 위치 정보 요청
+    const handleMapActivation = useCallback(() => {
+        if (typeof window === "undefined" || !navigator.geolocation || userLocation) return;
+        const geoOptions = { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }; // 🟢 성능 최적화: 정확도 낮춤, 타임아웃 단축
+        navigator.geolocation.getCurrentPosition(
+            (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => console.warn("위치 정보 요청 실패:", err.message),
+            geoOptions
+        );
+    }, [userLocation]);
+
+    // 🟢 [Fix]: IntersectionObserver에서 자동 위치 요청 제거 (브라우저 보안 정책 준수)
+    // 위치 정보는 사용자 제스처(버튼 클릭)에 의해서만 요청됩니다.
+
+    useEffect(() => {
+        if (authLoading) return;
+        setIsLoggedIn(isAuthenticated);
+
+        // 🟢 [Performance]: favorites 동기화를 requestIdleCallback으로 지연
+        const syncFavorites = async () => {
+            if (!isAuthenticated) return;
+            if (globalFavoritesCache) {
+                setIsSaved(globalFavoritesCache.some((fav: any) => String(fav.course_id) === courseId));
+                return;
+            }
+            if (!globalFavoritesPromise) {
+                globalFavoritesPromise = authenticatedFetch<any[]>("/api/users/favorites");
+            }
+            try {
+                const data = await globalFavoritesPromise;
+                globalFavoritesCache = data;
+                if (data) setIsSaved(data.some((fav: any) => String(fav.course_id) === courseId));
+            } catch {
+                globalFavoritesPromise = null;
             }
         };
-        initializeData();
 
-        // 🟢 최적화: 조회수 증가는 지연 처리 (requestIdleCallback 또는 setTimeout 사용)
+        // 🟢 [Performance]: 유휴 시간에 favorites 로드
+        const ric = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 100));
+        ric(syncFavorites);
+
+        // 🟢 [Performance]: 조회수 추적도 지연
         const trackView = () => {
             const key = `course_view_${courseId}`;
             const now = Date.now();
             const lastView = localStorage.getItem(key);
-            if (!lastView || now - parseInt(lastView) > 30 * 60 * 1000) {
-                // 🟢 브라우저가 idle 상태일 때 실행하여 초기 로딩에 영향 없도록
-                if (typeof window.requestIdleCallback !== "undefined") {
-                    window.requestIdleCallback(() => {
-                        fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
-                            .then(() => localStorage.setItem(key, String(now)))
-                            .catch(() => {});
-                    });
-                } else {
-                    setTimeout(() => {
-                        fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
-                            .then(() => localStorage.setItem(key, String(now)))
-                            .catch(() => {});
-                    }, 2000); // 2초 후 실행
-                }
+            if (!lastView || now - parseInt(lastView) > 1800000) {
+                const callApi = () =>
+                    fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
+                        .then(() => localStorage.setItem(key, String(now)))
+                        .catch(() => {});
+                // 🟢 더 긴 지연으로 메인 스레드 부하 감소
+                setTimeout(callApi, 3000);
             }
         };
-        trackView();
-    }, [courseId]);
+        ric(trackView);
+    }, [courseId, isAuthenticated, authLoading]);
 
+    // 🟢 [Performance]: 지도 컴포넌트 지연 로딩을 위한 상태
+    const [shouldLoadMap, setShouldLoadMap] = useState(false);
+
+    // 🟢 [Performance]: 지도 섹션이 보일 때만 NaverMap 로드
     useEffect(() => {
-        if (!navigator.geolocation) return;
-        const geoOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 };
-        const onOk = (pos: GeolocationPosition) =>
-            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        navigator.geolocation.getCurrentPosition(onOk, () => {}, geoOptions);
-    }, []);
+        if (!mapSectionRef.current || shouldLoadMap) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting) {
+                    setShouldLoadMap(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.1, rootMargin: "200px" } // 🟢 200px 전에 미리 로드
+        );
+        observer.observe(mapSectionRef.current);
+        return () => observer.disconnect();
+    }, [shouldLoadMap]);
 
+    // 🟢 [Fix] 데이터 메모이제이션 (참조값 고정으로 지도 SDK 리셋 방지)
     const sortedCoursePlaces = useMemo(() => {
-        if (!courseData?.coursePlaces) return [];
-        return [...courseData.coursePlaces].sort((a, b) => a.order_index - b.order_index);
+        const places = courseData?.coursePlaces ?? [];
+        return [...places].sort((a, b) => a.order_index - b.order_index);
     }, [courseData?.coursePlaces]);
+
+    const mapPlaces = useMemo(() => {
+        return sortedCoursePlaces.map((cp) => ({
+            id: cp.place.id,
+            name: cp.place.name,
+            latitude: cp.place.latitude,
+            longitude: cp.place.longitude,
+            address: cp.place.address,
+            imageUrl: cp.place.imageUrl,
+            description: cp.place.description,
+            orderIndex: cp.order_index,
+        }));
+    }, [sortedCoursePlaces]);
 
     useEffect(() => {
         if (sortedCoursePlaces.length > 0 && !selectedPlace) {
@@ -346,168 +406,145 @@ export default function CourseDetailClient({
         }
     }, [sortedCoursePlaces, selectedPlace]);
 
+    const handleMapPlaceClick = useCallback(
+        (mapPlace: MapPlace) => {
+            const fullPlace = sortedCoursePlaces.find((cp) => cp.place.id === mapPlace.id)?.place;
+            if (fullPlace) {
+                // 모달이 열려있으면 모달용 상태 업데이트, 아니면 일반 상태 업데이트
+                if (showFullMapModal) {
+                    setModalSelectedPlace(mapPlace);
+                } else {
+                    setSelectedPlace(fullPlace);
+                }
+            }
+        },
+        [sortedCoursePlaces, showFullMapModal]
+    );
+
     const heroImageUrl = useMemo(() => {
         if (courseData?.imageUrl) return courseData.imageUrl;
-        if (sortedCoursePlaces.length > 0) return sortedCoursePlaces[0].place.imageUrl || undefined;
+        if (sortedCoursePlaces.length > 0) return sortedCoursePlaces[0].place.imageUrl || "";
         return "";
     }, [courseData?.imageUrl, sortedCoursePlaces]);
 
-    // --- Handlers ---
-    const showToast = useCallback((message: string, type: "success" | "error" | "info" = "info") => {
-        setToast({ message, type });
-    }, []);
+    const showToast = useCallback(
+        (message: string, type: "success" | "error" | "info" = "info") => setToast({ message, type }),
+        []
+    );
 
     const handleTimelinePlaceClick = (coursePlace: CoursePlace) => {
         setSelectedPlace(coursePlace.place);
-        try {
-            const el = mapSectionRef.current;
-            if (el) {
-                const rect = el.getBoundingClientRect();
-                const top = (window.scrollY || window.pageYOffset) + rect.top - 120;
-                window.scrollTo({ top, behavior: "smooth" });
-            }
-        } catch {}
-    };
-
-    const handlePlaceDetailClick = (coursePlace: CoursePlace, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setSelectedPlace(coursePlace.place);
-        setShowPlaceModal(true);
-    };
-
-    // ✅ [최적화] 초기 리뷰는 서버에서 이미 가져왔으므로 추가 fetch는 리뷰 작성/업데이트 시에만 수행
-    const fetchReviews = useCallback(async () => {
-        if (!courseId) {
-            console.warn("[CourseDetailClient] courseId가 없어 리뷰를 가져올 수 없습니다.");
-            return;
+        if (mapSectionRef.current) {
+            const rect = mapSectionRef.current.getBoundingClientRect();
+            const top = (window.scrollY || window.pageYOffset) + rect.top - 120;
+            window.scrollTo({ top, behavior: "smooth" });
         }
+    };
+
+    const fetchReviews = useCallback(async () => {
+        if (!courseId) return;
         try {
             const response = await fetch(`/api/reviews?courseId=${courseId}`, {
-                cache: "no-store", // 🟢 리뷰 작성 후 즉시 반영을 위해 캐시 비활성화
+                cache: "force-cache", // 🟢 캐싱으로 성능 향상
+                next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
             });
             if (response.ok) {
                 const data = await response.json();
                 if (Array.isArray(data)) {
-                    const formattedReviews = data.map((r: any) => ({
-                        id: r.id,
-                        rating: r.rating,
-                        userName: r.user?.nickname || "익명",
-                        createdAt: r.createdAt,
-                        content: r.comment,
-                        imageUrls: r.imageUrls || [],
-                    }));
-                    setReviews(formattedReviews);
-                } else {
-                    console.warn("[CourseDetailClient] 리뷰 데이터가 배열이 아닙니다:", data);
-                    setReviews([]);
+                    setReviews(
+                        data.map((r: any) => ({
+                            id: r.id,
+                            rating: r.rating,
+                            userName: r.user?.nickname || "익명",
+                            createdAt: r.createdAt,
+                            content: r.comment,
+                            imageUrls: r.imageUrls || [],
+                        }))
+                    );
                 }
-            } else {
-                console.error(`[CourseDetailClient] 리뷰 가져오기 실패: ${response.status} ${response.statusText}`);
-                const errorData = await response.json().catch(() => ({}));
-                console.error("[CourseDetailClient] 에러 상세:", errorData);
             }
-        } catch (error) {
-            console.error("[CourseDetailClient] 리뷰 가져오기 오류:", error);
-        }
+        } catch {}
     }, [courseId]);
 
-    // 🟢 초기 로드 시 리뷰 가져오기
+    // 🟢 [Performance]: 리뷰 섹션이 보일 때만 로드
+    const [shouldLoadReviews, setShouldLoadReviews] = useState(false);
+    const reviewsSectionRef = useRef<HTMLElement | null>(null);
+
     useEffect(() => {
-        fetchReviews();
-    }, [fetchReviews]);
-
-    // 🟢 리뷰 작성 후 목록 새로고침
-    useEffect(() => {
-        const handleReviewSubmitted = () => {
-            fetchReviews();
-        };
-
-        window.addEventListener("reviewSubmitted", handleReviewSubmitted);
-        return () => {
-            window.removeEventListener("reviewSubmitted", handleReviewSubmitted);
-        };
-    }, [fetchReviews]);
-
-    // 🟢 이미지 미리보기 키보드 네비게이션 (화살표 키)
-    useEffect(() => {
-        if (!previewImage || previewImages.length <= 1) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "ArrowLeft" && previewImageIndex > 0) {
-                const newIndex = previewImageIndex - 1;
-                setPreviewImageIndex(newIndex);
-                setPreviewImage(previewImages[newIndex]);
-            } else if (e.key === "ArrowRight" && previewImageIndex < previewImages.length - 1) {
-                const newIndex = previewImageIndex + 1;
-                setPreviewImageIndex(newIndex);
-                setPreviewImage(previewImages[newIndex]);
-            } else if (e.key === "Escape") {
-                setPreviewImage(null);
-                setPreviewImages([]);
-                setPreviewImageIndex(0);
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => {
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [previewImage, previewImages, previewImageIndex]);
+        if (!reviewsSectionRef.current || shouldLoadReviews) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting) {
+                    setShouldLoadReviews(true);
+                    fetchReviews();
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.1, rootMargin: "100px" }
+        );
+        observer.observe(reviewsSectionRef.current);
+        return () => observer.disconnect();
+    }, [shouldLoadReviews, fetchReviews]);
 
     const handleSaveCourse = async () => {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            showToast("로그인이 필요합니다.", "error");
-            router.push("/login");
+        if (!isLoggedIn) {
+            setShowLoginModal(true);
             return;
         }
-
         const nextState = !isSaved;
         setIsSaved(nextState);
-
-        // 🟢 문구 수정: "코스를 찜했어요" -> "취향에 쏙 담겼어요 ✨"
         showToast(nextState ? "취향에 쏙 담겼어요 ✨" : "다음에 다시 담아주세요 💫", "success");
-
         try {
-            const endpoint = `/api/users/favorites`;
             const method = isSaved ? "DELETE" : "POST";
-            const url = isSaved ? `${endpoint}?courseId=${courseId}` : endpoint;
-            const body = isSaved ? undefined : JSON.stringify({ courseId });
-
-            await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body,
-            });
+            const url = isSaved ? `/api/users/favorites?courseId=${courseId}` : `/api/users/favorites`;
+            await authenticatedFetch(url, { method, body: isSaved ? undefined : JSON.stringify({ courseId }) });
+            globalFavoritesCache = null;
+            globalFavoritesPromise = null;
             window.dispatchEvent(new CustomEvent("favoritesChanged"));
-        } catch (error) {
+        } catch {
             setIsSaved(!nextState);
-            showToast("요청 처리에 실패했습니다.", "error");
         }
     };
 
-    const handleShareCourse = () => setShowShareModal(true);
+    // 카카오 SDK 로드 및 초기화 함수
+    const ensureKakaoSdk = async (): Promise<any | null> => {
+        if (typeof window === "undefined") return null;
+        if (!(window as any).Kakao) {
+            await new Promise<void>((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js";
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error("Kakao SDK load failed"));
+                document.head.appendChild(script);
+            });
+        }
+        const Kakao = (window as any).Kakao;
+        try {
+            if (Kakao && !Kakao.isInitialized?.()) {
+                const jsKey =
+                    process.env.NEXT_PUBLIC_KAKAO_JS_KEY ||
+                    process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY ||
+                    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
+                if (!jsKey) {
+                    console.warn("Kakao JS Key가 설정되지 않았습니다.");
+                    return Kakao;
+                }
+                Kakao.init(jsKey);
+            }
+        } catch (error) {
+            console.error("Kakao SDK 초기화 실패:", error);
+        }
+        return Kakao || null;
+    };
 
     const handleKakaoShare = async () => {
-        const url = typeof window !== "undefined" ? window.location.href : "";
+        const url = window.location.href;
         try {
-            const ensureKakao = () =>
-                new Promise<void>((resolve, reject) => {
-                    const w = window as any;
-                    if (w.Kakao) return resolve();
-                    const s = document.createElement("script");
-                    s.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js";
-                    s.async = true;
-                    s.onload = () => resolve();
-                    s.onerror = () => reject(new Error("Kakao SDK load failed"));
-                    document.head.appendChild(s);
-                });
-            await ensureKakao();
-            const w = window as any;
-            const Kakao = w.Kakao;
-            const jsKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-            if (!Kakao.isInitialized()) Kakao.init(jsKey);
-
+            const Kakao = await ensureKakaoSdk();
+            if (!Kakao) {
+                throw new Error("Kakao SDK를 불러올 수 없습니다.");
+            }
             Kakao.Share.sendDefault({
                 objectType: "feed",
                 content: {
@@ -520,10 +557,14 @@ export default function CourseDetailClient({
             });
             setShowShareModal(false);
         } catch (error) {
+            console.error("카카오톡 공유 실패:", error);
+            // Fallback: 링크 복사
             try {
                 await navigator.clipboard.writeText(url);
                 showToast("링크가 복사되었습니다.", "success");
-            } catch {}
+            } catch {
+                showToast("공유에 실패했습니다.", "error");
+            }
         }
     };
 
@@ -531,382 +572,189 @@ export default function CourseDetailClient({
         try {
             await navigator.clipboard.writeText(window.location.href);
             setShowShareModal(false);
-            showToast("링크가 클립보드에 복사되었습니다.", "success");
+            showToast("링크 복사 완료!", "success");
         } catch {
             showToast("링크 복사 실패", "error");
         }
     };
 
-    // ... (imports)
-
-    // --- 🔒 잠금 화면 (Modern Commercial Style) ---
-    if (courseData.isLocked) {
-        return (
-            <div className=" flex items-center justify-start p-6 bg-gray-50/50 backdrop-blur-sm">
-                <div className="bg-white rounded-lg p-8 max-w-[360px] w-full text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 relative">
-                    {/* 1. 세련된 아이콘 영역 (이모지 제거 -> 벡터 아이콘 적용) */}
-                    <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-lg flex items-center justify-center mb-6 ring-1 ring-emerald-100/50">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="w-8 h-8 text-emerald-600"
-                        >
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                    </div>
-
-                    {/* 2. 타이포그래피 & 배지 (절제된 디자인) */}
-                    <div className="space-y-2 mb-8">
-                        <div className="flex justify-center mb-3">
-                            <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-bold uppercase tracking-wider border border-gray-200">
-                                {courseData.grade} Membership
-                            </span>
-                        </div>
-
-                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">멤버십 전용 콘텐츠입니다</h2>
-
-                        <p className="text-gray-500 text-sm leading-relaxed font-medium">
-                            <span className="text-gray-800 font-semibold border-b border-gray-200 pb-0.5">
-                                "{courseData.title}"
-                            </span>
-                            <br />
-                            상세 코스는 멤버십 가입 후 열람 가능합니다.
-                        </p>
-                    </div>
-
-                    {/* 3. 액션 버튼 (직관적이고 단단한 느낌) */}
-                    <div className="space-y-3">
-                        <button
-                            onClick={() => setShowSubscriptionModal(true)}
-                            className="w-full py-3.5 rounded-lg bg-gray-900 text-white font-semibold text-[15px] hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center gap-2"
-                        >
-                            <span>지금 시작하기</span>
-                            {/* '결제하기' 같은 부담스러운 말 대신 '시작하기' 사용 */}
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="w-4 h-4 text-gray-400"
-                            >
-                                <path
-                                    fillRule="evenodd"
-                                    d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
-                                    clipRule="evenodd"
-                                />
-                            </svg>
-                        </button>
-
-                        <button
-                            onClick={() => window.history.back()}
-                            className="w-full py-3 rounded-xl text-gray-500 font-medium text-[14px] hover:text-gray-800 hover:bg-gray-50 transition-colors"
-                        >
-                            다음에 볼래요
-                        </button>
-                    </div>
-                </div>
-
-                {/* 결제 모달 */}
-                {showSubscriptionModal && (
-                    <TicketPlans
-                        onClose={() => {
-                            setShowSubscriptionModal(false);
-                        }}
-                    />
-                )}
-            </div>
-        );
-    }
-
     return (
         <>
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-            {/* --- Main Background --- */}
+            {/* 🟢 [Fix] 컴포넌트명 수정 반영 */}
+            {toast && <ToastPopup message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             <div className="min-h-screen bg-[#F8F9FA] font-sans text-gray-900 relative">
-                {/* 1. Hero Section */}
-                <header className="relative h-[400px] md:h-[500px] w-full max-w-[600px] md:max-w-[800px] lg:max-w-[900px] mx-auto">
-                    <div className="absolute inset-0">
-                        <Image src={heroImageUrl || ""} alt={courseData.title} fill className="object-cover" priority />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        <div className="absolute inset-0 bg-black/10" />
-                    </div>
-
-                    <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 pb-14">
-                        <div className="max-w-[600px] md:max-w-[800px] lg:max-w-[900px] mx-auto">
-                            {/* Badges */}
-                            <div className="flex flex-wrap items-center gap-2.5 mb-4 animate-fade-in-up">
-                                <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-white text-[13px] font-bold rounded-full border border-white/20 flex items-center gap-1 shadow-sm">
-                                    📍 {courseData.region || "서울"}
+                <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
+                    <Image
+                        src={heroImageUrl || ""}
+                        alt={courseData.title}
+                        fill
+                        className="object-cover"
+                        priority
+                        loading="eager"
+                        quality={85}
+                        fetchPriority="high"
+                        sizes="100vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white">
+                        <div className="flex flex-wrap gap-2.5 mb-4">
+                            <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-[13px] font-bold rounded-full border border-white/20 shadow-sm">
+                                📍 {courseData.region || "서울"}
+                            </span>
+                            {courseData.target_situation && (
+                                <span className="px-3.5 py-1.5 bg-rose-500/80 backdrop-blur-md text-[13px] font-bold rounded-full shadow-sm border border-white/10">
+                                    {courseData.target_situation === "SOME"
+                                        ? "💘 썸 탈출"
+                                        : `#${courseData.target_situation}`}
                                 </span>
-                                {courseData.target_situation && (
-                                    <span className="px-3.5 py-1.5 bg-rose-500/80 backdrop-blur-md text-white text-[13px] font-bold rounded-full shadow-sm border border-white/10">
-                                        {courseData.target_situation === "SOME"
-                                            ? "💘 썸 탈출"
-                                            : `#${courseData.target_situation}`}
-                                    </span>
-                                )}
-                            </div>
-
-                            {courseData.sub_title && (
-                                <p className="text-sm font-bold text-emerald-300 mb-2 tracking-wide uppercase drop-shadow-md">
-                                    {courseData.sub_title}
-                                </p>
                             )}
-
-                            <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight break-keep drop-shadow-xl mb-6">
-                                {courseData.title}
-                            </h1>
-
-                            <div className="flex items-center gap-3 text-white/90 text-xs font-semibold">
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10 flex items-center gap-1.5">
-                                    <span>👣</span> {courseData.coursePlaces?.length || 0} 스팟
-                                </div>
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10 flex items-center gap-1.5">
-                                    <span>⏳</span> {courseData.duration}
-                                </div>
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10 flex items-center gap-1.5">
-                                    <span className="text-yellow-400">★</span> {courseData.rating}
-                                </div>
+                        </div>
+                        <h1 className="text-2xl md:text-3xl font-extrabold mb-6">{courseData.title}</h1>
+                        <div className="flex items-center gap-3 text-xs font-semibold">
+                            <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                👣 {sortedCoursePlaces.length} 스팟
+                            </div>
+                            <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                ⏳ {courseData.duration}
+                            </div>
+                            <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                <span className="text-yellow-400">★</span> {courseData.rating}
                             </div>
                         </div>
                     </div>
                 </header>
 
-                {/* 2. Main Content Wrapper */}
-                <main className="max-w-[600px] mx-auto -mt-8 relative z-10 px-5 space-y-10">
-                    {/* Course Intro Card */}
-                    <section className="bg-white rounded-lg p-8 md:p-10 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-gray-100">
-                        <div className="flex items-center gap-3 mb-4 md:mb-6">
-                            <div className="w-1.5 h-6 md:h-8 bg-emerald-500 rounded-full" />
-                            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
-                                어떤 코스인가요?
-                            </h2>
+                <main
+                    className="max-w-[600px] mx-auto -mt-8 relative z-10 px-5 space-y-10"
+                    style={{
+                        touchAction: "pan-y", // 수직 스크롤 성능 최적화
+                        WebkitOverflowScrolling: "touch", // iOS 부드러운 스크롤 보장
+                    }}
+                >
+                    <section className="bg-white rounded-lg p-8 shadow-lg border border-gray-100">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                            <h2 className="text-xl font-bold text-gray-900">어떤 코스인가요?</h2>
                         </div>
-                        <p className="text-gray-600 text-[15px] md:text-[16px] leading-8 md:leading-9 whitespace-pre-wrap font-medium">
+                        <p className="text-gray-600 text-[15px] leading-8 whitespace-pre-wrap font-medium">
                             {courseData.description}
                         </p>
                     </section>
 
-                    {/* Naver Map (Embedded) */}
                     <section
                         ref={mapSectionRef}
-                        className="bg-white rounded-lg p-4 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-gray-100"
+                        className="bg-white rounded-lg p-4 shadow-lg border border-gray-100 naver-map-container"
                     >
-                        <div className="relative rounded-lg overflow-hidden shadow-inner border border-gray-200">
-                            {sortedCoursePlaces.length > 0 ? (
-                                <NaverMap
-                                    places={sortedCoursePlaces.map((cp) => ({
-                                        id: cp.place.id,
-                                        name: cp.place.name,
-                                        latitude: cp.place.latitude,
-                                        longitude: cp.place.longitude,
-                                        address: cp.place.address,
-                                        imageUrl: cp.place.imageUrl,
-                                        description: cp.place.description,
-                                        orderIndex: cp.order_index,
-                                    }))}
-                                    userLocation={null}
-                                    selectedPlace={selectedPlace}
-                                    onPlaceClick={(mapPlace: MapPlace) => {
-                                        const fullPlace = sortedCoursePlaces.find(
-                                            (cp) => cp.place.id === mapPlace.id
-                                        )?.place;
-                                        if (fullPlace) setSelectedPlace(fullPlace);
-                                    }}
-                                    drawPath={true}
-                                    numberedMarkers={true}
-                                    className="w-full h-[320px] md:h-[400px] lg:h-[450px]"
-                                    showControls={false}
-                                />
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                            {mapPlaces.length > 0 ? (
+                                shouldLoadMap ? (
+                                    <NaverMap
+                                        places={mapPlaces}
+                                        userLocation={userLocation}
+                                        selectedPlace={selectedPlace}
+                                        onPlaceClick={handleMapPlaceClick}
+                                        drawPath={true}
+                                        numberedMarkers={true}
+                                        className="w-full h-[320px] md:h-[400px]"
+                                        showControls={false}
+                                    />
+                                ) : (
+                                    <div className="h-[320px] md:h-[400px] bg-gray-50 flex items-center justify-center text-gray-400 animate-pulse">
+                                        지도 로딩 중...
+                                    </div>
+                                )
                             ) : (
                                 <div className="h-64 bg-gray-50 flex items-center justify-center text-gray-400">
                                     지도 정보 없음
                                 </div>
                             )}
-
                             <div className="absolute bottom-4 right-4">
                                 <button
-                                    className="bg-white/90 backdrop-blur text-gray-800 text-xs font-bold px-4 py-2.5 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5 hover:bg-white transition-colors"
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMapActivation();
                                         window.open(
                                             `https://map.naver.com/v5/search/${encodeURIComponent(
-                                                sortedCoursePlaces[0]?.place.name
+                                                sortedCoursePlaces[0]?.place.name || ""
                                             )}`
-                                        )
-                                    }
+                                        );
+                                    }}
+                                    className="bg-white/90 backdrop-blur text-gray-800 text-xs font-bold px-4 py-2.5 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5 active:scale-95 transition-transform"
                                 >
-                                    <Icons.Map className="w-4 h-4" />
-                                    <span>지도 앱에서 보기</span>
+                                    <Icons.Map className="w-4 h-4" /> <span>지도 앱에서 보기</span>
                                 </button>
                             </div>
                         </div>
                     </section>
 
-                    {/* ★ Timeline Section (Color Fix Applied) ★ */}
-                    <section className="relative px-4 md:px-6 pb-20">
-                        {/* 수직 선: 은은한 점선 */}
+                    <section className="relative px-4 pb-20">
                         <div className="absolute left-[34px] top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200" />
-
                         <div className="space-y-8">
-                            {sortedCoursePlaces.map((coursePlace, idx) => {
+                            {sortedCoursePlaces.map((coursePlace: CoursePlace, idx: number) => {
                                 const isSelected = selectedPlace?.id === coursePlace.place.id;
-                                const isLast = idx === sortedCoursePlaces.length - 1;
-
                                 return (
                                     <div key={coursePlace.id} className="relative">
-                                        {/* 1. 장소 카드 (Card) */}
                                         <div
                                             onClick={() => {
                                                 setSelectedPlace(coursePlace.place);
                                                 setShowPlaceModal(true);
                                             }}
-                                            className={`
-                                                relative ml-12 bg-white rounded-lg p-4 transition-all duration-300 border cursor-pointer
-                                                ${
-                                                    isSelected
-                                                        ? "shadow-[0_4px_20px_rgba(34,197,94,0.2)] border-2 border-emerald-500 scale-[1.01]"
-                                                        : "shadow-sm border-gray-200 opacity-90 grayscale-[0.3] hover:grayscale-0 hover:opacity-100 hover:border-gray-300"
-                                                }
-                                            `}
+                                            className={`relative ml-12 bg-white rounded-lg p-4 transition-all duration-300 border cursor-pointer ${
+                                                isSelected
+                                                    ? "shadow-lg border-2 border-emerald-500 scale-[1.01]"
+                                                    : "border-gray-200 opacity-90 grayscale-[0.3]"
+                                            }`}
                                         >
-                                            {/* 왼쪽 숫자 배지 (카드 밖으로 뺌) - 선택 시 녹색(emerald-500)으로 변경 */}
                                             <div
-                                                className={`
-                                                    absolute -left-[3.25rem] top-6 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors
-                                                    ${
-                                                        isSelected
-                                                            ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
-                                                            : "bg-white text-gray-400 border border-gray-200"
-                                                    }
-                                                `}
+                                                className={`absolute -left-[3.25rem] top-6 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 ${
+                                                    isSelected
+                                                        ? "bg-emerald-500 text-white shadow-lg"
+                                                        : "bg-white text-gray-400 border border-gray-200"
+                                                }`}
                                             >
                                                 {idx + 1}
                                             </div>
-
-                                            {/* 이미지 & 정보 */}
-                                            <div className="flex gap-4 md:gap-6">
-                                                <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                                                    {coursePlace.place.imageUrl ? (
+                                            <div className="flex gap-4">
+                                                <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                                    {coursePlace.place.imageUrl && (
                                                         <Image
                                                             src={coursePlace.place.imageUrl}
                                                             alt=""
                                                             fill
                                                             className="object-cover"
+                                                            loading="lazy"
+                                                            quality={70}
+                                                            sizes="96px"
                                                         />
-                                                    ) : (
-                                                        <span className="absolute inset-0 flex items-center justify-center text-xs text-gray-300">
-                                                            No Img
-                                                        </span>
                                                     )}
                                                 </div>
-
                                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    {/* 카테고리 */}
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                                            {coursePlace.place.category}
-                                                        </span>
-                                                    </div>
-                                                    <h3 className="font-bold text-lg md:text-xl lg:text-2xl text-gray-900 truncate mb-1">
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                                        {coursePlace.place.category}
+                                                    </span>
+                                                    <h3 className="font-bold text-lg text-gray-900 truncate mb-1">
                                                         {coursePlace.place.name}
                                                     </h3>
-                                                    <p className="text-xs md:text-sm text-gray-500 truncate">
+                                                    <p className="text-xs text-gray-500 truncate mb-2">
                                                         {coursePlace.place.address}
                                                     </p>
-                                                </div>
-                                            </div>
-
-                                            {/* Dona Pick - 팁은 BASIC 등급 이상만 표시 (코스 잠금과 별개) */}
-                                            {coursePlace.coaching_tip && (
-                                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
-                                                    {/* 🟢 tip은 코스 잠금과 별개로 BASIC 등급 이상만 보여야 함 */}
-                                                    {/* 비로그인: LoginModal, 로그인+FREE: 결제 모달, 로그인+BASIC/PREMIUM: tip 표시 */}
-                                                    {!isLoggedIn ? (
-                                                        <button
+                                                    {/* 🟢 예약 버튼 */}
+                                                    {coursePlace.place.reservationUrl && (
+                                                        <a
+                                                            href={coursePlace.place.reservationUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
                                                             onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setShowLoginModal(true);
+                                                                e.stopPropagation(); // 부모 클릭 이벤트 차단
                                                             }}
-                                                            className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
+                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit"
                                                         >
-                                                            <div className="pt-0.5">
-                                                                <svg
-                                                                    className="w-5 h-5 text-gray-400"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    viewBox="0 0 24 24"
-                                                                >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        strokeWidth="2"
-                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                                                    />
-                                                                </svg>
-                                                            </div>
-                                                            <div className="flex-1 text-left">
-                                                                <p className="text-xs font-bold text-gray-600 mb-0.5">
-                                                                    🔒 DoNa's Tip 보기
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-400">
-                                                                    로그인이 필요합니다. 클릭하여 로그인하기
-                                                                </p>
-                                                            </div>
-                                                        </button>
-                                                    ) : userTier === "FREE" ? (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setShowSubscriptionModal(true);
-                                                            }}
-                                                            className="w-full flex gap-2 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer"
-                                                        >
-                                                            <div className="pt-0.5">
-                                                                <svg
-                                                                    className="w-5 h-5 text-gray-400"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    viewBox="0 0 24 24"
-                                                                >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        strokeWidth="2"
-                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                                                    />
-                                                                </svg>
-                                                            </div>
-                                                            <div className="flex-1 text-left">
-                                                                <p className="text-xs font-bold text-gray-600 mb-0.5">
-                                                                    🔒 DoNa's Tip 보기
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-400">
-                                                                    BASIC 등급 이상만 볼 수 있습니다. 클릭하여 멤버십
-                                                                    구독하기
-                                                                </p>
-                                                            </div>
-                                                        </button>
-                                                    ) : (
-                                                        <div className="flex gap-2 items-start bg-amber-50 p-3 rounded-lg border border-amber-100">
-                                                            <div className="pt-0.5">
-                                                                <Icons.Bulb />
-                                                            </div>
-                                                            <p className="text-xs text-gray-700 leading-5 font-medium">
-                                                                <span className="font-bold text-emerald-600 block mb-0.5">
-                                                                    DoNa's Tip
-                                                                </span>
-                                                                {coursePlace.coaching_tip}
-                                                            </p>
-                                                        </div>
+                                                            <Icons.ExternalLink className="w-3 h-3" />
+                                                            예약하기
+                                                        </a>
                                                     )}
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -914,15 +762,17 @@ export default function CourseDetailClient({
                         </div>
                     </section>
 
-                    {/* Review Section */}
-                    <section className="bg-white rounded-lg p-8 md:p-10 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-gray-100 mb-24">
+                    <section
+                        ref={reviewsSectionRef}
+                        className="bg-white rounded-lg p-8 shadow-lg border border-gray-100 mb-24"
+                    >
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
+                            <h2 className="text-xl font-bold text-gray-900">
                                 이용후기 <span className="text-emerald-500 ml-1">{reviews.length}</span>
                             </h2>
                             <button
                                 onClick={() => setShowReviewModal(true)}
-                                className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                                className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 transition-colors"
                             >
                                 작성하기
                             </button>
@@ -959,24 +809,26 @@ export default function CourseDetailClient({
                                         <p className="text-[15px] text-gray-600 leading-relaxed mb-3">
                                             {review.content}
                                         </p>
-                                        {/* 후기 사진들 */}
                                         {review.imageUrls && review.imageUrls.length > 0 && (
                                             <div className="grid grid-cols-3 gap-2 mt-3">
-                                                {review.imageUrls.map((url, idx) => (
+                                                {review.imageUrls.map((imageUrl, idx) => (
                                                     <div
                                                         key={idx}
-                                                        className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
                                                         onClick={() => {
                                                             setPreviewImages(review.imageUrls || []);
                                                             setPreviewImageIndex(idx);
-                                                            setPreviewImage(url);
+                                                            setPreviewImage(imageUrl);
                                                         }}
                                                     >
                                                         <Image
-                                                            src={url}
-                                                            alt={`후기 사진 ${idx + 1}`}
+                                                            src={imageUrl}
+                                                            alt={`후기 이미지 ${idx + 1}`}
                                                             fill
                                                             className="object-cover"
+                                                            loading="lazy"
+                                                            quality={75}
+                                                            sizes="(max-width: 768px) 33vw, 150px"
                                                         />
                                                     </div>
                                                 ))}
@@ -996,21 +848,27 @@ export default function CourseDetailClient({
                     </section>
                 </main>
 
-                {/* ✨✨✨ [NEW] 플로팅 전체 지도 보기 버튼 (항상 표시) ✨✨✨ */}
+                {/* 🔵 [기능 유지] 지도 보기 플로팅 버튼 */}
                 <button
-                    onClick={() => setShowFullMapModal(true)}
-                    className="fixed bottom-24 right-5 md:right-[calc(50%-400px+20px)] lg:right-[calc(50%-450px+20px)] z-40 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-transform active:scale-95 border border-gray-100"
+                    onClick={() => {
+                        if (!isLoggedIn) {
+                            setShowLoginModal(true);
+                            return;
+                        }
+                        setModalSelectedPlace(null); // 모달 열 때 선택 초기화
+                        setShowFullMapModal(true);
+                    }}
+                    className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-800 shadow-xl border border-gray-100 active:scale-95 transition-all"
                 >
                     <Icons.Map className="w-4 h-4 text-emerald-500" />
                     <span>지도 보기</span>
                 </button>
 
-                {/* --- Mobile Bottom Floating Bar (Desktop에서도 표시) --- */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 md:px-8 py-4 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] flex items-center justify-between gap-4 mx-auto md:max-w-[800px] lg:max-w-[900px]">
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
                     <div className="flex gap-4">
                         <button
                             onClick={handleSaveCourse}
-                            className="flex flex-col items-center justify-center gap-0.5 text-gray-400 transition-colors active:scale-90"
+                            className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
                         >
                             {isSaved ? <Icons.LikeSolid /> : <Icons.LikeOutline />}
                             <span className={`text-[10px] font-medium ${isSaved ? "text-rose-500" : "text-gray-500"}`}>
@@ -1018,67 +876,167 @@ export default function CourseDetailClient({
                             </span>
                         </button>
                         <button
-                            onClick={handleShareCourse}
-                            className="flex flex-col items-center justify-center gap-0.5 text-gray-400 transition-colors active:scale-90"
+                            onClick={() => setShowShareModal(true)}
+                            className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
                         >
                             <Icons.Share />
                             <span className="text-[10px] font-medium text-gray-500">공유</span>
                         </button>
                     </div>
                     <button
-                        onClick={async () => {
-                            // 🟢 로그인 체크
-                            if (isLoggedIn === null) {
-                                // 로그인 상태 확인 중이면 대기
-                                return;
-                            }
+                        onClick={() => {
                             if (!isLoggedIn) {
-                                // 로그인하지 않은 경우 로그인 모달 표시
                                 setShowLoginModal(true);
                                 return;
                             }
-                            // 로그인한 경우 코스 시작 페이지로 이동
+                            // 🟢 [Fix]: 사용자 제스처(버튼 클릭)에 의해서만 위치 정보 요청
+                            handleMapActivation();
                             router.push(`/courses/${courseId}/start`);
                         }}
-                        className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] 
-               shadow-lg shadow-gray-300/50 transition-all 
-               hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
+                        className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
                     >
                         <Icons.Rocket /> 코스 시작하기
                     </button>
                 </div>
             </div>
 
-            {/* Modals */}
+            {/* 🔵 [기능 유지] 전체 지도 모달 */}
+            {showFullMapModal && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-[6000] flex items-center justify-center p-5 animate-fade-in full-map-modal"
+                    onClick={() => {
+                        setModalSelectedPlace(null);
+                        setShowFullMapModal(false);
+                    }}
+                >
+                    <div
+                        className="bg-white rounded-lg w-full max-w-md aspect-[4/5] overflow-hidden relative naver-map-container"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <NaverMap
+                            places={mapPlaces}
+                            userLocation={null}
+                            selectedPlace={null}
+                            onPlaceClick={handleMapPlaceClick}
+                            drawPath={true}
+                            numberedMarkers={true}
+                            className="w-full h-full"
+                            showControls={false}
+                        />
+                        {modalSelectedPlace ? (
+                            <div className="absolute bottom-0 w-full bg-white p-5 border-t-4 border-emerald-500 rounded-t-lg shadow-2xl z-20">
+                                <div className="flex gap-4 items-center mb-4">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden relative flex-shrink-0">
+                                        {modalSelectedPlace.imageUrl && (
+                                            <Image
+                                                src={modalSelectedPlace.imageUrl}
+                                                alt=""
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-gray-900 truncate">{modalSelectedPlace.name}</h4>
+                                        <p className="text-xs text-gray-500 truncate">{modalSelectedPlace.address}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setModalSelectedPlace(null)}
+                                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    >
+                                        <Icons.Close className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {/* 🟢 예약 버튼 추가 */}
+                                    {(() => {
+                                        const fullPlace = sortedCoursePlaces.find(
+                                            (c) => c.place.id === modalSelectedPlace.id
+                                        )?.place;
+                                        return fullPlace?.reservationUrl ? (
+                                            <a
+                                                href={fullPlace.reservationUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                                            >
+                                                <Icons.ExternalLink className="w-4 h-4" />
+                                                예약하기
+                                            </a>
+                                        ) : null;
+                                    })()}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setShowFullMapModal(false);
+                                                const cp = sortedCoursePlaces.find(
+                                                    (c) => c.place.id === modalSelectedPlace.id
+                                                );
+                                                if (cp) handleTimelinePlaceClick(cp);
+                                            }}
+                                            className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white font-bold text-xs active:scale-95 transition-all"
+                                        >
+                                            상세보기
+                                        </button>
+                                        <button
+                                            onClick={() => setModalSelectedPlace(null)}
+                                            className="py-2.5 px-4 rounded-lg border border-gray-200 text-gray-500 text-xs font-bold active:scale-95 transition-all"
+                                        >
+                                            닫기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="absolute bottom-6 left-0 right-0 flex justify-center z-10">
+                                <button
+                                    onClick={() => {
+                                        setModalSelectedPlace(null);
+                                        setShowFullMapModal(false);
+                                    }}
+                                    className="bg-white text-gray-900 px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 font-bold border border-gray-100"
+                                >
+                                    지도 닫기 <Icons.Close className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* 공유 모달 */}
             {showShareModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-[9999] flex items-end md:items-center justify-center p-4 animate-fade-in"
+                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fade-in"
                     onClick={() => setShowShareModal(false)}
                 >
                     <div
-                        className="bg-white rounded-t-lg md:rounded-lg w-full max-w-sm p-8 shadow-2xl animate-slide-up-mobile border-t md:border border-gray-200"
+                        className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8 md:hidden" />
-                        <h3 className="font-bold text-xl mb-8 text-center text-gray-900">어디로 공유할까요?</h3>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">공유하기</h3>
+                            <button
+                                onClick={() => setShowShareModal(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <Icons.Close className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-3">
                             <button
                                 onClick={handleKakaoShare}
-                                className="flex flex-col items-center justify-center gap-3 p-6 bg-[#FAE100] rounded-lg hover:brightness-95 transition-all border border-[#E6D100]"
+                                className="flex items-center gap-4 p-4 bg-[#FEE500] rounded-xl hover:bg-[#FDD835] transition-colors active:scale-95"
                             >
-                                <div className="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center mb-1">
-                                    <Icons.Kakao />
-                                </div>
-                                <span className="font-bold text-[15px] text-[#371D1E]">카카오톡</span>
+                                <Icons.Kakao />
+                                <span className="font-bold text-gray-900">카카오톡으로 공유</span>
                             </button>
                             <button
                                 onClick={handleCopyLink}
-                                className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-100 rounded-3xl hover:bg-gray-200 transition-all"
+                                className="flex items-center gap-4 p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors active:scale-95"
                             >
-                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-1 shadow-sm">
-                                    <Icons.Link />
-                                </div>
-                                <span className="font-bold text-[15px] text-gray-700">링크 복사</span>
+                                <Icons.Link />
+                                <span className="font-bold text-gray-900">링크 복사</span>
                             </button>
                         </div>
                     </div>
@@ -1093,9 +1051,77 @@ export default function CourseDetailClient({
             />
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${courseId}`} />}
+            {showPlaceModal && selectedPlace && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fade-in"
+                    onClick={() => setShowPlaceModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-lg w-full max-w-md overflow-hidden shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="relative h-72 bg-gray-100">
+                            {selectedPlace.imageUrl && (
+                                <Image
+                                    src={selectedPlace.imageUrl}
+                                    alt={selectedPlace.name}
+                                    fill
+                                    className="object-cover"
+                                    priority
+                                    sizes="100vw"
+                                />
+                            )}
+                            <button
+                                onClick={() => setShowPlaceModal(false)}
+                                className="absolute top-4 right-4 bg-black/30 text-white w-9 h-9 rounded-full flex items-center justify-center"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="p-8 text-black">
+                            <h3 className="text-2xl font-bold mb-2">{selectedPlace.name}</h3>
+                            <p className="text-gray-600 text-sm mb-6 font-medium">{selectedPlace.address}</p>
+                            <p className="text-gray-600 text-[15px] leading-relaxed whitespace-pre-wrap mb-8">
+                                {selectedPlace.description || "상세 설명이 없습니다."}
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                {/* 🟢 예약 버튼 추가 */}
+                                {(() => {
+                                    // 🟢 [Debug]: reservationUrl 확인
+                                    if (process.env.NODE_ENV === "development") {
+                                        console.log("[PlaceModal] selectedPlace:", {
+                                            id: selectedPlace.id,
+                                            name: selectedPlace.name,
+                                            reservationUrl: selectedPlace.reservationUrl,
+                                            hasReservationUrl: !!selectedPlace.reservationUrl,
+                                        });
+                                    }
+                                    return selectedPlace.reservationUrl ? (
+                                        <a
+                                            href={selectedPlace.reservationUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-4 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Icons.ExternalLink className="w-5 h-5" />
+                                            예약하기
+                                        </a>
+                                    ) : null;
+                                })()}
+                                <button
+                                    className="w-full py-4 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all"
+                                    onClick={() => setShowPlaceModal(false)}
+                                >
+                                    닫기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 이미지 미리보기 모달 */}
-            {previewImage && previewImages.length > 0 && (
+            {previewImage && (
                 <div
                     className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
                     onClick={() => {
@@ -1105,13 +1131,12 @@ export default function CourseDetailClient({
                     }}
                 >
                     <button
+                        className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 z-10"
                         onClick={() => {
                             setPreviewImage(null);
                             setPreviewImages([]);
                             setPreviewImageIndex(0);
                         }}
-                        className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-2"
-                        aria-label="닫기"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
@@ -1122,225 +1147,60 @@ export default function CourseDetailClient({
                             />
                         </svg>
                     </button>
-
-                    {/* 왼쪽 버튼 (이전 사진) */}
-                    {previewImages.length > 1 && previewImageIndex > 0 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const newIndex = previewImageIndex - 1;
-                                setPreviewImageIndex(newIndex);
-                                setPreviewImage(previewImages[newIndex]);
-                            }}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-3"
-                            aria-label="이전 사진"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15 19l-7-7 7-7"
-                                />
-                            </svg>
-                        </button>
-                    )}
-
-                    {/* 오른쪽 버튼 (다음 사진) */}
-                    {previewImages.length > 1 && previewImageIndex < previewImages.length - 1 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const newIndex = previewImageIndex + 1;
-                                setPreviewImageIndex(newIndex);
-                                setPreviewImage(previewImages[newIndex]);
-                            }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-3"
-                            aria-label="다음 사진"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    )}
-
-                    {/* 이미지 카운터 */}
                     {previewImages.length > 1 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white bg-black/50 rounded-full px-4 py-2 text-sm z-10">
-                            {previewImageIndex + 1} / {previewImages.length}
-                        </div>
+                        <>
+                            <button
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 z-10"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const prevIndex =
+                                        previewImageIndex > 0 ? previewImageIndex - 1 : previewImages.length - 1;
+                                    setPreviewImageIndex(prevIndex);
+                                    setPreviewImage(previewImages[prevIndex]);
+                                }}
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 19l-7-7 7-7"
+                                    />
+                                </svg>
+                            </button>
+                            <button
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 z-10"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const nextIndex =
+                                        previewImageIndex < previewImages.length - 1 ? previewImageIndex + 1 : 0;
+                                    setPreviewImageIndex(nextIndex);
+                                    setPreviewImage(previewImages[nextIndex]);
+                                }}
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                            </button>
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full z-10">
+                                {previewImageIndex + 1} / {previewImages.length}
+                            </div>
+                        </>
                     )}
-
                     <div
-                        className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
+                        className="relative w-full h-full flex items-center justify-center"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <img
                             src={previewImage}
-                            alt={`리뷰 사진 ${previewImageIndex + 1}`}
+                            alt="후기 이미지 미리보기"
                             className="max-w-full max-h-full object-contain"
                         />
-                    </div>
-                </div>
-            )}
-
-            {/* Place Detail Modal */}
-            {showPlaceModal && selectedPlace && (
-                <div
-                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fade-in"
-                    onClick={() => setShowPlaceModal(false)}
-                >
-                    <div
-                        className="bg-white rounded-lg w-full max-w-md overflow-hidden shadow-2xl border border-gray-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="relative h-72 bg-gray-100">
-                            {selectedPlace.imageUrl && (
-                                <Image
-                                    src={selectedPlace.imageUrl}
-                                    alt={selectedPlace.name}
-                                    fill
-                                    className="object-cover"
-                                />
-                            )}
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setShowPlaceModal(false);
-                                }}
-                                className="absolute top-4 right-4 z-50 bg-black/30 backdrop-blur-md text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/50 transition-colors pointer-events-auto"
-                            >
-                                ×
-                            </button>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                            <div className="absolute bottom-6 left-6 text-white">
-                                <h3 className="text-2xl font-bold mb-1">{selectedPlace.name}</h3>
-                                <p className="opacity-90 text-sm font-medium">{selectedPlace.address}</p>
-                            </div>
-                        </div>
-                        <div className="p-8">
-                            <p className="text-gray-600 text-[15px] leading-relaxed whitespace-pre-wrap mb-8">
-                                {selectedPlace.description || "상세 설명이 없습니다."}
-                            </p>
-                            <button
-                                className="w-full py-4 rounded-lg bg-gray-900 text-white font-bold text-[16px] hover:bg-black transition-colors shadow-lg"
-                                onClick={() => setShowPlaceModal(false)}
-                            >
-                                닫기
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ✨✨✨ [NEW] 전체 경로 지도 모달 (정보 카드 포함) ✨✨✨ */}
-            {showFullMapModal && (
-                <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[6000] flex items-center justify-center p-5 animate-fade-in"
-                    onClick={handleCloseFullMapModal}
-                >
-                    <div
-                        className="bg-white rounded-lg w-full max-w-md aspect-[4/5] overflow-hidden shadow-2xl relative flex flex-col border border-gray-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* 지도 영역 (꽉 차게 배치) */}
-                        <div className="absolute inset-0 w-full h-full bg-gray-100">
-                            <NaverMap
-                                places={sortedCoursePlaces.map((cp) => ({
-                                    id: cp.place.id,
-                                    name: cp.place.name,
-                                    latitude: cp.place.latitude,
-                                    longitude: cp.place.longitude,
-                                    address: cp.place.address,
-                                    imageUrl: cp.place.imageUrl,
-                                    description: cp.place.description,
-                                    orderIndex: cp.order_index,
-                                }))}
-                                userLocation={null}
-                                selectedPlace={null}
-                                onPlaceClick={(place: MapPlace) => setModalSelectedPlace(place)}
-                                drawPath={true}
-                                numberedMarkers={true}
-                                className="w-full h-full"
-                                showControls={false}
-                            />
-                        </div>
-
-                        {/* ✨ [NEW] 하단 플로팅 닫기 버튼 (지도 위에 알약 모양으로 띄움) */}
-                        <div className="absolute bottom-6 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                            <button
-                                onClick={handleCloseFullMapModal}
-                                className="bg-white text-gray-900 text-[14px] font-bold px-6 py-3 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center gap-2 border border-gray-100 transition-transform active:scale-95 pointer-events-auto"
-                            >
-                                <span>지도 닫기</span>
-                                <Icons.Close className="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-
-                        {/* ✨ [NEW] 하단 플로팅 정보 카드 (선택 시 올라옴) */}
-                        <div
-                            className={`absolute bottom-0 w-full bg-white transition-transform duration-300 ease-out z-20 
-                                ${modalSelectedPlace ? "translate-y-0" : "translate-y-full"}
-                            `}
-                        >
-                            {modalSelectedPlace && (
-                                <div className="p-5 border-t-4 border-emerald-500/80 rounded-t-lg shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-                                    <div className="flex gap-4 items-center">
-                                        <div className="flex-none w-16 h-16 bg-gray-100 rounded-lg overflow-hidden relative">
-                                            {modalSelectedPlace.imageUrl && (
-                                                <Image
-                                                    src={modalSelectedPlace.imageUrl}
-                                                    alt={modalSelectedPlace.name}
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            )}
-                                            <span className="absolute top-1 left-1 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                                {
-                                                    sortedCoursePlaces.find(
-                                                        (cp) => cp.place.id === modalSelectedPlace.id
-                                                    )?.order_index
-                                                }
-                                            </span>
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-gray-500 mb-0.5 uppercase">
-                                                {modalSelectedPlace.category}
-                                            </p>
-                                            <h4 className="text-lg font-bold text-gray-900 truncate mb-1">
-                                                {modalSelectedPlace.name}
-                                            </h4>
-                                            <p className="text-sm text-gray-600 truncate">
-                                                {modalSelectedPlace.address}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 flex gap-3">
-                                        <button
-                                            onClick={() => {
-                                                handleCloseFullMapModal();
-                                                const coursePlace = sortedCoursePlaces.find(
-                                                    (cp) => cp.place.id === modalSelectedPlace.id
-                                                );
-                                                if (coursePlace) handleTimelinePlaceClick(coursePlace);
-                                            }}
-                                            className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-[13px] font-bold hover:bg-black transition-colors"
-                                        >
-                                            상세 페이지로 이동
-                                        </button>
-                                        <button
-                                            onClick={() => setModalSelectedPlace(null)}
-                                            className="flex-none w-1/4 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-[13px] font-bold hover:bg-gray-50 transition-colors"
-                                        >
-                                            닫기
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
             )}

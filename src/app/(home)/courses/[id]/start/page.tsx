@@ -168,15 +168,18 @@ function GuidePageInner() {
         }
     }, [userLocation, currentPlace, isTestAccount]);
 
-    // Fetch Course
+    // 🟢 [Performance]: Fetch Course - 캐싱 및 지연 로딩 최적화
     useEffect(() => {
         if (!courseId) return;
 
         const fetchCourse = async () => {
             try {
-                // 🟢 가이드 페이지 전용 API 사용
+                // 🟢 가이드 페이지 전용 API 사용 (캐싱 적용)
                 const { apiFetch } = await import("@/lib/authClient");
-                const { data, response } = await apiFetch<Course>(`/api/courses/${courseId}/start`);
+                const { data, response } = await apiFetch<Course>(`/api/courses/${courseId}/start`, {
+                    cache: "force-cache", // 🟢 캐싱으로 성능 향상
+                    next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
+                });
 
                 if (!response.ok) {
                     const errorMessage = (data as any)?.error || `HTTP ${response.status}: ${response.statusText}`;
@@ -199,10 +202,13 @@ function GuidePageInner() {
                     ? [...data.coursePlaces].sort((a, b) => a.order_index - b.order_index)
                     : [];
 
-                // 정렬된 데이터를 포함하여 상태 업데이트
-                setCourse({
-                    ...data,
-                    coursePlaces: sortedPlaces,
+                // 🟢 다음 프레임에서 상태 업데이트하여 렌더링 부하 분산
+                requestAnimationFrame(() => {
+                    setCourse({
+                        ...data,
+                        coursePlaces: sortedPlaces,
+                    });
+                    setLoading(false);
                 });
             } catch (err: any) {
                 console.error("Course load failed:", err);
@@ -223,12 +229,12 @@ function GuidePageInner() {
                     alert("코스를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.");
                     router.push(`/courses/${courseId}`);
                 }
-            } finally {
                 setLoading(false);
             }
         };
 
-        fetchCourse();
+        // 🟢 초기 로딩은 즉시, 데이터 페칭은 다음 프레임에서
+        requestAnimationFrame(fetchCourse);
     }, [courseId, router]);
 
     // Geolocation

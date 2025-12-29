@@ -90,35 +90,67 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
-        let user = await (prisma as any).user.findFirst({
-            where: { provider: "apple", socialId: appleUserId },
-        });
+        // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
+        const result = await (prisma as any).$transaction(async (tx: any) => {
+            // 🟢 이벤트 쿠키 지급 로직 (KST 기준)
+            const now = new Date();
+            const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+            const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
+            const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
+            const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 10일 이전: 2개, 이후: 1개
 
-        if (!user) {
-            // [기능 유지] 신규 가입 시 쿠키 3개 지급 로직
-            user = await (prisma as any).user.create({
-                data: {
+            // 🟢 upsert로 원자적 처리 (이미 있으면 업데이트, 없으면 생성)
+            const upsertedUser = await tx.user.upsert({
+                where: {
+                    unique_social_provider: {
+                        socialId: appleUserId,
+                        provider: "apple",
+                    },
+                },
+                update: {
+                    // 기존 유저의 경우 프로필 정보만 업데이트
+                    email: email || undefined,
+                    profileImageUrl: (prev: string | null) => prev || DEFAULT_PROFILE_IMG,
+                },
+                create: {
                     email,
                     username: `user_${appleUserId.substring(0, 6)}`,
                     socialId: appleUserId,
                     provider: "apple",
-                    couponCount: 3,
+                    couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
                     profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                 },
             });
-            await (prisma as any).userReward.create({
-                data: { userId: user.id, type: "signup", amount: 3, unit: "coupon" },
-            });
-        } else {
-            // 🟢 기존 사용자의 경우 프로필 이미지가 없으면 기본 이미지로 업데이트
-            if (!user.profileImageUrl) {
-                await (prisma as any).user.update({
-                    where: { id: user.id },
+
+            // 🟢 프로필 이미지가 없으면 기본 이미지로 업데이트
+            if (!upsertedUser.profileImageUrl) {
+                await tx.user.update({
+                    where: { id: upsertedUser.id },
                     data: { profileImageUrl: DEFAULT_PROFILE_IMG },
                 });
-                user.profileImageUrl = DEFAULT_PROFILE_IMG;
+                upsertedUser.profileImageUrl = DEFAULT_PROFILE_IMG;
             }
-        }
+
+            // 🟢 신규 가입인 경우 보상 로그 생성 (기존 유저는 보상 중복 지급 방지)
+            const existingReward = await tx.userReward.findFirst({
+                where: {
+                    userId: upsertedUser.id,
+                    type: "signup",
+                },
+            });
+
+            if (!existingReward) {
+                // 신규 가입이므로 보상 로그 생성
+                await tx.userReward.create({
+                    data: { userId: upsertedUser.id, type: "signup", amount: initialCoupons, unit: "coupon" },
+                });
+                return { user: upsertedUser, isNew: true };
+            }
+
+            return { user: upsertedUser, isNew: false };
+        });
+
+        const user = result.user;
 
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
         const decodedNext = decodeURIComponent(next).replace(/^%2F/, "/"); // 👈 %2F 404 해결
@@ -158,36 +190,70 @@ async function handleAppAppleAuthLogic(
         // 🟢 두나 기본 프로필 이미지 설정 (로컬 로그인과 동일)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
-        let user = await (prisma as any).user.findFirst({
-            where: { provider: "apple", socialId: appleUserId },
-        });
+        // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
+        const result = await (prisma as any).$transaction(async (tx: any) => {
+            // 🟢 이벤트 쿠키 지급 로직 (KST 기준)
+            const now = new Date();
+            const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+            const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
+            const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
+            const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 10일 이전: 2개, 이후: 1개
 
-        if (!user) {
-            user = await (prisma as any).user.create({
-                data: {
+            // 🟢 upsert로 원자적 처리 (이미 있으면 업데이트, 없으면 생성)
+            const upsertedUser = await tx.user.upsert({
+                where: {
+                    unique_social_provider: {
+                        socialId: appleUserId,
+                        provider: "apple",
+                    },
+                },
+                update: {
+                    // 기존 유저의 경우 프로필 정보만 업데이트
+                    email: email || undefined,
+                    username: fullName ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim() : undefined,
+                    profileImageUrl: (prev: string | null) => prev || DEFAULT_PROFILE_IMG,
+                },
+                create: {
                     email,
                     username: fullName
                         ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim()
                         : `user_${appleUserId.substring(0, 6)}`,
                     socialId: appleUserId,
                     provider: "apple",
-                    couponCount: 3,
+                    couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
                     profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                 },
             });
-            await (prisma as any).userReward.create({
-                data: { userId: user.id, type: "signup", amount: 3, unit: "coupon" },
-            });
-        } else {
-            // 🟢 기존 사용자의 경우 프로필 이미지가 없으면 기본 이미지로 업데이트
-            if (!user.profileImageUrl) {
-                await (prisma as any).user.update({
-                    where: { id: user.id },
+
+            // 🟢 프로필 이미지가 없으면 기본 이미지로 업데이트
+            if (!upsertedUser.profileImageUrl) {
+                await tx.user.update({
+                    where: { id: upsertedUser.id },
                     data: { profileImageUrl: DEFAULT_PROFILE_IMG },
                 });
-                user.profileImageUrl = DEFAULT_PROFILE_IMG;
+                upsertedUser.profileImageUrl = DEFAULT_PROFILE_IMG;
             }
-        }
+
+            // 🟢 신규 가입인 경우 보상 로그 생성 (기존 유저는 보상 중복 지급 방지)
+            const existingReward = await tx.userReward.findFirst({
+                where: {
+                    userId: upsertedUser.id,
+                    type: "signup",
+                },
+            });
+
+            if (!existingReward) {
+                // 신규 가입이므로 보상 로그 생성
+                await tx.userReward.create({
+                    data: { userId: upsertedUser.id, type: "signup", amount: initialCoupons, unit: "coupon" },
+                });
+                return { user: upsertedUser, isNew: true };
+            }
+
+            return { user: upsertedUser, isNew: false };
+        });
+
+        const user = result.user;
 
         const token = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
 

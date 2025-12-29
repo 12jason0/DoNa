@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import type { MapProps, Place } from "@/types/map";
+import { MapMarker } from "./MapMarker";
 
 export default function NaverMapComponent({
     places,
@@ -28,17 +29,11 @@ export default function NaverMapComponent({
 }: MapProps) {
     const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
-    const markersRef = useRef<any[]>([]);
     const polylineRef = useRef<any>(null);
-    const routeCacheRef = useRef<Map<string, Array<[number, number]>>>(new Map());
-    const prevRouteKeyRef = useRef<string | null>(null);
     const [mapReady, setMapReady] = useState(false);
-    const [showNearFallback, setShowNearFallback] = useState(false);
-    const [isLocating, setIsLocating] = useState(false);
     const [currentHeading, setCurrentHeading] = useState<number | null>(null);
-    const shownFallbackRef = useRef(false);
 
-    // 🟢 속성 이름 통일 함수 (TS 에러 2339 해결)
+    // 🟢 속성 이름 통일 함수
     const getCoords = (p: any) => ({
         lat: Number(p.latitude ?? p.lat),
         lng: Number(p.longitude ?? p.lng),
@@ -95,110 +90,100 @@ export default function NaverMapComponent({
         });
     };
 
+    // 🟢 [기능 유지] 지도 초기화 및 Passive 리스너 (Forced Reflow 방지)
     useEffect(() => {
         (async () => {
             if (!(window as any).naver?.maps) await loadNaverMapsScript();
             if (!mapElementRef.current || mapRef.current) return;
             const naver = (window as any).naver;
             const startPos = center || (selectedPlace ? getCoords(selectedPlace) : { lat: 37.5665, lng: 126.978 });
-            mapRef.current = new naver.maps.Map(mapElementRef.current, {
+
+            const mapElement = mapElementRef.current;
+
+            // 🟢 [Fix] 지도 초기화 전에 passive: false 리스너를 먼저 등록하여 SDK의 preventDefault 허용
+            // Naver Maps SDK가 등록하는 이벤트 리스너가 passive로 강제되지 않도록 함
+            const ensureNonPassive = () => {};
+            ["touchstart", "touchmove", "wheel", "mousewheel"].forEach((eventType) => {
+                mapElement.addEventListener(eventType, ensureNonPassive, { passive: false, capture: true });
+            });
+
+            mapRef.current = new naver.maps.Map(mapElement, {
                 center: new naver.maps.LatLng(startPos.lat, startPos.lng),
                 zoom: 15,
                 zoomControl: false,
                 logoControl: false,
+                scrollWheel: true,
             });
+
             setMapReady(true);
+            if (onMapReady) onMapReady(mapRef.current);
+
+            // 지도 초기화 후 생성되는 Canvas 요소에도 passive: false 리스너 등록
+            setTimeout(() => {
+                const canvas = mapElement.querySelector?.("canvas");
+                if (canvas instanceof HTMLElement) {
+                    ["touchstart", "touchmove", "wheel", "mousewheel"].forEach((eventType) => {
+                        canvas.addEventListener(eventType, ensureNonPassive, { passive: false, capture: true });
+                    });
+                }
+            }, 200);
         })();
     }, []);
 
-    // 🟢 마커 및 경로 렌더링 최적화
-    const currentRouteKey = useMemo(() => {
-        const pKey = (pathPlaces || places || []).map((p) => p.id).join("-");
-        return `${pKey}_${userLocation?.lat}_${drawPath}`;
-    }, [places, pathPlaces, userLocation, drawPath]);
+    // 🟢 [기능 유지] Bounds 자동 조정
+    useEffect(() => {
+        if (!mapReady || !mapRef.current || !places.length) return;
+        const naver = (window as any).naver;
+        const bounds = new naver.maps.LatLngBounds();
+        places.filter(isValidLatLng).forEach((p) => {
+            const coords = getCoords(p);
+            bounds.extend(new naver.maps.LatLng(coords.lat, coords.lng));
+        });
+        if (userLocation && isValidLatLng(userLocation)) {
+            const u = getCoords(userLocation);
+            bounds.extend(new naver.maps.LatLng(u.lat, u.lng));
+        }
+        requestAnimationFrame(() => {
+            mapRef.current.fitBounds(bounds);
+        });
+    }, [places.length, mapReady]);
 
+    // 🟢 [기능 유지] 경로 렌더링
     useEffect(() => {
         const naver = (window as any).naver;
         if (!naver?.maps || !mapRef.current) return;
 
-        markersRef.current.forEach((m) => m.setMap(null));
-        markersRef.current = [];
-
         const valid = (places || []).filter(isValidLatLng);
-        const bounds = new naver.maps.LatLngBounds();
-
-        if (userLocation && isValidLatLng(userLocation)) {
-            const pos = new naver.maps.LatLng(userLocation.lat, userLocation.lng);
-            markersRef.current.push(
-                new naver.maps.Marker({
-                    position: pos,
-                    map: mapRef.current,
-                    zIndex: 20,
-                    icon: {
-                        content: `<div style="width:40px;height:40px;background:#10B981;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;">📍</div>`,
-                        anchor: new naver.maps.Point(20, 20),
-                    },
-                })
-            );
-            bounds.extend(pos);
+        const pts = userLocation ? [userLocation, ...valid] : valid;
+        if (!drawPath || pts.length < 2) {
+            polylineRef.current?.setMap(null);
+            return;
         }
 
-        valid.forEach((p) => {
-            const { lat, lng } = getCoords(p);
-            const pos = new naver.maps.LatLng(lat, lng);
-            const isSel = selectedPlace?.id === p.id;
-            const marker = new naver.maps.Marker({
-                position: pos,
-                map: mapRef.current,
-                zIndex: isSel ? 1000 : 100,
-                icon: {
-                    content: `<div style="width:${isSel ? 52 : 42}px;height:${isSel ? 52 : 42}px;background:${
-                        isSel ? "#5347AA" : "#10B981"
-                    };border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);font-size:20px;">📍</div></div>`,
-                    anchor: new naver.maps.Point(21, 42),
-                },
-            });
-            naver.maps.Event.addListener(marker, "click", () => onPlaceClick(p));
-            markersRef.current.push(marker);
-            bounds.extend(pos);
-        });
-
-        if (valid.length > 0) mapRef.current.fitBounds(bounds);
-
-        if (prevRouteKeyRef.current === currentRouteKey && polylineRef.current) return;
-        prevRouteKeyRef.current = currentRouteKey;
-
         const buildRoute = async () => {
-            if (!drawPath) {
-                polylineRef.current?.setMap(null);
-                return;
-            }
-            const pts = userLocation ? [userLocation, ...valid] : valid;
-            if (pts.length < 2) return;
-
             let totalPath: any[] = [];
             for (let i = 0; i < pts.length - 1; i++) {
                 const start = pts[i];
                 const end = pts[i + 1];
                 const d = distanceMeters(start, end);
+                const sC = getCoords(start);
+                const eC = getCoords(end);
+
                 if (d < 200 || d > 500) {
-                    const sC = getCoords(start);
-                    const eC = getCoords(end);
                     totalPath.push(new naver.maps.LatLng(sC.lat, sC.lng), new naver.maps.LatLng(eC.lat, eC.lng));
                 } else {
                     try {
-                        const sC = getCoords(start);
-                        const eC = getCoords(end);
                         const res = await fetch(
                             `/api/directions?coords=${sC.lng},${sC.lat};${eC.lng},${eC.lat}&mode=driving`
                         );
                         const data = await res.json();
-                        if (data.coordinates)
+                        if (data.coordinates) {
                             totalPath.push(
                                 ...data.coordinates.map(([lng, lat]: any) => new naver.maps.LatLng(lat, lng))
                             );
+                        }
                     } catch {
-                        /* skip */
+                        /* ignore */
                     }
                 }
             }
@@ -214,11 +199,72 @@ export default function NaverMapComponent({
             });
         };
         buildRoute();
-    }, [currentRouteKey, selectedPlace]);
+    }, [places, userLocation, drawPath]);
+
+    // 🟢 [오류 해결] 마커 아이콘 정의 - 옵셔널 체이닝 제거 및 naver 객체 직접 참조
+    const userIcon = useMemo(() => {
+        if (typeof window === "undefined" || !(window as any).naver) return null;
+        const naver = (window as any).naver;
+        return {
+            content: `<div style="width:40px;height:40px;background:#10B981;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;">📍</div>`,
+            anchor: new naver.maps.Point(20, 20),
+        };
+    }, [mapReady]);
+
+    const getPlaceIcon = useCallback(
+        (isSelected: boolean) => {
+            if (typeof window === "undefined" || !(window as any).naver) return null;
+            const naver = (window as any).naver;
+            return {
+                content: `<div style="width:${isSelected ? 52 : 42}px;height:${isSelected ? 52 : 42}px;background:${
+                    isSelected ? "#5347AA" : "#10B981"
+                };border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);font-size:20px;">📍</div></div>`,
+                anchor: new naver.maps.Point(21, 42),
+            };
+        },
+        [mapReady]
+    );
 
     return (
         <div className={className} style={{ ...style, width: "100%", height: "100%", position: "relative" }}>
-            <div ref={mapElementRef} style={{ width: "100%", height: "100%" }} />
+            <div
+                ref={mapElementRef}
+                data-naver-map="true"
+                style={{
+                    width: "100%",
+                    height: "100%",
+                    touchAction: "pan-x pan-y pinch-zoom",
+                    overscrollBehavior: "none",
+                    willChange: "transform",
+                    transform: "translateZ(0)",
+                    overflow: "hidden",
+                }}
+            />
+
+            {/* 🟢 마커 분리 렌더링 - 모든 기존 기능 유지 */}
+            {mapReady && (
+                <>
+                    {userLocation && isValidLatLng(userLocation) && userIcon && (
+                        <MapMarker
+                            map={mapRef.current}
+                            position={getCoords(userLocation)}
+                            icon={userIcon}
+                            zIndex={20}
+                        />
+                    )}
+                    {places.filter(isValidLatLng).map((p) => (
+                        <MapMarker
+                            key={p.id}
+                            map={mapRef.current}
+                            position={getCoords(p)}
+                            icon={getPlaceIcon(selectedPlace?.id === p.id)}
+                            zIndex={selectedPlace?.id === p.id ? 1000 : 100}
+                            onClick={() => onPlaceClick(p)}
+                        />
+                    ))}
+                </>
+            )}
+
             {/* 🟢 [기능 유지] 모든 컨트롤 버튼 UI */}
             {mapReady && showControls && (
                 <div

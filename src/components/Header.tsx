@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
@@ -47,29 +47,31 @@ const Header = () => {
     const menuButtonRef = useRef<HTMLButtonElement | null>(null);
     const drawerRef = useRef<HTMLDivElement | null>(null);
 
-    // --- 🟢 기능 1: 로그인 세션 체크 (기존 로직 100% 동일) ---
-    const checkLoginStatus = async () => {
-        const { fetchSession } = await import("@/lib/authClient");
-        const session = await fetchSession();
-        if (!session.authenticated) {
-            setIsLoggedIn(false);
-            setHasFavorites(false);
-            return;
-        }
-        setIsLoggedIn(true);
-        fetchFavoritesSummary();
-    };
-
-    // --- 🟢 기능 2: 찜 목록 요약 가져오기 (기존 로직 유지) ---
-    const fetchFavoritesSummary = async () => {
+    // --- 🟢 기능 2: 찜 목록 요약 가져오기 (메모이제이션 적용) ---
+    const fetchFavoritesSummary = useCallback(async () => {
         try {
             const { authenticatedFetch } = await import("@/lib/authClient");
-            const favorites = await authenticatedFetch<any[]>("/api/users/favorites", { cache: "no-store" });
+            // shouldRedirect를 false로 설정하여 배경 요청 실패가 무한 새로고침을 유발하지 않게 함
+            const favorites = await authenticatedFetch<any[]>("/api/users/favorites", { cache: "no-store" }, false);
             if (favorites) setHasFavorites(Array.isArray(favorites) && favorites.length > 0);
         } catch (e) {
             console.error("Failed to fetch favorites summary", e);
         }
-    };
+    }, []);
+
+    // --- 🟢 기능 1: 로그인 세션 체크 (메모이제이션 적용) ---
+    const checkLoginStatus = useCallback(async () => {
+        const { fetchSession } = await import("@/lib/authClient");
+        const session = await fetchSession();
+        const isAuth = !!session.authenticated;
+
+        setIsLoggedIn(isAuth);
+        if (isAuth) {
+            fetchFavoritesSummary();
+        } else {
+            setHasFavorites(false);
+        }
+    }, [fetchFavoritesSummary]);
 
     // --- 🟢 기능 3: 이벤트 리스너 등록 (Auth, Favorites) ---
     useEffect(() => {
@@ -86,7 +88,7 @@ const Header = () => {
             window.removeEventListener("authLogout", handleAuthChange);
             window.removeEventListener("favoritesChanged", handleFavoritesChanged);
         };
-    }, []);
+    }, [checkLoginStatus, fetchFavoritesSummary]);
 
     // 🟢 메인 페이지 prefetch (성능 최적화)
     useEffect(() => {

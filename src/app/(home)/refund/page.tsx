@@ -215,7 +215,7 @@ export default function RefundPage() {
                 <div className="mt-16 pt-10 border-t border-gray-100 text-[10px] text-gray-400 leading-loose font-medium">
                     <p>상호: (주)두나 (DoNa) | 대표: 오승용 | 사업자번호: 166-10-03081</p>
                     <p>통신판매: 제 2025-충남홍성-0193 호 | 주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                    <p>문의: 12jason@donacouse.com</p>
+                    <p>문의: 12jason@donacourse.com</p>
                 </div>
             </main>
         </div>

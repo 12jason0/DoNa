@@ -217,6 +217,7 @@ const Signup = () => {
                             type="email"
                             required
                             value={formData.email}
+                            autoComplete="username"
                             onChange={handleChange}
                             placeholder="name@example.com"
                             className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium sm:text-sm"
@@ -234,6 +235,7 @@ const Signup = () => {
                             value={formData.password}
                             onChange={handleChange}
                             placeholder="6자 이상 입력해주세요"
+                            autoComplete="current-password"
                             className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium sm:text-sm"
                         />
                     </div>
@@ -249,6 +251,7 @@ const Signup = () => {
                             value={formData.confirmPassword}
                             onChange={handleChange}
                             placeholder="비밀번호 재입력"
+                            autoComplete="current-password"
                             className="appearance-none block w-full px-4 py-3.5 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium sm:text-sm"
                         />
                     </div>

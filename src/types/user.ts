@@ -65,6 +65,7 @@ export interface CompletedCourse {
     imageUrl: string;
     rating: number;
     concept: string;
+    region?: string | null;
     completedAt?: string | null;
 }
 

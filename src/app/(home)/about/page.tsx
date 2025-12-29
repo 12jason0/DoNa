@@ -31,6 +31,7 @@ interface Review {
     rating: number;
     comment: string;
     createdAt: string;
+    imageUrls?: string[];
     user: {
         nickname: string;
         initial: string;
@@ -42,7 +43,7 @@ interface Review {
 }
 
 const AboutPage = () => {
-	const router = useRouter();
+    const router = useRouter();
     const [courseCount, setCourseCount] = useState<number>(0);
     const [courses, setCourses] = useState<Course[]>([]);
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -53,6 +54,10 @@ const AboutPage = () => {
     const [courseTouchStartX, setCourseTouchStartX] = useState<number | null>(null);
     const [courseDeltaX, setCourseDeltaX] = useState(0);
     const [isCourseDragging, setIsCourseDragging] = useState(false);
+    // 리뷰 이미지 미리보기 상태
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [previewImages, setPreviewImages] = useState<string[]>([]);
+    const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
     // 페이지 로드 시 스크롤을 맨 위로
     useEffect(() => {
@@ -99,7 +104,7 @@ const AboutPage = () => {
                         cache: "force-cache",
                         next: { revalidate: 300 }, // 5분 캐시
                     }),
-                    fetch("/api/courses?limit=3", {
+                    fetch("/api/courses?limit=3&grade=FREE", {
                         cache: "force-cache",
                         next: { revalidate: 300 },
                     }),
@@ -362,8 +367,8 @@ const AboutPage = () => {
                                         courses.map((course) => (
                                             <div key={course.id} className="w-full flex-shrink-0">
                                                 <div
-													className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
-													onClick={() => router.push(`/courses/${course.id}`)}
+                                                    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
+                                                    onClick={() => router.push(`/courses/${course.id}`)}
                                                 >
                                                     <div className="h-40 relative">
                                                         <Image
@@ -513,6 +518,31 @@ const AboutPage = () => {
                                                             </div>
                                                         </div>
                                                         <p className="text-gray-600 text-sm">"{review.comment}"</p>
+                                                        {review.imageUrls && review.imageUrls.length > 0 && (
+                                                            <div className="grid grid-cols-3 gap-2 mt-3">
+                                                                {review.imageUrls.map((imageUrl, idx) => (
+                                                                    <div
+                                                                        key={idx}
+                                                                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                        onClick={() => {
+                                                                            setPreviewImages(review.imageUrls || []);
+                                                                            setPreviewImageIndex(idx);
+                                                                            setPreviewImage(imageUrl);
+                                                                        }}
+                                                                    >
+                                                                        <Image
+                                                                            src={imageUrl}
+                                                                            alt={`후기 이미지 ${idx + 1}`}
+                                                                            fill
+                                                                            className="object-cover"
+                                                                            loading="lazy"
+                                                                            quality={75}
+                                                                            sizes="(max-width: 768px) 33vw, 150px"
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -579,22 +609,107 @@ const AboutPage = () => {
                             복잡한 계획 없이, 밀키트처럼 간편하게 완벽한 여행을 경험해보세요.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-							<Link
-								href="/personalized-home"
-								className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
-							>
-								🎯 AI 추천 바로 가기
-							</Link>
-							<Link
-								href="/map"
-								className="bg-purple-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-lg"
-							>
-								🗺️ 지도에서 탐색하기
-							</Link>
+                            <Link
+                                href="/personalized-home"
+                                className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
+                            >
+                                🎯 AI 추천 바로 가기
+                            </Link>
+                            <Link
+                                href="/map"
+                                className="bg-purple-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-lg"
+                            >
+                                🗺️ 지도에서 탐색하기
+                            </Link>
                         </div>
                     </div>
                 </section>
             </main>
+
+            {/* 이미지 미리보기 모달 */}
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
+                    onClick={() => {
+                        setPreviewImage(null);
+                        setPreviewImages([]);
+                        setPreviewImageIndex(0);
+                    }}
+                >
+                    <button
+                        className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 z-10 hover:bg-black/70 transition-colors"
+                        onClick={() => {
+                            setPreviewImage(null);
+                            setPreviewImages([]);
+                            setPreviewImageIndex(0);
+                        }}
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                    {previewImages.length > 1 && (
+                        <>
+                            <button
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 z-10 hover:bg-black/70 transition-colors"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const prevIndex =
+                                        previewImageIndex > 0 ? previewImageIndex - 1 : previewImages.length - 1;
+                                    setPreviewImageIndex(prevIndex);
+                                    setPreviewImage(previewImages[prevIndex]);
+                                }}
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 19l-7-7 7-7"
+                                    />
+                                </svg>
+                            </button>
+                            <button
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 z-10 hover:bg-black/70 transition-colors"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const nextIndex =
+                                        previewImageIndex < previewImages.length - 1 ? previewImageIndex + 1 : 0;
+                                    setPreviewImageIndex(nextIndex);
+                                    setPreviewImage(previewImages[nextIndex]);
+                                }}
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                            </button>
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full z-10">
+                                {previewImageIndex + 1} / {previewImages.length}
+                            </div>
+                        </>
+                    )}
+                    <div
+                        className="relative w-full h-full flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={previewImage}
+                            alt="후기 이미지 미리보기"
+                            className="max-w-full max-h-full object-contain"
+                        />
+                    </div>
+                </div>
+            )}
         </>
     );
 };
