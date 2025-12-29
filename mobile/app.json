@@ -4,7 +4,7 @@
         "slug": "duna",
         "owner": "dona-app",
         "version": "1.0.1",
-        "scheme": "duna",
+        "scheme": ["duna", "kakaoa6c31213198b3d562121ddace8d1b65f"],
         "orientation": "portrait",
         "icon": "./assets/icon.png",
         "userInterfaceStyle": "automatic",
@@ -17,7 +17,7 @@
         "ios": {
             "supportsTablet": false,
             "bundleIdentifier": "kr.io.dona.dona",
-            "buildNumber": "6",
+            "buildNumber": "13",
             "usesAppleSignIn": true,
             "associatedDomains": ["applinks:dona.io.kr"],
             "infoPlist": {
@@ -38,7 +38,21 @@
                 "backgroundColor": "#ffffff"
             },
             "package": "kr.io.dona.dona",
-            "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "FOREGROUND_SERVICE"]
+            "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "FOREGROUND_SERVICE"],
+            "intentFilters": [
+                {
+                    "action": "VIEW",
+                    "autoVerify": true,
+                    "data": [
+                        {
+                            "scheme": "https",
+                            "host": "dona.io.kr",
+                            "pathPrefix": "/"
+                        }
+                    ],
+                    "category": ["BROWSABLE", "DEFAULT"]
+                }
+            ]
         },
         "web": {
             "favicon": "./assets/favicon.png",
