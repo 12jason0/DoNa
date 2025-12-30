@@ -115,7 +115,7 @@ export default function Home() {
             ]);
 
             // 🟢 업데이트를 프레임 단위로 나누어 메인 스레드 점유 방지 (더 세밀하게 분산)
-            if (profileRes.status === "fulfilled" && profileRes.value.data) {
+            if (profileRes.status === "fulfilled" && profileRes.value.response.ok && profileRes.value.data) {
                 requestAnimationFrame(() => {
                     const p = profileRes.value.data as any;
                     setUserName(p?.user?.nickname ?? p?.nickname ?? "두나");
@@ -131,7 +131,8 @@ export default function Home() {
                 });
             }
 
-            if (checkinRes.status === "fulfilled" && checkinRes.value.data) {
+            // 🟢 출석 정보 업데이트: response.ok 확인 추가 (로컬 로그인 지원)
+            if (checkinRes.status === "fulfilled" && checkinRes.value.response.ok && checkinRes.value.data) {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         const c = checkinRes.value.data as any;
@@ -147,7 +148,8 @@ export default function Home() {
                 });
             }
 
-            if (preferencesRes.status === "fulfilled" && preferencesRes.value.data) {
+            // 🟢 온보딩 완료 여부 확인: response.ok 확인 추가 (로컬 로그인 지원)
+            if (preferencesRes.status === "fulfilled" && preferencesRes.value.response.ok && preferencesRes.value.data) {
                 setTimeout(() => {
                     requestAnimationFrame(() => {
                         const prefs = preferencesRes.value.data as any;
@@ -161,7 +163,7 @@ export default function Home() {
                         setIsOnboardingComplete(hasServerData || localStorage.getItem("onboardingComplete") === "1");
                     });
                 }, 150);
-            } else if (preferencesRes.status === "rejected" || !preferencesRes.value?.data) {
+            } else if (preferencesRes.status === "rejected" || !preferencesRes.value?.response.ok || !preferencesRes.value?.data) {
                 // 🟢 API 호출 실패 시 비로그인 상태로 간주하여 온보딩 섹션 표시
                 requestAnimationFrame(() => {
                     setIsOnboardingComplete(false);

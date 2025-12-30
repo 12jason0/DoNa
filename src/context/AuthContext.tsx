@@ -27,6 +27,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth(); // 🟢 앱 로드 시 최초 1회만 실행하여 서버 부하 감소
     }, []);
 
+    // 🟢 로그인 성공 이벤트 리스너 추가 (로컬 로그인 지원)
+    useEffect(() => {
+        const handleAuthLoginSuccess = () => {
+            checkAuth();
+        };
+
+        const handleAuthLogout = () => {
+            setUser(null);
+            setIsLoading(false);
+        };
+
+        window.addEventListener("authLoginSuccess", handleAuthLoginSuccess);
+        window.addEventListener("authLogout", handleAuthLogout);
+
+        return () => {
+            window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
+            window.removeEventListener("authLogout", handleAuthLogout);
+        };
+    }, []);
+
     return (
         <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, refresh: checkAuth }}>
             {children}
