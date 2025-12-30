@@ -113,12 +113,20 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ✅ 일반 결제용 시크릿 키 (환경변수에서 로드)
-        // ⚠️ 중요: 프론트엔드에서 일반 결제 클라이언트 키를 사용하면 백엔드도 일반 결제 시크릿 키를 사용해야 합니다!
-        const secretKey = process.env.TOSS_SECRET_KEY_GENERAL;
+        // 🟢 결제 타입에 따라 시크릿 키 분리 (MID 불일치 방지)
+        // 일반 결제(쿠폰): TOSS_SECRET_KEY_GENERAL (donaudy2at MID)
+        // 구독 결제: TOSS_SECRET_KEY_BILLING (bill_donaoc44v MID)
+        // ⚠️ 중요: 프론트엔드에서 사용한 클라이언트 키와 백엔드 시크릿 키의 MID가 일치해야 합니다!
+        const isSubscription = planInfo.type === "SUBSCRIPTION";
+        const secretKey = isSubscription ? process.env.TOSS_SECRET_KEY_BILLING : process.env.TOSS_SECRET_KEY_GENERAL;
+
         if (!secretKey) {
             return NextResponse.json(
-                { success: false, error: "MISSING_SECRET_KEY", message: "결제 시크릿 키가 설정되지 않았습니다." },
+                {
+                    success: false,
+                    error: "MISSING_SECRET_KEY",
+                    message: `${isSubscription ? "구독" : "일반"} 결제 시크릿 키가 설정되지 않았습니다.`,
+                },
                 { status: 500 }
             );
         }

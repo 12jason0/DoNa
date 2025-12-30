@@ -53,6 +53,8 @@ const SliderItemComponent = memo(
                             // 🟢 [성능 최적화] 브라우저가 미리 공간을 계산하여 렉(Layout Shift)을 방지합니다
                             sizes="(max-width: 768px) 100vw, 400px"
                             fetchPriority={isFirstVisible ? "high" : "low"}
+                            // 🟢 [모바일 최적화] WebP 형식 자동 변환 및 이미지 최적화 (Next.js Image 자동 처리)
+                            unoptimized={false}
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">

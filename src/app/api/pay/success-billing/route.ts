@@ -55,14 +55,32 @@ export async function GET(req: NextRequest) {
         const data = await response.json();
 
         if (!response.ok) {
-            console.error("[빌링키 발급 실패]", data);
+            // 🟢 디버깅을 위한 상세 로그 (개발 환경에서만)
+            console.error("[빌링키 발급 실패]", {
+                status: response.status,
+                statusText: response.statusText,
+                error: data,
+                secretKeyPrefix: secretKey?.substring(0, 10) + "...", // 시크릿 키 일부만 로그 (보안)
+                hasSecretKey: !!secretKey,
+            });
+
+            // 🟢 토스 API 에러 메시지가 있으면 그대로 전달, 없으면 기본 메시지
+            const errorMessage = data.message || data.error || "빌링키 발급에 실패했습니다.";
+
             return NextResponse.json(
                 {
                     success: false,
                     error: "billing_key_failed",
-                    message: data.message || "빌링키 발급에 실패했습니다.",
+                    message: errorMessage,
+                    // 🟢 개발 환경에서만 상세 정보 포함
+                    ...(process.env.NODE_ENV === "development" && {
+                        debug: {
+                            status: response.status,
+                            code: data.code,
+                        },
+                    }),
                 },
-                { status: 400 }
+                { status: response.status || 400 }
             );
         }
 

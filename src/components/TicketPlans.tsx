@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadTossPayments } from "@tosspayments/payment-sdk";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { X, Check, Sparkles, ChevronRight } from "lucide-react";
 
 const PLANS = [
@@ -42,30 +42,28 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
             try {
                 // 🟢 쿠키 기반 인증: authenticatedFetch 사용
                 const { authenticatedFetch } = await import("@/lib/authClient");
-                const data = await authenticatedFetch("/api/users/profile");
-                
+                // 🟢 타입 명시: authenticatedFetch는 이미 파싱된 데이터를 반환
+                const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
+
                 if (!data) {
                     setCurrentTier("FREE");
                     return;
                 }
 
-                const response = { ok: true, json: async () => data };
+                // 🟢 authenticatedFetch는 이미 파싱된 데이터를 반환하므로 직접 사용
+                const tier = data?.user?.subscriptionTier || "FREE";
+                setCurrentTier(tier as "FREE" | "BASIC" | "PREMIUM");
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const tier = data?.user?.subscriptionTier || "FREE";
-                    setCurrentTier(tier as "FREE" | "BASIC" | "PREMIUM");
-
-                    // 🟢 현재 등급이 BASIC 이상이면 첫 번째 티켓 플랜을 기본 선택으로 변경
-                    if (tier !== "FREE" && selectedPlanId.startsWith("sub_")) {
-                        const firstTicket = PLANS.find((p) => p.type === "ticket");
-                        if (firstTicket) {
-                            setSelectedPlanId(firstTicket.id);
-                        }
+                // 🟢 현재 등급이 BASIC 이상이면 첫 번째 티켓 플랜을 기본 선택으로 변경
+                if (tier !== "FREE" && selectedPlanId.startsWith("sub_")) {
+                    const firstTicket = PLANS.find((p) => p.type === "ticket");
+                    if (firstTicket) {
+                        setSelectedPlanId(firstTicket.id);
                     }
                 }
             } catch (error) {
                 console.error("사용자 등급 조회 실패:", error);
+                setCurrentTier("FREE");
             }
         };
 
@@ -75,10 +73,14 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
 
     const getClientKey = () => {
-        if (!selectedPlan) return process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
-        return selectedPlan.type === "sub"
-            ? process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_BILLING || "test_ck_LkKEYpNARWYWGqeQEZGL3lmeaxYG"
-            : process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
+        // 🟢 라이브 API 개별 연동 키 (fallback 값)
+        // 일반 결제(쿠폰): live_ck_ma60RZ... (API 개별 연동용)
+        const generalKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "live_ck_ma60RZblrq7ARpNEZDe3wzYWBn1";
+        // 빌링 결제(구독): live_ck_oEjb0g... (빌링 전용)
+        const billingKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_BILLING || "live_ck_oEjb0gm23PEoPPGwgR9kVpGwBJn5";
+
+        if (!selectedPlan) return generalKey;
+        return selectedPlan.type === "sub" ? billingKey : generalKey;
     };
 
     const handlePayment = async () => {
@@ -98,40 +100,73 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
         setLoading(true);
 
         try {
-            const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-            const user = userStr ? JSON.parse(userStr) : null;
-            const userId = user?.id || user?.user?.id || null;
+            // 🟢 쿠키 기반 인증 확인 (localStorage 대신)
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
 
-            if (!userId) {
+            if (!session.authenticated || !session.user) {
                 alert("로그인이 필요합니다.");
                 setLoading(false);
                 return;
             }
 
+            const userId = session.user.id;
+
+            // 🟢 클라이언트 키 가져오기 (환경변수 또는 fallback)
             const currentClientKey = getClientKey();
+
+            // 🟢 디버깅: 클라이언트 키 확인 (개발 환경에서만)
+            if (process.env.NODE_ENV === "development") {
+                console.log("[결제] 사용할 클라이언트 키:", {
+                    key: currentClientKey?.substring(0, 20) + "...",
+                    planType: selectedPlan.type,
+                    planId: selectedPlan.id,
+                });
+            }
+
+            // 🟢 토스 SDK 로드 (v2 SDK 사용)
             const tossPayments = await loadTossPayments(currentClientKey);
+            const customerKey = `user_${userId}`;
 
             if (selectedPlan.type === "sub") {
-                const customerKey = `user_${userId}`;
+                // 🟢 구독/빌링 결제: requestBillingAuth 사용
                 const planId = selectedPlan.id;
-                await tossPayments.requestBillingAuth("카드", {
-                    customerKey: customerKey,
+                const payment = tossPayments.payment({ customerKey });
+                await payment.requestBillingAuth({
+                    method: "CARD",
                     successUrl: `${window.location.origin}/pay/success-billing?customerKey=${customerKey}&planId=${planId}`,
                     failUrl: `${window.location.origin}/personalized-home/pay/fail`,
                 });
             } else {
+                // 🟢 일반 결제(쿠폰): requestPayment 사용
                 const orderId = `order_${selectedPlan.id}_${Date.now()}`;
-                await tossPayments.requestPayment("카드", {
-                    amount: selectedPlan.price,
+                const payment = tossPayments.payment({ customerKey });
+                await payment.requestPayment({
+                    method: "CARD",
+                    amount: {
+                        currency: "KRW",
+                        value: selectedPlan.price,
+                    },
                     orderId: orderId,
                     orderName: selectedPlan.name,
                     successUrl: `${window.location.origin}/personalized-home/pay/success?plan=${selectedPlan.id}`,
                     failUrl: `${window.location.origin}/personalized-home/pay/fail`,
                 });
             }
-        } catch (error) {
-            console.error("결제창 에러", error);
-            alert("다시 시도해주세요.");
+        } catch (error: any) {
+            // 🟢 상세 에러 로깅 (디버깅용)
+            console.error("[결제창 에러] 상세 정보:", {
+                error: error,
+                message: error?.message,
+                code: error?.code,
+                planType: selectedPlan?.type,
+                planId: selectedPlan?.id,
+                clientKey: getClientKey()?.substring(0, 20) + "...",
+            });
+
+            // 🟢 사용자 친화적 에러 메시지
+            const errorMessage = error?.message || "결제창을 불러오는 중 오류가 발생했습니다.";
+            alert(errorMessage);
         } finally {
             setLoading(false);
         }

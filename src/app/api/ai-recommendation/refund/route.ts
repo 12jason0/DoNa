@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         const cookieStore = await cookies();
         const token = cookieStore.get("auth")?.value;
         if (!token) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-        
+
         let userId: string;
         try {
             userId = verifyJwtAndGetUserId(token);
@@ -74,14 +74,17 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. 토스페이먼츠 환불 요청
-        // 🟢 환불은 일반 결제와 빌링 결제 모두 가능하므로, paymentKey의 접두사로 판단
-        // 일반 결제: live_gsk_... 또는 test_sk_... (일반 결제 시크릿 키 사용)
-        // 빌링 결제: live_sk_... 또는 test_sk_... (빌링 시크릿 키 사용)
-        // 우선 일반 결제 시크릿 키를 사용하고, 필요시 빌링 키로 fallback
-        const secretKey = process.env.TOSS_SECRET_KEY_GENERAL || process.env.TOSS_SECRET_KEY_BILLING;
+        // 🟢 환불은 일반 결제와 빌링 결제 모두 가능하므로, orderName으로 결제 타입 판단
+        // 일반 결제(쿠폰): orderName에 "쿠폰" 포함 → TOSS_SECRET_KEY_GENERAL (donaudy2at MID)
+        // 빌링 결제(구독): orderName에 "구독" 또는 "멤버십" 포함 → TOSS_SECRET_KEY_BILLING (bill_donaoc44v MID)
+        const isBillingPayment = payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
+        const secretKey = isBillingPayment ? process.env.TOSS_SECRET_KEY_BILLING : process.env.TOSS_SECRET_KEY_GENERAL;
+
         if (!secretKey) {
             return NextResponse.json(
-                { error: "환불 시크릿 키가 설정되지 않았습니다." },
+                {
+                    error: `환불 시크릿 키가 설정되지 않았습니다. (${isBillingPayment ? "빌링" : "일반"} 결제)`,
+                },
                 { status: 500 }
             );
         }

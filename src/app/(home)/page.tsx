@@ -99,6 +99,7 @@ export default function Home() {
     const [userId, setUserId] = useState<number | null>(null);
     const [userName, setUserName] = useState<string>("");
     const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
+    const [isCheckinLoading, setIsCheckinLoading] = useState<boolean>(true); // 🟢 출석 현황 로딩 상태
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -144,8 +145,12 @@ export default function Home() {
                         if (typeof c.todayChecked === "boolean") {
                             setAlreadyToday(c.todayChecked);
                         }
+                        setIsCheckinLoading(false); // 🟢 로딩 완료
                     });
                 });
+            } else {
+                // 🟢 API 호출 실패 시에도 로딩 상태 해제
+                setIsCheckinLoading(false);
             }
 
             // 🟢 온보딩 완료 여부 확인: response.ok 확인 추가 (로컬 로그인 지원)
@@ -189,13 +194,17 @@ export default function Home() {
 
     // 🟢 [Phase 2]: 사용자 데이터 로드 (400ms 지연 - 메인 코스 로드와 분리)
     useEffect(() => {
-        if (isAuthLoading) return;
+        if (isAuthLoading) {
+            setIsCheckinLoading(true); // 🟢 인증 로딩 중일 때는 출석 현황도 로딩 중
+            return;
+        }
 
         const timer = setTimeout(() => {
             // 🟢 상태 업데이트를 프레임 단위로 분산
             requestAnimationFrame(() => {
                 if (isAuthenticated && user) {
                     setUserId(Number(user.id));
+                    setIsCheckinLoading(true); // 🟢 사용자 데이터 로드 시작
                     // loadUserData는 내부에서 이미 분산 처리됨
                     loadUserData();
                 } else {
@@ -205,6 +214,7 @@ export default function Home() {
                         setUserName("");
                         setStreak(0);
                         setIsOnboardingComplete(false);
+                        setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
                     });
                 }
             });
@@ -400,24 +410,31 @@ export default function Home() {
 
                 <section className="py-6 px-4">
                     <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl">
+                        <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl flex-shrink-0">
                                 🌱
                             </div>
-                            <div>
+                            <div className="flex-1 min-w-0">
                                 <div className="text-sm text-gray-600 font-medium">출석 현황</div>
-                                <div className="text-base font-bold text-gray-900">
-                                    {userId
-                                        ? streak >= 5
-                                            ? `🔥 ${streak}일 연속!`
-                                            : `${streak}일 연속 출석 중`
-                                        : "로그인하고 도장을 찍어보세요!"}
-                                </div>
+                                {isCheckinLoading && isAuthenticated ? (
+                                    // 🟢 스켈레톤 UI (로딩 중)
+                                    <div className="mt-1 space-y-1">
+                                        <div className="h-5 bg-gray-200 rounded animate-pulse w-32"></div>
+                                    </div>
+                                ) : (
+                                    <div className="text-base font-bold text-gray-900">
+                                        {userId
+                                            ? streak >= 5
+                                                ? `🔥 ${streak}일 연속!`
+                                                : `${streak}일 연속 출석 중`
+                                            : "로그인하고 도장을 찍어보세요!"}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <button
                             onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
-                            className="w-10 h-10 bg-white border border-emerald-200 rounded-full flex items-center justify-center shadow-sm"
+                            className="w-10 h-10 bg-white border border-emerald-200 rounded-full flex items-center justify-center shadow-sm flex-shrink-0"
                         >
                             🔔
                         </button>

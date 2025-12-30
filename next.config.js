@@ -64,6 +64,7 @@ const nextConfig = {
                                 "https://ssl.pstatic.net",
                                 "https://cdn.jsdelivr.net",
                                 "https://*.tosspayments.com",
+                                "https://r2cdn.perplexity.ai", // 🟢 Perplexity 폰트 허용
                             ].join(" ");
 
                             // 3. API 및 소켓 연결 허용
@@ -75,6 +76,7 @@ const nextConfig = {
                                 "https://dona.io.kr",
                                 "https://*.pusher.com",
                                 "wss://*.pusher.com",
+                                "https://*.tosspayments.com",
                                 "https://www.google-analytics.com",
                                 "https://region1.google-analytics.com",
                                 "https://analytics.google.com", // 👈 추가
