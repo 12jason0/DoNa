@@ -38,6 +38,10 @@
                 "backgroundColor": "#ffffff"
             },
             "package": "kr.io.dona.dona",
+            "versionCode": 1,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
             "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "FOREGROUND_SERVICE"],
             "intentFilters": [
                 {
