@@ -3,7 +3,7 @@
         "name": "두나(DoNa)",
         "slug": "duna",
         "owner": "dona-app",
-        "version": "1.0.1",
+        "version": "1.0.12",
         "scheme": ["duna", "kakaoa6c31213198b3d562121ddace8d1b65f"],
         "orientation": "portrait",
         "icon": "./assets/icon.png",
@@ -38,7 +38,7 @@
                 "backgroundColor": "#ffffff"
             },
             "package": "kr.io.dona.dona",
-            "versionCode": 1,
+            "versionCode": 12,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "minSdkVersion": 24,
@@ -70,6 +70,14 @@
                 "@react-native-kakao/core",
                 {
                     "nativeAppKey": "a6c31213198b3d562121ddace8d1b65f"
+                }
+            ],
+            [
+                "expo-build-properties",
+                {
+                    "android": {
+                        "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+                    }
                 }
             ]
         ],
