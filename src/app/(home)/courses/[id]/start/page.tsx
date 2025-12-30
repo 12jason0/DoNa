@@ -204,9 +204,9 @@ function GuidePageInner() {
 
                 // 🟢 다음 프레임에서 상태 업데이트하여 렌더링 부하 분산
                 requestAnimationFrame(() => {
-                    setCourse({
-                        ...data,
-                        coursePlaces: sortedPlaces,
+                setCourse({
+                    ...data,
+                    coursePlaces: sortedPlaces,
                     });
                     setLoading(false);
                 });

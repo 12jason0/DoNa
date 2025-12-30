@@ -12,12 +12,13 @@ export type WeekStampsResult = {
 
 export async function fetchWeekStamps(): Promise<WeekStampsResult | null> {
     try {
+        // 🟢 쿠키 기반 인증: localStorage 토큰은 선택사항 (소셜 로그인 호환성 유지)
         const token = localStorage.getItem("authToken");
         const headers: Record<string, string> = {};
         if (token) headers.Authorization = `Bearer ${token}`;
         const res = await fetch("/api/users/checkins", {
             cache: "no-store",
-            credentials: "include",
+            credentials: "include", // 🟢 쿠키 자동 전송 (로컬 로그인 지원)
             headers,
         });
         if (!res.ok) return null;
@@ -48,11 +49,14 @@ export async function postCheckin(): Promise<{
     todayIndex?: number | null;
 }> {
     try {
+        // 🟢 쿠키 기반 인증: localStorage 토큰은 선택사항 (소셜 로그인 호환성 유지)
         const token = localStorage.getItem("authToken");
+        const headers: Record<string, string> = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
         const res = await fetch("/api/users/checkins", {
             method: "POST",
-            credentials: "include",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            credentials: "include", // 🟢 쿠키 자동 전송 (로컬 로그인 지원)
+            headers,
         });
         const data = await res.json().catch(() => ({}));
         return {

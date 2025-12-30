@@ -10,6 +10,20 @@ const KMA_API_KEY = PUBLIC_DATA_API_KEY;
 const AIRKOREA_API_KEY = PUBLIC_DATA_API_KEY;
 
 // ---------------------------------------------
+// [온보딩 UI 텍스트 → 행정구역명 매핑]
+// ---------------------------------------------
+const regionMapping: Record<string, string> = {
+    "성수 · 건대": "성동구",
+    "홍대 · 연남 · 신촌": "마포구",
+    "종로 · 북촌 · 서촌": "종로구",
+    "을지로 (힙지로)": "중구",
+    "강남 · 압구정 · 신사": "강남구",
+    "한남 · 이태원 · 용산": "용산구",
+    "잠실 · 송파": "송파구",
+    "여의도 · 영등포": "영등포구",
+};
+
+// ---------------------------------------------
 // [날씨 및 점수 계산 헬퍼 함수 - 기존 로직 100% 동일]
 // ---------------------------------------------
 
@@ -317,16 +331,23 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ recommendations: popular });
         }
 
+        // 🟢 날씨 정보 조회: regionToday가 없으면 온보딩에서 저장한 첫 번째 지역 사용
         let weatherToday = "";
-        if (regionToday) {
+        const rawRegion = regionToday || (longTermPrefs.regions?.[0] || "");
+        if (rawRegion) {
+            // UI 텍스트를 행정구역명으로 매핑 (온보딩 선택지 → 구 단위)
+            const searchKeyword = regionMapping[rawRegion] || rawRegion;
+            
             const sidoName =
-                (regionToday.split(" ")[0] || "").replace(/시|도$/g, "") === "서울"
+                (searchKeyword.split(" ")[0] || "").replace(/시|도$/g, "") === "서울"
                     ? "서울특별시"
-                    : regionToday.split(" ")[0];
+                    : searchKeyword.split(" ")[0];
+            
             const gridData = await prisma.gridCode.findFirst({
-                where: { region_name: { contains: regionToday } },
+                where: { region_name: { contains: searchKeyword } },
                 select: { nx: true, ny: true },
             });
+            
             const [kma, air] = await Promise.all([
                 gridData ? fetchWeatherAndCache(gridData.nx, gridData.ny) : Promise.resolve(null),
                 fetchAirQualityStatus(sidoName),
