@@ -75,10 +75,10 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
 
     const getClientKey = () => {
-        if (!selectedPlan) return "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
+        if (!selectedPlan) return process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
         return selectedPlan.type === "sub"
-            ? "test_ck_LkKEYpNARWYWGqeQEZGL3lmeaxYG"
-            : "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
+            ? process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_BILLING || "test_ck_LkKEYpNARWYWGqeQEZGL3lmeaxYG"
+            : process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "test_ck_QbgMGZzorz4ojKx7pm5k3l5E1em4";
     };
 
     const handlePayment = async () => {

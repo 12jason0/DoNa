@@ -74,7 +74,17 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. 토스페이먼츠 환불 요청
-        const secretKey = process.env.TOSS_SECRET_KEY || "test_sk_kYG57Eba3GPBnNXMe5d5VpWDOxmA";
+        // 🟢 환불은 일반 결제와 빌링 결제 모두 가능하므로, paymentKey의 접두사로 판단
+        // 일반 결제: live_gsk_... 또는 test_sk_... (일반 결제 시크릿 키 사용)
+        // 빌링 결제: live_sk_... 또는 test_sk_... (빌링 시크릿 키 사용)
+        // 우선 일반 결제 시크릿 키를 사용하고, 필요시 빌링 키로 fallback
+        const secretKey = process.env.TOSS_SECRET_KEY_GENERAL || process.env.TOSS_SECRET_KEY_BILLING;
+        if (!secretKey) {
+            return NextResponse.json(
+                { error: "환불 시크릿 키가 설정되지 않았습니다." },
+                { status: 500 }
+            );
+        }
         const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
 
         const tossRes = await fetch(`https://api.tosspayments.com/v1/payments/${payment.paymentKey}/cancel`, {

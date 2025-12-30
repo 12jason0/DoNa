@@ -33,8 +33,14 @@ export async function GET(req: NextRequest) {
         const targetTier = planId === "sub_premium" ? "PREMIUM" : planId === "sub_basic" ? "BASIC" : "BASIC"; // 기본값 BASIC
 
         // 3. 토스 API에 authKey를 보내서 '빌링키' 발급 요청
-        // 보안을 위해 실제 서비스 시에는 process.env.TOSS_SECRET_KEY 등을 사용하세요.
-        const secretKey = "test_sk_kYG57Eba3GPBnNXMe5d5VpWDOxmA";
+        // 🟢 빌링/구독 결제용 시크릿 키 (환경변수에서 로드)
+        const secretKey = process.env.TOSS_SECRET_KEY_BILLING;
+        if (!secretKey) {
+            return NextResponse.json(
+                { success: false, error: "MISSING_SECRET_KEY", message: "빌링 시크릿 키가 설정되지 않았습니다." },
+                { status: 500 }
+            );
+        }
         const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
 
         const response = await fetch("https://api.tosspayments.com/v1/billing/authorizations/issue", {

@@ -113,9 +113,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ✅ API 개별 연동 키 사용: test_sk_... (API 개별 연동용 시크릿 키)
-        // ⚠️ 중요: 프론트엔드에서 test_ck_...를 사용하면 백엔드도 test_sk_...를 사용해야 합니다!
-        const secretKey = "test_sk_5OWRapdA8djee7eMOeQAVo1zEqZK";
+        // ✅ 일반 결제용 시크릿 키 (환경변수에서 로드)
+        // ⚠️ 중요: 프론트엔드에서 일반 결제 클라이언트 키를 사용하면 백엔드도 일반 결제 시크릿 키를 사용해야 합니다!
+        const secretKey = process.env.TOSS_SECRET_KEY_GENERAL;
+        if (!secretKey) {
+            return NextResponse.json(
+                { success: false, error: "MISSING_SECRET_KEY", message: "결제 시크릿 키가 설정되지 않았습니다." },
+                { status: 500 }
+            );
+        }
 
         const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
         const res = await fetch("https://api.tosspayments.com/v1/payments/confirm", {

@@ -115,7 +115,11 @@ async function processSubscriptionRenewal(userId: number, billingKey: string, cu
             ? { amount: 9900, name: "프리미엄 멤버십", tier: "PREMIUM" }
             : { amount: 4900, name: "베이직 멤버십", tier: "BASIC" };
 
-    const secretKey = process.env.TOSS_SECRET_KEY || "test_sk_kYG57Eba3GPBnNXMe5d5VpWDOxmA";
+    // 🟢 빌링/구독 결제용 시크릿 키 (환경변수에서 로드)
+    const secretKey = process.env.TOSS_SECRET_KEY_BILLING;
+    if (!secretKey) {
+        throw new Error("빌링 시크릿 키가 설정되지 않았습니다. TOSS_SECRET_KEY_BILLING 환경변수를 확인하세요.");
+    }
     const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
 
     const orderId = `renew_${currentTier.toLowerCase()}_${userId}_${Date.now()}`;
