@@ -320,15 +320,21 @@ export default function CourseDetailClient({
 
     // 🟢 서버에서 계산된 isLocked가 true라면 페이지 콘텐츠를 숨기고 모달만 표시
     useEffect(() => {
+        // 🟢 인증 상태 로딩 중이면 모달 표시 안 함
+        if (authLoading) return;
+
         if (courseData.isLocked) {
-            // 🟢 즉시 모달 표시 (페이지 콘텐츠는 이미 렌더링되지만 모달이 덮음)
+            // 🟢 비로그인 유저 → 로그인 모달만 표시
             if (!isAuthenticated) {
                 setShowLoginModal(true);
+                setShowSubscriptionModal(false); // 🟢 다른 모달 닫기
             } else {
+                // 🟢 로그인 유저 → TicketPlans만 표시
                 setShowSubscriptionModal(true);
+                setShowLoginModal(false); // 🟢 다른 모달 닫기
             }
         }
-    }, [courseData.isLocked, isAuthenticated]);
+    }, [courseData.isLocked, isAuthenticated, authLoading]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -1219,11 +1225,21 @@ export default function CourseDetailClient({
                 <TicketPlans
                     onClose={() => {
                         setShowSubscriptionModal(false);
-                        // 🟢 잠금된 코스에서 모달을 닫으면 즉시 이전 페이지로 이동
+                        // 🟢 잠금된 코스에서 모달을 닫으면 이전 페이지로 이동
                         if (courseData.isLocked) {
                             // 약간의 지연을 두어 모달이 완전히 닫힌 후 이동
                             setTimeout(() => {
-                                router.back();
+                                // 🟢 직접 URL 접근인지 확인 (document.referrer가 없거나 같은 페이지면 직접 접근)
+                                const referrer = typeof window !== "undefined" ? document.referrer : "";
+                                const isDirectAccess = !referrer || referrer.includes(window.location.href);
+
+                                if (isDirectAccess) {
+                                    // 직접 접근 시 홈으로 이동
+                                    router.push("/");
+                                } else {
+                                    // 이전 페이지가 있으면 뒤로 가기
+                                    router.back();
+                                }
                             }, 100);
                         }
                     }}
@@ -1233,11 +1249,21 @@ export default function CourseDetailClient({
                 <LoginModal
                     onClose={() => {
                         setShowLoginModal(false);
-                        // 🟢 잠금된 코스에서 모달을 닫으면 즉시 이전 페이지로 이동
+                        // 🟢 잠금된 코스에서 모달을 닫으면 이전 페이지로 이동
                         if (courseData.isLocked) {
                             // 약간의 지연을 두어 모달이 완전히 닫힌 후 이동
                             setTimeout(() => {
-                                router.back();
+                                // 🟢 직접 URL 접근인지 확인 (document.referrer가 없거나 같은 페이지면 직접 접근)
+                                const referrer = typeof window !== "undefined" ? document.referrer : "";
+                                const isDirectAccess = !referrer || referrer.includes(window.location.href);
+
+                                if (isDirectAccess) {
+                                    // 직접 접근 시 홈으로 이동
+                                    router.push("/");
+                                } else {
+                                    // 이전 페이지가 있으면 뒤로 가기
+                                    router.back();
+                                }
                             }, 100);
                         }
                     }}
