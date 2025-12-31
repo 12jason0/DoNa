@@ -49,7 +49,7 @@ const SliderItemComponent = memo(
                             loading={isFirstVisible ? "eager" : shouldLoadEager ? "eager" : "lazy"}
                             // 🟢 [500 에러 해결] 서버 연산 시간을 단축하기 위해 품질을 최적화된 범위(60, 50)로 조정합니다
                             // next.config.js의 qualities 설정과 일치해야 합니다.
-                            quality={isFirstVisible ? 60 : 50}
+                            quality={isFirstVisible ? 70 : 55}
                             // 🟢 [성능 최적화] 브라우저가 미리 공간을 계산하여 렉(Layout Shift)을 방지합니다
                             sizes="(max-width: 768px) 100vw, 400px"
                             fetchPriority={isFirstVisible ? "high" : "low"}

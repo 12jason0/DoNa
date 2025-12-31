@@ -35,8 +35,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="ko" className={lineSeed.variable}>
+        <html lang="ko" className={lineSeed.variable} suppressHydrationWarning>
             <body className={`${lineSeed.className} font-sans antialiased`}>
+                {/* 🟢 웹뷰 앱 캐시 문제 해결: 빌드 버전 메타 태그 */}
+                <Script
+                    id="build-version"
+                    strategy="beforeInteractive"
+                    dangerouslySetInnerHTML={{
+                        __html: `document.documentElement.setAttribute('data-build-version', '${
+                            process.env.NEXT_PUBLIC_BUILD_VERSION || Date.now()
+                        }');`,
+                    }}
+                />
                 <Providers>{children}</Providers>
 
                 {/* 🟢 [Kakao SDK]: 공유하기 기능을 위해 추가 - 초기화는 각 컴포넌트에서 처리 */}

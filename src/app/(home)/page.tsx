@@ -319,7 +319,7 @@ export default function Home() {
         return () => clearTimeout(modalTimer);
     }, [isAuthenticated, isAuthLoading, maybeOpenCheckinModal]);
 
-    // 🟢 [Phase 1]: 시각적 최우선 순위 - Hero 데이터 (0ms - 즉시 실행)
+    // 🟢 [Phase 1]: 시각적 최우선 순위 - Hero 데이터 (즉시 실행, 최적화)
     // Hero 데이터만 먼저 로드하여 LCP 속도 확보
     useEffect(() => {
         const fetchHeroData = async () => {
@@ -335,13 +335,11 @@ export default function Home() {
                     const selected: any[] = [];
                     const startIndex = threeDayEpoch % count;
                     for (let i = 0; i < Math.min(5, count); i++) selected.push(list[(startIndex + i) % count]);
-                    // 🟢 상태 업데이트를 다음 프레임으로 분산
-                    requestAnimationFrame(() => {
-                        setHeroCourses(selected);
-                    });
+                    // 🟢 [Performance]: requestAnimationFrame 제거하여 즉시 렌더링 (HeroSlider 빠른 표시)
+                    setHeroCourses(selected);
                 }
             } catch (error) {
-                console.error("Hero data load failed", error);
+                // 에러는 조용히 처리 (사용자 경험 방해 최소화)
             }
         };
         fetchHeroData();

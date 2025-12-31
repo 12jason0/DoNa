@@ -220,9 +220,9 @@ const ToastPopup = ({
     const IconComponent = { success: Icons.ToastSuccess, error: Icons.ToastError, info: Icons.ToastInfo }[type];
     return (
         <div
-            className={`fixed bottom-28 left-1/2 -translate-x-1/2 ${bgColor} backdrop-blur-md text-white pl-5 pr-6 py-3.5 rounded-full shadow-lg z-[9999] animate-slide-up-mobile flex items-center gap-3 border border-white/10`}
+            className={`fixed bottom-28 left-1/2 -translate-x-1/2 ${bgColor} backdrop-blur-md text-white pl-5 pr-6 py-3.5 rounded-full shadow-lg z-9999 animate-slide-up-mobile flex items-center gap-3 border border-white/10`}
         >
-            <div className={`flex-shrink-0 ${type === "success" ? "text-emerald-400" : "text-white/90"}`}>
+            <div className={`shrink-0 ${type === "success" ? "text-emerald-400" : "text-white/90"}`}>
                 <IconComponent className="w-5 h-5" />
             </div>
             <span className="font-medium text-[15px] tracking-tight pt-0.5">{message}</span>
@@ -405,6 +405,18 @@ export default function CourseDetailClient({
             setSelectedPlace(sortedCoursePlaces[0].place);
         }
     }, [sortedCoursePlaces, selectedPlace]);
+
+    // 🟢 모달이 열릴 때 이미지 미리 로드 (즉시 표시를 위해)
+    useEffect(() => {
+        if (showPlaceModal && selectedPlace?.imageUrl) {
+            // 이미지 preload
+            const link = document.createElement("link");
+            link.rel = "preload";
+            link.as = "image";
+            link.href = selectedPlace.imageUrl;
+            document.head.appendChild(link);
+        }
+    }, [showPlaceModal, selectedPlace?.imageUrl]);
 
     const handleMapPlaceClick = useCallback(
         (mapPlace: MapPlace) => {
@@ -607,7 +619,7 @@ export default function CourseDetailClient({
                         loading="eager"
                         quality={75}
                         fetchPriority="high"
-                        sizes="100vw"
+                        sizes="(max-width: 768px) 100vw, 33vw"
                         unoptimized={false}
                     />
                     <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
@@ -711,8 +723,23 @@ export default function CourseDetailClient({
                                     <div key={coursePlace.id} className="relative">
                                         <div
                                             onClick={() => {
+                                                // 🟢 모달 이미지 미리 로드 (즉시 표시를 위해)
+                                                if (coursePlace.place.imageUrl) {
+                                                    const link = document.createElement("link");
+                                                    link.rel = "preload";
+                                                    link.as = "image";
+                                                    link.href = coursePlace.place.imageUrl;
+                                                    document.head.appendChild(link);
+
+                                                    // 🟢 이미지 객체로도 미리 로드 (더 빠른 로딩)
+                                                    const img = document.createElement("img");
+                                                    img.src = coursePlace.place.imageUrl;
+                                                }
                                                 setSelectedPlace(coursePlace.place);
-                                                setShowPlaceModal(true);
+                                                // 🟢 다음 프레임에서 모달 열기 (이미지 프리로드 시간 확보)
+                                                requestAnimationFrame(() => {
+                                                    setShowPlaceModal(true);
+                                                });
                                             }}
                                             className={`relative ml-12 bg-white rounded-lg p-4 transition-all duration-300 border cursor-pointer ${
                                                 isSelected
@@ -721,7 +748,7 @@ export default function CourseDetailClient({
                                             }`}
                                         >
                                             <div
-                                                className={`absolute -left-[3.25rem] top-6 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 ${
+                                                className={`absolute -left-13 top-6 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 ${
                                                     isSelected
                                                         ? "bg-emerald-500 text-white shadow-lg"
                                                         : "bg-white text-gray-400 border border-gray-200"
@@ -730,7 +757,7 @@ export default function CourseDetailClient({
                                                 {idx + 1}
                                             </div>
                                             <div className="flex gap-4">
-                                                <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                                <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                                                     {coursePlace.place.imageUrl && (
                                                         <Image
                                                             src={coursePlace.place.imageUrl}
@@ -742,6 +769,7 @@ export default function CourseDetailClient({
                                                             sizes="96px"
                                                             placeholder="blur"
                                                             blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                                            // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
                                                         />
                                                     )}
                                                 </div>
@@ -764,48 +792,48 @@ export default function CourseDetailClient({
                                                             onClick={(e) => {
                                                                 e.stopPropagation(); // 부모 클릭 이벤트 차단
                                                             }}
-                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit mb-2"
+                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit"
                                                         >
                                                             <Icons.ExternalLink className="w-3 h-3" />
                                                             예약하기
                                                         </a>
                                                     )}
-                                                    {/* 🟢 팁 섹션 */}
-                                                    {coursePlace.coaching_tip ? (
-                                                        userTier === "FREE" ? (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setShowSubscriptionModal(true);
-                                                                }}
-                                                                className="mt-2 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
-                                                            >
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <Icons.Bulb />
-                                                                    <span className="text-xs font-bold text-amber-700">
-                                                                        💡 팁
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-xs text-gray-600 line-clamp-2">
-                                                                    BASIC 등급이면 볼 수 있어요
-                                                                </p>
-                                                            </button>
-                                                        ) : (
-                                                            <div className="mt-2 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <Icons.Bulb />
-                                                                    <span className="text-xs font-bold text-amber-700">
-                                                                        💡 팁
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                                    {coursePlace.coaching_tip}
-                                                                </p>
-                                                            </div>
-                                                        )
-                                                    ) : null}
                                                 </div>
                                             </div>
+                                            {/* 🟢 팁 섹션 - 아래로 이동 */}
+                                            {coursePlace.coaching_tip ? (
+                                                userTier === "FREE" ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setShowSubscriptionModal(true);
+                                                        }}
+                                                        className="mt-3 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
+                                                    >
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Icons.Bulb />
+                                                            <span className="text-xs font-bold text-amber-700">
+                                                                💡 팁
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600 line-clamp-2">
+                                                            BASIC 등급이면 볼 수 있어요
+                                                        </p>
+                                                    </button>
+                                                ) : (
+                                                    <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Icons.Bulb />
+                                                            <span className="text-xs font-bold text-amber-700">
+                                                                💡 팁
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                                            {coursePlace.coaching_tip}
+                                                        </p>
+                                                    </div>
+                                                )
+                                            ) : null}
                                         </div>
                                     </div>
                                 );
@@ -882,6 +910,7 @@ export default function CourseDetailClient({
                                                             sizes="(max-width: 768px) 33vw, 150px"
                                                             placeholder="blur"
                                                             blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                                            // 🟢 priority 제거: 후기 이미지는 lazy 로딩
                                                         />
                                                     </div>
                                                 ))}
@@ -956,14 +985,14 @@ export default function CourseDetailClient({
             {/* 🔵 [기능 유지] 전체 지도 모달 */}
             {showFullMapModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-[6000] flex items-center justify-center p-5 animate-fade-in full-map-modal"
+                    className="fixed inset-0 bg-black/60 z-6000 flex items-center justify-center p-5 animate-fade-in full-map-modal"
                     onClick={() => {
                         setModalSelectedPlace(null);
                         setShowFullMapModal(false);
                     }}
                 >
                     <div
-                        className="bg-white rounded-lg w-full max-w-md aspect-[4/5] overflow-hidden relative naver-map-container"
+                        className="bg-white rounded-lg w-full max-w-md aspect-4/5 overflow-hidden relative naver-map-container"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <NaverMap
@@ -979,13 +1008,17 @@ export default function CourseDetailClient({
                         {modalSelectedPlace ? (
                             <div className="absolute bottom-0 w-full bg-white p-5 border-t-4 border-emerald-500 rounded-t-lg shadow-2xl z-20">
                                 <div className="flex gap-4 items-center mb-4">
-                                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden relative flex-shrink-0">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden relative shrink-0">
                                         {modalSelectedPlace.imageUrl && (
                                             <Image
                                                 src={modalSelectedPlace.imageUrl}
                                                 alt=""
                                                 fill
                                                 className="object-cover"
+                                                sizes="(max-width: 768px) 100vw, 33vw"
+                                                // 🟢 모달이 열릴 때만 렌더링되므로 priority 적용 (즉시 로드)
+                                                priority
+                                                loading="eager"
                                             />
                                         )}
                                     </div>
@@ -1060,7 +1093,7 @@ export default function CourseDetailClient({
             {/* 공유 모달 */}
             {showShareModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fade-in"
+                    className="fixed inset-0 bg-black/60 z-9999 flex items-center justify-center p-4 animate-fade-in"
                     onClick={() => setShowShareModal(false)}
                 >
                     <div
@@ -1106,7 +1139,7 @@ export default function CourseDetailClient({
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${courseId}`} />}
             {showPlaceModal && selectedPlace && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fade-in"
+                    className="fixed inset-0 bg-black/60 z-9999 flex items-center justify-center p-4 animate-fade-in"
                     onClick={() => setShowPlaceModal(false)}
                 >
                     <div
@@ -1121,8 +1154,9 @@ export default function CourseDetailClient({
                                     fill
                                     className="object-cover"
                                     priority
+                                    loading="eager"
                                     quality={80}
-                                    sizes="100vw"
+                                    sizes="(max-width: 768px) 100vw, 33vw"
                                     fetchPriority="high"
                                 />
                             )}
@@ -1167,7 +1201,7 @@ export default function CourseDetailClient({
             {/* 이미지 미리보기 모달 */}
             {previewImage && (
                 <div
-                    className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-9999 bg-black/90 flex items-center justify-center p-4"
                     onClick={() => {
                         setPreviewImage(null);
                         setPreviewImages([]);

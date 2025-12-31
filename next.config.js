@@ -20,12 +20,22 @@ const nextConfig = {
     async headers() {
         return [
             {
-                source: "/(.*)",
+                // 🟢 HTML 페이지만 no-cache (웹뷰 앱 캐시 문제 해결)
+                source: "/:path*",
                 headers: [
                     { key: "X-Frame-Options", value: "DENY" },
                     { key: "X-Content-Type-Options", value: "nosniff" },
                     { key: "Referrer-Policy", value: "origin-when-cross-origin" },
                     { key: "X-XSS-Protection", value: "1; mode=block" },
+                    // 🟢 웹뷰 앱 캐시 문제 해결: HTML 페이지만 캐시 방지
+                    {
+                        key: "Cache-Control",
+                        value: "no-cache, no-store, must-revalidate, max-age=0",
+                    },
+                    {
+                        key: "Pragma",
+                        value: "no-cache",
+                    },
                     {
                         key: "Content-Security-Policy",
                         value: (() => {
@@ -96,12 +106,22 @@ const nextConfig = {
                     },
                 ],
             },
+            {
+                // 🟢 정적 자산(_next/static)은 캐시 허용 (성능 최적화)
+                source: "/_next/static/:path*",
+                headers: [
+                    {
+                        key: "Cache-Control",
+                        value: "public, max-age=31536000, immutable",
+                    },
+                ],
+            },
         ];
     },
 
     images: {
-        // 🟢 이미지 500 에러 차단을 위한 품질 설정 명시
-        qualities: [50, 60, 65, 70, 75, 80, 85, 90],
+        // 🟢 이미지 500 에러 차단을 위한 품질 설정 명시 (사용 중인 모든 quality 값 포함)
+        qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
         minimumCacheTTL: 3600,
         remotePatterns: [{ protocol: "https", hostname: "**" }],
     },
