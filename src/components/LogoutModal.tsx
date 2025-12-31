@@ -11,7 +11,7 @@ interface LogoutModalProps {
 
 export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-2000 animate-in fade-in duration-200">
             {/* 모달 박스 */}
             <div className="bg-white rounded-xl border border-gray-100 p-8 w-80 transform transition-all animate-in zoom-in-95 duration-200">
                 <div className="text-center mb-6 tracking-tight">

@@ -174,8 +174,8 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-5">
-            <div className="bg-white w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-[2rem] sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl transition-all">
+        <div className="fixed inset-0 z-10000 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-5">
+            <div className="bg-white w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-4xl sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl transition-all">
                 {/* 상단 헤더 */}
                 <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
                     <div>

@@ -275,7 +275,7 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 via-[var(--brand-cream)] to-white">
+        <div className="min-h-screen bg-linear-to-br from-green-50 via-[var(--brand-cream)] to-white">
             <main className="max-w-sm mx-auto px-4 py-8 pb-28 overflow-y-auto">
                 <div className="w-full bg-white rounded-xl border border-gray-100 p-6 flex flex-col">
                     <div className="text-center mb-6">

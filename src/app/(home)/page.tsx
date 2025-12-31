@@ -105,6 +105,7 @@ export default function Home() {
 
     const router = useRouter();
     const hasShownCheckinModalRef = useRef(false);
+    const checkinSectionRef = useRef<HTMLDivElement>(null);
 
     // 🟢 [Optimization]: 상태 업데이트를 프레임 단위로 분산 처리하여 롱 태스크 방지
     const loadUserData = useCallback(async () => {
@@ -192,36 +193,84 @@ export default function Home() {
         }
     }, []);
 
-    // 🟢 [Phase 2]: 사용자 데이터 로드 (400ms 지연 - 메인 코스 로드와 분리)
+    // 🟢 [Phase 2]: 사용자 데이터 로드 (지연 로드 - 메인 코스 로드와 분리)
     useEffect(() => {
         if (isAuthLoading) {
             setIsCheckinLoading(true); // 🟢 인증 로딩 중일 때는 출석 현황도 로딩 중
             return;
         }
 
-        const timer = setTimeout(() => {
-            // 🟢 상태 업데이트를 프레임 단위로 분산
+        if (isAuthenticated && user) {
+            setUserId(Number(user.id));
+            // 🟢 출석 데이터는 Intersection Observer로 지연 로드
+            setIsCheckinLoading(true); // 초기에는 로딩 중으로 표시
+        } else {
+            // 🟢 여러 상태 업데이트를 배치로 처리
             requestAnimationFrame(() => {
-                if (isAuthenticated && user) {
-                    setUserId(Number(user.id));
-                    setIsCheckinLoading(true); // 🟢 사용자 데이터 로드 시작
-                    // loadUserData는 내부에서 이미 분산 처리됨
-                    loadUserData();
-                } else {
-                    // 🟢 여러 상태 업데이트를 배치로 처리
-                    requestAnimationFrame(() => {
-                        setUserId(null);
-                        setUserName("");
-                        setStreak(0);
-                        setIsOnboardingComplete(false);
-                        setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
-                    });
-                }
+                setUserId(null);
+                setUserName("");
+                setStreak(0);
+                setIsOnboardingComplete(false);
+                setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
             });
-        }, 400);
+        }
+    }, [isAuthenticated, user, isAuthLoading]);
 
-        return () => clearTimeout(timer);
-    }, [isAuthenticated, user, isAuthLoading, loadUserData]);
+    // 🟢 출석 섹션 지연 로드 (Intersection Observer 사용)
+    useEffect(() => {
+        if (!isAuthenticated || !userId) return;
+
+        let observer: IntersectionObserver | null = null;
+        let hasLoaded = false; // 중복 로드 방지
+
+        const loadData = () => {
+            if (!hasLoaded) {
+                hasLoaded = true;
+                loadUserData();
+            }
+        };
+
+        const timer = setTimeout(() => {
+            if (!checkinSectionRef.current) {
+                // 🟢 ref가 준비되지 않았으면 바로 로드
+                loadData();
+                return;
+            }
+
+            // 🟢 요소가 이미 화면에 보이는지 즉시 확인
+            const rect = checkinSectionRef.current.getBoundingClientRect();
+            const isVisible = rect.top < window.innerHeight + 300 && rect.bottom > -300;
+            
+            if (isVisible) {
+                // 🟢 이미 보이면 바로 로드
+                loadData();
+                return;
+            }
+
+            // 🟢 보이지 않으면 Intersection Observer 사용
+            observer = new IntersectionObserver(
+                (entries) => {
+                    for (const entry of entries) {
+                        if (entry.isIntersecting) {
+                            loadData();
+                            if (observer) {
+                                observer.disconnect();
+                            }
+                            break;
+                        }
+                    }
+                },
+                { rootMargin: "300px" }
+            );
+
+            observer.observe(checkinSectionRef.current);
+        }, 200); // 🟢 200ms 지연으로 HeroSlider 우선 로드
+
+        return () => {
+            clearTimeout(timer);
+            if (observer) observer.disconnect();
+        };
+    }, [isAuthenticated, userId, loadUserData]);
 
     // 🟢 로그인 성공 시 출석 현황 업데이트 (400ms 지연)
     useEffect(() => {
@@ -408,8 +457,8 @@ export default function Home() {
 
                 <MemoizedTabbedConcepts courses={courses} hotCourses={hotCourses} newCourses={newCourses} />
 
-                <section className="py-6 px-4">
-                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+                <section className="py-6 px-4" ref={checkinSectionRef}>
+                    <div className="bg-linear-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
                             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl flex-shrink-0">
                                 🌱
@@ -468,7 +517,7 @@ export default function Home() {
                                         <span
                                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-transform duration-150 ${
                                                 stamped
-                                                    ? "bg-gradient-to-br from-lime-400 to-green-500 text-white"
+                                                    ? "bg-linear-to-br from-lime-400 to-green-500 text-white"
                                                     : "bg-gray-200 text-gray-600"
                                             } ${pulse ? "scale-110" : ""}`}
                                         >
@@ -519,7 +568,7 @@ export default function Home() {
                                         className={`px-4 py-2 rounded-lg text-white font-semibold ${
                                             isStamping
                                                 ? "bg-gray-400"
-                                                : "bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600"
+                                                : "bg-linear-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600"
                                         }`}
                                     >
                                         {isStamping ? "도장 찍는 중..." : "출석 체크 하기"}
@@ -532,7 +581,7 @@ export default function Home() {
                                         setAnimStamps(null);
                                         setStampCompleted(false);
                                     }}
-                                    className="hover:cursor-pointer px-6 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold hover:from-green-600 hover:to-emerald-600"
+                                    className="hover:cursor-pointer px-6 py-2 rounded-lg bg-linear-to-r from-green-500 to-emerald-500 text-white font-semibold hover:from-green-600 hover:to-emerald-600"
                                 >
                                     확인
                                 </button>

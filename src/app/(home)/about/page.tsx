@@ -574,7 +574,7 @@ const AboutPage = () => {
                 <section className="py-12 px-4 bg-white">
                     <div className="max-w-[500px] mx-auto">
                         <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">왜 DoNa인가요?</h2>
-                        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-8">
+                        <div className="bg-linear-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-8">
                             <div className="grid grid-cols-1 gap-6 items-center">
                                 <div>
                                     <h3 className="text-2xl font-semibold text-gray-900 mb-4">
@@ -592,7 +592,7 @@ const AboutPage = () => {
                                     </p>
                                 </div>
                                 <div className="text-center">
-                                    <div className="w-48 h-48 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full mx-auto flex items-center justify-center">
+                                    <div className="w-48 h-48 bg-linear-to-br from-blue-400 to-purple-600 rounded-full mx-auto flex items-center justify-center">
                                         <span className="text-6xl">🎯</span>
                                     </div>
                                 </div>

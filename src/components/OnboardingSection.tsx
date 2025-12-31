@@ -49,13 +49,13 @@ export default function OnboardingSection({ onStart }: Props) {
                     className="w-full group relative flex items-center justify-between p-5 rounded-xl bg-white border border-emerald-100 transition-all duration-300 active:scale-98"
                 >
                     {/* 배경: 아주 은은한 민트빛 그라데이션 */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-transparent to-transparent rounded-xl pointer-events-none" />
+                    <div className="absolute inset-0 bg-linear-to-br from-emerald-50/60 via-transparent to-transparent rounded-xl pointer-events-none" />
 
                     <div className="relative z-10 flex items-center gap-4">
                         {/* 2. 아이콘 배경: 연한 초록색 */}
                         <div className="relative flex items-center justify-center w-14 h-14 rounded-xl bg-[#E8FBF4] group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                             {/* 오로라 효과: 초록색 + 청록색 */}
-                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-green-200/50 to-teal-200/50 opacity-50 blur-md" />
+                            <div className="absolute top-0 left-0 w-full h-full bg-linear-to-br from-green-200/50 to-teal-200/50 opacity-50 blur-md" />
 
                             {/* 3. 아이콘: 꽉 찬 면(Fill) + Green Gradient 적용 */}
                             <svg
@@ -84,7 +84,7 @@ export default function OnboardingSection({ onStart }: Props) {
                             </h3>
                             <p className="text-[13px] text-gray-500 mt-1 font-medium">
                                 AI가{" "}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 font-bold">
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600 font-bold">
                                     취향저격 데이트
                                 </span>
                                 를 준비해요

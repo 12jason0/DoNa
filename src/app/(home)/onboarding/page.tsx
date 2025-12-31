@@ -338,7 +338,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 }`}
             >
                 {/* 무거운 외부 이미지 대신 가벼운 그라디언트 배경 사용 */}
-                <div className="absolute inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black" />
+                <div className="absolute inset-0 z-0 bg-linear-to-br from-black via-gray-900 to-black" />
 
                 <div className="relative z-10 w-full h-full max-w-[480px] mx-auto flex flex-col justify-between p-8 pb-12 animate-fadeIn">
                     <div className="flex justify-end pt-4">
@@ -428,7 +428,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm">
             {/* ... 배경 이미지 및 컨테이너 ... */}
-            <div className="relative z-10 w-full h-full max-w-[480px] bg-white sm:h-[85vh] sm:rounded-xl border border-gray-100 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
+            <div className="relative z-10 w-full h-full max-w-[480px] bg-white sm:h-[85vh] sm:rounded-xl border border-gray-100 overflow-hidden flex flex-col bg-linear-to-br from-slate-50 to-blue-50">
                 {/* 닫기 버튼 */}
                 <div className="absolute top-4 right-4 z-50">
                     <button
@@ -443,7 +443,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 <div className="px-4 pt-16 pb-2 shrink-0">
                     <div className="h-1.5 w-full bg-gray-200/80 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-[#7aa06f] to-emerald-500 rounded-full transition-all duration-500"
+                            className="h-full bg-linear-to-r from-[#7aa06f] to-emerald-500 rounded-full transition-all duration-500"
                             style={{ width: `${Math.min(((currentStep - 1) / (totalSteps - 1)) * 100, 100)}%` }}
                         />
                     </div>

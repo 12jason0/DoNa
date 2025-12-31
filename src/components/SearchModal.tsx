@@ -61,7 +61,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-white flex flex-col animate-fade-in">
+        <div className="fixed inset-0 z-9999 bg-white flex flex-col animate-fade-in">
             {/* 1. 검색 헤더 */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
                 <button onClick={onClose} className="p-2 -ml-2 text-gray-600">

@@ -17,7 +17,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-2000 flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
                 {/* 상단 닫기 버튼 */}
                 <div className="flex justify-end p-6 pb-0">
@@ -38,8 +38,8 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
 
                     {/* 아이콘 섹션: 선물 상자와 티켓 조합 */}
                     <div className="relative w-24 h-24 mx-auto mb-8">
-                        <div className="absolute inset-0 bg-emerald-500 rounded-[2rem] rotate-12 opacity-10 animate-pulse"></div>
-                        <div className="relative w-full h-full bg-gradient-to-br from-emerald-400 to-teal-600 rounded-[2rem] flex items-center justify-center shadow-lg shadow-emerald-200">
+                        <div className="absolute inset-0 bg-emerald-500 rounded-4xl rotate-12 opacity-10 animate-pulse"></div>
+                        <div className="relative w-full h-full bg-linear-to-br from-emerald-400 to-teal-600 rounded-4xl flex items-center justify-center shadow-lg shadow-emerald-200">
                             <Gift className="w-12 h-12 text-white" />
                             {/* 쿠폰 2개 강조 표시 */}
                             <div className="absolute -top-2 -right-2 bg-gray-900 text-white w-10 h-10 rounded-full border-4 border-white flex items-center justify-center font-black text-sm">

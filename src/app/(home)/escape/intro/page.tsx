@@ -277,7 +277,7 @@ function WebtoonScrollToMap({
             {bgUrl ? (
                 <>
                     <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgUrl})` }} />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/20" />
+                    <div className="absolute inset-0 bg-linear-to-b from-black/60 to-black/20" />
                 </>
             ) : (
                 <div className="absolute inset-0 bg-black/60" />
@@ -383,7 +383,7 @@ function WebtoonScrollToMap({
                                     onClick={() => setSelectedCategory(String(category?.id))}
                                     title={String(category?.label || category?.name || "")}
                                 >
-                                    <div className="w-10 h-12 rounded-[60%_60%_70%_70%] bg-gradient-to-br from-red-500 via-orange-500 to-red-500 shadow-[0_0_25px_rgba(255,68,68,0.85),0_0_50px_rgba(255,68,68,0.4),inset_-8px_-8px_15px_rgba(0,0,0,0.4),inset_8px_2px_15px_rgba(255,255,200,0.35)]" />
+                                    <div className="w-10 h-12 rounded-[60%_60%_70%_70%] bg-linear-to-br from-red-500 via-orange-500 to-red-500 shadow-[0_0_25px_rgba(255,68,68,0.85),0_0_50px_rgba(255,68,68,0.4),inset_-8px_-8px_15px_rgba(0,0,0,0.4),inset_8px_2px_15px_rgba(255,255,200,0.35)]" />
                                     <div className="mt-1 text-xs font-bold text-[#c8aa64] bg-black/60 px-2 py-0.5 rounded border border-[rgba(200,170,100,0.3)]">
                                         {String(category?.label || category?.name || "")}
                                     </div>
@@ -394,7 +394,7 @@ function WebtoonScrollToMap({
 
                     {/* 카테고리 팝업 */}
                     {selectedCategory && !selectedPlace && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] max-w-[360px] bg-gradient-to-br from-[#3a3530] to-[#4a4440] border-4 border-[#c8aa64] rounded-xl z-50 shadow-2xl overflow-hidden">
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] max-w-[360px] bg-linear-to-br from-[#3a3530] to-[#4a4440] border-4 border-[#c8aa64] rounded-xl z-50 shadow-2xl overflow-hidden">
                             <button
                                 className="absolute right-3 top-3 w-7 h-7 rounded-full bg-black/30 border border-[#c8aa64] text-[#c8aa64]"
                                 onClick={() => setSelectedCategory(null)}
@@ -413,7 +413,7 @@ function WebtoonScrollToMap({
                                 <p className="text-center text-sm text-[#8b8070] mt-2">
                                     {String(selectedCategoryData?.description || "")}
                                 </p>
-                                <button className="mt-3 w-full bg-gradient-to-r from-[#d4af37] to-[#daa520] text-[#2a2620] py-3 rounded font-serif font-bold">
+                                <button className="mt-3 w-full bg-linear-to-r from-[#d4af37] to-[#daa520] text-[#2a2620] py-3 rounded font-serif font-bold">
                                     이곳으로 가기
                                 </button>
                                 <div className="grid grid-cols-2 gap-2 mt-3">
@@ -434,7 +434,7 @@ function WebtoonScrollToMap({
 
                     {/* 장소 상세 */}
                     {selectedPlace && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] max-w-[330px] bg-gradient-to-br from-[#3a3530] to-[#4a4440] border-4 border-[#c8aa64] rounded-xl z-50 shadow-2xl overflow-hidden">
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] max-w-[330px] bg-linear-to-br from-[#3a3530] to-[#4a4440] border-4 border-[#c8aa64] rounded-xl z-50 shadow-2xl overflow-hidden">
                             <button
                                 className="px-6 py-4 text-[#c8aa64] font-serif"
                                 onClick={() => setSelectedPlace(null)}
@@ -455,7 +455,7 @@ function WebtoonScrollToMap({
                                             <div key={idx}>{line}</div>
                                         ))}
                                 </div>
-                                <button className="mt-4 w-full bg-gradient-to-r from-[#d4af37] to-[#daa520] text-[#2a2620] py-3 rounded font-serif font-bold">
+                                <button className="mt-4 w-full bg-linear-to-r from-[#d4af37] to-[#daa520] text-[#2a2620] py-3 rounded font-serif font-bold">
                                     이 장소 선택하기
                                 </button>
                             </div>
@@ -557,7 +557,7 @@ function LoadingSpinner() {
     if (!show) return null;
     return (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center">
-            <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/50" />
+            <div className="absolute inset-0 bg-linear-to-b from-black/70 to-black/50" />
             <p className="relative text-[#c8aa64] font-serif text-lg font-bold tracking-wider drop-shadow">
                 이야기를 불러오는 중...
             </p>
@@ -1064,7 +1064,7 @@ const DialogueFlow = ({
             setVisibleMessageCount((n) => Math.min(n + 1, items.length));
         };
         return (
-            <div className="fixed inset-0 z-[1450] bg-gradient-to-b from-black/60 to-black/20 flex items-end justify-center p-4 pb-[12vh]">
+            <div className="fixed inset-0 z-[1450] bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 pb-[12vh]">
                 <div
                     className={`relative w-full max-w-lg transition-transform duration-700 ease-out ${
                         arrived ? "translate-y-0 scale-100 rotate-0" : "-translate-y-16 scale-95 rotate-3"
@@ -1193,7 +1193,7 @@ const DialogueFlow = ({
             .map((s) => s.trim())
             .filter(Boolean);
         return (
-            <div className="fixed inset-0 z-[1400] bg-gradient-to-b from-black/60 to-black/20 flex items-end justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 z-[1400] bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 animate-fade-in">
                 <div className="w-full max-w-3xl bg-[#fffef8]/95 rounded-t-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-t border-amber-100 font-['Gowun_Dodum']">
                     <div className="max-h-[46vh] overflow-y-auto space-y-4 pr-1 pb-3">
                         {parts.map((t, i) => (
@@ -1205,7 +1205,7 @@ const DialogueFlow = ({
                                     className={`${
                                         i % 2 === 0
                                             ? "bg-[#fffdf7] text-gray-900 border border-amber-200 shadow-sm"
-                                            : "bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-lg"
+                                            : "bg-linear-to-b from-amber-500 to-amber-600 text-white shadow-lg"
                                     } px-5 py-3 rounded-2xl max-w-[80%] leading-relaxed tracking-wide whitespace-pre-wrap break-words`}
                                 >
                                     {t}
@@ -1216,7 +1216,7 @@ const DialogueFlow = ({
                     <div className="text-right mt-4">
                         <button
                             onClick={onComplete}
-                            className="px-6 py-2.5 bg-gradient-to-b from-amber-400 to-amber-600 text-white rounded-full shadow-inner hover:brightness-105 transition-all"
+                            className="px-6 py-2.5 bg-linear-to-b from-amber-400 to-amber-600 text-white rounded-full shadow-inner hover:brightness-105 transition-all"
                         >
                             미션 시작하기
                         </button>
@@ -3450,7 +3450,7 @@ function EscapeIntroPageInner() {
             <>
                 <div className="fixed inset-0 z-[1000]">
                     <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgUrl})` }} />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/20" />
+                    <div className="absolute inset-0 bg-linear-to-b from-black/60 to-black/20" />
                 </div>
                 <LetterIntro
                     flow={letterFlow}
@@ -3926,7 +3926,7 @@ function EscapeIntroPageInner() {
                                             }}
                                         >
                                             {/* 배경 그라디언트 */}
-                                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-amber-50 opacity-60" />
+                                            <div className="absolute inset-0 bg-linear-to-br from-emerald-50 via-white to-amber-50 opacity-60" />
 
                                             {/* 컨텐츠 */}
                                             <div className="relative p-8 flex flex-col items-center text-center">
@@ -3938,7 +3938,7 @@ function EscapeIntroPageInner() {
                                                 {/* 배지 이미지 */}
                                                 {badge?.image_url ? (
                                                     <div className="relative mb-6">
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 to-amber-300 rounded-full blur-xl opacity-50 animate-pulse" />
+                                                        <div className="absolute inset-0 bg-linear-to-r from-yellow-200 to-amber-300 rounded-full blur-xl opacity-50 animate-pulse" />
                                                         <img
                                                             src={badge?.image_url}
                                                             alt={badge?.name || "badge"}
@@ -3947,8 +3947,8 @@ function EscapeIntroPageInner() {
                                                     </div>
                                                 ) : (
                                                     <div className="relative mb-6">
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 to-amber-300 rounded-full blur-xl opacity-50 animate-pulse" />
-                                                        <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center text-6xl shadow-2xl">
+                                                        <div className="absolute inset-0 bg-linear-to-r from-yellow-200 to-amber-300 rounded-full blur-xl opacity-50 animate-pulse" />
+                                                        <div className="relative w-32 h-32 rounded-full bg-linear-to-br from-yellow-100 to-amber-200 flex items-center justify-center text-6xl shadow-2xl">
                                                             🏅
                                                         </div>
                                                     </div>
@@ -3973,7 +3973,7 @@ function EscapeIntroPageInner() {
                                                                 window.location.href = "/mypage?tab=casefiles";
                                                             } catch {}
                                                         }}
-                                                        className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 transition-all font-medium shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                                                        className="w-full px-6 py-3 rounded-xl bg-linear-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 transition-all font-medium shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                                                     >
                                                         마이페이지로 가기
                                                     </button>
@@ -4115,7 +4115,7 @@ function EscapeIntroPageInner() {
                                                     disabled={
                                                         selectedGallery.length !== requiredPhotoCount || isSharing
                                                     }
-                                                    className="px-4 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-md bg-gradient-to-r from-green-500 to-green-600"
+                                                    className="px-4 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-md bg-linear-to-r from-green-500 to-green-600"
                                                 >
                                                     {isSharing ? "공유 준비 중..." : "카카오톡으로 공유"}
                                                 </button>
@@ -4902,7 +4902,7 @@ function EscapeIntroPageInner() {
                     <div className="fixed inset-0 z-[1550] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
                         <div className="w-full max-w-sm bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E6E2D6] overflow-hidden relative">
                             {/* 상단 장식 (클립/테이프 느낌) */}
-                            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#C8AA64] via-[#E6D2A0] to-[#C8AA64] opacity-80" />
+                            <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-[#C8AA64] via-[#E6D2A0] to-[#C8AA64] opacity-80" />
 
                             <div className="p-8 flex flex-col min-h-[320px]">
                                 {/* 소제목: 스토리 조각 */}

@@ -427,6 +427,20 @@ export default function CourseDetailClient({
         return "";
     }, [courseData?.imageUrl, sortedCoursePlaces]);
 
+    // 🟢 Hero 이미지 미리 로드 (성능 최적화)
+    useEffect(() => {
+        if (heroImageUrl) {
+            const link = document.createElement("link");
+            link.rel = "preload";
+            link.as = "image";
+            link.href = heroImageUrl;
+            document.head.appendChild(link);
+            return () => {
+                document.head.removeChild(link);
+            };
+        }
+    }, [heroImageUrl]);
+
     const showToast = useCallback(
         (message: string, type: "success" | "error" | "info" = "info") => setToast({ message, type }),
         []
@@ -591,11 +605,12 @@ export default function CourseDetailClient({
                         className="object-cover"
                         priority
                         loading="eager"
-                        quality={85}
+                        quality={75}
                         fetchPriority="high"
                         sizes="100vw"
+                        unoptimized={false}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white">
                         <div className="flex flex-wrap gap-2.5 mb-4">
                             <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-[13px] font-bold rounded-full border border-white/20 shadow-sm">
@@ -723,8 +738,10 @@ export default function CourseDetailClient({
                                                             fill
                                                             className="object-cover"
                                                             loading="lazy"
-                                                            quality={70}
+                                                            quality={60}
                                                             sizes="96px"
+                                                            placeholder="blur"
+                                                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                                                         />
                                                     )}
                                                 </div>
@@ -761,7 +778,7 @@ export default function CourseDetailClient({
                                                                     e.stopPropagation();
                                                                     setShowSubscriptionModal(true);
                                                                 }}
-                                                                className="mt-2 w-full text-left p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
+                                                                className="mt-2 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
                                                             >
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <Icons.Bulb />
@@ -774,7 +791,7 @@ export default function CourseDetailClient({
                                                                 </p>
                                                             </button>
                                                         ) : (
-                                                            <div className="mt-2 p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                                            <div className="mt-2 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <Icons.Bulb />
                                                                     <span className="text-xs font-bold text-amber-700">
@@ -861,8 +878,10 @@ export default function CourseDetailClient({
                                                             fill
                                                             className="object-cover"
                                                             loading="lazy"
-                                                            quality={75}
+                                                            quality={65}
                                                             sizes="(max-width: 768px) 33vw, 150px"
+                                                            placeholder="blur"
+                                                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                                                         />
                                                     </div>
                                                 ))}
@@ -1102,7 +1121,9 @@ export default function CourseDetailClient({
                                     fill
                                     className="object-cover"
                                     priority
+                                    quality={80}
                                     sizes="100vw"
+                                    fetchPriority="high"
                                 />
                             )}
                             <button

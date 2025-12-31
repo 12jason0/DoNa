@@ -52,14 +52,14 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                     {/* 상단 비주얼 - 모바일 대응 크기 조정 */}
                     <div className="text-center mb-6 sm:mb-8">
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500 to-teal-300 rounded-[24px] sm:rounded-[28px] rotate-12 opacity-20 animate-pulse"></div>
-                            <div className="relative w-full h-full rounded-[20px] sm:rounded-[24px] bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
+                            <div className="absolute inset-0 bg-linear-to-tr from-emerald-500 to-teal-300 rounded-[24px] sm:rounded-[28px] rotate-12 opacity-20 animate-pulse"></div>
+                            <div className="relative w-full h-full rounded-[20px] sm:rounded-[24px] bg-linear-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
                                 <Ticket className="w-8 h-8 sm:w-10 sm:h-10 text-white -rotate-12" />
                                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-200 absolute top-3 right-3 sm:top-4 sm:right-4 animate-bounce" />
                             </div>
                         </div>
 
-                        <h2 className="text-[20px] sm:text-[24px] font-[900] text-gray-900 tracking-tight mb-2 leading-tight">
+                        <h2 className="text-[20px] sm:text-[24px] font-black text-gray-900 tracking-tight mb-2 leading-tight">
                             {title || (
                                 <>
                                     오늘 데이트 코스,
@@ -88,8 +88,8 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                                     key={index}
                                     className="flex items-center text-[14px] sm:text-[15px] font-semibold text-gray-700 leading-snug"
                                 >
-                                    <div className="mr-3 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
+                                    <div className="mr-3 shrink-0 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 stroke-3" />
                                     </div>
                                     {benefit}
                                 </li>
@@ -104,7 +104,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                         className={`group relative w-full py-3.5 sm:py-4.5 rounded-full text-white text-[16px] sm:text-lg font-bold shadow-[0_8px_20px_rgba(16,185,129,0.4)] transition-all active:scale-[0.97] overflow-hidden ${
                             loginNavigating
                                 ? "bg-emerald-400 cursor-not-allowed"
-                                : "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400"
+                                : "bg-linear-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400"
                         }`}
                     >
                         <span className="relative z-10 flex items-center justify-center">
@@ -118,7 +118,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                             )}
                         </span>
                         {!loginNavigating && (
-                            <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
+                            <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-linear-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
                         )}
                     </button>
                 </div>

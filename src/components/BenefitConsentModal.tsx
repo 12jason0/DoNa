@@ -54,7 +54,7 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-[2.5rem] p-8 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 duration-300">
                 <div className="text-center mb-6">
                     <span className="text-4xl">💌</span>

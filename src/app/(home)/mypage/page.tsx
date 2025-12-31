@@ -119,6 +119,16 @@ const MyPage = () => {
         return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
     }, []);
 
+    // 🟢 결제 완료 이벤트 리스너 (구매 내역 즉시 업데이트)
+    useEffect(() => {
+        const handlePaymentSuccess = () => {
+            console.log("[마이페이지] 결제 완료 감지 - 구매 내역 갱신");
+            fetchPayments();
+        };
+        window.addEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
+        return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
+    }, []);
+
     const fetchUserInfo = useCallback(async (): Promise<boolean> => {
         // 🟢 이미 리다이렉트 중이면 중복 실행 방지
         if (redirectingRef.current) return false;
@@ -688,7 +698,7 @@ const MyPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+            <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
                 <main className="max-w-4xl mx-auto px-4 py-8 pt-24">
                     <div className="text-center">
                         <div className="text-6xl mb-4">⏳</div>
@@ -701,7 +711,7 @@ const MyPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 typography-smooth">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 typography-smooth">
             <main className="max-w-4xl mx-auto px-4 py-6 md:py-8 pt-10 ">
                 <div className="text-center mb-6 md:mb-8">
                     <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2 tracking-tight">

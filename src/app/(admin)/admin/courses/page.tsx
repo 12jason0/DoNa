@@ -1327,7 +1327,7 @@ export default function AdminCoursesPage() {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                                <div className="w-full h-full bg-linear-to-br from-gray-200 to-gray-300 flex items-center justify-center">
                                     <span className="text-gray-400 text-4xl">📍</span>
                                 </div>
                             )}
@@ -1340,7 +1340,7 @@ export default function AdminCoursesPage() {
                             >
                                 ×
                             </button>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
                             <div className="absolute bottom-6 left-6 text-white">
                                 <h3 className="text-2xl font-bold mb-1">{selectedPlaceForModal.name}</h3>
                                 {selectedPlaceForModal.category && (

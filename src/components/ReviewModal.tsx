@@ -169,7 +169,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     {/* 대상 정보 */}
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                         <p className="text-sm text-gray-600 mb-1">후기 대상</p>
-                        <p className="font-medium text-gray-900 break-words">
+                        <p className="font-medium text-gray-900 wrap-break-word">
                             {courseName || placeName || "알 수 없는 대상"}
                         </p>
                     </div>

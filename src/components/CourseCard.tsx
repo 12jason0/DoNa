@@ -148,12 +148,12 @@ const CourseCard = memo(
             <div className="block group relative cursor-pointer">
                 {/* 잠금 여부에 따른 레이어 (기존 로직 유지) */}
                 {course.isLocked ? (
-                    <div onClick={handleLockedClick} className="absolute inset-0 z-[15] cursor-pointer" />
+                    <div onClick={handleLockedClick} className="absolute inset-0 z-15 cursor-pointer" />
                 ) : (
                     <Link
                         href={`/courses/${course.id}`}
                         prefetch={true}
-                        className="absolute inset-0 z-[10]"
+                        className="absolute inset-0 z-10"
                         onClick={() => {
                             try {
                                 fetch(`/api/courses/${course.id}/view`, {
@@ -166,7 +166,7 @@ const CourseCard = memo(
                 )}
 
                 {/* 이미지 섹션 */}
-                <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-gray-100 mb-3 shadow-sm border border-gray-100">
+                <div className="relative w-full aspect-4/3 rounded-[20px] overflow-hidden bg-gray-100 mb-3 shadow-sm border border-gray-100">
                     {course.imageUrl ? (
                         <Image
                             src={course.imageUrl}
@@ -187,7 +187,7 @@ const CourseCard = memo(
 
                     {course.isLocked && <CourseLockOverlay grade={course.grade} />}
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent"></div>
 
                     {/* 휴무 장소 안내 (기존 기능 유지) */}
                     {hasClosedPlace && getClosedPlaceCount && hasClosedPlace(course) && (
@@ -201,7 +201,7 @@ const CourseCard = memo(
                     )}
 
                     {/* 배지 섹션 */}
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-[20] pointer-events-auto">
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-20 pointer-events-auto">
                         {reservationInfo.hasReservation && (
                             <span className="bg-[#00b3a3] text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-[#00a394] flex items-center gap-1">
                                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
@@ -234,7 +234,7 @@ const CourseCard = memo(
                         e.stopPropagation();
                         onToggleFavorite(e, course.id);
                     }}
-                    className="absolute top-3 right-3 z-[20] flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
+                    className="absolute top-3 right-3 z-20 flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
                 >
                     <svg
                         className={`w-7 h-7 drop-shadow-sm transition-colors ${

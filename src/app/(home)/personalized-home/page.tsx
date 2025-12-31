@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
@@ -182,6 +182,9 @@ const questionFlow: Question[] = [
 ];
 
 const AIRecommender = () => {
+    const router = useRouter();
+    const pathname = usePathname();
+    
     // 상태 관리
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userName, setUserName] = useState("");
@@ -240,13 +243,13 @@ const AIRecommender = () => {
     }, [messages, isTyping, showChatModal]); // showChatModal 추가
 
     // 유저 정보 가져오기 (성능 최적화: 캐싱 추가 및 즉시 표시)
-    const fetchUserData = async () => {
+    const fetchUserData = async (forceRefresh = false) => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 캐싱 활용
             const { apiFetch } = await import("@/lib/authClient");
             const { data: userData, response } = await apiFetch<any>("/api/users/profile", {
-                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
-                next: { revalidate: 60 }, // 🟢 1분 캐싱
+                cache: forceRefresh ? "no-store" : "force-cache", // 🟢 강제 갱신 시 캐시 무시
+                next: forceRefresh ? { revalidate: 0 } : { revalidate: 60 }, // 🟢 강제 갱신 시 즉시 재검증
             });
 
             if (response.ok && userData) {
@@ -372,14 +375,27 @@ const AIRecommender = () => {
             checkLoginStatus();
         };
 
+        // 🟢 쿠폰 개수 업데이트 이벤트 리스너 (결제 완료 후)
+        const handleCouponCountUpdated = (event: CustomEvent) => {
+            const newCouponCount = event.detail?.couponCount;
+            if (typeof newCouponCount === "number") {
+                setCoupons(newCouponCount);
+                console.log(`[쿠폰 개수 업데이트] ${newCouponCount}개로 갱신됨`);
+                // 🟢 이벤트 수신 후 서버에서 최신 데이터 강제로 가져오기
+                fetchUserData(true);
+            }
+        };
+
         window.addEventListener("authLoginSuccess", handleAuthLoginSuccess);
         window.addEventListener("authLogout", handleAuthLogout);
         window.addEventListener("authTokenChange", handleAuthTokenChange);
+        window.addEventListener("couponCountUpdated", handleCouponCountUpdated as EventListener);
 
         return () => {
             window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
             window.removeEventListener("authLogout", handleAuthLogout);
             window.removeEventListener("authTokenChange", handleAuthTokenChange);
+            window.removeEventListener("couponCountUpdated", handleCouponCountUpdated as EventListener);
         };
     }, []);
 
@@ -928,7 +944,7 @@ const AIRecommender = () => {
                         </div>
 
                         {/* Timeline */}
-                        <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-emerald-200 before:to-gray-200">
+                        <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-emerald-200 before:to-gray-200">
                             {loading ? (
                                 <div className="flex items-center justify-center py-10">
                                     <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -1076,7 +1092,7 @@ const AIRecommender = () => {
                         <div className="z-10 text-center px-8">
                             <div className="relative w-24 h-24 mx-auto mb-6">
                                 <div className="absolute inset-0 bg-emerald-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-                                <div className="relative w-full h-full bg-gradient-to-br from-emerald-400 to-teal-600 rounded-full flex items-center justify-center shadow-lg">
+                                <div className="relative w-full h-full bg-linear-to-br from-emerald-400 to-teal-600 rounded-full flex items-center justify-center shadow-lg">
                                     <Bot className="w-12 h-12 text-white" />
                                 </div>
                             </div>
@@ -1088,7 +1104,7 @@ const AIRecommender = () => {
                                 <h3 className="text-white text-2xl font-black tracking-tight leading-tight">
                                     {/* 닉네임 반영 커스텀 문구 */}
                                     <span className="text-emerald-400">{nickname}님</span>을 위한 <br />
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-300">
+                                    <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-300 to-teal-300">
                                         맞춤 코스 설계안
                                     </span>
                                 </h3>
@@ -1100,7 +1116,7 @@ const AIRecommender = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-1.5 bg-linear-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
                     </div>
 
                     {/* 🟢 [Back]: 보정된 매칭 점수가 적용된 상세 정보 */}
@@ -1149,8 +1165,26 @@ const AIRecommender = () => {
         );
     };
 
-    const router = useRouter();
-    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    // 🟢 결제 성공 후 URL 파라미터 확인하여 데이터 강제 갱신
+    useEffect(() => {
+        const paymentSuccess = searchParams.get("paymentSuccess");
+        if (paymentSuccess === "true") {
+            console.log("[결제 성공 감지] 데이터 갱신 및 캐시 무효화 시작");
+            
+            // 1. 서버 데이터 강제 호출 (캐시 무시) - 비동기 처리
+            fetchUserData(true).then(() => {
+                // 2. Next.js 라우터 캐시 강제 새로고침 (클라이언트 캐시 무효화 필수)
+                // 🔴 이 부분이 빠지면 이전 페이지 데이터가 보일 수 있습니다.
+                router.refresh();
+            });
+            
+            // 3. URL 파라미터 제거 (깔끔한 URL 유지)
+            router.replace(pathname);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
 
     useEffect(() => {
         try {
@@ -1216,7 +1250,7 @@ const AIRecommender = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-emerald-50/20 to-white font-sans ">
+        <div className="min-h-screen bg-linear-to-b from-emerald-50/20 to-white font-sans ">
             <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
@@ -1338,7 +1372,7 @@ const AIRecommender = () => {
                             {!showRecommendations && (
                                 <div className="h-1 bg-gray-100 w-full">
                                     <div
-                                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
+                                        className="h-full bg-linear-to-r from-emerald-400 to-teal-500 transition-all duration-500"
                                         style={{ width: `${progress}%` }}
                                     />
                                 </div>
@@ -1347,7 +1381,7 @@ const AIRecommender = () => {
                             {/* 채팅 영역 (스크롤 가능) */}
                             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50">
                                 {showUpsell && !showRecommendations && (
-                                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 text-sm text-amber-900 shadow-sm">
+                                    <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 border border-amber-100 text-sm text-amber-900 shadow-sm">
                                         <div className="font-bold mb-1 flex items-center gap-2">
                                             <Ticket className="w-4 h-4 text-amber-600" />
                                             AI 추천 {coupons <= 1 ? "1회 남음" : `${coupons}개 남음`}
@@ -1383,7 +1417,7 @@ const AIRecommender = () => {
                                         <div
                                             className={`max-w-[80%] px-5 py-3.5 rounded-2xl shadow-sm text-[15px] leading-relaxed ${
                                                 message.type === "user"
-                                                    ? "bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-br-sm"
+                                                    ? "bg-linear-to-br from-gray-900 to-gray-800 text-white rounded-br-sm"
                                                     : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
                                             }`}
                                         >
@@ -1448,7 +1482,7 @@ const AIRecommender = () => {
                                                 onClick={() => handleAnswer(option)}
                                                 className={`px-5 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm border ${
                                                     option.value === "yes"
-                                                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-transparent shadow-emerald-200 hover:shadow-md"
+                                                        ? "bg-linear-to-r from-emerald-600 to-teal-600 text-white border-transparent shadow-emerald-200 hover:shadow-md"
                                                         : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
                                                 }`}
                                             >
@@ -1642,7 +1676,7 @@ const AIRecommender = () => {
                             <div className="relative mb-8 group">
                                 <div className="absolute inset-0 bg-emerald-200 rounded-[2rem] blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
 
-                                <div className="relative w-28 h-28 bg-gradient-to-br from-white to-emerald-50 rounded-[2.5rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
+                                <div className="relative w-28 h-28 bg-linear-to-br from-white to-emerald-50 rounded-[2.5rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
                                     <Sparkles className="w-12 h-12 text-emerald-600 drop-shadow-sm" />
 
                                     <span className="absolute top-6 right-6 flex h-3 w-3">
@@ -1655,7 +1689,7 @@ const AIRecommender = () => {
                             {/* 2. 타이포그래피 */}
                             <h2 className="text-[26px] font-extrabold text-gray-900 mb-4 tracking-tight leading-snug">
                                 AI 두나의 <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600">
                                     프라이빗 코스 설계
                                 </span>
                             </h2>
@@ -1672,7 +1706,7 @@ const AIRecommender = () => {
                                 onClick={startConversation} // 모달 오픈 함수 호출
                                 className="group relative px-8 py-4 w-full max-w-[280px] bg-gray-900 text-white rounded-2xl font-bold text-[17px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-[length:200%_auto] animate-[gradient_3s_ease_infinite]"></div>
+                                <div className="absolute inset-0 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-[length:200%_auto] animate-[gradient_3s_ease_infinite]"></div>
 
                                 <div className="relative flex items-center justify-center gap-2">
                                     <span>내 취향 분석 시작하기</span>

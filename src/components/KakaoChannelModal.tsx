@@ -17,7 +17,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
             {/* 배경: 진중한 느낌의 어두운 오버레이 */}
             <div
                 className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
@@ -33,7 +33,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
                     {/* <Image src="/images/event-bg.jpg" alt="이벤트" fill className="object-cover" /> */}
 
                     {/* 이미지가 없을 때를 대비한 모던한 그래픽 패턴 */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/5" />
+                    <div className="absolute inset-0 bg-linear-to-br from-emerald-500/10 to-teal-500/5" />
                     <div className="text-center z-10">
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-sm mb-3">
                             <span className="text-3xl">☕️</span>

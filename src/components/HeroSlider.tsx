@@ -35,7 +35,7 @@ const SliderItemComponent = memo(
                 href={`/courses/${item.id}`}
                 prefetch={true} // 🟢 성능 최적화: prefetch 추가
                 draggable={false}
-                className="relative min-w-[100%] md:min-w-[400px] aspect-[4/5] rounded-xl overflow-hidden snap-center border border-gray-100 active:scale-[0.98] transition-transform duration-200 block select-none"
+                className="relative min-w-full md:min-w-[400px] aspect-4/5 rounded-xl overflow-hidden snap-center border border-gray-100 active:scale-[0.98] transition-transform duration-200 block select-none"
             >
                 <div className="relative w-full h-full pointer-events-none">
                     {item.imageUrl ? (
@@ -61,7 +61,7 @@ const SliderItemComponent = memo(
                             No Image
                         </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/80" />
+                    <div className="absolute inset-0 bg-linear-to-b from-black/5 via-transparent to-black/80" />
                 </div>
 
                 <div className="absolute bottom-0 left-0 w-full p-6 text-white z-10">
@@ -121,57 +121,70 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         if (!scrollRef.current) return;
 
         let isInitialized = false;
+        let rafId: number | null = null;
 
         const observer = new ResizeObserver((entries) => {
-            for (let entry of entries) {
-                containerWidthRef.current = entry.contentRect.width;
-                // 초기 위치 설정 (1번 세트의 시작점) - 한 번만 실행
-                if (!isInitialized && realLength > 1 && scrollRef.current) {
-                    isInitialized = true;
-                    scrollRef.current.scrollTo({
-                        left: containerWidthRef.current * realLength,
-                        behavior: "auto",
-                    });
-                    setCurrentIndex(realLength);
+            // 🟢 [Performance]: ResizeObserver 콜백을 requestAnimationFrame으로 감싸서 성능 최적화
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                for (let entry of entries) {
+                    containerWidthRef.current = entry.contentRect.width;
+                    // 초기 위치 설정 (1번 세트의 시작점) - 한 번만 실행
+                    if (!isInitialized && realLength > 1 && scrollRef.current) {
+                        isInitialized = true;
+                        scrollRef.current.scrollTo({
+                            left: containerWidthRef.current * realLength,
+                            behavior: "auto",
+                        });
+                        setCurrentIndex(realLength);
+                    }
                 }
-            }
+            });
         });
 
         observer.observe(scrollRef.current);
-        return () => observer.disconnect();
+        return () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            observer.disconnect();
+        };
     }, [realLength]);
 
     const renderItems = useMemo(() => (items.length > 1 ? [...items, ...items, ...items] : items), [items]);
 
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const scrollRafRef = useRef<number | null>(null);
 
-    // 🟢 [Optimization]: offsetWidth 호출 제거 및 멱등성 보장
+    // 🟢 [Optimization]: offsetWidth 호출 제거 및 멱등성 보장 + requestAnimationFrame 사용
     const handleScroll = useCallback(() => {
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
 
-        scrollTimeoutRef.current = setTimeout(() => {
-            const container = scrollRef.current;
-            const width = containerWidthRef.current; // 캐싱된 너비 사용
+        // 🟢 [Performance]: 스크롤 이벤트를 requestAnimationFrame으로 디바운싱
+        scrollRafRef.current = requestAnimationFrame(() => {
+            scrollTimeoutRef.current = setTimeout(() => {
+                const container = scrollRef.current;
+                const width = containerWidthRef.current; // 캐싱된 너비 사용
 
-            if (container && width > 0 && realLength > 1) {
-                const scrollLeftVal = container.scrollLeft;
-                const index = Math.round(scrollLeftVal / width);
-                setCurrentIndex(index);
+                if (container && width > 0 && realLength > 1) {
+                    const scrollLeftVal = container.scrollLeft;
+                    const index = Math.round(scrollLeftVal / width);
+                    setCurrentIndex(index);
 
-                // 무한 스크롤 루프 로직
-                if (scrollLeftVal >= width * (realLength * 2)) {
-                    container.scrollTo({
-                        left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
-                        behavior: "auto",
-                    });
-                } else if (scrollLeftVal <= width * 0.5) {
-                    container.scrollTo({
-                        left: scrollLeftVal + width * realLength,
-                        behavior: "auto",
-                    });
+                    // 무한 스크롤 루프 로직
+                    if (scrollLeftVal >= width * (realLength * 2)) {
+                        container.scrollTo({
+                            left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
+                            behavior: "auto",
+                        });
+                    } else if (scrollLeftVal <= width * 0.5) {
+                        container.scrollTo({
+                            left: scrollLeftVal + width * realLength,
+                            behavior: "auto",
+                        });
+                    }
                 }
-            }
-        }, 100); // 🟢 빈도를 조절하여 메인 스레드 점유율 완화
+            }, 150); // 🟢 100ms -> 150ms로 증가하여 메인 스레드 부하 감소
+        });
     }, [realLength]);
 
     // 마우스 드래그 핸들러 (Ref 활용으로 리렌더링 제거)
@@ -191,23 +204,52 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         scrollRef.current.scrollLeft = scrollLeft.current - walk;
     };
 
-    // 🟢 [Optimization]: 자동 스크롤 로직 최적화
+    // 🟢 [Optimization]: 자동 스크롤 로직 최적화 (페이지 가시성 확인)
     useEffect(() => {
         if (realLength <= 1 || isDragging) return;
 
-        const interval = setInterval(() => {
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+        let isPageVisible = true;
+
+        // 🟢 [Performance]: 페이지가 보이지 않을 때는 자동 스크롤 중지
+        const handleVisibilityChange = () => {
+            isPageVisible = !document.hidden;
+            if (!isPageVisible && intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            } else if (isPageVisible && !intervalId) {
+                intervalId = setInterval(() => {
+                    const container = scrollRef.current;
+                    const width = containerWidthRef.current;
+
+                    if (container && width > 0 && !isDragging && isPageVisible) {
+                        container.scrollTo({
+                            left: width * (currentIndex + 1),
+                            behavior: "smooth",
+                        });
+                    }
+                }, 5000); // 🟢 4500ms -> 5000ms로 증가하여 부하 감소
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        intervalId = setInterval(() => {
             const container = scrollRef.current;
             const width = containerWidthRef.current;
 
-            if (container && width > 0 && !isDragging) {
+            if (container && width > 0 && !isDragging && isPageVisible) {
                 container.scrollTo({
                     left: width * (currentIndex + 1),
                     behavior: "smooth",
                 });
             }
-        }, 4500); // 🟢 간격을 살짝 늘려 Scheduler 부하 경감
+        }, 5000); // 🟢 4500ms -> 5000ms로 증가하여 부하 감소
 
-        return () => clearInterval(interval);
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
     }, [currentIndex, realLength, isDragging]);
 
     if (!items || items.length === 0) return null;

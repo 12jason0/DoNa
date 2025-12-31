@@ -352,7 +352,7 @@ const RecordsTab = ({
                                         ) : (
                                             <div className="w-full h-full bg-gray-100" />
                                         )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                                        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                                         <div className="absolute bottom-0 left-0 right-0 p-4">
                                             <h4 className="text-white font-bold text-lg line-clamp-2">{f.title}</h4>
                                             <div className="mt-1 flex items-center justify-between text-xs text-white/80">

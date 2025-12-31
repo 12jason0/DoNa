@@ -713,7 +713,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                     <div className="text-gray-400 text-2xl">📍</div>
                                                 </div>
                                             )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                            <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent"></div>
 
                                             {/* 배지 */}
                                             <div className="absolute bottom-4 left-5 flex gap-2">
@@ -818,7 +818,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                             sizes="380px"
                                         />
                                     )}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10"></div>
+                                    <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-black/10"></div>
 
                                     <button
                                         onClick={() => setShowCourseModal(false)}

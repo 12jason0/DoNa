@@ -534,7 +534,7 @@ function MapPageInner() {
     return (
         <div className="relative w-full h-full overflow-hidden bg-gray-100 font-sans touch-none">
             {/* 상단 검색창 */}
-            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-gradient-to-b from-white/90 via-white/60 to-transparent pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-linear-to-b from-white/90 via-white/60 to-transparent pointer-events-none">
                 <div className="flex items-center bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-3 pointer-events-auto mb-3">
                     <div className="pl-1 pr-3 text-emerald-500">
                         <svg

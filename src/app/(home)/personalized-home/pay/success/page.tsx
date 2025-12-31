@@ -75,9 +75,40 @@ function PaymentSuccessContent() {
                 const data = await res.json();
 
                 if (res.ok && data.success) {
+                    // 🟢 쿠폰 결제 시 쿠폰 개수 업데이트
+                    if (data.updatedUser?.coupons !== undefined) {
+                        // localStorage의 user 정보 업데이트
+                        const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+                        if (userStr) {
+                            try {
+                                const user = JSON.parse(userStr);
+                                user.couponCount = data.updatedUser.coupons;
+                                localStorage.setItem("user", JSON.stringify(user));
+
+                                // 🟢 쿠폰 개수 업데이트 이벤트 발생 (다른 컴포넌트에서 리스닝)
+                                if (typeof window !== "undefined") {
+                                    window.dispatchEvent(
+                                        new CustomEvent("couponCountUpdated", {
+                                            detail: { couponCount: data.updatedUser.coupons },
+                                        })
+                                    );
+                                }
+                            } catch (e) {
+                                console.error("쿠폰 개수 업데이트 실패:", e);
+                            }
+                        }
+                    }
+
+                    // 🟢 결제 완료 이벤트 발생 (마이페이지 구매 내역 갱신용)
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("paymentSuccess"));
+                    }
+
                     setStatus("success");
+                    // 🟢 쿠폰 결제 완료 플래그를 URL에 추가하여 데이터 갱신 트리거
+                    const refreshFlag = data.updatedUser?.coupons !== undefined ? "?paymentSuccess=true" : "";
                     // 성공 시 3초 후 이동
-                    setTimeout(() => router.replace("/personalized-home"), 3000);
+                    setTimeout(() => router.replace(`/personalized-home${refreshFlag}`), 3000);
                 } else {
                     setStatus("error");
                     // 더 자세한 에러 메시지 표시

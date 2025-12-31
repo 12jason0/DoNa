@@ -66,7 +66,7 @@ export default function RefundPage() {
             });
 
             if (data) {
-                setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다. 슬랙으로 알림이 전송되었습니다.`);
+                setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
                 await fetchPaymentHistory();
             } else {
                 setError((data as any)?.error || "환불 처리 중 오류가 발생했습니다.");
@@ -93,7 +93,7 @@ export default function RefundPage() {
             {/* ✅ 수정된 이탈 방지 모달 (팝업) */}
             {isModalOpen && selectedPayment && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-[2rem] p-8 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-4xl p-8 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="text-center">
                             <div className="text-6xl mb-5">🥺</div>
                             {/* 더 강력한 훅(Hook) 메시지 */}

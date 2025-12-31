@@ -457,15 +457,15 @@ export default function JongroMapFinalExact({ data }: Props) {
                 }
                 const form = new FormData();
                 files.forEach((f) => form.append("photos", f, f.name));
-                
+
                 // 탈출방 업로드를 위한 파라미터 추가
                 if (storyId) {
                     form.append("type", "escape");
                     form.append("escapeId", storyId.toString());
                 }
-                
-                const uploadRes = await fetch("/api/upload", { 
-                    method: "POST", 
+
+                const uploadRes = await fetch("/api/upload", {
+                    method: "POST",
                     body: form,
                     credentials: "include", // 쿠키를 포함하여 userId를 서버에서 가져올 수 있도록
                 });
@@ -666,10 +666,7 @@ export default function JongroMapFinalExact({ data }: Props) {
     const displayTitle = tokens?.title || "1919 DM";
     const displaySubtitle = tokens?.subtitle || "익선동 리얼타임 미스터리";
     const defaultMapUrl = getS3StaticUrl("escape/jongro/jongroMap.png");
-    const mapUrl =
-        (flow as any)?.map?.image ||
-        (tokens as any)?.mapImage ||
-        defaultMapUrl;
+    const mapUrl = (flow as any)?.map?.image || (tokens as any)?.mapImage || defaultMapUrl;
     const combinedCategories: any[] = fallbackMarkers as any[];
     const selectedCategoryData = combinedCategories.find((c: any) => c.id === selectedCategory);
 
@@ -679,7 +676,7 @@ export default function JongroMapFinalExact({ data }: Props) {
     return (
         <div className="jongro-exact-container">
             {showPreface && (
-                <div className="absolute inset-0 flex items-end justify-center p-4 pb-[12vh] animate-fade-in overflow-y-auto z-[1500]">
+                <div className="absolute inset-0 flex items-end justify-center p-4 pb-[12vh] animate-fade-in overflow-y-auto z-1500">
                     <div className="w-full max-w-lg rounded-2xl overflow-hidden">
                         <div
                             ref={prefaceScrollRef}
@@ -690,7 +687,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                     {displayTitle}
                                 </h1>
                                 <h2 className="font-serif text-sm text-[#8b8070] mt-2 font-bold">{displaySubtitle}</h2>
-                                <div className="w-16 h-[3px] bg-gradient-to-r from-transparent via-[#c8aa64] to-transparent mx-auto mt-4" />
+                                <div className="w-16 h-[3px] bg-linear-to-r from-transparent via-[#c8aa64] to-transparent mx-auto mt-4" />
                             </header>
                             <div className="space-y-4">
                                 {String(data?.synopsis || "")
@@ -813,7 +810,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                 </div>
                             )}
                             {showClearedModal && (
-                                <div className="fixed inset-0 z-[2500] bg-black/80 flex items-center justify-center p-6">
+                                <div className="fixed inset-0 z-2500 bg-black/80 flex items-center justify-center p-6">
                                     <div className="w-full max-w-[360px] bg-[#1a1814] rounded-2xl border border-[#c8aa64] shadow-2xl overflow-hidden">
                                         <div className="px-6 py-4 border-b border-[#c8aa64]/30 text-center">
                                             <span
@@ -837,7 +834,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                         <div className="px-6 pb-6">
                                             <button
                                                 onClick={() => setShowClearedModal(false)}
-                                                className="w-full py-3 rounded-lg bg-gradient-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] font-extrabold tracking-widest border border-[#f5e6d3]/20 active:scale-95"
+                                                className="w-full py-3 rounded-lg bg-linear-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] font-extrabold tracking-widest border border-[#f5e6d3]/20 active:scale-95"
                                                 style={{ fontFamily: "'Eulyoo1945', serif" }}
                                             >
                                                 확인
@@ -885,7 +882,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                             {selectedPlace && (
                                 <div className="popup-card-exact detail-exact">
                                     {!isPlayingStory ? (
-                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[350px] z-[100] animate-fade-in-up">
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[350px] z-100 animate-fade-in-up">
                                             <div className="relative bg-[#fdfbf7] rounded-lg shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden border border-[#c8aa64]">
                                                 {/* ... 장소 상세 UI (기존 유지) ... */}
                                                 <div className="bg-[#eae0d0] px-5 py-3 border-b border-[#c8aa64] flex justify-between items-center">
@@ -903,7 +900,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                     </button>
                                                 </div>
                                                 <div className="p-6 flex flex-col items-center text-center relative">
-                                                    <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-black to-transparent pointer-events-none" />
+                                                    <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-black to-transparent pointer-events-none" />
                                                     <h3 className="text-2xl font-serif font-bold text-[#2a2620] mb-2 relative inline-block z-10">
                                                         {(selectedPlace as any).name || "장소명 없음"}
                                                         <span className="absolute -bottom-1 left-0 w-full h-[2px] bg-[#c8aa64]/50"></span>
@@ -1031,7 +1028,7 @@ export default function JongroMapFinalExact({ data }: Props) {
 
                                             {/* ✨ 마진 문제 해결된 최종 모달 코드 */}
                                             {activeMission && !showSuccessModal && (
-                                                <div className="fixed inset-0 z-[2000] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.3s_ease-out]">
+                                                <div className="fixed inset-0 z-2000 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.3s_ease-out]">
                                                     {/* 모달 박스 */}
                                                     <div
                                                         className="w-full max-w-[350px] bg-[#1a1814] rounded-2xl border border-[#c8aa64] shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col relative max-h-[92vh]"
@@ -1090,7 +1087,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                     {" "}
                                                                     {/* 🟢 여기서 마진을 줍니다 */}
                                                                     <label
-                                                                        className={`relative w-full aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group hover:border-[#c8aa64] hover:bg-[#c8aa64]/5 ${
+                                                                        className={`relative w-full aspect-4/3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group hover:border-[#c8aa64] hover:bg-[#c8aa64]/5 ${
                                                                             photoFiles.length > 0
                                                                                 ? "border-[#c8aa64] bg-black"
                                                                                 : "border-[#c8aa64]/30 bg-transparent"
@@ -1122,7 +1119,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                         />
 
                                                                         {photoFiles.length > 0 ? (
-                                                                            <div className="absolute inset-0 grid grid-cols-2 gap-[1px] bg-[#c8aa64]">
+                                                                            <div className="absolute inset-0 grid grid-cols-2 gap-px bg-[#c8aa64]">
                                                                                 {photoPreviewUrls.map((url, idx) => (
                                                                                     <div
                                                                                         key={idx}
@@ -1208,7 +1205,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                         </div>
 
                                                         {/* 4. 하단 버튼 영역 */}
-                                                        <div className="px-6 mt-4 pt-6 pb-8 shrink-0 bg-gradient-to-t from-[#1a1814] via-[#1a1814] to-transparent">
+                                                        <div className="px-6 mt-4 pt-6 pb-8 shrink-0 bg-linear-to-t from-[#1a1814] via-[#1a1814] to-transparent">
                                                             <button
                                                                 onClick={handleConfirm}
                                                                 disabled={
@@ -1226,7 +1223,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                           ).toUpperCase() === "PHOTO" &&
                                                                           photoFiles.length < 2
                                                                         ? "bg-[#3a3530] text-[#5a5450] opacity-60"
-                                                                        : "bg-gradient-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] hover:brightness-110 active:scale-95"
+                                                                        : "bg-linear-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] hover:brightness-110 active:scale-95"
                                                                 }`}
                                                                 style={{ fontFamily: "'Eulyoo1945', serif" }}
                                                             >
@@ -1245,7 +1242,7 @@ export default function JongroMapFinalExact({ data }: Props) {
 
                                             {/* 성공 스탬프 모달 (버튼 업그레이드 적용) */}
                                             {showSuccessModal && (
-                                                <div className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4 animate-fade-in">
+                                                <div className="fixed inset-0 z-3000 bg-black/90 flex items-center justify-center p-4 animate-fade-in">
                                                     <div className="flex flex-col items-center text-center w-full max-w-sm">
                                                         <div className="relative mb-8 animate-[stampBounce_0.5s_cubic-bezier(0.175,0.885,0.32,1.275)_both]">
                                                             <div className="w-40 h-40 rounded-full border-4 border-emerald-500 flex items-center justify-center bg-emerald-900/20 shadow-[0_0_50px_rgba(16,185,129,0.3)] backdrop-blur-sm relative overflow-hidden">
@@ -1254,7 +1251,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                     ✅
                                                                 </span>
                                                             </div>
-                                                            <div className="absolute -bottom-2 -right-4 bg-emerald-600 text-[#eaddcf] font-black text-xs px-3 py-1 rounded shadow-lg transform rotate-[-6deg] border border-emerald-400/50 tracking-widest">
+                                                            <div className="absolute -bottom-2 -right-4 bg-emerald-600 text-[#eaddcf] font-black text-xs px-3 py-1 rounded shadow-lg transform -rotate-6 border border-emerald-400/50 tracking-widest">
                                                                 VERIFIED
                                                             </div>
                                                         </div>
@@ -1270,7 +1267,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                         {/* ✨ [수정된 부분] 골드 그라데이션 + 아이콘 버튼 */}
                                                         <button
                                                             onClick={handleMissionSuccessComplete}
-                                                            className="group relative w-full max-w-[240px] py-4 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#bfa048] border border-[#f5e6d3]/20 shadow-[0_0_30px_rgba(212,175,55,0.25)] animate-[fadeIn_0.8s_ease-out_0.8s_both] hover:brightness-110 active:scale-95 transition-all duration-300 flex items-center justify-center gap-3"
+                                                            className="group relative w-full max-w-[240px] py-4 rounded-xl bg-linear-to-r from-[#d4af37] to-[#bfa048] border border-[#f5e6d3]/20 shadow-[0_0_30px_rgba(212,175,55,0.25)] animate-[fadeIn_0.8s_ease-out_0.8s_both] hover:brightness-110 active:scale-95 transition-all duration-300 flex items-center justify-center gap-3"
                                                         >
                                                             <span className="font-serif font-bold text-[#1a1814] text-lg tracking-widest">
                                                                 다음 이야기 보기

@@ -17,14 +17,19 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        // 2. 결제 내역 조회 (기존 로직 100% 유지)
+        // 2. 결제 내역 조회 (구독권 결제 포함)
         const payments = await prisma.payment.findMany({
             where: {
                 userId: numericUserId,
             },
-            orderBy: {
-                approvedAt: "desc",
-            },
+            orderBy: [
+                {
+                    approvedAt: "desc",
+                },
+                {
+                    requestedAt: "desc",
+                },
+            ],
             select: {
                 id: true,
                 orderId: true,

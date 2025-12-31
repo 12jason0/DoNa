@@ -206,7 +206,7 @@ export default function PersonalizedSection() {
                 </div>
                 <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4">
                     {[1, 2, 3].map((n) => (
-                        <div key={n} className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse" />
+                        <div key={n} className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse" />
                     ))}
                 </div>
             </section>
@@ -265,7 +265,7 @@ export default function PersonalizedSection() {
                     ? [1, 2, 3].map((n) => (
                           <div
                               key={n}
-                              className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse"
+                              className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse"
                           />
                       ))
                     : courses.map((course, idx) => (
@@ -275,7 +275,7 @@ export default function PersonalizedSection() {
                               draggable={false}
                               className="snap-center shrink-0 w-[200px] group relative select-none"
                           >
-                              <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-gray-100 transition-transform active:scale-95">
+                              <div className="relative aspect-3/4 rounded-xl overflow-hidden border border-gray-100 transition-transform active:scale-95">
                                   {/* 이미지 */}
                                   <div className="relative w-full h-full bg-gray-200">
                                       {(() => {
@@ -305,7 +305,7 @@ export default function PersonalizedSection() {
                                   </div>
 
                                   {/* 그라데이션 */}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                                  <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
 
                                   {/* 뱃지 */}
                                   {isLoggedIn && hasOnboardingData ? (

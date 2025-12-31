@@ -65,6 +65,7 @@ const NaverMap = dynamic(() => import("@/components/NaverMap"), {
             지도 로딩중...
         </div>
     ),
+    // 🟢 [Performance]: 지도는 코스 데이터 로드 후에만 필요하므로 지연 로드
 });
 
 function GuidePageInner() {
@@ -117,8 +118,9 @@ function GuidePageInner() {
         setIsMinimized((prev) => !prev);
     };
 
-    // 사용자 정보 가져오기 (test@test.com 계정 체크용)
+    // 사용자 정보 가져오기 (test@test.com 계정 체크용) - 지연 로드
     useEffect(() => {
+        // 🟢 [Performance]: 코스 데이터 로드 후 사용자 정보 가져오기 (우선순위 조정)
         const fetchUserInfo = async () => {
             try {
                 // 🟢 쿠키 기반 인증: authenticatedFetch 사용
@@ -135,13 +137,16 @@ function GuidePageInner() {
                     setUserTier("FREE");
                 }
             } catch (err) {
-                console.error("사용자 정보 가져오기 실패:", err);
                 setIsLoggedIn(false);
                 setUserTier("FREE");
             }
         };
-        fetchUserInfo();
-    }, []);
+        
+        // 🟢 코스 데이터 로드 완료 후 사용자 정보 로드 (100ms 지연)
+        if (!loading) {
+            setTimeout(fetchUserInfo, 100);
+        }
+    }, [loading]);
 
     // 거리 업데이트 Effect
     useEffect(() => {
@@ -183,17 +188,10 @@ function GuidePageInner() {
 
                 if (!response.ok) {
                     const errorMessage = (data as any)?.error || `HTTP ${response.status}: ${response.statusText}`;
-                    console.error("Course API 응답 오류:", {
-                        status: response.status,
-                        statusText: response.statusText,
-                        error: errorMessage,
-                        courseId,
-                    });
                     throw new Error(errorMessage || "Failed to fetch course");
                 }
 
                 if (!data) {
-                    console.error("Course 데이터가 null입니다:", { courseId, response });
                     throw new Error("Course data is null");
                 }
 
@@ -202,21 +200,13 @@ function GuidePageInner() {
                     ? [...data.coursePlaces].sort((a, b) => a.order_index - b.order_index)
                     : [];
 
-                // 🟢 다음 프레임에서 상태 업데이트하여 렌더링 부하 분산
-                requestAnimationFrame(() => {
+                // 🟢 상태 업데이트를 배치로 처리 (렌더링 부하 분산)
                 setCourse({
                     ...data,
                     coursePlaces: sortedPlaces,
-                    });
-                    setLoading(false);
                 });
+                setLoading(false);
             } catch (err: any) {
-                console.error("Course load failed:", err);
-                console.error("에러 상세:", {
-                    message: err?.message,
-                    stack: err?.stack,
-                    courseId,
-                });
                 // 에러 발생 시 사용자에게 알림을 주거나 이전 페이지로 리다이렉트할 수 있습니다.
                 // 코스가 없거나 접근할 수 없는 경우 이전 페이지로 이동
                 if (err?.message?.includes("not found") || err?.message?.includes("404")) {
@@ -233,21 +223,30 @@ function GuidePageInner() {
             }
         };
 
-        // 🟢 초기 로딩은 즉시, 데이터 페칭은 다음 프레임에서
-        requestAnimationFrame(fetchCourse);
+        // 🟢 즉시 데이터 페칭 (requestAnimationFrame 제거로 초기 로딩 속도 개선)
+        fetchCourse();
     }, [courseId, router]);
 
-    // Geolocation
+    // Geolocation - 지연 로드 (코스 데이터 로드 후)
     useEffect(() => {
-        if (typeof navigator !== "undefined" && navigator.geolocation) {
+        if (loading || typeof navigator === "undefined" || !navigator.geolocation) return;
+        
+        // 🟢 [Performance]: 코스 데이터 로드 후 GPS 위치 요청 (100ms 지연)
+        const timer = setTimeout(() => {
             const onOk = (pos: GeolocationPosition) =>
                 setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
             const id = navigator.geolocation.watchPosition(onOk, () => setUserLocation(null), {
                 enableHighAccuracy: true,
             });
-            return () => navigator.geolocation.clearWatch(id);
-        }
-    }, []);
+            return () => {
+                navigator.geolocation.clearWatch(id);
+            };
+        }, 100);
+        
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [loading]);
 
     const mapPlaces = useMemo(() => {
         if (!currentPlace) return [];
@@ -314,7 +313,7 @@ function GuidePageInner() {
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-hidden overscroll-none">
             {/* 1. Top Bar (Progress & Exit) */}
-            <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-gradient-to-b from-white/90 to-transparent pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-linear-to-b from-white/90 to-transparent pointer-events-none">
                 <div className="flex items-center justify-between mb-2 pointer-events-auto">
                     <span className="px-3 py-1 bg-black text-white text-xs font-bold rounded-full shadow-md">
                         Step {currentStep + 1} / {totalSteps}
@@ -502,7 +501,7 @@ function GuidePageInner() {
 
                         {/* 🟢 쿠폰 지급 안내 메시지 */}
                         {couponAwarded && couponMessage && (
-                            <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl">
+                            <div className="mb-4 p-4 bg-linear-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl">
                                 <div className="flex items-center justify-center gap-2 mb-2">
                                     <span className="text-2xl">🎁</span>
                                     <p className="text-sm font-bold text-amber-700">쿠폰 지급 완료!</p>

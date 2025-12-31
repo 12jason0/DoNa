@@ -14,7 +14,7 @@ import LoginModal from "@/components/LoginModal";
 
 // 🟢 [추가] 로그아웃 스플래시 UI
 const LogoutSplash = () => (
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-9999 bg-white flex flex-col items-center justify-center">
         <div className="flex flex-col items-center animate-pulse">
             <span className="text-3xl font-bold text-gray-900 mb-4 tracking-tighter italic">DoNa</span>
             <div className="flex gap-1">
@@ -230,7 +230,7 @@ const Header = () => {
                     />
                 )}
                 <div
-                    className={`fixed top-16 bottom-0 z-[1500] bg-white border-l border-gray-200 transform transition-all ease-in-out duration-300 flex flex-col ${
+                    className={`fixed top-16 bottom-0 z-1500 bg-white border-l border-gray-200 transform transition-all ease-in-out duration-300 flex flex-col ${
                         isMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
                     }`}
                     ref={drawerRef}

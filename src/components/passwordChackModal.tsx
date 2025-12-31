@@ -13,7 +13,7 @@ export default function PasswordCheckModal({ onClose, onConfirm, error }: Passwo
 
     return (
         // 배경 (Overlay)
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-2000 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
             {/* 모달 박스 */}
             <div className="w-full max-w-[340px] bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-scaleIn">
                 {/* 상단 헤더 (제목 + 닫기 버튼) */}

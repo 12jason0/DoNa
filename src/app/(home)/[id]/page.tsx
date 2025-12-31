@@ -52,11 +52,11 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                             className="object-cover"
                         />
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                        <div className="w-full h-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center">
                             <span className="text-6xl">📍</span>
                         </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-r from-black/70 via-black/50 to-transparent" />
                 </div>
 
                 <div className="relative h-full max-w-[500px] mx-auto px-4 flex items-end pb-8">

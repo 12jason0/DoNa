@@ -46,15 +46,6 @@ export async function POST(req: NextRequest) {
             userId?: number | string;
         };
 
-        // 디버깅: 받은 데이터 로그
-        console.log("[결제 확인 API] 받은 데이터:", {
-            paymentKey: paymentKey ? "있음" : "없음",
-            orderId: orderId ? "있음" : "없음",
-            amount,
-            plan,
-            userId,
-        });
-
         // 1. 필수 파라미터 검증
         if (!paymentKey) {
             return NextResponse.json(
@@ -178,6 +169,9 @@ export async function POST(req: NextRequest) {
                     data: {
                         couponCount: { increment: planInfo.value },
                     },
+                    select: {
+                        couponCount: true,
+                    },
                 });
             } else if (planInfo.type === "SUBSCRIPTION") {
                 const currentUser = await tx.user.findUnique({ where: { id: numericUserId } });
@@ -198,24 +192,40 @@ export async function POST(req: NextRequest) {
                         subscriptionExpiresAt: newExpireDate,
                         isAutoRenewal: true,
                     },
+                    select: {
+                        couponCount: true,
+                        subscriptionTier: true,
+                        subscriptionExpiresAt: true,
+                    },
                 });
             }
 
             return { payment: newPayment, user: updatedUser };
         });
 
-        return NextResponse.json({
+        // 🟢 쿠폰 결제 시 최신 쿠폰 개수 반환
+        const responseData = {
             success: true,
             orderId,
             planName: planInfo.name,
             updatedUser: {
-                coupons: result.user?.couponCount,
-                subscriptionTier: result.user?.subscriptionTier,
-                subscriptionExpiresAt: result.user?.subscriptionExpiresAt,
+                coupons: result.user?.couponCount ?? 0,
+                subscriptionTier: (result.user as any)?.subscriptionTier,
+                subscriptionExpiresAt: (result.user as any)?.subscriptionExpiresAt,
             },
-        });
-    } catch (e) {
+        };
+
+        return NextResponse.json(responseData);
+    } catch (e: any) {
         console.error("Payment Confirm Error:", e);
-        return NextResponse.json({ success: false, error: "UNKNOWN_ERROR" }, { status: 500 });
+        console.error("Error details:", {
+            message: e?.message,
+            stack: e?.stack,
+            name: e?.name,
+        });
+        return NextResponse.json(
+            { success: false, error: "UNKNOWN_ERROR", message: e?.message || "결제 처리 중 오류가 발생했습니다." },
+            { status: 500 }
+        );
     }
 }

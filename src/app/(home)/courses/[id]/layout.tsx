@@ -424,7 +424,7 @@ function CourseDetailPage() {
             <div className="min-h-screen bg-gray-50 text-black pt-10">
                 <section className="relative h-[360px] md:h-[520px] overflow-hidden pt-10">
                     <Image src={heroImageUrl || ""} alt={courseData.title} fill priority className="object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-r from-black/70 to-transparent" />
                     <div className="relative h-full max-w-7xl mx-auto px-4 flex items-center">
                         <div className="max-w-2xl">
                             <div className="mb-4 flex gap-3 flex-wrap">

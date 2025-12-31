@@ -59,7 +59,7 @@ export default function SuggestCoursePage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50">
             <div className="max-w-4xl mx-auto px-4 py-12">
                 {/* Header Section */}
                 <div className="text-center mb-12">
