@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Container as MapDiv, NaverMap, Marker } from "react-naver-maps";
+import TicketPlans from "@/components/TicketPlans";
+import LoginModal from "@/components/LoginModal";
+import { useAuth } from "@/context/AuthContext";
+import { authenticatedFetch, fetchSession } from "@/lib/authClient";
 
 // --- 타입 정의 ---
 interface Place {
@@ -136,13 +140,110 @@ function MapPageInner() {
     const [panelState, setPanelState] = useState<"minimized" | "default" | "expanded">("default");
     const [showMapSearchButton, setShowMapSearchButton] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
 
+    const { isAuthenticated } = useAuth();
+
+    // 🟢 사용자 등급 미리 로드 (캐싱)
+    useEffect(() => {
+        const fetchUserTier = async () => {
+            if (!isAuthenticated) {
+                setUserTier("FREE");
+                return;
+            }
+            try {
+                const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
+                const tier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
+                setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
+            } catch {
+                setUserTier("FREE");
+            }
+        };
+        fetchUserTier();
+    }, [isAuthenticated]);
     const dragStartY = useRef<number>(0);
     const fetchAbortRef = useRef<AbortController | null>(null);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 2000);
+    };
+
+    // 🟢 코스 클릭 시 권한 체크 후 모달 표시 또는 이동 (속도 최적화)
+    const handleCourseClick = async (course: any) => {
+        // 🟢 "c-" 접두사 제거
+        const cleanId = course.id.startsWith("c-") ? course.id.replace("c-", "") : course.id;
+
+        // 🟢 1. 코스 등급 확인 (캐싱된 값 우선 사용)
+        let courseGrade: string = "FREE";
+        if (course.grade) {
+            courseGrade = (course.grade || "FREE").toUpperCase();
+        } else {
+            // grade 정보가 없으면 API 호출 (타임아웃 1초)
+            try {
+                const { apiFetch } = await import("@/lib/authClient");
+                const result = await Promise.race([
+                    apiFetch<any>(`/api/courses/${cleanId}`),
+                    new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1000)),
+                ]);
+                courseGrade = (result?.data?.grade || "FREE").toUpperCase();
+            } catch (error) {
+                // API 호출 실패 시 기본값 FREE로 처리
+                courseGrade = "FREE";
+            }
+        }
+
+        // 🟢 2. FREE 코스는 모든 유저 접근 가능
+        if (courseGrade === "FREE") {
+            router.push(`/courses/${cleanId}`);
+            return;
+        }
+
+        // 🟢 3. 유료 코스 (BASIC, PREMIUM)
+        // 🟢 3-1. 비로그인 유저 → 로그인 모달 (즉시 표시)
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            return;
+        }
+
+        // 🟢 3-2. 로그인 유저 → 사용자 등급 확인 (캐싱된 값 우선 사용)
+        let currentUserTier: string = userTier.toUpperCase(); // 캐싱된 값 먼저 사용
+        try {
+            // 타임아웃 0.8초로 빠른 응답 보장
+            const data = await Promise.race([
+                authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile"),
+                new Promise<{ user?: { subscriptionTier?: string } }>((_, reject) =>
+                    setTimeout(() => reject(new Error("Timeout")), 800)
+                ),
+            ]);
+            currentUserTier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
+        } catch {
+            // API 호출 실패 시 캐싱된 userTier 사용 (이미 설정됨)
+        }
+
+        // 🟢 3-3. PREMIUM 유저는 모든 코스 접근 가능
+        if (currentUserTier === "PREMIUM") {
+            router.push(`/courses/${cleanId}`);
+            return;
+        }
+
+        // 🟢 3-4. BASIC 유저
+        if (currentUserTier === "BASIC") {
+            if (courseGrade === "BASIC") {
+                // BASIC 유저 + BASIC 코스 → 접근 가능
+                router.push(`/courses/${cleanId}`);
+                return;
+            } else if (courseGrade === "PREMIUM") {
+                // BASIC 유저 + PREMIUM 코스 → TicketPlans
+                setShowSubscriptionModal(true);
+                return;
+            }
+        }
+
+        // 🟢 3-5. FREE 유저 (BASIC, PREMIUM 코스) → TicketPlans
+        setShowSubscriptionModal(true);
     };
 
     const handleFindWay = (placeName: string) => {
@@ -721,7 +822,7 @@ function MapPageInner() {
                     <div className="px-6 pb-3 border-b border-gray-100 flex justify-between items-end">
                         <div>
                             <h2 className="font-bold text-xl text-gray-900 leading-tight">
-                                {activeTab === "places" ? "내 주변 핫플 🔥" : "추천 데이트 코스 ❤️"}
+                                {activeTab === "places" ? "내 주변 장소소 🔥" : "추천 데이트 코스 ❤️"}
                             </h2>
                             <p className="text-xs text-gray-500 mt-1">
                                 {activeTab === "places"
@@ -836,9 +937,7 @@ function MapPageInner() {
                                     <div
                                         key={item.id}
                                         onClick={() => {
-                                            activeTab === "courses"
-                                                ? router.push(`/courses/${item.id}`)
-                                                : handlePlaceClick(item);
+                                            activeTab === "courses" ? handleCourseClick(item) : handlePlaceClick(item);
                                         }}
                                         className="group bg-white p-4 mb-3 rounded-2xl border border-gray-100 shadow-sm active:scale-[0.98] transition-all cursor-pointer hover:shadow-md hover:border-emerald-200"
                                     >
@@ -886,6 +985,8 @@ function MapPageInner() {
                     )}
                 </div>
             </div>
+            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/map`} />}
         </div>
     );
 }

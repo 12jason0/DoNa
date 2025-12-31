@@ -185,16 +185,18 @@ const getUserPermission = unstable_cache(
 // 2. 메인 페이지 컴포넌트
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const courseId = Number(id);
+    // 🟢 "c-" 접두사 제거 (지도 페이지에서 "c-55" 형식으로 전달되는 경우 처리)
+    const cleanId = id.startsWith("c-") ? id.replace("c-", "") : id;
+    const courseId = Number(cleanId);
 
     // 🟢 데이터 페칭 (병렬 처리로 속도 향상)
     const [courseData, cookieStore] = await Promise.all([
-        getCourse(id),
+        getCourse(cleanId),
         cookies(), // 🟢 쿠키도 병렬로 가져오기
     ]);
 
     if (!courseData) {
-        console.error(`[CourseDetailPage] 코스 ID ${id}를 찾을 수 없습니다.`);
+        console.error(`[CourseDetailPage] 코스 ID ${cleanId}를 찾을 수 없습니다.`);
         notFound();
     }
 
@@ -221,26 +223,35 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         }
     }
 
-    // 🟢 하이브리드 잠금 계산 (등급제 OR 개별구매)
-    const courseGrade = courseData.grade || "FREE";
+    // 🟢 하이브리드 잠금 계산 (대소문자 구분 없이 처리)
+    const courseGrade = (courseData.grade || "FREE").toUpperCase();
+    const currentUserTier = userTier.toUpperCase();
     let isLocked = false;
 
     if (courseGrade !== "FREE") {
-        isLocked = true; // 기본적으로 잠금
+        isLocked = true; // 유료 코스는 기본 잠금
 
-        // (1) 프리미엄 유저는 무조건 통과
-        if (userTier === "PREMIUM") isLocked = false;
+        if (currentUserTier === "PREMIUM") {
+            isLocked = false;
+        } else if (currentUserTier === "BASIC" && courseGrade === "BASIC") {
+            isLocked = false;
+        }
 
-        // (2) 베이직 유저가 베이직 코스를 볼 때 통과
-        if (userTier === "BASIC" && courseGrade === "BASIC") isLocked = false;
-
-        // (3) ⭐️ 구매 기록이 있으면 무조건 잠금 해제
-        if (hasUnlocked) isLocked = false;
+        if (hasUnlocked) {
+            isLocked = false;
+        }
     }
 
     // 최종 결과 주입
     const secureCourseData = { ...courseData, isLocked };
 
     // 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드
-    return <CourseDetailClient courseData={secureCourseData} initialReviews={[]} courseId={id} userTier={userTier} />;
+    return (
+        <CourseDetailClient
+            courseData={secureCourseData}
+            initialReviews={[]}
+            courseId={cleanId}
+            userTier={currentUserTier}
+        />
+    );
 }

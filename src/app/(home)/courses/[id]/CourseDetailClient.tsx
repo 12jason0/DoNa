@@ -318,6 +318,18 @@ export default function CourseDetailClient({
     // 🟢 [Fix]: IntersectionObserver에서 자동 위치 요청 제거 (브라우저 보안 정책 준수)
     // 위치 정보는 사용자 제스처(버튼 클릭)에 의해서만 요청됩니다.
 
+    // 🟢 서버에서 계산된 isLocked가 true라면 페이지 콘텐츠를 숨기고 모달만 표시
+    useEffect(() => {
+        if (courseData.isLocked) {
+            // 🟢 즉시 모달 표시 (페이지 콘텐츠는 이미 렌더링되지만 모달이 덮음)
+            if (!isAuthenticated) {
+                setShowLoginModal(true);
+            } else {
+                setShowSubscriptionModal(true);
+            }
+        }
+    }, [courseData.isLocked, isAuthenticated]);
+
     useEffect(() => {
         if (authLoading) return;
         setIsLoggedIn(isAuthenticated);
@@ -665,383 +677,390 @@ export default function CourseDetailClient({
         }
     };
 
+    // 🟢 잠금된 코스일 때는 페이지 콘텐츠를 숨기고 모달만 표시
+    const shouldShowContent = !courseData.isLocked || (!showSubscriptionModal && !showLoginModal);
+
     return (
         <>
             {/* 🟢 [Fix] 컴포넌트명 수정 반영 */}
             {toast && <ToastPopup message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            <div className="min-h-screen bg-[#F8F9FA] font-sans text-gray-900 relative">
-                <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
-                    <Image
-                        src={heroImageUrl || ""}
-                        alt={courseData.title}
-                        fill
-                        className="object-cover"
-                        priority
-                        loading="eager"
-                        quality={75}
-                        fetchPriority="high"
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        unoptimized={false}
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white">
-                        <div className="flex flex-wrap gap-2.5 mb-4">
-                            <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-[13px] font-bold rounded-full border border-white/20 shadow-sm">
-                                📍 {courseData.region || "서울"}
-                            </span>
-                            {courseData.target_situation && (
-                                <span className="px-3.5 py-1.5 bg-rose-500/80 backdrop-blur-md text-[13px] font-bold rounded-full shadow-sm border border-white/10">
-                                    {courseData.target_situation === "SOME"
-                                        ? "💘 썸 탈출"
-                                        : `#${courseData.target_situation}`}
+            {shouldShowContent && (
+                <div className="min-h-screen bg-[#F8F9FA] font-sans text-gray-900 relative">
+                    <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
+                        <Image
+                            src={heroImageUrl || ""}
+                            alt={courseData.title}
+                            fill
+                            className="object-cover"
+                            priority
+                            loading="eager"
+                            quality={75}
+                            fetchPriority="high"
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            unoptimized={false}
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
+                        <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white">
+                            <div className="flex flex-wrap gap-2.5 mb-4">
+                                <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-[13px] font-bold rounded-full border border-white/20 shadow-sm">
+                                    📍 {courseData.region || "서울"}
                                 </span>
-                            )}
-                        </div>
-                        <h1 className="text-2xl md:text-3xl font-extrabold mb-6">{courseData.title}</h1>
-                        <div className="flex items-center gap-3 text-xs font-semibold">
-                            <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                👣 {sortedCoursePlaces.length} 스팟
+                                {courseData.target_situation && (
+                                    <span className="px-3.5 py-1.5 bg-rose-500/80 backdrop-blur-md text-[13px] font-bold rounded-full shadow-sm border border-white/10">
+                                        {courseData.target_situation === "SOME"
+                                            ? "💘 썸 탈출"
+                                            : `#${courseData.target_situation}`}
+                                    </span>
+                                )}
                             </div>
-                            <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                ⏳ {courseData.duration}
-                            </div>
-                            <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                <span className="text-yellow-400">★</span> {courseData.rating}
-                            </div>
-                        </div>
-                    </div>
-                </header>
-
-                <main
-                    className="max-w-[600px] mx-auto -mt-8 relative z-10 px-5 space-y-10"
-                    style={{
-                        touchAction: "pan-y", // 수직 스크롤 성능 최적화
-                        WebkitOverflowScrolling: "touch", // iOS 부드러운 스크롤 보장
-                    }}
-                >
-                    <section className="bg-white rounded-lg p-8 shadow-lg border border-gray-100">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
-                            <h2 className="text-xl font-bold text-gray-900">어떤 코스인가요?</h2>
-                        </div>
-                        <p className="text-gray-600 text-[15px] leading-8 whitespace-pre-wrap font-medium">
-                            {courseData.description}
-                        </p>
-                    </section>
-
-                    <section
-                        ref={mapSectionRef}
-                        className="bg-white rounded-lg p-4 shadow-lg border border-gray-100 naver-map-container"
-                    >
-                        <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                            {mapPlaces.length > 0 ? (
-                                shouldLoadMap ? (
-                                    <NaverMap
-                                        places={mapPlaces}
-                                        userLocation={userLocation}
-                                        selectedPlace={selectedPlace}
-                                        onPlaceClick={handleMapPlaceClick}
-                                        drawPath={true}
-                                        numberedMarkers={true}
-                                        className="w-full h-[320px] md:h-[400px]"
-                                        showControls={false}
-                                    />
-                                ) : (
-                                    <div className="h-[320px] md:h-[400px] bg-gray-50 flex items-center justify-center text-gray-400 animate-pulse">
-                                        지도 로딩 중...
-                                    </div>
-                                )
-                            ) : (
-                                <div className="h-64 bg-gray-50 flex items-center justify-center text-gray-400">
-                                    지도 정보 없음
+                            <h1 className="text-2xl md:text-3xl font-extrabold mb-6">{courseData.title}</h1>
+                            <div className="flex items-center gap-3 text-xs font-semibold">
+                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                    👣 {sortedCoursePlaces.length} 스팟
                                 </div>
-                            )}
-                            <div className="absolute bottom-4 right-4">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMapActivation();
-                                        window.open(
-                                            `https://map.naver.com/v5/search/${encodeURIComponent(
-                                                sortedCoursePlaces[0]?.place.name || ""
-                                            )}`
-                                        );
-                                    }}
-                                    className="bg-white/90 backdrop-blur text-gray-800 text-xs font-bold px-4 py-2.5 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5 active:scale-95 transition-transform"
-                                >
-                                    <Icons.Map className="w-4 h-4" /> <span>지도 앱에서 보기</span>
-                                </button>
+                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                    ⏳ {courseData.duration}
+                                </div>
+                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                    <span className="text-yellow-400">★</span> {courseData.rating}
+                                </div>
                             </div>
                         </div>
-                    </section>
+                    </header>
 
-                    <section className="relative px-4 pb-20">
-                        <div className="absolute left-[34px] top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200" />
-                        <div className="space-y-8">
-                            {sortedCoursePlaces.map((coursePlace: CoursePlace, idx: number) => {
-                                const isSelected = selectedPlace?.id === coursePlace.place.id;
-                                return (
-                                    <div key={coursePlace.id} className="relative">
-                                        <div
-                                            onClick={() => {
-                                                // 🟢 모달 이미지 미리 로드 (즉시 표시를 위해)
-                                                if (coursePlace.place.imageUrl) {
-                                                    const link = document.createElement("link");
-                                                    link.rel = "preload";
-                                                    link.as = "image";
-                                                    link.href = coursePlace.place.imageUrl;
-                                                    document.head.appendChild(link);
+                    <main
+                        className="max-w-[600px] mx-auto -mt-8 relative z-10 px-5 space-y-10"
+                        style={{
+                            touchAction: "pan-y", // 수직 스크롤 성능 최적화
+                            WebkitOverflowScrolling: "touch", // iOS 부드러운 스크롤 보장
+                        }}
+                    >
+                        <section className="bg-white rounded-lg p-8 shadow-lg border border-gray-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                                <h2 className="text-xl font-bold text-gray-900">어떤 코스인가요?</h2>
+                            </div>
+                            <p className="text-gray-600 text-[15px] leading-8 whitespace-pre-wrap font-medium">
+                                {courseData.description}
+                            </p>
+                        </section>
 
-                                                    // 🟢 이미지 객체로도 미리 로드 (더 빠른 로딩)
-                                                    const img = document.createElement("img");
-                                                    img.src = coursePlace.place.imageUrl;
-                                                }
-                                                setSelectedPlace(coursePlace.place);
-                                                // 🟢 다음 프레임에서 모달 열기 (이미지 프리로드 시간 확보)
-                                                requestAnimationFrame(() => {
-                                                    setShowPlaceModal(true);
-                                                });
-                                            }}
-                                            className={`relative ml-12 bg-white rounded-lg p-4 transition-all duration-300 border cursor-pointer ${
-                                                isSelected
-                                                    ? "shadow-lg border-2 border-emerald-500 scale-[1.01]"
-                                                    : "border-gray-200 opacity-90 grayscale-[0.3]"
-                                            }`}
-                                        >
+                        <section
+                            ref={mapSectionRef}
+                            className="bg-white rounded-lg p-4 shadow-lg border border-gray-100 naver-map-container"
+                        >
+                            <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                                {mapPlaces.length > 0 ? (
+                                    shouldLoadMap ? (
+                                        <NaverMap
+                                            places={mapPlaces}
+                                            userLocation={userLocation}
+                                            selectedPlace={selectedPlace}
+                                            onPlaceClick={handleMapPlaceClick}
+                                            drawPath={true}
+                                            numberedMarkers={true}
+                                            className="w-full h-[320px] md:h-[400px]"
+                                            showControls={false}
+                                        />
+                                    ) : (
+                                        <div className="h-[320px] md:h-[400px] bg-gray-50 flex items-center justify-center text-gray-400 animate-pulse">
+                                            지도 로딩 중...
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="h-64 bg-gray-50 flex items-center justify-center text-gray-400">
+                                        지도 정보 없음
+                                    </div>
+                                )}
+                                <div className="absolute bottom-4 right-4">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleMapActivation();
+                                            window.open(
+                                                `https://map.naver.com/v5/search/${encodeURIComponent(
+                                                    sortedCoursePlaces[0]?.place.name || ""
+                                                )}`
+                                            );
+                                        }}
+                                        className="bg-white/90 backdrop-blur text-gray-800 text-xs font-bold px-4 py-2.5 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5 active:scale-95 transition-transform"
+                                    >
+                                        <Icons.Map className="w-4 h-4" /> <span>지도 앱에서 보기</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="relative px-4 pb-20">
+                            <div className="absolute left-[34px] top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200" />
+                            <div className="space-y-8">
+                                {sortedCoursePlaces.map((coursePlace: CoursePlace, idx: number) => {
+                                    const isSelected = selectedPlace?.id === coursePlace.place.id;
+                                    return (
+                                        <div key={coursePlace.id} className="relative">
                                             <div
-                                                className={`absolute -left-13 top-6 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 ${
+                                                onClick={() => {
+                                                    // 🟢 모달 이미지 미리 로드 (즉시 표시를 위해)
+                                                    if (coursePlace.place.imageUrl) {
+                                                        const link = document.createElement("link");
+                                                        link.rel = "preload";
+                                                        link.as = "image";
+                                                        link.href = coursePlace.place.imageUrl;
+                                                        document.head.appendChild(link);
+
+                                                        // 🟢 이미지 객체로도 미리 로드 (더 빠른 로딩)
+                                                        const img = document.createElement("img");
+                                                        img.src = coursePlace.place.imageUrl;
+                                                    }
+                                                    setSelectedPlace(coursePlace.place);
+                                                    // 🟢 다음 프레임에서 모달 열기 (이미지 프리로드 시간 확보)
+                                                    requestAnimationFrame(() => {
+                                                        setShowPlaceModal(true);
+                                                    });
+                                                }}
+                                                className={`relative ml-12 bg-white rounded-lg p-4 transition-all duration-300 border cursor-pointer ${
                                                     isSelected
-                                                        ? "bg-emerald-500 text-white shadow-lg"
-                                                        : "bg-white text-gray-400 border border-gray-200"
+                                                        ? "shadow-lg border-2 border-emerald-500 scale-[1.01]"
+                                                        : "border-gray-200 opacity-90 grayscale-[0.3]"
                                                 }`}
                                             >
-                                                {idx + 1}
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                                                    {coursePlace.place.imageUrl && (
-                                                        <Image
-                                                            src={coursePlace.place.imageUrl}
-                                                            alt=""
-                                                            fill
-                                                            className="object-cover"
-                                                            loading="lazy"
-                                                            quality={60}
-                                                            sizes="96px"
-                                                            placeholder="blur"
-                                                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                                                            // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
-                                                        />
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    <span className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                                        {coursePlace.place.category}
-                                                    </span>
-                                                    <h3 className="font-bold text-lg text-gray-900 truncate mb-1">
-                                                        {coursePlace.place.name}
-                                                    </h3>
-                                                    <p className="text-xs text-gray-500 truncate mb-2">
-                                                        {coursePlace.place.address}
-                                                    </p>
-                                                    {/* 🟢 예약 버튼 */}
-                                                    {coursePlace.place.reservationUrl && (
-                                                        <a
-                                                            href={coursePlace.place.reservationUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation(); // 부모 클릭 이벤트 차단
-                                                            }}
-                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit"
-                                                        >
-                                                            <Icons.ExternalLink className="w-3 h-3" />
-                                                            예약하기
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            {/* 🟢 팁 섹션 - 아래로 이동 */}
-                                            {coursePlace.coaching_tip ? (
-                                                userTier === "FREE" ? (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setShowSubscriptionModal(true);
-                                                        }}
-                                                        className="mt-3 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
-                                                    >
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <Icons.Bulb />
-                                                            <span className="text-xs font-bold text-amber-700">
-                                                                💡 팁
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-600 line-clamp-2">
-                                                            BASIC 등급이면 볼 수 있어요
-                                                        </p>
-                                                    </button>
-                                                ) : (
-                                                    <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <Icons.Bulb />
-                                                            <span className="text-xs font-bold text-amber-700">
-                                                                💡 팁
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                            {coursePlace.coaching_tip}
-                                                        </p>
-                                                    </div>
-                                                )
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
-
-                    <section
-                        ref={reviewsSectionRef}
-                        className="bg-white rounded-lg p-8 shadow-lg border border-gray-100 mb-24"
-                    >
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-bold text-gray-900">
-                                이용후기 <span className="text-emerald-500 ml-1">{reviews.length}</span>
-                            </h2>
-                            <button
-                                onClick={() => setShowReviewModal(true)}
-                                className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 transition-colors"
-                            >
-                                작성하기
-                            </button>
-                        </div>
-                        {reviews.length > 0 ? (
-                            <div className="space-y-4">
-                                {reviews.map((review) => (
-                                    <div key={review.id} className="bg-gray-50 p-5 rounded-2xl">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
-                                                    👤
-                                                </div>
-                                                <span className="font-bold text-sm text-gray-800">
-                                                    {review.userName}
-                                                </span>
-                                            </div>
-                                            <span className="text-xs text-gray-400">
-                                                {new Date(review.createdAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-0.5 mb-3">
-                                            {[...Array(5)].map((_, i) => (
-                                                <span
-                                                    key={i}
-                                                    className={`text-sm ${
-                                                        i < review.rating ? "text-yellow-400" : "text-gray-200"
+                                                <div
+                                                    className={`absolute -left-13 top-6 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 ${
+                                                        isSelected
+                                                            ? "bg-emerald-500 text-white shadow-lg"
+                                                            : "bg-white text-gray-400 border border-gray-200"
                                                     }`}
                                                 >
-                                                    ★
-                                                </span>
-                                            ))}
-                                        </div>
-                                        <p className="text-[15px] text-gray-600 leading-relaxed mb-3">
-                                            {review.content}
-                                        </p>
-                                        {review.imageUrls && review.imageUrls.length > 0 && (
-                                            <div className="grid grid-cols-3 gap-2 mt-3">
-                                                {review.imageUrls.map((imageUrl, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
-                                                        onClick={() => {
-                                                            setPreviewImages(review.imageUrls || []);
-                                                            setPreviewImageIndex(idx);
-                                                            setPreviewImage(imageUrl);
-                                                        }}
-                                                    >
-                                                        <Image
-                                                            src={imageUrl}
-                                                            alt={`후기 이미지 ${idx + 1}`}
-                                                            fill
-                                                            className="object-cover"
-                                                            loading="lazy"
-                                                            quality={65}
-                                                            sizes="(max-width: 768px) 33vw, 150px"
-                                                            placeholder="blur"
-                                                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                                                            // 🟢 priority 제거: 후기 이미지는 lazy 로딩
-                                                        />
+                                                    {idx + 1}
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                                        {coursePlace.place.imageUrl && (
+                                                            <Image
+                                                                src={coursePlace.place.imageUrl}
+                                                                alt=""
+                                                                fill
+                                                                className="object-cover"
+                                                                loading="lazy"
+                                                                quality={60}
+                                                                sizes="96px"
+                                                                placeholder="blur"
+                                                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                                                // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
+                                                            />
+                                                        )}
                                                     </div>
+                                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                                            {coursePlace.place.category}
+                                                        </span>
+                                                        <h3 className="font-bold text-lg text-gray-900 truncate mb-1">
+                                                            {coursePlace.place.name}
+                                                        </h3>
+                                                        <p className="text-xs text-gray-500 truncate mb-2">
+                                                            {coursePlace.place.address}
+                                                        </p>
+                                                        {/* 🟢 예약 버튼 */}
+                                                        {coursePlace.place.reservationUrl && (
+                                                            <a
+                                                                href={coursePlace.place.reservationUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation(); // 부모 클릭 이벤트 차단
+                                                                }}
+                                                                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit"
+                                                            >
+                                                                <Icons.ExternalLink className="w-3 h-3" />
+                                                                예약하기
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {/* 🟢 팁 섹션 - 아래로 이동 */}
+                                                {coursePlace.coaching_tip ? (
+                                                    userTier === "FREE" ? (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowSubscriptionModal(true);
+                                                            }}
+                                                            className="mt-3 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Icons.Bulb />
+                                                                <span className="text-xs font-bold text-amber-700">
+                                                                    💡 팁
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-600 line-clamp-2">
+                                                                BASIC 등급이면 볼 수 있어요
+                                                            </p>
+                                                        </button>
+                                                    ) : (
+                                                        <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Icons.Bulb />
+                                                                <span className="text-xs font-bold text-amber-700">
+                                                                    💡 팁
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                                                {coursePlace.coaching_tip}
+                                                            </p>
+                                                        </div>
+                                                    )
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+
+                        <section
+                            ref={reviewsSectionRef}
+                            className="bg-white rounded-lg p-8 shadow-lg border border-gray-100 mb-24"
+                        >
+                            <div className="flex justify-between items-center mb-8">
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    이용후기 <span className="text-emerald-500 ml-1">{reviews.length}</span>
+                                </h2>
+                                <button
+                                    onClick={() => setShowReviewModal(true)}
+                                    className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 transition-colors"
+                                >
+                                    작성하기
+                                </button>
+                            </div>
+                            {reviews.length > 0 ? (
+                                <div className="space-y-4">
+                                    {reviews.map((review) => (
+                                        <div key={review.id} className="bg-gray-50 p-5 rounded-2xl">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
+                                                        👤
+                                                    </div>
+                                                    <span className="font-bold text-sm text-gray-800">
+                                                        {review.userName}
+                                                    </span>
+                                                </div>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(review.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-0.5 mb-3">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <span
+                                                        key={i}
+                                                        className={`text-sm ${
+                                                            i < review.rating ? "text-yellow-400" : "text-gray-200"
+                                                        }`}
+                                                    >
+                                                        ★
+                                                    </span>
                                                 ))}
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-16 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                                <p className="text-gray-400 text-sm">
-                                    아직 작성된 후기가 없어요.
-                                    <br />첫 번째 후기를 남겨보세요!
-                                </p>
-                            </div>
-                        )}
-                    </section>
-                </main>
+                                            <p className="text-[15px] text-gray-600 leading-relaxed mb-3">
+                                                {review.content}
+                                            </p>
+                                            {review.imageUrls && review.imageUrls.length > 0 && (
+                                                <div className="grid grid-cols-3 gap-2 mt-3">
+                                                    {review.imageUrls.map((imageUrl, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
+                                                            onClick={() => {
+                                                                setPreviewImages(review.imageUrls || []);
+                                                                setPreviewImageIndex(idx);
+                                                                setPreviewImage(imageUrl);
+                                                            }}
+                                                        >
+                                                            <Image
+                                                                src={imageUrl}
+                                                                alt={`후기 이미지 ${idx + 1}`}
+                                                                fill
+                                                                className="object-cover"
+                                                                loading="lazy"
+                                                                quality={65}
+                                                                sizes="(max-width: 768px) 33vw, 150px"
+                                                                placeholder="blur"
+                                                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                                                // 🟢 priority 제거: 후기 이미지는 lazy 로딩
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                    <p className="text-gray-400 text-sm">
+                                        아직 작성된 후기가 없어요.
+                                        <br />첫 번째 후기를 남겨보세요!
+                                    </p>
+                                </div>
+                            )}
+                        </section>
+                    </main>
 
-                {/* 🔵 [기능 유지] 지도 보기 플로팅 버튼 */}
-                <button
-                    onClick={() => {
-                        if (!isLoggedIn) {
-                            setShowLoginModal(true);
-                            return;
-                        }
-                        setModalSelectedPlace(null); // 모달 열 때 선택 초기화
-                        setShowFullMapModal(true);
-                    }}
-                    className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-800 shadow-xl border border-gray-100 active:scale-95 transition-all"
-                >
-                    <Icons.Map className="w-4 h-4 text-emerald-500" />
-                    <span>지도 보기</span>
-                </button>
-
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
-                    <div className="flex gap-4">
-                        <button
-                            onClick={handleSaveCourse}
-                            className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
-                        >
-                            {isSaved ? <Icons.LikeSolid /> : <Icons.LikeOutline />}
-                            <span className={`text-[10px] font-medium ${isSaved ? "text-rose-500" : "text-gray-500"}`}>
-                                찜하기
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => setShowShareModal(true)}
-                            className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
-                        >
-                            <Icons.Share />
-                            <span className="text-[10px] font-medium text-gray-500">공유</span>
-                        </button>
-                    </div>
+                    {/* 🔵 [기능 유지] 지도 보기 플로팅 버튼 */}
                     <button
                         onClick={() => {
                             if (!isLoggedIn) {
                                 setShowLoginModal(true);
                                 return;
                             }
-                            // 🟢 [Fix]: 사용자 제스처(버튼 클릭)에 의해서만 위치 정보 요청
-                            handleMapActivation();
-                            router.push(`/courses/${courseId}/start`);
+                            setModalSelectedPlace(null); // 모달 열 때 선택 초기화
+                            setShowFullMapModal(true);
                         }}
-                        className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
+                        className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-gray-800 shadow-xl border border-gray-100 active:scale-95 transition-all"
                     >
-                        <Icons.Rocket /> 코스 시작하기
+                        <Icons.Map className="w-4 h-4 text-emerald-500" />
+                        <span>지도 보기</span>
                     </button>
+
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
+                        <div className="flex gap-4">
+                            <button
+                                onClick={handleSaveCourse}
+                                className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
+                            >
+                                {isSaved ? <Icons.LikeSolid /> : <Icons.LikeOutline />}
+                                <span
+                                    className={`text-[10px] font-medium ${isSaved ? "text-rose-500" : "text-gray-500"}`}
+                                >
+                                    찜하기
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setShowShareModal(true)}
+                                className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
+                            >
+                                <Icons.Share />
+                                <span className="text-[10px] font-medium text-gray-500">공유</span>
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => {
+                                if (!isLoggedIn) {
+                                    setShowLoginModal(true);
+                                    return;
+                                }
+                                // 🟢 [Fix]: 사용자 제스처(버튼 클릭)에 의해서만 위치 정보 요청
+                                handleMapActivation();
+                                router.push(`/courses/${courseId}/start`);
+                            }}
+                            className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <Icons.Rocket /> 코스 시작하기
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* 🔵 [기능 유지] 전체 지도 모달 */}
             {showFullMapModal && (
@@ -1196,8 +1215,35 @@ export default function CourseDetailClient({
                 courseId={parseInt(courseId)}
                 courseName={courseData.title}
             />
-            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
-            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${courseId}`} />}
+            {showSubscriptionModal && (
+                <TicketPlans
+                    onClose={() => {
+                        setShowSubscriptionModal(false);
+                        // 🟢 잠금된 코스에서 모달을 닫으면 즉시 이전 페이지로 이동
+                        if (courseData.isLocked) {
+                            // 약간의 지연을 두어 모달이 완전히 닫힌 후 이동
+                            setTimeout(() => {
+                                router.back();
+                            }, 100);
+                        }
+                    }}
+                />
+            )}
+            {showLoginModal && (
+                <LoginModal
+                    onClose={() => {
+                        setShowLoginModal(false);
+                        // 🟢 잠금된 코스에서 모달을 닫으면 즉시 이전 페이지로 이동
+                        if (courseData.isLocked) {
+                            // 약간의 지연을 두어 모달이 완전히 닫힌 후 이동
+                            setTimeout(() => {
+                                router.back();
+                            }, 100);
+                        }
+                    }}
+                    next={`/courses/${courseId}`}
+                />
+            )}
             {showPlaceModal && selectedPlace && (
                 <div
                     className="fixed inset-0 bg-black/60 z-9999 flex items-center justify-center p-4 animate-fade-in"
