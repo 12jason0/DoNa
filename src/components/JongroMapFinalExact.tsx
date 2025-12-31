@@ -457,15 +457,15 @@ export default function JongroMapFinalExact({ data }: Props) {
                 }
                 const form = new FormData();
                 files.forEach((f) => form.append("photos", f, f.name));
-
+                
                 // 탈출방 업로드를 위한 파라미터 추가
                 if (storyId) {
                     form.append("type", "escape");
                     form.append("escapeId", storyId.toString());
                 }
-
-                const uploadRes = await fetch("/api/upload", {
-                    method: "POST",
+                
+                const uploadRes = await fetch("/api/upload", { 
+                    method: "POST", 
                     body: form,
                     credentials: "include", // 쿠키를 포함하여 userId를 서버에서 가져올 수 있도록
                 });

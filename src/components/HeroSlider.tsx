@@ -127,18 +127,18 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             // 🟢 [Performance]: ResizeObserver 콜백을 requestAnimationFrame으로 감싸서 성능 최적화
             if (rafId) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(() => {
-                for (let entry of entries) {
-                    containerWidthRef.current = entry.contentRect.width;
-                    // 초기 위치 설정 (1번 세트의 시작점) - 한 번만 실행
-                    if (!isInitialized && realLength > 1 && scrollRef.current) {
-                        isInitialized = true;
-                        scrollRef.current.scrollTo({
-                            left: containerWidthRef.current * realLength,
-                            behavior: "auto",
-                        });
-                        setCurrentIndex(realLength);
-                    }
+            for (let entry of entries) {
+                containerWidthRef.current = entry.contentRect.width;
+                // 초기 위치 설정 (1번 세트의 시작점) - 한 번만 실행
+                if (!isInitialized && realLength > 1 && scrollRef.current) {
+                    isInitialized = true;
+                    scrollRef.current.scrollTo({
+                        left: containerWidthRef.current * realLength,
+                        behavior: "auto",
+                    });
+                    setCurrentIndex(realLength);
                 }
+            }
             });
         });
 
@@ -161,28 +161,28 @@ export default function HeroSlider({ items }: HeroSliderProps) {
 
         // 🟢 [Performance]: 스크롤 이벤트를 requestAnimationFrame으로 디바운싱
         scrollRafRef.current = requestAnimationFrame(() => {
-            scrollTimeoutRef.current = setTimeout(() => {
-                const container = scrollRef.current;
-                const width = containerWidthRef.current; // 캐싱된 너비 사용
+        scrollTimeoutRef.current = setTimeout(() => {
+            const container = scrollRef.current;
+            const width = containerWidthRef.current; // 캐싱된 너비 사용
 
-                if (container && width > 0 && realLength > 1) {
-                    const scrollLeftVal = container.scrollLeft;
-                    const index = Math.round(scrollLeftVal / width);
-                    setCurrentIndex(index);
+            if (container && width > 0 && realLength > 1) {
+                const scrollLeftVal = container.scrollLeft;
+                const index = Math.round(scrollLeftVal / width);
+                setCurrentIndex(index);
 
-                    // 무한 스크롤 루프 로직
-                    if (scrollLeftVal >= width * (realLength * 2)) {
-                        container.scrollTo({
-                            left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
-                            behavior: "auto",
-                        });
-                    } else if (scrollLeftVal <= width * 0.5) {
-                        container.scrollTo({
-                            left: scrollLeftVal + width * realLength,
-                            behavior: "auto",
-                        });
-                    }
+                // 무한 스크롤 루프 로직
+                if (scrollLeftVal >= width * (realLength * 2)) {
+                    container.scrollTo({
+                        left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
+                        behavior: "auto",
+                    });
+                } else if (scrollLeftVal <= width * 0.5) {
+                    container.scrollTo({
+                        left: scrollLeftVal + width * realLength,
+                        behavior: "auto",
+                    });
                 }
+            }
             }, 150); // 🟢 100ms -> 150ms로 증가하여 메인 스레드 부하 감소
         });
     }, [realLength]);

@@ -571,15 +571,41 @@ export default function CourseDetailClient({
             if (!Kakao) {
                 throw new Error("Kakao SDK를 불러올 수 없습니다.");
             }
+
+            // 🟢 카카오톡 공유 4002 오류 해결: 패킷 사이즈 제한(10K) 준수
+            // title 최대 200자, description 최대 200자로 제한
+            const shareTitle =
+                courseData.title.length > 200 ? courseData.title.substring(0, 197) + "..." : courseData.title;
+            const shareDescription = courseData.description
+                ? courseData.description.length > 200
+                    ? courseData.description.substring(0, 197) + "..."
+                    : courseData.description
+                : "DoNa에서 추천하는 코스를 확인해보세요!";
+
+            // 🟢 이미지 URL이 너무 길면 기본 로고 사용
+            const shareImageUrl =
+                heroImageUrl && heroImageUrl.length < 500 ? heroImageUrl : getS3StaticUrl("logo/donalogo_512.png");
+
             Kakao.Share.sendDefault({
                 objectType: "feed",
                 content: {
-                    title: courseData.title,
-                    description: courseData.description,
-                    imageUrl: heroImageUrl || getS3StaticUrl("logo/donalogo_512.png"),
-                    link: { mobileWebUrl: url, webUrl: url },
+                    title: shareTitle,
+                    description: shareDescription,
+                    imageUrl: shareImageUrl,
+                    link: {
+                        mobileWebUrl: url,
+                        webUrl: url,
+                    },
                 },
-                buttons: [{ title: "코스 보러가기", link: { mobileWebUrl: url, webUrl: url } }],
+                buttons: [
+                    {
+                        title: "코스 보러가기",
+                        link: {
+                            mobileWebUrl: url,
+                            webUrl: url,
+                        },
+                    },
+                ],
             });
             setShowShareModal(false);
         } catch (error) {

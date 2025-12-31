@@ -200,20 +200,20 @@ export default function Home() {
             return;
         }
 
-        if (isAuthenticated && user) {
-            setUserId(Number(user.id));
+                if (isAuthenticated && user) {
+                    setUserId(Number(user.id));
             // 🟢 출석 데이터는 Intersection Observer로 지연 로드
             setIsCheckinLoading(true); // 초기에는 로딩 중으로 표시
-        } else {
-            // 🟢 여러 상태 업데이트를 배치로 처리
-            requestAnimationFrame(() => {
-                setUserId(null);
-                setUserName("");
-                setStreak(0);
-                setIsOnboardingComplete(false);
-                setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
-            });
-        }
+                } else {
+                    // 🟢 여러 상태 업데이트를 배치로 처리
+                    requestAnimationFrame(() => {
+                        setUserId(null);
+                        setUserName("");
+                        setStreak(0);
+                        setIsOnboardingComplete(false);
+                        setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
+                    });
+                }
     }, [isAuthenticated, user, isAuthLoading]);
 
     // 🟢 출석 섹션 지연 로드 (Intersection Observer 사용)
@@ -336,7 +336,7 @@ export default function Home() {
                     const startIndex = threeDayEpoch % count;
                     for (let i = 0; i < Math.min(5, count); i++) selected.push(list[(startIndex + i) % count]);
                     // 🟢 [Performance]: requestAnimationFrame 제거하여 즉시 렌더링 (HeroSlider 빠른 표시)
-                    setHeroCourses(selected);
+                        setHeroCourses(selected);
                 }
             } catch (error) {
                 // 에러는 조용히 처리 (사용자 경험 방해 최소화)
