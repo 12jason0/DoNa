@@ -116,7 +116,27 @@ export default function NaverMapComponent({
             });
 
             setMapReady(true);
-            if (onMapReady) onMapReady(mapRef.current);
+            // 🟢 onMapReady에 bounds를 반환하는 함수 전달
+            if (onMapReady) {
+                onMapReady(() => {
+                    if (!mapRef.current) return null;
+                    try {
+                        const bounds = mapRef.current.getBounds();
+                        if (!bounds) return null;
+                        const sw = bounds.getSW(); // 남서쪽 모서리
+                        const ne = bounds.getNE(); // 북동쪽 모서리
+                        return {
+                            minLat: sw.lat(),
+                            maxLat: ne.lat(),
+                            minLng: sw.lng(),
+                            maxLng: ne.lng(),
+                        };
+                    } catch (error) {
+                        console.error("지도 bounds 가져오기 실패:", error);
+                        return null;
+                    }
+                });
+            }
 
             // 지도 초기화 후 생성되는 Canvas 요소에도 passive: false 리스너 등록
             setTimeout(() => {
@@ -153,7 +173,10 @@ export default function NaverMapComponent({
         const naver = (window as any).naver;
         if (!naver?.maps || !mapRef.current) return;
 
-        const valid = (places || []).filter(isValidLatLng);
+        // 🟢 pathPlaces가 있으면 경로는 pathPlaces만 사용 (코스에 포함된 장소만 연결)
+        // places는 모든 장소의 핀을 표시하는 데 사용
+        const placesForPath = pathPlaces && pathPlaces.length > 0 ? pathPlaces : places;
+        const valid = (placesForPath || []).filter(isValidLatLng);
         const pts = userLocation ? [userLocation, ...valid] : valid;
         if (!drawPath || pts.length < 2) {
             polylineRef.current?.setMap(null);
@@ -199,7 +222,7 @@ export default function NaverMapComponent({
             });
         };
         buildRoute();
-    }, [places, userLocation, drawPath]);
+    }, [places, pathPlaces, userLocation, drawPath]);
 
     // 🟢 [오류 해결] 마커 아이콘 정의 - 옵셔널 체이닝 제거 및 naver 객체 직접 참조
     const userIcon = useMemo(() => {

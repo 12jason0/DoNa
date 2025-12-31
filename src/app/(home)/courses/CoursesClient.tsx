@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from "react"; // 🟢 useDeferredValue 추가
 import CourseCard from "@/components/CourseCard";
+import CourseReportBanner from "@/components/CourseReportBanner";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CONCEPTS } from "@/constants/onboardingData";
 
@@ -59,11 +60,30 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     const [hasMore, setHasMore] = useState(initialCourses.length >= 30);
     const [offset, setOffset] = useState(30);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
+    const [couponCount, setCouponCount] = useState<number | null>(null); // 🟢 쿠폰 개수 상태
 
     useEffect(() => {
         setActiveConcept(conceptParam || "");
         setIsNavigating(false); // 🟢 페이지 로드 완료 시 네비게이션 상태 해제
     }, [conceptParam]);
+
+    // 🟢 사용자 쿠폰 개수 가져오기
+    useEffect(() => {
+        const fetchCouponCount = async () => {
+            try {
+                const { data } = await apiFetch<{ couponCount?: number }>("/api/users/profile", {
+                    cache: "no-store",
+                });
+                if (data && typeof data === "object" && "couponCount" in data && data.couponCount !== undefined) {
+                    setCouponCount(data.couponCount);
+                }
+            } catch (error) {
+                // 로그인하지 않은 경우 무시
+                setCouponCount(null);
+            }
+        };
+        fetchCouponCount();
+    }, []);
 
     // 🟢 [Optimization]: 초기 코스 데이터 설정을 다음 프레임으로 지연
     useEffect(() => {
@@ -338,16 +358,26 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                     </div>
                 )}
                 {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
-                {visibleCourses.map((course, i) => (
-                    <CourseCard
-                        key={course.id}
-                        course={course}
-                        isPriority={i < 4} // 🟢 상위 4개 이미지만 우선 로딩
-                        isFavorite={favoriteIds.has(Number(course.id))}
-                        onToggleFavorite={toggleFavorite}
-                        showNewBadge={true}
-                    />
-                ))}
+                {visibleCourses.map((course, i) => {
+                    // 🟢 코스 5개마다 제보 유도 배너 삽입
+                    const shouldShowBanner = i > 0 && i % 5 === 0;
+                    return (
+                        <div key={course.id}>
+                            {shouldShowBanner && (
+                                <div className="mb-6">
+                                    <CourseReportBanner />
+                                </div>
+                            )}
+                            <CourseCard
+                                course={course}
+                                isPriority={i < 4} // 🟢 상위 4개 이미지만 우선 로딩
+                                isFavorite={favoriteIds.has(Number(course.id))}
+                                onToggleFavorite={toggleFavorite}
+                                showNewBadge={true}
+                            />
+                        </div>
+                    );
+                })}
                 {visibleCourses.length === 0 && (
                     <div className="text-center py-20">
                         <div className="text-5xl mb-4 grayscale opacity-50">🏝️</div>

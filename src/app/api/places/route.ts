@@ -12,15 +12,34 @@ export async function GET(request: NextRequest) {
         const region = searchParams.get("region");
 
         // Admin 등에서 전체 목록이 필요한 경우: /api/places?all=1&limit=10&offset=0&search=검색어
+        // 지도 영역 필터링: /api/places?all=1&minLat=37.5&maxLat=37.6&minLng=127.0&maxLng=127.1
         if (all === "1") {
-            const limitParam = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 100);
+            const limitParam = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 10000); // 🟢 limit 증가 (최대 10000)
             const offsetParam = Math.max(Number(searchParams.get("offset") ?? 0), 0);
             const searchQuery = (searchParams.get("search") || "").trim();
+            
+            // 🟢 지도 영역(bounds) 필터링 파라미터
+            const minLat = searchParams.get("minLat");
+            const maxLat = searchParams.get("maxLat");
+            const minLng = searchParams.get("minLng");
+            const maxLng = searchParams.get("maxLng");
 
             // 검색 조건 구성
             const whereClause: any = {};
             if (searchQuery) {
                 whereClause.name = { contains: searchQuery, mode: "insensitive" };
+            }
+            
+            // 🟢 지도 영역 필터링 추가
+            if (minLat && maxLat && minLng && maxLng) {
+                whereClause.latitude = {
+                    gte: Number(minLat),
+                    lte: Number(maxLat),
+                };
+                whereClause.longitude = {
+                    gte: Number(minLng),
+                    lte: Number(maxLng),
+                };
             }
 
             // 전체 개수 조회 (검색 조건 포함)

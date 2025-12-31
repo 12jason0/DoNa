@@ -406,6 +406,27 @@ export default function CourseDetailClient({
         }
     }, [sortedCoursePlaces, selectedPlace]);
 
+    // 🟢 페이지 진입 시 모든 장소 이미지 미리 로드 (모달이 열릴 때 즉시 표시를 위해)
+    useEffect(() => {
+        if (sortedCoursePlaces.length > 0) {
+            // 모든 장소의 이미지를 미리 로드
+            sortedCoursePlaces.forEach((coursePlace) => {
+                if (coursePlace.place.imageUrl) {
+                    // link preload
+                    const link = document.createElement("link");
+                    link.rel = "preload";
+                    link.as = "image";
+                    link.href = coursePlace.place.imageUrl;
+                    document.head.appendChild(link);
+
+                    // Image 객체로도 미리 로드 (더 빠른 로딩)
+                    const img = document.createElement("img");
+                    img.src = coursePlace.place.imageUrl;
+                }
+            });
+        }
+    }, [sortedCoursePlaces]);
+
     // 🟢 모달이 열릴 때 이미지 미리 로드 (즉시 표시를 위해)
     useEffect(() => {
         if (showPlaceModal && selectedPlace?.imageUrl) {
@@ -415,6 +436,10 @@ export default function CourseDetailClient({
             link.as = "image";
             link.href = selectedPlace.imageUrl;
             document.head.appendChild(link);
+
+            // Image 객체로도 미리 로드 (더 빠른 로딩)
+            const img = document.createElement("img");
+            img.src = selectedPlace.imageUrl;
         }
     }, [showPlaceModal, selectedPlace?.imageUrl]);
 
@@ -565,7 +590,12 @@ export default function CourseDetailClient({
     };
 
     const handleKakaoShare = async () => {
-        const url = window.location.href;
+        // 🟢 코스 페이지 URL을 명시적으로 생성 (공유된 링크가 해당 코스 페이지로 이동하도록)
+        const courseUrl =
+            typeof window !== "undefined"
+                ? `${window.location.origin}/courses/${courseId}`
+                : `https://dona.app/courses/${courseId}`;
+
         try {
             const Kakao = await ensureKakaoSdk();
             if (!Kakao) {
@@ -593,16 +623,16 @@ export default function CourseDetailClient({
                     description: shareDescription,
                     imageUrl: shareImageUrl,
                     link: {
-                        mobileWebUrl: url,
-                        webUrl: url,
+                        mobileWebUrl: courseUrl,
+                        webUrl: courseUrl,
                     },
                 },
                 buttons: [
                     {
                         title: "코스 보러가기",
                         link: {
-                            mobileWebUrl: url,
-                            webUrl: url,
+                            mobileWebUrl: courseUrl,
+                            webUrl: courseUrl,
                         },
                     },
                 ],
@@ -612,7 +642,7 @@ export default function CourseDetailClient({
             console.error("카카오톡 공유 실패:", error);
             // Fallback: 링크 복사
             try {
-                await navigator.clipboard.writeText(url);
+                await navigator.clipboard.writeText(courseUrl);
                 showToast("링크가 복사되었습니다.", "success");
             } catch {
                 showToast("공유에 실패했습니다.", "error");
@@ -622,7 +652,12 @@ export default function CourseDetailClient({
 
     const handleCopyLink = async () => {
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            // 🟢 코스 페이지 URL을 명시적으로 생성 (공유된 링크가 해당 코스 페이지로 이동하도록)
+            const courseUrl =
+                typeof window !== "undefined"
+                    ? `${window.location.origin}/courses/${courseId}`
+                    : `https://dona.app/courses/${courseId}`;
+            await navigator.clipboard.writeText(courseUrl);
             setShowShareModal(false);
             showToast("링크 복사 완료!", "success");
         } catch {

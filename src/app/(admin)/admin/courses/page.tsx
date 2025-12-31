@@ -253,7 +253,7 @@ export default function AdminCoursesPage() {
     }, [formData.places]);
 
     // 현 지도 영역에서 장소 찾기 함수
-    const handleSearchInMapArea = () => {
+    const handleSearchInMapArea = async () => {
         if (!getMapBoundsRef.current) return;
 
         const bounds = getMapBoundsRef.current();
@@ -262,35 +262,56 @@ export default function AdminCoursesPage() {
             return;
         }
 
-        // 전체 장소 중에서 현재 지도 범위 안에 있는 것만 필터링
-        const placesInView = allPlaces.filter((p: any) => {
-            const lat = Number(p.latitude);
-            const lng = Number(p.longitude);
+        try {
+            // 🟢 API를 직접 호출하여 현재 지도 영역 내의 모든 장소를 가져옴
+            const res = await fetch(
+                `/api/places?all=1&minLat=${bounds.minLat}&maxLat=${bounds.maxLat}&minLng=${bounds.minLng}&maxLng=${bounds.maxLng}&limit=10000`
+            );
+            const data = await res.json();
 
-            return lat >= bounds.minLat && lat <= bounds.maxLat && lng >= bounds.minLng && lng <= bounds.maxLng;
-        });
+            if (data.success && data.places) {
+                const placesInView = data.places
+                    .filter((p: any) => {
+                        // 🟢 좌표가 유효한지 확인
+                        const lat = Number(p.latitude);
+                        const lng = Number(p.longitude);
+                        return (
+                            !isNaN(lat) &&
+                            !isNaN(lng) &&
+                            lat >= bounds.minLat &&
+                            lat <= bounds.maxLat &&
+                            lng >= bounds.minLng &&
+                            lng <= bounds.maxLng
+                        );
+                    })
+                    .map(
+                        (p: any) =>
+                            ({
+                                id: p.id,
+                                name: p.name,
+                                latitude: Number(p.latitude),
+                                longitude: Number(p.longitude),
+                                category: p.category,
+                                imageUrl: p.imageUrl,
+                                address: p.address,
+                                description: p.description,
+                            } as Place)
+                    );
 
-        // 성능을 위해 최대 100개로 제한
-        const limitedPlaces = placesInView.slice(0, 100).map(
-            (p: any) =>
-                ({
-                    id: p.id,
-                    name: p.name,
-                    latitude: Number(p.latitude),
-                    longitude: Number(p.longitude),
-                    category: p.category,
-                    imageUrl: p.imageUrl,
-                    address: p.address,
-                    description: p.description,
-                } as Place)
-        );
-
-        setSurroundingPlaces(limitedPlaces);
+                setSurroundingPlaces(placesInView);
+            } else {
+                console.error("장소 검색 실패:", data);
+                alert("장소를 불러오는 중 오류가 발생했습니다.");
+            }
+        } catch (error) {
+            console.error("장소 검색 오류:", error);
+            alert("장소를 불러오는 중 오류가 발생했습니다.");
+        }
     };
 
     // 지도에 표시할 최종 places 데이터
     // 편집 모드: 코스 장소 + 주변 장소 (둘 다 핀으로 표시)
-    // 새 코스 추가 모드: 주변 장소만 표시
+    // 새 코스 추가 모드: 추가한 장소 + 주변 장소
     const displayMapPlaces: Place[] = useMemo(() => {
         if (editingId) {
             // 편집 모드: 코스 장소 + 주변 장소 (코스에 포함되지 않은 것만)
@@ -298,8 +319,10 @@ export default function AdminCoursesPage() {
             const visibleSurrounding = surroundingPlaces.filter((sp) => !coursePlaceIds.has(sp.id));
             return [...mapPlaces, ...visibleSurrounding];
         } else {
-            // 새 코스 추가 모드: 주변 장소만 표시
-            return surroundingPlaces;
+            // 새 코스 추가 모드: 추가한 장소 + 주변 장소 (중복 제거)
+            const addedPlaceIds = new Set(mapPlaces.map((p) => p.id));
+            const visibleSurrounding = surroundingPlaces.filter((sp) => !addedPlaceIds.has(sp.id));
+            return [...mapPlaces, ...visibleSurrounding];
         }
     }, [editingId, mapPlaces, surroundingPlaces]);
 
@@ -914,7 +937,7 @@ export default function AdminCoursesPage() {
                                     drawPath={!!(editingId && pathPlaces.length > 0)}
                                     routeMode="walking"
                                     numberedMarkers={false} // 주변 장소도 있으므로 번호 표시 안 함
-                                    showControls={true}
+                                    showControls={false} // 🟢 admin 페이지에서는 컨트롤 버튼 숨김
                                     showPlaceOverlay={false}
                                     suppressNearFallback={true}
                                     center={mapCenter}
@@ -949,7 +972,7 @@ export default function AdminCoursesPage() {
                                             >
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex items-start gap-4 flex-1">
-                                                        <div className="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 font-bold rounded-full shadow-sm flex-shrink-0">
+                                                        <div className="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 font-bold rounded-full shadow-sm shrink-0">
                                                             {isEditing && editData ? (
                                                                 <input
                                                                     type="number"
@@ -1075,7 +1098,7 @@ export default function AdminCoursesPage() {
                                                         </div>
                                                     </div>
                                                     {!isEditing && (
-                                                        <div className="flex gap-2 flex-shrink-0">
+                                                        <div className="flex gap-2 shrink-0">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => startEditPlace(item)}
@@ -1288,7 +1311,7 @@ export default function AdminCoursesPage() {
                                                                         drawPath={true}
                                                                         routeMode="walking"
                                                                         numberedMarkers={true}
-                                                                        showControls={true}
+                                                                        showControls={false} // 🟢 admin 페이지에서는 컨트롤 버튼 숨김
                                                                         showPlaceOverlay={false}
                                                                         suppressNearFallback={true}
                                                                     />
@@ -1309,7 +1332,7 @@ export default function AdminCoursesPage() {
             {/* 장소 상세 모달 */}
             {showPlaceModal && selectedPlaceForModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 animate-fade-in"
+                    className="fixed inset-0 bg-black/60 z-9999 flex items-center justify-center p-4 animate-fade-in"
                     onClick={() => {
                         setShowPlaceModal(false);
                         setSelectedPlaceForModal(null);
