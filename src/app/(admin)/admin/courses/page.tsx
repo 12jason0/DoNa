@@ -633,6 +633,110 @@ export default function AdminCoursesPage() {
         }
     };
 
+    // 🟢 장소 순서 변경 함수 (위로 이동)
+    const handleMovePlaceUp = async (place: LinkedPlace & { id?: number }) => {
+        if (!editingId || !("id" in place) || !formData.places) return;
+
+        const sortedPlaces = [...formData.places].sort((a, b) => a.order_index - b.order_index);
+        const currentIndex = sortedPlaces.findIndex((p) => (p as any).id === (place as any).id);
+
+        if (currentIndex <= 0) return; // 이미 맨 위
+
+        const prevPlace = sortedPlaces[currentIndex - 1];
+        const currentOrder = place.order_index;
+        const prevOrder = prevPlace.order_index;
+
+        const token = localStorage.getItem("authToken");
+        try {
+            // 두 장소의 order_index를 교환
+            const currentPlaceId = (place as any).id;
+            const prevPlaceId = (prevPlace as any).id;
+
+            // 병렬로 두 요청 실행
+            const [res1, res2] = await Promise.all([
+                fetch(`/api/courses/${editingId}/places/${currentPlaceId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ order_index: prevOrder }),
+                }),
+                fetch(`/api/courses/${editingId}/places/${prevPlaceId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ order_index: currentOrder }),
+                }),
+            ]);
+
+            if (res1.ok && res2.ok) {
+                await fetchCoursePlaces(editingId);
+            } else {
+                const err1 = await res1.json().catch(() => ({}));
+                const err2 = await res2.json().catch(() => ({}));
+                alert(`순서 변경 실패: ${err1.error || err2.error || "알 수 없는 오류"}`);
+            }
+        } catch (e) {
+            console.error("순서 변경 실패:", e);
+            alert("순서 변경 중 오류가 발생했습니다.");
+        }
+    };
+
+    // 🟢 장소 순서 변경 함수 (아래로 이동)
+    const handleMovePlaceDown = async (place: LinkedPlace & { id?: number }) => {
+        if (!editingId || !("id" in place) || !formData.places) return;
+
+        const sortedPlaces = [...formData.places].sort((a, b) => a.order_index - b.order_index);
+        const currentIndex = sortedPlaces.findIndex((p) => (p as any).id === (place as any).id);
+
+        if (currentIndex >= sortedPlaces.length - 1) return; // 이미 맨 아래
+
+        const nextPlace = sortedPlaces[currentIndex + 1];
+        const currentOrder = place.order_index;
+        const nextOrder = nextPlace.order_index;
+
+        const token = localStorage.getItem("authToken");
+        try {
+            // 두 장소의 order_index를 교환
+            const currentPlaceId = (place as any).id;
+            const nextPlaceId = (nextPlace as any).id;
+
+            // 병렬로 두 요청 실행
+            const [res1, res2] = await Promise.all([
+                fetch(`/api/courses/${editingId}/places/${currentPlaceId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ order_index: nextOrder }),
+                }),
+                fetch(`/api/courses/${editingId}/places/${nextPlaceId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ order_index: currentOrder }),
+                }),
+            ]);
+
+            if (res1.ok && res2.ok) {
+                await fetchCoursePlaces(editingId);
+            } else {
+                const err1 = await res1.json().catch(() => ({}));
+                const err2 = await res2.json().catch(() => ({}));
+                alert(`순서 변경 실패: ${err1.error || err2.error || "알 수 없는 오류"}`);
+            }
+        } catch (e) {
+            console.error("순서 변경 실패:", e);
+            alert("순서 변경 중 오류가 발생했습니다.");
+        }
+    };
+
     return (
         <div className="space-y-12 pb-20">
             <h1 className="text-2xl font-bold text-gray-800">코스 데이터 관리</h1>
@@ -961,9 +1065,17 @@ export default function AdminCoursesPage() {
                             <div className="space-y-2 mb-6">
                                 {formData.places
                                     .sort((a, b) => a.order_index - b.order_index)
-                                    .map((item) => {
+                                    .map((item, index) => {
                                         const isEditing = editingPlaceId === (item as any).id;
                                         const editData = isEditing ? editingPlaceData : null;
+                                        const sortedPlaces = [...(formData.places || [])].sort(
+                                            (a, b) => a.order_index - b.order_index
+                                        );
+                                        const currentIndex = sortedPlaces.findIndex(
+                                            (p) => (p as any).id === (item as any).id
+                                        );
+                                        const canMoveUp = currentIndex > 0;
+                                        const canMoveDown = currentIndex < sortedPlaces.length - 1;
 
                                         return (
                                             <div
@@ -972,6 +1084,37 @@ export default function AdminCoursesPage() {
                                             >
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex items-start gap-4 flex-1">
+                                                        {/* 🟢 순서 변경 버튼 그룹 */}
+                                                        {!isEditing && (
+                                                            <div className="flex flex-col gap-1 shrink-0">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMovePlaceUp(item)}
+                                                                    disabled={!canMoveUp}
+                                                                    className={`w-6 h-6 flex items-center justify-center rounded border transition ${
+                                                                        canMoveUp
+                                                                            ? "bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-green-600"
+                                                                            : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                                                                    }`}
+                                                                    title="위로 이동"
+                                                                >
+                                                                    ↑
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleMovePlaceDown(item)}
+                                                                    disabled={!canMoveDown}
+                                                                    className={`w-6 h-6 flex items-center justify-center rounded border transition ${
+                                                                        canMoveDown
+                                                                            ? "bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-green-600"
+                                                                            : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                                                                    }`}
+                                                                    title="아래로 이동"
+                                                                >
+                                                                    ↓
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                         <div className="w-8 h-8 flex items-center justify-center bg-green-100 text-green-700 font-bold rounded-full shadow-sm shrink-0">
                                                             {isEditing && editData ? (
                                                                 <input
