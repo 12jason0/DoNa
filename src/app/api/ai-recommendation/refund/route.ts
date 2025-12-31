@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
-import { PaymentStatus, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         const payment = await prisma.payment.findFirst({
             where: {
                 userId: numericUserId,
-                status: PaymentStatus.PAID,
+                status: "PAID",
                 ...(orderId ? { orderId } : {}),
             },
             orderBy: { approvedAt: "desc" },
@@ -106,11 +106,11 @@ export async function POST(request: NextRequest) {
         if (!tossRes.ok) throw new Error("토스 API 환불 실패");
 
         // 5. DB 업데이트 (트랜잭션으로 일관성 보장)
-        const updatedUser = await prisma.$transaction(async (tx) => {
+        const updatedUser = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 결제 상태 변경
             await tx.payment.update({
                 where: { id: payment.id },
-                data: { status: PaymentStatus.CANCELLED },
+                data: { status: "CANCELLED" },
             });
 
             if (isCoupon) {

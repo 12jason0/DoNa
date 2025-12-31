@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 // 👇 [수정됨] lib/prisma가 아니라 lib/db에서 가져옵니다.
 import { prisma } from "@/lib/db";
-import { PaymentStatus, SubscriptionTier, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ interface PlanInfo {
     type: "COUPON" | "SUBSCRIPTION";
     value: number;
     name: string;
-    tier?: SubscriptionTier;
+    tier?: "FREE" | "BASIC" | "PREMIUM";
 }
 
 const PLAN_DATA: Record<PlanKey, PlanInfo> = {
@@ -24,14 +24,14 @@ const PLAN_DATA: Record<PlanKey, PlanInfo> = {
         type: "SUBSCRIPTION",
         value: 30,
         name: "AI 베이직 구독 (월 4,900원)",
-        tier: SubscriptionTier.BASIC,
+        tier: "BASIC",
     },
     sub_premium: {
         amount: 9900,
         type: "SUBSCRIPTION",
         value: 30,
         name: "AI 프리미엄 구독 (월 9,900원)",
-        tier: SubscriptionTier.PREMIUM,
+        tier: "PREMIUM",
     },
 };
 
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
                     userId: numericUserId,
                     orderName: planInfo.name,
                     amount: planInfo.amount,
-                    status: PaymentStatus.PAID,
+                    status: "PAID",
                     paymentKey: paymentKey,
                     method: data.method || "CARD",
                     approvedAt: new Date(data.approvedAt) || new Date(),
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
                 }
                 newExpireDate.setDate(newExpireDate.getDate() + planInfo.value);
 
-                const targetTier = planInfo.tier || SubscriptionTier.BASIC;
+                const targetTier = planInfo.tier || "BASIC";
 
                 updatedUser = await tx.user.update({
                     where: { id: numericUserId },

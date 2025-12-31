@@ -73,6 +73,9 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
 
     const getClientKey = () => {
+        // 🟢 환경변수 확인 (디버깅용)
+        console.log(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL);
+
         // 🟢 라이브 API 개별 연동 키 (fallback 값)
         // 일반 결제(쿠폰): live_ck_ma60RZ... (API 개별 연동용)
         const generalKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "live_ck_ma60RZblrq7ARpNEZDe3wzYWBn1";
@@ -155,17 +158,15 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
             }
         } catch (error: any) {
             // 🟢 상세 에러 로깅 (디버깅용)
-            console.error("[결제창 에러] 상세 정보:", {
-                error: error,
-                message: error?.message,
-                code: error?.code,
-                planType: selectedPlan?.type,
-                planId: selectedPlan?.id,
-                clientKey: getClientKey()?.substring(0, 20) + "...",
-            });
+            console.error("[결제창 에러 RAW]:", error);
+            console.error("[결제창 에러 details]:", error?.details || error?.error || error?.response);
 
             // 🟢 사용자 친화적 에러 메시지
-            const errorMessage = error?.message || "결제창을 불러오는 중 오류가 발생했습니다.";
+            const errorMessage =
+                error?.message ||
+                error?.details?.message ||
+                error?.error?.message ||
+                "결제창을 불러오는 중 오류가 발생했습니다.";
             alert(errorMessage);
         } finally {
             setLoading(false);

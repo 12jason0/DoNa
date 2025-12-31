@@ -215,9 +215,9 @@ const ProfileTab = ({
                             <span
                                 className={`px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${
                                     displayTier === "PREMIUM"
-                                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm border-purple-300"
+                                        ? "bg-linear-to-r from-purple-500 to-pink-500 text-white shadow-sm border-purple-300"
                                         : displayTier === "BASIC"
-                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
+                                        ? "bg-linear-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
                                         : "bg-gray-100 text-gray-600 border-gray-200"
                                 }`}
                             >
@@ -243,7 +243,7 @@ const ProfileTab = ({
                     {userInfo ? (
                         <div className="flex items-center gap-5 md:gap-7 relative z-10">
                             {/* 프로필 이미지 (테두리에 브랜드 컬러 포인트) */}
-                            <div className="relative w-[88px] h-[88px] md:w-[100px] md:h-[100px] rounded-full p-1 bg-gradient-to-br from-emerald-100 to-white shadow-sm flex-shrink-0">
+                            <div className="relative w-[88px] h-[88px] md:w-[100px] md:h-[100px] rounded-full p-1 bg-linear-to-br from-emerald-100 to-white shadow-sm shrink-0">
                                 <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white bg-gray-50">
                                     <Image
                                         src={userInfo.profileImage || DEFAULT_PROFILE_IMG}
@@ -338,7 +338,7 @@ const ProfileTab = ({
                                         {userPreferences.concept.map((item, idx) => (
                                             <span
                                                 key={idx}
-                                                className="px-3.5 py-1.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg text-sm whitespace-nowrap flex-shrink-0"
+                                                className="px-3.5 py-1.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg text-sm whitespace-nowrap shrink-0"
                                             >
                                                 #{item}
                                             </span>
@@ -360,7 +360,7 @@ const ProfileTab = ({
                                         {userPreferences.mood.map((item, idx) => (
                                             <span
                                                 key={idx}
-                                                className="px-3.5 py-1.5 bg-orange-100 text-orange-700 font-bold rounded-lg text-sm whitespace-nowrap flex-shrink-0"
+                                                className="px-3.5 py-1.5 bg-orange-100 text-orange-700 font-bold rounded-lg text-sm whitespace-nowrap shrink-0"
                                             >
                                                 #{item}
                                             </span>
@@ -382,7 +382,7 @@ const ProfileTab = ({
                                         {userPreferences.regions.map((item, idx) => (
                                             <span
                                                 key={idx}
-                                                className="px-3.5 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm whitespace-nowrap flex-shrink-0"
+                                                className="px-3.5 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm whitespace-nowrap shrink-0"
                                             >
                                                 {item}
                                             </span>
@@ -488,7 +488,7 @@ const ProfileTab = ({
                                     <button
                                         onClick={handleNotificationToggle}
                                         disabled={notificationStatus === "loading" || !isMobileApp}
-                                        className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                                        className={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
                                             !isMobileApp
                                                 ? "bg-gray-200 cursor-not-allowed opacity-50"
                                                 : notificationStatus === "loading"
@@ -604,7 +604,7 @@ const ProfileTab = ({
 
                     {/* 알림 설정 앱 필요 모달 */}
                     {showAppRequiredModal && (
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] animate-in fade-in duration-200 p-4">
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-2000 animate-in fade-in duration-200 p-4">
                             <div className="bg-white rounded-xl border border-gray-100 p-8 w-full max-w-sm transform transition-all animate-in zoom-in-95 duration-200">
                                 <div className="text-center mb-6 tracking-tight">
                                     {/* 아이콘 */}
@@ -692,7 +692,7 @@ const ProfileTab = ({
                             <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
                             <p>통신판매업 신고번호: 제 2025-충남홍성-0193 호</p>
                             <p>주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                            <p>고객센터: 12jason@donacouse.com</p>
+                            <p>고객센터: 12jason@donacourse.com</p>
                             <p>유선번호: 010-2271-9824</p>
                         </div>
                     </div>
