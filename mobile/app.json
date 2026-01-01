@@ -38,7 +38,7 @@
                 "backgroundColor": "#ffffff"
             },
             "package": "kr.io.dona.dona",
-            "versionCode": 12,
+            "versionCode": 13,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "minSdkVersion": 24,
@@ -76,7 +76,8 @@
                 "expo-build-properties",
                 {
                     "android": {
-                        "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+                        "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"],
+                        "enableProguardInReleaseBuilds": true
                     }
                 }
             ]
