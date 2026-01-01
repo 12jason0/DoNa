@@ -71,13 +71,14 @@ interface FootprintTabProps {
 const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName = "회원" }: FootprintTabProps) => {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [showMonthDropdown, setShowMonthDropdown] = useState(false); // 🟢 월 선택 드롭다운 표시 여부
+    // 🟢 함수형 초기화로 매 렌더링마다 new Date() 호출 방지
+    const [currentMonth, setCurrentMonth] = useState(() => new Date());
+    const [showMonthDropdown, setShowMonthDropdown] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState<CompletedCourse | null>(null);
     const [showCourseModal, setShowCourseModal] = useState(false);
     const [courseDetail, setCourseDetail] = useState<any>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
-    const [showDateCoursesModal, setShowDateCoursesModal] = useState(false); // 🟢 날짜별 코스 모달 (가로 스크롤)
+    const [showDateCoursesModal, setShowDateCoursesModal] = useState(false);
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
 
@@ -160,73 +161,97 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
         return itemsByDate.get(dateKey) || { courses: [], aiRecommendations: [] };
     }, [selectedDate, itemsByDate]);
 
-    const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
-    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+    // 🟢 상수 배열을 컴포넌트 외부로 이동하여 재생성 방지
+    const monthNames = useMemo(
+        () => ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
+        []
+    );
+    const dayNames = useMemo(() => ["일", "월", "화", "수", "목", "금", "토"], []);
 
-    const prevMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-        setShowMonthDropdown(false); // 🟢 월 변경 시 드롭다운 닫기
-    };
+    const prevMonth = useCallback(() => {
+        setCurrentMonth((prev) => {
+            const newDate = new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+            return newDate;
+        });
+        setShowMonthDropdown(false);
+    }, []);
 
-    const nextMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-        setShowMonthDropdown(false); // 🟢 월 변경 시 드롭다운 닫기
-    };
+    const nextMonth = useCallback(() => {
+        setCurrentMonth((prev) => {
+            const newDate = new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
+            return newDate;
+        });
+        setShowMonthDropdown(false);
+    }, []);
 
-    // 🟢 드래그 시작
-    const handleTouchStart = (e: React.TouchEvent) => {
+    // 🟢 드래그 끝 - 월 변경 처리 (ref 사용으로 최적화)
+    const touchStartXRef = useRef<number | null>(null);
+    const touchEndXRef = useRef<number | null>(null);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        touchEndXRef.current = null;
+        touchStartXRef.current = e.targetTouches[0].clientX;
         setTouchEndX(null);
-        setTouchStartX(e.targetTouches[0].clientX);
-    };
+        setTouchStartX(touchStartXRef.current);
+    }, []);
 
-    // 🟢 드래그 중
-    const handleTouchMove = (e: React.TouchEvent) => {
-        setTouchEndX(e.targetTouches[0].clientX);
-    };
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        touchEndXRef.current = e.targetTouches[0].clientX;
+        setTouchEndX(touchEndXRef.current);
+    }, []);
 
-    // 🟢 드래그 끝 - 월 변경 처리
-    const handleTouchEnd = () => {
-        if (!touchStartX || !touchEndX) return;
+    const handleTouchEnd = useCallback(() => {
+        const startX = touchStartXRef.current;
+        const endX = touchEndXRef.current;
 
-        const distance = touchStartX - touchEndX;
-        const minSwipeDistance = 50; // 최소 스와이프 거리
+        if (!startX || !endX) {
+            setTouchStartX(null);
+            setTouchEndX(null);
+            return;
+        }
+
+        const distance = startX - endX;
+        const minSwipeDistance = 50;
 
         if (distance > minSwipeDistance) {
-            // 왼쪽으로 스와이프 (다음 달)
             nextMonth();
         }
         if (distance < -minSwipeDistance) {
-            // 오른쪽으로 스와이프 (이전 달)
             prevMonth();
         }
 
+        touchStartXRef.current = null;
+        touchEndXRef.current = null;
         setTouchStartX(null);
         setTouchEndX(null);
-    };
+    }, [nextMonth, prevMonth]);
 
     // 🟢 월 선택 핸들러
-    const handleMonthSelect = (monthIndex: number) => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), monthIndex, 1));
+    const handleMonthSelect = useCallback((monthIndex: number) => {
+        setCurrentMonth((prev) => new Date(prev.getFullYear(), monthIndex, 1));
         setShowMonthDropdown(false);
-    };
+    }, []);
+
+    // 🟢 코스 이미지 ref로 관리하여 불필요한 재생성 방지
+    const courseImagesRef = useRef<Record<number | string, string>>({});
+    courseImagesRef.current = courseImages;
 
     // 🟢 코스 이미지 가져오기 (코스 이미지가 없으면 첫 번째 장소 이미지 사용) - 최적화
     const getCourseImage = useCallback(
         async (courseId: number | string): Promise<string> => {
             // 이미 캐시된 이미지가 있으면 반환
-            if (courseImages[courseId]) {
-                return courseImages[courseId];
+            if (courseImagesRef.current[courseId]) {
+                return courseImagesRef.current[courseId];
             }
 
             try {
                 // 🟢 캐시 우선 사용 및 빠른 응답을 위한 최적화
                 const res = await fetch(`/api/courses/${courseId}`, {
-                    cache: "force-cache", // 🟢 캐시 우선 사용
-                    next: { revalidate: 300 }, // 🟢 5분 캐시
+                    cache: "force-cache",
+                    next: { revalidate: 300 },
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    // 코스 이미지가 있으면 사용, 없으면 첫 번째 장소 이미지 사용
                     const imageUrl =
                         data.imageUrl?.trim() ||
                         data.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
@@ -234,13 +259,13 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                         "";
 
                     if (imageUrl) {
-                        // 🟢 [Performance]: requestAnimationFrame으로 상태 업데이트 분산
-                        requestAnimationFrame(() => {
+                        // 🟢 이미 있으면 업데이트 안 함
+                        if (!courseImagesRef.current[courseId]) {
                             setCourseImages((prev) => {
-                                if (prev[courseId]) return prev; // 이미 있으면 업데이트 안 함
+                                if (prev[courseId]) return prev;
                                 return { ...prev, [courseId]: imageUrl };
                             });
-                        });
+                        }
                         return imageUrl;
                     }
                 }
@@ -249,7 +274,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
             }
             return "";
         },
-        [courseImages]
+        [] // courseImages 의존성 제거
     );
 
     // 🟢 [Performance]: 모달이 열릴 때 모든 코스 이미지 즉시 병렬 로드
@@ -261,7 +286,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
             ...(selectedDateItems.aiRecommendations || []).map((item) => item.course || item),
         ].filter((course) => {
             const courseId = course?.id || course?.course_id;
-            return courseId && !courseImages[courseId] && !course?.imageUrl;
+            return courseId && !courseImagesRef.current[courseId] && !course?.imageUrl;
         });
 
         if (allCourses.length === 0) return;
@@ -273,7 +298,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                 getCourseImage(courseId).catch(() => {});
             }
         });
-    }, [showDateCoursesModal, selectedDateItems, courseImages, getCourseImage]);
+    }, [showDateCoursesModal, selectedDateItems, getCourseImage]);
 
     // 🟢 모달이 열릴 때 스크롤 위치 조정 (다음 카드가 보이도록)
     useEffect(() => {
@@ -297,67 +322,70 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     }, [showDateCoursesModal]);
 
     // 🟢 코스 클릭 핸들러 (최적화: 즉시 기본 정보 표시 후 상세 정보 로드)
-    const handleCourseClick = async (courseId: number | string) => {
-        // 🟢 [Optimization]: 이미 있는 코스 정보로 즉시 모달 표시
-        const foundCompleted = completed.find((c) => c.course_id === Number(courseId));
-        const foundAiRecommendation = aiRecommendations.find(
-            (item) => item.course?.id === Number(courseId) || item.course?.course_id === Number(courseId)
-        );
+    const handleCourseClick = useCallback(
+        async (courseId: number | string) => {
+            // 🟢 [Optimization]: 이미 있는 코스 정보로 즉시 모달 표시
+            const foundCompleted = completed.find((c) => c.course_id === Number(courseId));
+            const foundAiRecommendation = aiRecommendations.find(
+                (item) => item.course?.id === Number(courseId) || item.course?.course_id === Number(courseId)
+            );
 
-        // 🟢 기본 정보로 즉시 모달 표시 (API 응답 전)
-        if (foundCompleted) {
-            setCourseDetail({
-                id: foundCompleted.course_id,
-                title: foundCompleted.title,
-                description: foundCompleted.description || "",
-                imageUrl: foundCompleted.imageUrl || "",
-                region: foundCompleted.region || "",
-                concept: foundCompleted.concept || "",
-            });
-            setSelectedCourse(foundCompleted);
-            setShowCourseModal(true);
-            setLoadingDetail(false); // 🟢 기본 정보는 이미 있으므로 로딩 완료
-        } else if (foundAiRecommendation?.course) {
-            const course = foundAiRecommendation.course;
-            setCourseDetail({
-                id: course.id || course.course_id,
-                title: course.title || "",
-                description: course.description || "",
-                imageUrl: course.imageUrl || "",
-                region: course.region || "",
-                concept: course.concept || "",
-            });
-            setShowCourseModal(true);
-            setLoadingDetail(false); // 🟢 기본 정보는 이미 있으므로 로딩 완료
-        } else {
-            // 🟢 정보가 없으면 로딩 상태로 모달 표시
-            setLoadingDetail(true);
-            setShowCourseModal(true);
-        }
-
-        // 🟢 [Optimization]: 백그라운드에서 상세 정보 로드 (캐싱 활용)
-        try {
-            const res = await fetch(`/api/courses/${courseId}`, {
-                cache: "force-cache", // 🟢 캐싱으로 성능 향상
-                next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
-            });
-            if (res.ok) {
-                const data = await res.json();
-                // 🟢 상세 정보 업데이트 (이미지, 설명 등 보완)
-                setCourseDetail((prev: any) => ({
-                    ...prev,
-                    ...data,
-                    // 🟢 이미지가 없으면 상세 정보의 이미지 사용
-                    imageUrl: prev?.imageUrl || data.imageUrl || data.coursePlaces?.[0]?.place?.imageUrl || "",
-                    description: prev?.description || data.description || "",
-                }));
+            // 🟢 기본 정보로 즉시 모달 표시 (API 응답 전)
+            if (foundCompleted) {
+                setCourseDetail({
+                    id: foundCompleted.course_id,
+                    title: foundCompleted.title,
+                    description: foundCompleted.description || "",
+                    imageUrl: foundCompleted.imageUrl || "",
+                    region: foundCompleted.region || "",
+                    concept: foundCompleted.concept || "",
+                });
+                setSelectedCourse(foundCompleted);
+                setShowCourseModal(true);
+                setLoadingDetail(false); // 🟢 기본 정보는 이미 있으므로 로딩 완료
+            } else if (foundAiRecommendation?.course) {
+                const course = foundAiRecommendation.course;
+                setCourseDetail({
+                    id: course.id || course.course_id,
+                    title: course.title || "",
+                    description: course.description || "",
+                    imageUrl: course.imageUrl || "",
+                    region: course.region || "",
+                    concept: course.concept || "",
+                });
+                setShowCourseModal(true);
+                setLoadingDetail(false); // 🟢 기본 정보는 이미 있으므로 로딩 완료
+            } else {
+                // 🟢 정보가 없으면 로딩 상태로 모달 표시
+                setLoadingDetail(true);
+                setShowCourseModal(true);
             }
-        } catch (error) {
-            console.error("코스 상세 조회 실패:", error);
-        } finally {
-            setLoadingDetail(false);
-        }
-    };
+
+            // 🟢 [Optimization]: 백그라운드에서 상세 정보 로드 (캐싱 활용)
+            try {
+                const res = await fetch(`/api/courses/${courseId}`, {
+                    cache: "force-cache", // 🟢 캐싱으로 성능 향상
+                    next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // 🟢 상세 정보 업데이트 (이미지, 설명 등 보완)
+                    setCourseDetail((prev: any) => ({
+                        ...prev,
+                        ...data,
+                        // 🟢 이미지가 없으면 상세 정보의 이미지 사용
+                        imageUrl: prev?.imageUrl || data.imageUrl || data.coursePlaces?.[0]?.place?.imageUrl || "",
+                        description: prev?.description || data.description || "",
+                    }));
+                }
+            } catch (error) {
+                console.error("코스 상세 조회 실패:", error);
+            } finally {
+                setLoadingDetail(false);
+            }
+        },
+        [completed, aiRecommendations]
+    );
 
     return (
         <div className="space-y-6">
