@@ -14,15 +14,15 @@ import LoginModal from "@/components/LoginModal";
 
 // 🟢 [추가] 로그아웃 스플래시 UI
 const LogoutSplash = () => (
-    <div className="fixed inset-0 z-9999 bg-white flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-9999 bg-white dark:bg-[#0f1710] flex flex-col items-center justify-center">
         <div className="flex flex-col items-center animate-pulse">
-            <span className="text-3xl font-bold text-gray-900 mb-4 tracking-tighter italic">DoNa</span>
+            <span className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tighter italic">DoNa</span>
             <div className="flex gap-1">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
             </div>
-            <p className="mt-6 text-gray-500 font-medium tracking-tight">안전하게 로그아웃 중입니다...</p>
+            <p className="mt-6 text-gray-500 dark:text-gray-400 font-medium tracking-tight">안전하게 로그아웃 중입니다...</p>
         </div>
     </div>
 );
@@ -158,18 +158,18 @@ const Header = () => {
         <>
             {isLoggingOut && <LogoutSplash />}
 
-            <header className="relative z-50 bg-white shadow-sm">
+            <header className="relative z-50 bg-white dark:bg-[#1a241b] shadow-sm dark:shadow-gray-900/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <Link href="/" prefetch={true} className="flex items-center space-x-2" onClick={closeMenu}>
-                            <span className="text-xl font-bold text-gray-900">DoNa</span>
+                            <span className="text-xl font-bold text-gray-900 dark:text-white">DoNa</span>
                         </Link>
 
                         <div className="flex items-center gap-2">
                             {/* 검색 버튼 */}
                             <button
                                 onClick={() => window.dispatchEvent(new Event("openSearchModal"))}
-                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+                                className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             >
                                 <Search className="w-6 h-6" />
                             </button>
@@ -180,7 +180,7 @@ const Header = () => {
                                     setIsMenuOpen(false);
                                     isLoggedIn ? setShowKakaoChannelModal(true) : setShowNotiModal(true);
                                 }}
-                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors relative"
+                                className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
                             >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -205,7 +205,7 @@ const Header = () => {
                             {/* 햄버거 메뉴 버튼 */}
                             <button
                                 onClick={toggleMenu}
-                                className="p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                                className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                                 ref={menuButtonRef}
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +230,7 @@ const Header = () => {
                     />
                 )}
                 <div
-                    className={`fixed top-16 bottom-0 z-1500 bg-white border-l border-gray-200 transform transition-all ease-in-out duration-300 flex flex-col ${
+                    className={`fixed top-16 bottom-0 z-1500 bg-white dark:bg-[#1a241b] border-l border-gray-200 dark:border-gray-800 transform transition-all ease-in-out duration-300 flex flex-col ${
                         isMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
                     }`}
                     ref={drawerRef}
@@ -241,7 +241,7 @@ const Header = () => {
                             <Link
                                 href="/"
                                 prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 onClick={closeMenu}
                             >
                                 홈
@@ -249,7 +249,7 @@ const Header = () => {
                             <Link
                                 href="/courses"
                                 prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 onClick={closeMenu}
                             >
                                 완벽한 하루
@@ -257,7 +257,7 @@ const Header = () => {
                             <Link
                                 href="/nearby"
                                 prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 onClick={closeMenu}
                             >
                                 오늘 뭐하지?
@@ -265,7 +265,7 @@ const Header = () => {
                             <Link
                                 href="/personalized-home"
                                 prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 onClick={closeMenu}
                             >
                                 🎯 AI 추천
@@ -273,7 +273,7 @@ const Header = () => {
                             <Link
                                 href="/map"
                                 prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 onClick={closeMenu}
                             >
                                 지도
@@ -287,17 +287,17 @@ const Header = () => {
                                         setShowLoginModal(true);
                                     }
                                 }}
-                                className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 hover:bg-gray-50 flex items-center gap-2"
+                                className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
                             >
                                 <span>🔒커플 미션 게임</span>
                             </button>
 
-                            <div className="pt-4 border-t border-gray-200">
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
                                 {isLoggedIn ? (
                                     <Link
                                         href="/mypage"
                                         prefetch={true}
-                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                         onClick={closeMenu}
                                     >
                                         마이페이지
@@ -307,7 +307,7 @@ const Header = () => {
                                         <Link
                                             href="/login?next=/"
                                             prefetch={true}
-                                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                             onClick={closeMenu}
                                         >
                                             로그인
@@ -315,7 +315,7 @@ const Header = () => {
                                         <Link
                                             href="/signup"
                                             prefetch={true}
-                                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                             onClick={closeMenu}
                                         >
                                             회원가입
@@ -326,11 +326,11 @@ const Header = () => {
                         </div>
 
                         {/* 드로어 하단 링크 및 로그아웃 */}
-                        <div className="mt-auto px-6 border-t border-gray-100 bg-white">
+                        <div className="mt-auto px-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
                             {isLoggedIn && (
                                 <button
                                     onClick={openLogoutConfirm}
-                                    className="w-full flex items-center gap-2 px-3 py-2 mt-4 mb-4 rounded-lg text-base font-medium text-red-700 hover:bg-gray-50 transition-colors"
+                                    className="w-full flex items-center gap-2 px-3 py-2 mt-4 mb-4 rounded-lg text-base font-medium text-red-700 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -354,7 +354,7 @@ const Header = () => {
                                     href="/about"
                                     prefetch={true}
                                     onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
+                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                                 >
                                     <span className="text-xs font-medium">서비스 소개</span>
                                 </Link>
@@ -362,7 +362,7 @@ const Header = () => {
                                     href="/help"
                                     prefetch={true}
                                     onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
+                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                                 >
                                     <span className="text-xs font-medium">이용 안내</span>
                                 </Link>
@@ -370,7 +370,7 @@ const Header = () => {
                                     href="/privacy"
                                     prefetch={true}
                                     onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
+                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                                 >
                                     <span className="text-xs font-medium">개인정보처리방침</span>
                                 </Link>
@@ -378,7 +378,7 @@ const Header = () => {
                                     href="/terms"
                                     prefetch={true}
                                     onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 hover:text-emerald-600 transition-colors"
+                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                                 >
                                     <span className="text-xs font-medium">이용약관</span>
                                 </Link>

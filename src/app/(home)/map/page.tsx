@@ -109,8 +109,8 @@ function createUserLocationIcon() {
 
 const LoadingSpinner = ({ text = "로딩 중..." }: { text?: string }) => (
     <div className="flex flex-col justify-center items-center h-full gap-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-emerald-100 border-t-emerald-600" />
-        <p className="text-sm text-gray-500 font-medium">{text}</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-emerald-100 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-400" />
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{text}</p>
     </div>
 );
 
@@ -633,11 +633,11 @@ function MapPageInner() {
         );
 
     return (
-        <div className="relative w-full h-full overflow-hidden bg-gray-100 font-sans touch-none">
+        <div className="relative w-full h-full overflow-hidden bg-gray-100 dark:bg-[#0f1710] font-sans touch-none">
             {/* 상단 검색창 */}
-            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-linear-to-b from-white/90 via-white/60 to-transparent pointer-events-none">
-                <div className="flex items-center bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-3 pointer-events-auto mb-3">
-                    <div className="pl-1 pr-3 text-emerald-500">
+            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none">
+                <div className="flex items-center bg-white dark:bg-[#1a241b] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 dark:border-gray-800 p-3 pointer-events-auto mb-3">
+                    <div className="pl-1 pr-3 text-emerald-500 dark:text-emerald-400">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -657,7 +657,7 @@ function MapPageInner() {
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        className="flex-1 bg-transparent focus:outline-none text-gray-900 placeholder:text-gray-400 text-base font-medium"
+                        className="flex-1 bg-transparent focus:outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-base font-medium"
                     />
                 </div>
 
@@ -671,8 +671,8 @@ function MapPageInner() {
                             }}
                             className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm border transition-all ${
                                 activeTab === "places"
-                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                                    : "bg-white text-gray-500 border-gray-200"
+                                    ? "bg-emerald-600 dark:bg-emerald-700 text-white border-emerald-600 dark:border-emerald-700 shadow-md"
+                                    : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-700"
                             }`}
                         >
                             주변 장소
@@ -684,8 +684,8 @@ function MapPageInner() {
                             }}
                             className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm border transition-all ${
                                 activeTab === "courses"
-                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                                    : "bg-white text-gray-500 border-gray-200"
+                                    ? "bg-emerald-600 dark:bg-emerald-700 text-white border-emerald-600 dark:border-emerald-700 shadow-md"
+                                    : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-700"
                             }`}
                         >
                             추천 코스
@@ -693,7 +693,7 @@ function MapPageInner() {
                     </div>
                     <button
                         onClick={handleMapSearch}
-                        className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-bold shadow-sm border border-emerald-500 bg-white text-emerald-600 hover:bg-emerald-50 transition-all ml-2 whitespace-nowrap"
+                        className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-bold shadow-sm border border-emerald-500 dark:border-emerald-600 bg-white dark:bg-[#1a241b] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all ml-2 whitespace-nowrap"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -768,7 +768,7 @@ function MapPageInner() {
 
                 {/* 토스트 메시지 */}
                 <div
-                    className={`absolute top-24 left-1/2 transform -translate-x-1/2 z-[60] transition-all duration-300 pointer-events-none ${
+                    className={`absolute top-24 left-1/2 transform -translate-x-1/2 z-60 transition-all duration-300 pointer-events-none ${
                         toastMessage ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                     }`}
                 >
@@ -780,7 +780,7 @@ function MapPageInner() {
                 {/* 내 위치 버튼 */}
                 <button
                     onClick={moveToCurrentLocation}
-                    className="absolute right-5 z-20 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-95"
+                    className="absolute right-5 z-20 w-12 h-12 bg-white dark:bg-[#1a241b] rounded-full shadow-lg border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-700 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all active:scale-95"
                     style={{
                         bottom:
                             panelState === "expanded"
@@ -803,10 +803,10 @@ function MapPageInner() {
 
             {/* 하단 패널 */}
             <div
-                className={`z-40 absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
+                className={`z-40 absolute inset-x-0 bottom-0 bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
                 <div
-                    className="w-full flex justify-center pt-3 pb-1 cursor-pointer touch-none active:bg-gray-50 transition-colors rounded-t-3xl"
+                    className="w-full flex justify-center pt-3 pb-1 cursor-pointer touch-none active:bg-gray-50 dark:active:bg-gray-800 transition-colors rounded-t-3xl"
                     onClick={() =>
                         setPanelState((prev) =>
                             prev === "expanded" ? "default" : prev === "default" ? "minimized" : "default"
@@ -815,16 +815,16 @@ function MapPageInner() {
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                 >
-                    <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-2" />
+                    <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mb-2" />
                 </div>
 
                 {!selectedPlace && (
-                    <div className="px-6 pb-3 border-b border-gray-100 flex justify-between items-end">
+                    <div className="px-6 pb-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-end">
                         <div>
-                            <h2 className="font-bold text-xl text-gray-900 leading-tight">
-                                {activeTab === "places" ? "내 주변 장소소 🔥" : "추천 데이트 코스 ❤️"}
+                            <h2 className="font-bold text-xl text-gray-900 dark:text-white leading-tight">
+                                {activeTab === "places" ? "내 주변 장소 🔥" : "추천 데이트 코스 ❤️"}
                             </h2>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 {activeTab === "places"
                                     ? `지도에 ${places.length}개의 장소가 있어요`
                                     : `엄선된 코스를 확인해보세요`}
@@ -833,19 +833,19 @@ function MapPageInner() {
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto bg-white scrollbar-hide">
+                <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1a241b] scrollbar-hide">
                     {loading ? (
                         <LoadingSpinner text="정보를 불러오고 있어요..." />
                     ) : selectedPlace ? (
                         <div className="px-5 pb-8 pt-0 animate-fadeIn">
                             {/* 상세 정보 뷰 (생략 없이 유지) */}
                             <div className="flex justify-between items-start mb-2 mt-1">
-                                <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full border border-emerald-100">
+                                <span className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-800/50">
                                     {selectedPlace.category || "추천 장소"}
                                 </span>
                                 <button
                                     onClick={() => setSelectedPlace(null)}
-                                    className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                    className="p-2 -mr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -861,10 +861,10 @@ function MapPageInner() {
                                     </svg>
                                 </button>
                             </div>
-                            <h2 className="text-2xl font-extrabold text-gray-900 mb-1 leading-tight tracking-tight">
+                            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1 leading-tight tracking-tight">
                                 {selectedPlace.name}
                             </h2>
-                            <div className="text-sm text-gray-500 mb-6 flex items-start gap-1">
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex items-start gap-1">
                                 <span className="leading-snug">{selectedPlace.address}</span>
                             </div>
                             {/* ✅ 수정된 버튼 영역 (안전장치 추가됨) */}
@@ -876,7 +876,7 @@ function MapPageInner() {
                                             ? (window.location.href = `tel:${selectedPlace.phone}`)
                                             : showToast("전화번호 정보가 없어요 🥲")
                                     }
-                                    className="w-14 h-full flex items-center justify-center bg-white text-gray-400 border border-gray-200 rounded-xl hover:text-emerald-500 hover:border-emerald-200 hover:bg-emerald-50 active:scale-95 transition-all"
+                                    className="w-14 h-full flex items-center justify-center bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 rounded-xl hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:scale-95 transition-all"
                                     aria-label="전화하기"
                                 >
                                     <svg
@@ -913,9 +913,9 @@ function MapPageInner() {
                                     </svg>
                                 </button>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                                <h4 className="font-bold text-gray-800 mb-2 text-sm">💡 장소 설명</h4>
-                                <p className="text-sm text-gray-600 leading-relaxed">
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                                <h4 className="font-bold text-gray-800 dark:text-white mb-2 text-sm">💡 장소 설명</h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                                     {selectedPlace.description || "이곳은 많은 사람들이 찾는 인기 장소입니다."}
                                 </p>
                             </div>
@@ -925,7 +925,7 @@ function MapPageInner() {
                             {(activeTab === "places" ? places : courses).length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-60">
                                     <div className="text-4xl mb-2">🤔</div>
-                                    <p className="text-gray-500 font-medium">
+                                    <p className="text-gray-500 dark:text-gray-400 font-medium">
                                         이 근처에는 아직 정보가 없어요.
                                         <br />
                                         지도를 조금만 이동해볼까요?
@@ -939,7 +939,7 @@ function MapPageInner() {
                                         onClick={() => {
                                             activeTab === "courses" ? handleCourseClick(item) : handlePlaceClick(item);
                                         }}
-                                        className="group bg-white p-4 mb-3 rounded-2xl border border-gray-100 shadow-sm active:scale-[0.98] transition-all cursor-pointer hover:shadow-md hover:border-emerald-200"
+                                        className="group bg-white dark:bg-[#1a241b] p-4 mb-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm active:scale-[0.98] transition-all cursor-pointer hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700"
                                     >
                                         <div className="flex justify-between items-start">
                                             <div className="flex-1">
@@ -947,8 +947,8 @@ function MapPageInner() {
                                                     <span
                                                         className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
                                                             activeTab === "courses"
-                                                                ? "bg-indigo-50 text-indigo-600 border-indigo-100"
-                                                                : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                                                ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50"
+                                                                : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50"
                                                         }`}
                                                     >
                                                         {activeTab === "courses"
@@ -956,14 +956,14 @@ function MapPageInner() {
                                                             : item.category || "장소"}
                                                     </span>
                                                 </div>
-                                                <h4 className="text-lg font-bold text-gray-800 leading-tight group-hover:text-emerald-600 transition-colors">
+                                                <h4 className="text-lg font-bold text-gray-800 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                                     {item.name || item.title}
                                                 </h4>
-                                                <p className="text-sm text-gray-500 mt-1 line-clamp-1">
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
                                                     {activeTab === "courses" ? item.description : item.address}
                                                 </p>
                                             </div>
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors ml-2">
+                                            <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/30 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors ml-2">
                                                 <svg
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 24 24"
@@ -995,7 +995,7 @@ export default function MapPage() {
     return (
         <Suspense
             fallback={
-                <div className="h-screen flex items-center justify-center bg-gray-50">
+                <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0f1710]">
                     <LoadingSpinner />
                 </div>
             }

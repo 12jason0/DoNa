@@ -13,7 +13,7 @@ export default function CourseReportBanner() {
         <>
             <div className="group cursor-pointer mb-8" onClick={() => setShowKakaoModal(true)}>
                 {/* 1. 이미지 섹션: 실제 코스 카드와 완벽히 동일한 프레임 유지 */}
-                <div className="relative w-full aspect-4/3 rounded-[24px] overflow-hidden bg-gray-200 shadow-sm border border-gray-100">
+                <div className="relative w-full aspect-4/3 rounded-[24px] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-transparent">
                     <img
                         src={bannerImageUrl}
                         alt="Join us"
@@ -50,10 +50,10 @@ export default function CourseReportBanner() {
                 <div className="mt-3 px-1">
                     <div className="flex justify-between items-end">
                         <div className="flex-1">
-                            <h3 className="text-[17px] font-black text-gray-900 tracking-tight leading-tight">
-                                장소를 제보하고 <span className="text-emerald-600">무료 코스</span>를 열어보세요
+                            <h3 className="text-[17px] font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                                장소를 제보하고 <span className="text-emerald-600 dark:text-emerald-400">무료 코스</span>를 열어보세요
                             </h3>
-                            <p className="text-[13px] text-gray-500 mt-1 font-medium">
+                            <p className="text-[13px] text-gray-500 dark:text-white mt-1 font-medium">
                                 선정된 장소는 '두나'의 공식 코스로 등록됩니다 ✨
                             </p>
                         </div>

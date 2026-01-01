@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -28,9 +28,23 @@ const lineSeed = localFont({
     preload: false,
 });
 
+// ✅ 1. 페이지 정보 상자 (메타데이터)
 export const metadata: Metadata = {
     title: "DoNa - 두나",
     description: "데이트 코스 추천 서비스",
+};
+
+// ✅ 2. 화면 규격 상자 (뷰포트) - Next.js 13.4+ 에서는 분리 필요
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: "cover", // 🟢 상태표시줄까지 덮기 위한 필수 설정
+    // 🟢 다크모드 대응: 기기 설정에 따라 상단 바 색상 자동 변경
+    themeColor: [
+        { media: "(prefers-color-scheme: light)", color: "#7FCC9F" }, // 라이트모드 (초록)
+        { media: "(prefers-color-scheme: dark)", color: "#121212" }, // 다크모드 (검정)
+    ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

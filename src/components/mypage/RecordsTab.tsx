@@ -56,7 +56,7 @@ const CourseImageLoader = ({
     }
 
     return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-sm">
+        <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-sm">
             이미지 없음
         </div>
     );
@@ -96,7 +96,7 @@ const RecordsTab = ({
     return (
         <div className="space-y-6">
             {/* 서브 탭 네비게이션 */}
-            <div className="bg-white rounded-xl border border-gray-100 p-4 overflow-x-auto no-scrollbar">
+            <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto no-scrollbar">
                 <div className="flex space-x-2 min-w-max">
                     {subTabs.map((tab) => (
                         <button
@@ -104,8 +104,8 @@ const RecordsTab = ({
                             onClick={() => setSubTab(tab.id)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                                 subTab === tab.id
-                                    ? "bg-slate-900 text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    ? "bg-slate-900 dark:bg-blue-700 text-white"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                             }`}
                         >
                             {tab.label} ({tab.count})
@@ -116,8 +116,8 @@ const RecordsTab = ({
 
             {/* 보관함 (Favorites) */}
             {subTab === "favorites" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 tracking-tight">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6 tracking-tight">
                         내 여행 보관함
                     </h3>
                     {favorites.length > 0 ? (
@@ -160,14 +160,14 @@ const RecordsTab = ({
                     ) : (
                         <div className="text-center py-8">
                             <div className="text-6xl mb-4">💖</div>
-                            <h4 className="text-lg font-semibold text-gray-900 mb-2">찜한 코스가 없어요</h4>
-                            <p className="text-gray-600 mb-4">마음에 드는 코스를 찜해보세요!</p>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">찜한 코스가 없어요</h4>
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">마음에 드는 코스를 찜해보세요!</p>
                             <button
                                 onClick={() => {
                                     router.prefetch("/courses"); // 🟢 성능 최적화: prefetch 추가
                                     router.push("/courses");
                                 }}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                                className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors cursor-pointer"
                             >
                                 코스 둘러보기
                             </button>
@@ -178,8 +178,8 @@ const RecordsTab = ({
 
             {/* AI 추천 (Saved) */}
             {subTab === "saved" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 tracking-tight">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6 tracking-tight">
                         AI가 추천해준 나만의 코스
                     </h3>
                     {savedCourses.length > 0 ? (
@@ -209,11 +209,11 @@ const RecordsTab = ({
                     ) : (
                         <div className="text-center py-10">
                             <div className="text-6xl mb-3">✨</div>
-                            <h4 className="text-lg font-semibold text-gray-900 mb-2">아직 AI 추천 코스가 없어요</h4>
-                            <p className="text-gray-600 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">아직 AI 추천 코스가 없어요</h4>
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
                             <button
                                 onClick={() => router.push("/personalized-home")}
-                                className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors cursor-pointer tracking-tight"
+                                className="px-6 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer tracking-tight"
                             >
                                 AI 추천 받으러 가기
                             </button>
@@ -224,9 +224,9 @@ const RecordsTab = ({
 
             {/* 완료한 코스 (Completed) */}
             {subTab === "completed" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">완료한 코스</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">완료한 코스</h3>
                     </div>
                     {completed.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -239,7 +239,7 @@ const RecordsTab = ({
                                         key={c.course_id}
                                         href={`/courses/${c.course_id}`}
                                         prefetch={true} // 🟢 성능 최적화: prefetch 추가
-                                        className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors cursor-pointer block"
+                                        className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer block"
                                     >
                                         <div className="relative">
                                             <div className="relative h-48">
@@ -298,11 +298,11 @@ const RecordsTab = ({
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="p-4">
-                                            <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
+                                        <div className="p-4 bg-white dark:bg-gray-800/50">
+                                            <h4 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">
                                                 {c.title}
                                             </h4>
-                                            <div className="flex items-center justify-between text-xs text-gray-600">
+                                            <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                                                 {c.completedAt && (
                                                     <span>{new Date(c.completedAt).toLocaleDateString()}</span>
                                                 )}
@@ -315,11 +315,11 @@ const RecordsTab = ({
                     ) : (
                         <div className="text-center py-10">
                             <div className="text-6xl mb-3">✅</div>
-                            <div className="text-lg font-semibold text-gray-900 mb-1">아직 완료한 코스가 없어요</div>
-                            <div className="text-gray-600 mb-4">코스를 완료하면 여기에서 확인할 수 있어요</div>
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">아직 완료한 코스가 없어요</div>
+                            <div className="text-gray-600 dark:text-gray-400 mb-4">코스를 완료하면 여기에서 확인할 수 있어요</div>
                             <button
                                 onClick={() => router.push("/courses")}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                                className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors cursor-pointer"
                             >
                                 코스 둘러보기
                             </button>
@@ -330,16 +330,16 @@ const RecordsTab = ({
 
             {/* 사건 파일 (Casefiles) */}
             {subTab === "casefiles" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">완료한 사건 파일</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">완료한 사건 파일</h3>
                     </div>
                     {casefiles.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {casefiles.map((f) => (
                                 <div
                                     key={f.story_id}
-                                    className="group relative rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
+                                    className="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
                                     onClick={() => onOpenCaseModal(f.story_id, f.title)}
                                 >
                                     <div className="relative h-60">
@@ -350,7 +350,7 @@ const RecordsTab = ({
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full h-full bg-gray-100" />
+                                            <div className="w-full h-full bg-gray-100 dark:bg-gray-800" />
                                         )}
                                         <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                                         <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -375,10 +375,10 @@ const RecordsTab = ({
                     ) : (
                         <div className="text-center py-10">
                             <div className="text-6xl mb-3">🗂️</div>
-                            <div className="text-lg font-semibold text-gray-900 mb-1">
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                                 아직 완료한 사건 파일이 없어요
                             </div>
-                            <div className="text-gray-600">Escape 스토리를 완료하면 여기에서 볼 수 있어요</div>
+                            <div className="text-gray-600 dark:text-gray-400">Escape 스토리를 완료하면 여기에서 볼 수 있어요</div>
                         </div>
                     )}
                 </div>

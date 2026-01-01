@@ -184,7 +184,7 @@ const questionFlow: Question[] = [
 const AIRecommender = () => {
     const router = useRouter();
     const pathname = usePathname();
-    
+
     // 상태 관리
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userName, setUserName] = useState("");
@@ -908,86 +908,90 @@ const AIRecommender = () => {
         }, [course.id]);
 
         return (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white rounded-[2rem] w-full max-w-md h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
+            <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-[#1a241b] rounded-4xl w-full max-w-md h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+                    <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white dark:bg-[#1a241b] z-10">
                         <div>
-                            <span className="text-xs font-bold text-emerald-600 tracking-wider uppercase mb-1 block">
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tracking-wider uppercase mb-1 block">
                                 Course Detail
                             </span>
-                            <h3 className="text-lg font-bold text-gray-900 leading-tight">{course.title}</h3>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                                {course.title}
+                            </h3>
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                            className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
-                            <X className="w-5 h-5 text-gray-600" />
+                            <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                         </button>
                     </div>
 
                     {/* Content (Scrollable) */}
-                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-[#0f1710]">
                         {/* Summary Card */}
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                            <p className="text-sm text-gray-600 leading-relaxed">{course.description}</p>
-                            <div className="flex gap-3 mt-4 text-xs font-medium text-gray-500">
+                        <div className="bg-white dark:bg-[#1a241b] p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-6">
+                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                                {course.description}
+                            </p>
+                            <div className="flex gap-3 mt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
                                 <div className="flex items-center">
-                                    <MapPin className="w-3.5 h-3.5 mr-1" />
+                                    <MapPin className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
                                     {course.location}
                                 </div>
                                 <div className="flex items-center">
-                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                    <Clock className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
                                     {course.duration}
                                 </div>
                             </div>
                         </div>
 
                         {/* Timeline */}
-                        <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-emerald-200 before:to-gray-200">
+                        <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-emerald-200 before:to-gray-200 dark:before:from-emerald-800/50 dark:before:to-gray-700">
                             {loading ? (
                                 <div className="flex items-center justify-center py-10">
-                                    <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+                                    <div className="w-8 h-8 border-4 border-emerald-200 dark:border-emerald-900 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin"></div>
                                 </div>
                             ) : placesLoading ? (
                                 // 🟢 [Optimization]: 장소 정보 로딩 중 스켈레톤 UI
                                 Array.from({ length: detail?.coursePlaces?.length || 3 }).map((_, index) => (
                                     <div key={`skeleton-${index}`} className="relative flex items-start">
-                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-gray-200 animate-pulse z-10"></div>
-                                        <div className="ml-14 flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                            <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
-                                            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
-                                            <div className="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse z-10"></div>
+                                        <div className="ml-14 flex-1 bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+                                            <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                                            <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                                            <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                                         </div>
                                     </div>
                                 ))
                             ) : detail?.coursePlaces?.length > 0 ? (
                                 detail.coursePlaces.map((cp: any, index: number) => (
                                     <div key={cp.id} className="relative flex items-start group">
-                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-white border-4 border-emerald-100 flex items-center justify-center shadow-sm z-10 group-hover:border-emerald-200 transition-colors">
+                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] border-4 border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shadow-sm z-10 group-hover:border-emerald-200 dark:group-hover:border-emerald-700 transition-colors">
                                             {index === 0 ? (
-                                                <Store className="w-4 h-4 text-emerald-600" />
+                                                <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                             ) : index === detail.coursePlaces.length - 1 ? (
-                                                <Star className="w-4 h-4 text-emerald-600" />
+                                                <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                             ) : (
-                                                <Bot className="w-4 h-4 text-emerald-600" />
+                                                <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                             )}
                                         </div>
-                                        <div className="ml-14 flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                                            <span className="text-xs font-bold text-emerald-600 mb-1 block">
+                                        <div className="ml-14 flex-1 bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md transition-all">
+                                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1 block">
                                                 {cp.place?.category || `${index + 1}번째 장소`}
                                             </span>
-                                            <h4 className="text-base font-bold text-gray-900 mb-1">
+                                            <h4 className="text-base font-bold text-gray-900 dark:text-white mb-1">
                                                 {cp.place?.name || "장소 정보 없음"}
                                             </h4>
-                                            <p className="text-xs text-gray-500 line-clamp-2">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                                                 {cp.description || cp.place?.description || ""}
                                             </p>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-10 text-gray-500 text-sm">
+                                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm">
                                     상세 장소 정보가 없습니다.
                                 </div>
                             )}
@@ -995,7 +999,7 @@ const AIRecommender = () => {
                     </div>
 
                     {/* Footer Action */}
-                    <div className="p-4 bg-white border-t border-gray-100">
+                    <div className="p-4 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800">
                         <button
                             onClick={() => handleCourseCommit(course.id, course.title)}
                             disabled={isSelecting || !!selectedCourseId}
@@ -1085,8 +1089,8 @@ const AIRecommender = () => {
                     }`}
                 >
                     {/* 🟢 [Front]: 커스텀 닉네임이 적용된 설계안 디자인 */}
-                    <div className="absolute w-full h-full backface-hidden rounded-[2rem] shadow-2xl bg-[#1a1a1a] flex flex-col items-center justify-center border-[3px] border-emerald-500/30 overflow-hidden">
-                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500 via-transparent to-transparent"></div>
+                    <div className="absolute w-full h-full backface-hidden rounded-4xl shadow-2xl bg-[#1a1a1a] flex flex-col items-center justify-center border-[3px] border-emerald-500/30 overflow-hidden">
+                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-emerald-500 via-transparent to-transparent"></div>
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
 
                         <div className="z-10 text-center px-8">
@@ -1120,30 +1124,34 @@ const AIRecommender = () => {
                     </div>
 
                     {/* 🟢 [Back]: 보정된 매칭 점수가 적용된 상세 정보 */}
-                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-[2rem] bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
+                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-4xl bg-white dark:bg-[#1a241b] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col">
                         <div className="p-7 flex flex-col h-full">
                             <div className="flex justify-between items-start mb-4">
-                                <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-black rounded-lg border border-emerald-100">
+                                <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-black rounded-lg border border-emerald-100 dark:border-emerald-800/50">
                                     {nickname}님 취향 저격 {displayScore}%
                                 </span>
-                                <Sparkles className="w-4 h-4 text-emerald-500" />
+                                <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                             </div>
 
-                            <h3 className="text-2xl font-bold mb-3 text-gray-900 leading-tight tracking-tighter">
+                            <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white leading-tight tracking-tighter">
                                 {course.title}
                             </h3>
-                            <p className="text-gray-500 text-[14px] leading-relaxed mb-6 line-clamp-3">
+                            <p className="text-gray-500 dark:text-gray-400 text-[14px] leading-relaxed mb-6 line-clamp-3">
                                 {course.description}
                             </p>
 
                             <div className="grid grid-cols-2 gap-3 mb-8">
-                                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-2xl">
-                                    <MapPin className="w-4 h-4 text-emerald-500" />
-                                    <span className="text-xs font-bold text-gray-700 truncate">{course.location}</span>
+                                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                                    <MapPin className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">
+                                        {course.location}
+                                    </span>
                                 </div>
-                                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-2xl">
-                                    <Clock className="w-4 h-4 text-emerald-500" />
-                                    <span className="text-xs font-bold text-gray-700">{course.duration}</span>
+                                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                                    <Clock className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                        {course.duration}
+                                    </span>
                                 </div>
                             </div>
 
@@ -1153,7 +1161,7 @@ const AIRecommender = () => {
                                         e.stopPropagation();
                                         setSelectedDetailCourse(course);
                                     }}
-                                    className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-all active:scale-95"
+                                    className="flex-1 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
                                 >
                                     상세보기
                                 </button>
@@ -1172,14 +1180,14 @@ const AIRecommender = () => {
         const paymentSuccess = searchParams.get("paymentSuccess");
         if (paymentSuccess === "true") {
             console.log("[결제 성공 감지] 데이터 갱신 및 캐시 무효화 시작");
-            
+
             // 1. 서버 데이터 강제 호출 (캐시 무시) - 비동기 처리
             fetchUserData(true).then(() => {
                 // 2. Next.js 라우터 캐시 강제 새로고침 (클라이언트 캐시 무효화 필수)
                 // 🔴 이 부분이 빠지면 이전 페이지 데이터가 보일 수 있습니다.
                 router.refresh();
             });
-            
+
             // 3. URL 파라미터 제거 (깔끔한 URL 유지)
             router.replace(pathname);
         }
@@ -1250,7 +1258,7 @@ const AIRecommender = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-linear-to-b from-emerald-50/20 to-white font-sans ">
+        <div className="min-h-screen bg-linear-to-b from-emerald-50/20 to-white dark:from-gray-900 dark:to-[#0f1710] font-sans ">
             <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
@@ -1258,13 +1266,15 @@ const AIRecommender = () => {
 
                 {/* 🟢 1단계: 선택 확인 모달 */}
                 {showConfirmModal && pendingCourse && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300">
+                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-[#1a241b] rounded-4xl w-full max-w-sm overflow-hidden shadow-2xl border border-white/20 dark:border-gray-800/50 animate-in zoom-in-95 duration-300">
                             <div className="p-8 text-center">
                                 <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
                                     <Navigation className="w-8 h-8 text-emerald-600" />
                                 </div>
-                                <h3 className="text-xl font-extrabold text-gray-900 mb-2">이 코스로 결정할까요?</h3>
+                                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">
+                                    이 코스로 결정할까요?
+                                </h3>
                                 <p className="text-gray-500 text-sm leading-relaxed px-2">
                                     <span className="text-emerald-600 font-bold">"{pendingCourse.title}"</span>
                                     <br />
@@ -1300,12 +1310,12 @@ const AIRecommender = () => {
 
                 {/* 🟢 2단계: 성공 알림 모달 */}
                 {showSuccessModal && pendingCourse && (
-                    <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl border border-white/20 text-center animate-in slide-in-from-bottom-8 duration-500">
+                    <div className="fixed inset-0 z-101 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-[#1a241b] rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl border border-white/20 dark:border-gray-800/50 text-center animate-in slide-in-from-bottom-8 duration-500">
                             <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
                                 <CheckCircle className="w-10 h-10 text-white" />
                             </div>
-                            <h3 className="text-2xl font-black text-gray-900 mb-3">코스 선택 완료!</h3>
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3">코스 선택 완료!</h3>
                             <p className="text-gray-500 text-[15px] mb-8 leading-relaxed">
                                 성공적으로 저장되었습니다.
                                 <br />
@@ -1343,17 +1353,17 @@ const AIRecommender = () => {
 
                 {/* 👇 [추가됨] 대화창 모달 */}
                 {showChatModal && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                         {/* 모달 컨테이너 */}
-                        <div className="bg-white/95 backdrop-blur-md w-full h-full md:h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
+                        <div className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md w-full h-full md:h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
                             {/* 헤더 */}
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white/80">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-[#1a241b]/80">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
                                         <Bot className="w-6 h-6 text-emerald-600" />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900">AI 두나</h3>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">AI 두나</h3>
                                         <p className="text-xs text-emerald-600 font-medium flex items-center">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
                                             실시간 분석 중
@@ -1362,15 +1372,15 @@ const AIRecommender = () => {
                                 </div>
                                 <button
                                     onClick={() => resetConversation()}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
                                 >
-                                    <X className="w-6 h-6 text-gray-500" />
+                                    <X className="w-6 h-6 text-gray-500 dark:text-gray-400" />
                                 </button>
                             </div>
 
                             {/* 프로그레스 바 */}
                             {!showRecommendations && (
-                                <div className="h-1 bg-gray-100 w-full">
+                                <div className="h-1 bg-gray-100 dark:bg-gray-800 w-full">
                                     <div
                                         className="h-full bg-linear-to-r from-emerald-400 to-teal-500 transition-all duration-500"
                                         style={{ width: `${progress}%` }}
@@ -1379,15 +1389,17 @@ const AIRecommender = () => {
                             )}
 
                             {/* 채팅 영역 (스크롤 가능) */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50">
                                 {showUpsell && !showRecommendations && (
-                                    <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 border border-amber-100 text-sm text-amber-900 shadow-sm">
+                                    <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-900 dark:text-amber-200 shadow-sm">
                                         <div className="font-bold mb-1 flex items-center gap-2">
-                                            <Ticket className="w-4 h-4 text-amber-600" />
+                                            <Ticket className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                                             AI 추천 {coupons <= 1 ? "1회 남음" : `${coupons}개 남음`}
                                         </div>
                                         <div className="flex justify-between items-center mt-2">
-                                            <span className="text-xs opacity-80">더 많은 추천이 필요하신가요?</span>
+                                            <span className="text-xs opacity-80 dark:opacity-90">
+                                                더 많은 추천이 필요하신가요?
+                                            </span>
                                             <button
                                                 onClick={() => setShowPaywall(true)}
                                                 className="px-3 py-1.5 rounded-lg bg-amber-900 text-white text-xs font-bold hover:bg-amber-800 transition-colors"
@@ -1406,7 +1418,7 @@ const AIRecommender = () => {
                                         }`}
                                     >
                                         {message.type === "ai" && (
-                                            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-gray-100 bg-white p-0.5">
+                                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a241b] p-0.5">
                                                 <img
                                                     src={getS3StaticUrl("logo/donalogo_512.png")}
                                                     alt="DoNa"
@@ -1418,7 +1430,7 @@ const AIRecommender = () => {
                                             className={`max-w-[80%] px-5 py-3.5 rounded-2xl shadow-sm text-[15px] leading-relaxed ${
                                                 message.type === "user"
                                                     ? "bg-linear-to-br from-gray-900 to-gray-800 text-white rounded-br-sm"
-                                                    : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                                                    : "bg-white dark:bg-[#1a241b] border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-sm"
                                             }`}
                                         >
                                             {message.text.split("\n").map((line, i) => (
@@ -1432,10 +1444,10 @@ const AIRecommender = () => {
                                 ))}
 
                                 {isTyping && (
-                                    <div className="flex items-center gap-2 text-gray-400 text-sm ml-12 animate-pulse">
-                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
-                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></span>
-                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+                                    <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 text-sm ml-12 animate-pulse">
+                                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></span>
+                                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-100"></span>
+                                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-200"></span>
                                     </div>
                                 )}
                                 <div ref={messagesEndRef} />
@@ -1444,7 +1456,9 @@ const AIRecommender = () => {
                                 {showRecommendations && !isAnalyzing && (
                                     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                         <div className="flex justify-between items-center mb-4 px-1">
-                                            <h3 className="text-lg font-bold text-gray-900">🎁 추천 결과</h3>
+                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                                🎁 추천 결과
+                                            </h3>
                                         </div>
 
                                         {recommendedCourses.length > 0 ? (
@@ -1454,7 +1468,7 @@ const AIRecommender = () => {
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="py-10 text-center text-gray-500 bg-white rounded-2xl border border-gray-100">
+                                            <div className="py-10 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800">
                                                 <p className="mb-4">
                                                     조건에 맞는 코스를 찾지 못했어요.
                                                     <br />
@@ -1474,7 +1488,7 @@ const AIRecommender = () => {
 
                             {/* 답변 선택 영역 (하단 고정) */}
                             {!isTyping && !showRecommendations && currentQuestion.options && (
-                                <div className="p-4 md:p-6 bg-white border-t border-gray-100">
+                                <div className="p-4 md:p-6 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800">
                                     <div className="flex flex-wrap gap-2.5 justify-center">
                                         {currentQuestion.options.map((option, index) => (
                                             <button
@@ -1483,7 +1497,7 @@ const AIRecommender = () => {
                                                 className={`px-5 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm border ${
                                                     option.value === "yes"
                                                         ? "bg-linear-to-r from-emerald-600 to-teal-600 text-white border-transparent shadow-emerald-200 hover:shadow-md"
-                                                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                                                        : "bg-white dark:bg-[#1a241b] border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
                                                 }`}
                                             >
                                                 {option.text}
@@ -1518,10 +1532,11 @@ const AIRecommender = () => {
 
                 {attendanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center">
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">출석 체크</h3>
-                            <p className="text-gray-600 mb-3">
-                                이번 주 진행도: <span className="font-semibold text-gray-900">{weekCount}</span>/7
+                        <div className="bg-white dark:bg-[#1a241b] rounded-2xl max-w-sm w-full p-6 text-center">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">출석 체크</h3>
+                            <p className="text-gray-600 dark:text-gray-400 mb-3">
+                                이번 주 진행도:{" "}
+                                <span className="font-semibold text-gray-900 dark:text-white">{weekCount}</span>/7
                             </p>
                             <div className="grid grid-cols-7 gap-2 mb-5">
                                 {Array.from({ length: 7 }).map((_, i) => {
@@ -1529,11 +1544,15 @@ const AIRecommender = () => {
                                     const isToday = typeof todayIndex === "number" && todayIndex === i;
                                     return (
                                         <div key={i} className="flex flex-col items-center gap-1">
-                                            <span className="text-[10px] text-gray-400">{i + 1}</span>
+                                            <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                {i + 1}
+                                            </span>
                                             <span
                                                 className={[
                                                     "w-9 h-9 rounded-full flex items-center justify-center text-base font-semibold transition-all",
-                                                    checked ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600",
+                                                    checked
+                                                        ? "bg-emerald-500 text-white"
+                                                        : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
                                                     isToday ? "ring-2 ring-emerald-400" : "",
                                                 ].join(" ")}
                                             >
@@ -1546,7 +1565,7 @@ const AIRecommender = () => {
                             <div className="flex gap-3 justify-center">
                                 <button
                                     onClick={() => setAttendanceModalOpen(false)}
-                                    className="px-4 py-2 border rounded-lg text-gray-700"
+                                    className="px-4 py-2 border rounded-lg text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"
                                 >
                                     나중에
                                 </button>
@@ -1567,34 +1586,39 @@ const AIRecommender = () => {
                 )}
 
                 <div className="w-full max-w-4xl flex flex-col mb-6">
-                    <div className="bg-white/80 backdrop-blur-md rounded-[2rem] p-6 shadow-lg border border-white/50">
+                    <div className="bg-white/80 dark:bg-[#1a241b] backdrop-blur-md rounded-4xl p-6 shadow-lg border border-white/50 dark:border-gray-800/50 dark:shadow-gray-900/20">
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <p className="text-gray-500 text-sm mb-1 font-medium">오늘도 즐거운 여행 되세요!</p>
-                                <h2 className="text-2xl font-bold text-gray-900 leading-tight">
+                                <p className="text-gray-500 dark:text-gray-300 text-sm mb-1 font-medium">
+                                    오늘도 즐거운 여행 되세요!
+                                </p>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                                     {isUserDataLoading ? (
                                         <>
-                                            <span className="inline-block w-32 h-7 bg-gray-200 rounded animate-pulse"></span>
+                                            <span className="inline-block w-32 h-7 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></span>
                                             <br />
-                                            <span className="inline-block w-24 h-7 bg-gray-200 rounded animate-pulse mt-1"></span>
+                                            <span className="inline-block w-24 h-7 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mt-1"></span>
                                         </>
                                     ) : isLoggedIn ? (
                                         <>
-                                            안녕하세요, <br />
-                                            <span className="text-emerald-600">{nickname || "사용자"}님</span> 👋
+                                            <span className="dark:text-white">안녕하세요,</span> <br />
+                                            <span className="text-emerald-600 dark:text-emerald-400">
+                                                {nickname || "사용자"}님
+                                            </span>{" "}
+                                            👋
                                         </>
                                     ) : (
                                         <>
-                                            로그인이 <br />
-                                            <span className="text-emerald-600">필요해요</span> 👋
+                                            <span className="dark:text-white">로그인이</span> <br />
+                                            <span className="text-emerald-600 dark:text-emerald-400">필요해요</span> 👋
                                         </>
                                     )}
                                 </h2>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
+                                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden relative">
                                     {isUserDataLoading ? (
-                                        <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+                                        <div className="w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                                     ) : (
                                         <img
                                             src={profileImageUrl || getS3StaticUrl("profileLogo.png")}
@@ -1613,14 +1637,14 @@ const AIRecommender = () => {
                                     <div className="w-16 h-3.5 bg-gray-200 rounded animate-pulse"></div>
                                 </div>
                             ) : isLoggedIn ? (
-                                <div className="inline-flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 text-xs font-bold text-gray-600">
-                                    <Ticket className="w-3.5 h-3.5 text-emerald-500" />
+                                <div className="inline-flex items-center gap-1.5 bg-gray-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-emerald-800/50 text-xs font-bold text-gray-600 dark:text-emerald-400">
+                                    <Ticket className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                                     <span>쿠폰 {coupons}개</span>
                                 </div>
                             ) : (
                                 <button
                                     onClick={() => setShowLogin(true)}
-                                    className="inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 text-xs font-bold text-emerald-600 hover:bg-emerald-100 transition-colors"
+                                    className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800/50 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
                                 >
                                     <span>로그인하고 혜택받기</span>
                                 </button>
@@ -1645,7 +1669,7 @@ const AIRecommender = () => {
                                         href={`/courses/${t.id}`}
                                         className="shrink-0 w-[210px] rounded-xl bg-white border border-gray-100 hover:shadow-sm transition-all"
                                     >
-                                        <div className="relative w-full aspect-[4/3] rounded-t-xl overflow-hidden bg-gray-100">
+                                        <div className="relative w-full aspect-4/3 rounded-t-xl overflow-hidden bg-gray-100">
                                             <Image
                                                 src={t.imageUrl || ""}
                                                 alt={t.title}
@@ -1671,10 +1695,10 @@ const AIRecommender = () => {
 
                     <main className="flex-1 overflow-y-auto rounded-3xl relative">
                         {/* 👇 [수정됨] 시작 화면 UI: 고급스러운 AI 컨시어지 스타일 */}
-                        <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-h-[400px]">
+                        <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/80 dark:bg-[#1a241b] backdrop-blur-xl rounded-3xl border border-white/60 dark:border-gray-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-gray-900/30 min-h-[400px]">
                             {/* 1. 아이콘 영역 */}
                             <div className="relative mb-8 group">
-                                <div className="absolute inset-0 bg-emerald-200 rounded-[2rem] blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
+                                <div className="absolute inset-0 bg-emerald-200 rounded-4xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
 
                                 <div className="relative w-28 h-28 bg-linear-to-br from-white to-emerald-50 rounded-[2.5rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
                                     <Sparkles className="w-12 h-12 text-emerald-600 drop-shadow-sm" />
@@ -1687,16 +1711,17 @@ const AIRecommender = () => {
                             </div>
 
                             {/* 2. 타이포그래피 */}
-                            <h2 className="text-[26px] font-extrabold text-gray-900 mb-4 tracking-tight leading-snug">
+                            <h2 className="text-[26px] font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight leading-snug">
                                 AI 두나의 <br />
-                                <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600">
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400">
                                     프라이빗 코스 설계
                                 </span>
                             </h2>
-                            <p className="text-gray-500 text-[15px] leading-relaxed mb-10 max-w-[260px] mx-auto">
+                            <p className="text-gray-500 dark:text-gray-300 text-[15px] leading-relaxed mb-10 max-w-[260px] mx-auto">
                                 복잡한 검색은 그만하세요.
                                 <br />
-                                취향 데이터를 분석해 <span className="font-semibold text-gray-700">실패 없는 하루</span>
+                                취향 데이터를 분석해{" "}
+                                <span className="font-semibold text-gray-700 dark:text-white">실패 없는 하루</span>
                                 를<br />
                                 지금 바로 계획해 드립니다.
                             </p>
@@ -1706,7 +1731,7 @@ const AIRecommender = () => {
                                 onClick={startConversation} // 모달 오픈 함수 호출
                                 className="group relative px-8 py-4 w-full max-w-[280px] bg-gray-900 text-white rounded-2xl font-bold text-[17px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
                             >
-                                <div className="absolute inset-0 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-[length:200%_auto] animate-[gradient_3s_ease_infinite]"></div>
+                                <div className="absolute inset-0 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-size-[200%_auto] animate-[gradient_3s_ease_infinite]"></div>
 
                                 <div className="relative flex items-center justify-center gap-2">
                                     <span>내 취향 분석 시작하기</span>
@@ -1716,7 +1741,7 @@ const AIRecommender = () => {
 
                             <div className="mt-6 flex items-center gap-1.5 opacity-60">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">
+                                <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium tracking-wide uppercase">
                                     Powered by DoNa AI Engine
                                 </p>
                             </div>

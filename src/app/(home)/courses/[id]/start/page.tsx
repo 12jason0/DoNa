@@ -204,8 +204,8 @@ function GuidePageInner() {
                 setCourse({
                     ...data,
                     coursePlaces: sortedPlaces,
-                });
-                setLoading(false);
+                    });
+                    setLoading(false);
             } catch (err: any) {
                 // 에러 발생 시 사용자에게 알림을 주거나 이전 페이지로 리다이렉트할 수 있습니다.
                 // 코스가 없거나 접근할 수 없는 경우 이전 페이지로 이동

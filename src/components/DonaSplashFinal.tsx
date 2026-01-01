@@ -27,21 +27,21 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
         body.style.setProperty("overscroll-behavior", "none");
         body.style.setProperty("touch-action", "none");
 
-        // 느긋한 타이밍으로 조정 (총 약 7초 노출)
+        // 🟢 빠른 타이밍으로 조정 (총 약 4초 노출)
         const timeline = [
-            { delay: 300, action: () => setStep(1) },
-            { delay: 900, action: () => setStep(2) },
-            { delay: 1600, action: () => setStep(3) },
-            { delay: 2300, action: () => setStep(4) },
-            { delay: 3000, action: () => setStep(5) },
-            { delay: 3800, action: () => setStep(6) }, // 로고 등장 후 충분히 머무름
-            { delay: 6000, action: () => setFadeOut(true) },
-            { delay: 7000, action: () => onDone?.() },
+            { delay: 100, action: () => setStep(1) }, // 더 빠른 시작
+            { delay: 400, action: () => setStep(2) },
+            { delay: 800, action: () => setStep(3) },
+            { delay: 1200, action: () => setStep(4) },
+            { delay: 1600, action: () => setStep(5) },
+            { delay: 2000, action: () => setStep(6) }, // 로고 등장
+            { delay: 3000, action: () => setFadeOut(true) },
+            { delay: 4000, action: () => onDone?.() },
         ];
         const timers = timeline.map(({ delay, action }) => setTimeout(action, delay));
         return () => {
             timers.forEach(clearTimeout);
-            // 스크롤 락 해제
+            // 🟢 스크롤 락 해제 (스플래시 종료 시)
             html.style.overflow = prevHtmlOverflow;
             if (prevHtmlHeight) html.style.height = prevHtmlHeight;
             else html.style.removeProperty("height");
@@ -57,22 +57,44 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
         };
     }, [onDone]);
 
+    // 🟢 fadeOut 시작 시 스크롤 락을 미리 해제하여 콘텐츠가 바로 보이도록
+    useEffect(() => {
+        if (fadeOut) {
+            const html = document.documentElement;
+            const body = document.body;
+            html.style.overflow = "";
+            html.style.removeProperty("height");
+            html.style.removeProperty("overscroll-behavior");
+            body.style.overflow = "";
+            body.style.removeProperty("height");
+            body.style.removeProperty("overscroll-behavior");
+            body.style.removeProperty("touch-action");
+        }
+    }, [onDone]);
+
     return (
         <div
             style={{
                 position: "fixed",
-                inset: 0,
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 width: "100vw",
-                height: "100dvh",
+                height: "100vh",
+                minHeight: "100dvh", // 🟢 동적 뷰포트 높이 지원
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "#7FCC9F",
+                background: "#7FCC9F", // 🟢 스플래시는 항상 라이트 모드 색상 유지
                 transition: "opacity 1s ease",
                 opacity: fadeOut ? 0 : 1,
                 zIndex: 9999,
                 overscrollBehavior: "none",
                 touchAction: "none",
+                // 🟢 상태표시줄까지 덮기 위한 추가 설정
+                margin: 0,
+                padding: 0,
             }}
         >
             {/* 지도 배경 그리드 */}

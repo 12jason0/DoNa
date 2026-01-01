@@ -155,7 +155,11 @@ export default function Home() {
             }
 
             // 🟢 온보딩 완료 여부 확인: response.ok 확인 추가 (로컬 로그인 지원)
-            if (preferencesRes.status === "fulfilled" && preferencesRes.value.response.ok && preferencesRes.value.data) {
+            if (
+                preferencesRes.status === "fulfilled" &&
+                preferencesRes.value.response.ok &&
+                preferencesRes.value.data
+            ) {
                 setTimeout(() => {
                     requestAnimationFrame(() => {
                         const prefs = preferencesRes.value.data as any;
@@ -169,7 +173,11 @@ export default function Home() {
                         setIsOnboardingComplete(hasServerData || localStorage.getItem("onboardingComplete") === "1");
                     });
                 }, 150);
-            } else if (preferencesRes.status === "rejected" || !preferencesRes.value?.response.ok || !preferencesRes.value?.data) {
+            } else if (
+                preferencesRes.status === "rejected" ||
+                !preferencesRes.value?.response.ok ||
+                !preferencesRes.value?.data
+            ) {
                 // 🟢 API 호출 실패 시 비로그인 상태로 간주하여 온보딩 섹션 표시
                 requestAnimationFrame(() => {
                     setIsOnboardingComplete(false);
@@ -200,20 +208,20 @@ export default function Home() {
             return;
         }
 
-                if (isAuthenticated && user) {
-                    setUserId(Number(user.id));
+        if (isAuthenticated && user) {
+            setUserId(Number(user.id));
             // 🟢 출석 데이터는 Intersection Observer로 지연 로드
             setIsCheckinLoading(true); // 초기에는 로딩 중으로 표시
-                } else {
-                    // 🟢 여러 상태 업데이트를 배치로 처리
-                    requestAnimationFrame(() => {
-                        setUserId(null);
-                        setUserName("");
-                        setStreak(0);
-                        setIsOnboardingComplete(false);
-                        setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
-                    });
-                }
+        } else {
+            // 🟢 여러 상태 업데이트를 배치로 처리
+            requestAnimationFrame(() => {
+                setUserId(null);
+                setUserName("");
+                setStreak(0);
+                setIsOnboardingComplete(false);
+                setIsCheckinLoading(false); // 🟢 비로그인 상태도 로딩 완료
+            });
+        }
     }, [isAuthenticated, user, isAuthLoading]);
 
     // 🟢 출석 섹션 지연 로드 (Intersection Observer 사용)
@@ -240,7 +248,7 @@ export default function Home() {
             // 🟢 요소가 이미 화면에 보이는지 즉시 확인
             const rect = checkinSectionRef.current.getBoundingClientRect();
             const isVisible = rect.top < window.innerHeight + 300 && rect.bottom > -300;
-            
+
             if (isVisible) {
                 // 🟢 이미 보이면 바로 로드
                 loadData();
@@ -336,7 +344,7 @@ export default function Home() {
                     const startIndex = threeDayEpoch % count;
                     for (let i = 0; i < Math.min(5, count); i++) selected.push(list[(startIndex + i) % count]);
                     // 🟢 [Performance]: requestAnimationFrame 제거하여 즉시 렌더링 (HeroSlider 빠른 표시)
-                        setHeroCourses(selected);
+                    setHeroCourses(selected);
                 }
             } catch (error) {
                 // 에러는 조용히 처리 (사용자 경험 방해 최소화)
@@ -345,7 +353,7 @@ export default function Home() {
         fetchHeroData();
     }, []);
 
-    // 🟢 메인 코스 리스트 (테마별용) - Phase 1-2: 100ms 지연 (Hero 로드 후)
+    // 🟢 메인 코스 리스트 (테마별용) - Phase 1-2: 즉시 실행 (Hero와 병렬)
     useEffect(() => {
         const fetchCourses = async () => {
             try {
@@ -369,12 +377,11 @@ export default function Home() {
                 });
             }
         };
-        // 🟢 100ms 지연하여 Hero 데이터 로딩과 분리
-        const timer = setTimeout(fetchCourses, 100);
-        return () => clearTimeout(timer);
+        // 🟢 즉시 실행하여 Hero와 병렬 처리
+        fetchCourses();
     }, [selectedTagIds, searchNonce, query]);
 
-    // 🟢 인기별/신규 코스 - Phase 2: 400ms, 500ms 순차 지연 (메인 로딩 후에)
+    // 🟢 인기별/신규 코스 - Phase 2: 지연 로딩 (requestIdleCallback 사용)
     useEffect(() => {
         const fetchHotCourses = async () => {
             try {
@@ -418,14 +425,14 @@ export default function Home() {
             }
         };
 
-        // 🟢 순차적으로 실행하여 부하 분산 (400ms, 500ms)
-        const timer1 = setTimeout(fetchHotCourses, 400);
-        const timer2 = setTimeout(fetchNewCourses, 500);
-
-        return () => {
-            clearTimeout(timer1);
-            clearTimeout(timer2);
-        };
+        // 🟢 브라우저가 유휴 상태일 때 실행 (더 빠른 초기 렌더링)
+        // @ts-ignore
+        const ric = window.requestIdleCallback || ((cb: any) => setTimeout(cb, 200));
+        ric(() => {
+            // 병렬로 실행하여 더 빠른 로딩
+            fetchHotCourses();
+            setTimeout(fetchNewCourses, 100);
+        });
     }, []);
 
     // 🟢 HeroSlider 아이템 메모이제이션 (리플로우 최소화)
@@ -456,20 +463,20 @@ export default function Home() {
                 <MemoizedTabbedConcepts courses={courses} hotCourses={hotCourses} newCourses={newCourses} />
 
                 <section className="py-6 px-4" ref={checkinSectionRef}>
-                    <div className="bg-linear-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+                    <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl flex-shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
                                 🌱
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="text-sm text-gray-600 font-medium">출석 현황</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">출석 현황</div>
                                 {isCheckinLoading && isAuthenticated ? (
                                     // 🟢 스켈레톤 UI (로딩 중)
                                     <div className="mt-1 space-y-1">
-                                        <div className="h-5 bg-gray-200 rounded animate-pulse w-32"></div>
+                                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
                                     </div>
                                 ) : (
-                                    <div className="text-base font-bold text-gray-900">
+                                    <div className="text-base font-bold text-gray-900 dark:text-white">
                                         {userId
                                             ? streak >= 5
                                                 ? `🔥 ${streak}일 연속!`
@@ -481,7 +488,7 @@ export default function Home() {
                         </div>
                         <button
                             onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
-                            className="w-10 h-10 bg-white border border-emerald-200 rounded-full flex items-center justify-center shadow-sm flex-shrink-0"
+                            className="w-10 h-10 bg-white dark:bg-[#1a241b] border border-emerald-200 dark:border-emerald-800/50 rounded-full flex items-center justify-center shadow-sm shrink-0"
                         >
                             🔔
                         </button>
@@ -496,14 +503,18 @@ export default function Home() {
             </main>
 
             {showCheckinModal && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">출석 체크</h3>
-                        <p className="text-gray-600 mb-1">이번 주 출석 현황</p>
+                <div className="fixed inset-0 bg-black/60 dark:bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-2xl p-6 w-full max-w-sm text-center">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">출석 체크</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-1">이번 주 출석 현황</p>
                         {streak > 0 && (
-                            <p className="text-sm text-emerald-700 mb-2 font-semibold">🔥 {streak}일 연속 출석 중</p>
+                            <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-2 font-semibold">
+                                🔥 {streak}일 연속 출석 중
+                            </p>
                         )}
-                        {alreadyToday && <p className="text-sm text-green-600 mb-3">오늘 이미 출석했습니다</p>}
+                        {alreadyToday && (
+                            <p className="text-sm text-green-600 dark:text-green-400 mb-3">오늘 이미 출석했습니다</p>
+                        )}
 
                         {/* 7일 출석 도장 그리드 */}
                         <div className="grid grid-cols-7 gap-2 mb-4">
@@ -516,7 +527,7 @@ export default function Home() {
                                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-transform duration-150 ${
                                                 stamped
                                                     ? "bg-linear-to-br from-lime-400 to-green-500 text-white"
-                                                    : "bg-gray-200 text-gray-600"
+                                                    : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                                             } ${pulse ? "scale-110" : ""}`}
                                         >
                                             {stamped ? "🌱" : String(i + 1)}
@@ -532,7 +543,7 @@ export default function Home() {
                                 <>
                                     <button
                                         onClick={() => setShowCheckinModal(false)}
-                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                                     >
                                         나중에
                                     </button>
@@ -660,10 +671,10 @@ function TabbedConcepts({
                     <button
                         key={tab.key}
                         onClick={() => handleTabChange(tab.key as any)}
-                        className={`px-5 py-2 rounded-full text-sm font-bold border transition-all ${
+                        className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
                             activeTab === tab.key
-                                ? "bg-gray-900 text-white shadow-lg scale-105"
-                                : "bg-white text-gray-400 border-gray-100"
+                                ? "bg-gray-900 dark:bg-gray-700 text-white shadow-lg scale-105 border-0 dark:border-0"
+                                : "bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-400 border border-gray-100 dark:border-0"
                         }`}
                     >
                         {tab.label}
@@ -691,7 +702,7 @@ function TabbedConcepts({
                                     }}
                                     className="flex flex-col items-center gap-2"
                                 >
-                                    <div className="w-16 h-16 rounded-full p-1 bg-white border border-gray-100 shadow-md">
+                                    <div className="w-16 h-16 rounded-full p-1 bg-white dark:bg-[#1a241b] border border-gray-100 dark:border-gray-700 shadow-md">
                                         <Image
                                             src={CATEGORY_ICONS[name] || item.imageUrl || ""}
                                             alt={name}
@@ -702,14 +713,16 @@ function TabbedConcepts({
                                             quality={70}
                                         />
                                     </div>
-                                    <span className="text-[10px] font-bold text-gray-700">{name}</span>
+                                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
+                                        {name}
+                                    </span>
                                 </button>
                             );
                         })}
                         {conceptItems.length > 8 && (
                             <button
                                 onClick={handleToggleExpand}
-                                className="col-span-4 mt-4 py-3 text-sm font-bold text-gray-400 bg-gray-50 rounded-xl"
+                                className="col-span-4 mt-4 py-3 text-sm font-bold text-gray-400 dark:text-gray-300 bg-gray-50 dark:bg-[#1a241b] rounded-xl"
                             >
                                 {isExpanded ? "접기 ▲" : "테마 더보기 ▼"}
                             </button>
@@ -724,7 +737,7 @@ function TabbedConcepts({
                                 className="flex flex-col items-center gap-2 shrink-0 w-24"
                                 prefetch={false}
                             >
-                                <div className="relative w-20 h-20 rounded-full p-1 bg-white border border-gray-100 shadow-md">
+                                <div className="relative w-20 h-20 rounded-full p-1 bg-white dark:bg-[#1a241b] border border-gray-100 dark:border-transparent shadow-md">
                                     <div className="w-full h-full rounded-full overflow-hidden relative">
                                         <Image
                                             src={c.imageUrl || ""}
@@ -738,23 +751,25 @@ function TabbedConcepts({
                                         />
                                     </div>
                                     {activeTab === "popular" && (
-                                        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white rounded-full flex items-center justify-center border border-orange-100 shadow-md text-sm">
+                                        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white dark:bg-[#1a241b] rounded-full flex items-center justify-center border border-orange-100 dark:border-transparent shadow-md text-sm">
                                             🔥
                                         </div>
                                     )}
                                     {activeTab === "new" && (
-                                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md border-2 border-white">
+                                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-[#1a241b]">
                                             N
                                         </div>
                                     )}
                                 </div>
                                 <div className="text-center w-full">
-                                    <div className="text-[10px] font-extrabold text-gray-800 truncate px-1">
+                                    <div className="text-[10px] font-extrabold text-gray-800 dark:text-gray-300 truncate px-1">
                                         {c.title}
                                     </div>
                                     <div
                                         className={`text-[9px] font-bold mt-0.5 ${
-                                            activeTab === "popular" ? "text-orange-500" : "text-emerald-600"
+                                            activeTab === "popular"
+                                                ? "text-orange-500 dark:text-orange-400"
+                                                : "text-emerald-600 dark:text-emerald-400"
                                         }`}
                                     >
                                         {activeTab === "popular"

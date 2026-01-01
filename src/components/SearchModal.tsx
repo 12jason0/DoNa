@@ -61,25 +61,25 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-9999 bg-white flex flex-col animate-fade-in">
+        <div className="fixed inset-0 z-9999 bg-white dark:bg-[#0f1710] flex flex-col animate-fade-in">
             {/* 1. 검색 헤더 */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                <button onClick={onClose} className="p-2 -ml-2 text-gray-600">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <button onClick={onClose} className="p-2 -ml-2 text-gray-600 dark:text-gray-400">
                     <ArrowLeft className="w-6 h-6" />
                 </button>
-                <div className="flex-1 bg-gray-50 rounded-full flex items-center px-4 py-2.5">
-                    <Search className="w-4 h-4 text-gray-400 mr-2" />
+                <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center px-4 py-2.5">
+                    <Search className="w-4 h-4 text-gray-400 dark:text-gray-500 mr-2" />
                     <input
                         ref={inputRef}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="지역, 테마, 핫플 검색"
-                        className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                        className="flex-1 bg-transparent text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
                     />
                     {query && (
                         <button onClick={() => setQuery("")} className="ml-2">
-                            <X className="w-4 h-4 text-gray-400 bg-gray-200 rounded-full p-0.5" />
+                            <X className="w-4 h-4 text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 rounded-full p-0.5" />
                         </button>
                     )}
                 </div>
@@ -89,7 +89,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             <div className="flex-1 overflow-y-auto px-5 py-6">
                 {/* A. 인기 검색어 */}
                 <section className="mb-8">
-                    <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-1.5">
                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                         지금 인기있는 검색어
                     </h3>
@@ -104,7 +104,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                     router.prefetch(`/nearby?${sp.toString()}`);
                                 }}
                                 onClick={() => handleSearch(keyword)}
-                                className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-colors shadow-sm"
+                                className="px-4 py-2 bg-white dark:bg-[#1a241b] border border-gray-200 dark:border-gray-700 rounded-full text-sm text-gray-700 dark:text-gray-300 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm"
                             >
                                 {keyword}
                             </button>
@@ -114,7 +114,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
                 {/* B. 추천 테마 (아이콘 포함) */}
                 <section>
-                    <h3 className="text-sm font-bold text-gray-900 mb-4">이런 테마는 어때요?</h3>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">이런 테마는 어때요?</h3>
                     <div className="grid grid-cols-2 gap-3">
                         {RECOMMEND_TAGS.map((tag) => (
                             <button
@@ -126,9 +126,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                     router.prefetch(`/nearby?${sp.toString()}`);
                                 }}
                                 onClick={() => handleSearch(tag.label)}
-                                className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                                className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
                             >
-                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-xl shadow-sm">
+                                <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-xl shadow-sm">
                                     {/* 3D 아이콘 활용 (없으면 기본 이모지) */}
                                     <img
                                         src={
@@ -139,7 +139,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                         className="w-8 h-8 object-contain"
                                     />
                                 </div>
-                                <span className="text-sm font-medium text-gray-800">{tag.label}</span>
+                                <span className="text-sm font-medium text-gray-800 dark:text-white">{tag.label}</span>
                             </button>
                         ))}
                     </div>

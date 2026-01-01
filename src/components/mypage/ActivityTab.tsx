@@ -65,7 +65,7 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
     return (
         <div className="space-y-6">
             {/* 서브 탭 네비게이션 */}
-            <div className="bg-white rounded-xl border border-gray-100 p-4 overflow-x-auto no-scrollbar">
+            <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto no-scrollbar">
                 <div className="flex space-x-2 min-w-max">
                     {subTabs.map((tab) => (
                         <button
@@ -73,8 +73,8 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                             onClick={() => setSubTab(tab.id)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                                 subTab === tab.id
-                                    ? "bg-slate-900 text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    ? "bg-slate-900 dark:bg-blue-700 text-white"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                             }`}
                         >
                             {tab.label}
@@ -86,20 +86,20 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
 
             {/* 뱃지 탭 */}
             {subTab === "badges" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">내 뱃지</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">내 뱃지</h3>
                     </div>
                     {badges.length > 0 ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6">
                             {badges.map((b) => (
                                 <div
                                     key={b.id}
-                                    className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center bg-white hover:border-gray-300 transition-colors cursor-pointer"
+                                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col items-center text-center bg-white dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
                                     onClick={() => onSelectBadge(b)}
                                 >
                                     {b.image_url ? (
-                                        <div className="w-20 h-20 mb-3 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                                        <div className="w-20 h-20 mb-3 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
                                             <Image
                                                 src={b.image_url}
                                                 alt={b.name}
@@ -114,15 +114,15 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                             />
                                         </div>
                                     ) : (
-                                        <div className="w-20 h-20 mb-3 rounded-full bg-yellow-100 flex items-center justify-center text-3xl">
+                                        <div className="w-20 h-20 mb-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-3xl">
                                             🏅
                                         </div>
                                     )}
-                                    <div className="text-sm font-semibold text-gray-900 mb-1">{b.name}</div>
+                                    <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{b.name}</div>
                                     {b.description && (
-                                        <div className="text-xs text-gray-600 line-clamp-2 mb-1">{b.description}</div>
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-1">{b.description}</div>
                                     )}
-                                    <div className="text-[11px] text-gray-400">
+                                    <div className="text-[11px] text-gray-400 dark:text-gray-500">
                                         {new Date(b.awarded_at).toLocaleDateString()}
                                     </div>
                                 </div>
@@ -131,8 +131,8 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                     ) : (
                         <div className="text-center py-10">
                             <div className="text-6xl mb-3">🏅</div>
-                            <div className="text-lg font-semibold text-gray-900 mb-1">아직 획득한 뱃지가 없어요</div>
-                            <div className="text-gray-600">스토리를 완료하고 배지를 모아보세요!</div>
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">아직 획득한 뱃지가 없어요</div>
+                            <div className="text-gray-600 dark:text-gray-400">스토리를 완료하고 배지를 모아보세요!</div>
                         </div>
                     )}
                 </div>
@@ -140,15 +140,15 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
 
             {/* 보상 내역 탭 */}
             {subTab === "rewards" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">보상 지급 내역</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">보상 지급 내역</h3>
                     </div>
                     {rewards.length > 0 ? (
-                        <div className="divide-y">
+                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
                             {rewards.map((r) => (
                                 <div key={r.id} className="py-3 flex items-center justify-between">
-                                    <div className="text-gray-800">
+                                    <div className="text-gray-800 dark:text-gray-200">
                                         <div className="font-semibold">
                                             {(() => {
                                                 const type = String(r.type || "").toLowerCase();
@@ -161,12 +161,12 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                                 return r.type;
                                             })()}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
                                             {new Date(r.createdAt).toLocaleString()}
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-sm md:text-base border border-emerald-200">
+                                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-sm md:text-base border border-emerald-200 dark:border-emerald-800/50">
                                             <span className="leading-none">+{r.amount}</span>
                                             <span className="leading-none">쿠폰</span>
                                         </div>
@@ -175,34 +175,34 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center text-gray-600 py-10">보상 내역이 없습니다.</div>
+                        <div className="text-center text-gray-600 dark:text-gray-400 py-10">보상 내역이 없습니다.</div>
                     )}
                 </div>
             )}
 
             {/* 출석 기록 탭 */}
             {subTab === "checkins" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">출석 기록</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">출석 기록</h3>
                     </div>
                     <div className="mb-4 flex items-center justify-between">
                         <button
                             onClick={goPrevMonth}
-                            className="px-3 py-1.5 rounded-lg border text-gray-400 cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                         >
                             ← 이전
                         </button>
-                        <div className="font-semibold text-gray-900">{monthLabel(currentMonth)}</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">{monthLabel(currentMonth)}</div>
                         <button
                             onClick={goNextMonth}
-                            className="px-3 py-1.5 rounded-lg border text-gray-400 cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                         >
                             다음 →
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-2 text-center text-xs md:text-sm text-gray-600 mb-2">
+                    <div className="grid grid-cols-7 gap-2 text-center text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">
                         {["일", "월", "화", "수", "목", "금", "토"].map((w) => (
                             <div key={w} className="py-1 font-medium">
                                 {w}
@@ -243,11 +243,11 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                 return (
                                     <div
                                         key={cell.key || idx}
-                                        className={`h-10 md:h-12 rounded-lg flex items-center justify-center ${
+                                        className={`h-10 md:h-12 rounded-lg flex items-center justify-center border ${
                                             cell.stamped
-                                                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                                                : "bg-white border-gray-200 text-gray-700"
-                                        } ${isToday ? "ring-2 ring-blue-400" : ""}`}
+                                                ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400"
+                                                : "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                                        } ${isToday ? "ring-2 ring-blue-400 dark:ring-blue-500" : ""}`}
                                         title={cell.key || ""}
                                     >
                                         {cell.stamped ? (
@@ -265,13 +265,13 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
 
             {/* 구매 내역 탭 */}
             {subTab === "payments" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-6 md:p-8">
+                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">구매 내역</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">구매 내역</h3>
                         {/* 🟢 환불 페이지 링크 추가 */}
                         <Link
                             href="/refund"
-                            className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                            className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-500 flex items-center gap-1"
                         >
                             환불 관리
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,37 +292,37 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                         key={payment.id}
                                         className={`border rounded-xl p-5 transition-all ${
                                             isRefunded
-                                                ? "bg-gray-50 border-gray-200 opacity-60"
-                                                : "bg-white border-gray-200 hover:border-emerald-200 hover:shadow-sm"
+                                                ? "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60"
+                                                : "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-emerald-800/50 hover:shadow-sm"
                                         }`}
                                     >
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     {isCoupon ? (
-                                                        <span className="px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold">
+                                                        <span className="px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-bold">
                                                             쿠폰
                                                         </span>
                                                     ) : isSubscription ? (
-                                                        <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
+                                                        <span className="px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold">
                                                             구독권
                                                         </span>
                                                     ) : null}
                                                     {isRefunded && (
-                                                        <span className="px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 text-xs font-medium">
+                                                        <span className="px-2.5 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium">
                                                             환불 완료
                                                         </span>
                                                     )}
                                                     {payment.status === "PAID" && (
-                                                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                                                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                                                             결제 완료
                                                         </span>
                                                     )}
                                                 </div>
-                                                <h4 className="font-semibold text-gray-900 mb-1">
+                                                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
                                                     {payment.orderName}
                                                 </h4>
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                                     {new Date(payment.approvedAt).toLocaleDateString("ko-KR", {
                                                         year: "numeric",
                                                         month: "long",
@@ -332,7 +332,7 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                                     })}
                                                 </p>
                                                 {payment.method && (
-                                                    <p className="text-xs text-gray-400 mt-1">
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                                         결제 수단: {payment.method === "CARD" ? "카드" : payment.method}
                                                     </p>
                                                 )}
@@ -340,7 +340,7 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                             <div className="text-right ml-4">
                                                 <p
                                                     className={`text-xl font-bold ${
-                                                        isRefunded ? "text-gray-400 line-through" : "text-gray-900"
+                                                        isRefunded ? "text-gray-400 dark:text-gray-600 line-through" : "text-gray-900 dark:text-white"
                                                     }`}
                                                 >
                                                     {payment.amount.toLocaleString()}원
@@ -349,10 +349,10 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                         </div>
                                         {/* 🟢 환불 버튼 추가 (PAID 상태이고 환불 가능한 경우만) */}
                                         {payment.status === "PAID" && !isRefunded && (
-                                            <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                                                 <Link
                                                     href="/refund"
-                                                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                                                 >
                                                     <svg
                                                         className="w-4 h-4"
@@ -378,11 +378,11 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                     ) : (
                         <div className="text-center py-10">
                             <div className="text-6xl mb-3">💳</div>
-                            <div className="text-lg font-semibold text-gray-900 mb-1">구매 내역이 없습니다</div>
-                            <div className="text-gray-600 mb-4">쿠폰이나 구독권을 구매하시면 여기에 표시됩니다.</div>
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">구매 내역이 없습니다</div>
+                            <div className="text-gray-600 dark:text-gray-400 mb-4">쿠폰이나 구독권을 구매하시면 여기에 표시됩니다.</div>
                             <Link
                                 href="/refund"
-                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all"
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-all"
                             >
                                 <span>결제 내역 및 환불 페이지로 이동</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

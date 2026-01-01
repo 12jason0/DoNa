@@ -8,6 +8,7 @@ import RecordsTab from "@/components/mypage/RecordsTab";
 import ActivityTab from "@/components/mypage/ActivityTab";
 import LogoutModal from "@/components/LogoutModal";
 import PasswordCheckModal from "@/components/passwordChackModal";
+import { useTheme } from "@/context/ThemeContext";
 import {
     UserInfo,
     UserPreferences,
@@ -27,6 +28,7 @@ declare global {
 
 const MyPage = () => {
     const router = useRouter();
+    const { resolvedTheme, toggleTheme } = useTheme(); // 🟢 다크모드 토글
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
     const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -698,12 +700,12 @@ const MyPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
+            <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-[#0f1710] dark:via-[#0f1710] dark:to-[#1a241b]">
                 <main className="max-w-4xl mx-auto px-4 py-8 pt-24">
                     <div className="text-center">
                         <div className="text-6xl mb-4">⏳</div>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">로딩 중...</h1>
-                        <p className="text-gray-600">마이페이지 정보를 불러오고 있습니다</p>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">로딩 중...</h1>
+                        <p className="text-gray-600 dark:text-gray-400">마이페이지 정보를 불러오고 있습니다</p>
                     </div>
                 </main>
             </div>
@@ -711,18 +713,40 @@ const MyPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 typography-smooth">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 typography-smooth">
             <main className="max-w-4xl mx-auto px-4 py-6 md:py-8 pt-10 ">
-                <div className="text-center mb-6 md:mb-8">
-                    <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2 tracking-tight">
+                <div className="text-center mb-6 md:mb-8 relative">
+                    <div className="absolute right-0 top-0">
+                        {/* 🟢 다크모드 토글 버튼 */}
+                        <button
+                            onClick={toggleTheme}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            aria-label={resolvedTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+                        >
+                            {resolvedTheme === "dark" ? (
+                                <>
+                                    <span className="text-lg">☀️</span>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">라이트</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-lg">🌙</span>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">다크</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2 tracking-tight">
                         마이페이지
                     </h1>
-                    <p className="text-sm md:text-[17px] text-gray-600">내 정보와 활동을 관리해보세요</p>
+                    <p className="text-sm md:text-[17px] text-gray-600 dark:text-gray-400">
+                        내 정보와 활동을 관리해보세요
+                    </p>
                 </div>
 
                 <div className="flex justify-center mb-6 md:mb-8">
                     <div
-                        className="bg-white rounded-lg border border-gray-100 p-2 overflow-x-auto no-scrollbar"
+                        className="bg-white dark:bg-[#1a241b] rounded-lg border border-gray-100 dark:border-gray-800 p-2 overflow-x-auto no-scrollbar"
                         ref={tabsTrackRef}
                     >
                         <div className="flex space-x-2 min-w-max">
@@ -738,8 +762,8 @@ const MyPage = () => {
                                     aria-selected={activeTab === tab.id}
                                     className={`min-w-[88px] md:min-w-[110px] px-3 md:px-4 py-2.5 md:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm md:text-base flex flex-col items-center gap-1 whitespace-nowrap ${
                                         activeTab === tab.id
-                                            ? "bg-blue-600 text-white shadow-lg"
-                                            : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                                            ? "bg-blue-600 dark:bg-blue-700 text-white shadow-lg"
+                                            : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                     }`}
                                 >
                                     <span className="text-base md:text-lg">{tab.icon}</span>
@@ -804,12 +828,12 @@ const MyPage = () => {
             {/* 모달: 전체 화면 이미지 */}
             {fullImageUrl && (
                 <div
-                    className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-60 bg-black/90 flex items-center justify-center p-4"
                     onClick={() => setFullImageUrl(null)}
                 >
                     <button
                         onClick={() => setFullImageUrl(null)}
-                        className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-white/90 text-gray-900 hover:bg-white shadow"
+                        className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-white/90 dark:bg-[#1a241b]/90 text-gray-900 dark:text-white hover:bg-white dark:hover:bg-[#1a241b] shadow"
                     >
                         닫기
                     </button>
@@ -825,45 +849,49 @@ const MyPage = () => {
             {/* 모달: 사건 파일 상세 */}
             {selectedCaseStoryId !== null && (
                 <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h3 className="text-lg md:text-xl font-bold text-gray-900">{selectedCaseTitle}</h3>
+                    <div className="bg-white dark:bg-[#1a241b] rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+                            <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
+                                {selectedCaseTitle}
+                            </h3>
                             <button
                                 onClick={() => {
                                     setSelectedCaseStoryId(null);
                                     setCasePhotoUrls([]);
                                 }}
-                                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                             >
                                 닫기
                             </button>
                         </div>
                         <div className="p-4 overflow-y-auto">
                             {casePhotoLoading ? (
-                                <div className="py-16 text-center text-gray-600">불러오는 중...</div>
+                                <div className="py-16 text-center text-gray-600 dark:text-gray-400">불러오는 중...</div>
                             ) : casePhotoUrls.length > 0 ? (
                                 <div className="grid grid-cols-1 gap-3 md:gap-4">
                                     {casePhotoUrls.slice(0, 1).map((u, i) => (
                                         <button
                                             key={i}
                                             onClick={() => setFullImageUrl(u)}
-                                            className="bg-[#a5743a] rounded-lg p-2 shadow-inner text-left"
+                                            className="bg-[#a5743a] dark:bg-gray-800 rounded-lg p-2 shadow-inner text-left"
                                         >
-                                            <div className="bg-[#f8f5ef] rounded-lg p-2 border-2 border-[#704a23]">
+                                            <div className="bg-[#f8f5ef] dark:bg-gray-700 rounded-lg p-2 border-2 border-[#704a23] dark:border-gray-600">
                                                 <img
                                                     src={u}
                                                     alt={`upload-${i}`}
                                                     className="w-full h-full object-cover rounded cursor-zoom-in"
                                                 />
                                             </div>
-                                            <div className="mt-2 text-xs text-gray-500">
+                                            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                                 클릭하면 전체 화면으로 확대됩니다
                                             </div>
                                         </button>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="py-16 text-center text-gray-600">업로드된 사진이 없습니다.</div>
+                                <div className="py-16 text-center text-gray-600 dark:text-gray-400">
+                                    업로드된 사진이 없습니다.
+                                </div>
                             )}
                         </div>
                     </div>
@@ -908,11 +936,11 @@ const MyPage = () => {
             )}
             {pwModalOpen && pwStep === "change" && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl p-6 w-[90vw] max-w-md mx-4">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-2xl shadow-xl p-6 w-[90vw] max-w-md mx-4">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900">새 비밀번호 설정</h3>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">새 비밀번호 설정</h3>
                             <button
-                                className="hover:cursor-pointer text-gray-400 hover:text-gray-600 text-2xl"
+                                className="hover:cursor-pointer text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                                 onClick={() => {
                                     setPwModalOpen(false);
                                     setPwError("");
@@ -924,7 +952,7 @@ const MyPage = () => {
                             </button>
                         </div>
                         {pwError && (
-                            <div className="mb-3 rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+                            <div className="mb-3 rounded border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-2 text-sm text-red-700 dark:text-red-400">
                                 {pwError}
                             </div>
                         )}
@@ -966,24 +994,28 @@ const MyPage = () => {
                             className="space-y-4"
                         >
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    새 비밀번호
+                                </label>
                                 <input
                                     type="password"
                                     value={pwState.next}
                                     onChange={(e) => setPwState((s) => ({ ...s, next: e.target.value }))}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                     placeholder="새 비밀번호 (6자 이상)"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호 확인</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    새 비밀번호 확인
+                                </label>
                                 <input
                                     type="password"
                                     value={pwState.confirm}
                                     onChange={(e) => setPwState((s) => ({ ...s, confirm: e.target.value }))}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                     placeholder="새 비밀번호 확인"
                                 />
                             </div>
@@ -996,7 +1028,7 @@ const MyPage = () => {
                                         setPwState({ current: "", next: "", confirm: "" });
                                         setPwStep("verify");
                                     }}
-                                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg"
+                                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-[#1a241b] rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                                 >
                                     취소
                                 </button>
@@ -1016,51 +1048,59 @@ const MyPage = () => {
             {/* 모달: 프로필 수정 */}
             {showEditModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl border border-gray-100 p-8 max-w-md w-full mx-4">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-8 max-w-md w-full mx-4">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">프로필 수정</h3>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                프로필 수정
+                            </h3>
                             <button
                                 onClick={() => setShowEditModal(false)}
-                                className="text-gray-400 hover:text-gray-600 text-2xl"
+                                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                             >
                                 ×
                             </button>
                         </div>
                         <form onSubmit={handleEditSubmit} className="space-y-6">
                             {editError && (
-                                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                                <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
                                     {editError}
                                 </div>
                             )}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">닉네임</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    닉네임
+                                </label>
                                 <input
                                     type="text"
                                     name="name"
                                     value={editForm.name || ""}
                                     onChange={handleEditChange}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    이메일
+                                </label>
                                 <input
                                     type="email"
                                     name="email"
                                     value={editForm.email || ""}
                                     onChange={handleEditChange}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">MBTI</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    MBTI
+                                </label>
                                 <select
                                     name="mbti"
                                     value={editForm.mbti || ""}
                                     onChange={handleEditChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
                                     <option value="">MBTI를 선택하세요</option>
                                     {[
@@ -1088,7 +1128,9 @@ const MyPage = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">나이</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    나이
+                                </label>
                                 <input
                                     type="number"
                                     name="age"
@@ -1096,11 +1138,11 @@ const MyPage = () => {
                                     onChange={handleEditChange}
                                     min="1"
                                     max="120"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     연령대 <span className="text-red-500">*</span>
                                 </label>
                                 <select
@@ -1108,7 +1150,7 @@ const MyPage = () => {
                                     value={editForm.ageRange || ""}
                                     onChange={handleEditChange}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
                                     <option value="">선택</option>
                                     <option value="10대">10대</option>
@@ -1119,7 +1161,7 @@ const MyPage = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     성별 <span className="text-red-500">*</span>
                                 </label>
                                 <select
@@ -1127,7 +1169,7 @@ const MyPage = () => {
                                     value={editForm.gender || ""}
                                     onChange={handleEditChange}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
                                     <option value="">선택</option>
                                     <option value="M">남성</option>
@@ -1138,7 +1180,7 @@ const MyPage = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowEditModal(false)}
-                                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg"
+                                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-[#1a241b] rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                                 >
                                     취소
                                 </button>
@@ -1161,11 +1203,13 @@ const MyPage = () => {
             {/* 모달: 뱃지 상세 */}
             {selectedBadge && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl border border-gray-100 p-6 w-[90vw] max-w-md mx-4">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 w-[90vw] max-w-md mx-4">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900 tracking-tight">{selectedBadge.name}</h3>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                {selectedBadge.name}
+                            </h3>
                             <button
-                                className="text-gray-400 hover:text-gray-600 text-2xl"
+                                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                                 onClick={() => setSelectedBadge(null)}
                             >
                                 ×
@@ -1179,27 +1223,27 @@ const MyPage = () => {
                                     className="w-40 h-40 object-contain mb-3"
                                 />
                             ) : (
-                                <div className="w-40 h-40 mb-3 rounded-full bg-yellow-100 flex items-center justify-center text-6xl">
+                                <div className="w-40 h-40 mb-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-6xl">
                                     🏅
                                 </div>
                             )}
                             {selectedBadge.description && (
-                                <div className="text-sm text-gray-700 whitespace-pre-wrap mb-3">
+                                <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-3">
                                     {selectedBadge.description}
                                 </div>
                             )}
-                            <div className="text-xs text-gray-400 mb-4">
+                            <div className="text-xs text-gray-400 dark:text-gray-500 mb-4">
                                 획득일: {new Date(selectedBadge.awarded_at).toLocaleDateString()}
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 text-black"
+                                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a241b] hover:bg-gray-50 dark:hover:bg-gray-800 text-black dark:text-white"
                                     onClick={() => shareBadgeToKakao(selectedBadge)}
                                 >
                                     자랑하기
                                 </button>
                                 <button
-                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                    className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
                                     onClick={() => setSelectedBadge(null)}
                                 >
                                     닫기

@@ -17,14 +17,16 @@ interface PlaceClosedDay {
 }
 
 interface Place {
-    id: number;
-    name: string;
+    id?: number;
+    name?: string;
     imageUrl?: string;
     latitude?: number;
     longitude?: number;
     opening_hours?: string | null;
     closed_days?: PlaceClosedDay[];
     reservationUrl?: string | null;
+    address?: string;
+    category?: string;
 }
 
 interface CoursePlace {
@@ -65,7 +67,7 @@ const formatViewCount = (views: number) => {
 };
 
 const PlaceholderImage = memo(() => (
-    <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-300">
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center text-gray-300 dark:text-gray-500">
         <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
                 strokeLinecap="round"
@@ -166,7 +168,7 @@ const CourseCard = memo(
                 )}
 
                 {/* 이미지 섹션 */}
-                <div className="relative w-full aspect-4/3 rounded-[20px] overflow-hidden bg-gray-100 mb-3 shadow-sm border border-gray-100">
+                <div className="relative w-full aspect-4/3 rounded-[20px] overflow-hidden bg-gray-100 dark:bg-gray-800 mb-3 shadow-sm border border-gray-100 dark:border-transparent">
                     {course.imageUrl ? (
                         <Image
                             src={course.imageUrl}
@@ -257,23 +259,23 @@ const CourseCard = memo(
                 <div className="px-1 pt-1">
                     <div className="flex flex-wrap gap-2 mb-3">
                         {(course.region || course.location) && (
-                            <span className="inline-block px-2 py-1 bg-gray-100 rounded-md text-[13px] font-bold text-gray-600">
+                            <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-[13px] font-bold text-gray-600 dark:text-white">
                                 #{course.region || course.location}
                             </span>
                         )}
                         {course.duration && (
-                            <span className="inline-block px-2 py-1 bg-gray-100 rounded-md text-[13px] font-bold text-gray-600">
+                            <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-[13px] font-bold text-gray-600 dark:text-white">
                                 #{course.duration}
                             </span>
                         )}
                     </div>
-                    <h3 className="text-[18px] font-bold text-gray-900 leading-snug mb-2 group-hover:text-gray-700 transition-colors break-keep line-clamp-2 tracking-tight">
+                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors break-keep line-clamp-2 tracking-tight">
                         {course.title}
                     </h3>
                     <div className="text-xs font-medium">
                         {infoDisplay && (
                             <span
-                                className={infoDisplay.type === "views" ? "text-orange-600 font-bold" : "text-gray-700"}
+                                className={infoDisplay.type === "views" ? "text-orange-600 dark:text-orange-400 font-bold" : "text-gray-700 dark:text-white"}
                             >
                                 {infoDisplay.content}
                             </span>

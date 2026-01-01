@@ -275,24 +275,24 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     );
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA]">
-            <div className="bg-white px-5 pt-6 pb-2 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+        <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
+            <div className="bg-white dark:bg-[#1a241b] px-5 pt-6 pb-2 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
                 <div className="flex justify-between items-end mb-4">
-                    <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight leading-none">완벽한 하루</h1>
+                    <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">완벽한 하루</h1>
                     <div className="flex items-center gap-3 text-sm">
                         <button
                             onClick={() => setSortBy("views")}
                             className={`${
-                                sortBy === "views" ? "font-bold text-emerald-600" : "font-medium text-gray-400"
+                                sortBy === "views" ? "font-bold text-emerald-600 dark:text-emerald-400" : "font-medium text-gray-400 dark:text-gray-500"
                             } transition-colors`}
                         >
                             인기순
                         </button>
-                        <span className="text-gray-200 text-xs">|</span>
+                        <span className="text-gray-200 dark:text-gray-700 text-xs">|</span>
                         <button
                             onClick={() => setSortBy("latest")}
                             className={`${
-                                sortBy === "latest" ? "font-bold text-emerald-600" : "font-medium text-gray-400"
+                                sortBy === "latest" ? "font-bold text-emerald-600 dark:text-emerald-400" : "font-medium text-gray-400 dark:text-gray-500"
                             } transition-colors`}
                         >
                             최신순
@@ -350,10 +350,10 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             <div className="px-5 py-6 space-y-6">
                 {/* 🟢 [Performance]: 네비게이션 로딩 표시 */}
                 {isNavigating && (
-                    <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="fixed inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
                         <div className="text-center">
                             <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-3"></div>
-                            <p className="text-gray-600 font-medium">코스를 불러오는 중...</p>
+                            <p className="text-gray-600 dark:text-gray-300 font-medium">코스를 불러오는 중...</p>
                         </div>
                     </div>
                 )}
@@ -381,18 +381,18 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                 {visibleCourses.length === 0 && (
                     <div className="text-center py-20">
                         <div className="text-5xl mb-4 grayscale opacity-50">🏝️</div>
-                        <p className="text-gray-500 font-medium">조건에 맞는 코스가 없어요.</p>
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">조건에 맞는 코스가 없어요.</p>
                     </div>
                 )}
                 {loadingMore && (
                     <div className="text-center py-8">
                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                        <p className="text-gray-500 text-sm mt-2">불러오는 중...</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">불러오는 중...</p>
                     </div>
                 )}
                 {!hasMore && visibleCourses.length > 0 && (
                     <div className="text-center py-8">
-                        <p className="text-gray-400 text-sm">모든 코스를 불러왔습니다.</p>
+                        <p className="text-gray-400 dark:text-gray-500 text-sm">모든 코스를 불러왔습니다.</p>
                     </div>
                 )}
                 <div ref={loadMoreRef} aria-hidden="true" className="h-1"></div>

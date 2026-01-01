@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 🟢 Tailwind v4 클래스 기반 다크모드 활성화 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
     --brand-green: #99c08e;
     --brand-green-dark: #7aa06f;
@@ -7,8 +10,11 @@
     --brand-cream: #f5f7f2;
     --brand-ink: #1e2a1a;
 
+    /* 🟢 라이트 모드 변수 정의 (기본) */
     --background: var(--brand-cream);
     --foreground: var(--brand-ink);
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
 }
 
 :root {
@@ -19,21 +25,29 @@
     --font-mono: var(--font-geist-mono);
 }
 
-/* 다크모드도 자연 그린톤 유지 (채도/명도 보정) */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #0f1710; /* 어두운 포레스트 */
-        --foreground: #e7efe4; /* 밝은 크림 텍스트 */
-    }
+/* 🟢 다크 모드 변수 정의 (클래스 기반) */
+.dark {
+    --background: #0f1710; /* 어두운 포레스트 */
+    --foreground: #e7efe4; /* 밝은 크림 텍스트 */
+    --card-bg: #1a241b;
+    --border-color: #2d3748;
 }
 
 body {
-    background: var(--background);
+    /* 🟢 테마 변수를 사용하여 배경색 동적 변경 */
+    background-color: var(--background);
     color: var(--foreground);
+    /* 🟢 전역 트랜지션: 테마 변경 시 눈의 피로도 감소 */
+    transition: background-color 0.3s ease, color 0.3s ease;
     /* 🟢 최적화: var(--font-line-seed)를 최우선으로 배치하여 프리로드 경고 해결 */
     font-family: var(--font-line-seed), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
         Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", Dotum,
         "돋움", sans-serif;
+}
+
+/* 🟢 스플래시 표시 중에만 초록색 배경 강제 적용 */
+body.splash-active {
+    background-color: #7fcc9f !important;
 }
 
 @font-face {
@@ -129,12 +143,21 @@ body {
 
     .btn-secondary {
         @apply inline-flex items-center justify-center px-4 py-2 border rounded-lg font-medium transition-colors shadow-sm active:shadow;
-        background-color: #ffffff;
+        background-color: var(--card-bg);
         border-color: var(--brand-green);
-        color: var(--brand-ink);
+        color: var(--foreground);
     }
     .btn-secondary:hover {
         background-color: #f9fbf7;
+    }
+    /* 🟢 다크모드 대응 */
+    .dark .btn-secondary {
+        background-color: var(--card-bg);
+        border-color: var(--brand-green);
+        color: var(--foreground);
+    }
+    .dark .btn-secondary:hover {
+        background-color: #23302a;
     }
 
     .input {
@@ -144,17 +167,29 @@ body {
         --tw-ring-offset-shadow: 0 0 #0000;
         --tw-ring-shadow: 0 0 #0000;
     }
+    /* 🟢 다크모드 대응 */
+    .dark .input {
+        background-color: var(--card-bg);
+        border-color: color-mix(in oklab, var(--brand-green) 30%, #4a5568);
+        color: var(--foreground);
+    }
 
     .textarea {
         @apply w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition-shadow min-h-28;
         border-color: color-mix(in oklab, var(--brand-green) 30%, #d1d5db);
         --tw-ring-color: var(--brand-green);
     }
+    /* 🟢 다크모드 대응 */
+    .dark .textarea {
+        background-color: var(--card-bg);
+        border-color: color-mix(in oklab, var(--brand-green) 30%, #4a5568);
+        color: var(--foreground);
+    }
 
     .card {
-        @apply rounded-xl border shadow-sm;
-        border-color: color-mix(in oklab, var(--brand-green) 25%, #e5e7eb);
-        background: #ffffff;
+        @apply rounded-xl border shadow-sm transition-colors duration-300;
+        background-color: var(--card-bg);
+        border-color: var(--border-color);
     }
 
     /* 제목/브랜드 영역에 사용하는 폰트 유틸 */
@@ -192,4 +227,29 @@ button[data-nextjs-dev-tools-button],
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
+}
+
+/* 🟢 다크모드 대응: 네이버 지도 톤 조절 및 마커 보정 */
+.dark #react-naver-map {
+    /* 지도의 흰 배경을 어둡게 반전 */
+    filter: invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    background-color: #0f1710 !important; /* 타일 로딩 전 깜빡임 방지 */
+}
+
+.dark [data-naver-map="true"],
+.dark .naver-map-container [data-naver-map="true"] {
+    /* 지도의 흰 배경을 어둡게 반전 */
+    filter: invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    background-color: #0f1710 !important; /* 타일 로딩 전 깜빡임 방지 */
+}
+
+/* 🟢 중요: 마커는 원래 색상을 유지하도록 재반전 */
+.dark #react-naver-map .naver-maps-marker-content,
+.dark #react-naver-map [class*="marker"],
+.dark #react-naver-map img[src*="logo"],
+.dark [data-naver-map="true"] .naver-maps-marker-content,
+.dark [data-naver-map="true"] [class*="marker"],
+.dark .naver-map-container [data-naver-map="true"] .naver-maps-marker-content,
+.dark .naver-map-container [data-naver-map="true"] [class*="marker"] {
+    filter: invert(100%) hue-rotate(-180deg) brightness(110%);
 }

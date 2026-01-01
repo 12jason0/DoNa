@@ -239,11 +239,11 @@ export default function PersonalizedSection() {
                     </div>
                 ) : (
                     <>
-                <h2 className="text-xl font-bold text-gray-900 leading-snug whitespace-pre-line animate-fade-in tracking-tight">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-snug whitespace-pre-line animate-fade-in tracking-tight">
                     {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
                     {content.title(userName)}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1 font-medium">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
                     {/* 👇 부제목: "마음이 차분해지는..." */}
                     {content.subtitle}
                 </p>
@@ -275,7 +275,7 @@ export default function PersonalizedSection() {
                               draggable={false}
                               className="snap-center shrink-0 w-[200px] group relative select-none"
                           >
-                              <div className="relative aspect-3/4 rounded-xl overflow-hidden border border-gray-100 transition-transform active:scale-95">
+                              <div className="relative aspect-3/4 rounded-xl overflow-hidden border-0 dark:border-0 transition-transform active:scale-95">
                                   {/* 이미지 */}
                                   <div className="relative w-full h-full bg-gray-200">
                                       {(() => {

@@ -100,10 +100,8 @@ export default function Footer() {
 
     return (
         <footer
-            className="w-full"
+            className="w-full bg-white dark:bg-[#1a241b] border-t-2 border-[rgba(153,192,142,0.5)] dark:border-[rgba(153,192,142,0.2)]"
             style={{
-                backgroundColor: "#ffffff",
-                borderTop: "2px solid rgba(153,192,142,0.5)",
                 paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
                 backdropFilter: "saturate(180%) blur(8px)",
             }}
@@ -115,7 +113,7 @@ export default function Footer() {
                         href="/"
                         prefetch={true}
                         aria-label="메인"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/") ? "bg-green-50" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/") ? "bg-green-50 dark:bg-gray-800" : ""}`}
                         style={{ color: isActive("/") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
@@ -129,7 +127,7 @@ export default function Footer() {
                         href="/courses"
                         prefetch={true}
                         aria-label="코스"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/courses") ? "bg-green-50" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/courses") ? "bg-green-50 dark:bg-gray-800" : ""}`}
                         style={{ color: isActive("/courses") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
@@ -144,7 +142,7 @@ export default function Footer() {
                         href="/map"
                         prefetch={true}
                         aria-label="맵"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/map") ? "bg-green-50" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/map") ? "bg-green-50 dark:bg-gray-800" : ""}`}
                         style={{ color: isActive("/map") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
@@ -163,7 +161,7 @@ export default function Footer() {
                             }
                         }}
                         aria-label="Escape"
-                        className={`p-2 rounded-md hover:bg-green-50 ${isActive("/escape") ? "bg-green-50" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/escape") ? "bg-green-50 dark:bg-gray-800" : ""}`}
                         style={{ color: isActive("/escape") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
@@ -177,8 +175,8 @@ export default function Footer() {
                         href="/mypage"
                         prefetch={true}
                         aria-label="마이페이지"
-                        className={`p-2 rounded-md hover:bg-green-50 relative ${
-                            isActive("/mypage") ? "bg-green-50" : ""
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 relative ${
+                            isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
                         }`}
                         style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
                     >

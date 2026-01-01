@@ -35,10 +35,10 @@ const SkeletonLoader = () => (
     <div className="space-y-8 animate-pulse">
         {[1, 2].map((i) => (
             <div key={i} className="block">
-                <div className="w-full aspect-[4/3] bg-gray-100 rounded-[20px] mb-4 relative"></div>
+                <div className="w-full aspect-4/3 bg-gray-100 dark:bg-gray-800 rounded-[20px] mb-4 relative"></div>
                 <div className="px-1 space-y-3">
-                    <div className="w-3/4 h-7 bg-gray-100 rounded-lg"></div>
-                    <div className="w-1/2 h-5 bg-gray-100 rounded-lg"></div>
+                    <div className="w-3/4 h-7 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
+                    <div className="w-1/2 h-5 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
                 </div>
             </div>
         ))}
@@ -46,7 +46,7 @@ const SkeletonLoader = () => (
 );
 
 const PlaceholderImage = () => (
-    <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-300">
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center text-gray-300 dark:text-gray-500">
         <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
                 strokeLinecap="round"
@@ -132,19 +132,19 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         if (tagIdsStr !== currentTagIdsStr) {
             setSelectedTagIds(tagIdsFromUrl);
         }
-        
+
         const conceptChanged = conceptFromUrl
             ? !selectedActivities.includes(conceptFromUrl)
             : selectedActivities.length > 0;
         if (conceptChanged) {
             setSelectedActivities(conceptFromUrl ? [conceptFromUrl] : []);
         }
-        
+
         const regionChanged = regionFromUrl ? !selectedRegions.includes(regionFromUrl) : selectedRegions.length > 0;
         if (regionChanged) {
             setSelectedRegions(regionFromUrl ? [regionFromUrl] : []);
         }
-        
+
         if (qFromUrl !== searchInput) {
             setSearchInput(qFromUrl);
         }
@@ -244,7 +244,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     // 🟢 [Performance]: 태그 리스트 및 즐겨찾기 목록 지연 로드
     useEffect(() => {
         const ric = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 100));
-        
+
         // 태그 리스트 로드
         ric(() => {
             (async () => {
@@ -262,16 +262,18 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         // 즐겨찾기 목록 로드 (더 긴 지연)
         ric(() => {
             setTimeout(() => {
-                authenticatedFetch<any[]>("/api/users/favorites").then((list) => {
-                    if (list) {
-                        const ids = new Set<number>();
-                        list.forEach((f: any) => {
-                            const id = Number(f?.course?.id ?? f?.courseId ?? f?.id);
-                            if (Number.isFinite(id)) ids.add(id);
-                        });
-                        setFavoriteIds(ids);
-                    }
-                }).catch(() => {}); // 실패 시 무시
+                authenticatedFetch<any[]>("/api/users/favorites")
+                    .then((list) => {
+                        if (list) {
+                            const ids = new Set<number>();
+                            list.forEach((f: any) => {
+                                const id = Number(f?.course?.id ?? f?.courseId ?? f?.id);
+                                if (Number.isFinite(id)) ids.add(id);
+                            });
+                            setFavoriteIds(ids);
+                        }
+                    })
+                    .catch(() => {}); // 실패 시 무시
             }, 500); // 🟢 500ms 추가 지연으로 초기 렌더링 우선
         });
     }, []);
@@ -309,9 +311,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     // 🟢 태그 이름 미리 계산 (Map 사용으로 최적화)
     const selectedTagNames = useMemo(() => {
         if (selectedTagIds.length === 0 || tagIdToNameMap.size === 0) return [];
-        return selectedTagIds
-            .map((id) => tagIdToNameMap.get(id))
-            .filter((name): name is string => !!name);
+        return selectedTagIds.map((id) => tagIdToNameMap.get(id)).filter((name): name is string => !!name);
     }, [selectedTagIds, tagIdToNameMap]);
 
     // 🟢 [Performance]: 필터링 로직을 별도 hook으로 분리
@@ -471,8 +471,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const isActuallyLoading = !mounted || loading;
 
     return (
-        <div className="min-h-screen bg-[#F9FAFB] text-gray-900">
-            <section className="max-w-[500px] mx-auto min-h-screen bg-white border-x border-gray-100 flex flex-col">
+        <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0f1710] text-gray-900 dark:text-white">
+            <section className="max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
                 {/* --- Header & Search Section --- */}
                 <div className="sticky top-0 z-40 bg-white px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
                     <div className="relative mb-3">
@@ -517,7 +517,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             }}
                             className="absolute inset-y-0 right-3 flex items-center"
                         >
-                            <div className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+                            <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
@@ -549,11 +549,11 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             // URL 변경 (로딩은 서버 컴포넌트가 처리)
                                             router.push("/nearby");
                                         }}
-                                        className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 border border-gray-200 text-gray-600 active:scale-95 transition-transform"
+                                        className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 active:scale-95 transition-transform"
                                     >
                                         ↺
                                     </button>
-                                    <div className="w-[1px] h-4 bg-gray-200 mx-1 shrink-0" />
+                                    <div className="w-px h-4 bg-gray-200 mx-1 shrink-0" />
                                 </>
                             )}
                             {regions.map((r) => (
@@ -600,13 +600,15 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             {filtered.length === 0 && !isRecommendation && !loading && (
                                 <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] px-10">
                                     <div className="text-center">
-                                        <p className="text-gray-400 text-[14px] font-medium mb-2">SEARCH RESULTS 0</p>
-                                        <h3 className="text-[22px] font-bold text-gray-900 mb-4 tracking-tight">
+                                        <p className="text-gray-400 dark:text-gray-500 text-[14px] font-medium mb-2">
+                                            SEARCH RESULTS 0
+                                        </p>
+                                        <h3 className="text-[22px] font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
                                             준비된{" "}
                                             <span className="text-emerald-600">'{displayKeyword || "해당 필터"}'</span>{" "}
                                             코스가 없나요?
                                         </h3>
-                                        <p className="text-gray-500 text-[15px] mb-8 leading-relaxed">
+                                        <p className="text-gray-500 dark:text-gray-400 text-[15px] mb-8 leading-relaxed">
                                             현재 해당 필터에 맞는 코스를 제작 중입니다.
                                             <br />
                                             대신 <span className="font-semibold">두나가 엄선한 인기 코스</span>를
@@ -630,7 +632,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     <div className="inline-block px-2 py-1 bg-slate-100 text-slate-600 text-[11px] font-bold rounded mb-3">
                                         AD / RECOMMENDATION
                                     </div>
-                                    <h3 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">
+                                    <h3 className="text-[20px] font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
                                         찾으시는 결과가 없어서
                                         <br />
                                         <span className="text-emerald-600">요즘 뜨는 코스</span>를 준비했어요
