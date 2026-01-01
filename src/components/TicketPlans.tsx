@@ -174,22 +174,22 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-10000 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-5">
-            <div className="bg-white w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-4xl sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl transition-all">
+        <div className="fixed inset-0 z-10000 flex items-end sm:items-center justify-center bg-black/70 dark:bg-black/80 backdrop-blur-md p-0 sm:p-5">
+            <div className="bg-white dark:bg-[#1a241b] w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-4xl sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl transition-all">
                 {/* 상단 헤더 */}
                 <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
                     <div>
-                        <h2 className="text-2xl font-black text-gray-900 leading-tight">
+                        <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">
                             두나 멤버십으로
                             <br />
-                            <span className="text-emerald-500">데이트 고민 끝! ✨</span>
+                            <span className="text-emerald-500 dark:text-emerald-400">데이트 고민 끝! ✨</span>
                         </h2>
-                        <p className="text-gray-400 text-sm mt-1 font-medium">
+                        <p className="text-gray-400 dark:text-gray-500 text-sm mt-1 font-medium">
                             합리적인 가격으로 즐기는 스마트한 데이트
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:rotate-90 transition-all">
-                        <X className="w-5 h-5 text-gray-500" />
+                    <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:rotate-90 transition-all">
+                        <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                     </button>
                 </div>
 
@@ -197,7 +197,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 <div className="flex-1 overflow-y-auto px-6 space-y-8 pb-10 custom-scrollbar">
                     {/* 구독 플랜 */}
                     <div className="space-y-4 pt-2">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">
+                        <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
                             Monthly Membership
                         </h4>
                         {PLANS.filter((p) => p.type === "sub").map((plan) => {
@@ -212,10 +212,10 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                                     onClick={() => !isDisabled && setSelectedPlanId(plan.id)}
                                     className={`group relative p-5 rounded-2xl border-2 transition-all duration-200 ${
                                         isDisabled
-                                            ? "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+                                            ? "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 opacity-50 cursor-not-allowed"
                                             : selectedPlanId === plan.id
-                                            ? "border-emerald-500 bg-emerald-50/50 shadow-lg shadow-emerald-100 cursor-pointer"
-                                            : "border-gray-100 bg-white hover:border-emerald-200 cursor-pointer"
+                                            ? "border-emerald-500 dark:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/30 shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 cursor-pointer"
+                                            : "border-gray-100 dark:border-gray-800 bg-white dark:bg-[#0f1710] hover:border-emerald-200 dark:hover:border-emerald-800 cursor-pointer"
                                     }`}
                                 >
                                     {plan.badge && !isDisabled && (
@@ -237,18 +237,18 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                                             <div className="flex items-center gap-2">
                                                 <h3
                                                     className={`font-bold text-lg ${
-                                                        isDisabled ? "text-gray-400" : "text-gray-900"
+                                                        isDisabled ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"
                                                     }`}
                                                 >
                                                     {plan.name}
                                                 </h3>
                                                 {selectedPlanId === plan.id && !isDisabled && (
-                                                    <Check className="w-5 h-5 text-emerald-500" />
+                                                    <Check className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                                                 )}
                                             </div>
                                             <p
                                                 className={`text-xs mt-0.5 line-clamp-1 ${
-                                                    isDisabled ? "text-gray-400" : "text-gray-500"
+                                                    isDisabled ? "text-gray-400 dark:text-gray-600" : "text-gray-500 dark:text-gray-400"
                                                 }`}
                                             >
                                                 {isDisabled ? "이미 이용 중인 멤버십입니다" : plan.desc}
@@ -256,38 +256,38 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                                             <div className="mt-3 flex items-baseline gap-1.5">
                                                 <span
                                                     className={`text-2xl font-black ${
-                                                        isDisabled ? "text-gray-400" : "text-gray-900"
+                                                        isDisabled ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"
                                                     }`}
                                                 >
                                                     {plan.price.toLocaleString()}원
                                                 </span>
                                                 {plan.originalPrice && !isDisabled && (
-                                                    <span className="text-sm text-gray-300 line-through font-medium">
+                                                    <span className="text-sm text-gray-300 dark:text-gray-600 line-through font-medium">
                                                         {plan.originalPrice.toLocaleString()}원
                                                     </span>
                                                 )}
                                                 {!isDisabled && (
-                                                    <span className="text-xs font-bold text-gray-400">/ 월</span>
+                                                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500">/ 월</span>
                                                 )}
                                             </div>
                                         </div>
                                         <ul
                                             className={`hidden sm:block space-y-1 p-3 rounded-xl border ${
                                                 isDisabled
-                                                    ? "bg-gray-50/50 border-gray-100"
-                                                    : "bg-white/50 border-emerald-100/50"
+                                                    ? "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800"
+                                                    : "bg-white/50 dark:bg-[#0f1710]/50 border-emerald-100/50 dark:border-emerald-900/30"
                                             }`}
                                         >
                                             {plan.features?.map((f, i) => (
                                                 <li
                                                     key={i}
                                                     className={`text-[10px] flex items-center gap-1.5 font-semibold ${
-                                                        isDisabled ? "text-gray-400" : "text-gray-500"
+                                                        isDisabled ? "text-gray-400 dark:text-gray-600" : "text-gray-500 dark:text-gray-400"
                                                     }`}
                                                 >
                                                     <Check
                                                         className={`w-3 h-3 ${
-                                                            isDisabled ? "text-gray-300" : "text-emerald-400"
+                                                            isDisabled ? "text-gray-300 dark:text-gray-700" : "text-emerald-400 dark:text-emerald-500"
                                                         }`}
                                                     />{" "}
                                                     {f}
@@ -302,7 +302,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
 
                     {/* 티켓 플랜 */}
                     <div className="space-y-4">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">
+                        <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
                             One-time Ticket
                         </h4>
                         <div className="grid grid-cols-1 gap-3">
@@ -312,56 +312,56 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                                     onClick={() => setSelectedPlanId(plan.id)}
                                     className={`p-4 rounded-xl border-2 transition-all flex justify-between items-center cursor-pointer ${
                                         selectedPlanId === plan.id
-                                            ? "border-emerald-500 bg-emerald-50 text-emerald-900"
-                                            : "border-gray-50 bg-gray-50/50 text-gray-600 hover:bg-white"
+                                            ? "border-emerald-500 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400"
+                                            : "border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-[#0f1710]"
                                     }`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div
                                             className={`w-2 h-2 rounded-full ${
-                                                selectedPlanId === plan.id ? "bg-emerald-500" : "bg-gray-300"
+                                                selectedPlanId === plan.id ? "bg-emerald-500 dark:bg-emerald-400" : "bg-gray-300 dark:bg-gray-600"
                                             }`}
                                         />
-                                        <span className="font-bold text-sm">{plan.name}</span>
+                                        <span className="font-bold text-sm dark:text-white">{plan.name}</span>
                                     </div>
-                                    <span className="font-black text-sm">{plan.price.toLocaleString()}원</span>
+                                    <span className="font-black text-sm dark:text-white">{plan.price.toLocaleString()}원</span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
                     {/* 하단 약관 및 사업자 정보 (스크롤 영역 안으로 이동하여 버튼 공간 확보) */}
-                    <div className="pt-6 border-t border-gray-100 space-y-4 pb-4">
-                        <div className="text-[10px] text-gray-400 text-center space-y-1">
-                            <p className="font-bold text-gray-500 underline underline-offset-4 mb-2">
+                    <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4 pb-4">
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center space-y-1">
+                            <p className="font-bold text-gray-500 dark:text-gray-400 underline underline-offset-4 mb-2">
                                 서비스 이용 및 환불 정책
                             </p>
-                            <p>• 멤버십 및 쿠폰 구매 후 미사용 시 7일 이내 환불 가능합니다.</p>
-                            <p>• 콘텐츠 열람 이력이 있는 경우 환불이 제한될 수 있습니다.</p>
+                            <p className="dark:text-gray-400">• 멤버십 및 쿠폰 구매 후 미사용 시 7일 이내 환불 가능합니다.</p>
+                            <p className="dark:text-gray-400">• 콘텐츠 열람 이력이 있는 경우 환불이 제한될 수 있습니다.</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-2xl text-[9px] text-gray-400 leading-relaxed text-center">
-                            <p className="font-bold text-gray-500 mb-1">두나(DoNa) 사업자 정보</p>
-                            <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
-                            <p>주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                            <p>통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacourse.com</p>
-                            <p className="mt-1 text-emerald-500 font-bold font-sans">고객센터: 010-2271-9824</p>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl text-[9px] text-gray-400 dark:text-gray-500 leading-relaxed text-center">
+                            <p className="font-bold text-gray-500 dark:text-gray-400 mb-1">두나(DoNa) 사업자 정보</p>
+                            <p className="dark:text-gray-400">대표: 오승용 | 사업자등록번호: 166-10-03081</p>
+                            <p className="dark:text-gray-400">주소: 충청남도 홍성군 홍북읍 신대로 33</p>
+                            <p className="dark:text-gray-400">통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacourse.com</p>
+                            <p className="mt-1 text-emerald-500 dark:text-emerald-400 font-bold font-sans">고객센터: 010-2271-9824</p>
                         </div>
                     </div>
                 </div>
 
                 {/* 하단 고정 결제 버튼 */}
-                <div className="p-6 bg-white border-t border-gray-50 shrink-0">
+                <div className="p-6 bg-white dark:bg-[#1a241b] border-t border-gray-50 dark:border-gray-800 shrink-0">
                     <button
                         onClick={handlePayment}
                         disabled={loading}
-                        className="w-full py-5 rounded-2xl bg-gray-900 text-white font-black text-lg hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl"
+                        className="w-full py-5 rounded-2xl bg-gray-900 dark:bg-gray-800 text-white font-black text-lg hover:bg-black dark:hover:bg-gray-700 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl"
                     >
                         {loading ? (
                             "결제창을 불러오고 있어요..."
                         ) : (
                             <>
                                 <span>{selectedPlan?.name} 시작하기</span>
-                                <ChevronRight className="w-5 h-5 text-emerald-400" />
+                                <ChevronRight className="w-5 h-5 text-emerald-400 dark:text-emerald-500" />
                             </>
                         )}
                     </button>

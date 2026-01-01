@@ -231,64 +231,69 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                     const courseId = Number(c.id);
                     const hasUnlocked = Number.isFinite(courseId) && unlockedIds.includes(courseId);
 
-            if (hasUnlocked || userTier === "PREMIUM") {
-                isLocked = false;
-            } else if (userTier === "BASIC") {
-                if (courseGrade === "PREMIUM") isLocked = true;
-            } else {
-                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                    if (hasUnlocked || userTier === "PREMIUM") {
+                        isLocked = false;
+                    } else if (userTier === "BASIC") {
+                        if (courseGrade === "PREMIUM") isLocked = true;
+                    } else {
+                        if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                    }
+
+                    // 🟢 courseTags 관계 테이블에서 태그 배열 생성
+                    const allTags = Array.isArray(c?.courseTags)
+                        ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
+                        : [];
+
+                    return {
+                        id: String(c.id),
+                        title: c.title || "제목 없음",
+                        description: c.description || "",
+                        duration: c.duration || "",
+                        location: c.region || "",
+                        imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+                        concept: c.concept || "",
+                        rating: Number(c.rating) || 0,
+                        reviewCount: 0,
+                        participants: 0,
+                        viewCount: c.view_count || 0,
+                        createdAt: c.createdAt ? c.createdAt.toISOString() : undefined,
+                        grade: courseGrade,
+                        isLocked: isLocked,
+                        coursePlaces: Array.isArray(c.coursePlaces)
+                            ? c.coursePlaces.map((cp: any) => ({
+                                  order_index: cp.order_index,
+                                  place: cp.place
+                                      ? {
+                                            id: cp.place.id,
+                                            name: cp.place.name,
+                                            imageUrl: cp.place.imageUrl,
+                                            latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
+                                            longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
+                                            opening_hours: cp.place.opening_hours || null,
+                                            reservationUrl: cp.place.reservationUrl || null, // 🟢 예약 URL 추가
+                                        }
+                                      : null,
+                              }))
+                            : [],
+                        tags: allTags,
+                    };
+                });
+
+                // 등급순 정렬
+                const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
+                mappedCourses.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
+
+                return mappedCourses;
+            },
+            [`nearby-filter-${keywordRaw || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}`],
+            {
+                revalidate: 120, // 🟢 2분 캐시
+                tags: ["nearby-filtered-courses"],
             }
+        );
 
-            return {
-                id: String(c.id),
-                title: c.title || "제목 없음",
-                description: c.description || "",
-                duration: c.duration || "",
-                location: c.region || "",
-                imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
-                concept: c.concept || "",
-                rating: Number(c.rating) || 0,
-                reviewCount: 0,
-                participants: 0,
-                viewCount: c.view_count || 0,
-                createdAt: c.createdAt ? c.createdAt.toISOString() : undefined,
-                grade: courseGrade,
-                isLocked: isLocked,
-                coursePlaces: Array.isArray(c.coursePlaces)
-                    ? c.coursePlaces.map((cp: any) => ({
-                          order_index: cp.order_index,
-                          place: cp.place
-                              ? {
-                                    id: cp.place.id,
-                                    name: cp.place.name,
-                                    imageUrl: cp.place.imageUrl,
-                                    latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
-                                    longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
-                                    opening_hours: cp.place.opening_hours || null,
-                                    reservationUrl: cp.place.reservationUrl || null, // 🟢 예약 URL 추가
-                                }
-                              : null,
-                      }))
-                    : [],
-                tags: Array.isArray(c?.courseTags) ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean) : [],
-            };
-        });
-
-                    // 등급순 정렬
-                    const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
-                    mappedCourses.sort((a, b) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
-
-                    return mappedCourses;
-                },
-                [`nearby-filter-${keywordRaw || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}`],
-                {
-                    revalidate: 120, // 🟢 2분 캐시
-                    tags: ["nearby-filtered-courses"],
-                }
-            );
-
-            return getCachedFilteredCourses(keywordRaw, concept, tagIdsParam, userTier, unlockedCourseIds);
-        }
+        return getCachedFilteredCourses(keywordRaw, concept, tagIdsParam, userTier, unlockedCourseIds);
+    }
 
     // 🟢 [Performance]: 초기 로드 데이터 캐싱
     const getCachedDefaultNearbyCourses = unstable_cache(
@@ -323,7 +328,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             // 부족분 보정: BASIC/PREMIUM이 부족하면 FREE에서 더 가져옴
             const basicArr = basicRaw;
             const premiumArr = premiumRaw;
-            const neededFromFree = TARGET_FREE + (TARGET_BASIC - basicArr.length) + (TARGET_PREMIUM - premiumArr.length);
+            const neededFromFree =
+                TARGET_FREE + (TARGET_BASIC - basicArr.length) + (TARGET_PREMIUM - premiumArr.length);
             const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
 
             // 🟢 [Interleaving] 2(FREE):1(BASIC):1(PREMIUM) 패턴으로 섞기
@@ -332,7 +338,10 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 bIdx = 0,
                 pIdx = 0;
 
-            while (interleaved.length < 30 && (fIdx < freeArr.length || bIdx < basicArr.length || pIdx < premiumArr.length)) {
+            while (
+                interleaved.length < 30 &&
+                (fIdx < freeArr.length || bIdx < basicArr.length || pIdx < premiumArr.length)
+            ) {
                 if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
                 if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]); // FREE 2개
                 if (bIdx < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[bIdx++]); // BASIC 1개
@@ -356,6 +365,21 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 } else {
                     if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
                 }
+
+                // 🟢 courseTags 관계 테이블과 Course.tags JSON 필드를 합쳐서 태그 배열 생성
+                const tagsFromRelation = Array.isArray(c?.courseTags)
+                    ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
+                    : [];
+                const tagsFromJson: string[] = [];
+                // Course.tags JSON 필드도 확인 (concept, mood, target, budget 등)
+                if (c.tags && typeof c.tags === "object" && !Array.isArray(c.tags)) {
+                    const tagsJson = c.tags as any;
+                    if (Array.isArray(tagsJson.concept)) tagsFromJson.push(...tagsJson.concept);
+                    if (Array.isArray(tagsJson.mood)) tagsFromJson.push(...tagsJson.mood);
+                    if (Array.isArray(tagsJson.target)) tagsFromJson.push(...tagsJson.target);
+                    if (typeof tagsJson.budget === "string" && tagsJson.budget) tagsFromJson.push(tagsJson.budget);
+                }
+                const allTags = Array.from(new Set([...tagsFromRelation, ...tagsFromJson])); // 중복 제거
 
                 return {
                     id: String(c.id),
@@ -388,7 +412,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                                   : null,
                           }))
                         : [],
-                    tags: Array.isArray(c?.courseTags) ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean) : [],
+                    tags: allTags,
                 };
             });
 

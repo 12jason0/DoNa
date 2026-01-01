@@ -2,8 +2,9 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import { CheckCircle, Sparkles, Ticket } from "lucide-react";
 
 interface LoginModalProps {
@@ -17,6 +18,16 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
     const router = useRouter();
     const pathname = usePathname();
     const [loginNavigating, setLoginNavigating] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        document.body.style.overflow = "hidden";
+        return () => {
+            setMounted(false);
+            document.body.style.overflow = "";
+        };
+    }, []);
 
     const handleLogin = () => {
         if (loginNavigating) return;
@@ -34,17 +45,19 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
         }
     };
 
-    return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+    if (!mounted) return null;
+
+    const modalContent = (
+        <div className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
             {/* 모달 컨테이너: 최대 높이(max-h)와 스크롤(overflow-y-auto) 추가 */}
-            <div className="bg-white rounded-[32px] max-w-md w-full max-h-[90vh] overflow-y-auto relative shadow-[0_20px_50px_rgba(0,0,0,0.2)] transform transition-all animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 scrollbar-hide">
+            <div className="bg-white dark:bg-[#1a241b] rounded-[32px] max-w-md w-full max-h-[90vh] overflow-y-auto relative shadow-[0_20px_50px_rgba(0,0,0,0.2)] transform transition-all animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 scrollbar-hide">
                 {/* 내부 여백을 감싸는 wrapper (p-6~8로 조정) */}
                 <div className="p-6 sm:p-8">
                     {/* 닫기 버튼 - 위치 고정을 위해 absolute 유지 */}
                     <button
                         onClick={onClose}
                         aria-label="닫기"
-                        className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all flex items-center justify-center active:scale-90 z-20"
+                        className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all flex items-center justify-center active:scale-90 z-20"
                     >
                         x
                     </button>
@@ -59,23 +72,23 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                             </div>
                         </div>
 
-                        <h2 className="text-[20px] sm:text-[24px] font-black text-gray-900 tracking-tight mb-2 leading-tight">
+                        <h2 className="text-[20px] sm:text-[24px] font-black text-gray-900 dark:text-white tracking-tight mb-2 leading-tight">
                             {title || (
                                 <>
                                     오늘 데이트 코스,
                                     <br />
-                                    <span className="text-emerald-600">3초 만에</span> 받아볼까요?
+                                    <span className="text-emerald-600 dark:text-emerald-400">3초 만에</span> 받아볼까요?
                                 </>
                             )}
                         </h2>
-                        <p className="text-gray-500 text-[14px] sm:text-[16px] font-medium tracking-tight">
+                        <p className="text-gray-500 dark:text-gray-400 text-[14px] sm:text-[16px] font-medium tracking-tight">
                             {description || "지금 가입하면 무료 추천권 3장을 드려요! 🎁"}
                         </p>
                     </div>
 
                     {/* 혜택 리스트 - 여백 슬림화 */}
-                    <div className="mb-6 sm:mb-8 bg-gray-50/80 border border-gray-100 rounded-2xl p-4 sm:p-5">
-                        <h3 className="text-[12px] sm:text-[14px] font-extrabold text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">
+                    <div className="mb-6 sm:mb-8 bg-gray-50/80 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 sm:p-5">
+                        <h3 className="text-[12px] sm:text-[14px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 sm:mb-4">
                             Login Benefits
                         </h3>
                         <ul className="space-y-2.5 sm:space-y-3.5">
@@ -86,10 +99,10 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                             ].map((benefit, index) => (
                                 <li
                                     key={index}
-                                    className="flex items-center text-[14px] sm:text-[15px] font-semibold text-gray-700 leading-snug"
+                                    className="flex items-center text-[14px] sm:text-[15px] font-semibold text-gray-700 dark:text-white leading-snug"
                                 >
-                                    <div className="mr-3 shrink-0 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 stroke-3" />
+                                    <div className="mr-3 shrink-0 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 stroke-3" />
                                     </div>
                                     {benefit}
                                 </li>
@@ -147,4 +160,6 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
             `}</style>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 }

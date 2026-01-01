@@ -92,22 +92,22 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/40 flex items-center justify-center z-9999 p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center z-9999 p-4 animate-fade-in"
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-xl border border-gray-100 w-full max-w-[300px] p-6 text-center transform transition-all animate-scale-up"
+                className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 w-full max-w-[300px] p-6 text-center transform transition-all animate-scale-up"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 아이콘 영역: 룰렛 -> 잠금(Lock) 아이콘으로 변경 */}
-                <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
                         strokeWidth={1.8}
                         stroke="currentColor"
-                        className="w-7 h-7 text-[#7aa06f]"
+                        className="w-7 h-7 text-[#7aa06f] dark:text-emerald-400"
                     >
                         <path
                             strokeLinecap="round"
@@ -118,8 +118,8 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                 </div>
 
                 {/* 텍스트 영역 */}
-                <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">오픈 준비 중이에요</h3>
-                <p className="text-[15px] text-gray-500 leading-relaxed mb-6 break-keep">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">오픈 준비 중이에요</h3>
+                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep">
                     새로운 실외 방탈출 코스를
                     <br />
                     열심히 만들고 있어요.
@@ -150,7 +150,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
                     {/* 🟢 이미 알림을 신청한 경우 안내 메시지 */}
                     {!isLoading && hasNotification && (
-                        <div className="w-full py-3.5 rounded-lg bg-emerald-50 text-emerald-700 text-[15px] font-bold flex items-center justify-center gap-2 tracking-tight border border-emerald-200">
+                        <div className="w-full py-3.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[15px] font-bold flex items-center justify-center gap-2 tracking-tight border border-emerald-200 dark:border-emerald-800/50">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 20 20"
@@ -169,7 +169,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
                     <button
                         onClick={onClose}
-                        className="w-full py-2 text-xs text-gray-400 font-medium hover:text-gray-600 transition-colors underline decoration-gray-200 underline-offset-4 cursor-pointer"
+                        className="w-full py-2 text-xs text-gray-400 dark:text-gray-500 font-medium hover:text-gray-600 dark:hover:text-gray-400 transition-colors underline decoration-gray-200 dark:decoration-gray-700 underline-offset-4 cursor-pointer"
                     >
                         닫기
                     </button>

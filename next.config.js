@@ -20,8 +20,8 @@ const nextConfig = {
     async headers() {
         return [
             {
-                // 🟢 HTML 페이지만 no-cache (웹뷰 앱 캐시 문제 해결)
-                source: "/:path*",
+                // 🟢 수정: 내부 시스템 경로(_next, api, assets, favicon.ico 등)를 제외한 일반 페이지만 캐시 방지 적용
+                source: "/((?!_next|api|assets|favicon.ico).*|)",
                 headers: [
                     { key: "X-Frame-Options", value: "DENY" },
                     { key: "X-Content-Type-Options", value: "nosniff" },
@@ -60,12 +60,13 @@ const nextConfig = {
                                 ...(isDev ? ["http://*.naver.com", "http://*.map.naver.net"] : []),
                             ].join(" ");
 
-                            // 2. 스타일 및 폰트 허용 (jsDelivr 차단 해결)
+                            // 2. 스타일 및 폰트 허용 (jsDelivr 차단 해결, 구글 번역 허용)
                             const styleSrc = [
                                 "'self'",
                                 "'unsafe-inline'",
                                 "https://ssl.pstatic.net",
                                 "https://cdn.jsdelivr.net",
+                                "https://www.gstatic.com", // 🟢 추가: 구글 리소스 허용
                             ].join(" ");
 
                             const fontSrc = [
@@ -120,10 +121,12 @@ const nextConfig = {
     },
 
     images: {
-        // 🟢 이미지 500 에러 차단을 위한 품질 설정 명시 (사용 중인 모든 quality 값 포함)
-        qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
+        // 🟢 수정: 비표준 'qualities' 제거, 표준 remotePatterns 사용
         minimumCacheTTL: 3600,
         remotePatterns: [{ protocol: "https", hostname: "**" }],
+        qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
+        deviceSizes: [640, 750, 828, 1080, 1200],
+        imageSizes: [16, 32, 48, 64, 96],
     },
 };
 

@@ -19,16 +19,24 @@ type HeroSliderProps = {
 };
 
 /**
- * 🟢 개별 슬라이드 아이템 (기능 유지 + 성능 극대화)
+ * 🟢 개별 슬라이드 아이템 (LCP 최적화: 첫 이미지 즉시 표시)
  */
 const SliderItemComponent = memo(
-    ({ item, idx, realLength, items }: { item: SliderItem; idx: number; realLength: number; items: SliderItem[] }) => {
-        // 🟢 LCP 최적화: 중앙 세트의 첫 번째 슬라이드만 최우선 로드
-        const isFirstVisible = idx === realLength || (items.length === 1 && idx === 0);
-
-        // 🟢 가시성 기반 로딩: 인접 슬라이드는 eager, 나머지는 lazy 처리
-        const isVisible = idx === realLength || idx === realLength - 1 || idx === realLength + 1;
-        const shouldLoadEager = items.length === 1 || isVisible;
+    ({
+        item,
+        idx,
+        realLength,
+        isInitialRender,
+    }: {
+        item: SliderItem;
+        idx: number;
+        realLength: number;
+        isInitialRender: boolean;
+    }) => {
+        // 🟢 [LCP 최적화] 초기 렌더링 시 첫 번째 이미지(idx === 0)에만 priority 부여
+        // 초기 렌더링이 아닐 때는 중앙 세트의 첫 번째(idx === realLength)에 priority
+        const isFirstVisible = isInitialRender ? idx === 0 : idx === realLength;
+        const hasPriority = isFirstVisible || (realLength === 1 && idx === 0);
 
         return (
             <Link
@@ -44,16 +52,12 @@ const SliderItemComponent = memo(
                             alt={item.location || "Course Image"}
                             fill
                             className="object-cover"
-                            // 🟢 [LCP 해결] 첫 화면 이미지는 priority와 eager를 함께 적용하여 경고를 제거합니다
-                            priority={isFirstVisible}
-                            loading={isFirstVisible ? "eager" : shouldLoadEager ? "eager" : "lazy"}
-                            // 🟢 [500 에러 해결] 서버 연산 시간을 단축하기 위해 품질을 최적화된 범위(60, 50)로 조정합니다
-                            // next.config.js의 qualities 설정과 일치해야 합니다.
-                            quality={isFirstVisible ? 70 : 55}
-                            // 🟢 [성능 최적화] 브라우저가 미리 공간을 계산하여 렉(Layout Shift)을 방지합니다
+                            // 🟢 [LCP 최적화] 첫 번째 이미지만 priority로 즉시 로드
+                            priority={hasPriority}
+                            loading={hasPriority ? "eager" : "lazy"}
+                            quality={hasPriority ? 75 : 60}
                             sizes="(max-width: 768px) 100vw, 400px"
-                            fetchPriority={isFirstVisible ? "high" : "low"}
-                            // 🟢 [모바일 최적화] WebP 형식 자동 변환 및 이미지 최적화 (Next.js Image 자동 처리)
+                            fetchPriority={hasPriority ? "high" : "auto"}
                             unoptimized={false}
                         />
                     ) : (
@@ -111,45 +115,65 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const [isDragging, setIsDragging] = useState(false);
     const startX = useRef(0);
     const scrollLeft = useRef(0);
+    const [isInitialized, setIsInitialized] = useState(false); // 🟢 초기 렌더링 플래그
 
     // 🟢 [Optimization]: 너비를 ref에 저장하여 강제 리플로우 방지
     const containerWidthRef = useRef<number>(0);
     const realLength = items.length;
 
-    // 🟢 [Optimization]: ResizeObserver를 사용하여 너비 캐싱 (브라우저 부하 최소화)
+    // 🟢 [LCP 최적화] 초기 렌더링: 원본 데이터만 표시, 마운트 후 복제본 추가
+    const renderItems = useMemo(() => {
+        // 초기 렌더링이 아닐 때만 복제 (무한 스크롤 활성화)
+        if (isInitialized && items.length > 1) {
+            return [...items, ...items, ...items];
+        }
+        // 초기 렌더링: 원본 데이터만 반환하여 첫 이미지 즉시 표시
+        return items;
+    }, [items, isInitialized]);
+
+    // 🟢 [LCP 최적화] 마운트 후 무한 스크롤 활성화 및 스크롤 위치 조정
     useEffect(() => {
-        if (!scrollRef.current) return;
+        if (!scrollRef.current || isInitialized || items.length <= 1) {
+            if (items.length <= 1) setIsInitialized(true); // 단일 아이템은 즉시 초기화
+            return;
+        }
 
-        let isInitialized = false;
-        let rafId: number | null = null;
+        const container = scrollRef.current;
+        const initialWidth = container.offsetWidth || container.clientWidth || window.innerWidth;
 
-        const observer = new ResizeObserver((entries) => {
-            // 🟢 [Performance]: ResizeObserver 콜백을 requestAnimationFrame으로 감싸서 성능 최적화
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(() => {
-            for (let entry of entries) {
-                containerWidthRef.current = entry.contentRect.width;
-                // 초기 위치 설정 (1번 세트의 시작점) - 한 번만 실행
-                if (!isInitialized && realLength > 1 && scrollRef.current) {
-                    isInitialized = true;
-                    scrollRef.current.scrollTo({
-                        left: containerWidthRef.current * realLength,
-                        behavior: "auto",
-                    });
+        if (initialWidth > 0) {
+            containerWidthRef.current = initialWidth;
+
+            // 🟢 복제본을 추가한 후 중앙 세트로 스크롤
+            setIsInitialized(true);
+
+            // 🟢 다음 프레임에서 스크롤 위치 조정 (DOM 업데이트 후)
+            requestAnimationFrame(() => {
+                if (container) {
+                    container.scrollLeft = initialWidth * realLength;
                     setCurrentIndex(realLength);
                 }
-            }
+            });
+        }
+
+        let rafId: number | null = null;
+
+        // 🟢 ResizeObserver는 이후 크기 변경 감지용으로만 사용
+        const observer = new ResizeObserver((entries) => {
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                for (let entry of entries) {
+                    containerWidthRef.current = entry.contentRect.width;
+                }
             });
         });
 
-        observer.observe(scrollRef.current);
+        observer.observe(container);
         return () => {
             if (rafId) cancelAnimationFrame(rafId);
             observer.disconnect();
         };
-    }, [realLength]);
-
-    const renderItems = useMemo(() => (items.length > 1 ? [...items, ...items, ...items] : items), [items]);
+    }, [realLength, isInitialized, items.length]);
 
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scrollRafRef = useRef<number | null>(null);
@@ -161,29 +185,29 @@ export default function HeroSlider({ items }: HeroSliderProps) {
 
         // 🟢 [Performance]: 스크롤 이벤트를 requestAnimationFrame으로 디바운싱
         scrollRafRef.current = requestAnimationFrame(() => {
-        scrollTimeoutRef.current = setTimeout(() => {
-            const container = scrollRef.current;
-            const width = containerWidthRef.current; // 캐싱된 너비 사용
+            scrollTimeoutRef.current = setTimeout(() => {
+                const container = scrollRef.current;
+                const width = containerWidthRef.current; // 캐싱된 너비 사용
 
-            if (container && width > 0 && realLength > 1) {
-                const scrollLeftVal = container.scrollLeft;
-                const index = Math.round(scrollLeftVal / width);
-                setCurrentIndex(index);
+                if (container && width > 0 && realLength > 1) {
+                    const scrollLeftVal = container.scrollLeft;
+                    const index = Math.round(scrollLeftVal / width);
+                    setCurrentIndex(index);
 
-                // 무한 스크롤 루프 로직
-                if (scrollLeftVal >= width * (realLength * 2)) {
-                    container.scrollTo({
-                        left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
-                        behavior: "auto",
-                    });
-                } else if (scrollLeftVal <= width * 0.5) {
-                    container.scrollTo({
-                        left: scrollLeftVal + width * realLength,
-                        behavior: "auto",
-                    });
+                    // 🟢 무한 스크롤 루프 로직 (반응성 향상: 0.5 -> 0.1로 조정하여 부드러운 전환)
+                    if (scrollLeftVal >= width * (realLength * 2)) {
+                        container.scrollTo({
+                            left: width * realLength + (scrollLeftVal - width * (realLength * 2)),
+                            behavior: "auto",
+                        });
+                    } else if (scrollLeftVal <= width * 0.1) {
+                        container.scrollTo({
+                            left: scrollLeftVal + width * realLength,
+                            behavior: "auto",
+                        });
+                    }
                 }
-            }
-            }, 150); // 🟢 100ms -> 150ms로 증가하여 메인 스레드 부하 감소
+            }, 100); // 🟢 [Snappiness] 150ms -> 100ms로 단축하여 2030 타겟에 맞는 속도감 확보
         });
     }, [realLength]);
 
@@ -252,10 +276,12 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         };
     }, [currentIndex, realLength, isDragging]);
 
-    if (!items || items.length === 0) return null;
+    // 🟢 [Performance] 빈 배열이어도 구조는 유지하여 레이아웃 시프트 방지 및 즉시 표시
+    // if (!items || items.length === 0) return null; // 제거: 항상 렌더링하여 즉시 표시
 
     return (
-        <section className="relative w-full pb-6 pt-2 overflow-hidden">
+        // 🟢 [UX/CLS] 명시적 최소 높이 부여하여 레이아웃 시프트 방지
+        <section className="relative w-full pb-6 pt-2 overflow-hidden min-h-[400px]">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
@@ -264,17 +290,26 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 onMouseUp={() => setIsDragging(false)}
                 onMouseMove={onMouseMove}
                 className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 cursor-grab active:cursor-grabbing will-change-scroll"
-                style={{ scrollBehavior: isDragging ? "auto" : "smooth" }}
+                style={{
+                    scrollBehavior: isDragging ? "auto" : "smooth",
+                }}
             >
-                {renderItems.map((item, idx) => (
-                    <SliderItemComponent
-                        key={`${item.id}-${idx}`}
-                        item={item}
-                        idx={idx}
-                        realLength={realLength}
-                        items={items}
-                    />
-                ))}
+                {/* 🟢 [LCP 최적화] 빈 배열이어도 구조 유지, 데이터가 있으면 즉시 표시 */}
+                {renderItems.length > 0 ? (
+                    renderItems.map((item, idx) => (
+                        <SliderItemComponent
+                            key={`${item.id}-${idx}`}
+                            item={item}
+                            idx={idx}
+                            realLength={realLength}
+                            isInitialRender={!isInitialized}
+                        />
+                    ))
+                ) : (
+                    <div className="min-h-[400px] flex items-center justify-center w-full">
+                        <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                    </div>
+                )}
             </div>
         </section>
     );

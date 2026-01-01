@@ -175,16 +175,16 @@ const AboutPage = () => {
     }, [reviews.length]);
     return (
         <>
-            <main className="min-h-screen bg-white pt-10">
+            <main className="min-h-screen bg-white dark:bg-[#0f1710] pt-10">
                 {/* 히어로 섹션 */}
                 <section className="pt-10 pb-10 px-4">
                     <div className="max-w-[500px] mx-auto text-center">
                         <div className="mb-6">
                             <span className="text-6xl">📦</span>
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-4">여행, 이제 직접 안 짜도 돼요</h1>
-                        <p className="text-lg font-semibold text-blue-600 mb-3">밀키트처럼 꺼내 먹는 여행 코스, DoNa</p>
-                        <p className="text-base text-gray-600 mb-6 max-w-3xl mx-auto">
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">여행, 이제 직접 안 짜도 돼요</h1>
+                        <p className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-3">밀키트처럼 꺼내 먹는 여행 코스, DoNa</p>
+                        <p className="text-base text-gray-600 dark:text-gray-400 mb-6 max-w-3xl mx-auto">
                             여행 계획하기 귀찮으시죠? DoNa가 여러분을 위한 완벽한 여행 코스를 준비해드립니다. 컨셉과
                             카테고리만 선택하면 바로 출발할 수 있어요!
                         </p>
@@ -212,63 +212,63 @@ const AboutPage = () => {
                 </section>
 
                 {/* 사회적 증거 섹션 */}
-                <section className="py-8 px-4 bg-white">
+                <section className="py-8 px-4 bg-white dark:bg-[#0f1710]">
                     <div className="max-w-[500px] mx-auto text-center">
                         <div className="grid grid-cols-1 gap-4">
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-blue-600 mb-1">213+</div>
-                                <div className="text-gray-600">지금까지 여행을 떠난 사용자</div>
+                                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">213+</div>
+                                <div className="text-gray-600 dark:text-gray-400">지금까지 여행을 떠난 사용자</div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-purple-600 mb-1">4.7★</div>
-                                <div className="text-gray-600">평균 사용자 만족도</div>
+                                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">4.7★</div>
+                                <div className="text-gray-600 dark:text-gray-400">평균 사용자 만족도</div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600 mb-1">
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
                                     {loading ? "..." : `${courseCount}개`}
                                 </div>
-                                <div className="text-gray-600">검증된 완벽한 코스</div>
+                                <div className="text-gray-600 dark:text-gray-400">검증된 완벽한 코스</div>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 {/* 서비스 설명 섹션 */}
-                <section className="py-12 px-4 bg-gray-50">
+                <section className="py-12 px-4 bg-gray-50 dark:bg-[#1a241b]">
                     <div className="max-w-[500px] mx-auto">
-                        <h2 className="text-xl font-bold text-center text-gray-900 mb-6">
+                        <h2 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-6">
                             이렇게 간단해요! 3단계로 완성되는 여행
                         </h2>
                         <div className="grid grid-cols-1 gap-6">
                             {/* 1단계 */}
-                            <div className="text-center p-4 rounded-xl bg-white shadow-lg">
-                                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <div className="text-center p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-lg">
+                                <div className="w-12 h-12 bg-blue-600 dark:bg-blue-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="text-xl">1️⃣</span>
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">컨셉 선택</h3>
-                                <p className="text-gray-600 text-sm">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">컨셉 선택</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
                                     커플, 가족, 친구 중에서 누구와 함께 여행할지 선택하세요
                                 </p>
                             </div>
 
                             {/* 2단계 */}
-                            <div className="text-center p-4 rounded-xl bg-white shadow-lg">
-                                <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <div className="text-center p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-lg">
+                                <div className="w-12 h-12 bg-purple-600 dark:bg-purple-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="text-xl">2️⃣</span>
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">AI 코스 추천</h3>
-                                <p className="text-gray-600 text-sm">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">AI 코스 추천</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
                                     AI가 여러분의 취향, 현재 날씨, 이동 동선을 분석해서 완벽한 여행 코스를 추천해드려요
                                 </p>
                             </div>
 
                             {/* 3단계 */}
-                            <div className="text-center p-4 rounded-xl bg-white shadow-lg">
-                                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <div className="text-center p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-lg">
+                                <div className="w-12 h-12 bg-green-600 dark:bg-green-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="text-xl">3️⃣</span>
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">바로 여행 출발</h3>
-                                <p className="text-gray-600 text-sm">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">바로 여행 출발</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
                                     지도에서 코스를 확인하고 바로 여행을 시작하세요!
                                 </p>
                             </div>
@@ -277,9 +277,9 @@ const AboutPage = () => {
                 </section>
 
                 {/* 예시 코스 미리보기 - 한 장 슬라이드 + 드래그/스와이프 */}
-                <section className="py-12 px-4 bg-white select-none">
+                <section className="py-12 px-4 bg-white dark:bg-[#0f1710] select-none">
                     <div className="max-w-[500px] mx-auto">
-                        <h2 className="text-xl font-bold text-center text-gray-900 mb-6">
+                        <h2 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-6">
                             이런 코스들이 준비되어 있어요
                         </h2>
                         <div className="relative">
@@ -353,12 +353,12 @@ const AboutPage = () => {
                                     {loading ? (
                                         [0, 1, 2].map((i) => (
                                             <div key={i} className="w-full flex-shrink-0">
-                                                <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
-                                                    <div className="h-40 bg-gray-300"></div>
+                                                <div className="bg-white dark:bg-[#1a241b] rounded-xl shadow-lg overflow-hidden animate-pulse">
+                                                    <div className="h-40 bg-gray-300 dark:bg-gray-700"></div>
                                                     <div className="p-4">
-                                                        <div className="h-6 bg-gray-300 rounded mb-2"></div>
-                                                        <div className="h-4 bg-gray-300 rounded mb-3"></div>
-                                                        <div className="h-4 bg-gray-300 rounded"></div>
+                                                        <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+                                                        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-3"></div>
+                                                        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -367,7 +367,7 @@ const AboutPage = () => {
                                         courses.map((course) => (
                                             <div key={course.id} className="w-full flex-shrink-0">
                                                 <div
-                                                    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
+                                                    className="bg-white dark:bg-[#1a241b] rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
                                                     onClick={() => router.push(`/courses/${course.id}`)}
                                                 >
                                                     <div className="h-40 relative">
@@ -386,39 +386,39 @@ const AboutPage = () => {
                                                     </div>
                                                     <div className="p-3">
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <h3 className="text-base font-bold text-gray-900 truncate flex-1 mr-2">
+                                                            <h3 className="text-base font-bold text-gray-900 dark:text-white truncate flex-1 mr-2">
                                                                 {course.title}
                                                             </h3>
-                                                            <div className="flex items-center text-sm text-yellow-500">
+                                                            <div className="flex items-center text-sm text-yellow-500 dark:text-yellow-400">
                                                                 <span>⭐</span>
                                                                 <span className="ml-1">{course.rating || 4.5}</span>
                                                             </div>
                                                         </div>
-                                                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                                                             {course.description || "완벽한 여행 코스"}
                                                         </p>
                                                         <div className="flex items-center gap-2 mb-3">
-                                                            <div className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs flex items-center">
+                                                            <div className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center">
                                                                 <span className="mr-1">⏰</span>
                                                                 <span>{course.duration || "4시간"}</span>
                                                             </div>
-                                                            <div className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs flex items-center">
+                                                            <div className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center">
                                                                 <span className="mr-1">📍</span>
                                                                 <span>{course.location || "서울"}</span>
                                                             </div>
                                                             {course.price && (
-                                                                <div className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs flex items-center">
+                                                                <div className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center">
                                                                     <span className="mr-1">💰</span>
                                                                     <span>{course.price}</span>
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className="flex items-center justify-between">
-                                                            <div className="flex items-center text-sm text-gray-500">
+                                                            <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                                                                 <span className="mr-1">👥</span>
                                                                 <span>지금 {course.participants || 0}명 진행중</span>
                                                             </div>
-                                                            <button className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+                                                            <button className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
                                                                 코스 시작하기
                                                             </button>
                                                         </div>
@@ -427,7 +427,7 @@ const AboutPage = () => {
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="w-full flex-shrink-0 text-center text-gray-500 py-8">
+                                        <div className="w-full flex-shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
                                             준비된 코스가 없습니다.
                                         </div>
                                     )}
@@ -438,7 +438,7 @@ const AboutPage = () => {
                                     <div
                                         key={i}
                                         className={`w-3 h-3 rounded-full transition-colors ${
-                                            currentCourseIndex === i ? "bg-blue-600" : "bg-gray-300"
+                                            currentCourseIndex === i ? "bg-blue-600 dark:bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
                                         }`}
                                     />
                                 ))}
@@ -448,9 +448,9 @@ const AboutPage = () => {
                 </section>
 
                 {/* 사용자 후기 섹션 */}
-                <section className="py-12 px-4 bg-gray-50">
-                    <div className="max-w-[500px] mx-auto text-black">
-                        <h2 className="text-xl font-bold text-center text-gray-900 mb-6">
+                <section className="py-12 px-4 bg-gray-50 dark:bg-[#1a241b]">
+                    <div className="max-w-[500px] mx-auto text-black dark:text-white">
+                        <h2 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-6">
                             실제 사용자들의 생생한 후기
                         </h2>
                         <div className="relative">
@@ -463,16 +463,16 @@ const AboutPage = () => {
                                     {loading ? (
                                         [0, 1, 2].map((i) => (
                                             <div key={i} className="w-full flex-shrink-0">
-                                                <div className="bg-white p-4 rounded-xl shadow-lg animate-pulse">
+                                                <div className="bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-lg animate-pulse">
                                                     <div className="flex items-center mb-3">
-                                                        <div className="w-10 h-10 bg-gray-300 rounded-full mr-3"></div>
+                                                        <div className="w-10 h-10 bg-gray-300 dark:bg-gray-700 rounded-full mr-3"></div>
                                                         <div className="flex-1">
-                                                            <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                                                            <div className="h-3 bg-gray-300 rounded"></div>
+                                                            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+                                                            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                                         </div>
                                                     </div>
-                                                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                                                    <div className="h-4 bg-gray-300 rounded"></div>
+                                                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+                                                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded"></div>
                                                 </div>
                                             </div>
                                         ))
@@ -496,34 +496,34 @@ const AboutPage = () => {
                                             const { bg, text } = getColorByConcept((review as any).course?.concept);
                                             return (
                                                 <div key={review.id} className="w-full flex-shrink-0">
-                                                    <div className="bg-white p-4 rounded-xl shadow-lg">
+                                                    <div className="bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-lg">
                                                         <div className="flex items-center mb-3">
                                                             <div
-                                                                className={`${bg} w-10 h-10 rounded-full flex items-center justify-center mr-3`}
+                                                                className={`${bg} dark:opacity-80 w-10 h-10 rounded-full flex items-center justify-center mr-3`}
                                                             >
                                                                 <span className={`font-semibold ${text}`}>
                                                                     {review.user?.initial}
                                                                 </span>
                                                             </div>
                                                             <div>
-                                                                <div className="font-semibold">
+                                                                <div className="font-semibold dark:text-white">
                                                                     {review.user?.nickname}
                                                                 </div>
-                                                                <div className="text-xs text-gray-500 line-clamp-1">
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
                                                                     {(review as any).course?.title}
                                                                 </div>
                                                             </div>
-                                                            <div className="ml-auto text-yellow-400">
+                                                            <div className="ml-auto text-yellow-400 dark:text-yellow-500">
                                                                 {"⭐".repeat(review.rating || 0)}
                                                             </div>
                                                         </div>
-                                                        <p className="text-gray-600 text-sm">"{review.comment}"</p>
+                                                        <p className="text-gray-600 dark:text-gray-400 text-sm">"{review.comment}"</p>
                                                         {review.imageUrls && review.imageUrls.length > 0 && (
                                                             <div className="grid grid-cols-3 gap-2 mt-3">
                                                                 {review.imageUrls.map((imageUrl, idx) => (
                                                                     <div
                                                                         key={idx}
-                                                                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer hover:opacity-90 transition-opacity"
                                                                         onClick={() => {
                                                                             setPreviewImages(review.imageUrls || []);
                                                                             setPreviewImageIndex(idx);
@@ -548,7 +548,7 @@ const AboutPage = () => {
                                             );
                                         })
                                     ) : (
-                                        <div className="w-full flex-shrink-0 text-center text-gray-500 py-8">
+                                        <div className="w-full flex-shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
                                             등록된 후기가 없습니다.
                                         </div>
                                     )}
@@ -558,12 +558,12 @@ const AboutPage = () => {
                             {/* 페이지 인디케이터 */}
                             <div className="flex justify-center mt-8 space-x-2">
                                 {Array.from({ length: Math.max(reviews.length, 1) }).map((_, index) => (
-                                    <div
-                                        key={index}
-                                        className={`w-3 h-3 rounded-full transition-colors ${
-                                            currentReviewPage === index ? "bg-blue-600" : "bg-gray-300"
-                                        }`}
-                                    />
+                                <div
+                                    key={index}
+                                    className={`w-3 h-3 rounded-full transition-colors ${
+                                        currentReviewPage === index ? "bg-blue-600 dark:bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                                    }`}
+                                />
                                 ))}
                             </div>
                         </div>
@@ -602,22 +602,23 @@ const AboutPage = () => {
                 </section>
 
                 {/* CTA 섹션 */}
-                <section className="py-12 px-4">
+                <section className="py-12 px-4 bg-white dark:bg-[#0f1710]">
                     <div className="max-w-[500px] mx-auto text-center">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">지금 바로 여행을 시작해보세요!</h2>
-                        <p className="text-xl text-gray-600 mb-8">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">지금 바로 여행을 시작해보세요!</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
                             복잡한 계획 없이, 밀키트처럼 간편하게 완벽한 여행을 경험해보세요.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
                             <Link
                                 href="/personalized-home"
-                                className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
+                                prefetch={true}
+                                className="bg-blue-600 dark:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-lg"
                             >
                                 🎯 AI 추천 바로 가기
                             </Link>
                             <Link
                                 href="/map"
-                                className="bg-purple-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-lg"
+                                className="bg-purple-600 dark:bg-purple-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors text-lg"
                             >
                                 🗺️ 지도에서 탐색하기
                             </Link>

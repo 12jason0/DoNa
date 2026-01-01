@@ -1,11 +1,11 @@
 export default function TermsOfServicePage() {
     const CONTACT_EMAIL = "12jason@donacourse.com";
     return (
-        <div className="flex flex-col min-h-screen bg-white">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white">
+        <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
+            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">이용약관</h1>
-                    <p className="text-gray-600 mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">이용약관</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
                         서비스 이용에 필요한 핵심 조항을 빠르게 찾아볼 수 있도록 구성했습니다.
                     </p>
 
@@ -14,53 +14,53 @@ export default function TermsOfServicePage() {
                         <div className="mb-6 flex flex-wrap gap-2">
                             <a
                                 href="#def"
-                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm hover:bg-white border"
+                                className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
                                 정의
                             </a>
                             <a
                                 href="#change"
-                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm hover:bg-white border"
+                                className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
                                 약관 변경
                             </a>
                             <a
                                 href="#service"
-                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm hover:bg-white border"
+                                className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
                                 서비스 제공
                             </a>
                             <a
                                 href="#signup"
-                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm hover:bg-white border"
+                                className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
                                 회원가입
                             </a>
                             <a
                                 href="#duty"
-                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm hover:bg-white border"
+                                className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
                                 회원 의무
                             </a>
                             <a
                                 href="#ip"
-                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm hover:bg-white border"
+                                className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
                                 저작권
                             </a>
                         </div>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제1조 (목적)</h2>
-                        <p className="text-gray-700 mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제1조 (목적)</h2>
+                        <p className="text-gray-700 dark:text-gray-300 mb-6">
                             이 약관은 DoNa(이하 "서비스")가 제공하는 여행 코스 추천 서비스 및 관련 제반 서비스의 이용과
                             관련하여 서비스 제공자와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을
                             목적으로 합니다.
                         </p>
 
-                        <h2 id="def" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
+                        <h2 id="def" className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 scroll-mt-24">
                             제2조 (용어의 정의)
                         </h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 <strong>"서비스"</strong>라 함은 DoNa가 제공하는 여행 코스 추천, 지도 서비스, 사용자
                                 맞춤 추천 등 모든 관련 서비스를 의미합니다.
@@ -78,10 +78,10 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 id="change" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
+                        <h2 id="change" className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 scroll-mt-24">
                             제3조 (약관의 효력 및 변경)
                         </h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 본 약관은 서비스 화면에 게시하거나 기타의 방법으로 이용자에게 공지함으로써 효력을
                                 발생합니다.
@@ -95,7 +95,7 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 id="service" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
+                        <h2 id="service" className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 scroll-mt-24">
                             제4조 (서비스의 제공)
                         </h2>
                         <p className="text-gray-700 mb-4">
@@ -105,7 +105,7 @@ export default function TermsOfServicePage() {
                             필수적인 과정입니다.
                         </p>
                         <p className="text-gray-700 mb-4">서비스는 다음과 같은 업무를 제공합니다.</p>
-                        <ul className="list-disc pl-6 mb-6 text-gray-700 space-y-1">
+                        <ul className="list-disc pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-1">
                             <li>AI 기반 여행 코스 추천 서비스</li>
                             <li>사용자 활동 패턴 분석을 통한 맞춤형 데이트 코스 추천</li>
                             <li>탈출방 게임 추천 및 진행 관리</li>
@@ -116,8 +116,8 @@ export default function TermsOfServicePage() {
                             <li>기타 여행 관련 부가 서비스</li>
                         </ul>
 
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">제4-1조 (정보의 제공 및 활용)</h3>
-                        <ul className="list-disc pl-6 mb-6 text-gray-700 space-y-2">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">제4-1조 (정보의 제공 및 활용)</h3>
+                        <ul className="list-disc pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 회사는 서비스 품질 향상 및 사용자 맞춤형 서비스 제공을 위해 사용자의 서비스 이용
                                 기록(코스 조회, 클릭, 좋아요, 공유, 체류 시간, 검색 기록 등)을 수집하고 활용할 수
@@ -137,10 +137,10 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 id="signup" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
+                        <h2 id="signup" className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 scroll-mt-24">
                             제5조 (회원가입)
                         </h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 이용자는 서비스에서 정한 가입 양식에 따라 회원정보를 기입한 후 본 약관에 동의한다는
                                 의사표시를 함으로써 회원가입을 신청합니다.
@@ -158,8 +158,8 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제6조 (회원탈퇴 및 자격 상실)</h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제6조 (회원탈퇴 및 자격 상실)</h2>
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>회원은 언제든지 탈퇴를 요청할 수 있으며, 서비스는 즉시 회원탈퇴를 처리합니다.</li>
                             <li>
                                 회원이 다음 각 호의 사유에 해당하는 경우, 서비스는 회원자격을 제한 및 정지시킬 수
@@ -178,11 +178,11 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 id="duty" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
+                        <h2 id="duty" className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 scroll-mt-24">
                             제7조 (회원의 의무)
                         </h2>
                         <p className="text-gray-700 mb-4">회원은 다음 행위를 하여서는 안됩니다.</p>
-                        <ul className="list-disc pl-6 mb-6 text-gray-700 space-y-1">
+                        <ul className="list-disc pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-1">
                             <li>신청 또는 변경 시 허위내용의 등록</li>
                             <li>타인의 정보 도용</li>
                             <li>서비스에 게시된 정보의 변경</li>
@@ -193,18 +193,18 @@ export default function TermsOfServicePage() {
                                 외설 또는 폭력적인 메시지, 화상, 음성 기타 공서양속에 반하는 정보를 서비스에 공개 또는
                                 게시하는 행위
                             </li>
-                            <li className="font-semibold text-blue-800 bg-blue-50 p-2 rounded-md">
+                            <li className="font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
                                 사진 등 콘텐츠 업로드 시, 타인의 저작권, 초상권 등 제3자의 권리를 침해하는 콘텐츠를
                                 게시하는 행위. 회원이 게시하는 모든 콘텐츠에 대한 법적 책임은 회원 본인에게 있습니다.
                             </li>
-                            <li className="font-semibold text-blue-800 bg-blue-50 p-2 rounded-md">
+                            <li className="font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md">
                                 이용자가 업로드한 사진 데이터는 오직 서비스 내 '추억 액자' 기능 제공을 위한 목적으로만
                                 사용되며, 추천 알고리즘 학습, 광고 타게팅, 외부 제공 등 다른 용도로 사용하지 않습니다.
                             </li>
                         </ul>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제8조 (서비스의 중단)</h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제8조 (서비스의 중단)</h2>
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 서비스는 컴퓨터 등 정보통신설비의 보수점검, 교체 및 고장, 통신의 두절 등의 사유가 발생한
                                 경우에는 서비스의 제공을 일시적으로 중단할 수 있습니다.
@@ -216,10 +216,10 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 id="ip" className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24">
+                        <h2 id="ip" className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 scroll-mt-24">
                             제9조 (저작권의 귀속 및 이용제한)
                         </h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>서비스에 의해 작성된 저작물에 대한 저작권 기타 지적재산권은 서비스에 귀속합니다.</li>
                             <li>
                                 이용자는 서비스를 이용함으로써 얻은 정보 중 서비스에게 지적재산권이 귀속된 정보를
@@ -228,8 +228,8 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제10조 (손해배상)</h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제10조 (손해배상)</h2>
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 서비스는 무료로 제공되는 서비스와 관련하여 회원에게 어떠한 손해가 발생하더라도 동 손해가
                                 서비스의 고의 또는 중과실에 의한 경우를 제외하고는 이에 대하여 책임을 부담하지
@@ -241,8 +241,8 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제11조 (면책조항)</h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제11조 (면책조항)</h2>
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 서비스는 천재지변 또는 이에 준하는 불가항력으로 인하여 서비스를 제공할 수 없는 경우에는
                                 서비스 제공에 관한 책임이 면제됩니다.
@@ -254,8 +254,8 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제12조 (분쟁해결)</h2>
-                        <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-2">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제12조 (분쟁해결)</h2>
+                        <ul className="list-decimal pl-6 mb-6 text-gray-700 dark:text-gray-300 space-y-2">
                             <li>
                                 서비스와 회원은 서비스 이용과 관련해 발생한 분쟁을 원만하게 해결하기 위하여 필요한 모든
                                 노력을 하여야 합니다.
@@ -266,12 +266,12 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">제13조 (준거법)</h2>
-                        <p className="text-gray-700 mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">제13조 (준거법)</h2>
+                        <p className="text-gray-700 dark:text-gray-300 mb-6">
                             본 약관의 해석 및 서비스와 회원간의 분쟁에 대하여는 대한민국의 법을 적용합니다.
                         </p>
 
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">부칙</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4">부칙</h2>
                         <ul className="list-decimal pl-6 mb-6 text-gray-700 space-y-1">
                             <li>본 약관은 2025년 9월 10일부터 적용됩니다.</li>
                             <li>
@@ -280,9 +280,9 @@ export default function TermsOfServicePage() {
                             </li>
                         </ul>
 
-                        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                            <h3 className="font-semibold text-gray-900 mb-2">📞 문의처</h3>
-                            <p className="text-gray-700 text-sm">
+                        <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">📞 문의처</h3>
+                            <p className="text-gray-700 dark:text-gray-300 text-sm">
                                 본 약관에 대한 문의사항이 있으시면 아래로 연락주시기 바랍니다.
                             </p>
                             <p className="text-gray-700 text-sm mt-2">
@@ -292,8 +292,8 @@ export default function TermsOfServicePage() {
                             </p>
                         </div>
 
-                        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                            <h3 className="font-semibold text-gray-900 mb-2">사업자 정보</h3>
+                        <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">사업자 정보</h3>
                             <p className="text-gray-700 text-sm mb-1">
                                 <strong>상호:</strong> (주)두나 (DoNa)
                             </p>
@@ -309,7 +309,7 @@ export default function TermsOfServicePage() {
                             <p className="text-gray-700 text-sm mb-1">
                                 <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
                             </p>
-                            <p className="text-gray-700 text-sm">
+                            <p className="text-gray-700 dark:text-gray-300 text-sm">
                                 <strong>고객센터:</strong> {CONTACT_EMAIL}
                             </p>
                         </div>

@@ -6,7 +6,7 @@ import React from "react";
 const TAG_CATEGORIES = {
     MANDATORY: {
         label: "활동",
-        tags: ["맛집투어", "카페투어", "주점", "액티비티", "전시관람"] as string[],
+        tags: ["맛집탐방", "카페투어", "주점", "액티비티", "전시관람"] as string[],
     },
     VIBE: {
         label: "분위기",
@@ -64,14 +64,13 @@ export default function CategoryFilterModal({
 
                         // allTags에 없는 경우 하드코딩된 태그 사용 (fallback)
                         const displayTags =
-                            categoryTags.length > 0
-                                ? categoryTags
-                                : category.tags.map((name) => ({ id: 0, name }));
+                            categoryTags.length > 0 ? categoryTags : category.tags.map((name) => ({ id: 0, name }));
 
                         return (
                             <div key={key}>
                                 <div className="text-[15px] font-bold mb-3 text-gray-900">
-                                    {category.label} <span className="text-[12px] font-normal text-gray-500">({key})</span>
+                                    {category.label}{" "}
+                                    <span className="text-[12px] font-normal text-gray-500">({key})</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {displayTags.map((tag) => {
@@ -117,4 +116,3 @@ export default function CategoryFilterModal({
         </div>
     );
 }
-

@@ -1667,6 +1667,7 @@ const AIRecommender = () => {
                                     <Link
                                         key={String(t.id)}
                                         href={`/courses/${t.id}`}
+                                        prefetch={true}
                                         className="shrink-0 w-[210px] rounded-xl bg-white border border-gray-100 hover:shadow-sm transition-all"
                                     >
                                         <div className="relative w-full aspect-4/3 rounded-t-xl overflow-hidden bg-gray-100">

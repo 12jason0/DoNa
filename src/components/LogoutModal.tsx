@@ -11,15 +11,15 @@ interface LogoutModalProps {
 
 export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-2000 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-2000 animate-in fade-in duration-200">
             {/* 모달 박스 */}
-            <div className="bg-white rounded-xl border border-gray-100 p-8 w-80 transform transition-all animate-in zoom-in-95 duration-200">
+            <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-8 w-80 transform transition-all animate-in zoom-in-95 duration-200">
                 <div className="text-center mb-6 tracking-tight">
                     {/* 아이콘 */}
                     <div className="flex justify-center mb-4">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-16 w-16 text-gray-400"
+                            className="h-16 w-16 text-gray-400 dark:text-gray-500"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -32,15 +32,15 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                             />
                         </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">잠깐만요!</h3>
-                    <p className="text-gray-500 font-medium tracking-tight">정말 로그아웃 하시겠어요?</p>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">잠깐만요!</h3>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight">정말 로그아웃 하시겠어요?</p>
                 </div>
 
                 <div className="flex gap-3">
                     {/* 머물기 버튼 (취소) */}
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-3.5 bg-gray-100 text-gray-700 rounded-lg font-bold text-[15px] hover:bg-gray-200 transition-colors tracking-tight"
+                        className="flex-1 px-4 py-3.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-[15px] hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors tracking-tight"
                     >
                         머물기
                     </button>
@@ -48,7 +48,7 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                     {/* 로그아웃 버튼 (확인) - 검정색으로 변경 */}
                     <button
                         onClick={onConfirm}
-                        className="flex-1 px-4 py-3.5 bg-slate-900 text-white rounded-lg font-bold text-[15px] hover:bg-slate-800 transition-colors tracking-tight"
+                        className="flex-1 px-4 py-3.5 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-bold text-[15px] hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors tracking-tight"
                     >
                         로그아웃
                     </button>

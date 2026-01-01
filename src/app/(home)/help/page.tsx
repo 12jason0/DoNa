@@ -102,10 +102,10 @@ const FAQPage = () => {
     });
 
     return (
-        <div className="flex flex-col min-h-screen bg-white">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white">
+        <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
+            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold mb-6 text-center text-black">자주 묻는 질문</h1>
+                    <h1 className="text-3xl font-bold mb-6 text-center text-black dark:text-white">자주 묻는 질문</h1>
 
                     {/* 검색 및 필터 */}
                     <div className="mb-8">
@@ -120,7 +120,7 @@ const FAQPage = () => {
                                     placeholder="질문을 검색해보세요..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="text-gray-800 w-full pl-10 pr-4 py-3 border border-gray-300 rounded-2xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                                    className="text-gray-800 dark:text-white w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-2xl bg-white dark:bg-[#1a241b] shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 />
                             </div>
                         </div>
@@ -137,8 +137,8 @@ const FAQPage = () => {
                                     aria-pressed={selectedCategory === category}
                                     className={`${
                                         selectedCategory === category
-                                            ? "bg-blue-600 text-white border-blue-600 shadow"
-                                            : "bg-gray-100 text-gray-800 border-gray-200 hover:bg-white"
+                                            ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700 shadow"
+                                            : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700"
                                     } min-w-[88px] px-4 py-3 rounded-2xl text-sm font-semibold border text-center leading-snug break-keep hover:cursor-pointer`}
                                 >
                                     {category}
@@ -151,19 +151,19 @@ const FAQPage = () => {
                     <div className="space-y-4">
                         {filteredFAQs.length > 0 ? (
                             filteredFAQs.map((faq) => (
-                                <div key={faq.id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                                <div key={faq.id} className="bg-white dark:bg-[#1a241b] border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm">
                                     <button
                                         onClick={() => toggleFAQ(faq.id)}
-                                        className="hover:cursor-pointer w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
+                                        className="hover:cursor-pointer w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <span className="text-sm px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
+                                            <span className="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
                                                 {faq.category}
                                             </span>
-                                            <span className="font-medium text-gray-900">{faq.question}</span>
+                                            <span className="font-medium text-gray-900 dark:text-white">{faq.question}</span>
                                         </div>
                                         <span
-                                            className={`text-gray-400 transition-transform ${
+                                            className={`text-gray-400 dark:text-gray-500 transition-transform ${
                                                 faq.isOpen ? "rotate-180" : ""
                                             }`}
                                         >
@@ -172,8 +172,8 @@ const FAQPage = () => {
                                     </button>
                                     {faq.isOpen && (
                                         <div className="px-6 pb-4">
-                                            <div className="border-t border-gray-100 pt-4">
-                                                <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                                            <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{faq.answer}</p>
                                             </div>
                                         </div>
                                     )}
@@ -182,22 +182,22 @@ const FAQPage = () => {
                         ) : (
                             <div className="text-center py-12">
                                 <div className="text-6xl mb-4">🔍</div>
-                                <h3 className="text-xl font-semibold text-gray-900 mb-2">검색 결과가 없습니다</h3>
-                                <p className="text-gray-600">다른 키워드로 검색해보세요.</p>
+                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">검색 결과가 없습니다</h3>
+                                <p className="text-gray-600 dark:text-gray-400">다른 키워드로 검색해보세요.</p>
                             </div>
                         )}
                     </div>
 
                     {/* 추가 문의 안내 */}
-                    <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                        <h3 className="text-lg font-semibold text-blue-900 mb-2">더 궁금한 점이 있으신가요?</h3>
-                        <p className="text-blue-700 mb-4">
+                    <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-6 text-center">
+                        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">더 궁금한 점이 있으신가요?</h3>
+                        <p className="text-blue-700 dark:text-blue-400 mb-4">
                             위의 질문에서 답을 찾지 못하셨다면 이메일로 문의해주세요:{" "}
-                            <strong className="text-blue-800">12jason@donacourse.com</strong>
+                            <strong className="text-blue-800 dark:text-blue-300">12jason@donacourse.com</strong>
                         </p>
                         <a
                             href="/contact"
-                            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors hover:cursor-pointer mt-2"
+                            className="inline-block bg-blue-600 dark:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:cursor-pointer mt-2"
                         >
                             문의하기
                         </a>

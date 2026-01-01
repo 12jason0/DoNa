@@ -275,32 +275,32 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-green-50 via-[var(--brand-cream)] to-white">
+        <div className="min-h-screen bg-linear-to-br from-green-50 via-[var(--brand-cream)] to-white dark:from-[#0f1710] dark:via-[#0f1710] dark:to-[#0f1710]">
             <main className="max-w-sm mx-auto px-4 py-8 pb-28 overflow-y-auto">
-                <div className="w-full bg-white rounded-xl border border-gray-100 p-6 flex flex-col">
+                <div className="w-full bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 flex flex-col">
                     <div className="text-center mb-6">
-                        <div className="mx-auto mb-2 w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <div className="mx-auto mb-2 w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                             <span className="text-2xl">🌿</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1 font-brand tracking-tight">로그인</h1>
-                        <p className="text-gray-600 text-sm">DoNa에 오신 것을 환영합니다</p>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 font-brand tracking-tight">로그인</h1>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">DoNa에 오신 것을 환영합니다</p>
                     </div>
                     <div ref={scrollAreaRef}>
                         {message && (
-                            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-green-600 text-sm">{message}</p>
+                            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg">
+                                <p className="text-green-600 dark:text-green-400 text-sm">{message}</p>
                             </div>
                         )}
 
                         {error && (
-                            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-red-600 text-sm">{error}</p>
+                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="space-y-6 text-gray-600">
+                        <form onSubmit={handleSubmit} className="space-y-6 text-gray-600 dark:text-gray-400">
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2">
                                     이메일
                                 </label>
                                 <input
@@ -311,13 +311,13 @@ const Login = () => {
                                     onChange={handleChange}
                                     required
                                     autoComplete="username"
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] dark:text-white focus:bg-white dark:focus:bg-[#0f1710] focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 focus:border-emerald-500 dark:focus:border-emerald-600"
                                     placeholder="이메일을 입력하세요"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-2">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2">
                                     비밀번호
                                 </label>
                                 <div className="relative">
@@ -329,14 +329,14 @@ const Login = () => {
                                         onChange={handleChange}
                                         required
                                         autoComplete="current-password"
-                                        className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg bg-white focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        className="w-full px-4 py-3 pr-12 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] dark:text-white focus:bg-white dark:focus:bg-[#0f1710] focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 focus:border-emerald-500 dark:focus:border-emerald-600"
                                         placeholder="비밀번호를 입력하세요"
                                         disabled={loading}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition-colors"
                                         disabled={loading}
                                         aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
                                     >
@@ -382,18 +382,18 @@ const Login = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 tracking-tight"
+                                className="w-full text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 tracking-tight"
                             >
                                 {loading ? "로그인 중..." : "로그인"}
                             </button>
                         </form>
 
                         <div className="mt-6 text-center">
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 dark:text-gray-400">
                                 계정이 없으신가요?{" "}
                                 <Link
                                     href={`/signup?next=${encodeURIComponent(next)}`}
-                                    className="text-emerald-600 hover:text-emerald-700 font-medium"
+                                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-500 font-medium"
                                 >
                                     회원가입
                                 </Link>
@@ -403,10 +403,10 @@ const Login = () => {
                         <div className="mt-2">
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-green-100" />
+                                    <div className="w-full border-t border-green-100 dark:border-gray-700" />
                                 </div>
                                 <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">또는</span>
+                                    <span className="px-2 bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400">또는</span>
                                 </div>
                             </div>
                         </div>

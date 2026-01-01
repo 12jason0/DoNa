@@ -211,6 +211,7 @@ function GuidePageInner() {
                 // 코스가 없거나 접근할 수 없는 경우 이전 페이지로 이동
                 if (err?.message?.includes("not found") || err?.message?.includes("404")) {
                     alert("코스를 찾을 수 없습니다.");
+                    router.prefetch("/");
                     router.push("/");
                 } else if (err?.message?.includes("Locked") || err?.message?.includes("403")) {
                     alert("이 코스는 프리미엄 멤버십이 필요합니다.");
@@ -534,7 +535,10 @@ function GuidePageInner() {
                             후기 작성하기
                         </button>
                         <button
-                            onClick={() => router.push("/")}
+                            onClick={() => {
+                                router.prefetch("/");
+                                router.push("/");
+                            }}
                             className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
                         >
                             홈으로 가기

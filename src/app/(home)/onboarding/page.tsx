@@ -315,6 +315,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             if (window.history.length > 1) {
                 window.history.back(); // 빠른 뒤로 가기
             } else {
+                router.prefetch("/");
                 router.push("/");
             }
         }
@@ -390,19 +391,19 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     if (showResult) {
         // (기존 코드와 동일, 생략 가능하지만 문맥상 유지)
         return (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+            <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
                 {/* ...결과 UI 코드... */}
-                <div className="bg-white w-full max-w-sm rounded-xl border border-gray-100 p-6 text-center relative overflow-hidden">
-                    <button onClick={completeOnboarding} className="absolute top-4 right-4 text-gray-400">
+                <div className="bg-white dark:bg-[#1a241b] w-full max-w-sm rounded-xl border border-gray-100 dark:border-gray-800 p-6 text-center relative overflow-hidden">
+                    <button onClick={completeOnboarding} className="absolute top-4 right-4 text-gray-400 dark:text-gray-500">
                         <X size={24} />
                     </button>
                     {/* ... (생략된 내용) ... */}
                     <div className="mt-8">
-                        <h2 className="text-gray-900 text-2xl font-bold mb-2">분석 완료!</h2>
-                        <p className="text-gray-500 mb-6">회원님의 취향 DNA가 추출되었습니다.</p>
+                        <h2 className="text-gray-900 dark:text-white text-2xl font-bold mb-2">분석 완료!</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">회원님의 취향 DNA가 추출되었습니다.</p>
                         <button
                             onClick={completeOnboarding}
-                            className="w-full py-4 bg-black text-white rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform"
+                            className="w-full py-4 bg-black dark:bg-slate-800 text-white rounded-xl font-bold text-lg hover:scale-[1.02] dark:hover:bg-slate-700 transition-transform"
                         >
                             맞춤 코스 확인하기 ➔
                         </button>
@@ -426,14 +427,14 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     // 메인 온보딩 UI (Step 1~4)
     // =================================================================
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm">
             {/* ... 배경 이미지 및 컨테이너 ... */}
-            <div className="relative z-10 w-full h-full max-w-[480px] bg-white sm:h-[85vh] sm:rounded-xl border border-gray-100 overflow-hidden flex flex-col bg-linear-to-br from-slate-50 to-blue-50">
+            <div className="relative z-10 w-full h-full max-w-[480px] bg-white dark:bg-[#1a241b] sm:h-[85vh] sm:rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col bg-linear-to-br from-slate-50 to-blue-50 dark:from-[#0f1710] dark:to-[#1a241b]">
                 {/* 닫기 버튼 */}
                 <div className="absolute top-4 right-4 z-50">
                     <button
                         onClick={handleClose}
-                        className="p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full transition-all text-gray-700 shadow-sm hover:scale-110 active:scale-95"
+                        className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all text-gray-700 dark:text-gray-300 shadow-sm hover:scale-110 active:scale-95"
                     >
                         <X size={20} />
                     </button>
@@ -441,9 +442,9 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
                 {/* Progress Bar */}
                 <div className="px-4 pt-16 pb-2 shrink-0">
-                    <div className="h-1.5 w-full bg-gray-200/80 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-gray-200/80 dark:bg-gray-800/80 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-linear-to-r from-[#7aa06f] to-emerald-500 rounded-full transition-all duration-500"
+                            className="h-full bg-linear-to-r from-[#7aa06f] to-emerald-500 dark:from-emerald-600 dark:to-emerald-400 rounded-full transition-all duration-500"
                             style={{ width: `${Math.min(((currentStep - 1) / (totalSteps - 1)) * 100, 100)}%` }}
                         />
                     </div>
@@ -454,7 +455,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     {currentStep === 1 && (
                         /* Step 1 UI */
                         <div className="animate-slideUp flex flex-col h-full overflow-y-auto scrollbar-hide">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2 mt-4 leading-tight shrink-0 tracking-tight">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-4 leading-tight shrink-0 tracking-tight">
                                 당신이 꿈꾸는
                                 <br />
                                 '완벽한 주말'의 모습은?
@@ -464,7 +465,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                     <button
                                         key={opt.id}
                                         onClick={() => handleVibeSelect(opt)}
-                                        className="relative group overflow-hidden rounded-xl aspect-square border border-gray-100"
+                                        className="relative group overflow-hidden rounded-xl aspect-square border border-gray-100 dark:border-gray-800"
                                     >
                                         <Image
                                             src={opt.img}
@@ -485,26 +486,26 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     {/* Step 2: 가치관 선택 */}
                     {currentStep === 2 && (
                         <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
                                 딱 하나만 고른다면?
                             </h1>
-                            <p className="text-gray-500 mb-8 text-sm">실패 없는 추천을 위해 가치관을 파악합니다.</p>
+                            <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">실패 없는 추천을 위해 가치관을 파악합니다.</p>
                             <div className="flex flex-col gap-4">
                                 {VALUE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.id}
                                         onClick={() => handleValueSelect(opt)}
-                                        className={`w-full bg-white p-5 rounded-xl border transition-all active:scale-95 flex items-center gap-4 text-left group ${
+                                        className={`w-full bg-white dark:bg-[#0f1710] p-5 rounded-xl border transition-all active:scale-95 flex items-center gap-4 text-left group ${
                                             selectedValueId === opt.id
-                                                ? "border-[#7aa06f] ring-2 ring-[#7aa06f]"
-                                                : "border-gray-100 hover:border-gray-300"
+                                                ? "border-[#7aa06f] dark:border-emerald-600 ring-2 ring-[#7aa06f] dark:ring-emerald-600"
+                                                : "border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                                         }`}
                                     >
-                                        <span className="text-3xl bg-gray-50 p-3 rounded-2xl group-hover:scale-110 transition-transform">
+                                        <span className="text-3xl bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl group-hover:scale-110 transition-transform">
                                             {opt.icon}
                                         </span>
                                         <div>
-                                            <h3 className="font-bold text-gray-800 text-lg whitespace-pre-wrap leading-snug tracking-tight">
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg whitespace-pre-wrap leading-snug tracking-tight">
                                                 {opt.title}
                                             </h3>
                                         </div>
@@ -517,24 +518,24 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     {/* Step 3: 동행자 선택 */}
                     {currentStep === 3 && (
                         <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                                 누구와 함께할 때<br />
                                 가장 '나다운'가요?
                             </h1>
-                            <p className="text-gray-500 mb-8 text-sm">주로 함께하는 대상을 알려주세요.</p>
+                            <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">주로 함께하는 대상을 알려주세요.</p>
                             <div className="grid grid-cols-2 gap-3">
                                 {CREW_OPTIONS.map((crew) => (
                                     <button
                                         key={crew.value}
                                         onClick={() => handleCrewSelect(crew.value)}
-                                        className={`p-5 rounded-xl border transition-all text-left active:scale-95 bg-white ${
+                                        className={`p-5 rounded-xl border transition-all text-left active:scale-95 bg-white dark:bg-[#0f1710] ${
                                             selectedCrew === crew.value
-                                                ? "border-[#7aa06f] ring-2 ring-[#7aa06f]"
-                                                : "border-gray-100 hover:border-gray-300"
+                                                ? "border-[#7aa06f] dark:border-emerald-600 ring-2 ring-[#7aa06f] dark:ring-emerald-600"
+                                                : "border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                                         }`}
                                     >
-                                        <div className="text-lg font-bold text-gray-800 mb-1">{crew.label}</div>
-                                        <div className="text-xs text-gray-400">{crew.sub}</div>
+                                        <div className="text-lg font-bold text-gray-800 dark:text-white mb-1">{crew.label}</div>
+                                        <div className="text-xs text-gray-400 dark:text-gray-500">{crew.sub}</div>
                                     </button>
                                 ))}
                             </div>
@@ -545,8 +546,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         <div className="animate-slideUp flex flex-col h-full px-1">
                             {/* 헤더 섹션: 가이드 텍스트 추가 */}
                             <div className="mb-8 mt-4">
-                                <h1 className="text-2xl font-extrabold text-gray-900 mb-2">자주 출몰하는 지역은?</h1>
-                                <p className="text-gray-500 text-sm font-medium">최대 3개까지 선택할 수 있어요 📍</p>
+                                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">자주 출몰하는 지역은?</h1>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">최대 3개까지 선택할 수 있어요 📍</p>
                             </div>
 
                             {/* 지역 선택 그리드: 고정 2열 그리드로 정밀 정렬 */}
@@ -559,8 +560,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                             onClick={() => handleRegionSelect(group)}
                                             className={`group relative flex items-center justify-center px-4 py-4 rounded-2xl text-sm font-bold transition-all duration-200 shadow-sm border ${
                                                 isSelected
-                                                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-1 ring-emerald-500"
-                                                    : "bg-white border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                                    ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 dark:border-emerald-600 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500 dark:ring-emerald-600"
+                                                    : "bg-white dark:bg-[#0f1710] border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                                             }`}
                                         >
                                             <span className={`${isSelected ? "scale-105" : ""} transition-transform`}>
@@ -572,14 +573,14 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             </div>
 
                             {/* 하단 고정 버튼 섹션: 그라데이션 및 그림자 추가 */}
-                            <div className="shrink-0 mt-auto pb-8 pt-4 bg-white">
+                            <div className="shrink-0 mt-auto pb-8 pt-4 bg-white dark:bg-[#1a241b]">
                                 <button
                                     onClick={nextStep}
                                     disabled={preferences.regions.length === 0}
                                     className={`w-full py-4.5 rounded-2xl font-extrabold text-[16px] tracking-tight transition-all shadow-lg ${
                                         preferences.regions.length > 0
-                                            ? "bg-slate-900 text-white active:scale-[0.98]"
-                                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                            ? "bg-slate-900 dark:bg-slate-800 text-white active:scale-[0.98] hover:bg-slate-800 dark:hover:bg-slate-700"
+                                            : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                     }`}
                                 >
                                     분석 시작하기 ✨
@@ -594,7 +595,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     <div className="px-6 pb-6 pt-2 shrink-0">
                         <button
                             onClick={prevStep}
-                            className="text-gray-400 text-sm flex items-center gap-1 hover:text-gray-600"
+                            className="text-gray-400 dark:text-gray-500 text-sm flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-400"
                         >
                             ← 이전 단계
                         </button>

@@ -74,6 +74,7 @@ export function useCourseFilter({
 
             // (3) 태그 필터링 (최적화: 미리 계산된 selectedTagNames 사용)
             if (selectedTagNames.length > 0) {
+                // 🟢 courseTags 관계 테이블에서 가져온 태그 배열
                 const courseTags = Array.isArray(c.tags) ? c.tags : [];
                 // 선택한 태그 중 하나라도 코스에 포함되어 있어야 함
                 const hasMatchingTag = selectedTagNames.some((tagName) => courseTags.includes(tagName));

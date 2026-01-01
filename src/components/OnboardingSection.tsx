@@ -46,16 +46,16 @@ export default function OnboardingSection({ onStart }: Props) {
                 <button
                     onClick={handleClick}
                     // 1. 테두리와 그림자를 브랜드 컬러(Green/Emerald) 계열로 변경
-                    className="w-full group relative flex items-center justify-between p-5 rounded-xl bg-white border border-emerald-100 transition-all duration-300 active:scale-98"
+                    className="w-full group relative flex items-center justify-between p-5 rounded-xl bg-white dark:bg-[#1a241b] border border-emerald-100 dark:border-emerald-900/30 transition-all duration-300 active:scale-98"
                 >
                     {/* 배경: 아주 은은한 민트빛 그라데이션 */}
-                    <div className="absolute inset-0 bg-linear-to-br from-emerald-50/60 via-transparent to-transparent rounded-xl pointer-events-none" />
+                    <div className="absolute inset-0 bg-linear-to-br from-emerald-50/60 dark:from-emerald-900/20 via-transparent to-transparent rounded-xl pointer-events-none" />
 
                     <div className="relative z-10 flex items-center gap-4">
                         {/* 2. 아이콘 배경: 연한 초록색 */}
-                        <div className="relative flex items-center justify-center w-14 h-14 rounded-xl bg-[#E8FBF4] group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                        <div className="relative flex items-center justify-center w-14 h-14 rounded-xl bg-[#E8FBF4] dark:bg-emerald-900/30 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                             {/* 오로라 효과: 초록색 + 청록색 */}
-                            <div className="absolute top-0 left-0 w-full h-full bg-linear-to-br from-green-200/50 to-teal-200/50 opacity-50 blur-md" />
+                            <div className="absolute top-0 left-0 w-full h-full bg-linear-to-br from-green-200/50 dark:from-emerald-800/50 to-teal-200/50 dark:to-teal-800/50 opacity-50 blur-md" />
 
                             {/* 3. 아이콘: 꽉 찬 면(Fill) + Green Gradient 적용 */}
                             <svg
@@ -79,12 +79,12 @@ export default function OnboardingSection({ onStart }: Props) {
                         </div>
 
                         <div className="text-left">
-                            <h3 className="text-[17px] font-bold text-gray-800 leading-tight tracking-tight">
+                            <h3 className="text-[17px] font-bold text-gray-800 dark:text-white leading-tight tracking-tight">
                                 코스 고민은 DoNa에게!
                             </h3>
-                            <p className="text-[13px] text-gray-500 mt-1 font-medium">
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
                                 AI가{" "}
-                                <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600 font-bold">
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 font-bold">
                                     취향저격 데이트
                                 </span>
                                 를 준비해요
@@ -93,7 +93,7 @@ export default function OnboardingSection({ onStart }: Props) {
                     </div>
 
                     {/* 화살표: 녹색 계열로 변경 */}
-                    <div className="relative z-10 w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-300 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">
+                    <div className="relative z-10 w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-300 dark:text-emerald-400 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"

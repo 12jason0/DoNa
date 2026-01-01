@@ -109,10 +109,12 @@ export default function PersonalizedSection() {
                 ) {
                     setHasOnboardingData(true);
                 } else if (isUserAuthenticated) {
-                    // 로그인했지만 matchScore가 없으면 온보딩 미완료
-                    const localOnboarding =
-                        typeof window !== "undefined" && localStorage.getItem("onboardingComplete") === "1";
-                    setHasOnboardingData(localOnboarding);
+                    // 🟢 [Security] localStorage 의존도 제거: 서버 세션(쿠키) 기반으로 온보딩 정보 확인
+                    // 서버 세션에서 가져온 사용자 정보에 온보딩 완료 여부가 포함되어야 함
+                    const onboardingFromSession =
+                        (session.user as any)?.hasOnboarding === true ||
+                        (session.user as any)?.onboardingComplete === true;
+                    setHasOnboardingData(onboardingFromSession);
                 } else {
                     setHasOnboardingData(false);
                 }
@@ -239,14 +241,14 @@ export default function PersonalizedSection() {
                     </div>
                 ) : (
                     <>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-snug whitespace-pre-line animate-fade-in tracking-tight">
-                    {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
-                    {content.title(userName)}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                    {/* 👇 부제목: "마음이 차분해지는..." */}
-                    {content.subtitle}
-                </p>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-snug whitespace-pre-line animate-fade-in tracking-tight">
+                            {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
+                            {content.title(userName)}
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                            {/* 👇 부제목: "마음이 차분해지는..." */}
+                            {content.subtitle}
+                        </p>
                     </>
                 )}
             </div>
@@ -263,15 +265,13 @@ export default function PersonalizedSection() {
             >
                 {loading
                     ? [1, 2, 3].map((n) => (
-                          <div
-                              key={n}
-                              className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse"
-                          />
+                          <div key={n} className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse" />
                       ))
                     : courses.map((course, idx) => (
                           <Link
                               key={course.id}
                               href={`/courses/${course.id}`}
+                              prefetch={true}
                               draggable={false}
                               className="snap-center shrink-0 w-[200px] group relative select-none"
                           >
@@ -292,7 +292,8 @@ export default function PersonalizedSection() {
                                                   className="object-cover"
                                                   sizes="200px"
                                                   priority={idx < 3} // 🟢 첫 3개는 priority
-                                                  loading={idx < 3 ? undefined : "lazy"} // 🟢 첫 3개는 eager, 나머지는 lazy
+                                                  // 🟢 LCP 경고 해결: priority가 true일 때도 loading="eager" 명시
+                                                  loading={idx < 3 ? "eager" : "lazy"}
                                                   quality={70} // 🟢 성능 최적화: quality 조정
                                                   fetchPriority={idx < 3 ? "high" : "auto"} // 🟢 첫 3개는 high priority
                                               />
@@ -319,11 +320,11 @@ export default function PersonalizedSection() {
                                           </span>
                                       </div>
                                   ) : (
-                                  <div className="absolute top-3 left-3">
-                                      <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
+                                      <div className="absolute top-3 left-3">
+                                          <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
                                               {content.badge}
-                                      </span>
-                                  </div>
+                                          </span>
+                                      </div>
                                   )}
 
                                   {/* 텍스트 */}

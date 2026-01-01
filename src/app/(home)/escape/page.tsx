@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "@/components/ImageFallback";
+import LoginModal from "@/components/LoginModal";
 
 // --- [설정] 한글 변환 맵 ---
 const CATEGORY_MAP: Record<string, string> = {
@@ -89,6 +90,7 @@ function useEscapeGame() {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
     const [toast, setToast] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
     useEffect(() => {
         setProgressMap(readProgress());
@@ -167,7 +169,7 @@ function useEscapeGame() {
         const { fetchSession } = await import("@/lib/authClient");
         const session = await fetchSession();
         if (!session.authenticated && !isLoggedIn) {
-            router.push(`/login?message=${encodeURIComponent("로그인 후 이용 가능합니다.")}`);
+            setShowLoginModal(true);
             return;
         }
         const existingProgress = progressMap[String(storyId)];
@@ -193,6 +195,8 @@ function useEscapeGame() {
         isLoggedIn,
         isLoading,
         toast,
+        showLoginModal,
+        setShowLoginModal,
         fetchChaptersForStory,
         handleStartStory,
         setToast,
@@ -349,14 +353,14 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
             return (
                 <li
                     key={c.id}
-                    className="text-sm text-gray-700 bg-gray-50 rounded-lg px-4 py-3 flex items-center justify-between"
+                    className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3 flex items-center justify-between"
                 >
                     <div className="flex items-center gap-2 overflow-hidden">
-                        <span className="font-bold text-gray-900 whitespace-nowrap">Chapter {c.chapter_number}</span>
-                        <span className="truncate">{mainDisplay}</span>
+                        <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">Chapter {c.chapter_number}</span>
+                        <span className="truncate dark:text-gray-400">{mainDisplay}</span>
                     </div>
                     {badgeLabel && (
-                        <span className="ml-2 flex-shrink-0 text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                        <span className="ml-2 flex-shrink-0 text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded border border-blue-100 dark:border-blue-800/50">
                             {badgeLabel}
                         </span>
                     )}
@@ -367,7 +371,7 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4"
             onClick={onClose}
             role="dialog"
             aria-modal="true"
@@ -380,12 +384,12 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
       `}</style>
 
             <div
-                className="w-full max-w-[450px] bg-white rounded-xl border border-gray-100 overflow-hidden relative"
+                className="w-full max-w-[450px] bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden relative"
                 style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-6 max-h-[80vh] overflow-y-auto">
-                    <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 bg-gray-100">
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 bg-gray-100 dark:bg-gray-800">
                         <Image
                             src={story.imageUrl || ""}
                             alt={story.title}
@@ -394,24 +398,24 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
                             sizes="100vw"
                         />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900">{story.title}</h2>
-                    <p className="text-gray-700 mt-2 text-sm leading-relaxed">{story.synopsis}</p>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{story.title}</h2>
+                    <p className="text-gray-700 dark:text-gray-400 mt-2 text-sm leading-relaxed">{story.synopsis}</p>
 
                     <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-3">챕터 목록</h3>
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">챕터 목록</h3>
                         <ul className="space-y-2">{renderChapters()}</ul>
                     </div>
 
                     <div className="mt-6 flex justify-end gap-3">
                         <button
                             onClick={onClose}
-                            className="px-5 py-3 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                            className="px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                         >
                             닫기
                         </button>
                         <button
                             onClick={() => onStart(story.id)}
-                            className="px-5 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-md"
+                            className="px-5 py-3 text-sm font-bold text-white bg-blue-600 dark:bg-blue-700 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-md"
                         >
                             시작하기
                         </button>
@@ -424,7 +428,7 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
 
 // --- 메인 페이지 ---
 export default function EscapePage() {
-    const { stories, badges, chapters, progressMap, isLoading, fetchChaptersForStory, handleStartStory } =
+    const { stories, badges, chapters, progressMap, isLoading, showLoginModal, setShowLoginModal, fetchChaptersForStory, handleStartStory } =
         useEscapeGame();
     const [activeModalStoryId, setActiveModalStoryId] = useState<number | null>(null);
 
@@ -493,6 +497,12 @@ export default function EscapePage() {
                 chapters={chapters[activeModalStoryId!] || []}
                 onStart={handleStartStory}
             />
+            {showLoginModal && (
+                <LoginModal
+                    onClose={() => setShowLoginModal(false)}
+                    next={`/escape`}
+                />
+            )}
             <div className="md:hidden h-20" />
         </div>
     );

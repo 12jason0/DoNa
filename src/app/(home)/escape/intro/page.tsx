@@ -1298,6 +1298,11 @@ function EscapeIntroPageInner() {
     const search = useSearchParams();
     const storyId = Number(search.get("id"));
 
+    // 🟢 성능 최적화: escape 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
+    useEffect(() => {
+        router.prefetch("/");
+    }, [router]);
+
     // --- 상태 관리 ---
     const [story, setStory] = useState<Story | null>(null);
     const [chapters, setChapters] = useState<StoryChapter[]>([]);
@@ -2114,6 +2119,7 @@ function EscapeIntroPageInner() {
     const handleCloseBook = () => {
         setEndingStep(null);
         setIsClosing(true);
+        router.prefetch("/");
         setTimeout(() => {
             router.push("/");
         }, 1300);

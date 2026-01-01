@@ -213,7 +213,7 @@ const ToastPopup = ({
     onClose: () => void;
 }) => {
     useEffect(() => {
-        const timer = setTimeout(onClose, 2500);
+        const timer = setTimeout(onClose, 2000);
         return () => clearTimeout(timer);
     }, [onClose]);
     const bgColor = type === "error" ? "bg-rose-600/90" : "bg-[#1A1A1A]/90";
@@ -257,6 +257,11 @@ export default function CourseDetailClient({
 
     const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+    // 🟢 성능 최적화: 코스 상세 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
+    useEffect(() => {
+        router.prefetch("/");
+    }, [router]);
 
     // --- State ---
     const [reviews, setReviews] = useState<Review[]>(initialReviews);
@@ -1240,7 +1245,8 @@ export default function CourseDetailClient({
                                 const isDirectAccess = !referrer || referrer.includes(window.location.href);
 
                                 if (isDirectAccess) {
-                                    // 직접 접근 시 홈으로 이동
+                                    // 직접 접근 시 홈으로 이동 (prefetch로 빠른 전환)
+                                    router.prefetch("/");
                                     router.push("/");
                                 } else {
                                     // 이전 페이지가 있으면 뒤로 가기
@@ -1264,7 +1270,8 @@ export default function CourseDetailClient({
                                 const isDirectAccess = !referrer || referrer.includes(window.location.href);
 
                                 if (isDirectAccess) {
-                                    // 직접 접근 시 홈으로 이동
+                                    // 직접 접근 시 홈으로 이동 (prefetch로 빠른 전환)
+                                    router.prefetch("/");
                                     router.push("/");
                                 } else {
                                     // 이전 페이지가 있으면 뒤로 가기

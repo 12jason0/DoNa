@@ -28,7 +28,7 @@ declare global {
 
 const MyPage = () => {
     const router = useRouter();
-    const { resolvedTheme, toggleTheme } = useTheme(); // 🟢 다크모드 토글
+    const { resolvedTheme, toggleTheme, setTheme } = useTheme(); // 🟢 다크모드 토글
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
     const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -130,6 +130,7 @@ const MyPage = () => {
         window.addEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
         return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
     }, []);
+
 
     const fetchUserInfo = useCallback(async (): Promise<boolean> => {
         // 🟢 이미 리다이렉트 중이면 중복 실행 방지
@@ -719,7 +720,9 @@ const MyPage = () => {
                     <div className="absolute right-0 top-0">
                         {/* 🟢 다크모드 토글 버튼 */}
                         <button
-                            onClick={toggleTheme}
+                            onClick={() => {
+                                toggleTheme();
+                            }}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                             aria-label={resolvedTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
                         >

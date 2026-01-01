@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import Image from "next/image";
+import Image from "@/components/ImageFallback";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { CasefileItem, CompletedCourse } from "@/types/user";
@@ -55,7 +55,17 @@ const CourseImageLoader = ({
 
     // 이미지가 로드되면 Image 컴포넌트로 표시
     if (loadedImageUrl) {
-        return <Image src={loadedImageUrl} alt="Course" fill className="object-cover" sizes="64px" loading="lazy" />;
+        return (
+            <Image
+                src={loadedImageUrl}
+                alt="Course"
+                fill
+                className="object-cover"
+                sizes="64px"
+                loading="lazy"
+                fallbackContent={<div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📍</div>}
+            />
+        );
     }
 
     return <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📍</div>;
@@ -160,6 +170,11 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
         ).padStart(2, "0")}`;
         return itemsByDate.get(dateKey) || { courses: [], aiRecommendations: [] };
     }, [selectedDate, itemsByDate]);
+
+    // 🟢 데이터가 있는지 확인 (데이터가 없으면 라이트 모드로 표시)
+    const hasData = useMemo(() => {
+        return completed.length > 0 || aiRecommendations.length > 0;
+    }, [completed, aiRecommendations]);
 
     // 🟢 상수 배열을 컴포넌트 외부로 이동하여 재생성 방지
     const monthNames = useMemo(
@@ -389,13 +404,31 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
 
     return (
         <div className="space-y-6">
-            <div className="bg-white dark:bg-[#1a241b] rounded-[24px] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden relative">
+            <div
+                className={`bg-white ${hasData ? "dark:bg-[#1a241b]" : ""} rounded-[24px] shadow-sm border ${
+                    hasData ? "border-gray-100 dark:border-gray-800" : "border-gray-100"
+                } overflow-hidden relative`}
+            >
                 {/* 헤더 */}
-                <div className="pt-5 pl-5 pr-5 border-b border-gray-50 dark:border-gray-800 bg-white dark:bg-[#1a241b] relative z-10">
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1 tracking-tight">
+                <div
+                    className={`pt-5 pl-5 pr-5 border-b ${
+                        hasData
+                            ? "border-gray-50 dark:border-gray-800 bg-white dark:bg-[#1a241b]"
+                            : "border-gray-50 bg-white"
+                    } relative z-10`}
+                >
+                    <h4
+                        className={`text-lg font-bold text-gray-900 ${
+                            hasData ? "dark:text-white" : ""
+                        } mb-1 tracking-tight`}
+                    >
                         내 발자취 👣
                     </h4>
-                    <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium">
+                    <p
+                        className={`text-gray-500 ${
+                            hasData ? "dark:text-gray-400" : ""
+                        } text-xs md:text-sm font-medium`}
+                    >
                         내가 완료한 미션과 다녀온 코스들을 날짜별로 확인해보세요.
                     </p>
                 </div>
@@ -410,19 +443,25 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     {/* 🟢 달력 헤더 (월 네비게이션) - 왼쪽 정렬 */}
                     <div className="flex flex-col mb-4">
                         {/* 년도 표시 (왼쪽 정렬) */}
-                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        <div
+                            className={`text-sm font-medium text-gray-500 ${hasData ? "dark:text-gray-400" : ""} mb-1`}
+                        >
                             {currentMonth.getFullYear()}년
                         </div>
                         <div className="relative">
                             <button
                                 onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-                                className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                className={`text-lg font-bold text-gray-900 ${
+                                    hasData ? "dark:text-white" : ""
+                                } flex items-center gap-1 hover:text-emerald-600 ${
+                                    hasData ? "dark:hover:text-emerald-400" : ""
+                                } transition-colors`}
                             >
                                 {monthNames[currentMonth.getMonth()]} {userName}
                                 <svg
-                                    className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${
-                                        showMonthDropdown ? "rotate-180" : ""
-                                    }`}
+                                    className={`w-4 h-4 text-gray-400 ${
+                                        hasData ? "dark:text-gray-500" : ""
+                                    } transition-transform ${showMonthDropdown ? "rotate-180" : ""}`}
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -442,15 +481,27 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     {/* 오버레이 */}
                                     <div className="fixed inset-0 z-10" onClick={() => setShowMonthDropdown(false)} />
                                     {/* 드롭다운 메뉴 */}
-                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a241b] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-20 min-w-[120px]">
+                                    <div
+                                        className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white ${
+                                            hasData ? "dark:bg-[#1a241b]" : ""
+                                        } rounded-lg shadow-lg border ${
+                                            hasData ? "border-gray-200 dark:border-gray-800" : "border-gray-200"
+                                        } py-2 z-20 min-w-[120px]`}
+                                    >
                                         {monthNames.map((month, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => handleMonthSelect(idx)}
-                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors ${
+                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-emerald-50 ${
+                                                    hasData ? "dark:hover:bg-emerald-900/30" : ""
+                                                } transition-colors ${
                                                     currentMonth.getMonth() === idx
-                                                        ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold"
-                                                        : "text-gray-700 dark:text-gray-300"
+                                                        ? `bg-emerald-50 ${
+                                                              hasData ? "dark:bg-emerald-900/30" : ""
+                                                          } text-emerald-600 ${
+                                                              hasData ? "dark:text-emerald-400" : ""
+                                                          } font-bold`
+                                                        : `text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`
                                                 }`}
                                             >
                                                 {month}
@@ -464,9 +515,17 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
 
                     {/* 🟢 버튼 섹션 (완료 코스, AI 추천) */}
                     <div className="flex items-center justify-center gap-3 mb-6">
-                        <button className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <button
+                            className={`flex items-center gap-2 px-4 py-2.5 bg-white ${
+                                hasData ? "dark:bg-gray-800/50" : ""
+                            } border ${
+                                hasData
+                                    ? "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    : "border-gray-200 hover:bg-gray-50"
+                            } rounded-xl transition-colors`}
+                        >
                             <svg
-                                className="w-5 h-5 text-gray-600 dark:text-gray-400"
+                                className={`w-5 h-5 text-gray-600 ${hasData ? "dark:text-gray-400" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -478,14 +537,28 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
                                 />
                             </svg>
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">완료 코스</span>
-                            <span className="text-sm font-bold text-gray-900 dark:text-white ml-1">
+                            <span
+                                className={`text-sm font-medium text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`}
+                            >
+                                완료 코스
+                            </span>
+                            <span
+                                className={`text-sm font-bold text-gray-900 ${hasData ? "dark:text-white" : ""} ml-1`}
+                            >
                                 {completed.length}
                             </span>
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <button
+                            className={`flex items-center gap-2 px-4 py-2.5 bg-white ${
+                                hasData ? "dark:bg-gray-800/50" : ""
+                            } border ${
+                                hasData
+                                    ? "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    : "border-gray-200 hover:bg-gray-50"
+                            } rounded-xl transition-colors`}
+                        >
                             <svg
-                                className="w-5 h-5 text-gray-600 dark:text-gray-400"
+                                className={`w-5 h-5 text-gray-600 ${hasData ? "dark:text-gray-400" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -497,8 +570,14 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                                 />
                             </svg>
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI 추천</span>
-                            <span className="text-sm font-bold text-gray-900 dark:text-white ml-1">
+                            <span
+                                className={`text-sm font-medium text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`}
+                            >
+                                AI 추천
+                            </span>
+                            <span
+                                className={`text-sm font-bold text-gray-900 ${hasData ? "dark:text-white" : ""} ml-1`}
+                            >
                                 {aiRecommendations.length}
                             </span>
                         </button>
@@ -511,7 +590,9 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             <div
                                 key={day}
                                 className={`text-center text-xs font-medium py-2 ${
-                                    idx === 0 ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+                                    idx === 0
+                                        ? `text-red-500 ${hasData ? "dark:text-red-400" : ""}`
+                                        : `text-gray-500 ${hasData ? "dark:text-gray-400" : ""}`
                                 }`}
                             >
                                 {day}
@@ -638,6 +719,11 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                             className="w-full h-full object-cover"
                                                             loading="lazy"
                                                             quality={60}
+                                                            fallbackContent={
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                                                    📍
+                                                                </div>
+                                                            }
                                                         />
                                                     </div>
                                                     {/* 🟢 여러 개일 때 개수 배지 표시 */}
@@ -660,6 +746,11 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                             className="w-full h-full object-cover"
                                                             loading="lazy"
                                                             quality={60}
+                                                            fallbackContent={
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                                                    📍
+                                                                </div>
+                                                            }
                                                         />
                                                     </div>
                                                     {/* 🟢 여러 개일 때 개수 배지 표시 */}
@@ -762,24 +853,23 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     >
                                         {/* 상단 이미지 */}
                                         <div className="relative w-full h-64 bg-gray-900 dark:bg-gray-800">
-                                            {course?.imageUrl || courseImages[courseId] ? (
-                                                <Image
-                                                    src={course?.imageUrl || courseImages[courseId] || ""}
-                                                    alt={course?.title || "Course"}
-                                                    fill
-                                                    className="object-cover opacity-90"
-                                                    sizes="340px"
-                                                    priority={idx < 3} // 🟢 첫 3개는 priority로 즉시 로드
-                                                    loading={idx < 3 ? "eager" : "lazy"} // 🟢 첫 3개는 eager, 나머지는 lazy
-                                                    quality={idx < 3 ? 75 : 65} // 🟢 첫 3개는 높은 quality, 나머지는 낮은 quality
-                                                    fetchPriority={idx < 3 ? "high" : "auto"} // 🟢 첫 3개는 high priority
-                                                    unoptimized={false}
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse flex items-center justify-center">
-                                                    <div className="text-gray-400 dark:text-gray-500 text-2xl">📍</div>
-                                                </div>
-                                            )}
+                                            <Image
+                                                src={course?.imageUrl || courseImages[courseId] || ""}
+                                                alt={course?.title || "Course"}
+                                                fill
+                                                className="object-cover opacity-90"
+                                                sizes="340px"
+                                                priority={idx < 3} // 🟢 첫 3개는 priority로 즉시 로드
+                                                loading={idx < 3 ? "eager" : "lazy"} // 🟢 첫 3개는 eager, 나머지는 lazy
+                                                quality={idx < 3 ? 75 : 65} // 🟢 첫 3개는 높은 quality, 나머지는 낮은 quality
+                                                fetchPriority={idx < 3 ? "high" : "auto"} // 🟢 첫 3개는 high priority
+                                                fallbackContent={
+                                                    <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                        <div className="text-gray-400 dark:text-gray-500 text-2xl">📍</div>
+                                                    </div>
+                                                }
+                                                fallbackClassName="bg-gray-200 dark:bg-gray-700"
+                                            />
                                             <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent"></div>
 
                                             {/* 배지 */}
@@ -878,16 +968,20 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             <div className="relative">
                                 {/* 상단 이미지 영역: h-64 -> h-52로 축소 */}
                                 <div className="relative w-full h-52 bg-gray-900 dark:bg-gray-800">
-                                    {courseDetail.imageUrl && (
-                                        <Image
-                                            src={courseDetail.imageUrl}
-                                            alt={courseDetail.title}
-                                            fill
-                                            className="object-cover opacity-85"
-                                            priority
-                                            sizes="380px"
-                                        />
-                                    )}
+                                    <Image
+                                        src={courseDetail.imageUrl || ""}
+                                        alt={courseDetail.title}
+                                        fill
+                                        className="object-cover opacity-85"
+                                        priority
+                                        sizes="380px"
+                                        fallbackContent={
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <div className="text-gray-400 dark:text-gray-500 text-2xl">📍</div>
+                                            </div>
+                                        }
+                                        fallbackClassName="bg-gray-200 dark:bg-gray-700"
+                                    />
                                     <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-black/10"></div>
 
                                     <button

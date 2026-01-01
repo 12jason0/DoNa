@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type PlaceInput = { name: string; address?: string; note?: string };
 
 export default function SuggestCoursePage() {
     const router = useRouter();
+    
+    // 🟢 성능 최적화: suggest 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
+    useEffect(() => {
+        router.prefetch("/");
+    }, [router]);
+    
     const [title, setTitle] = useState("");
     const [location, setLocation] = useState("");
     const [budget, setBudget] = useState("");
@@ -48,6 +54,7 @@ export default function SuggestCoursePage() {
             });
             if (res.ok) {
                 alert("제안이 접수되었습니다! 검토 후 반영하겠습니다.");
+                router.prefetch("/");
                 router.push("/");
             } else {
                 const data = await res.json().catch(() => ({}));

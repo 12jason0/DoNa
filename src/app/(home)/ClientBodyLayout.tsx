@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import LayoutContent from "@/components/LayoutContent";
 import RoutePrefetcher from "@/components/RoutePrefetcher";
 import SearchModal from "@/components/SearchModal";
+import NavigationLoader from "@/components/NavigationLoader";
 
 export default function ClientBodyLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -25,6 +26,7 @@ export default function ClientBodyLayout({ children }: { children: React.ReactNo
     return (
         <>
             <RoutePrefetcher />
+            <NavigationLoader />
             <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
             <LayoutContent>{children}</LayoutContent>
         </>

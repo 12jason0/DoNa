@@ -474,11 +474,11 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0f1710] text-gray-900 dark:text-white">
             <section className="max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
                 {/* --- Header & Search Section --- */}
-                <div className="sticky top-0 z-40 bg-white px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
+                <div className="sticky top-0 z-40 bg-white dark:bg-[#0f1710] px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0">
                     <div className="relative mb-3">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                             <svg
-                                className="w-5 h-5 text-gray-400"
+                                className="w-5 h-5 text-gray-400 dark:text-gray-500"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -507,7 +507,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 }
                             }}
                             placeholder="성수동 힙한 카페 어디지?"
-                            className="w-full bg-gray-50 rounded-xl py-3.5 pl-12 pr-12 text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-all tracking-tight"
+                            className="w-full bg-gray-50 dark:bg-[#1a241b] rounded-xl py-3.5 pl-12 pr-12 text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700 focus:bg-white dark:focus:bg-[#1a241b] transition-all tracking-tight"
                         />
                         <button
                             onClick={() => {
@@ -549,7 +549,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             // URL 변경 (로딩은 서버 컴포넌트가 처리)
                                             router.push("/nearby");
                                         }}
-                                        className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 active:scale-95 transition-transform"
+                                        className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1a241b] border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 active:scale-95 transition-transform"
                                     >
                                         ↺
                                     </button>
@@ -563,7 +563,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold transition-all border ${
                                         selectedRegions.includes(r)
                                             ? "bg-emerald-600 text-white border-emerald-600"
-                                            : "bg-white text-gray-600 border-gray-200"
+                                            : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700"
                                     }`}
                                 >
                                     {r}
@@ -574,15 +574,15 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                         {/* 선택한 필터 표시 */}
                         {selectedFilterLabels.length > 0 && (
                             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth">
-                                <div className="text-[12px] text-gray-500 font-medium shrink-0 mr-1">필터:</div>
+                                <div className="text-[12px] text-gray-500 dark:text-gray-400 font-medium shrink-0 mr-1">필터:</div>
                                 {selectedFilterLabels.map((label) => (
                                     <button
                                         key={label}
                                         onClick={() => removeFilterLabel(label)}
-                                        className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1.5"
+                                        className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5"
                                     >
                                         {label}
-                                        <span className="text-emerald-600 text-[11px]">✕</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">✕</span>
                                     </button>
                                 ))}
                             </div>
