@@ -76,6 +76,7 @@ const nextConfig = {
                                 "https://cdn.jsdelivr.net",
                                 "https://*.tosspayments.com",
                                 "https://r2cdn.perplexity.ai", // 🟢 Perplexity 폰트 허용
+                                "https://vercel.live",
                             ].join(" ");
 
                             // 3. API 및 소켓 연결 허용

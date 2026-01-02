@@ -54,7 +54,6 @@ const SliderItemComponent = memo(
                             className="object-cover"
                             // 🟢 [LCP 최적화] 첫 번째 이미지만 priority로 즉시 로드
                             priority={hasPriority}
-                            loading={hasPriority ? "eager" : "lazy"}
                             quality={hasPriority ? 75 : 60}
                             sizes="(max-width: 768px) 100vw, 400px"
                             fetchPriority={hasPriority ? "high" : "auto"}
@@ -85,7 +84,6 @@ const SliderItemComponent = memo(
                                         alt="icon"
                                         className="invert brightness-0"
                                         quality={50}
-                                        loading="lazy"
                                     />
                                 )}
                                 {item.concept}

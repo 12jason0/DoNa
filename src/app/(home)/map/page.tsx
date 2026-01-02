@@ -33,22 +33,24 @@ interface Course {
 // --- 1. 아이콘 디자인 (유지) ---
 function createReactNaverMapIcon(category: string, isSelected: boolean = false, source: "kakao" | "db" = "kakao") {
     const cat = category?.toLowerCase() || "";
-    let color = "#10B981";
+    let color = "#10B981"; // 기본 초록색
     let icon = "📍";
 
     if (cat.includes("카페") || cat.includes("cafe") || cat.includes("커피")) {
-        color = "#059669";
+        color = "#EA580C"; // 주황색 (이미지 참조)
         icon = "☕";
     } else if (cat.includes("음식") || cat.includes("식당") || cat.includes("맛집")) {
-        color = "#EA580C";
+        color = "#059669"; // 짙은 초록색
         icon = "🍽️";
     } else if (cat.includes("관광") || cat.includes("명소")) {
-        color = "#7C3AED";
+        color = "#7C3AED"; // 보라색
         icon = "📷";
     }
 
-    const baseSize = isSelected ? 52 : 42;
-    const iconSize = isSelected ? 26 : 20;
+    // 🟢 변경점 1: 전체적인 크기를 줄였습니다 (기존 42/52 -> 34/42)
+    const baseSize = isSelected ? 42 : 34;
+    // 아이콘 크기도 비율에 맞게 조정
+    const iconSize = isSelected ? 22 : 18;
     const zIndexStyle = isSelected ? 999 : source === "db" ? 500 : 100;
 
     return {
@@ -57,26 +59,38 @@ function createReactNaverMapIcon(category: string, isSelected: boolean = false, 
                 width: ${baseSize}px; height: ${baseSize}px;
                 position: relative;
                 z-index: ${zIndexStyle};
-                filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+                /* 🟢 변경점 2: 그림자를 더 부드럽고 깔끔하게 변경 */
+                filter: drop-shadow(0 3px 6px rgba(0,0,0,0.15));
                 transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                ${isSelected ? "transform: translateY(-10px) scale(1.1);" : ""}
+                ${isSelected ? "transform: scale(1.15);" : ""}
             ">
                 <div style="
                     width: 100%; height: 100%;
                     background: ${color};
-                    border: 3px solid white;
-                    border-radius: 50% 50% 50% 0;
-                    transform: rotate(-45deg);
+                    /* 🟢 변경점 3: 흰색 테두리를 조금 더 얇게 조정 (3px -> 2.5px) */
+                    border: 2.5px solid white;
+                    /* 🟢 변경점 4: 물방울 모양 속성 제거 -> 완전한 원으로 변경 */
+                    border-radius: 50%;
+                    /* transform: rotate(-45deg);  <- 삭제됨 */
                     display: flex; align-items: center; justify-content: center;
+                    box-sizing: border-box; /* 테두리가 크기 내부에 포함되도록 설정 */
                 ">
-                    <div style="transform: rotate(45deg); font-size: ${iconSize}px; line-height: 1; color: white;">
+                    <div style="
+                        /* transform: rotate(45deg); <- 삭제됨 */
+                        font-size: ${iconSize}px;
+                        line-height: 1;
+                        color: white;
+                        /* 이모지 수직 중앙 정렬 보정 */
+                        padding-top: 2px;
+                    ">
                         ${icon}
                     </div>
                 </div>
             </div>
         `,
         size: { width: baseSize, height: baseSize },
-        anchor: { x: baseSize / 2, y: baseSize - 2 },
+        // 🟢 변경점 5: 중심점(Anchor)을 원의 정중앙으로 이동
+        anchor: { x: baseSize / 2, y: baseSize / 2 },
     };
 }
 

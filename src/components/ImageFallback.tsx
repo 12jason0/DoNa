@@ -15,11 +15,10 @@ export default function ImageFallback(props: ImageFallbackProps) {
     const shouldShowFallback = !src || src === "" || errored;
 
     const boxStyle = useMemo(() => {
-        if (fill) return undefined; // 부모가 relative/absolute로 크기를 제어
+        if (fill) return undefined;
         if (typeof width === "number" && typeof height === "number") {
             return { width, height } as React.CSSProperties;
         }
-        // 폭/높이가 명시되지 않았으면 최소 높이만 부여
         return { minHeight: 80 } as React.CSSProperties;
     }, [fill, width, height]);
 
@@ -41,25 +40,29 @@ export default function ImageFallback(props: ImageFallbackProps) {
         );
     }
 
-    // 합리적인 기본값으로 성능 최적화 (필요 시 개별 호출부에서 override 가능)
-    const defaultSizes = rest.sizes ?? "(max-width: 768px) 100vw, 500px"; // 카드 최대 폭 ~500px 기준
-    // 🟢 핵심 수정: priority가 있으면 loading 속성을 아예 전달하지 않음
-    const { priority, loading, ...restProps } = rest;
-    const finalLoading = priority ? undefined : (loading ?? "lazy");
-    const defaultQuality = typeof rest.quality === "number" ? rest.quality : 65; // 🟢 성능 최적화: 70 -> 65 (더 빠른 로딩)
+    // 🟢 성능 최적화 기본값 설정
+    const defaultSizes = rest.sizes ?? "(max-width: 768px) 100vw, 500px";
+    const defaultQuality = typeof rest.quality === "number" ? rest.quality : 65;
 
-    // 🟢 priority가 있으면 loading 속성을 전달하지 않음
+    // 1. rest에서 priority와 loading을 완전히 분리해냅니다.
+    const { priority, loading, ...restProps } = rest;
+
+    // 2. restProps에서도 priority와 loading을 명시적으로 제거 (안전장치)
+    const cleanRestProps = { ...restProps };
+    delete (cleanRestProps as any).priority;
+    delete (cleanRestProps as any).loading;
+
+    // 3. 전달할 props 객체를 새로 구성합니다 (priority와 loading 없이 시작)
     const imageProps: any = {
-        ...restProps,
-        priority,
-        sizes: defaultSizes,
-        quality: defaultQuality,
+        ...cleanRestProps,
         src,
         alt,
         className,
         fill,
         width,
         height,
+        sizes: defaultSizes,
+        quality: defaultQuality,
         onError: (e: any) => {
             try {
                 setErrored(true);
@@ -69,9 +72,13 @@ export default function ImageFallback(props: ImageFallbackProps) {
         },
     };
 
-    // priority가 없을 때만 loading 속성 추가
-    if (!priority && finalLoading) {
-        imageProps.loading = finalLoading;
+    // 🟢 핵심 수정: 두 속성이 공존하지 못하도록 명확하게 분기합니다.
+    if (priority) {
+        // priority가 true(또는 truthy)면 priority만 넣고 loading은 절대 넣지 않습니다.
+        imageProps.priority = true;
+    } else {
+        // priority가 없거나 false일 때만 loading 속성을 추가합니다.
+        imageProps.loading = loading ?? "lazy";
     }
 
     return <NextImage {...imageProps} />;

@@ -609,8 +609,6 @@ function TabbedConcepts({
                                             className="object-contain p-1"
                                             quality={70}
                                             priority={conceptItems.indexOf(item) < 8}
-                                            // 🟢 LCP 경고 해결: priority가 true일 때도 loading="eager" 명시
-                                            loading={conceptItems.indexOf(item) < 8 ? "eager" : "lazy"}
                                         />
                                     </div>
                                     <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
