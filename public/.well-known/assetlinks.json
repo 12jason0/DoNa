@@ -1,0 +1,12 @@
+[
+    {
+        "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "kr.io.dona.dona",
+            "sha256_cert_fingerprints": [
+                "F3:35:BC:AA:4F:97:74:4B:B5:DC:C6:7F:D3:98:1E:23:B1:C8:74:8D:FB:B0:54:2E:96:96:8E:B9:B8:DB:18:52"
+            ]
+        }
+    }
+]

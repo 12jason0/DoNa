@@ -19,6 +19,11 @@ const nextConfig = {
 
     async headers() {
         return [
+            // 🟢 [신규 추가]: 구글 앱 링크 검증용 Content-Type 설정
+            {
+                source: "/.well-known/assetlinks.json",
+                headers: [{ key: "Content-Type", value: "application/json" }],
+            },
             {
                 // 🟢 수정: 내부 시스템 경로(_next, api, assets, favicon.ico 등)를 제외한 일반 페이지만 캐시 방지 적용
                 source: "/((?!_next|api|assets|favicon.ico).*|)",
