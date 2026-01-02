@@ -196,7 +196,9 @@ export default function AdminCoursesPage() {
         const timer = setTimeout(async () => {
             setPlaceSearchLoading(true);
             try {
-                const res = await fetch(`/api/places?all=1&search=${encodeURIComponent(placeSearchQuery.trim())}&limit=20`);
+                const res = await fetch(
+                    `/api/places?all=1&search=${encodeURIComponent(placeSearchQuery.trim())}&limit=20`
+                );
                 const data = await res.json();
                 setPlaceSearchResults(data?.places || []);
                 setShowPlaceSearchResults(true);
@@ -529,13 +531,25 @@ export default function AdminCoursesPage() {
             });
 
             if (res.ok) {
-                alert(editingId ? "코스 정보가 수정되었습니다." : "새 코스가 생성되었습니다.");
-                if (!editingId) {
-                    setFormData(INITIAL_COURSE);
+                const result = await res.json();
+                if (editingId) {
+                    alert("코스 정보가 수정되었습니다.");
                     fetchCourses();
                 } else {
-                    // 수정 상태 유지 (장소 관리를 위해)
-                    fetchCourses();
+                    // 🟢 새 코스 생성 후 즉시 편집 모드로 진입
+                    const newCourseId = result?.course?.id;
+                    if (newCourseId) {
+                        alert("새 코스가 생성되었습니다. 편집 모드로 전환합니다.");
+                        // 코스 목록을 먼저 새로고침한 후 편집 모드로 진입
+                        await fetchCourses();
+                        // 생성된 코스 찾아서 편집 모드로 전환
+                        const newCourse = courses.find((c) => c.id === newCourseId) || ({ id: newCourseId } as Course);
+                        startEdit(newCourse);
+                    } else {
+                        alert("새 코스가 생성되었습니다.");
+                        setFormData(INITIAL_COURSE);
+                        fetchCourses();
+                    }
                 }
             } else {
                 const errorData = await res.json();
@@ -832,6 +846,16 @@ export default function AdminCoursesPage() {
                                     name="region"
                                     placeholder="예: 성수, 홍대"
                                     value={formData.region || ""}
+                                    onChange={handleInputChange}
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-gray-600">컨셉 (Concept)</label>
+                                <input
+                                    name="concept"
+                                    placeholder="예: 데이트, 힐링"
+                                    value={formData.concept || ""}
                                     onChange={handleInputChange}
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                                 />
@@ -1315,7 +1339,7 @@ export default function AdminCoursesPage() {
                                     <div className="relative">
                                         <input
                                             type="text"
-                                        className="w-full border p-2 rounded text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                                            className="w-full border p-2 rounded text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none"
                                             placeholder="장소를 검색하세요"
                                             value={placeSearchQuery}
                                             onChange={(e) => {
@@ -1358,17 +1382,22 @@ export default function AdminCoursesPage() {
                                                             <div className="text-xs text-gray-500">[{p.category}]</div>
                                                         )}
                                                         {p.address && (
-                                                            <div className="text-xs text-gray-400 truncate">{p.address}</div>
+                                                            <div className="text-xs text-gray-400 truncate">
+                                                                {p.address}
+                                                            </div>
                                                         )}
                                                     </button>
-                                        ))}
+                                                ))}
                                             </div>
                                         )}
-                                        {showPlaceSearchResults && placeSearchQuery.trim() && placeSearchResults.length === 0 && !placeSearchLoading && (
-                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500 text-center">
-                                                검색 결과가 없습니다
-                                            </div>
-                                        )}
+                                        {showPlaceSearchResults &&
+                                            placeSearchQuery.trim() &&
+                                            placeSearchResults.length === 0 &&
+                                            !placeSearchLoading && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500 text-center">
+                                                    검색 결과가 없습니다
+                                                </div>
+                                            )}
                                     </div>
                                 </div>
                                 <div className="col-span-3 md:col-span-1">

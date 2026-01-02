@@ -143,7 +143,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         const courseGrade = course.grade || "FREE";
-        const hasAccess = courseGrade === "FREE" || userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked;
+        // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 쿠폰으로 구매한 경우만 접근 허용
+        const hasAccess =
+            courseGrade === "FREE" || // 무료 코스
+            userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
+            (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
+            hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
+
+        // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시 (FREE 코스도 동일)
+        const hasTipAccess = userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
@@ -183,8 +191,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     }
 
                     // 🟢 접근 권한이 있는 경우 전체 데이터 제공
-                    // coaching_tip은 CoursePlace 레벨에만 있음
-                    const coachingTip = cp.coaching_tip || null;
+                    // 🔒 FREE 코스의 팁은 클라이언트에서 userTier 체크하여 표시 (버튼/팁 표시 구분)
+                    // BASIC/PREMIUM 코스는 hasTipAccess에 따라 마스킹
+                    const coachingTip =
+                        courseGrade === "FREE"
+                            ? cp.coaching_tip || null // FREE 코스: 클라이언트에서 처리
+                            : hasTipAccess
+                              ? cp.coaching_tip || null
+                              : null; // BASIC/PREMIUM 코스: 권한 체크
 
                     // 🟢 안전한 숫자 변환
                     const placeId = cp.place?.id;
@@ -206,7 +220,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         latitude: isNaN(latitude as number) ? null : latitude,
                         longitude: isNaN(longitude as number) ? null : longitude,
                         closed_days: placeId ? (closedDaysMap[placeId] || []) : [],
-                        coaching_tip: coachingTip, // place 객체에도 coaching_tip 포함 (CoursePlace의 것을 사용)
+                        coaching_tip: coachingTip, // 🔒 팁 권한 체크 후 포함 (FREE 코스도 BASIC/PREMIUM 유저에게만)
                     };
 
                     // 🟢 [Debug]: 매핑 후 확인

@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
 
             return savedCourse;
         });
-
         return NextResponse.json({
             message: "코스가 저장되었으며 권한이 부여되었습니다.",
             savedCourse: result,

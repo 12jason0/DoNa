@@ -324,6 +324,18 @@ export default function CourseDetailClient({
             return originalAddEventListener.call(this, type, listener, updatedOptions);
         };
 
+        // 🛡️ [추가] releasePointerCapture 브라우저 에러 방어
+        if (window.Element && Element.prototype.releasePointerCapture) {
+            const originalRelease = Element.prototype.releasePointerCapture;
+            Element.prototype.releasePointerCapture = function (pointerId) {
+                try {
+                    originalRelease.call(this, pointerId);
+                } catch (e) {
+                    // 포인터 ID가 유효하지 않아 발생하는 NotFoundError를 조용히 무시하여 비정상 종료 방지
+                }
+            };
+        }
+
         // 🔴 중요: 전역 패치이므로 컴포넌트가 언마운트되어도 유지되는 것이 성능상 유리함 (원복 생략)
     }, []);
 
@@ -690,12 +702,14 @@ export default function CourseDetailClient({
 
     // 🔒 [조건부 렌더링] isUnlocked 상태를 기준으로 콘텐츠 렌더링
     const isUnlocked = !courseData.isLocked;
+    // 🔒 모달이 표시될 때는 코스 콘텐츠를 완전히 숨김
+    const shouldShowContent = isUnlocked && !showSubscriptionModal && !showLoginModal;
 
     return (
         <>
             {/* 🟢 [Fix] 컴포넌트명 수정 반영 */}
             {toast && <ToastPopup message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            {isUnlocked ? (
+            {shouldShowContent ? (
                 // 🟢 잠금 해제된 경우: 전체 코스 상세 콘텐츠 렌더링
                 <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] font-sans text-gray-900 dark:text-white relative">
                     <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
@@ -889,40 +903,63 @@ export default function CourseDetailClient({
                                                         )}
                                                     </div>
                                                 </div>
-                                                {/* 🟢 팁 섹션 - 아래로 이동 */}
-                                                {coursePlace.coaching_tip ? (
-                                                    userTier === "FREE" ? (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setShowSubscriptionModal(true);
-                                                            }}
-                                                            className="mt-3 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
-                                                        >
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <Icons.Bulb />
-                                                                <span className="text-xs font-bold text-amber-700">
-                                                                    💡 팁
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-600 line-clamp-2">
-                                                                BASIC 등급이면 볼 수 있어요
-                                                            </p>
-                                                        </button>
-                                                    ) : (
-                                                        <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <Icons.Bulb />
-                                                                <span className="text-xs font-bold text-amber-700">
-                                                                    💡 팁
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                                {coursePlace.coaching_tip}
-                                                            </p>
-                                                        </div>
-                                                    )
-                                                ) : null}
+                                                {/* 🟢 팁 섹션 - 코스 잠금 상태 및 유저 등급 기준으로 표시 */}
+                                                {coursePlace.coaching_tip
+                                                    ? (() => {
+                                                          // 🔒 FREE 코스: userTier 체크 (FREE/비로그인 유저는 버튼 표시)
+                                                          // 🔒 BASIC/PREMIUM 코스: isLocked 체크
+                                                          const courseGrade = (
+                                                              courseData.grade || "FREE"
+                                                          ).toUpperCase();
+                                                          const currentUserTier = (userTier || "FREE").toUpperCase();
+
+                                                          // FREE 코스이고 FREE/비로그인 유저이거나, BASIC/PREMIUM 코스가 잠겨 있으면 버튼 표시
+                                                          const shouldShowTipButton =
+                                                              (courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                                              courseData.isLocked;
+
+                                                          if (shouldShowTipButton) {
+                                                              return (
+                                                                  <button
+                                                                      onClick={(e) => {
+                                                                          e.stopPropagation();
+                                                                          if (isAuthenticated) {
+                                                                              setShowSubscriptionModal(true);
+                                                                          } else {
+                                                                              setShowLoginModal(true);
+                                                                          }
+                                                                      }}
+                                                                      className="mt-3 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
+                                                                  >
+                                                                      <div className="flex items-center gap-2 mb-1">
+                                                                          <Icons.Bulb />
+                                                                          <span className="text-xs font-bold text-amber-700">
+                                                                              💡 팁
+                                                                          </span>
+                                                                      </div>
+                                                                      <p className="text-xs text-gray-600 line-clamp-2">
+                                                                          BASIC 등급이면 볼 수 있어요
+                                                                      </p>
+                                                                  </button>
+                                                              );
+                                                          } else {
+                                                              // BASIC/PREMIUM 유저가 FREE 코스를 보거나, 권한이 있는 코스: 팁 표시
+                                                              return (
+                                                                  <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                                                      <div className="flex items-center gap-2 mb-1">
+                                                                          <Icons.Bulb />
+                                                                          <span className="text-xs font-bold text-amber-700">
+                                                                              💡 팁
+                                                                          </span>
+                                                                      </div>
+                                                                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                                                          {coursePlace.coaching_tip}
+                                                                      </p>
+                                                                  </div>
+                                                              );
+                                                          }
+                                                      })()
+                                                    : null}
                                             </div>
                                         </div>
                                     );
@@ -1299,7 +1336,8 @@ export default function CourseDetailClient({
                         }
                         setShowLoginModal(false);
                     }}
-                    next={`/courses/${courseId}`}
+                    // 🔒 잠긴 코스의 경우 next prop을 전달하지 않음 (자동 리다이렉트 방지)
+                    next={courseData.isLocked ? undefined : `/courses/${courseId}`}
                 />
             )}
             {showPlaceModal && selectedPlace && (

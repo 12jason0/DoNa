@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 
 // 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
@@ -37,7 +37,10 @@ export async function GET() {
         }));
 
         return NextResponse.json(formattedCourses);
-    } catch (error) {
+    } catch (error: any) {
+        if (error.message === "ADMIN_ONLY") {
+            return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
+        }
         console.error("코스 목록 불러오기 실패:", error);
         return NextResponse.json({ error: "코스 목록을 가져오지 못했습니다." }, { status: 500 });
     }
