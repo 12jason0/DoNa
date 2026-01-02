@@ -270,8 +270,26 @@ export default function CourseDetailClient({
     const [showShareModal, setShowShareModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
-    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    // 🔒 [접근 제어] 잠긴 코스는 초기 state에서 즉시 모달 표시 (페이지가 보이기 전에)
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
+        return courseData.isLocked ? true : false;
+    });
     const [showLoginModal, setShowLoginModal] = useState(false);
+
+    // 🔒 [접근 제어] 인증 상태 확인 후 잠긴 코스의 모달 타입 결정
+    useEffect(() => {
+        if (authLoading || !courseData.isLocked) return;
+
+        // 🟢 비로그인 유저 → 로그인 모달만 표시
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            setShowSubscriptionModal(false);
+        } else {
+            // 🟢 로그인 유저 → TicketPlans만 표시
+            setShowSubscriptionModal(true);
+            setShowLoginModal(false);
+        }
+    }, [courseData.isLocked, isAuthenticated, authLoading]);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -322,24 +340,6 @@ export default function CourseDetailClient({
 
     // 🟢 [Fix]: IntersectionObserver에서 자동 위치 요청 제거 (브라우저 보안 정책 준수)
     // 위치 정보는 사용자 제스처(버튼 클릭)에 의해서만 요청됩니다.
-
-    // 🟢 서버에서 계산된 isLocked가 true라면 페이지 콘텐츠를 숨기고 모달만 표시
-    useEffect(() => {
-        // 🟢 인증 상태 로딩 중이면 모달 표시 안 함
-        if (authLoading) return;
-
-        if (courseData.isLocked) {
-            // 🟢 비로그인 유저 → 로그인 모달만 표시
-            if (!isAuthenticated) {
-                setShowLoginModal(true);
-                setShowSubscriptionModal(false); // 🟢 다른 모달 닫기
-            } else {
-                // 🟢 로그인 유저 → TicketPlans만 표시
-                setShowSubscriptionModal(true);
-                setShowLoginModal(false); // 🟢 다른 모달 닫기
-            }
-        }
-    }, [courseData.isLocked, isAuthenticated, authLoading]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -688,14 +688,15 @@ export default function CourseDetailClient({
         }
     };
 
-    // 🟢 잠금된 코스일 때는 페이지 콘텐츠를 숨기고 모달만 표시
-    const shouldShowContent = !courseData.isLocked || (!showSubscriptionModal && !showLoginModal);
+    // 🔒 [조건부 렌더링] isUnlocked 상태를 기준으로 콘텐츠 렌더링
+    const isUnlocked = !courseData.isLocked;
 
     return (
         <>
             {/* 🟢 [Fix] 컴포넌트명 수정 반영 */}
             {toast && <ToastPopup message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            {shouldShowContent && (
+            {isUnlocked ? (
+                // 🟢 잠금 해제된 경우: 전체 코스 상세 콘텐츠 렌더링
                 <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] font-sans text-gray-900 dark:text-white relative">
                     <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
                         <Image
@@ -1073,6 +1074,50 @@ export default function CourseDetailClient({
                         </button>
                     </div>
                 </div>
+            ) : (
+                // 🔒 잠긴 경우: BlurComponent (흐릿한 이미지와 요약 정보만 표시)
+                <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] font-sans text-gray-900 dark:text-white relative">
+                    <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
+                        <div className="relative w-full h-full">
+                            {heroImageUrl && (
+                                <Image
+                                    src={heroImageUrl}
+                                    alt={courseData.title}
+                                    fill
+                                    className="object-cover blur-md grayscale"
+                                    priority
+                                    loading="eager"
+                                    quality={60}
+                                    sizes="(max-width: 768px) 100vw, 33vw"
+                                />
+                            )}
+                            <div className="absolute inset-0 bg-black/60" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center text-white px-6">
+                                    <div className="mb-4">
+                                        <svg
+                                            className="w-16 h-16 mx-auto text-white/80"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{courseData.title}</h1>
+                                    <p className="text-white/80 text-sm">
+                                        {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용 가능합니다
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+                </div>
             )}
 
             {/* 🔵 [기능 유지] 전체 지도 모달 */}
@@ -1235,50 +1280,24 @@ export default function CourseDetailClient({
             {showSubscriptionModal && (
                 <TicketPlans
                     onClose={() => {
-                        setShowSubscriptionModal(false);
-                        // 🟢 잠금된 코스에서 모달을 닫으면 이전 페이지로 이동
+                        // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)
                         if (courseData.isLocked) {
-                            // 약간의 지연을 두어 모달이 완전히 닫힌 후 이동
-                            setTimeout(() => {
-                                // 🟢 직접 URL 접근인지 확인 (document.referrer가 없거나 같은 페이지면 직접 접근)
-                                const referrer = typeof window !== "undefined" ? document.referrer : "";
-                                const isDirectAccess = !referrer || referrer.includes(window.location.href);
-
-                                if (isDirectAccess) {
-                                    // 직접 접근 시 홈으로 이동 (prefetch로 빠른 전환)
-                                    router.prefetch("/");
-                                    router.push("/");
-                                } else {
-                                    // 이전 페이지가 있으면 뒤로 가기
-                                    router.back();
-                                }
-                            }, 100);
+                            router.replace("/");
+                            return; // 모달 상태 변경 없이 바로 이탈
                         }
+                        setShowSubscriptionModal(false);
                     }}
                 />
             )}
             {showLoginModal && (
                 <LoginModal
                     onClose={() => {
-                        setShowLoginModal(false);
-                        // 🟢 잠금된 코스에서 모달을 닫으면 이전 페이지로 이동
+                        // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)
                         if (courseData.isLocked) {
-                            // 약간의 지연을 두어 모달이 완전히 닫힌 후 이동
-                            setTimeout(() => {
-                                // 🟢 직접 URL 접근인지 확인 (document.referrer가 없거나 같은 페이지면 직접 접근)
-                                const referrer = typeof window !== "undefined" ? document.referrer : "";
-                                const isDirectAccess = !referrer || referrer.includes(window.location.href);
-
-                                if (isDirectAccess) {
-                                    // 직접 접근 시 홈으로 이동 (prefetch로 빠른 전환)
-                                    router.prefetch("/");
-                                    router.push("/");
-                                } else {
-                                    // 이전 페이지가 있으면 뒤로 가기
-                                    router.back();
-                                }
-                            }, 100);
+                            router.replace("/");
+                            return; // 모달 상태 변경 없이 바로 이탈
                         }
+                        setShowLoginModal(false);
                     }}
                     next={`/courses/${courseId}`}
                 />

@@ -145,11 +145,44 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const courseGrade = course.grade || "FREE";
         const hasAccess = courseGrade === "FREE" || userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked;
 
+        // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
             .map((cp: any) => {
                 try {
                     if (!cp || !cp.place) return null;
 
+                    // 🔒 접근 권한이 없으면 핵심 정보 마스킹
+                    if (!hasAccess) {
+                        // 기본 정보만 제공 (이름, 카테고리만)
+                        return {
+                            id: cp.id,
+                            order_index: cp.order_index,
+                            estimated_duration: null, // 마스킹
+                            recommended_time: null, // 마스킹
+                            coaching_tip: null, // 마스킹
+                            movement_guide: null,
+                            place: {
+                                id: cp.place.id,
+                                name: cp.place.name, // 장소 이름은 허용
+                                address: null, // 마스킹
+                                description: null, // 마스킹
+                                category: cp.place.category, // 카테고리는 허용
+                                avg_cost_range: null, // 마스킹
+                                opening_hours: null, // 마스킹
+                                phone: null, // 마스킹
+                                parking_available: null, // 마스킹
+                                reservation_required: null, // 마스킹
+                                reservationUrl: null, // 마스킹
+                                latitude: null, // 마스킹
+                                longitude: null, // 마스킹
+                                imageUrl: cp.place.imageUrl, // 이미지는 허용 (흐릿하게 표시용)
+                                closed_days: [],
+                                coaching_tip: null, // 마스킹
+                            },
+                        };
+                    }
+
+                    // 🟢 접근 권한이 있는 경우 전체 데이터 제공
                     // coaching_tip은 CoursePlace 레벨에만 있음
                     const coachingTip = cp.coaching_tip || null;
 
@@ -223,11 +256,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             console.warn("[API] updatedAt 직렬화 실패:", e);
         }
 
+        // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 설명과 상세 정보 마스킹
         const payload = {
             id: String(course.id),
             title: course.title || "",
-            description: course.description || "",
-            sub_title: course.sub_title || null,
+            description: hasAccess ? (course.description || "") : "", // 🔒 마스킹
+            sub_title: hasAccess ? course.sub_title : null, // 🔒 마스킹
             target_situation: course.target_situation || null,
             imageUrl: course.imageUrl || "",
             concept: course.concept || "",
@@ -238,13 +272,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             isLocked: !hasAccess,
             hasAccess,
             userTier,
-            highlights: Array.isArray(course.highlights) ? course.highlights : [],
+            highlights: hasAccess ? (Array.isArray(course.highlights) ? course.highlights : []) : [], // 🔒 마스킹
             // 🟢 benefits는 현재 UI에서 사용하지 않으므로 빈 배열로 설정
             benefits: [],
-            notices: Array.isArray(course.courseNotices) ? course.courseNotices : [],
+            notices: hasAccess ? (Array.isArray(course.courseNotices) ? course.courseNotices : []) : [], // 🔒 마스킹
             coursePlaces,
-            courseDetail: course.courseDetail || {},
-            reservationRequired, // 🟢 [수정 1] 클라이언트가 기대하는 필드 추가
+            courseDetail: hasAccess ? (course.courseDetail || {}) : {}, // 🔒 마스킹
+            reservationRequired: hasAccess ? reservationRequired : false, // 🔒 마스킹
             createdAt,
             updatedAt,
         };

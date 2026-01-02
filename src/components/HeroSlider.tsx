@@ -124,7 +124,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         // 초기 렌더링이 아닐 때만 복제 (무한 스크롤 활성화)
         if (isInitialized && items.length > 1) {
             return [...items, ...items, ...items];
-        }
+            }
         // 초기 렌더링: 원본 데이터만 반환하여 첫 이미지 즉시 표시
         return items;
     }, [items, isInitialized]);
@@ -148,9 +148,9 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             // 🟢 다음 프레임에서 스크롤 위치 조정 (DOM 업데이트 후)
             requestAnimationFrame(() => {
                 if (container) {
-                    container.scrollLeft = initialWidth * realLength;
-                    setCurrentIndex(realLength);
-                }
+                container.scrollLeft = initialWidth * realLength;
+                setCurrentIndex(realLength);
+            }
             });
         }
 

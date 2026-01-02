@@ -242,8 +242,48 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         }
     }
 
-    // 최종 결과 주입
-    const secureCourseData = { ...courseData, isLocked };
+    // 🔒 [서버 사이드 데이터 마스킹] 잠긴 코스는 핵심 정보 마스킹
+    const secureCourseData = isLocked
+        ? {
+              ...courseData,
+              isLocked,
+              description: "", // 마스킹
+              sub_title: null, // 마스킹
+              highlights: [], // 마스킹
+              recommended_start_time: "오후 2시", // 기본값으로 마스킹
+              season: "사계절", // 기본값으로 마스킹
+              courseType: "데이트", // 기본값으로 마스킹
+              transportation: "도보", // 기본값으로 마스킹
+              coursePlaces:
+                  courseData.coursePlaces?.map((cp: any) => ({
+                      ...cp,
+                      estimated_duration: null, // 마스킹
+                      recommended_time: null, // 마스킹
+                      coaching_tip: null, // 마스킹
+                      place: cp.place
+                          ? {
+                                id: cp.place.id,
+                                name: cp.place.name, // 허용
+                                category: cp.place.category, // 허용
+                                imageUrl: cp.place.imageUrl, // 허용
+                                // 나머지는 모두 마스킹
+                                address: null,
+                                description: null,
+                                avg_cost_range: null,
+                                opening_hours: null,
+                                phone: null,
+                                parking_available: null,
+                                reservation_required: null,
+                                reservationUrl: null,
+                                latitude: null,
+                                longitude: null,
+                                closed_days: [],
+                            }
+                          : null,
+                  })) || [],
+              reservationRequired: false, // 마스킹
+          }
+        : { ...courseData, isLocked };
 
     // 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드
     return (

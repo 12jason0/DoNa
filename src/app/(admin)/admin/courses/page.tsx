@@ -145,7 +145,7 @@ export default function AdminCoursesPage() {
     const [addDuration, setAddDuration] = useState<number | "">("");
     const [addRecTime, setAddRecTime] = useState<string>(""); // recommended_time
     const [addCoachingTip, setAddCoachingTip] = useState<string>(""); // coaching_tip
-    
+
     // 장소 검색용 State
     const [placeSearchQuery, setPlaceSearchQuery] = useState<string>("");
     const [placeSearchResults, setPlaceSearchResults] = useState<SimplePlace[]>([]);
@@ -1315,7 +1315,7 @@ export default function AdminCoursesPage() {
                                     <div className="relative">
                                         <input
                                             type="text"
-                                            className="w-full border p-2 rounded text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                                        className="w-full border p-2 rounded text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none"
                                             placeholder="장소를 검색하세요"
                                             value={placeSearchQuery}
                                             onChange={(e) => {
@@ -1361,7 +1361,7 @@ export default function AdminCoursesPage() {
                                                             <div className="text-xs text-gray-400 truncate">{p.address}</div>
                                                         )}
                                                     </button>
-                                                ))}
+                                        ))}
                                             </div>
                                         )}
                                         {showPlaceSearchResults && placeSearchQuery.trim() && placeSearchResults.length === 0 && !placeSearchLoading && (
