@@ -145,6 +145,12 @@ export default function AdminCoursesPage() {
     const [addDuration, setAddDuration] = useState<number | "">("");
     const [addRecTime, setAddRecTime] = useState<string>(""); // recommended_time
     const [addCoachingTip, setAddCoachingTip] = useState<string>(""); // coaching_tip
+    
+    // 장소 검색용 State
+    const [placeSearchQuery, setPlaceSearchQuery] = useState<string>("");
+    const [placeSearchResults, setPlaceSearchResults] = useState<SimplePlace[]>([]);
+    const [placeSearchLoading, setPlaceSearchLoading] = useState<boolean>(false);
+    const [showPlaceSearchResults, setShowPlaceSearchResults] = useState<boolean>(false);
 
     // 장소 수정용 State
     const [editingPlaceId, setEditingPlaceId] = useState<number | null>(null);
@@ -178,6 +184,32 @@ export default function AdminCoursesPage() {
             console.error(e);
         }
     };
+
+    // 검색어 변경 시 debounce 검색
+    useEffect(() => {
+        if (!placeSearchQuery.trim()) {
+            setPlaceSearchResults([]);
+            setShowPlaceSearchResults(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setPlaceSearchLoading(true);
+            try {
+                const res = await fetch(`/api/places?all=1&search=${encodeURIComponent(placeSearchQuery.trim())}&limit=20`);
+                const data = await res.json();
+                setPlaceSearchResults(data?.places || []);
+                setShowPlaceSearchResults(true);
+            } catch (e) {
+                console.error("장소 검색 실패:", e);
+                setPlaceSearchResults([]);
+            } finally {
+                setPlaceSearchLoading(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [placeSearchQuery]);
 
     // ✅ 특정 코스의 장소 목록(course_places)만 따로 불러오는 함수
     const fetchCoursePlaces = async (courseId: number) => {
@@ -544,6 +576,9 @@ export default function AdminCoursesPage() {
 
                 // 입력폼 초기화
                 setAddPlaceId("");
+                setPlaceSearchQuery("");
+                setPlaceSearchResults([]);
+                setShowPlaceSearchResults(false);
                 setAddDuration("");
                 setAddRecTime("");
                 setAddCoachingTip("");
@@ -1275,20 +1310,66 @@ export default function AdminCoursesPage() {
                                 ➕ 장소 추가하기 (course_places 저장)
                             </h4>
                             <div className="grid grid-cols-12 gap-3 items-end">
-                                <div className="col-span-12 md:col-span-4">
+                                <div className="col-span-12 md:col-span-4 relative">
                                     <label className="block text-xs font-semibold text-gray-600 mb-1">장소 선택</label>
-                                    <select
-                                        className="w-full border p-2 rounded text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none"
-                                        value={addPlaceId}
-                                        onChange={(e) => setAddPlaceId(e.target.value ? Number(e.target.value) : "")}
-                                    >
-                                        <option value="">장소를 선택하세요</option>
-                                        {allPlaces.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                [{p.category}] {p.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            className="w-full border p-2 rounded text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                                            placeholder="장소를 검색하세요"
+                                            value={placeSearchQuery}
+                                            onChange={(e) => {
+                                                setPlaceSearchQuery(e.target.value);
+                                                if (!e.target.value.trim()) {
+                                                    setShowPlaceSearchResults(false);
+                                                    setAddPlaceId("");
+                                                }
+                                            }}
+                                            onFocus={() => {
+                                                if (placeSearchResults.length > 0) {
+                                                    setShowPlaceSearchResults(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                // 약간의 지연을 두어 클릭 이벤트가 실행되도록
+                                                setTimeout(() => setShowPlaceSearchResults(false), 200);
+                                            }}
+                                        />
+                                        {placeSearchLoading && (
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                                                검색 중...
+                                            </div>
+                                        )}
+                                        {showPlaceSearchResults && placeSearchResults.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                {placeSearchResults.map((p) => (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        className="w-full text-left px-3 py-2 hover:bg-green-50 text-sm border-b border-gray-100 last:border-b-0"
+                                                        onClick={() => {
+                                                            setAddPlaceId(p.id);
+                                                            setPlaceSearchQuery(p.name);
+                                                            setShowPlaceSearchResults(false);
+                                                        }}
+                                                    >
+                                                        <div className="font-medium text-gray-900">{p.name}</div>
+                                                        {p.category && (
+                                                            <div className="text-xs text-gray-500">[{p.category}]</div>
+                                                        )}
+                                                        {p.address && (
+                                                            <div className="text-xs text-gray-400 truncate">{p.address}</div>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {showPlaceSearchResults && placeSearchQuery.trim() && placeSearchResults.length === 0 && !placeSearchLoading && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500 text-center">
+                                                검색 결과가 없습니다
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="col-span-3 md:col-span-1">
                                     <label className="block text-xs font-semibold text-gray-600 mb-1">순서</label>
