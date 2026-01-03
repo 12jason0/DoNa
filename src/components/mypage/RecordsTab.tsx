@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import CourseCard from "@/components/CourseCard";
@@ -387,4 +387,5 @@ const RecordsTab = ({
     );
 };
 
-export default RecordsTab;
+// 🟢 성능 최적화: React.memo로 불필요한 리렌더링 방지
+export default memo(RecordsTab);

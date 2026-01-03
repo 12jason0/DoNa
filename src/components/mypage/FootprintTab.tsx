@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import Image from "@/components/ImageFallback";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
@@ -339,6 +339,12 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     // 🟢 코스 클릭 핸들러 (최적화: 즉시 기본 정보 표시 후 상세 정보 로드)
     const handleCourseClick = useCallback(
         async (courseId: number | string) => {
+            // 🟢 courseId 유효성 검사
+            if (!courseId) {
+                console.error("[FootprintTab] 코스 ID가 없습니다.");
+                return;
+            }
+
             // 🟢 [Optimization]: 이미 있는 코스 정보로 즉시 모달 표시
             const foundCompleted = completed.find((c) => c.course_id === Number(courseId));
             const foundAiRecommendation = aiRecommendations.find(
@@ -347,9 +353,10 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
 
             // 🟢 기본 정보로 즉시 모달 표시 (API 응답 전)
             if (foundCompleted) {
+                const courseIdValue = foundCompleted.course_id;
                 setCourseDetail({
-                    id: foundCompleted.course_id,
-                    title: foundCompleted.title,
+                    id: courseIdValue,
+                    title: foundCompleted.title || "",
                     description: foundCompleted.description || "",
                     imageUrl: foundCompleted.imageUrl || "",
                     region: foundCompleted.region || "",
@@ -360,41 +367,67 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                 setLoadingDetail(false); // 🟢 기본 정보는 이미 있으므로 로딩 완료
             } else if (foundAiRecommendation?.course) {
                 const course = foundAiRecommendation.course;
+                const courseIdValue = course.id || course.course_id || Number(courseId);
                 setCourseDetail({
-                    id: course.id || course.course_id,
+                    id: courseIdValue,
                     title: course.title || "",
                     description: course.description || "",
                     imageUrl: course.imageUrl || "",
                     region: course.region || "",
                     concept: course.concept || "",
                 });
+                setSelectedCourse(null); // 🟢 AI 추천은 completed가 아니므로 null
                 setShowCourseModal(true);
                 setLoadingDetail(false); // 🟢 기본 정보는 이미 있으므로 로딩 완료
             } else {
                 // 🟢 정보가 없으면 로딩 상태로 모달 표시
+                setCourseDetail({
+                    id: Number(courseId),
+                    title: "",
+                    description: "",
+                    imageUrl: "",
+                    region: "",
+                    concept: "",
+                });
+                setSelectedCourse(null);
                 setLoadingDetail(true);
                 setShowCourseModal(true);
             }
 
-            // 🟢 [Optimization]: 백그라운드에서 상세 정보 로드 (캐싱 활용)
+            // 🟢 [Optimization]: 백그라운드에서 상세 정보 로드 (인증된 API 호출)
             try {
-                const res = await fetch(`/api/courses/${courseId}`, {
+                // 🟢 인증이 필요한 API 호출
+                const { apiFetch } = await import("@/lib/authClient");
+                const { data, response } = await apiFetch<any>(`/api/courses/${courseId}`, {
                     cache: "force-cache", // 🟢 캐싱으로 성능 향상
                     next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
                 });
-                if (res.ok) {
-                    const data = await res.json();
+
+                if (response.ok && data) {
                     // 🟢 상세 정보 업데이트 (이미지, 설명 등 보완)
                     setCourseDetail((prev: any) => ({
                         ...prev,
                         ...data,
+                        // 🟢 ID가 없으면 유지
+                        id: prev?.id || data.id || Number(courseId),
                         // 🟢 이미지가 없으면 상세 정보의 이미지 사용
                         imageUrl: prev?.imageUrl || data.imageUrl || data.coursePlaces?.[0]?.place?.imageUrl || "",
+                        // 🟢 설명이 없으면 상세 정보의 설명 사용
                         description: prev?.description || data.description || "",
+                        // 🟢 제목이 없으면 상세 정보의 제목 사용
+                        title: prev?.title || data.title || "",
+                        // 🟢 지역이 없으면 상세 정보의 지역 사용
+                        region: prev?.region || data.region || "",
+                        // 🟢 컨셉이 없으면 상세 정보의 컨셉 사용
+                        concept: prev?.concept || data.concept || "",
                     }));
+                } else {
+                    console.error("[FootprintTab] 코스 상세 조회 실패:", response.status);
+                    // 🟢 API 호출 실패 시 기본 정보라도 유지
                 }
             } catch (error) {
-                console.error("코스 상세 조회 실패:", error);
+                console.error("[FootprintTab] 코스 상세 조회 오류:", error);
+                // 🟢 에러 발생 시에도 기본 정보는 유지
             } finally {
                 setLoadingDetail(false);
             }
@@ -924,10 +957,16 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
 
                                             <button
                                                 onClick={() => {
-                                                    setShowDateCoursesModal(false);
-                                                    router.push(`/courses/${courseId}`);
+                                                    if (courseId) {
+                                                        setShowDateCoursesModal(false);
+                                                        router.push(`/courses/${courseId}`);
+                                                    } else {
+                                                        console.error("[FootprintTab] 가로 스크롤 모달: 코스 ID가 없어 이동할 수 없습니다.");
+                                                        alert("코스 정보를 불러올 수 없습니다.");
+                                                    }
                                                 }}
-                                                className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-sm hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                                disabled={!courseId}
+                                                className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-sm hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <span>설계도 다시보기</span>
                                                 <ChevronRight className="w-4 h-4 opacity-50" />
@@ -1049,10 +1088,16 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     {/* CTA 버튼: 높이 조정 */}
                                     <button
                                         onClick={() => {
-                                            setShowCourseModal(false);
-                                            router.push(`/courses/${courseDetail.id}`);
+                                            if (courseDetail?.id) {
+                                                setShowCourseModal(false);
+                                                router.push(`/courses/${courseDetail.id}`);
+                                            } else {
+                                                console.error("[FootprintTab] 코스 ID가 없어 이동할 수 없습니다.");
+                                                alert("코스 정보를 불러올 수 없습니다.");
+                                            }
                                         }}
-                                        className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-base hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2"
+                                        disabled={!courseDetail?.id}
+                                        className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-base hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <span>설계도 다시보기</span>
                                         <ChevronRight className="w-4 h-4 opacity-50" />
@@ -1079,4 +1124,5 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     );
 };
 
-export default FootprintTab;
+// 🟢 성능 최적화: React.memo로 불필요한 리렌더링 방지
+export default memo(FootprintTab);

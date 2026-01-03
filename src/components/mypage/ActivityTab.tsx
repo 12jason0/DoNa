@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { UserBadgeItem, UserRewardRow, UserCheckinRow } from "@/types/user";
@@ -402,4 +402,5 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
     );
 };
 
-export default ActivityTab;
+// 🟢 성능 최적화: React.memo로 불필요한 리렌더링 방지
+export default memo(ActivityTab);

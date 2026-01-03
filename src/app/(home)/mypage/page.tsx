@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import ProfileTab from "@/components/mypage/ProfileTab";
-import FootprintTab from "@/components/mypage/FootprintTab";
-import RecordsTab from "@/components/mypage/RecordsTab";
-import ActivityTab from "@/components/mypage/ActivityTab";
 import LogoutModal from "@/components/LogoutModal";
 import PasswordCheckModal from "@/components/passwordChackModal";
 import { useTheme } from "@/context/ThemeContext";
+
+// 🟢 성능 최적화: 탭 컴포넌트 동적 로딩 (코드 스플리팅)
+const ProfileTab = lazy(() => import("@/components/mypage/ProfileTab"));
+const FootprintTab = lazy(() => import("@/components/mypage/FootprintTab"));
+const RecordsTab = lazy(() => import("@/components/mypage/RecordsTab"));
+const ActivityTab = lazy(() => import("@/components/mypage/ActivityTab"));
 import {
     UserInfo,
     UserPreferences,
@@ -42,13 +44,22 @@ const MyPage = () => {
 
     const [activeTab, setActiveTab] = useState("profile");
 
-    // 🟢 [Performance]: 탭 변경 시 부드러운 전환을 위한 최적화
+    // 🟢 [Performance]: 탭 변경 시 부드러운 전환을 위한 최적화 및 데이터 지연 로드
     const handleTabChange = useCallback((tab: string) => {
         // 🟢 다음 프레임에서 탭 변경하여 렌더링 부하 분산
         requestAnimationFrame(() => {
             setActiveTab(tab);
+            
+            // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
+            if (tab === "footprint" && completed.length === 0 && casefiles.length === 0) {
+                Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
+            } else if (tab === "records" && favorites.length === 0 && savedCourses.length === 0) {
+                Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(() => {});
+            } else if (tab === "activity" && badges.length === 0 && rewards.length === 0) {
+                Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
+            }
         });
-    }, []);
+    }, [completed.length, casefiles.length, favorites.length, savedCourses.length, badges.length, rewards.length]);
     const [activitySubTab, setActivitySubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
     const tabsTrackRef = useRef<HTMLDivElement | null>(null);
     const redirectingRef = useRef(false); // 🟢 리다이렉트 중복 방지
@@ -78,41 +89,105 @@ const MyPage = () => {
     const [pwLoading, setPwLoading] = useState(false);
     const [pwError, setPwError] = useState("");
 
-    // 🟢 Data Fetching Logic (성능 최적화: 병렬 처리)
+    // 🟢 Data Fetching Logic (성능 최적화: 우선순위 기반 로딩)
     useEffect(() => {
-        // 🟢 fetchUserInfo가 먼저 실행되어 인증 상태를 확인한 후, 성공하면 나머지 데이터 병렬 로드
-        fetchUserInfo().then((shouldContinue) => {
-            // fetchUserInfo가 성공한 경우에만 나머지 데이터 병렬 로드
-            if (shouldContinue) {
-                // 🟢 성능 최적화: 모든 데이터를 병렬로 로드 (Promise.all 사용)
-                Promise.all([
-                    fetchUserPreferences(),
-                    fetchFavorites(),
-                    fetchSavedCourses(),
-                    fetchBadges(),
-                    fetchCompleted(),
-                    fetchCasefiles(),
-                    fetchRewards(),
-                    fetchCheckins(),
-                    fetchPayments(),
-                ]).catch((error) => {
-                    console.error("[MyPage] 데이터 로드 중 일부 실패:", error);
-                });
-            }
-        });
-
+        // 🟢 URL 파라미터에서 초기 탭 읽기
+        let initialTab = "profile";
         try {
             const url = new URL(window.location.href);
             const tab = url.searchParams.get("tab");
             if (tab === "checkins") {
                 // 🟢 checkins는 activity 탭의 subTab
-                setActiveTab("activity");
+                initialTab = "activity";
                 setActivitySubTab("checkins");
             } else if (["profile", "footprint", "records", "activity"].includes(tab || "")) {
-                setActiveTab(tab || "profile");
+                initialTab = tab || "profile";
             }
+            setActiveTab(initialTab);
         } catch {}
-    }, []);
+
+        // 🟢 1단계: 필수 데이터만 먼저 로드 (프로필 정보)
+        fetchUserInfo().then((shouldContinue) => {
+            if (shouldContinue) {
+                // 🟢 2단계: 프로필 탭에 필요한 데이터 즉시 로드
+                Promise.all([
+                    fetchUserPreferences(), // 프로필 탭에 필요
+                ]).catch((error) => {
+                    console.error("[MyPage] 프로필 데이터 로드 실패:", error);
+                });
+
+                // 🟢 3단계: 모든 데이터를 로드하되, 우선순위를 두어 지연 로드
+                // 🟢 초기 탭에 필요한 데이터는 즉시, 나머지는 지연 로드
+                const scheduleDeferredLoad = () => {
+                    const priorityData: Promise<any>[] = [];
+                    const deferredData: Promise<any>[] = [];
+
+                    // 초기 활성 탭에 필요한 데이터를 우선 로드
+                    if (initialTab === "profile") {
+                        // 프로필 탭은 이미 로드됨, 나머지 데이터는 지연 로드
+                        deferredData.push(
+                            fetchFavorites(),
+                            fetchSavedCourses(),
+                            fetchBadges(),
+                            fetchCompleted(),
+                            fetchCasefiles(),
+                            fetchRewards(),
+                            fetchCheckins(),
+                            fetchPayments()
+                        );
+                    } else if (initialTab === "footprint") {
+                        priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses());
+                        deferredData.push(fetchFavorites(), fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                    } else if (initialTab === "records") {
+                        priorityData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
+                        deferredData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                    } else if (initialTab === "activity") {
+                        priorityData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                        deferredData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
+                    } else {
+                        // 기본: 모든 데이터를 지연 로드
+                        deferredData.push(
+                            fetchFavorites(),
+                            fetchSavedCourses(),
+                            fetchBadges(),
+                            fetchCompleted(),
+                            fetchCasefiles(),
+                            fetchRewards(),
+                            fetchCheckins(),
+                            fetchPayments()
+                        );
+                    }
+
+                    // 우선순위 데이터 먼저 로드
+                    if (priorityData.length > 0) {
+                        Promise.all(priorityData).catch((error) => {
+                            console.error("[MyPage] 우선순위 데이터 로드 실패:", error);
+                        });
+                    }
+
+                    // 나머지 데이터는 추가 지연 후 로드 (초기 렌더링 후)
+                    setTimeout(() => {
+                        if (deferredData.length > 0) {
+                            Promise.all(deferredData).catch((error) => {
+                                console.error("[MyPage] 지연 데이터 로드 실패:", error);
+                            });
+                        }
+                    }, 200); // 🟢 200ms로 단축하여 빠른 로딩
+                };
+
+                // 🟢 즉시 실행하여 모든 데이터가 확실히 로드되도록 함
+                // 🟢 requestIdleCallback은 브라우저가 idle 상태일 때만 실행되므로, 
+                // 🟢 timeout을 짧게 설정하거나 바로 실행하도록 변경
+                if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+                    (window as any).requestIdleCallback(scheduleDeferredLoad, { timeout: 500 });
+                } else {
+                    // 폴백: 즉시 실행
+                    setTimeout(scheduleDeferredLoad, 100);
+                }
+            }
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // 🟢 초기 마운트 시에만 실행
 
     // Event Listener for Checkin
     useEffect(() => {
@@ -505,6 +580,15 @@ const MyPage = () => {
         // 🟢 [Performance]: 탭 변경을 다음 프레임으로 지연하여 부드러운 전환
         requestAnimationFrame(() => {
             setActiveTab(id);
+            
+            // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
+            if (id === "footprint" && (completed.length === 0 || casefiles.length === 0 || savedCourses.length === 0)) {
+                Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
+            } else if (id === "records" && (favorites.length === 0 || savedCourses.length === 0 || completed.length === 0 || casefiles.length === 0)) {
+                Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(() => {});
+            } else if (id === "activity" && (badges.length === 0 || rewards.length === 0 || checkins.length === 0 || payments.length === 0)) {
+                Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
+            }
         });
         try {
             const container = tabsTrackRef.current;
@@ -777,54 +861,87 @@ const MyPage = () => {
                     </div>
                 </div>
 
+                {/* 🟢 성능 최적화: Suspense로 동적 로딩된 컴포넌트 처리 */}
                 {activeTab === "profile" && (
-                    <ProfileTab
-                        // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
-                        key={userInfo?.subscriptionTier || "loading"}
-                        userInfo={userInfo}
-                        userPreferences={userPreferences}
-                        onEditProfile={handleEditClick}
-                        onEditPreferences={() => router.push("/onboarding")}
-                        onOpenPwModal={() => {
-                            setPwModalOpen(true);
-                            setPwStep("verify");
-                            setPwState({ current: "", next: "", confirm: "" });
-                            setPwError("");
-                        }}
-                        onLogout={handleLogoutClick}
-                    />
+                    <Suspense
+                        fallback={
+                            <div className="flex items-center justify-center py-20">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                            </div>
+                        }
+                    >
+                        <ProfileTab
+                            // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
+                            key={userInfo?.subscriptionTier || "loading"}
+                            userInfo={userInfo}
+                            userPreferences={userPreferences}
+                            onEditProfile={handleEditClick}
+                            onEditPreferences={() => router.push("/onboarding")}
+                            onOpenPwModal={() => {
+                                setPwModalOpen(true);
+                                setPwStep("verify");
+                                setPwState({ current: "", next: "", confirm: "" });
+                                setPwError("");
+                            }}
+                            onLogout={handleLogoutClick}
+                        />
+                    </Suspense>
                 )}
 
                 {activeTab === "footprint" && (
-                    <FootprintTab
-                        casefiles={casefiles}
-                        completed={completed}
-                        aiRecommendations={savedCourses}
-                        userName={userInfo?.name || ""}
-                    />
+                    <Suspense
+                        fallback={
+                            <div className="flex items-center justify-center py-20">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                            </div>
+                        }
+                    >
+                        <FootprintTab
+                            casefiles={casefiles}
+                            completed={completed}
+                            aiRecommendations={savedCourses}
+                            userName={userInfo?.name || ""}
+                        />
+                    </Suspense>
                 )}
 
                 {activeTab === "records" && (
-                    <RecordsTab
-                        favorites={favorites}
-                        savedCourses={savedCourses}
-                        completed={completed}
-                        casefiles={casefiles}
-                        onRemoveFavorite={removeFavorite}
-                        onOpenCaseModal={openCaseModal}
-                        userTier={userInfo?.subscriptionTier}
-                    />
+                    <Suspense
+                        fallback={
+                            <div className="flex items-center justify-center py-20">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                            </div>
+                        }
+                    >
+                        <RecordsTab
+                            favorites={favorites}
+                            savedCourses={savedCourses}
+                            completed={completed}
+                            casefiles={casefiles}
+                            onRemoveFavorite={removeFavorite}
+                            onOpenCaseModal={openCaseModal}
+                            userTier={userInfo?.subscriptionTier}
+                        />
+                    </Suspense>
                 )}
 
                 {activeTab === "activity" && (
-                    <ActivityTab
-                        badges={badges}
-                        rewards={rewards}
-                        checkins={checkins}
-                        payments={payments}
-                        onSelectBadge={setSelectedBadge}
-                        initialSubTab={activitySubTab}
-                    />
+                    <Suspense
+                        fallback={
+                            <div className="flex items-center justify-center py-20">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                            </div>
+                        }
+                    >
+                        <ActivityTab
+                            badges={badges}
+                            rewards={rewards}
+                            checkins={checkins}
+                            payments={payments}
+                            onSelectBadge={setSelectedBadge}
+                            initialSubTab={activitySubTab}
+                        />
+                    </Suspense>
                 )}
             </main>
 
