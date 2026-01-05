@@ -472,6 +472,11 @@ export default function HomeClient({
                                                 setAlreadyToday(true);
                                                 setStampCompleted(true);
                                                 setIsStamping(false);
+
+                                                // 7일 완료 시 CompletionModal 표시
+                                                if (data.awarded) {
+                                                    setShowRewardModal(true);
+                                                }
                                             } catch {
                                                 setIsStamping(false);
                                             }

@@ -9,6 +9,7 @@ import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 
 import { getS3StaticUrl } from "@/lib/s3Static";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
+import CompletionModal from "@/components/CompletionModal";
 import {
     Sparkles,
     MapPin,
@@ -194,6 +195,7 @@ const AIRecommender = () => {
     const [showLogin, setShowLogin] = useState(false);
     const [showPaywall, setShowPaywall] = useState(false);
     const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
+    const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [weekStamps, setWeekStamps] = useState<boolean[]>([false, false, false, false, false, false, false]);
     const [todayIndex, setTodayIndex] = useState<number | null>(null);
     const [todayChecked, setTodayChecked] = useState(false);
@@ -411,10 +413,14 @@ const AIRecommender = () => {
                     if (!res) return;
                     // 🟢 [Performance]: 다음 프레임에서 상태 업데이트
                     requestAnimationFrame(() => {
+                        // 서버에서 받은 weekStamps를 그대로 사용 (7일 완료 후 리셋된 상태도 반영)
                         setWeekStamps(res.stamps);
                         setTodayIndex(typeof res.todayIndex === "number" ? res.todayIndex : null);
                         setTodayChecked(Boolean(res.todayChecked));
-                        if (typeof res.weekCount === "number") setWeekCount(res.weekCount);
+                        // weekCount 업데이트: 7일 완료 후 다음날에는 0 또는 1로 리셋됨
+                        if (typeof res.weekCount === "number") {
+                            setWeekCount(res.weekCount);
+                        }
                     });
                 } catch (error) {
                     console.error("출석 정보 조회 오류:", error);
@@ -433,25 +439,47 @@ const AIRecommender = () => {
             const result = await postCheckin();
             if (result.ok && result.success) {
                 await fetchUserData();
+
+                // weekStamps 업데이트: 서버에서 받은 값이 있으면 우선 사용 (7일 완료 후 리셋된 상태도 반영)
                 if (Array.isArray(result.weekStamps) && result.weekStamps.length === 7) {
                     setWeekStamps(result.weekStamps);
                 } else if (typeof result.todayIndex === "number") {
-                    setWeekStamps((prev) => prev.map((v, i) => (i === result.todayIndex ? true : v)));
+                    // 서버에서 weekStamps가 없고 todayIndex만 있는 경우, 오늘만 체크된 상태로 업데이트
+                    setWeekStamps((prev) => {
+                        // weekCount가 0 또는 1이면 새로운 주기 시작이므로 이전 상태 무시하고 리셋
+                        if (
+                            typeof result.weekCount === "number" &&
+                            (result.weekCount === 0 || result.weekCount === 1)
+                        ) {
+                            return prev.map((v, i) => i === result.todayIndex);
+                        }
+                        // 기존 주기 중이면 기존 상태 유지하면서 오늘만 체크
+                        return prev.map((v, i) => (i === result.todayIndex ? true : v));
+                    });
                 } else {
+                    // todayIndex도 없으면 로컬 계산으로 폴백
                     const now = new Date();
                     const day = now.getDay();
                     const idx = (day + 6) % 7;
                     setWeekStamps((prev) => prev.map((v, i) => (i === idx ? true : v)));
                 }
+
+                // todayIndex 업데이트
                 if (typeof result.todayIndex === "number" || result.todayIndex === null) {
                     setTodayIndex(result.todayIndex ?? null);
                 }
+
+                // weekCount 업데이트: 7일 완료 후 다음날에는 0 또는 1로 리셋될 수 있음
+                if (typeof result.weekCount === "number") {
+                    setWeekCount(result.weekCount);
+                }
+
                 setTodayChecked(true);
-                if (typeof result.weekCount === "number") setWeekCount(result.weekCount);
                 setAttendanceModalOpen(false);
 
+                // 7일 완료 시 CompletionModal 표시
                 if (result.awarded) {
-                    alert(`출석 7회 달성! 쿠폰 ${result.rewardAmount || 1}개가 지급되었습니다.`);
+                    setShowCompletionModal(true);
                 } else {
                     alert("출석 체크 완료!");
                 }
@@ -1263,6 +1291,9 @@ const AIRecommender = () => {
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
                 {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
+                {showCompletionModal && (
+                    <CompletionModal isOpen={showCompletionModal} onClose={() => setShowCompletionModal(false)} />
+                )}
 
                 {/* 🟢 1단계: 선택 확인 모달 */}
                 {showConfirmModal && pendingCourse && (
