@@ -958,8 +958,8 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                             <button
                                                 onClick={() => {
                                                     if (courseId) {
-                                                        setShowDateCoursesModal(false);
-                                                        router.push(`/courses/${courseId}`);
+                                                    setShowDateCoursesModal(false);
+                                                    router.push(`/courses/${courseId}`);
                                                     } else {
                                                         console.error("[FootprintTab] 가로 스크롤 모달: 코스 ID가 없어 이동할 수 없습니다.");
                                                         alert("코스 정보를 불러올 수 없습니다.");
@@ -1089,8 +1089,8 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     <button
                                         onClick={() => {
                                             if (courseDetail?.id) {
-                                                setShowCourseModal(false);
-                                                router.push(`/courses/${courseDetail.id}`);
+                                            setShowCourseModal(false);
+                                            router.push(`/courses/${courseDetail.id}`);
                                             } else {
                                                 console.error("[FootprintTab] 코스 ID가 없어 이동할 수 없습니다.");
                                                 alert("코스 정보를 불러올 수 없습니다.");

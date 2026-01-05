@@ -126,13 +126,13 @@ const MyPage = () => {
                     if (initialTab === "profile") {
                         // 프로필 탭은 이미 로드됨, 나머지 데이터는 지연 로드
                         deferredData.push(
-                            fetchFavorites(),
-                            fetchSavedCourses(),
-                            fetchBadges(),
-                            fetchCompleted(),
-                            fetchCasefiles(),
-                            fetchRewards(),
-                            fetchCheckins(),
+                    fetchFavorites(),
+                    fetchSavedCourses(),
+                    fetchBadges(),
+                    fetchCompleted(),
+                    fetchCasefiles(),
+                    fetchRewards(),
+                    fetchCheckins(),
                             fetchPayments()
                         );
                     } else if (initialTab === "footprint") {
@@ -183,7 +183,7 @@ const MyPage = () => {
                 } else {
                     // 폴백: 즉시 실행
                     setTimeout(scheduleDeferredLoad, 100);
-                }
+            }
             }
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -870,21 +870,21 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                        <ProfileTab
-                            // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
-                            key={userInfo?.subscriptionTier || "loading"}
-                            userInfo={userInfo}
-                            userPreferences={userPreferences}
-                            onEditProfile={handleEditClick}
-                            onEditPreferences={() => router.push("/onboarding")}
-                            onOpenPwModal={() => {
-                                setPwModalOpen(true);
-                                setPwStep("verify");
-                                setPwState({ current: "", next: "", confirm: "" });
-                                setPwError("");
-                            }}
-                            onLogout={handleLogoutClick}
-                        />
+                    <ProfileTab
+                        // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
+                        key={userInfo?.subscriptionTier || "loading"}
+                        userInfo={userInfo}
+                        userPreferences={userPreferences}
+                        onEditProfile={handleEditClick}
+                        onEditPreferences={() => router.push("/onboarding")}
+                        onOpenPwModal={() => {
+                            setPwModalOpen(true);
+                            setPwStep("verify");
+                            setPwState({ current: "", next: "", confirm: "" });
+                            setPwError("");
+                        }}
+                        onLogout={handleLogoutClick}
+                    />
                     </Suspense>
                 )}
 
@@ -896,12 +896,12 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                        <FootprintTab
-                            casefiles={casefiles}
-                            completed={completed}
-                            aiRecommendations={savedCourses}
-                            userName={userInfo?.name || ""}
-                        />
+                    <FootprintTab
+                        casefiles={casefiles}
+                        completed={completed}
+                        aiRecommendations={savedCourses}
+                        userName={userInfo?.name || ""}
+                    />
                     </Suspense>
                 )}
 
@@ -913,15 +913,15 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                        <RecordsTab
-                            favorites={favorites}
-                            savedCourses={savedCourses}
-                            completed={completed}
-                            casefiles={casefiles}
-                            onRemoveFavorite={removeFavorite}
-                            onOpenCaseModal={openCaseModal}
-                            userTier={userInfo?.subscriptionTier}
-                        />
+                    <RecordsTab
+                        favorites={favorites}
+                        savedCourses={savedCourses}
+                        completed={completed}
+                        casefiles={casefiles}
+                        onRemoveFavorite={removeFavorite}
+                        onOpenCaseModal={openCaseModal}
+                        userTier={userInfo?.subscriptionTier}
+                    />
                     </Suspense>
                 )}
 
@@ -933,14 +933,14 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                        <ActivityTab
-                            badges={badges}
-                            rewards={rewards}
-                            checkins={checkins}
-                            payments={payments}
-                            onSelectBadge={setSelectedBadge}
-                            initialSubTab={activitySubTab}
-                        />
+                    <ActivityTab
+                        badges={badges}
+                        rewards={rewards}
+                        checkins={checkins}
+                        payments={payments}
+                        onSelectBadge={setSelectedBadge}
+                        initialSubTab={activitySubTab}
+                    />
                     </Suspense>
                 )}
             </main>

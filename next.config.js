@@ -129,7 +129,7 @@ const nextConfig = {
     images: {
         // 🟢 수정: 비표준 'qualities' 제거, 표준 remotePatterns 사용
         minimumCacheTTL: 3600,
-        remotePatterns: [{ protocol: "https", hostname: "**" }],
+        remotePatterns: [{ protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" }],
         qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
         deviceSizes: [640, 750, 828, 1080, 1200],
         imageSizes: [16, 32, 48, 64, 96],
