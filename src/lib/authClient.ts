@@ -68,7 +68,7 @@ export async function logout(): Promise<boolean> {
     }
 
     isLoggingOut = true;
-    
+
     // 🟢 [긴급 Fix]: 진행 중이거나 캐시된 세션 확인 요청을 즉시 파괴
     // 사용자가 로그아웃을 눌렀는데, 마침 1초 전에 fetchSession이 실행되어 "로그인 성공" 상태가 5초 캐시에 잡혀있다면
     // 로그아웃 리다이렉트 직후 홈 화면에서 앱이 다시 로그인 상태라고 착각할 수 있음
