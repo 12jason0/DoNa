@@ -33,9 +33,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             checkAuth();
         };
 
-        const handleAuthLogout = () => {
+        const handleAuthLogout = async () => {
+            // 🟢 [긴급 Fix]: 로그아웃 시 즉시 상태 초기화 및 세션 캐시 무시
             setUser(null);
             setIsLoading(false);
+            
+            // 🟢 세션 캐시를 무시하고 강제로 다시 확인하여 확실히 로그아웃 상태 확인
+            // 약간의 지연을 두어 서버 쿠키 삭제가 완료될 시간 확보
+            setTimeout(async () => {
+                try {
+                    // 🟢 fetchSession 캐시를 무시하기 위해 직접 API 호출
+                    const res = await fetch("/api/auth/session", {
+                        method: "GET",
+                        credentials: "include",
+                        cache: "no-store",
+                    });
+                    const data = await res.json();
+                    if (!data.authenticated) {
+                        setUser(null);
+                        setIsLoading(false);
+                    }
+                } catch (e) {
+                    // 🟢 에러 발생 시에도 로그아웃 상태 유지
+                    setUser(null);
+                    setIsLoading(false);
+                }
+            }, 300);
         };
 
         window.addEventListener("authLoginSuccess", handleAuthLoginSuccess);

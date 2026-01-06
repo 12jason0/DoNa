@@ -96,12 +96,24 @@ export function useAuth(): UseAuthReturn {
             checkSessionRef.current();
         };
 
+        const handleLogout = () => {
+            // 🟢 [긴급 Fix]: 로그아웃 시 즉시 상태 초기화 (fetchSession 캐시 무시)
+            setUser(null);
+            setIsAuthenticated(false);
+            setIsLoading(false);
+            
+            // 🟢 약간의 지연 후 세션 확인하여 확실히 로그아웃 상태 확인
+            setTimeout(() => {
+                checkSessionRef.current();
+            }, 300);
+        };
+
         window.addEventListener("authLoginSuccess", handleLoginSuccess);
-        window.addEventListener("authLogout", handleLoginSuccess);
+        window.addEventListener("authLogout", handleLogout);
 
         return () => {
             window.removeEventListener("authLoginSuccess", handleLoginSuccess);
-            window.removeEventListener("authLogout", handleLoginSuccess);
+            window.removeEventListener("authLogout", handleLogout);
         };
     }, []); // 이벤트 리스너는 마운트 시에만 등록하고, checkSession은 ref로 안정적으로 참조
 

@@ -143,9 +143,20 @@ export async function logout(): Promise<boolean> {
                     console.warn("[authClient] sessionStorage 정리 중 오류:", e);
                 }
 
-                // 🟢 로그아웃 이벤트 발생 (컴포넌트들이 상태를 초기화하도록)
+                // 🟢 [긴급 Fix]: 로그아웃 이벤트를 여러 번 발생시켜 모든 컴포넌트가 확실히 받도록 함
+                // 앱 WebView에서는 이벤트 전파가 지연될 수 있으므로 약간의 지연을 두고 여러 번 발생
                 window.dispatchEvent(new CustomEvent("authLogout"));
                 window.dispatchEvent(new CustomEvent("authTokenChange"));
+
+                // 🟢 추가 이벤트 발생 (약간의 지연을 두어 모든 컴포넌트가 확실히 받도록)
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent("authLogout"));
+                    window.dispatchEvent(new CustomEvent("authTokenChange"));
+                }, 50);
+
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent("authLogout"));
+                }, 150);
 
                 // 🟢 [Fix]: 앱 환경에서 로그아웃 처리 강화
                 const isApp = isMobileApp();
