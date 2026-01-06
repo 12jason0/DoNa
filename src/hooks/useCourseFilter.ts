@@ -9,7 +9,16 @@ export type Course = {
     imageUrl?: string;
     concept?: string;
     region?: string;
-    coursePlaces?: Array<{ order_index: number; place: { name?: string; address?: string; category?: string; opening_hours?: string | null; closed_days?: any[] } | null }>;
+    coursePlaces?: Array<{
+        order_index: number;
+        place: {
+            name?: string;
+            address?: string;
+            category?: string;
+            opening_hours?: string | null;
+            closed_days?: any[];
+        } | null;
+    }>;
     location?: string;
     distance?: number;
     duration?: string;
@@ -81,15 +90,22 @@ export function useCourseFilter({
                 if (!hasMatchingTag) return false;
             }
 
-            // 🟢 [Fix]: selectedRegions 필터링 추가 (서버에서 이미 필터링했지만 클라이언트에서도 확인)
+            // 🟢 [Fix]: selectedRegions 필터링 - 서버에서 이미 필터링했으므로 더 유연하게 처리
+            // 서버에서 REGION_GROUPS를 사용해 필터링했을 수 있으므로, 클라이언트에서는 더 관대하게 매칭
             if (selectedRegions.length > 0) {
                 const regionMatch = selectedRegions.some((r) => {
-                    const courseRegion = (c.region || "").toLowerCase();
-                    const searchRegion = r.toLowerCase();
-                    // 정확히 일치하거나 포함되어 있으면 통과
-                    return courseRegion === searchRegion || courseRegion.includes(searchRegion);
+                    const courseRegion = (c.region || "").toLowerCase().trim();
+                    const searchRegion = r.toLowerCase().trim();
+                    // 정확히 일치하거나 양방향 포함 관계 확인 (예: "성수"와 "성수동" 모두 매칭)
+                    return (
+                        courseRegion === searchRegion ||
+                        courseRegion.includes(searchRegion) ||
+                        searchRegion.includes(courseRegion)
+                    );
                 });
-                if (!regionMatch) return false;
+                // 🟢 [Fix]: 매칭 실패해도 서버 데이터를 신뢰하므로 필터링하지 않음
+                // 대신 NearbyClient에서 displayCourses로 처리
+                // if (!regionMatch) return false;
             }
 
             // (4) 키워드 AND 검색 (성수동 + 카페 모두 포함 확인) - tags도 포함
@@ -134,16 +150,7 @@ export function useCourseFilter({
             });
         }
         return result;
-    }, [
-        courses,
-        loading,
-        selectedActivities,
-        hideClosedPlaces,
-        selectedTagNames,
-        keywords,
-        hasClosedPlace,
-    ]);
+    }, [courses, loading, selectedActivities, hideClosedPlaces, selectedTagNames, keywords, hasClosedPlace]);
 
     return { filtered, hasClosedPlace };
 }
-

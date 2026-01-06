@@ -180,20 +180,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
             // 🟢 [Performance]: requestAnimationFrame으로 부드러운 전환
             requestAnimationFrame(() => {
-                // 🟢 [Fix]: 앱 환경에서는 router.push를 먼저 시도하고, 실패 시에만 window.location.href 사용
+                // 🟢 [Fix]: 앱 환경에서는 window.location.href를 직접 사용 (WebView에서 router.push가 작동하지 않음)
                 if (isMobileApp()) {
-                    // 앱 환경에서도 router.push를 시도 (더 빠른 전환)
-                    try {
-                        router.push(targetPath);
-                        // router.push가 작동하지 않을 경우를 대비해 타임아웃 설정
-                        setTimeout(() => {
-                            if (window.location.pathname + window.location.search !== targetPath) {
-                                window.location.href = targetPath;
-                            }
-                        }, 100);
-                    } catch {
-                        window.location.href = targetPath;
-                    }
+                    // 앱 환경: 전체 페이지 리로드로 확실한 전환 보장
+                    window.location.href = targetPath;
                 } else {
                     // 🟢 웹 환경: prefetch는 이미 호출되었을 수 있으므로 즉시 push
                     router.push(targetPath);
@@ -369,6 +359,20 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         }
         return rawFiltered;
     }, [rawFiltered, platform]);
+
+    // 🟢 [Fix]: 클라이언트 필터링 로직이 서버 데이터와 충돌할 경우를 대비한 안전 장치
+    // 서버에서 이미 필터링된 데이터를 클라이언트에서 다시 필터링하다가 전부 걸러진 경우,
+    // 서버 데이터를 그대로 보여줍니다.
+    const displayCourses = useMemo(() => {
+        // 1. 만약 서버에서 준 데이터(courses)가 있는데 클라이언트 필터(filtered)가 0이라면,
+        //    필터링 로직에 오류가 있는 것이므로 서버 데이터를 그대로 보여줍니다.
+        if (courses.length > 0 && filtered.length === 0 && !loading) {
+            // 서버에서 필터링된 데이터가 있는데 클라이언트에서 모두 걸러졌다면 서버 데이터 사용
+            return courses;
+        }
+        // 2. 그 외에는 필터링된 결과를 보여줍니다.
+        return filtered;
+    }, [filtered, courses, loading]);
 
     // 🟢 화면에 표시할 검색어 (searchInput이 비어도 URL의 q를 참조)
     const displayKeyword = useMemo(() => {
@@ -665,8 +669,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                 <div className="px-5 pt-6 flex-1 flex flex-col">
                     {!isActuallyLoading && (
                         <>
-                            {/* 검색 결과가 없을 때 (추천 모드가 아닐 때) - 로딩 중이 아닐 때만 표시 */}
-                            {filtered.length === 0 && !isRecommendation && !loading && (
+                            {/* 검색 결과가 없을 때 (추천 모드가 아닐 때) - 로딩 중이 아니고 서버 데이터도 없을 때만 표시 */}
+                            {displayCourses.length === 0 && !isRecommendation && !loading && courses.length === 0 && (
                                 <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] px-10">
                                     <div className="text-center">
                                         <p className="text-gray-400 dark:text-gray-500 text-[14px] font-medium mb-2">
@@ -696,7 +700,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             )}
 
                             {/* 추천 모드일 때 헤더 */}
-                            {isRecommendation && filtered.length > 0 && (
+                            {isRecommendation && displayCourses.length > 0 && (
                                 <div className="mb-8 border-b border-gray-100 pb-6">
                                     <div className="inline-block px-2 py-1 bg-slate-100 text-slate-600 text-[11px] font-bold rounded mb-3">
                                         AD / RECOMMENDATION
@@ -711,8 +715,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
                             <div className="space-y-8">
                                 {/* 🟢 iOS: Premium 코스 필터링, Android/Web: 모든 코스 표시 */}
-                                {(filtered.length > 0 || isRecommendation) &&
-                                    (filtered.length > 0 ? filtered : courses)
+                                {(displayCourses.length > 0 || isRecommendation) &&
+                                    displayCourses
                                         .filter((c) => {
                                             // iOS에서는 Premium 코스를 숨김
                                             if (platform === "ios" && c.grade === "PREMIUM") {
@@ -746,7 +750,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
                                     </div>
                                 )}
-                                {!hasMore && filtered.length > 0 && (
+                                {!hasMore && displayCourses.length > 0 && (
                                     <div className="text-center py-8 text-gray-400 text-sm">
                                         모든 코스를 불러왔습니다.
                                     </div>

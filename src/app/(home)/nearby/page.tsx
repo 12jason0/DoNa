@@ -32,11 +32,31 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         const regionGroup = REGION_GROUPS.find((g) => (g.dbValues as readonly string[]).includes(region));
         if (regionGroup) {
             // 해당 그룹의 모든 dbValues를 포함하는 OR 조건 생성
-            andConditions.push({
-                OR: (regionGroup.dbValues as readonly string[]).map((dbValue: string) => ({
+            const regionConditions: any[] = [];
+
+            // 1. 각 dbValue로 직접 검색 (예: "홍대", "연남", "신촌")
+            (regionGroup.dbValues as readonly string[]).forEach((dbValue: string) => {
+                regionConditions.push({
                     region: { contains: dbValue, mode: "insensitive" },
-                })),
+                });
             });
+
+            // 2. 슬래시로 구분된 조합도 검색 (예: "홍대/연남", "홍대/연남/신촌")
+            // 모든 dbValues를 슬래시로 조합한 패턴도 검색
+            const combinedPattern = (regionGroup.dbValues as readonly string[]).join("/");
+            regionConditions.push({
+                region: { contains: combinedPattern, mode: "insensitive" },
+            });
+
+            // 3. 역순 조합도 검색 (예: "연남/홍대")
+            const reversedPattern = [...(regionGroup.dbValues as readonly string[])].reverse().join("/");
+            if (reversedPattern !== combinedPattern) {
+                regionConditions.push({
+                    region: { contains: reversedPattern, mode: "insensitive" },
+                });
+            }
+
+            andConditions.push({ OR: regionConditions });
         } else {
             // REGION_GROUPS에 없으면 기본 contains 검색
             andConditions.push({
@@ -197,11 +217,30 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                     );
                     if (regionGroup) {
                         // 해당 그룹의 모든 dbValues를 포함하는 OR 조건 생성
-                        filterConditions.push({
-                            OR: (regionGroup.dbValues as readonly string[]).map((dbValue: string) => ({
+                        const regionConditions: any[] = [];
+
+                        // 1. 각 dbValue로 직접 검색 (예: "홍대", "연남", "신촌")
+                        (regionGroup.dbValues as readonly string[]).forEach((dbValue: string) => {
+                            regionConditions.push({
                                 region: { contains: dbValue, mode: "insensitive" },
-                            })),
+                            });
                         });
+
+                        // 2. 슬래시로 구분된 조합도 검색 (예: "홍대/연남", "홍대/연남/신촌")
+                        const combinedPattern = (regionGroup.dbValues as readonly string[]).join("/");
+                        regionConditions.push({
+                            region: { contains: combinedPattern, mode: "insensitive" },
+                        });
+
+                        // 3. 역순 조합도 검색 (예: "연남/홍대")
+                        const reversedPattern = [...(regionGroup.dbValues as readonly string[])].reverse().join("/");
+                        if (reversedPattern !== combinedPattern) {
+                            regionConditions.push({
+                                region: { contains: reversedPattern, mode: "insensitive" },
+                            });
+                        }
+
+                        filterConditions.push({ OR: regionConditions });
                     } else {
                         // REGION_GROUPS에 없으면 기본 contains 검색
                         filterConditions.push({
