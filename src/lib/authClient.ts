@@ -169,6 +169,19 @@ export async function authenticatedFetch<T>(
     const { data, response } = await apiFetch<T>(input, init);
 
     if (response.status === 401) {
+        // 🟢 [Fix]: 로그인 직후 쿠키 동기화 시간을 고려하여 일정 시간 동안 401 무시
+        if (typeof window !== "undefined") {
+            const loginSuccessTime = sessionStorage.getItem("login_success_trigger");
+            if (loginSuccessTime) {
+                const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
+                // 🟢 로그인 후 5초 이내에는 401을 무시 (쿠키 동기화 시간 확보)
+                if (timeSinceLogin < 5000) {
+                    console.log("[authenticatedFetch] 로그인 직후 쿠키 동기화 대기 중, 401 무시");
+                    return null; // 🟢 리다이렉트하지 않고 null만 반환
+                }
+            }
+        }
+
         if (shouldRedirect && typeof window !== "undefined") {
             // [Critical] 인증 실패 시 로그아웃 처리하되 무한 루프 방지를 위해 조건부 실행
             console.warn("401 Unauthorized 응답 감지, 자동 로그아웃 처리.");

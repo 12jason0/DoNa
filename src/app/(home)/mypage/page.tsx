@@ -225,8 +225,8 @@ const MyPage = () => {
                 const loginSuccessTime = sessionStorage.getItem("login_success_trigger");
                 if (loginSuccessTime) {
                     const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
-                    // 🟢 로그인 후 3초 이내에는 401을 무시 (쿠키 동기화 시간 확보)
-                    if (timeSinceLogin < 3000) {
+                    // 🟢 로그인 후 5초 이내에는 401을 무시 (쿠키 동기화 시간 확보)
+                    if (timeSinceLogin < 5000) {
                         console.log("[MyPage] 로그인 직후 쿠키 동기화 대기 중, 401 무시");
                         return false; // 🟢 리다이렉트하지 않고 false만 반환
                     }
