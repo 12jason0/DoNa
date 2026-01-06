@@ -12,6 +12,7 @@ interface AppleLoginButtonProps {
 export default function AppleLoginButton({ onSuccess, onError, disabled, next }: AppleLoginButtonProps) {
     const [isMobileApp, setIsMobileApp] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     useEffect(() => {
         // 모바일 앱 환경 감지
@@ -51,7 +52,10 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
     }, [onSuccess, onError]);
 
     const handleAppleLogin = async () => {
-        if (disabled) return;
+        if (disabled || isLoggingIn) return;
+
+        // 🟢 로그인 시작
+        setIsLoggingIn(true);
 
         // 🟢 [Debug]: 환경 변수 확인 (클라이언트 사이드)
         if (process.env.NODE_ENV === "development") {
@@ -71,7 +75,20 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                         action: "start",
                     })
                 );
+                // 🟢 앱 환경에서는 로그인 성공 이벤트를 기다림 (최대 30초)
+                const timeout = setTimeout(() => {
+                    setIsLoggingIn(false);
+                }, 30000);
+
+                // 🟢 로그인 성공 이벤트 리스너 (앱 환경)
+                const handleAppLoginSuccess = () => {
+                    clearTimeout(timeout);
+                    setIsLoggingIn(false);
+                    window.removeEventListener("authLoginSuccess", handleAppLoginSuccess);
+                };
+                window.addEventListener("authLoginSuccess", handleAppLoginSuccess);
             } catch (error) {
+                setIsLoggingIn(false);
                 onError?.(error);
             }
             return;
@@ -96,6 +113,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
             );
 
             if (!popup) {
+                setIsLoggingIn(false);
                 onError?.({ message: "팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요." });
                 return;
             }
@@ -132,6 +150,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                 if (type === "APPLE_LOGIN_SUCCESS") {
                     console.log("[AppleLogin] 성공 메시지 수신, 리다이렉트 준비");
                     hasReceivedMessage = true;
+                    setIsLoggingIn(false);
                     clearInterval(popupCheckInterval);
                     window.removeEventListener("message", messageHandler);
                     if (popup && !popup.closed) {
@@ -169,6 +188,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     hasReceivedMessage = true;
+                    setIsLoggingIn(false);
                     clearInterval(popupCheckInterval);
                     window.removeEventListener("message", messageHandler);
                     if (popup && !popup.closed) {
@@ -192,12 +212,14 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     if (popupOpened && !hasReceivedMessage) {
                         // 사용자가 팝업을 직접 닫은 경우이므로 에러를 표시하지 않음
                         console.log("[AppleLogin] 사용자가 팝업을 닫았습니다.");
+                        setIsLoggingIn(false);
                     }
                 }
             }, 500);
         } catch (error) {
             // 🟢 [Fix]: 실제 에러가 발생한 경우에만 에러 표시
             console.error("[AppleLogin] 예상치 못한 에러:", error);
+            setIsLoggingIn(false);
             onError?.(error);
         }
     };
@@ -206,7 +228,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
         <button
             type="button"
             onClick={handleAppleLogin}
-            disabled={disabled}
+            disabled={disabled || isLoggingIn}
             className="w-full flex items-center justify-center px-4 py-4 bg-black text-white rounded-2xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-bold shadow-sm text-[15px]"
         >
             {/* Apple 공식 로고 SVG (공식 가이드라인 준수) */}
@@ -219,7 +241,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
             >
                 <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
             </svg>
-            {disabled ? "Apple 로그인 중..." : "Apple로 로그인"}
+            {disabled || isLoggingIn ? "로그인 중..." : "Apple로 로그인"}
         </button>
     );
 }

@@ -71,6 +71,19 @@ export async function logout(): Promise<boolean> {
 
     logoutPromise = (async () => {
         try {
+            // 🟢 [Fix]: 애플 로그인 직후 쿠키 동기화 대기
+            // 애플 로그인 후 5초 이내라면 쿠키 동기화를 위해 짧은 대기
+            if (typeof window !== "undefined") {
+                const loginSuccessTime = sessionStorage.getItem("login_success_trigger");
+                if (loginSuccessTime) {
+                    const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
+                    if (timeSinceLogin < 5000) {
+                        // 🟢 쿠키 동기화를 위해 200ms 대기
+                        await new Promise((resolve) => setTimeout(resolve, 200));
+                    }
+                }
+            }
+
             const res = await fetch("/api/auth/logout", {
                 method: "POST",
                 credentials: "include", // 🟢 쿠키 전송 필수
@@ -109,13 +122,32 @@ export async function logout(): Promise<boolean> {
                         window.location.href = "/";
                     }, 100);
                 } else {
-                    // 🟢 웹 환경: 기존 로직 유지
+                    // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
                     if (res.ok) {
                         // 🟢 서버 로그아웃 성공 - 즉시 리다이렉트
                         window.location.replace("/");
                         return true;
                     } else {
-                        // 🟢 서버 로그아웃 실패해도 클라이언트 상태는 정리하고 리다이렉트
+                        // 🟢 [Fix]: 로그아웃 실패 시 재시도 (애플 로그인 후 쿠키 동기화 문제 대응)
+                        console.warn("[authClient] 로그아웃 실패, 재시도 중...");
+                        try {
+                            // 🟢 100ms 후 재시도
+                            await new Promise((resolve) => setTimeout(resolve, 100));
+                            const retryRes = await fetch("/api/auth/logout", {
+                                method: "POST",
+                                credentials: "include",
+                                cache: "no-store",
+                            });
+
+                            if (retryRes.ok) {
+                                window.location.replace("/");
+                                return true;
+                            }
+                        } catch (retryError) {
+                            console.error("[authClient] 로그아웃 재시도 실패:", retryError);
+                        }
+
+                        // 🟢 재시도 실패해도 클라이언트 상태는 정리하고 리다이렉트
                         window.location.replace("/");
                         return false;
                     }

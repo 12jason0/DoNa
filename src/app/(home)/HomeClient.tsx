@@ -99,11 +99,11 @@ export default function HomeClient({
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showAdModal, setShowAdModal] = useState(false);
     const [isSignup, setIsSignup] = useState(false);
-    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+    const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
 
     // 🟢 iOS 플랫폼 감지
     useEffect(() => {
-        setPlatform(isIOS() ? 'ios' : 'web');
+        setPlatform(isIOS() ? "ios" : "web");
     }, []);
     const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
     const [showCheckinModal, setShowCheckinModal] = useState(false);
@@ -313,13 +313,38 @@ export default function HomeClient({
     useEffect(() => {
         if (!isAuthenticated || hasShownCheckinModalRef.current || isAuthLoading) return;
 
-        const modalTimer = setTimeout(() => {
-            requestAnimationFrame(() => {
-                maybeOpenCheckinModal();
-            });
-        }, 800);
+        // 🟢 [Fix]: 스플래시 화면이 끝난 후에 출석 모달 표시
+        const checkSplashAndShowModal = () => {
+            // 스플래시가 이미 표시되었는지 확인
+            const splashShown = sessionStorage.getItem("dona-splash-shown");
+            if (splashShown) {
+                // 스플래시가 이미 끝났으면 즉시 표시
+                requestAnimationFrame(() => {
+                    maybeOpenCheckinModal();
+                });
+            } else {
+                // 스플래시가 아직 표시 중이면 스플래시 종료를 기다림 (최대 7초)
+                const checkInterval = setInterval(() => {
+                    const splashDone = sessionStorage.getItem("dona-splash-shown");
+                    if (splashDone) {
+                        clearInterval(checkInterval);
+                        requestAnimationFrame(() => {
+                            maybeOpenCheckinModal();
+                        });
+                    }
+                }, 100);
 
-        return () => clearTimeout(modalTimer);
+                // 7초 후에는 강제로 표시 (스플래시 최대 시간 6초 + 여유 1초)
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    requestAnimationFrame(() => {
+                        maybeOpenCheckinModal();
+                    });
+                }, 7000);
+            }
+        };
+
+        checkSplashAndShowModal();
     }, [isAuthenticated, isAuthLoading, maybeOpenCheckinModal]);
 
     // 🟢 메인 코스 리스트 (테마별용) - 검색/필터 변경 시에만 업데이트
