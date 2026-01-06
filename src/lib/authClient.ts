@@ -68,6 +68,11 @@ export async function logout(): Promise<boolean> {
     }
 
     isLoggingOut = true;
+    
+    // 🟢 [긴급 Fix]: 진행 중이거나 캐시된 세션 확인 요청을 즉시 파괴
+    // 사용자가 로그아웃을 눌렀는데, 마침 1초 전에 fetchSession이 실행되어 "로그인 성공" 상태가 5초 캐시에 잡혀있다면
+    // 로그아웃 리다이렉트 직후 홈 화면에서 앱이 다시 로그인 상태라고 착각할 수 있음
+    sessionPromise = null;
 
     logoutPromise = (async () => {
         try {
@@ -95,7 +100,8 @@ export async function logout(): Promise<boolean> {
 
             // 🟢 로그아웃 성공 여부와 관계없이 클라이언트 상태 정리
             if (typeof window !== "undefined") {
-                // 🟢 localStorage 정리
+                // 🟢 [긴급 Fix]: 모든 스토리지 강제 초기화
+                // 쿠키가 삭제되었더라도 localStorage 등에 잔재가 남아있어 앱이 로그인 상태라고 착각할 수 있음
                 localStorage.removeItem("authToken");
                 localStorage.removeItem("user");
                 localStorage.removeItem("loginTime");
@@ -104,10 +110,38 @@ export async function logout(): Promise<boolean> {
                 localStorage.removeItem("onboardingStep3");
                 localStorage.removeItem("onboardingStep4");
 
+                // 🟢 추가로 남아있을 수 있는 인증 관련 데이터 삭제
+                try {
+                    const keysToRemove: string[] = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.includes("auth") || key.includes("token") || key.includes("user"))) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    keysToRemove.forEach((key) => localStorage.removeItem(key));
+                } catch (e) {
+                    console.warn("[authClient] localStorage 정리 중 오류:", e);
+                }
+
                 // 🟢 스플래시 화면을 다시 표시하기 위해 sessionStorage 삭제
                 sessionStorage.removeItem("dona-splash-shown");
                 sessionStorage.removeItem("login_success_trigger");
                 sessionStorage.removeItem("auth:loggingIn");
+
+                // 🟢 추가로 남아있을 수 있는 세션 데이터 삭제
+                try {
+                    const sessionKeysToRemove: string[] = [];
+                    for (let i = 0; i < sessionStorage.length; i++) {
+                        const key = sessionStorage.key(i);
+                        if (key && (key.includes("auth") || key.includes("login"))) {
+                            sessionKeysToRemove.push(key);
+                        }
+                    }
+                    sessionKeysToRemove.forEach((key) => sessionStorage.removeItem(key));
+                } catch (e) {
+                    console.warn("[authClient] sessionStorage 정리 중 오류:", e);
+                }
 
                 // 🟢 로그아웃 이벤트 발생 (컴포넌트들이 상태를 초기화하도록)
                 window.dispatchEvent(new CustomEvent("authLogout"));
@@ -115,6 +149,14 @@ export async function logout(): Promise<boolean> {
 
                 // 🟢 [Fix]: 앱 환경에서 로그아웃 처리 강화
                 const isApp = isMobileApp();
+
+                // 🟢 [긴급 Fix]: 캐시 버스팅을 위한 리다이렉트 함수
+                // WebView는 로그아웃 후 `/`로 이동했을 때 기존에 캐시된 "로그인 된 상태의 메인 화면"을 보여주는 경우가 많음
+                // URL 뒤에 타임스탬프를 붙이면 WebView는 이를 완전히 새로운 주소로 인식해 서버에서 새 화면을 받아옴
+                const forceRedirect = () => {
+                    const cacheBuster = `t=${Date.now()}`;
+                    window.location.replace(`/?${cacheBuster}`);
+                };
 
                 if (isApp && (window as any).ReactNativeWebView) {
                     // 🟢 앱 환경: WebView에 로그아웃 완료 메시지 전송 및 강제 리로드
@@ -126,15 +168,15 @@ export async function logout(): Promise<boolean> {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
                     // 🟢 앱 환경에서는 쿠키 삭제를 확실히 하기 위해 페이지를 강제로 리로드
-                    // replace를 사용하여 히스토리에 남지 않도록 하고, 더 긴 대기 시간 확보
+                    // replace를 사용하여 히스토리에 남지 않도록 하고, 더 긴 대기 시간 확보 (200ms -> 500ms)
                     setTimeout(() => {
-                        window.location.replace("/");
-                    }, 200);
+                        forceRedirect();
+                    }, 500);
                 } else {
                     // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
                     if (res.ok) {
-                        // 🟢 서버 로그아웃 성공 - 즉시 리다이렉트
-                        window.location.replace("/");
+                        // 🟢 서버 로그아웃 성공 - 캐시 버스팅 적용
+                        forceRedirect();
                         return true;
                     } else {
                         // 🟢 [Fix]: 로그아웃 실패 시 재시도 (애플 로그인 후 쿠키 동기화 문제 대응)
@@ -149,15 +191,15 @@ export async function logout(): Promise<boolean> {
                             });
 
                             if (retryRes.ok) {
-                                window.location.replace("/");
+                                forceRedirect();
                                 return true;
                             }
                         } catch (retryError) {
                             console.error("[authClient] 로그아웃 재시도 실패:", retryError);
                         }
 
-                        // 🟢 재시도 실패해도 클라이언트 상태는 정리하고 리다이렉트
-                        window.location.replace("/");
+                        // 🟢 재시도 실패해도 클라이언트 상태는 정리하고 리다이렉트 (캐시 버스팅 적용)
+                        forceRedirect();
                         return false;
                     }
                 }
@@ -175,8 +217,13 @@ export async function logout(): Promise<boolean> {
                 sessionStorage.removeItem("login_success_trigger");
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
-                // 🟢 앱 환경에서는 강제 리로드
+                // 🟢 앱 환경에서는 강제 리로드 (캐시 버스팅 적용)
                 const isApp = isMobileApp();
+                const forceRedirect = () => {
+                    const cacheBuster = `t=${Date.now()}`;
+                    window.location.replace(`/?${cacheBuster}`);
+                };
+
                 if (isApp && (window as any).ReactNativeWebView) {
                     try {
                         (window as any).ReactNativeWebView.postMessage(
@@ -186,10 +233,10 @@ export async function logout(): Promise<boolean> {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
                     setTimeout(() => {
-                        window.location.replace("/");
-                    }, 200);
+                        forceRedirect();
+                    }, 500);
                 } else {
-                    window.location.replace("/");
+                    forceRedirect();
                 }
             }
             return false;
