@@ -102,20 +102,36 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         });
     }
 
-    // (C) 태그 필터
+    // (C) 태그 필터 - 🟢 [Fix]: 여러 태그 선택 시 모든 태그를 포함하는 코스만 표시 (AND 조건)
     if (tagIdsParam) {
         const tagIds = tagIdsParam
             .split(",")
             .map(Number)
             .filter((n) => !isNaN(n) && n > 0);
         if (tagIds.length > 0) {
-            andConditions.push({
-                courseTags: {
-                    some: {
-                        tagId: { in: tagIds },
+            // 🟢 [Fix]: 각 태그를 모두 포함해야 함 (AND 조건)
+            // some 대신 every를 사용하거나, 각 태그마다 조건을 추가
+            if (tagIds.length === 1) {
+                // 태그가 하나면 some 사용
+                andConditions.push({
+                    courseTags: {
+                        some: {
+                            tagId: { equals: tagIds[0] },
+                        },
                     },
-                },
-            });
+                });
+            } else {
+                // 태그가 여러 개면 모든 태그를 포함해야 함
+                andConditions.push({
+                    AND: tagIds.map((tagId) => ({
+                        courseTags: {
+                            some: {
+                                tagId: { equals: tagId },
+                            },
+                        },
+                    })),
+                });
+            }
         }
     }
 
@@ -286,13 +302,28 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                         .map(Number)
                         .filter((n) => !isNaN(n) && n > 0);
                     if (tagIdArray.length > 0) {
-                        filterConditions.push({
-                            courseTags: {
-                                some: {
-                                    tagId: { in: tagIdArray },
+                        // 🟢 [Fix]: 여러 태그 선택 시 모든 태그를 포함하는 코스만 표시 (AND 조건)
+                        if (tagIdArray.length === 1) {
+                            // 태그가 하나면 some 사용
+                            filterConditions.push({
+                                courseTags: {
+                                    some: {
+                                        tagId: { equals: tagIdArray[0] },
+                                    },
                                 },
-                            },
-                        });
+                            });
+                        } else {
+                            // 태그가 여러 개면 모든 태그를 포함해야 함
+                            filterConditions.push({
+                                AND: tagIdArray.map((tagId) => ({
+                                    courseTags: {
+                                        some: {
+                                            tagId: { equals: tagId },
+                                        },
+                                    },
+                                })),
+                            });
+                        }
                     }
                 }
 

@@ -81,13 +81,13 @@ export function useCourseFilter({
             // (2) 휴무 필터링
             if (hideClosedPlaces && hasClosedPlace(c)) return false;
 
-            // (3) 태그 필터링 (최적화: 미리 계산된 selectedTagNames 사용)
+            // (3) 태그 필터링 - 🟢 [Fix]: 여러 태그 선택 시 모든 태그를 포함하는 코스만 표시 (AND 조건)
             if (selectedTagNames.length > 0) {
                 // 🟢 courseTags 관계 테이블에서 가져온 태그 배열
                 const courseTags = Array.isArray(c.tags) ? c.tags : [];
-                // 선택한 태그 중 하나라도 코스에 포함되어 있어야 함
-                const hasMatchingTag = selectedTagNames.some((tagName) => courseTags.includes(tagName));
-                if (!hasMatchingTag) return false;
+                // 🟢 [Fix]: 선택한 모든 태그를 포함해야 함 (AND 조건)
+                const hasAllTags = selectedTagNames.every((tagName) => courseTags.includes(tagName));
+                if (!hasAllTags) return false;
             }
 
             // 🟢 [Fix]: selectedRegions 필터링 - 서버에서 이미 필터링했으므로 더 유연하게 처리
