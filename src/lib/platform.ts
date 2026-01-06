@@ -49,3 +49,20 @@ export function isWeb(): boolean {
     return detectPlatform() === 'web';
 }
 
+/**
+ * 모바일 앱 환경(WebView)인지 확인합니다.
+ * ReactNativeWebView 또는 Expo 환경을 감지합니다.
+ */
+export function isMobileApp(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    // ReactNativeWebView 객체 확인
+    const hasWebView = !!(window as any).ReactNativeWebView;
+    
+    // User Agent로 Expo/ReactNative 확인
+    const userAgent = window.navigator.userAgent;
+    const isExpo = /ReactNative|Expo/i.test(userAgent);
+    
+    return hasWebView || isExpo;
+}
+

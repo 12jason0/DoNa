@@ -1,3 +1,5 @@
+import { isMobileApp } from "@/lib/platform";
+
 export type AuthUser = { id: number; email: string; name: string; nickname?: string } | null;
 
 /** * 🟢 인증 요청 캐싱 변수
@@ -89,18 +91,37 @@ export async function logout(): Promise<boolean> {
                 // 🟢 로그아웃 이벤트 발생 (컴포넌트들이 상태를 초기화하도록)
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
-                // 🟢 [Fix]: 로그아웃 즉시 리다이렉트 (쿠키 삭제 확인 생략)
-                // 세션 API가 앱 환경에서 1초 지연을 주므로, 로그아웃 확인을 기다리면 사용자 경험이 나빠집니다.
-                // 서버에서 쿠키를 삭제했으므로, 클라이언트 상태만 정리하고 즉시 리다이렉트합니다.
-                if (res.ok) {
-                    // 🟢 서버 로그아웃 성공 - 즉시 리다이렉트
-                    window.location.replace("/");
-                    return true;
+                // 🟢 [Fix]: 앱 환경에서 로그아웃 처리 강화
+                const isApp = isMobileApp();
+
+                if (isApp && (window as any).ReactNativeWebView) {
+                    // 🟢 앱 환경: WebView에 로그아웃 완료 메시지 전송 및 강제 리로드
+                    try {
+                        (window as any).ReactNativeWebView.postMessage(
+                            JSON.stringify({ type: "logout", success: res.ok })
+                        );
+                    } catch (e) {
+                        console.warn("[authClient] WebView 메시지 전송 실패:", e);
+                    }
+                    // 🟢 앱 환경에서는 쿠키 삭제를 확실히 하기 위해 페이지를 강제로 리로드
+                    // setTimeout을 사용하여 서버 쿠키 삭제가 완료될 시간을 확보
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 100);
                 } else {
-                    // 🟢 서버 로그아웃 실패해도 클라이언트 상태는 정리하고 리다이렉트
-                    window.location.replace("/");
-                    return false;
+                    // 🟢 웹 환경: 기존 로직 유지
+                    if (res.ok) {
+                        // 🟢 서버 로그아웃 성공 - 즉시 리다이렉트
+                        window.location.replace("/");
+                        return true;
+                    } else {
+                        // 🟢 서버 로그아웃 실패해도 클라이언트 상태는 정리하고 리다이렉트
+                        window.location.replace("/");
+                        return false;
+                    }
                 }
+
+                return res.ok;
             }
 
             return res.ok;
@@ -112,7 +133,23 @@ export async function logout(): Promise<boolean> {
                 sessionStorage.removeItem("dona-splash-shown");
                 sessionStorage.removeItem("login_success_trigger");
                 window.dispatchEvent(new CustomEvent("authLogout"));
-                window.location.replace("/");
+
+                // 🟢 앱 환경에서는 강제 리로드
+                const isApp = isMobileApp();
+                if (isApp && (window as any).ReactNativeWebView) {
+                    try {
+                        (window as any).ReactNativeWebView.postMessage(
+                            JSON.stringify({ type: "logout", success: false })
+                        );
+                    } catch (e) {
+                        console.warn("[authClient] WebView 메시지 전송 실패:", e);
+                    }
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 100);
+                } else {
+                    window.location.replace("/");
+                }
             }
             return false;
         } finally {
