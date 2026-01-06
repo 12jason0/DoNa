@@ -4,6 +4,7 @@ import prisma from "@/lib/db";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
+import { REGION_GROUPS } from "@/constants/onboardingData";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐시 시간 증가
@@ -12,7 +13,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 1. URL 파라미터 파싱
     const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
     const region = typeof searchParams?.region === "string" ? searchParams.region : undefined;
-    const keywordRaw = (q || region || "").trim();
+    // 🟢 [Fix]: region 파라미터가 있으면 우선 사용, 없으면 q 사용
+    const keywordRaw = region ? region.trim() : (q || "").trim();
 
     const concept = typeof searchParams?.concept === "string" ? searchParams.concept.trim() : undefined;
     const tagIdsParam = typeof searchParams?.tagIds === "string" ? searchParams.tagIds.trim() : undefined;
@@ -24,7 +26,25 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     andConditions.push({ isPublic: true });
 
     // ✅ 장소 이름(name)과 주소(address)까지 검색 범위 확장
-    if (keywordRaw) {
+    // 🟢 [Fix]: region 파라미터가 있으면 REGION_GROUPS의 dbValues를 모두 포함하는 OR 조건 사용
+    if (region) {
+        // REGION_GROUPS에서 해당 region의 dbValues 찾기
+        const regionGroup = REGION_GROUPS.find((g) => (g.dbValues as readonly string[]).includes(region));
+        if (regionGroup) {
+            // 해당 그룹의 모든 dbValues를 포함하는 OR 조건 생성
+            andConditions.push({
+                OR: (regionGroup.dbValues as readonly string[]).map((dbValue: string) => ({
+                    region: { contains: dbValue, mode: "insensitive" },
+                })),
+            });
+        } else {
+            // REGION_GROUPS에 없으면 기본 contains 검색
+            andConditions.push({
+                region: { contains: region, mode: "insensitive" },
+            });
+        }
+    } else if (keywordRaw) {
+        // q 파라미터만 있으면 기존 검색 로직 사용
         const keywords = keywordRaw.split(/\s+/).filter(Boolean);
         keywords.forEach((k) => {
             const cleanKeyword = k.replace("동", "");
@@ -159,6 +179,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         const getCachedFilteredCourses = unstable_cache(
             async (
                 keyword: string,
+                regionParam: string | undefined,
                 concept: string | undefined,
                 tagIds: string | undefined,
                 userTier: string,
@@ -168,7 +189,26 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 // 🟢 검색 조건 재구성 (캐싱 함수 내부에서)
                 const filterConditions: any[] = [{ isPublic: true }];
 
-                if (keyword) {
+                // 🟢 [Fix]: region 파라미터가 있으면 REGION_GROUPS의 dbValues를 모두 포함하는 OR 조건 사용
+                if (regionParam) {
+                    // REGION_GROUPS에서 해당 region의 dbValues 찾기
+                    const regionGroup = REGION_GROUPS.find((g) =>
+                        (g.dbValues as readonly string[]).includes(regionParam)
+                    );
+                    if (regionGroup) {
+                        // 해당 그룹의 모든 dbValues를 포함하는 OR 조건 생성
+                        filterConditions.push({
+                            OR: (regionGroup.dbValues as readonly string[]).map((dbValue: string) => ({
+                                region: { contains: dbValue, mode: "insensitive" },
+                            })),
+                        });
+                    } else {
+                        // REGION_GROUPS에 없으면 기본 contains 검색
+                        filterConditions.push({
+                            region: { contains: regionParam, mode: "insensitive" },
+                        });
+                    }
+                } else if (keyword) {
                     const keywords = keyword.split(/\s+/).filter(Boolean);
                     keywords.forEach((k) => {
                         const cleanKeyword = k.replace("동", "");
@@ -292,7 +332,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
 
                 return mappedCourses;
             },
-            [`nearby-filter-${keywordRaw || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}`],
+            [`nearby-filter-${keywordRaw || ""}-${region || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}`],
             {
                 revalidate: 120, // 🟢 2분 캐시
                 tags: ["nearby-filtered-courses"],
@@ -304,7 +344,15 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
         const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
 
-        return getCachedFilteredCourses(keywordRaw, concept, tagIdsParam, userTier, unlockedCourseIds, isIOSPlatform);
+        return getCachedFilteredCourses(
+            keywordRaw,
+            region,
+            concept,
+            tagIdsParam,
+            userTier,
+            unlockedCourseIds,
+            isIOSPlatform
+        );
     }
 
     // 🟢 [Performance]: 초기 로드 데이터 캐싱

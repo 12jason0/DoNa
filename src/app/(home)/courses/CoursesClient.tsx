@@ -7,6 +7,7 @@ import CourseReportBanner from "@/components/CourseReportBanner";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CONCEPTS } from "@/constants/onboardingData";
 import { isIOS } from "@/lib/platform";
+import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
 // --- Type Definitions (기존과 100% 동일) ---
 type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
@@ -70,9 +71,16 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     }, []);
 
     useEffect(() => {
+        // 🟢 concept 파라미터 변경 시 로딩 상태 설정
+        if (conceptParam && conceptParam !== activeConcept) {
+            setIsNavigating(true);
+        }
         setActiveConcept(conceptParam || "");
-        setIsNavigating(false); // 🟢 페이지 로드 완료 시 네비게이션 상태 해제
-    }, [conceptParam]);
+        // 🟢 초기 데이터가 로드되면 로딩 해제
+        if (initialCourses.length > 0) {
+            setTimeout(() => setIsNavigating(false), 100);
+        }
+    }, [conceptParam, activeConcept, initialCourses.length]);
 
     // 🟢 사용자 쿠폰 개수 가져오기
     useEffect(() => {
@@ -99,6 +107,8 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             setCourses(initialCourses);
             setHasMore(initialCourses.length >= 30);
             setOffset(30);
+            // 🟢 데이터 로드 완료 시 로딩 해제
+            setIsNavigating(false);
         });
     }, [initialCourses]);
 
@@ -373,14 +383,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
             <div className="px-5 py-6 space-y-6">
                 {/* 🟢 [Performance]: 네비게이션 로딩 표시 */}
-                {isNavigating && (
-                    <div className="fixed inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-                        <div className="text-center">
-                            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-3"></div>
-                            <p className="text-gray-600 dark:text-gray-300 font-medium">코스를 불러오는 중...</p>
-                        </div>
-                    </div>
-                )}
+                {isNavigating && <CourseLoadingOverlay />}
                 {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
                 {visibleCourses.map((course, i) => {
                     // 🟢 코스 5개마다 제보 유도 배너 삽입

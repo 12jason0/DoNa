@@ -14,6 +14,7 @@ import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
 import { isIOS } from "@/lib/platform";
 import CourseReportBanner from "@/components/CourseReportBanner";
+import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
 const activities = [
     { key: "카페투어", label: "☕ 카페투어" },
@@ -26,7 +27,7 @@ const activities = [
     { key: "이색데이트", label: "✨ 이색데이트" },
 ];
 
-const regions = ["강남", "성수", "홍대", "종로", "연남", "한남", "서초", "건대", "송파", "신촌"];
+const regions = ["강남", "성수", "홍대", "종로", "연남", "영등포", "서초", "송파", "신촌"];
 
 const SkeletonLoader = () => (
     <div className="space-y-8 animate-pulse">
@@ -113,10 +114,14 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     }, []);
 
     useEffect(() => {
-        setCourses(initialCourses);
-        setLoading(false);
-        setHasMore(initialCourses.length >= 30);
-        setOffset(30);
+        // 🟢 초기 데이터 로드 시 로딩 해제 (약간의 지연을 두어 로딩 오버레이가 보이도록)
+        const timer = setTimeout(() => {
+            setCourses(initialCourses);
+            setLoading(false);
+            setHasMore(initialCourses.length >= 30);
+            setOffset(30);
+        }, 100);
+        return () => clearTimeout(timer);
     }, [initialCourses]);
 
     // 🟢 URL 파라미터 변경 시 상태 동기화 (되돌리기 버튼 클릭 시 필터 상태 복원) - 중복 제거 및 최적화
@@ -303,8 +308,13 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     }, [tagIdToNameMap, selectedTagIds, selectedFilterLabels.length]);
 
     // 🟢 [Performance]: 키워드 계산 (메모이제이션)
+    // 🟢 [Fix]: selectedRegions가 있으면 키워드에 포함하지 않음 (서버에서 이미 필터링됨)
     const keywords = useMemo(() => {
-        const activeK = searchParams.get("q") || selectedRegions[0] || "";
+        // selectedRegions가 있으면 q만 사용 (region은 서버에서 이미 필터링됨)
+        const activeK =
+            selectedRegions.length > 0
+                ? searchParams.get("q") || ""
+                : searchParams.get("q") || selectedRegions[0] || "";
         return activeK
             .split(/\s+/)
             .filter(Boolean)
@@ -405,6 +415,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const toggleRegionSingle = (value: string) => {
         const next = selectedRegions.includes(value) ? [] : [value];
         setSelectedRegions(next);
+        // 🟢 지역 카테고리 클릭 시 로딩 상태 설정 및 이전 결과 초기화
+        setLoading(true);
+        setCourses([]); // 이전 결과 초기화
+        // 🟢 즉시 URL 변경 (setTimeout 제거하여 즉시 반응)
         pushUrlFromState({ regions: next, q: "" });
     };
 
@@ -492,6 +506,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
     return (
         <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0f1710] text-gray-900 dark:text-white">
+            {/* 🟢 로딩 오버레이 표시 */}
+            {isActuallyLoading && <CourseLoadingOverlay />}
             <section className="max-w-[500px] lg:max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
                 {/* --- Header & Search Section --- */}
                 <div className="sticky top-0 z-40 bg-white dark:bg-[#0f1710] px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0">
@@ -614,9 +630,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
                 {/* --- Content List Section --- */}
                 <div className="px-5 pt-6 flex-1 flex flex-col">
-                    {isActuallyLoading ? (
-                        <SkeletonLoader />
-                    ) : (
+                    {!isActuallyLoading && (
                         <>
                             {/* 검색 결과가 없을 때 (추천 모드가 아닐 때) - 로딩 중이 아닐 때만 표시 */}
                             {filtered.length === 0 && !isRecommendation && !loading && (

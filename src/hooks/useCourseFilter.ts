@@ -81,8 +81,20 @@ export function useCourseFilter({
                 if (!hasMatchingTag) return false;
             }
 
+            // 🟢 [Fix]: selectedRegions 필터링 추가 (서버에서 이미 필터링했지만 클라이언트에서도 확인)
+            if (selectedRegions.length > 0) {
+                const regionMatch = selectedRegions.some((r) => {
+                    const courseRegion = (c.region || "").toLowerCase();
+                    const searchRegion = r.toLowerCase();
+                    // 정확히 일치하거나 포함되어 있으면 통과
+                    return courseRegion === searchRegion || courseRegion.includes(searchRegion);
+                });
+                if (!regionMatch) return false;
+            }
+
             // (4) 키워드 AND 검색 (성수동 + 카페 모두 포함 확인) - tags도 포함
-            if (keywords.length > 0) {
+            // 🟢 [Fix]: selectedRegions가 있으면 키워드 검색은 스킵 (서버에서 이미 필터링됨)
+            if (keywords.length > 0 && selectedRegions.length === 0) {
                 const courseTags = Array.isArray(c.tags) ? c.tags : [];
                 const courseContent = [
                     c.title,

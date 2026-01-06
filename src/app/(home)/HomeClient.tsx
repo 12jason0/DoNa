@@ -15,6 +15,7 @@ import BenefitConsentModal from "@/components/BenefitConsentModal";
 
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 import { isIOS } from "@/lib/platform";
+import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
 // 🟢 모든 테마 목록 (STATIC_CONCEPTS와 동일하게 22개)
 const ALL_CONCEPTS = [
@@ -121,6 +122,7 @@ export default function HomeClient({
     const [isCheckinLoading, setIsCheckinLoading] = useState<boolean>(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [isLoadingCourses, setIsLoadingCourses] = useState<boolean>(false);
 
     const router = useRouter();
     const hasShownCheckinModalRef = useRef(false);
@@ -355,6 +357,7 @@ export default function HomeClient({
         }
 
         const fetchCourses = async () => {
+            setIsLoadingCourses(true);
             try {
                 const params = new URLSearchParams({ limit: "30", imagePolicy: "any" });
                 if (query.trim()) params.set("q", query.trim());
@@ -372,6 +375,8 @@ export default function HomeClient({
             } catch {
                 // 🟢 에러 시에도 즉시 상태 업데이트
                 setCourses([]);
+            } finally {
+                setIsLoadingCourses(false);
             }
         };
         fetchCourses();
@@ -394,6 +399,8 @@ export default function HomeClient({
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
             <CompletionModal isOpen={showRewardModal} onClose={() => setShowRewardModal(false)} />
             <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
+            {/* 🟢 코스 로딩 중 오버레이 */}
+            {isLoadingCourses && <CourseLoadingOverlay />}
 
             <main className="pb-10">
                 {/* 🟢 HeroSlider를 최우선으로 즉시 렌더링 (LCP 최적화) - 메인과 동시에 표시 */}
@@ -402,7 +409,12 @@ export default function HomeClient({
                     <MemoizedHeroSlider items={heroSliderItems} />
                 </div>
 
-                <MemoizedTabbedConcepts courses={courses} hotCourses={hotCourses} newCourses={newCourses} />
+                <MemoizedTabbedConcepts
+                    courses={courses}
+                    hotCourses={hotCourses}
+                    newCourses={newCourses}
+                    onConceptClick={() => setIsLoadingCourses(true)}
+                />
 
                 <section className="py-6 px-4" ref={checkinSectionRef}>
                     <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
@@ -546,10 +558,12 @@ function TabbedConcepts({
     courses,
     hotCourses,
     newCourses,
+    onConceptClick,
 }: {
     courses: Course[];
     hotCourses: Course[];
     newCourses: Course[];
+    onConceptClick?: () => void;
 }) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"concept" | "popular" | "new">("concept");
@@ -633,6 +647,7 @@ function TabbedConcepts({
                                     }}
                                     onClick={() => {
                                         // 🟢 [Performance]: 즉시 네비게이션하여 빠른 반응
+                                        onConceptClick?.();
                                         router.prefetch(targetPath);
                                         router.push(targetPath);
                                     }}
