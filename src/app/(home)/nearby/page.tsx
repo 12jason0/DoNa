@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import NearbyClient from "./NearbyClient";
 import prisma from "@/lib/db";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 
@@ -162,7 +162,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 concept: string | undefined,
                 tagIds: string | undefined,
                 userTier: string,
-                unlockedIds: number[]
+                unlockedIds: number[],
+                isIOS: boolean
             ) => {
                 // 🟢 검색 조건 재구성 (캐싱 함수 내부에서)
                 const filterConditions: any[] = [{ isPublic: true }];
@@ -236,7 +237,13 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                     } else if (userTier === "BASIC") {
                         if (courseGrade === "PREMIUM") isLocked = true;
                     } else {
-                        if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                        // 🟢 iOS: Basic 코스는 무료, Premium만 잠금
+                        if (isIOS) {
+                            if (courseGrade === "PREMIUM") isLocked = true;
+                            // Basic 코스는 isLocked = false (무료)
+                        } else {
+                            if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                        }
                     }
 
                     // 🟢 courseTags 관계 테이블에서 태그 배열 생성
@@ -292,12 +299,17 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             }
         );
 
-        return getCachedFilteredCourses(keywordRaw, concept, tagIdsParam, userTier, unlockedCourseIds);
+        // 🟢 iOS 플랫폼 감지 (서버 사이드)
+        const headersList = await headers();
+        const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+
+        return getCachedFilteredCourses(keywordRaw, concept, tagIdsParam, userTier, unlockedCourseIds, isIOSPlatform);
     }
 
     // 🟢 [Performance]: 초기 로드 데이터 캐싱
     const getCachedDefaultNearbyCourses = unstable_cache(
-        async (userTier: string, unlockedCourseIds: number[]) => {
+        async (userTier: string, unlockedCourseIds: number[], isIOS: boolean) => {
             // 🟢 [5:3:2 비율 로직] 초기 로드 시 실행 (FREE:15, BASIC:9, PREMIUM:6)
             const TARGET_FREE = 15;
             const TARGET_BASIC = 9;
@@ -430,7 +442,12 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     );
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds);
+    // 🟢 iOS 플랫폼 감지 (서버 사이드)
+    const headersList = await headers();
+    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+    const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+
+    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds, isIOSPlatform);
 }
 
 export default async function NearbyPage({

@@ -13,6 +13,7 @@ import CourseCard from "@/components/CourseCard";
 import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
 import { isIOS } from "@/lib/platform";
+import CourseReportBanner from "@/components/CourseReportBanner";
 
 const activities = [
     { key: "카페투어", label: "☕ 카페투어" },
@@ -317,7 +318,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     }, [selectedTagIds, tagIdToNameMap]);
 
     // 🟢 [Performance]: 필터링 로직을 별도 hook으로 분리
-    const { filtered, hasClosedPlace } = useCourseFilter({
+    const { filtered: rawFiltered, hasClosedPlace } = useCourseFilter({
         courses,
         loading,
         selectedActivities,
@@ -327,6 +328,19 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         hideClosedPlaces,
         keywords,
     });
+
+    // 🟢 iOS: Basic 코스 무료 접근 (isLocked = false로 설정)
+    const filtered = useMemo(() => {
+        if (platform === "ios") {
+            return rawFiltered.map((c) => {
+                if (c.grade === "BASIC" && c.isLocked) {
+                    return { ...c, isLocked: false };
+                }
+                return c;
+            });
+        }
+        return rawFiltered;
+    }, [rawFiltered, platform]);
 
     // 🟢 화면에 표시할 검색어 (searchInput이 비어도 URL의 q를 참조)
     const displayKeyword = useMemo(() => {
@@ -435,6 +449,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     };
 
     const applyCategorySelection = () => {
+        // 🟢 카테고리 선택 시 로딩 상태 설정 및 이전 결과 초기화
+        setLoading(true);
+        setCourses([]); // 이전 결과 초기화
+
         // 🟢 [Performance]: 즉시 실행하여 빠른 전환
         const cleanedLabels = modalSelectedLabels.map((raw) =>
             String(raw || "")
@@ -655,17 +673,27 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             }
                                             return true;
                                         })
-                                        .map((c, i) => (
-                                            <CourseCard
-                                                key={c.id}
-                                                course={c}
-                                                isPriority={i < 20} // 🟢 상위 20개 이미지만 우선 로딩 (preload 경고 방지)
-                                                isFavorite={favoriteIds.has(Number(c.id))}
-                                                onToggleFavorite={toggleFavorite}
-                                                hasClosedPlace={hasClosedPlace}
-                                                getClosedPlaceCount={getClosedPlaceCount}
-                                            />
-                                        ))}
+                                        .map((c, i) => {
+                                            // 🟢 코스 5개마다 제보 유도 배너 삽입 (완벽한 하루와 동일)
+                                            const shouldShowBanner = i > 0 && i % 5 === 0;
+                                            return (
+                                                <div key={c.id}>
+                                                    {shouldShowBanner && (
+                                                        <div className="mb-6">
+                                                            <CourseReportBanner />
+                                                        </div>
+                                                    )}
+                                                    <CourseCard
+                                                        course={c}
+                                                        isPriority={i < 20} // 🟢 상위 20개 이미지만 우선 로딩 (preload 경고 방지)
+                                                        isFavorite={favoriteIds.has(Number(c.id))}
+                                                        onToggleFavorite={toggleFavorite}
+                                                        hasClosedPlace={hasClosedPlace}
+                                                        getClosedPlaceCount={getClosedPlaceCount}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
                                 {loadingMore && (
                                     <div className="text-center py-8">
                                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>

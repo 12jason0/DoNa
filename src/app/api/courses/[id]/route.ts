@@ -144,16 +144,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const courseGrade = course.grade || "FREE";
         // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 쿠폰으로 구매한 경우만 접근 허용
+        // 🟢 iOS: Basic 코스 무료 접근 허용
+        const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
+        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
         const hasAccess =
             courseGrade === "FREE" || // 무료 코스
+            (isIOSPlatform && courseGrade === "BASIC") || // 🟢 iOS: Basic 코스 무료 접근
             userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
         // 🔒 팁 표시 권한: iOS는 무료, Android/Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
         // 🟢 iOS 출시 기념 이벤트: 모든 Tip 무료 제공
-        const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
-        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+        // 위에서 이미 선언된 isIOSPlatform 재사용
         const hasTipAccess = isIOSPlatform || userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
@@ -200,8 +203,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         courseGrade === "FREE"
                             ? cp.coaching_tip || null // FREE 코스: 클라이언트에서 처리
                             : hasTipAccess
-                              ? cp.coaching_tip || null
-                              : null; // BASIC/PREMIUM 코스: 권한 체크
+                            ? cp.coaching_tip || null
+                            : null; // BASIC/PREMIUM 코스: 권한 체크
 
                     // 🟢 안전한 숫자 변환
                     const placeId = cp.place?.id;
@@ -222,7 +225,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         reservationUrl: cp.place?.reservationUrl || null, // 🟢 reservationUrl 명시적으로 포함
                         latitude: isNaN(latitude as number) ? null : latitude,
                         longitude: isNaN(longitude as number) ? null : longitude,
-                        closed_days: placeId ? (closedDaysMap[placeId] || []) : [],
+                        closed_days: placeId ? closedDaysMap[placeId] || [] : [],
                         coaching_tip: coachingTip, // 🔒 팁 권한 체크 후 포함 (FREE 코스도 BASIC/PREMIUM 유저에게만)
                     };
 
@@ -277,7 +280,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const payload = {
             id: String(course.id),
             title: course.title || "",
-            description: hasAccess ? (course.description || "") : "", // 🔒 마스킹
+            description: hasAccess ? course.description || "" : "", // 🔒 마스킹
             sub_title: hasAccess ? course.sub_title : null, // 🔒 마스킹
             target_situation: course.target_situation || null,
             imageUrl: course.imageUrl || "",
@@ -294,7 +297,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             benefits: [],
             notices: hasAccess ? (Array.isArray(course.courseNotices) ? course.courseNotices : []) : [], // 🔒 마스킹
             coursePlaces,
-            courseDetail: hasAccess ? (course.courseDetail || {}) : {}, // 🔒 마스킹
+            courseDetail: hasAccess ? course.courseDetail || {} : {}, // 🔒 마스킹
             reservationRequired: hasAccess ? reservationRequired : false, // 🔒 마스킹
             createdAt,
             updatedAt,

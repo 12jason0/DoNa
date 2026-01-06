@@ -54,6 +54,7 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
             if (!Number.isFinite(courseId)) return null;
 
             // 🟢 잠금 계산 로직 (유료 등급 및 개별 구매 확인)
+            // iOS 출시 기념 이벤트: Basic 코스 무료 제공은 클라이언트에서 처리
             let isLocked = false;
             const hasUnlocked = unlockedCourseIds.includes(courseId);
 
