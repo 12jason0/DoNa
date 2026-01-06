@@ -632,6 +632,7 @@ function TabbedConcepts({
                                         router.prefetch(targetPath);
                                     }}
                                     onClick={() => {
+                                        // 🟢 [Performance]: 즉시 네비게이션하여 빠른 반응
                                         router.prefetch(targetPath);
                                         router.push(targetPath);
                                     }}

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     // 🟢 [Fix]: 쿠키 완전 삭제 (모든 옵션 명시)
     res.cookies.set("auth", "", { 
         httpOnly: true, 
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production" && !isApp, // 🟢 앱 환경에서는 Secure 제거
         sameSite: "lax",
         path: "/", 
         maxAge: 0,
@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
         : `auth=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
     
     res.headers.set("Set-Cookie", cookieHeader);
+    
+    // 🟢 [Fix]: 앱 환경에서 쿠키 삭제를 더 확실히 하기 위해 추가 헤더 설정
+    if (isApp) {
+        res.headers.append("Set-Cookie", "auth=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT");
+    }
     
     // 🟢 앱 환경에서는 캐시 방지 헤더 추가
     if (isApp) {

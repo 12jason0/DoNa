@@ -960,7 +960,16 @@ export default function CourseDetailClient({
                                                                               💡 팁
                                                                           </span>
                                                                       </div>
-                                                                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                                                      <p 
+                                                                          className="text-xs text-gray-700 leading-relaxed"
+                                                                          style={{
+                                                                              display: '-webkit-box',
+                                                                              WebkitLineClamp: 3,
+                                                                              WebkitBoxOrient: 'vertical',
+                                                                              overflow: 'hidden',
+                                                                              textOverflow: 'ellipsis'
+                                                                          }}
+                                                                      >
                                                                           {coursePlace.coaching_tip}
                                                                       </p>
                                                                   </div>
@@ -1354,10 +1363,10 @@ export default function CourseDetailClient({
                     onClick={() => setShowPlaceModal(false)}
                 >
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-lg w-full max-w-md overflow-hidden shadow-2xl"
+                        className="bg-white dark:bg-[#1a241b] rounded-lg w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="relative h-72 bg-gray-100 dark:bg-gray-800">
+                        <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
                             {selectedPlace.imageUrl && (
                                 <Image
                                     src={selectedPlace.imageUrl}
@@ -1378,29 +1387,80 @@ export default function CourseDetailClient({
                                 ×
                             </button>
                         </div>
-                        <div className="p-8 text-black dark:text-white">
-                            <h3 className="text-2xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
-                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 font-medium">
+                        <div className="p-5 text-black dark:text-white">
+                            <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
+                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
                                 {selectedPlace.address}
                             </p>
-                            <p className="text-gray-600 dark:text-gray-300 text-[15px] leading-relaxed whitespace-pre-wrap mb-8">
+                            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
                                 {selectedPlace.description || "상세 설명이 없습니다."}
                             </p>
-                            <div className="flex flex-col gap-3">
+                            {/* 🟢 팁 섹션 추가 */}
+                            {(() => {
+                                const coursePlace = sortedCoursePlaces.find(
+                                    (cp) => cp.place.id === selectedPlace.id
+                                );
+                                const coachingTip = coursePlace?.coaching_tip;
+                                
+                                if (!coachingTip) return null;
+                                
+                                // 🟢 iOS: 모든 Tip 무료 제공 (출시 기념 이벤트)
+                                // 🔒 Android/Web: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
+                                const courseGrade = (courseData.grade || "FREE").toUpperCase();
+                                const currentUserTier = (userTier || "FREE").toUpperCase();
+                                const platform = isIOS() ? 'ios' : 'web';
+                                
+                                // iOS는 모든 Tip 무료, Android/Web은 기존 로직 유지
+                                const shouldShowTipButton = platform !== 'ios' && (
+                                    (courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                    courseData.isLocked
+                                );
+                                
+                                if (shouldShowTipButton) {
+                                    return (
+                                        <div className="mb-5 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <Icons.Bulb />
+                                                <span className="text-xs font-bold text-amber-700">
+                                                    💡 DoNa's Tip
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-600">
+                                                BASIC 등급이면 볼 수 있어요
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                
+                                return (
+                                    <div className="mb-5 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <Icons.Bulb />
+                                            <span className="text-xs font-bold text-amber-700">
+                                                💡 DoNa's Tip
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                            {coachingTip}
+                                        </p>
+                                    </div>
+                                );
+                            })()}
+                            <div className="flex flex-col gap-2">
                                 {/* 🟢 예약 버튼 추가 */}
                                 {selectedPlace.reservationUrl && (
                                     <a
                                         href={selectedPlace.reservationUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="w-full py-4 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                     >
-                                        <Icons.ExternalLink className="w-5 h-5" />
+                                        <Icons.ExternalLink className="w-4 h-4" />
                                         예약하기
                                     </a>
                                 )}
                                 <button
-                                    className="w-full py-4 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all"
+                                    className="w-full py-3 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
                                     onClick={() => setShowPlaceModal(false)}
                                 >
                                     닫기

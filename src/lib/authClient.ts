@@ -117,10 +117,10 @@ export async function logout(): Promise<boolean> {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
                     // 🟢 앱 환경에서는 쿠키 삭제를 확실히 하기 위해 페이지를 강제로 리로드
-                    // setTimeout을 사용하여 서버 쿠키 삭제가 완료될 시간을 확보
+                    // replace를 사용하여 히스토리에 남지 않도록 하고, 더 긴 대기 시간 확보
                     setTimeout(() => {
-                        window.location.href = "/";
-                    }, 100);
+                        window.location.replace("/");
+                    }, 200);
                 } else {
                     // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
                     if (res.ok) {
@@ -177,8 +177,8 @@ export async function logout(): Promise<boolean> {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
                     setTimeout(() => {
-                        window.location.href = "/";
-                    }, 100);
+                        window.location.replace("/");
+                    }, 200);
                 } else {
                     window.location.replace("/");
                 }
