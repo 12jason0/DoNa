@@ -102,7 +102,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     return;
                 }
 
-                const { type, token, error } = event.data;
+                const { type, token, error, next: serverNext } = event.data;
 
                 // 🟢 [Fix]: Apple 로그인 성공 메시지 처리
                 if (type === "APPLE_LOGIN_SUCCESS") {
@@ -111,18 +111,20 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     if (popup && !popup.closed) {
                         popup.close();
                     }
-                    // 🟢 [Fix]: 서버에서 이미 쿠키를 설정했으므로,
-                    // 이벤트 발생 후 즉시 메인 페이지로 리다이렉트
+
+                    // 1. 이벤트 발생 (로그인 상태 업데이트 트리거)
                     window.dispatchEvent(new CustomEvent("authLoginSuccess"));
                     sessionStorage.setItem("login_success_trigger", "true");
-                    // 🟢 [Fix]: 즉시 리다이렉트 (지연 없음)
-                    // 로그인 페이지에서 시작했거나 next가 없으면 무조건 메인으로
-                    const redirectPath = next && !next.startsWith("/login") && next !== "/login" ? next : "/";
-                    // 🟢 [Fix]: 즉시 리다이렉트 (replace 사용으로 히스토리 스택 방지)
-                    // callback에서 이미 리다이렉트했을 수 있지만, 확실하게 하기 위해 여기서도 리다이렉트
+
+                    // 2. 리다이렉트 경로 결정 (서버에서 온 경로 우선)
+                    const finalRedirect =
+                        serverNext || (next && !next.startsWith("/login") && next !== "/login" ? next : "/");
+
+                    // 3. 브라우저가 쿠키를 처리할 수 있도록 아주 짧은 지연 후 이동
+                    // window.location.replace를 사용하여 히스토리 스택에서 로그인 페이지 제거
                     setTimeout(() => {
-                        window.location.replace(redirectPath);
-                    }, 0);
+                        window.location.replace(finalRedirect);
+                    }, 50);
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     window.removeEventListener("message", messageHandler);

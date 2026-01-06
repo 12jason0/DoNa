@@ -181,14 +181,26 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
 
         return generateHtmlResponse(
             `(function() {
+                // 🟢 [Fix]: 페이지 내용 숨기기 (팝업에 아무것도 표시되지 않도록)
+                document.body.style.display = 'none';
+                
                 try {
-                    // 🟢 [Fix]: 부모 창으로 로그인 성공 메시지 전송
+                    // 🟢 [Fix]: 팝업 창은 메시지만 전송하고 닫기, 리다이렉트는 부모 창에 맡김
                     if (window.opener && !window.opener.closed) {
-                        // 부모 창에 로그인 성공 이벤트 전달
-                        window.opener.postMessage({ type: 'APPLE_LOGIN_SUCCESS', token: '${serviceToken}' }, window.location.origin);
+                        // 1. 부모 창에 성공 메시지와 토큰, 리다이렉트 경로 전송
+                        window.opener.postMessage({ 
+                            type: 'APPLE_LOGIN_SUCCESS', 
+                            token: '${serviceToken}',
+                            next: '${decodedNext}' 
+                        }, window.location.origin);
+                        
+                        // 2. 부모 창에 이벤트 알림
                         window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        // 🟢 [Fix]: 부모 창 리다이렉트 (replace 사용으로 히스토리 스택 방지)
-                        window.opener.location.replace("${decodedNext}");
+                        
+                        // 3. 팝업 창 즉시 닫기 (여러 번 시도하여 확실하게)
+                        setTimeout(function() {
+                            window.close();
+                        }, 0);
                         window.close();
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
@@ -196,8 +208,12 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         window.location.replace("${decodedNext}");
                     }
                 } catch (err) {
-                    console.error('Apple 로그인 후처리 오류:', err);
-                    window.location.replace("${decodedNext}");
+                    console.error('Apple 로그인 팝업 처리 오류:', err);
+                    try {
+                        window.close();
+                    } catch (e) {
+                        window.location.replace("${decodedNext}");
+                    }
                 }
             })();`,
             serviceToken
@@ -338,7 +354,8 @@ async function handleAppAppleAuthLogic(
  * 💡 공통 응답 처리 (보안 쿠키 발급)
  */
 function generateHtmlResponse(script: string, token?: string) {
-    const html = `<html><head><meta charset="UTF-8"></head><body><script>${script}</script></body></html>`;
+    // 🟢 [Fix]: 빈 페이지로 표시하고 스크립트만 실행 (팝업에 아무것도 보이지 않도록)
+    const html = `<html><head><meta charset="UTF-8"><style>body{display:none;margin:0;padding:0;}</style></head><body><script>${script}</script></body></html>`;
     const response = new NextResponse(html, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
     });
