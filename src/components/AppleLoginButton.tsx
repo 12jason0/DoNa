@@ -138,6 +138,20 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                         popup.close();
                     }
 
+                    // 🟢 [Magic Fix]: 앱 환경 감지
+                    const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
+
+                    // 🟢 앱인 경우 Native(WebScreen.tsx)가 리다이렉트를 처리하므로 여기서는 중단
+                    // WebScreen.tsx의 injectJavaScript가 이미 리다이렉트를 처리하므로 중복 방지
+                    if (isApp) {
+                        console.log("[AppleLogin] 앱 환경 감지, 리다이렉트는 WebScreen.tsx에서 처리");
+                        // 전역 로그인 상태만 업데이트 (리다이렉트는 WebScreen.tsx가 처리)
+                        window.dispatchEvent(new CustomEvent("authLoginSuccess"));
+                        sessionStorage.setItem("login_success_trigger", "true");
+                        return; // 🟢 앱 환경에서는 여기서 종료
+                    }
+
+                    // 🟢 웹 환경인 경우에만 여기서 리다이렉트 처리
                     // 1. 전역 로그인 상태 업데이트
                     window.dispatchEvent(new CustomEvent("authLoginSuccess"));
                     sessionStorage.setItem("login_success_trigger", "true");
@@ -146,14 +160,10 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     const finalRedirect =
                         serverNext || (next && !next.startsWith("/login") && next !== "/login" ? next : "/");
 
-                    // 🟢 [Fix]: 앱 환경에서 쿠키 저장 시간 확보 (500ms)
-                    // 쿠키 동기화가 완료되지 않은 채 이동하면 다시 /login으로 튕깁니다.
-                    const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
-                    const delay = isApp ? 500 : 300; // 앱 환경은 더 긴 지연 시간 필요
-
+                    // 🟢 웹 환경에서는 300ms 지연 후 리다이렉트
                     setTimeout(() => {
                         window.location.replace(finalRedirect);
-                    }, delay);
+                    }, 300);
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     hasReceivedMessage = true;

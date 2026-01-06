@@ -50,6 +50,7 @@ export async function fetchSession(): Promise<{ authenticated: boolean; user: Au
 
 // 🟢 [Fix]: 로그아웃 중복 실행 방지
 let isLoggingOut = false;
+let logoutPromise: Promise<boolean> | null = null;
 
 /**
  * 🟢 로그아웃 (쿠키 기반)
@@ -58,52 +59,105 @@ let isLoggingOut = false;
  * localStorage를 사용하지 않고 쿠키만 사용합니다.
  */
 export async function logout(): Promise<boolean> {
-    // 🟢 [Fix]: 이미 로그아웃 중이면 중복 실행 방지
-    if (isLoggingOut) {
+    // 🟢 [Fix]: 이미 로그아웃 중이면 기존 Promise 반환
+    if (isLoggingOut && logoutPromise) {
         console.warn("[authClient] 로그아웃이 이미 진행 중입니다.");
-        return false;
+        return logoutPromise;
     }
 
     isLoggingOut = true;
 
-    try {
-        const res = await fetch("/api/auth/logout", {
-            method: "POST",
-            credentials: "include", // 🟢 쿠키 전송 필수
-        });
+    logoutPromise = (async () => {
+        try {
+            const res = await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "include", // 🟢 쿠키 전송 필수
+                cache: "no-store", // 🟢 캐시 방지
+            });
 
-        if (res.ok) {
-            // 🟢 로그아웃 성공 시 localStorage 정리
+            // 🟢 로그아웃 성공 여부와 관계없이 클라이언트 상태 정리
             if (typeof window !== "undefined") {
+                // 🟢 localStorage 정리
                 localStorage.removeItem("authToken");
                 localStorage.removeItem("user");
                 localStorage.removeItem("loginTime");
 
                 // 🟢 스플래시 화면을 다시 표시하기 위해 sessionStorage 삭제
                 sessionStorage.removeItem("dona-splash-shown");
+                sessionStorage.removeItem("login_success_trigger");
 
                 // 🟢 로그아웃 이벤트 발생 (컴포넌트들이 상태를 초기화하도록)
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
-                // 🟢 스플래시 화면을 보여주기 위해 메인 페이지로 이동 (새로고침 포함)
+                // 🟢 [Fix]: 쿠키 삭제 확인 후 리다이렉트
+                let logoutVerifyAttempts = 0;
+                const maxLogoutVerifyAttempts = 5; // 최대 1초 대기 (200ms * 5)
+
+                const verifyLogout = async () => {
+                    try {
+                        const sessionRes = await fetch("/api/auth/session", {
+                            method: "GET",
+                            credentials: "include",
+                            cache: "no-store",
+                        });
+
+                        const sessionData = await sessionRes.json();
+                        if (!sessionData.authenticated) {
+                            // 🟢 로그아웃 확인됨 - 메인 페이지로 이동
+                            window.location.replace("/");
+                        } else {
+                            logoutVerifyAttempts++;
+                            if (logoutVerifyAttempts < maxLogoutVerifyAttempts) {
+                                // 🟢 아직 로그인 상태면 잠시 후 다시 확인
+                                setTimeout(verifyLogout, 200);
+                            } else {
+                                // 🟢 최대 시도 횟수 초과 시에도 메인으로 이동
+                                console.warn("[authClient] 로그아웃 확인 최대 시도 횟수 초과");
+                                window.location.replace("/");
+                            }
+                        }
+                    } catch (error) {
+                        // 🟢 에러 발생 시에도 메인으로 이동
+                        console.warn("[authClient] 로그아웃 확인 실패:", error);
+                        window.location.replace("/");
+                    }
+                };
+
+                if (res.ok) {
+                    // 🟢 서버 로그아웃 성공 - 쿠키 삭제 확인 후 리다이렉트
+                    setTimeout(verifyLogout, 300);
+                    return true;
+                } else {
+                    // 🟢 서버 로그아웃 실패해도 클라이언트 상태는 정리하고 리다이렉트
+                    setTimeout(() => {
+                        window.location.replace("/");
+                    }, 300);
+                    return false;
+                }
+            }
+
+            return res.ok;
+        } catch (error) {
+            console.error("[authClient] 로그아웃 실패:", error);
+
+            // 🟢 에러 발생 시에도 안전을 위해 메인으로 강제 이동
+            if (typeof window !== "undefined") {
+                sessionStorage.removeItem("dona-splash-shown");
+                sessionStorage.removeItem("login_success_trigger");
+                window.dispatchEvent(new CustomEvent("authLogout"));
                 window.location.replace("/");
             }
-            return true;
+            return false;
+        } finally {
+            // 🟢 [Fix]: 로그아웃 완료 후 플래그 초기화 (3초 후)
+            setTimeout(() => {
+                isLoggingOut = false;
+                logoutPromise = null;
+            }, 3000);
         }
+    })();
 
-        isLoggingOut = false;
-        return false;
-    } catch (error) {
-        console.error("[authClient] 로그아웃 실패:", error);
-        isLoggingOut = false;
-
-        // 🟢 에러 발생 시에도 안전을 위해 메인으로 강제 이동하며 새로고침
-        if (typeof window !== "undefined") {
-            sessionStorage.removeItem("dona-splash-shown");
-            window.location.replace("/");
-        }
-        return false;
-    }
+    return logoutPromise;
 }
 
 /**

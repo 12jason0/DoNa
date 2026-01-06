@@ -166,6 +166,7 @@ function generateHtmlResponse(script: string, token?: string) {
     });
 
     if (token) {
+        // 🟢 [Fix]: 보안 쿠키 설정 강화 (WebView 환경 대응)
         response.cookies.set("auth", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -173,6 +174,17 @@ function generateHtmlResponse(script: string, token?: string) {
             path: "/",
             maxAge: 60 * 60 * 24 * 7,
         });
+        
+        // 🟢 [Fix]: WebView에서 쿠키 설정을 확실히 하기 위해 Set-Cookie 헤더 직접 설정
+        const cookieOptions = [
+            `auth=${token}`,
+            "Path=/",
+            "HttpOnly",
+            process.env.NODE_ENV === "production" ? "Secure" : "",
+            "SameSite=Lax",
+            `Max-Age=${60 * 60 * 24 * 7}`,
+        ].filter(Boolean).join("; ");
+        response.headers.set("Set-Cookie", cookieOptions);
     }
     return response;
 }

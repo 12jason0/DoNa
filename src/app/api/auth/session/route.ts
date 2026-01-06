@@ -7,14 +7,24 @@ export const dynamic = "force-dynamic";
 
 /**
  * 🟢 세션 확인 API (쿠키 기반)
- * 
+ *
  * 쿠키에 저장된 JWT 토큰을 검증하고 사용자 정보를 반환합니다.
  * JWT 검증을 통해 토큰이 유효한지 확인합니다.
  */
 export async function GET(req: NextRequest) {
     try {
+        // 🟢 [Magic Fix]: 아이패드 웹뷰의 쿠키 동기화 시간을 위해 의도적으로 1초 지연
+        // 앱을 다시 빌드할 수 없으므로, 서버가 응답을 늦게 줘서 웹뷰가 쿠키를 저장할 시간을 벌어줍니다.
+        const userAgent = req.headers.get("user-agent") || "";
+        const isApp = /ReactNative|Expo/i.test(userAgent);
+
+        if (isApp) {
+            // 🟢 앱 환경에서는 쿠키 동기화를 위해 1초 대기
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
         const token = req.cookies.get("auth")?.value;
-        
+
         if (!token) {
             return NextResponse.json({ authenticated: false, user: null });
         }
@@ -54,14 +64,13 @@ export async function GET(req: NextRequest) {
                 // 🟢 username이 있고 user_로 시작하지 않으면 사용 (실제 이름)
                 // user_로 시작하면 임시 이름이므로 이메일 앞부분 사용
                 let displayName = "";
-                
+
                 if (dbUser.username && dbUser.username.trim() !== "") {
                     const trimmedUsername = dbUser.username.trim();
                     // user_로 시작하는 임시 이름이면 이메일 앞부분 사용
                     if (trimmedUsername.startsWith("user_")) {
-                        displayName = dbUser.email && dbUser.email.includes("@") 
-                            ? dbUser.email.split("@")[0] 
-                            : trimmedUsername;
+                        displayName =
+                            dbUser.email && dbUser.email.includes("@") ? dbUser.email.split("@")[0] : trimmedUsername;
                     } else {
                         // 실제 이름이면 그대로 사용
                         displayName = trimmedUsername;
@@ -73,14 +82,14 @@ export async function GET(req: NextRequest) {
                 } else if (dbUser.email && dbUser.email.includes("@")) {
                     displayName = dbUser.email.split("@")[0];
                 }
-                
+
                 userInfo = {
                     id: dbUser.id,
                     email: dbUser.email || payload?.email || "",
                     name: displayName,
                     nickname: displayName,
                 };
-                
+
                 console.log("[Session API] 사용자 정보 반환:", {
                     userId: dbUser.id,
                     dbUsername: dbUser.username,
