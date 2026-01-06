@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
             description,
             duration,
             location,
+            region,
             imageUrl,
             concept,
             sub_title,
@@ -72,12 +73,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "제목은 필수입니다." }, { status: 400 });
         }
 
+        // 🟢 [Fix]: region 또는 location 둘 다 처리 (프론트엔드는 region을 보냄)
+        const regionValue = region !== undefined ? region : location;
+
         const created = await prisma.course.create({
             data: {
                 title: title || "",
                 description: description || "",
                 duration: duration || "",
-                region: location || "",
+                region: regionValue || "",
                 imageUrl: imageUrl || "",
                 concept: concept || "",
                 sub_title: sub_title || "",

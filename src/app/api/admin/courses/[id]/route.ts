@@ -71,6 +71,7 @@ export async function PATCH(
             description,
             duration,
             location,
+            region,
             imageUrl,
             concept,
             sub_title,
@@ -81,13 +82,16 @@ export async function PATCH(
             tags,
         } = body || {};
 
+        // 🟢 [Fix]: region 또는 location 둘 다 처리 (프론트엔드는 region을 보냄)
+        const regionValue = region !== undefined ? region : location;
+
         const updated = await prisma.course.update({
             where: { id: courseId },
             data: {
                 ...(title !== undefined ? { title } : {}),
                 ...(description !== undefined ? { description } : {}),
                 ...(duration !== undefined ? { duration } : {}),
-                ...(location !== undefined ? { region: location } : {}),
+                ...(regionValue !== undefined ? { region: regionValue } : {}),
                 ...(imageUrl !== undefined ? { imageUrl } : {}),
                 ...(concept !== undefined ? { concept } : {}),
                 ...(sub_title !== undefined ? { sub_title } : {}),
