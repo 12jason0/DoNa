@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
-import React, { useState, memo, useMemo } from "react"; // memo, useMemo 추가
+import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
 import { CONCEPTS } from "@/constants/onboardingData";
 import CourseLockOverlay from "./CourseLockOverlay";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { useRouter } from "next/navigation";
+import { isIOS } from "@/lib/platform";
 
 // --- Interfaces (기존과 동일) ---
 interface PlaceClosedDay {
@@ -94,7 +95,13 @@ const CourseCard = memo(
     }: CourseCardProps) => {
         const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
         const [showLoginModal, setShowLoginModal] = useState(false);
+        const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
         const router = useRouter();
+
+        // 🟢 iOS 플랫폼 감지
+        useEffect(() => {
+            setPlatform(isIOS() ? 'ios' : 'web');
+        }, []);
 
         // [Optimization] 컨셉 텍스트 연산 결과 메모이제이션
         const displayConcept = useMemo(() => {
@@ -213,7 +220,14 @@ const CourseCard = memo(
                             </span>
                         )}
 
-                        {!course.isLocked && course.grade && course.grade !== "FREE" && (
+                        {/* 🟢 iOS: Basic 코스에 무료 이벤트 배너 표시, Premium은 숨김 */}
+                        {platform === 'ios' && course.grade === 'BASIC' && (
+                            <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-emerald-400 animate-pulse">
+                                🎉 무료 이벤트 중
+                            </span>
+                        )}
+                        {/* Android/Web: 기존 등급 배지 표시 */}
+                        {platform !== 'ios' && !course.isLocked && course.grade && course.grade !== "FREE" && (
                             <span className="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-emerald-500">
                                 {course.grade}
                             </span>

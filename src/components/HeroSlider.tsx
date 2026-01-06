@@ -43,7 +43,7 @@ const SliderItemComponent = memo(
                 href={`/courses/${item.id}`}
                 prefetch={true} // 🟢 성능 최적화: prefetch 추가
                 draggable={false}
-                className="relative min-w-full md:min-w-[400px] aspect-4/5 rounded-xl overflow-hidden snap-center border border-gray-100 dark:border-transparent active:scale-[0.98] transition-transform duration-200 block select-none"
+                className="relative min-w-full md:min-w-[500px] lg:min-w-[600px] aspect-4/5 rounded-xl overflow-hidden snap-center border border-gray-100 dark:border-transparent active:scale-[0.98] transition-transform duration-200 block select-none"
             >
                 <div className="relative w-full h-full pointer-events-none">
                     {item.imageUrl ? (

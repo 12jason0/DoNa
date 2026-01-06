@@ -116,8 +116,14 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     window.dispatchEvent(new CustomEvent("authLoginSuccess"));
                     sessionStorage.setItem("login_success_trigger", "true");
                     // 🟢 [Fix]: 콜백에서 리다이렉트가 실패할 수 있으므로, 여기서도 리다이렉트 처리
-                    const redirectPath = next && !next.startsWith("/login") ? next : "/";
-                    window.location.href = redirectPath;
+                    // 로그인 페이지에서 시작했거나 next가 없으면 무조건 메인으로
+                    const redirectPath = next && !next.startsWith("/login") && next !== "/login" ? next : "/";
+                    // 🟢 [Fix]: router를 사용하지 않고 window.location으로 강제 리다이렉트
+                    if (window.location.pathname.startsWith("/login")) {
+                        window.location.href = "/";
+                    } else {
+                        window.location.href = redirectPath;
+                    }
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     window.removeEventListener("message", messageHandler);

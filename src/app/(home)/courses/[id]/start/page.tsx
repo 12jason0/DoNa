@@ -7,6 +7,7 @@ import ReviewModal from "@/components/ReviewModal";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { motion, PanInfo } from "framer-motion";
+import { isIOS } from "@/lib/platform";
 
 // --- Types ---
 type Place = {
@@ -86,6 +87,12 @@ function GuidePageInner() {
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+
+    // 🟢 iOS 플랫폼 감지
+    useEffect(() => {
+        setPlatform(isIOS() ? 'ios' : 'web');
+    }, []);
 
     // ✅ 토스트(카드) 최소화 상태 관리
     const [isMinimized, setIsMinimized] = useState(false);
@@ -388,10 +395,24 @@ function GuidePageInner() {
                     <span>🗺️</span> {currentPlace.address}
                 </p>
 
-                {/* Editor's Note (간단 버전) - BASIC 등급 이상만 표시 */}
+                {/* Editor's Note (간단 버전) - iOS는 무료, Android/Web은 BASIC 등급 이상만 표시 */}
                 {currentPlace.coaching_tip && (
                     <div className="mb-6">
-                        {!isLoggedIn ? (
+                        {/* 🟢 iOS: 모든 Tip 무료 제공 (출시 기념 이벤트) */}
+                        {platform === 'ios' ? (
+                            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border-l-4 border-amber-500">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-lg">💡</span>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xs font-bold text-amber-700">DoNa's Tip</p>
+                                        <span className="text-[10px] px-2 py-0.5 bg-amber-500 text-white rounded-full font-bold">
+                                            🎉 무료 이벤트
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-gray-700">{currentPlace.coaching_tip}</p>
+                            </div>
+                        ) : !isLoggedIn ? (
                             <button
                                 onClick={() => setShowLoginModal(true)}
                                 className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-3"

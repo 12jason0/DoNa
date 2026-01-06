@@ -112,9 +112,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 opacity: contentReady ? 1 : 0,
                             }}
                         >
-                            <div className="h-screen min-[600px]:max-w-[1180px] min-[600px]:mx-auto min-[600px]:flex min-[600px]:items-stretch min-[600px]:gap-6">
+                            <div className="h-screen lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6">
                                 {/* 데스크톱용 좌측 다운로드 히어로 패널 */}
-                                <section className="hidden min-[600px]:block relative w-[600px] h-full overflow-y-auto no-scrollbar">
+                                <section className="hidden lg:block relative w-[600px] h-full overflow-y-auto no-scrollbar">
                                     <div className="absolute inset-0 bg-linear-to-r from-black/55 via-black/40 to-transparent" />
                                     <div className="relative min-h-full flex flex-col justify-center">
                                         <div className="px-10 max-w-[520px] text-white space-y-6">
@@ -164,7 +164,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                             alt="App Store"
                                                             width={135}
                                                             height={40}
-                                                            className="h-9 min-[600px]:h-11 w-auto object-contain"
+                                                            className="h-9 lg:h-11 w-auto object-contain"
                                                         />
                                                     </span>
                                                 </a>
@@ -180,7 +180,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                             alt="Google Play"
                                                             width={135}
                                                             height={40}
-                                                            className="h-11 min-[600px]:h-[52px] w-auto object-contain"
+                                                            className="h-11 lg:h-[52px] w-auto object-contain"
                                                         />
                                                     </span>
                                                 </a>
@@ -236,7 +236,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     </div>
                                 )}
 
-                                <div className="relative h-full bg-white dark:bg-[#0f1710] min-[600px]:w-[500px] min-[600px]:border-l border-gray-100 dark:border-gray-800 flex flex-col">
+                                <div className="relative h-full bg-white dark:bg-[#0f1710] lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800 flex flex-col">
                                     <div
                                         className={`${
                                             isEscapeIntroPage || isCourseStart ? "hidden" : "block"

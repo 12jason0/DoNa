@@ -173,7 +173,11 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
         const user = result.user;
 
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
-        const decodedNext = decodeURIComponent(next).replace(/^%2F/, "/"); // 👈 %2F 404 해결
+        // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
+        const decodedNext =
+            next && !next.startsWith("/login") && next !== "/login"
+                ? decodeURIComponent(next).replace(/^%2F/, "/")
+                : "/";
 
         return generateHtmlResponse(
             `(function() {

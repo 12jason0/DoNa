@@ -12,11 +12,7 @@ import CourseCard from "@/components/CourseCard";
 // 🟢 [Performance]: 필터링 로직과 모달을 별도 파일로 분리
 import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
-
-// 🟢 [Performance]: Course 타입은 useCourseFilter에서 import
-// 기존 Course 타입 export는 제거 (useCourseFilter에서 제공)
-
-// 🟢 TAG_CATEGORIES는 CategoryFilterModal로 이동됨
+import { isIOS } from "@/lib/platform";
 
 const activities = [
     { key: "카페투어", label: "☕ 카페투어" },
@@ -104,6 +100,12 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const [hasMore, setHasMore] = useState(initialCourses.length >= 30);
     const [offset, setOffset] = useState(30);
     const [isRecommendation, setIsRecommendation] = useState(false);
+    const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
+
+    // 🟢 iOS 플랫폼 감지
+    useEffect(() => {
+        setPlatform(isIOS() ? "ios" : "web");
+    }, []);
 
     useEffect(() => {
         setMounted(true);
@@ -472,7 +474,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
     return (
         <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0f1710] text-gray-900 dark:text-white">
-            <section className="max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
+            <section className="max-w-[500px] lg:max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
                 {/* --- Header & Search Section --- */}
                 <div className="sticky top-0 z-40 bg-white dark:bg-[#0f1710] px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0">
                     <div className="relative mb-3">
@@ -574,7 +576,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                         {/* 선택한 필터 표시 */}
                         {selectedFilterLabels.length > 0 && (
                             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth">
-                                <div className="text-[12px] text-gray-500 dark:text-gray-400 font-medium shrink-0 mr-1">필터:</div>
+                                <div className="text-[12px] text-gray-500 dark:text-gray-400 font-medium shrink-0 mr-1">
+                                    필터:
+                                </div>
                                 {selectedFilterLabels.map((label) => (
                                     <button
                                         key={label}
@@ -641,17 +645,27 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             )}
 
                             <div className="space-y-8">
-                                {(filtered.length > 0 ? filtered : courses).map((c, i) => (
-                                    <CourseCard
-                                        key={c.id}
-                                        course={c}
-                                        isPriority={i < 20} // 🟢 상위 20개 이미지만 우선 로딩 (preload 경고 방지)
-                                        isFavorite={favoriteIds.has(Number(c.id))}
-                                        onToggleFavorite={toggleFavorite}
-                                        hasClosedPlace={hasClosedPlace}
-                                        getClosedPlaceCount={getClosedPlaceCount}
-                                    />
-                                ))}
+                                {/* 🟢 iOS: Premium 코스 필터링, Android/Web: 모든 코스 표시 */}
+                                {(filtered.length > 0 || isRecommendation) &&
+                                    (filtered.length > 0 ? filtered : courses)
+                                        .filter((c) => {
+                                            // iOS에서는 Premium 코스를 숨김
+                                            if (platform === "ios" && c.grade === "PREMIUM") {
+                                                return false;
+                                            }
+                                            return true;
+                                        })
+                                        .map((c, i) => (
+                                            <CourseCard
+                                                key={c.id}
+                                                course={c}
+                                                isPriority={i < 20} // 🟢 상위 20개 이미지만 우선 로딩 (preload 경고 방지)
+                                                isFavorite={favoriteIds.has(Number(c.id))}
+                                                onToggleFavorite={toggleFavorite}
+                                                hasClosedPlace={hasClosedPlace}
+                                                getClosedPlaceCount={getClosedPlaceCount}
+                                            />
+                                        ))}
                                 {loadingMore && (
                                     <div className="text-center py-8">
                                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>

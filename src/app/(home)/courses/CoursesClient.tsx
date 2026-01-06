@@ -6,6 +6,7 @@ import CourseCard from "@/components/CourseCard";
 import CourseReportBanner from "@/components/CourseReportBanner";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CONCEPTS } from "@/constants/onboardingData";
+import { isIOS } from "@/lib/platform";
 
 // --- Type Definitions (기존과 100% 동일) ---
 type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
@@ -61,6 +62,12 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     const [offset, setOffset] = useState(30);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const [couponCount, setCouponCount] = useState<number | null>(null); // 🟢 쿠폰 개수 상태
+    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+
+    // 🟢 iOS 플랫폼 감지
+    useEffect(() => {
+        setPlatform(isIOS() ? 'ios' : 'web');
+    }, []);
 
     useEffect(() => {
         setActiveConcept(conceptParam || "");
@@ -170,6 +177,11 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             });
         }
 
+        // 🟢 iOS: Premium 코스 필터링
+        if (platform === 'ios') {
+            filtered = filtered.filter((c) => c.grade !== 'PREMIUM');
+        }
+
         // 2. 정렬 (성능 최적화: Date 생성 최소화)
         if (sortBy === "views") {
             return [...filtered].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
@@ -192,7 +204,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             });
             return sorted;
         }
-    }, [courses, sortBy, deferredConcept]);
+    }, [courses, sortBy, deferredConcept, platform]);
 
     const STATIC_CONCEPTS = useMemo(
         () => [

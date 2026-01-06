@@ -10,6 +10,7 @@ import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { useAuth } from "@/context/AuthContext";
+import { isIOS } from "@/lib/platform";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
 let globalFavoritesPromise: Promise<any[] | null> | null = null;
@@ -257,6 +258,12 @@ export default function CourseDetailClient({
 
     const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+
+    // 🟢 iOS 플랫폼 감지
+    useEffect(() => {
+        setPlatform(isIOS() ? 'ios' : 'web');
+    }, []);
 
     // 🟢 성능 최적화: 코스 상세 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
     useEffect(() => {
@@ -906,17 +913,18 @@ export default function CourseDetailClient({
                                                 {/* 🟢 팁 섹션 - 코스 잠금 상태 및 유저 등급 기준으로 표시 */}
                                                 {coursePlace.coaching_tip
                                                     ? (() => {
-                                                          // 🔒 FREE 코스: userTier 체크 (FREE/비로그인 유저는 버튼 표시)
-                                                          // 🔒 BASIC/PREMIUM 코스: isLocked 체크
+                                                          // 🟢 iOS: 모든 Tip 무료 제공 (출시 기념 이벤트)
+                                                          // 🔒 Android/Web: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
                                                           const courseGrade = (
                                                               courseData.grade || "FREE"
                                                           ).toUpperCase();
                                                           const currentUserTier = (userTier || "FREE").toUpperCase();
 
-                                                          // FREE 코스이고 FREE/비로그인 유저이거나, BASIC/PREMIUM 코스가 잠겨 있으면 버튼 표시
-                                                          const shouldShowTipButton =
+                                                          // iOS는 모든 Tip 무료, Android/Web은 기존 로직 유지
+                                                          const shouldShowTipButton = platform !== 'ios' && (
                                                               (courseGrade === "FREE" && currentUserTier === "FREE") ||
-                                                              courseData.isLocked;
+                                                              courseData.isLocked
+                                                          );
 
                                                           if (shouldShowTipButton) {
                                                               return (

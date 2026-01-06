@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         const user = result.user;
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
-        const decodedNext = next && !next.startsWith("/login") ? decodeURIComponent(next).replace(/^%2F/, "/") : "/";
+        const decodedNext = next && !next.startsWith("/login") && next !== "/login" ? decodeURIComponent(next).replace(/^%2F/, "/") : "/";
 
         return generateHtmlResponse(
             `(function() {

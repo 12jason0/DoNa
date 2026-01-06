@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
@@ -266,8 +266,12 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         (currentUserTier === "BASIC" && courseGrade === "BASIC") || // 3. BASIC 유저의 BASIC 코스인가?
         currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
 
-    // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시 (FREE 코스도 동일)
-    const hasTipAccess = currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
+    // 🔒 팁 표시 권한: iOS는 무료, Android/Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
+    // 🟢 iOS 출시 기념 이벤트: 모든 Tip 무료 제공
+    const headersList = await headers();
+    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+    const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+    const hasTipAccess = isIOSPlatform || currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
 
     const isLocked = !canAccess;
 

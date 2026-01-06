@@ -14,6 +14,7 @@ import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
 
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
+import { isIOS } from "@/lib/platform";
 
 // 🟢 모든 테마 목록 (STATIC_CONCEPTS와 동일하게 22개)
 const ALL_CONCEPTS = [
@@ -98,6 +99,12 @@ export default function HomeClient({
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showAdModal, setShowAdModal] = useState(false);
     const [isSignup, setIsSignup] = useState(false);
+    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+
+    // 🟢 iOS 플랫폼 감지
+    useEffect(() => {
+        setPlatform(isIOS() ? 'ios' : 'web');
+    }, []);
     const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
     const [showCheckinModal, setShowCheckinModal] = useState(false);
     const [showRewardModal, setShowRewardModal] = useState(false);
@@ -355,7 +362,7 @@ export default function HomeClient({
             concept: CONCEPTS[c.concept as keyof typeof CONCEPTS] || c.concept,
             tags: c.tags || [],
         }));
-    }, [heroCourses]);
+    }, [heroCourses, platform]);
 
     return (
         <>

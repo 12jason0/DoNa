@@ -59,23 +59,13 @@ const Signup = () => {
             setLoading(false);
             return;
         }
-        if (!formData.ageRange) {
-            setError("연령대를 선택해주세요.");
-            setLoading(false);
-            return;
-        }
-        if (!formData.gender) {
-            setError("성별을 선택해주세요.");
-            setLoading(false);
-            return;
-        }
+
+        // 💡 [수정] 애플 가이드라인 준수: 연령대 및 성별 필수 체크 로직 제거
 
         try {
-            // 💡 [해결] 상대 경로 사용으로 CSP 위반 방지 및 credentials 추가
             const response = await fetch("/api/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // 🟢 필수: 서버 사이드 보안 쿠키(httpOnly)를 브라우저에 안착시키기 위해 필요
                 credentials: "include",
                 body: JSON.stringify({
                     email: formData.email,
@@ -83,8 +73,9 @@ const Signup = () => {
                     nickname: formData.nickname.trim(),
                     phone: formData.phone.trim() || undefined,
                     birthday: formData.birthday.trim() || undefined,
-                    ageRange: formData.ageRange,
-                    gender: formData.gender,
+                    // 💡 [수정] 값이 비어있을 경우 undefined로 전달하여 DB에 null로 저장되도록 유도
+                    ageRange: formData.ageRange || undefined,
+                    gender: formData.gender || undefined,
                     next,
                 }),
             });
@@ -92,19 +83,13 @@ const Signup = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // 🎁 신규 가입 혜택 로직 (UI 반영용)
                 try {
-                    localStorage.setItem("userCoupons", "3"); // 2026-01-10 이벤트 반영
+                    localStorage.setItem("userCoupons", "3");
                     localStorage.setItem("userCoins", "3");
                 } catch {}
 
-                // 🟢 로그인 성공 이벤트 발생 (인증 상태 동기화) [cite: 2025-12-24]
                 window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-
-                // 회원가입 후 원래 가려던 페이지로 이동
                 const redirectPath = data.next || next || "/";
-
-                // 쿠키가 브라우저에 완전히 저장될 시간을 주기 위해 window.location 사용 권장
                 window.location.href = redirectPath;
             } else {
                 setError(data.error || "회원가입에 실패했습니다.");
@@ -124,12 +109,18 @@ const Signup = () => {
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight font-brand">
                         DoNa<span className="text-emerald-600 dark:text-emerald-400">.</span>
                     </h1>
-                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 font-medium">두나와 함께 특별한 여정을 기록해보세요.</p>
+                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 font-medium">
+                        두나와 함께 특별한 여정을 기록해보세요.
+                    </p>
                 </div>
 
                 {error && (
                     <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-100 dark:border-red-800/50 flex items-center animate-pulse">
-                        <svg className="h-5 w-5 text-red-500 dark:text-red-400 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                        <svg
+                            className="h-5 w-5 text-red-500 dark:text-red-400 mr-3"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
                             <path
                                 fillRule="evenodd"
                                 d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -164,7 +155,7 @@ const Signup = () => {
                                 const response = await fetch("/api/auth/apple", {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
-                                    credentials: "include", // 🟢 보안 쿠키 적용
+                                    credentials: "include",
                                     body: JSON.stringify({
                                         identityToken: credential.identityToken,
                                         authorizationCode: credential.authorizationCode,
@@ -188,7 +179,9 @@ const Signup = () => {
                         <div className="w-full border-t border-gray-100 dark:border-gray-700" />
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-500 font-medium">또는 이메일로 가입</span>
+                        <span className="px-4 bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-500 font-medium">
+                            또는 이메일로 가입
+                        </span>
                     </div>
                 </div>
 
@@ -258,33 +251,35 @@ const Signup = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
+                            {/* 💡 [수정] 필수 표시(*) 제거 및 (선택) 추가 */}
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">
-                                연령대 <span className="text-emerald-500 dark:text-emerald-400">*</span>
+                                연령대 <span className="text-gray-400 font-normal">(선택)</span>
                             </label>
                             <select
                                 name="ageRange"
-                                required
+                                // 💡 [수정] required 속성 제거
                                 value={formData.ageRange}
                                 onChange={handleChange}
                                 className="block w-full px-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-[#0f1710] dark:text-white focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 outline-none text-sm"
                             >
-                                <option value="">선택</option>
+                                <option value="">선택 안 함</option>
                                 <option value="20대">20대</option>
                                 <option value="30대">30대</option>
                             </select>
                         </div>
                         <div>
+                            {/* 💡 [수정] 필수 표시(*) 제거 및 (선택) 추가 */}
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">
-                                성별 <span className="text-emerald-500 dark:text-emerald-400">*</span>
+                                성별 <span className="text-gray-400 font-normal">(선택)</span>
                             </label>
                             <select
                                 name="gender"
-                                required
+                                // 💡 [수정] required 속성 제거
                                 value={formData.gender}
                                 onChange={handleChange}
                                 className="block w-full px-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-[#0f1710] dark:text-white focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 outline-none text-sm"
                             >
-                                <option value="">선택</option>
+                                <option value="">선택 안 함</option>
                                 <option value="M">남성</option>
                                 <option value="F">여성</option>
                             </select>

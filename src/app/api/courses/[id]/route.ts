@@ -150,8 +150,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시 (FREE 코스도 동일)
-        const hasTipAccess = userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
+        // 🔒 팁 표시 권한: iOS는 무료, Android/Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
+        // 🟢 iOS 출시 기념 이벤트: 모든 Tip 무료 제공
+        const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
+        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+        const hasTipAccess = isIOSPlatform || userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
