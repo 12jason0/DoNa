@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import CoursesClient from "./CoursesClient";
 import prisma from "@/lib/db";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 
@@ -40,7 +40,7 @@ const courseSelectOptions = {
 };
 
 // 매핑 함수 (기능 100% 보존 및 타입 가드 강화)
-function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[]): any[] {
+function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[], isIOS: boolean = false): any[] {
     if (!Array.isArray(courses)) return [];
 
     const imagePolicyApplied = filterCoursesByImagePolicy(courses as unknown as CourseWithPlaces[], "any");
@@ -54,7 +54,6 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
             if (!Number.isFinite(courseId)) return null;
 
             // 🟢 잠금 계산 로직 (유료 등급 및 개별 구매 확인)
-            // iOS 출시 기념 이벤트: Basic 코스 무료 제공은 클라이언트에서 처리
             let isLocked = false;
             const hasUnlocked = unlockedCourseIds.includes(courseId);
 
@@ -63,7 +62,13 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
             } else if (userTier === "BASIC") {
                 if (courseGrade === "PREMIUM") isLocked = true;
             } else {
-                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                // 🟢 iOS: Basic 코스는 무료, Premium만 잠금
+                if (isIOS) {
+                    if (courseGrade === "PREMIUM") isLocked = true;
+                    // Basic 코스는 isLocked = false (무료)
+                } else {
+                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                }
             }
 
             return {
@@ -99,7 +104,7 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
 
 // 🟢 [Performance]: 초기 코스 데이터 캐싱 (검색/필터 없을 때만)
 const getCachedDefaultCourses = unstable_cache(
-    async (userTier: string, unlockedCourseIds: number[]) => {
+    async (userTier: string, unlockedCourseIds: number[], isIOS: boolean) => {
         const rawAll = await prisma.course.findMany({
             where: { isPublic: true },
             take: 60,
@@ -127,7 +132,7 @@ const getCachedDefaultCourses = unstable_cache(
             if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
         }
 
-        return mapCourses(interleaved, userTier, unlockedCourseIds);
+        return mapCourses(interleaved, userTier, unlockedCourseIds, isIOS);
     },
     [],
     {
@@ -198,11 +203,21 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             select: courseSelectOptions,
         });
 
-        return mapCourses(courses, userTier, unlockedCourseIds);
+        // 🟢 iOS 플랫폼 감지 (서버 사이드)
+        const headersList = await headers();
+        const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+
+        return mapCourses(courses, userTier, unlockedCourseIds, isIOSPlatform);
     }
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    return getCachedDefaultCourses(userTier, unlockedCourseIds);
+    // 🟢 iOS 플랫폼 감지 (서버 사이드)
+    const headersList = await headers();
+    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+    const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+    
+    return getCachedDefaultCourses(userTier, unlockedCourseIds, isIOSPlatform);
 }
 
 export default async function CoursesPage({

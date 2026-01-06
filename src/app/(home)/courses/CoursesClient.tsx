@@ -62,11 +62,11 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     const [offset, setOffset] = useState(30);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const [couponCount, setCouponCount] = useState<number | null>(null); // 🟢 쿠폰 개수 상태
-    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+    const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
 
     // 🟢 iOS 플랫폼 감지
     useEffect(() => {
-        setPlatform(isIOS() ? 'ios' : 'web');
+        setPlatform(isIOS() ? "ios" : "web");
     }, []);
 
     useEffect(() => {
@@ -177,9 +177,17 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             });
         }
 
-        // 🟢 iOS: Premium 코스 필터링
-        if (platform === 'ios') {
-            filtered = filtered.filter((c) => c.grade !== 'PREMIUM');
+        // 🟢 iOS: Premium 코스 필터링 및 Basic 코스 무료 접근
+        if (platform === "ios") {
+            filtered = filtered
+                .filter((c) => c.grade !== "PREMIUM")
+                .map((c) => {
+                    // iOS: Basic 코스 무료 접근 (isLocked = false)
+                    if (c.grade === "BASIC" && c.isLocked) {
+                        return { ...c, isLocked: false };
+                    }
+                    return c;
+                });
         }
 
         // 2. 정렬 (성능 최적화: Date 생성 최소화)
@@ -290,12 +298,16 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
             <div className="bg-white dark:bg-[#1a241b] px-5 pt-6 pb-2 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
                 <div className="flex justify-between items-end mb-4">
-                    <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">완벽한 하루</h1>
+                    <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
+                        완벽한 하루
+                    </h1>
                     <div className="flex items-center gap-3 text-sm">
                         <button
                             onClick={() => setSortBy("views")}
                             className={`${
-                                sortBy === "views" ? "font-bold text-emerald-600 dark:text-emerald-400" : "font-medium text-gray-400 dark:text-gray-500"
+                                sortBy === "views"
+                                    ? "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-medium text-gray-400 dark:text-gray-500"
                             } transition-colors`}
                         >
                             인기순
@@ -304,7 +316,9 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                         <button
                             onClick={() => setSortBy("latest")}
                             className={`${
-                                sortBy === "latest" ? "font-bold text-emerald-600 dark:text-emerald-400" : "font-medium text-gray-400 dark:text-gray-500"
+                                sortBy === "latest"
+                                    ? "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-medium text-gray-400 dark:text-gray-500"
                             } transition-colors`}
                         >
                             최신순
