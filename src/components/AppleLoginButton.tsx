@@ -125,7 +125,7 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
 
                 // 🟢 [Fix]: Apple 로그인 성공 메시지 처리
                 if (type === "APPLE_LOGIN_SUCCESS") {
-                    console.log("[AppleLogin] 로그인 성공 메시지 수신");
+                    console.log("[AppleLogin] 성공 메시지 수신, 리다이렉트 준비");
                     hasReceivedMessage = true;
                     clearInterval(popupCheckInterval);
                     window.removeEventListener("message", messageHandler);
@@ -133,18 +133,19 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                         popup.close();
                     }
 
-                    // 1. 로그인 성공 이벤트 즉시 발생 (전역 상태 업데이트)
+                    // 1. 전역 로그인 상태 업데이트
                     window.dispatchEvent(new CustomEvent("authLoginSuccess"));
                     sessionStorage.setItem("login_success_trigger", "true");
 
-                    // 2. 리다이렉트 경로 결정 (서버에서 온 경로 우선)
+                    // 2. 최종 목적지 결정 (서버에서 온 경로 우선)
                     const finalRedirect =
                         serverNext || (next && !next.startsWith("/login") && next !== "/login" ? next : "/");
 
-                    // 🟢 [Fix]: 쿠키가 브라우저에 완전히 정착될 시간을 벌어줌 (100ms 지연으로 미들웨어 인식 오류 방지)
+                    // 🟢 [Fix]: 아이패드 웹뷰 안정성을 위해 지연 시간을 200ms로 상향
+                    // 쿠키 동기화가 완료되지 않은 채 이동하면 다시 /login으로 튕깁니다.
                     setTimeout(() => {
                         window.location.replace(finalRedirect);
-                    }, 100);
+                    }, 200);
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     hasReceivedMessage = true;

@@ -197,10 +197,8 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         // 2. 부모 창에 이벤트 알림
                         window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
                         
-                        // 3. 팝업 창 즉시 닫기 (여러 번 시도하여 확실하게)
-                        setTimeout(function() {
-                            window.close();
-                        }, 0);
+                        // 🟢 [Fix]: 팝업은 메시지만 전송하고 즉시 닫기 (부모 창 리다이렉트 간섭 금지)
+                        // 3. 팝업 창 즉시 닫기
                         window.close();
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
@@ -209,9 +207,8 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                     }
                 } catch (err) {
                     console.error('Apple 로그인 팝업 처리 오류:', err);
-                    try {
-                        window.close();
-                    } catch (e) {
+                    // 에러 발생 시 팝업이 아닌 경우에만 직접 리다이렉트
+                    if (!window.opener || window.opener.closed) {
                         window.location.replace("${decodedNext}");
                     }
                 }

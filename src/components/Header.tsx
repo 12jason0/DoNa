@@ -22,7 +22,9 @@ const LogoutSplash = () => (
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
             </div>
-            <p className="mt-6 text-gray-500 dark:text-gray-400 font-medium tracking-tight">안전하게 로그아웃 중입니다...</p>
+            <p className="mt-6 text-gray-500 dark:text-gray-400 font-medium tracking-tight">
+                안전하게 로그아웃 중입니다...
+            </p>
         </div>
     </div>
 );
