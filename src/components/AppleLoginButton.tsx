@@ -147,14 +147,16 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                         console.log("[AppleLogin] 앱 환경 감지, 리다이렉트는 WebScreen.tsx에서 처리");
                         // 전역 로그인 상태만 업데이트 (리다이렉트는 WebScreen.tsx가 처리)
                         window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-                        sessionStorage.setItem("login_success_trigger", "true");
+                        // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
+                        sessionStorage.setItem("login_success_trigger", Date.now().toString());
                         return; // 🟢 앱 환경에서는 여기서 종료
                     }
 
                     // 🟢 웹 환경인 경우에만 여기서 리다이렉트 처리
                     // 1. 전역 로그인 상태 업데이트
                     window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-                    sessionStorage.setItem("login_success_trigger", "true");
+                    // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
+                    sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                     // 2. 최종 목적지 결정 (서버에서 온 경로 우선)
                     const finalRedirect =

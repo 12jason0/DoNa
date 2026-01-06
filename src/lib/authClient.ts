@@ -89,49 +89,16 @@ export async function logout(): Promise<boolean> {
                 // 🟢 로그아웃 이벤트 발생 (컴포넌트들이 상태를 초기화하도록)
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
-                // 🟢 [Fix]: 쿠키 삭제 확인 후 리다이렉트
-                let logoutVerifyAttempts = 0;
-                const maxLogoutVerifyAttempts = 5; // 최대 1초 대기 (200ms * 5)
-
-                const verifyLogout = async () => {
-                    try {
-                        const sessionRes = await fetch("/api/auth/session", {
-                            method: "GET",
-                            credentials: "include",
-                            cache: "no-store",
-                        });
-
-                        const sessionData = await sessionRes.json();
-                        if (!sessionData.authenticated) {
-                            // 🟢 로그아웃 확인됨 - 메인 페이지로 이동
-                            window.location.replace("/");
-                        } else {
-                            logoutVerifyAttempts++;
-                            if (logoutVerifyAttempts < maxLogoutVerifyAttempts) {
-                                // 🟢 아직 로그인 상태면 잠시 후 다시 확인
-                                setTimeout(verifyLogout, 200);
-                            } else {
-                                // 🟢 최대 시도 횟수 초과 시에도 메인으로 이동
-                                console.warn("[authClient] 로그아웃 확인 최대 시도 횟수 초과");
-                                window.location.replace("/");
-                            }
-                        }
-                    } catch (error) {
-                        // 🟢 에러 발생 시에도 메인으로 이동
-                        console.warn("[authClient] 로그아웃 확인 실패:", error);
-                        window.location.replace("/");
-                    }
-                };
-
+                // 🟢 [Fix]: 로그아웃 즉시 리다이렉트 (쿠키 삭제 확인 생략)
+                // 세션 API가 앱 환경에서 1초 지연을 주므로, 로그아웃 확인을 기다리면 사용자 경험이 나빠집니다.
+                // 서버에서 쿠키를 삭제했으므로, 클라이언트 상태만 정리하고 즉시 리다이렉트합니다.
                 if (res.ok) {
-                    // 🟢 서버 로그아웃 성공 - 쿠키 삭제 확인 후 리다이렉트
-                    setTimeout(verifyLogout, 300);
+                    // 🟢 서버 로그아웃 성공 - 즉시 리다이렉트
+                    window.location.replace("/");
                     return true;
                 } else {
                     // 🟢 서버 로그아웃 실패해도 클라이언트 상태는 정리하고 리다이렉트
-                    setTimeout(() => {
-                        window.location.replace("/");
-                    }, 300);
+                    window.location.replace("/");
                     return false;
                 }
             }

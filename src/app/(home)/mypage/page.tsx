@@ -221,6 +221,17 @@ const MyPage = () => {
 
             // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
             if (response.status === 401 || !raw) {
+                // 🟢 [Fix]: 로그인 직후 쿠키 동기화 시간을 고려하여 일정 시간 동안 401 무시
+                const loginSuccessTime = sessionStorage.getItem("login_success_trigger");
+                if (loginSuccessTime) {
+                    const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
+                    // 🟢 로그인 후 3초 이내에는 401을 무시 (쿠키 동기화 시간 확보)
+                    if (timeSinceLogin < 3000) {
+                        console.log("[MyPage] 로그인 직후 쿠키 동기화 대기 중, 401 무시");
+                        return false; // 🟢 리다이렉트하지 않고 false만 반환
+                    }
+                }
+                
                 // 🟢 중복 리다이렉트 방지
                 if (
                     !redirectingRef.current &&

@@ -119,7 +119,8 @@ const Login = () => {
 
                 // ✅ [수정된 부분]
                 // URL에 표시하지 않고, sessionStorage에 '로그인 성공' 흔적을 남깁니다.
-                sessionStorage.setItem("login_success_trigger", "true");
+                // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
+                sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                 // 🟢 목적지가 없거나 로그인 페이지 자체라면 메인으로, 있다면 그곳으로 이동
                 const redirectPath = !next || next.startsWith("/login") ? "/" : next;
@@ -208,7 +209,8 @@ const Login = () => {
                         // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
                         window.dispatchEvent(new CustomEvent("authLoginSuccess"));
 
-                        sessionStorage.setItem("login_success_trigger", "true");
+                        // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
+                        sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                         cleanup();
                         // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
@@ -458,7 +460,8 @@ const Login = () => {
                                         // 🟢 로그인 성공 이벤트 발생
                                         window.dispatchEvent(new CustomEvent("authLoginSuccess"));
 
-                                        sessionStorage.setItem("login_success_trigger", "true");
+                                        // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
+                                        sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                                         // 🟢 [Fix]: 쿠키 저장 시간 확보 후 메인 페이지로 이동
                                         const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);

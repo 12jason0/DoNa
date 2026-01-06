@@ -13,17 +13,19 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest) {
     try {
-        // 🟢 [Magic Fix]: 아이패드 웹뷰의 쿠키 동기화 시간을 위해 의도적으로 1초 지연
+        // 🟢 [Magic Fix]: 아이패드 웹뷰의 쿠키 동기화 시간을 위해 의도적으로 지연
         // 앱을 다시 빌드할 수 없으므로, 서버가 응답을 늦게 줘서 웹뷰가 쿠키를 저장할 시간을 벌어줍니다.
         const userAgent = req.headers.get("user-agent") || "";
         const isApp = /ReactNative|Expo/i.test(userAgent);
 
-        if (isApp) {
-            // 🟢 앱 환경에서는 쿠키 동기화를 위해 1초 대기
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-
+        // 🟢 [Fix]: 쿠키가 있는 경우에만 지연 (로그인 후 쿠키 저장 시간 확보)
+        // 로그아웃 시에는 지연하지 않아 빠른 응답 제공
         const token = req.cookies.get("auth")?.value;
+        if (isApp && token) {
+            // 🟢 앱 환경에서 쿠키가 있는 경우(로그인 후) 쿠키 동기화를 위해 1.5초 대기
+            // WebScreen.tsx가 500ms 후에 리다이렉트하므로, 그 전에 쿠키가 저장되도록 충분한 시간 확보
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
 
         if (!token) {
             return NextResponse.json({ authenticated: false, user: null });
