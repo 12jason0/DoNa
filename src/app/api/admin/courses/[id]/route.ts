@@ -50,10 +50,7 @@ export async function GET(
 }
 
 // 🟢 코스 수정 API (관리자 전용)
-export async function PATCH(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         // 관리자 인증 체크
         ensureAdmin(req);
