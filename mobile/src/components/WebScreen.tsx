@@ -204,10 +204,11 @@ export default function WebScreen({ uri: initialUri }: Props) {
                                                             detail: ${JSON.stringify(credential)}
                                                         }));
                                                         
-                                                        // 🟢 서버 세션(쿠키)이 생성될 시간을 충분히 주기 위해 1초 후 reload
+                                                        // 🟢 [Fix]: 쿠키가 브라우저에 저장될 시간을 충분히 주고 메인 페이지로 이동
+                                                        // reload() 대신 replace()를 사용하여 로그인 페이지로 돌아가지 않도록 함
                                                         setTimeout(() => {
-                                                            window.location.reload();
-                                                        }, 1000);
+                                                            window.location.replace('/');
+                                                        }, 500);
                                                     } else {
                                                         window.dispatchEvent(new CustomEvent('appleLoginError', {
                                                             detail: { message: 'Apple 로그인 처리에 실패했습니다.' }

@@ -146,11 +146,14 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     const finalRedirect =
                         serverNext || (next && !next.startsWith("/login") && next !== "/login" ? next : "/");
 
-                    // 🟢 [Fix]: 아이패드 웹뷰 안정성을 위해 지연 시간을 200ms로 상향
+                    // 🟢 [Fix]: 앱 환경에서 쿠키 저장 시간 확보 (500ms)
                     // 쿠키 동기화가 완료되지 않은 채 이동하면 다시 /login으로 튕깁니다.
+                    const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
+                    const delay = isApp ? 500 : 300; // 앱 환경은 더 긴 지연 시간 필요
+
                     setTimeout(() => {
                         window.location.replace(finalRedirect);
-                    }, 200);
+                    }, delay);
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     hasReceivedMessage = true;

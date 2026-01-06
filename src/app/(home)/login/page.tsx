@@ -460,8 +460,13 @@ const Login = () => {
 
                                         sessionStorage.setItem("login_success_trigger", "true");
 
-                                        // 🟢 애플 로그인 성공 시 즉시 메인 페이지(/)로 이동 (지연 없음)
-                                        window.location.replace("/");
+                                        // 🟢 [Fix]: 쿠키 저장 시간 확보 후 메인 페이지로 이동
+                                        const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
+                                        const delay = isApp ? 500 : 300; // 앱 환경은 더 긴 지연 시간 필요
+                                        
+                                        setTimeout(() => {
+                                            window.location.replace("/");
+                                        }, delay);
                                     } catch (err: any) {
                                         setError(err.message || "Apple 로그인에 실패했습니다.");
                                     } finally {
