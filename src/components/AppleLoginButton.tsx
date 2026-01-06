@@ -118,8 +118,11 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     // 🟢 [Fix]: 즉시 리다이렉트 (지연 없음)
                     // 로그인 페이지에서 시작했거나 next가 없으면 무조건 메인으로
                     const redirectPath = next && !next.startsWith("/login") && next !== "/login" ? next : "/";
-                    // 🟢 [Fix]: 즉시 리다이렉트
-                    window.location.replace(redirectPath);
+                    // 🟢 [Fix]: 즉시 리다이렉트 (replace 사용으로 히스토리 스택 방지)
+                    // callback에서 이미 리다이렉트했을 수 있지만, 확실하게 하기 위해 여기서도 리다이렉트
+                    setTimeout(() => {
+                        window.location.replace(redirectPath);
+                    }, 0);
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
                     window.removeEventListener("message", messageHandler);

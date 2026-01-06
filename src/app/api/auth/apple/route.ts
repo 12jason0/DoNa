@@ -187,17 +187,17 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         // 부모 창에 로그인 성공 이벤트 전달
                         window.opener.postMessage({ type: 'APPLE_LOGIN_SUCCESS', token: '${serviceToken}' }, window.location.origin);
                         window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        // 부모 창 리다이렉트
-                        window.opener.location.href = "${decodedNext}";
+                        // 🟢 [Fix]: 부모 창 리다이렉트 (replace 사용으로 히스토리 스택 방지)
+                        window.opener.location.replace("${decodedNext}");
                         window.close();
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
                         window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        window.location.href = "${decodedNext}";
+                        window.location.replace("${decodedNext}");
                     }
                 } catch (err) {
                     console.error('Apple 로그인 후처리 오류:', err);
-                    window.location.href = "${decodedNext}";
+                    window.location.replace("${decodedNext}");
                 }
             })();`,
             serviceToken

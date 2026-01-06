@@ -10,6 +10,7 @@ import { getS3StaticUrl } from "@/lib/s3Static";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import CompletionModal from "@/components/CompletionModal";
+import { isIOS } from "@/lib/platform";
 import {
     Sparkles,
     MapPin,
@@ -222,6 +223,7 @@ const AIRecommender = () => {
     const [isSelecting, setIsSelecting] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [isUserDataLoading, setIsUserDataLoading] = useState(true); // 🟢 사용자 정보 로딩 상태
+    const [platform, setPlatform] = useState<"ios" | "android" | "web">("web"); // 🟢 플랫폼 감지
 
     // --- [추가] 게임 효과 및 모달 상태 ---
     const [isAnalyzing, setIsAnalyzing] = useState(false); // 분석 화면 표시 여부
@@ -233,6 +235,11 @@ const AIRecommender = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [pendingCourse, setPendingCourse] = useState<{ id: string; title: string } | null>(null);
+
+    // 🟢 iOS 플랫폼 감지
+    useEffect(() => {
+        setPlatform(isIOS() ? "ios" : "web");
+    }, []);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -625,12 +632,15 @@ const AIRecommender = () => {
                     setShowLogin(true);
                     return;
                 }
-                if (coupons < 1) {
-                    setShowPaywall(true);
-                    return;
+                // 🟢 iOS: 쿠폰 체크 및 차감 건너뛰기 (무제한 사용)
+                if (platform !== "ios") {
+                    if (coupons < 1) {
+                        setShowPaywall(true);
+                        return;
+                    }
+                    const couponUsed = await useCoupon();
+                    if (!couponUsed) return;
                 }
-                const couponUsed = await useCoupon();
-                if (!couponUsed) return;
 
                 setMessages((prev) => [...prev, { type: "user", text: option.text }]);
 
@@ -1136,9 +1146,9 @@ const AIRecommender = () => {
 
         return (
             <div
-                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 relative z-20 ${
-                    isSelected ? "scale-105" : "hover:-translate-y-2"
-                }`}
+                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 relative ${
+                    isRevealed ? "z-30" : "z-20"
+                } ${isSelected ? "scale-105" : "hover:-translate-y-2"}`}
                 onClick={() => !isSelected && handleFlipCard(course.id)}
                 onMouseEnter={handleMouseEnter}
             >
@@ -1183,8 +1193,8 @@ const AIRecommender = () => {
                     </div>
 
                     {/* 🟢 [Back]: 보정된 매칭 점수가 적용된 상세 정보 */}
-                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-4xl bg-white dark:bg-[#1a241b] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col">
-                        <div className="p-7 flex flex-col h-full">
+                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-4xl bg-white dark:bg-[#1a241b] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col z-30">
+                        <div className="p-7 flex flex-col h-full z-30">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-black rounded-lg border border-emerald-100 dark:border-emerald-800/50">
                                     {nickname}님 취향 저격 {displayScore}%
@@ -1452,7 +1462,7 @@ const AIRecommender = () => {
 
                             {/* 채팅 영역 (스크롤 가능) */}
                             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50 relative z-20">
-                                {showUpsell && !showRecommendations && (
+                                {showUpsell && !showRecommendations && platform !== "ios" && (
                                     <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-900 dark:text-amber-200 shadow-sm">
                                         <div className="font-bold mb-1 flex items-center gap-2">
                                             <Ticket className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -1468,6 +1478,14 @@ const AIRecommender = () => {
                                             >
                                                 충전하기
                                             </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {showUpsell && !showRecommendations && platform === "ios" && (
+                                    <div className="p-4 rounded-2xl bg-linear-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 border border-emerald-100 dark:border-emerald-800/50 text-sm text-emerald-900 dark:text-emerald-200 shadow-sm">
+                                        <div className="font-bold mb-1 flex items-center gap-2">
+                                            <Gift className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                            🎉 iOS 출시 기념 이벤트: AI 추천 무제한 무료 이용 중!
                                         </div>
                                     </div>
                                 )}

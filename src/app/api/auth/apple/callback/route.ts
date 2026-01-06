@@ -102,20 +102,20 @@ export async function POST(request: NextRequest) {
                         window.opener.postMessage({ type: 'APPLE_LOGIN_SUCCESS', token: '${serviceToken}' }, window.location.origin);
                         // 부모 창에 이벤트 발생
                         window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        // 🟢 [Fix]: 즉시 리다이렉트 (지연 제거)
+                        // 🟢 [Fix]: 즉시 리다이렉트 (replace 사용으로 히스토리 스택 방지)
                         if (window.opener && !window.opener.closed) {
-                            window.opener.location.href = "${decodedNext}";
+                            window.opener.location.replace("${decodedNext}");
                         }
                         // 팝업 닫기 (즉시)
                         window.close();
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
                         window.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        window.location.href = "${decodedNext}";
+                        window.location.replace("${decodedNext}");
                     }
                 } catch (err) {
                     console.error('Apple 로그인 후처리 오류:', err);
-                    window.location.href = "${decodedNext}";
+                    window.location.replace("${decodedNext}");
                 }
             })();`,
             serviceToken
