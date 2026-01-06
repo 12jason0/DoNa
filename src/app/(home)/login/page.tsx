@@ -460,8 +460,8 @@ const Login = () => {
 
                                         sessionStorage.setItem("login_success_trigger", "true");
 
-                                        // 🟢 애플 로그인 성공 시 무조건 메인 페이지(/)로 이동
-                                        router.replace("/");
+                                        // 🟢 애플 로그인 성공 시 즉시 메인 페이지(/)로 이동 (지연 없음)
+                                        window.location.replace("/");
                                     } catch (err: any) {
                                         setError(err.message || "Apple 로그인에 실패했습니다.");
                                     } finally {

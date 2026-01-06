@@ -44,14 +44,16 @@ export async function POST(req: NextRequest) {
 
         const { pushToken, platform, subscribed } = await req.json();
 
-        const existingToken = await prisma.pushToken.findUnique({
-            where: { userId: userIdNum },
-        });
-
-        const user = await prisma.user.findUnique({
-            where: { id: userIdNum },
-            select: { isMarketingAgreed: true },
-        });
+        // 🟢 성능 최적화: 병렬 쿼리로 빠른 응답
+        const [existingToken, user] = await Promise.all([
+            prisma.pushToken.findUnique({
+                where: { userId: userIdNum },
+            }),
+            prisma.user.findUnique({
+                where: { id: userIdNum },
+                select: { isMarketingAgreed: true },
+            }),
+        ]);
 
         // 토큰 검증 로직
         const hasValidPushToken = pushToken && typeof pushToken === "string" && pushToken.trim() !== "";
@@ -67,15 +69,17 @@ export async function POST(req: NextRequest) {
         if (platform) updateData.platform = platform;
 
         // 알림 설정 변경 시 법적 동의 날짜 기록 및 유저 정보 업데이트
+        const userUpdatePromise = typeof subscribed === "boolean" && subscribed
+            ? prisma.user.update({
+                  where: { id: userIdNum },
+                  data: { isMarketingAgreed: true, marketingAgreedAt: new Date() },
+              })
+            : Promise.resolve(null);
+
         if (typeof subscribed === "boolean") {
             updateData.subscribed = subscribed;
             if (subscribed) {
                 updateData.alarmEnabledAt = new Date();
-                // ⚖️ 알림 켤 때 마케팅 동의 자동 처리 (법적 방어) [cite: 2025-12-24]
-                await prisma.user.update({
-                    where: { id: userIdNum },
-                    data: { isMarketingAgreed: true, marketingAgreedAt: new Date() },
-                });
             } else {
                 updateData.alarmDisabledAt = new Date();
             }
@@ -84,18 +88,21 @@ export async function POST(req: NextRequest) {
             updateData.alarmEnabledAt = new Date();
         }
 
-        // Upsert를 사용하여 성능과 확장성 확보 [cite: 2025-12-24]
-        await prisma.pushToken.upsert({
-            where: { userId: userIdNum },
-            update: updateData,
-            create: {
-                userId: userIdNum,
-                token: pushToken || "",
-                platform: platform || "expo",
-                subscribed: updateData.subscribed ?? false,
-                alarmEnabledAt: updateData.alarmEnabledAt,
-            },
-        });
+        // 🟢 성능 최적화: user.update와 pushToken.upsert를 병렬로 처리
+        await Promise.all([
+            userUpdatePromise,
+            prisma.pushToken.upsert({
+                where: { userId: userIdNum },
+                update: updateData,
+                create: {
+                    userId: userIdNum,
+                    token: pushToken || "",
+                    platform: platform || "expo",
+                    subscribed: updateData.subscribed ?? false,
+                    alarmEnabledAt: updateData.alarmEnabledAt,
+                },
+            }),
+        ]);
 
         return NextResponse.json({ success: true });
     } catch (error) {

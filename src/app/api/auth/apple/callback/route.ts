@@ -88,27 +88,26 @@ export async function POST(request: NextRequest) {
         const user = result.user;
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
-        const decodedNext = next && !next.startsWith("/login") && next !== "/login" ? decodeURIComponent(next).replace(/^%2F/, "/") : "/";
+        const decodedNext =
+            next && !next.startsWith("/login") && next !== "/login"
+                ? decodeURIComponent(next).replace(/^%2F/, "/")
+                : "/";
 
         return generateHtmlResponse(
             `(function() {
                 try {
-                    // 🟢 [Fix]: 부모 창으로 로그인 성공 메시지 전송 및 리다이렉트
+                    // 🟢 [Fix]: 부모 창으로 로그인 성공 메시지 전송 및 즉시 리다이렉트
                     if (window.opener && !window.opener.closed) {
                         // 부모 창에 메시지 전송
                         window.opener.postMessage({ type: 'APPLE_LOGIN_SUCCESS', token: '${serviceToken}' }, window.location.origin);
                         // 부모 창에 이벤트 발생
                         window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
-                        // 🟢 [Fix]: 부모 창 리다이렉트 (약간의 지연을 두어 메시지 전송 완료 보장)
-                        setTimeout(function() {
-                            if (window.opener && !window.opener.closed) {
-                                window.opener.location.href = "${decodedNext}";
-                            }
-                        }, 100);
-                        // 팝업 닫기
-                        setTimeout(function() {
-                            window.close();
-                        }, 200);
+                        // 🟢 [Fix]: 즉시 리다이렉트 (지연 제거)
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.location.href = "${decodedNext}";
+                        }
+                        // 팝업 닫기 (즉시)
+                        window.close();
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
                         window.dispatchEvent(new CustomEvent('authLoginSuccess'));
@@ -128,7 +127,9 @@ export async function POST(request: NextRequest) {
             `(function() {
                 try {
                     if (window.opener && !window.opener.closed) {
-                        window.opener.postMessage({ type: 'APPLE_LOGIN_ERROR', error: ${JSON.stringify(errorMsg)} }, window.location.origin);
+                        window.opener.postMessage({ type: 'APPLE_LOGIN_ERROR', error: ${JSON.stringify(
+                            errorMsg
+                        )} }, window.location.origin);
                         window.close();
                     } else {
                         alert('인증 실패: ' + ${JSON.stringify(errorMsg)});

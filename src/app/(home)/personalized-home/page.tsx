@@ -822,6 +822,41 @@ const AIRecommender = () => {
             setShowLogin(true);
             return;
         }
+
+        // 🟢 쿠폰으로 구매한 코스인지 확인 (이미 접근 권한이 있는 코스는 쿠폰 사용 불필요)
+        try {
+            const { data: courseData } = await apiFetch(`/api/courses/${courseId}`);
+            // 🟢 코스가 잠금 해제되어 있으면 (쿠폰으로 구매했거나 무료 코스) 바로 저장하고 이동
+            if (courseData && !courseData.isLocked) {
+                setIsSelecting(true);
+                try {
+                    const saveRes = await authenticatedFetch("/api/users/me/courses", {
+                        method: "POST",
+                        body: JSON.stringify({ courseId }),
+                    });
+
+                    if (saveRes !== null) {
+                        setSelectedCourseId(courseId);
+                        setShowConfirmModal(false);
+                        setSelectedDetailCourse(null);
+                        router.push(`/courses/${courseId}`);
+                    } else {
+                        alert("저장 중 오류가 발생했습니다.");
+                    }
+                } catch (error) {
+                    console.error("저장 오류:", error);
+                    alert("저장 중 오류가 발생했습니다.");
+                } finally {
+                    setIsSelecting(false);
+                }
+                return;
+            }
+        } catch (error) {
+            console.error("코스 정보 조회 오류:", error);
+            // 에러 발생 시 기존 로직 계속 진행
+        }
+
+        // 🟢 코스가 잠겨있고 쿠폰이 없으면 TicketPlans 모달 표시
         if (coupons < 1) {
             setShowConfirmModal(false);
             setShowPaywall(true);
@@ -1105,7 +1140,7 @@ const AIRecommender = () => {
 
         return (
             <div
-                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 ${
+                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 relative z-10 ${
                     isSelected ? "scale-105" : "hover:-translate-y-2"
                 }`}
                 onClick={() => !isSelected && handleFlipCard(course.id)}
@@ -1493,7 +1528,7 @@ const AIRecommender = () => {
                                         </div>
 
                                         {recommendedCourses.length > 0 ? (
-                                            <div className="grid gap-4 pb-10">
+                                            <div className="grid gap-4 pb-10 relative z-10">
                                                 {recommendedCourses.map((course) => (
                                                     <FlipCard key={course.id} course={course} />
                                                 ))}
