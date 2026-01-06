@@ -469,7 +469,18 @@ const Login = () => {
                                     }
                                 }}
                                 onError={(error: any) => {
-                                    if (error.code !== "ERR_REQUEST_CANCELED") {
+                                    // 🟢 [Fix]: 팝업이 열리기 전의 에러는 무시
+                                    // ERR_REQUEST_CANCELED는 사용자가 취소한 경우이므로 에러 표시 안 함
+                                    if (error.code === "ERR_REQUEST_CANCELED") {
+                                        return;
+                                    }
+                                    // 팝업 차단 메시지는 표시
+                                    if (error.message && error.message.includes("팝업이 차단")) {
+                                        setError(error.message);
+                                        return;
+                                    }
+                                    // 실제 로그인 실패 에러만 표시 (팝업에서 온 에러)
+                                    if (error.message && !error.message.includes("팝업이 차단")) {
                                         setError("Apple 로그인에 실패했습니다.");
                                     }
                                 }}

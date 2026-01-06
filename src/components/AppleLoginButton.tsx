@@ -95,6 +95,25 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                 return;
             }
 
+            // 🟢 [Fix]: 팝업이 실제로 열렸는지 확인
+            let popupOpened = false;
+            let hasReceivedMessage = false;
+            const popupCheckInterval = setInterval(() => {
+                try {
+                    // 팝업이 열렸는지 확인 (팝업이 차단되면 null이거나 closed가 true)
+                    if (popup && !popup.closed) {
+                        // 팝업이 열렸는지 확인하기 위해 팝업의 location에 접근 시도
+                        popup.location;
+                        popupOpened = true;
+                    }
+                } catch (e) {
+                    // Cross-origin 에러는 정상 (팝업이 다른 도메인으로 이동 중)
+                    if (popup && !popup.closed) {
+                        popupOpened = true;
+                    }
+                }
+            }, 100);
+
             // 팝업에서 메시지 수신 대기
             const messageHandler = (event: MessageEvent) => {
                 // 🟢 [Fix]: origin 검증 강화
@@ -107,12 +126,14 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                 // 🟢 [Fix]: Apple 로그인 성공 메시지 처리
                 if (type === "APPLE_LOGIN_SUCCESS") {
                     console.log("[AppleLogin] 로그인 성공 메시지 수신");
+                    hasReceivedMessage = true;
+                    clearInterval(popupCheckInterval);
                     window.removeEventListener("message", messageHandler);
                     if (popup && !popup.closed) {
                         popup.close();
                     }
 
-                    // 1. 이벤트 발생 (로그인 상태 업데이트 트리거)
+                    // 1. 로그인 성공 이벤트 즉시 발생 (전역 상태 업데이트)
                     window.dispatchEvent(new CustomEvent("authLoginSuccess"));
                     sessionStorage.setItem("login_success_trigger", "true");
 
@@ -120,13 +141,14 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
                     const finalRedirect =
                         serverNext || (next && !next.startsWith("/login") && next !== "/login" ? next : "/");
 
-                    // 3. 브라우저가 쿠키를 처리할 수 있도록 아주 짧은 지연 후 이동
-                    // window.location.replace를 사용하여 히스토리 스택에서 로그인 페이지 제거
+                    // 🟢 [Fix]: 쿠키가 브라우저에 완전히 정착될 시간을 벌어줌 (100ms 지연으로 미들웨어 인식 오류 방지)
                     setTimeout(() => {
                         window.location.replace(finalRedirect);
-                    }, 50);
+                    }, 100);
                 } else if (type === "APPLE_LOGIN_ERROR") {
                     console.error("[AppleLogin] 로그인 에러:", error);
+                    hasReceivedMessage = true;
+                    clearInterval(popupCheckInterval);
                     window.removeEventListener("message", messageHandler);
                     if (popup && !popup.closed) {
                         popup.close();
@@ -137,14 +159,24 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
 
             window.addEventListener("message", messageHandler);
 
-            // 팝업 닫힘 감시
+            // 팝업 닫힘 감시 (사용자가 직접 닫은 경우만 처리)
             const checkPopup = setInterval(() => {
                 if (popup.closed) {
                     clearInterval(checkPopup);
+                    clearInterval(popupCheckInterval);
                     window.removeEventListener("message", messageHandler);
+
+                    // 🟢 [Fix]: 팝업이 열렸고 메시지를 받지 않았을 때만 에러 표시
+                    // (사용자가 팝업을 직접 닫은 경우)
+                    if (popupOpened && !hasReceivedMessage) {
+                        // 사용자가 팝업을 직접 닫은 경우이므로 에러를 표시하지 않음
+                        console.log("[AppleLogin] 사용자가 팝업을 닫았습니다.");
+                    }
                 }
             }, 500);
         } catch (error) {
+            // 🟢 [Fix]: 실제 에러가 발생한 경우에만 에러 표시
+            console.error("[AppleLogin] 예상치 못한 에러:", error);
             onError?.(error);
         }
     };
