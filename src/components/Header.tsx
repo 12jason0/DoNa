@@ -135,8 +135,13 @@ const Header = () => {
         }
     }, [isMenuOpen]);
 
-    // --- 🟢 기능 6: 로그아웃 로직 (스플래시 지연 추가) ---
+    // --- 🟢 기능 6: 로그아웃 로직 (중복 실행 방지) ---
     const handleLogout = async () => {
+        // 🟢 [Fix]: 이미 로그아웃 중이면 중복 실행 방지
+        if (isLoggingOut) {
+            return;
+        }
+
         setShowLogoutConfirm(false);
         closeMenu();
         setIsLoggingOut(true); // 스플래시 시작
@@ -144,10 +149,11 @@ const Header = () => {
         try {
             await new Promise((resolve) => setTimeout(resolve, 1500)); // 1.5초 대기
             const { logout } = await import("@/lib/authClient");
-            await logout(); // 내부에서 window.location.href = "/" 실행됨
+            await logout(); // 내부에서 window.location.replace("/") 실행됨
         } catch (error) {
             console.error("로그아웃 오류:", error);
-            window.location.href = "/";
+            setIsLoggingOut(false);
+            window.location.replace("/");
         }
     };
 

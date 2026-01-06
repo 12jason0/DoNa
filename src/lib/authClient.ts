@@ -48,6 +48,9 @@ export async function fetchSession(): Promise<{ authenticated: boolean; user: Au
     return result;
 }
 
+// 🟢 [Fix]: 로그아웃 중복 실행 방지
+let isLoggingOut = false;
+
 /**
  * 🟢 로그아웃 (쿠키 기반)
  *
@@ -55,6 +58,14 @@ export async function fetchSession(): Promise<{ authenticated: boolean; user: Au
  * localStorage를 사용하지 않고 쿠키만 사용합니다.
  */
 export async function logout(): Promise<boolean> {
+    // 🟢 [Fix]: 이미 로그아웃 중이면 중복 실행 방지
+    if (isLoggingOut) {
+        console.warn("[authClient] 로그아웃이 이미 진행 중입니다.");
+        return false;
+    }
+
+    isLoggingOut = true;
+
     try {
         const res = await fetch("/api/auth/logout", {
             method: "POST",
@@ -75,19 +86,21 @@ export async function logout(): Promise<boolean> {
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
                 // 🟢 스플래시 화면을 보여주기 위해 메인 페이지로 이동 (새로고침 포함)
-                window.location.href = "/";
+                window.location.replace("/");
             }
             return true;
         }
 
+        isLoggingOut = false;
         return false;
     } catch (error) {
         console.error("[authClient] 로그아웃 실패:", error);
+        isLoggingOut = false;
 
         // 🟢 에러 발생 시에도 안전을 위해 메인으로 강제 이동하며 새로고침
         if (typeof window !== "undefined") {
             sessionStorage.removeItem("dona-splash-shown");
-            window.location.href = "/";
+            window.location.replace("/");
         }
         return false;
     }

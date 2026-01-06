@@ -73,6 +73,7 @@ const MyPage = () => {
     const [editError, setEditError] = useState("");
 
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false); // 🟢 로그아웃 중복 실행 방지
 
     const [selectedCaseStoryId, setSelectedCaseStoryId] = useState<number | null>(null);
     const [selectedCaseTitle, setSelectedCaseTitle] = useState("");
@@ -606,8 +607,14 @@ const MyPage = () => {
 
     const handleLogoutClick = () => setShowLogoutModal(true);
     const handleLogout = async () => {
+        // 🟢 [Fix]: 이미 로그아웃 중이면 중복 실행 방지
+        if (isLoggingOut) {
+            return;
+        }
+
         // 🟢 모달 닫기
         setShowLogoutModal(false);
+        setIsLoggingOut(true);
 
         try {
             // 🟢 쿠키 기반 인증: logout 함수 사용 (스플래시 화면 포함)
@@ -615,10 +622,11 @@ const MyPage = () => {
             await logout();
         } catch (error) {
             console.error("로그아웃 처리 중 오류 발생:", error);
+            setIsLoggingOut(false);
             // 에러 발생 시에도 메인으로 이동
             if (typeof window !== "undefined") {
                 sessionStorage.removeItem("dona-splash-shown");
-                window.location.href = "/";
+                window.location.replace("/");
             }
         }
     };

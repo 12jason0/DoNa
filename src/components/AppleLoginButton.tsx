@@ -26,9 +26,14 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
 
         checkMobileApp();
 
-        // Apple 로그인 성공 이벤트 리스너
+        // 🟢 [Fix]: 앱 환경에서는 onSuccess 핸들러를 실행하지 않음 (중복 로그인 방지)
+        // 앱에서 injectJavaScript로 이미 서버에 로그인 요청을 보내므로, onSuccess는 웹 환경에서만 실행
         const handleAppleLoginSuccess = (event: CustomEvent) => {
-            onSuccess(event.detail);
+            // 앱 환경이면 onSuccess를 호출하지 않음 (서버에서 이미 처리됨)
+            const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
+            if (!isApp) {
+                onSuccess(event.detail);
+            }
         };
 
         // Apple 로그인 에러 이벤트 리스너
