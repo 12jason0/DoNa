@@ -261,27 +261,39 @@ export async function GET(req: NextRequest) {
         let recentConcepts: string[] = [];
 
         // 🟢 [Fixed]: 개별 처리로 TypeScript 타입 추론 에러(18047, 2339) 해결
+        let savedCourseIds: number[] = []; // 🟢 이미 저장한 코스 ID 목록
         if (userId) {
-            const prefsData = await prisma.userPreference
-                .findUnique({
-                    where: { userId },
-                    select: { preferences: true },
-                })
-                .catch(() => null);
-
-            const interactionData = await prisma.userInteraction
-                .findMany({
-                    where: { userId, action: { in: ["view", "click", "like"] } },
-                    orderBy: { createdAt: "desc" },
-                    take: 10,
-                    select: { course: { select: { concept: true } } },
-                })
-                .catch(() => []); // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
+            const [prefsData, interactionData, savedCourses] = await Promise.all([
+                prisma.userPreference
+                    .findUnique({
+                        where: { userId },
+                        select: { preferences: true },
+                    })
+                    .catch(() => null),
+                prisma.userInteraction
+                    .findMany({
+                        where: { userId, action: { in: ["view", "click", "like"] } },
+                        orderBy: { createdAt: "desc" },
+                        take: 10,
+                        select: { course: { select: { concept: true } } },
+                    })
+                    .catch(() => []), // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
+                // 🟢 AI 추천 모드일 때만 이미 저장한 코스 목록 조회
+                mode === "ai"
+                    ? prisma.savedCourse
+                          .findMany({
+                              where: { userId },
+                              select: { courseId: true },
+                          })
+                          .catch(() => [])
+                    : Promise.resolve([]),
+            ]);
 
             if (prefsData?.preferences) {
                 longTermPrefs = prefsData.preferences; // 🟢 명확한 속성 접근 (2339 해결)
             }
             recentConcepts = interactionData.map((i: any) => i.course?.concept).filter(Boolean);
+            savedCourseIds = Array.isArray(savedCourses) ? savedCourses.map((sc: any) => sc.courseId) : [];
         }
 
         const whereConditions: any = { isPublic: true };
@@ -300,6 +312,11 @@ export async function GET(req: NextRequest) {
         }
         if (strictRegion && regionToday) {
             whereConditions.region = { contains: regionToday };
+        }
+
+        // 🟢 AI 추천 모드일 때 이미 저장한 코스 제외
+        if (mode === "ai" && savedCourseIds.length > 0) {
+            whereConditions.id = { notIn: savedCourseIds };
         }
 
         const allCourses = await prisma.course.findMany({

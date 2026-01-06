@@ -634,6 +634,7 @@ const AIRecommender = () => {
 
                 setMessages((prev) => [...prev, { type: "user", text: option.text }]);
 
+                // 🟢 즉시 추천 결과 표시 (분석 화면 최소화)
                 setIsTyping(false);
                 setIsGenerating(true);
                 setIsAnalyzing(true);
@@ -652,15 +653,15 @@ const AIRecommender = () => {
                 const textInterval = setInterval(() => {
                     setAnalysisText(texts[textIdx]);
                     textIdx = (textIdx + 1) % texts.length;
-                }, 800);
+                }, 400); // 🟢 800ms -> 400ms로 단축하여 빠른 전환
 
-                await generateRecommendations(userAnswers);
-
-                clearInterval(textInterval);
-                setTimeout(() => {
+                // 🟢 추천 생성 (비동기로 실행하되 즉시 결과 표시)
+                generateRecommendations(userAnswers).then(() => {
+                    clearInterval(textInterval);
+                    // 🟢 추천 생성 완료 시 즉시 분석 화면 닫기
                     setIsAnalyzing(false);
                     setIsGenerating(false);
-                }, 1000);
+                });
 
                 return;
             } else if (option.value === "no") {
@@ -817,18 +818,21 @@ const AIRecommender = () => {
         // 1. 초기 상태 검증
         if (isSelecting || !courseId) return;
 
+        // 🟢 즉시 "처리 중" 상태로 변경
+        setIsSelecting(true);
+
         // 2. 권한 및 자산 검증
         if (!isLoggedIn) {
+            setIsSelecting(false);
             setShowLogin(true);
             return;
         }
 
         // 🟢 쿠폰으로 구매한 코스인지 확인 (이미 접근 권한이 있는 코스는 쿠폰 사용 불필요)
         try {
-            const { data: courseData } = await apiFetch(`/api/courses/${courseId}`);
+            const { data: courseData } = await apiFetch<{ isLocked?: boolean }>(`/api/courses/${courseId}`);
             // 🟢 코스가 잠금 해제되어 있으면 (쿠폰으로 구매했거나 무료 코스) 바로 저장하고 이동
-            if (courseData && !courseData.isLocked) {
-                setIsSelecting(true);
+            if (courseData && courseData.isLocked === false) {
                 try {
                     const saveRes = await authenticatedFetch("/api/users/me/courses", {
                         method: "POST",
@@ -858,23 +862,15 @@ const AIRecommender = () => {
 
         // 🟢 코스가 잠겨있고 쿠폰이 없으면 TicketPlans 모달 표시
         if (coupons < 1) {
+            setIsSelecting(false);
             setShowConfirmModal(false);
             setShowPaywall(true);
             return;
         }
 
-        setIsSelecting(true);
-
         try {
-            // [Step 1]: 쿠폰 차감 API 호출 (useCoupon 함수 내부 호출)
-            const couponSuccess = await useCoupon();
-            if (!couponSuccess) {
-                alert("쿠폰 차감에 실패했습니다. 잔액을 확인해주세요.");
-                setIsSelecting(false);
-                return;
-            }
-
-            // [Step 2]: 마이페이지 저장 API 호출
+            // 🟢 쿠폰은 이미 "코스 뽑기" 버튼 클릭 시 차감되었으므로 여기서는 차감하지 않음
+            // [Step 1]: 마이페이지 저장 API 호출
             // 🟢 httpOnly Cookie 기반 인증 (보안 강화 지침 준수)
             const saveRes = await authenticatedFetch("/api/users/me/courses", {
                 method: "POST",
@@ -1140,7 +1136,7 @@ const AIRecommender = () => {
 
         return (
             <div
-                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 relative z-10 ${
+                className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 relative z-20 ${
                     isSelected ? "scale-105" : "hover:-translate-y-2"
                 }`}
                 onClick={() => !isSelected && handleFlipCard(course.id)}
@@ -1455,7 +1451,7 @@ const AIRecommender = () => {
                             )}
 
                             {/* 채팅 영역 (스크롤 가능) */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50 relative z-20">
                                 {showUpsell && !showRecommendations && (
                                     <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-900 dark:text-amber-200 shadow-sm">
                                         <div className="font-bold mb-1 flex items-center gap-2">
@@ -1520,7 +1516,7 @@ const AIRecommender = () => {
 
                                 {/* 결과 표시 영역 (채팅창 내부) */}
                                 {showRecommendations && !isAnalyzing && (
-                                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-20">
                                         <div className="flex justify-between items-center mb-4 px-1">
                                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                                 🎁 추천 결과
@@ -1528,7 +1524,7 @@ const AIRecommender = () => {
                                         </div>
 
                                         {recommendedCourses.length > 0 ? (
-                                            <div className="grid gap-4 pb-10 relative z-10">
+                                            <div className="grid gap-4 pb-20 relative z-20">
                                                 {recommendedCourses.map((course) => (
                                                     <FlipCard key={course.id} course={course} />
                                                 ))}
