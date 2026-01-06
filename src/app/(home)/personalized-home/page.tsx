@@ -500,20 +500,32 @@ const AIRecommender = () => {
     };
 
     // 로그아웃
-    const handleLogout = () => {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("user");
-        sessionStorage.removeItem("auth:loggingIn");
-        setIsLoggedIn(false);
-        setUserName("");
-        setNickname("");
-        setProfileImageUrl(null);
-        setCoupons(0);
-        resetConversation();
-        window.dispatchEvent(new CustomEvent("authTokenChange"));
+    const handleLogout = async () => {
         try {
-            router.replace("/personalized-home");
-        } catch {}
+            // 🟢 [Fix]: authClient의 logout 함수 사용하여 일관된 로그아웃 처리
+            const { logout } = await import("@/lib/authClient");
+            await logout();
+            // 🟢 로그아웃 후 상태 초기화
+            setIsLoggedIn(false);
+            setUserName("");
+            setNickname("");
+            setProfileImageUrl(null);
+            setCoupons(0);
+            resetConversation();
+        } catch (error) {
+            console.error("로그아웃 실패:", error);
+            // 🟢 에러 발생 시에도 상태 초기화
+            setIsLoggedIn(false);
+            setUserName("");
+            setNickname("");
+            setProfileImageUrl(null);
+            setCoupons(0);
+            resetConversation();
+            // 🟢 강제로 홈으로 이동
+            try {
+                router.replace("/");
+            } catch {}
+        }
     };
 
     const resetConversation = () => {

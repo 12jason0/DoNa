@@ -88,6 +88,9 @@ export async function logout(): Promise<boolean> {
                 method: "POST",
                 credentials: "include", // 🟢 쿠키 전송 필수
                 cache: "no-store", // 🟢 캐시 방지
+                headers: {
+                    "Content-Type": "application/json",
+                },
             });
 
             // 🟢 로그아웃 성공 여부와 관계없이 클라이언트 상태 정리
@@ -96,13 +99,19 @@ export async function logout(): Promise<boolean> {
                 localStorage.removeItem("authToken");
                 localStorage.removeItem("user");
                 localStorage.removeItem("loginTime");
+                localStorage.removeItem("onboardingStep1");
+                localStorage.removeItem("onboardingStep2");
+                localStorage.removeItem("onboardingStep3");
+                localStorage.removeItem("onboardingStep4");
 
                 // 🟢 스플래시 화면을 다시 표시하기 위해 sessionStorage 삭제
                 sessionStorage.removeItem("dona-splash-shown");
                 sessionStorage.removeItem("login_success_trigger");
+                sessionStorage.removeItem("auth:loggingIn");
 
                 // 🟢 로그아웃 이벤트 발생 (컴포넌트들이 상태를 초기화하도록)
                 window.dispatchEvent(new CustomEvent("authLogout"));
+                window.dispatchEvent(new CustomEvent("authTokenChange"));
 
                 // 🟢 [Fix]: 앱 환경에서 로그아웃 처리 강화
                 const isApp = isMobileApp();

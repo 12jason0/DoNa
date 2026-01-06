@@ -45,21 +45,26 @@ const MyPage = () => {
     const [activeTab, setActiveTab] = useState("profile");
 
     // 🟢 [Performance]: 탭 변경 시 부드러운 전환을 위한 최적화 및 데이터 지연 로드
-    const handleTabChange = useCallback((tab: string) => {
-        // 🟢 다음 프레임에서 탭 변경하여 렌더링 부하 분산
-        requestAnimationFrame(() => {
-            setActiveTab(tab);
-            
-            // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
-            if (tab === "footprint" && completed.length === 0 && casefiles.length === 0) {
-                Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
-            } else if (tab === "records" && favorites.length === 0 && savedCourses.length === 0) {
-                Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(() => {});
-            } else if (tab === "activity" && badges.length === 0 && rewards.length === 0) {
-                Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
-            }
-        });
-    }, [completed.length, casefiles.length, favorites.length, savedCourses.length, badges.length, rewards.length]);
+    const handleTabChange = useCallback(
+        (tab: string) => {
+            // 🟢 다음 프레임에서 탭 변경하여 렌더링 부하 분산
+            requestAnimationFrame(() => {
+                setActiveTab(tab);
+
+                // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
+                if (tab === "footprint" && completed.length === 0 && casefiles.length === 0) {
+                    Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
+                } else if (tab === "records" && favorites.length === 0 && savedCourses.length === 0) {
+                    Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(
+                        () => {}
+                    );
+                } else if (tab === "activity" && badges.length === 0 && rewards.length === 0) {
+                    Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
+                }
+            });
+        },
+        [completed.length, casefiles.length, favorites.length, savedCourses.length, badges.length, rewards.length]
+    );
     const [activitySubTab, setActivitySubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
     const tabsTrackRef = useRef<HTMLDivElement | null>(null);
     const redirectingRef = useRef(false); // 🟢 리다이렉트 중복 방지
@@ -127,18 +132,24 @@ const MyPage = () => {
                     if (initialTab === "profile") {
                         // 프로필 탭은 이미 로드됨, 나머지 데이터는 지연 로드
                         deferredData.push(
-                    fetchFavorites(),
-                    fetchSavedCourses(),
-                    fetchBadges(),
-                    fetchCompleted(),
-                    fetchCasefiles(),
-                    fetchRewards(),
-                    fetchCheckins(),
+                            fetchFavorites(),
+                            fetchSavedCourses(),
+                            fetchBadges(),
+                            fetchCompleted(),
+                            fetchCasefiles(),
+                            fetchRewards(),
+                            fetchCheckins(),
                             fetchPayments()
                         );
                     } else if (initialTab === "footprint") {
                         priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses());
-                        deferredData.push(fetchFavorites(), fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                        deferredData.push(
+                            fetchFavorites(),
+                            fetchBadges(),
+                            fetchRewards(),
+                            fetchCheckins(),
+                            fetchPayments()
+                        );
                     } else if (initialTab === "records") {
                         priorityData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
                         deferredData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
@@ -177,14 +188,14 @@ const MyPage = () => {
                 };
 
                 // 🟢 즉시 실행하여 모든 데이터가 확실히 로드되도록 함
-                // 🟢 requestIdleCallback은 브라우저가 idle 상태일 때만 실행되므로, 
+                // 🟢 requestIdleCallback은 브라우저가 idle 상태일 때만 실행되므로,
                 // 🟢 timeout을 짧게 설정하거나 바로 실행하도록 변경
                 if (typeof window !== "undefined" && "requestIdleCallback" in window) {
                     (window as any).requestIdleCallback(scheduleDeferredLoad, { timeout: 500 });
                 } else {
                     // 폴백: 즉시 실행
                     setTimeout(scheduleDeferredLoad, 100);
-            }
+                }
             }
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,7 +218,6 @@ const MyPage = () => {
         return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
     }, []);
 
-
     const fetchUserInfo = useCallback(async (): Promise<boolean> => {
         // 🟢 이미 리다이렉트 중이면 중복 실행 방지
         if (redirectingRef.current) return false;
@@ -215,33 +225,64 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
             const { apiFetch } = await import("@/lib/authClient");
-            const { data: raw, response } = await apiFetch<any>("/api/users/profile", {
+            let { data: raw, response } = await apiFetch<any>("/api/users/profile", {
                 cache: "no-store", // 🟢 서버 캐시 방지 추가
             });
 
             // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
             if (response.status === 401 || !raw) {
-                // 🟢 [Fix]: 로그인 직후 쿠키 동기화 시간을 고려하여 일정 시간 동안 401 무시
+                // 🟢 [Fix]: 로그인 직후 쿠키 동기화 시간을 고려하여 일정 시간 동안 401 무시 및 재시도
                 const loginSuccessTime = sessionStorage.getItem("login_success_trigger");
                 if (loginSuccessTime) {
                     const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
-                    // 🟢 로그인 후 5초 이내에는 401을 무시 (쿠키 동기화 시간 확보)
+                    // 🟢 로그인 후 5초 이내에는 401을 무시하고 재시도 (쿠키 동기화 시간 확보)
                     if (timeSinceLogin < 5000) {
-                        console.log("[MyPage] 로그인 직후 쿠키 동기화 대기 중, 401 무시");
-                        return false; // 🟢 리다이렉트하지 않고 false만 반환
+                        console.log("[MyPage] 로그인 직후 쿠키 동기화 대기 중, 1초 후 재시도");
+                        // 🟢 1초 후 재시도
+                        await new Promise((resolve) => setTimeout(resolve, 1000));
+                        const retryResult = await apiFetch<any>("/api/users/profile", {
+                            cache: "no-store",
+                        });
+                        if (retryResult.response.status === 200 && retryResult.data) {
+                            // 🟢 재시도 성공 시 raw와 response를 재시도 결과로 교체하고 계속 진행
+                            raw = retryResult.data;
+                            response = retryResult.response;
+                        } else {
+                            // 🟢 재시도 실패 시 기존 로직으로 진행
+                            if (
+                                !redirectingRef.current &&
+                                typeof window !== "undefined" &&
+                                !window.location.pathname.includes("/login")
+                            ) {
+                                redirectingRef.current = true;
+                                router.push("/login");
+                            }
+                            return false;
+                        }
+                    } else {
+                        // 🟢 5초 이후 401이면 로그인 페이지로 이동
+                        if (
+                            !redirectingRef.current &&
+                            typeof window !== "undefined" &&
+                            !window.location.pathname.includes("/login")
+                        ) {
+                            redirectingRef.current = true;
+                            router.push("/login");
+                        }
+                        return false;
                     }
+                } else {
+                    // 🟢 login_success_trigger가 없으면 즉시 로그인 페이지로 이동
+                    if (
+                        !redirectingRef.current &&
+                        typeof window !== "undefined" &&
+                        !window.location.pathname.includes("/login")
+                    ) {
+                        redirectingRef.current = true;
+                        router.push("/login");
+                    }
+                    return false;
                 }
-                
-                // 🟢 중복 리다이렉트 방지
-                if (
-                    !redirectingRef.current &&
-                    typeof window !== "undefined" &&
-                    !window.location.pathname.includes("/login")
-                ) {
-                    redirectingRef.current = true;
-                    router.push("/login");
-                }
-                return false; // 🟢 다른 fetch 함수들이 실행되지 않도록 false 반환
             }
 
             // 🟢 authenticatedFetch가 이미 JSON을 파싱해서 반환함
@@ -592,13 +633,24 @@ const MyPage = () => {
         // 🟢 [Performance]: 탭 변경을 다음 프레임으로 지연하여 부드러운 전환
         requestAnimationFrame(() => {
             setActiveTab(id);
-            
+
             // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
             if (id === "footprint" && (completed.length === 0 || casefiles.length === 0 || savedCourses.length === 0)) {
                 Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
-            } else if (id === "records" && (favorites.length === 0 || savedCourses.length === 0 || completed.length === 0 || casefiles.length === 0)) {
-                Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(() => {});
-            } else if (id === "activity" && (badges.length === 0 || rewards.length === 0 || checkins.length === 0 || payments.length === 0)) {
+            } else if (
+                id === "records" &&
+                (favorites.length === 0 ||
+                    savedCourses.length === 0 ||
+                    completed.length === 0 ||
+                    casefiles.length === 0)
+            ) {
+                Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(
+                    () => {}
+                );
+            } else if (
+                id === "activity" &&
+                (badges.length === 0 || rewards.length === 0 || checkins.length === 0 || payments.length === 0)
+            ) {
                 Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
             }
         });
@@ -889,21 +941,21 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                    <ProfileTab
-                        // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
-                        key={userInfo?.subscriptionTier || "loading"}
-                        userInfo={userInfo}
-                        userPreferences={userPreferences}
-                        onEditProfile={handleEditClick}
-                        onEditPreferences={() => router.push("/onboarding")}
-                        onOpenPwModal={() => {
-                            setPwModalOpen(true);
-                            setPwStep("verify");
-                            setPwState({ current: "", next: "", confirm: "" });
-                            setPwError("");
-                        }}
-                        onLogout={handleLogoutClick}
-                    />
+                        <ProfileTab
+                            // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
+                            key={userInfo?.subscriptionTier || "loading"}
+                            userInfo={userInfo}
+                            userPreferences={userPreferences}
+                            onEditProfile={handleEditClick}
+                            onEditPreferences={() => router.push("/onboarding")}
+                            onOpenPwModal={() => {
+                                setPwModalOpen(true);
+                                setPwStep("verify");
+                                setPwState({ current: "", next: "", confirm: "" });
+                                setPwError("");
+                            }}
+                            onLogout={handleLogoutClick}
+                        />
                     </Suspense>
                 )}
 
@@ -915,12 +967,12 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                    <FootprintTab
-                        casefiles={casefiles}
-                        completed={completed}
-                        aiRecommendations={savedCourses}
-                        userName={userInfo?.name || ""}
-                    />
+                        <FootprintTab
+                            casefiles={casefiles}
+                            completed={completed}
+                            aiRecommendations={savedCourses}
+                            userName={userInfo?.name || ""}
+                        />
                     </Suspense>
                 )}
 
@@ -932,15 +984,15 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                    <RecordsTab
-                        favorites={favorites}
-                        savedCourses={savedCourses}
-                        completed={completed}
-                        casefiles={casefiles}
-                        onRemoveFavorite={removeFavorite}
-                        onOpenCaseModal={openCaseModal}
-                        userTier={userInfo?.subscriptionTier}
-                    />
+                        <RecordsTab
+                            favorites={favorites}
+                            savedCourses={savedCourses}
+                            completed={completed}
+                            casefiles={casefiles}
+                            onRemoveFavorite={removeFavorite}
+                            onOpenCaseModal={openCaseModal}
+                            userTier={userInfo?.subscriptionTier}
+                        />
                     </Suspense>
                 )}
 
@@ -952,14 +1004,14 @@ const MyPage = () => {
                             </div>
                         }
                     >
-                    <ActivityTab
-                        badges={badges}
-                        rewards={rewards}
-                        checkins={checkins}
-                        payments={payments}
-                        onSelectBadge={setSelectedBadge}
-                        initialSubTab={activitySubTab}
-                    />
+                        <ActivityTab
+                            badges={badges}
+                            rewards={rewards}
+                            checkins={checkins}
+                            payments={payments}
+                            onSelectBadge={setSelectedBadge}
+                            initialSubTab={activitySubTab}
+                        />
                     </Suspense>
                 )}
             </main>
