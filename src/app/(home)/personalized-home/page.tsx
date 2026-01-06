@@ -506,12 +506,12 @@ const AIRecommender = () => {
             const { logout } = await import("@/lib/authClient");
             await logout();
             // 🟢 로그아웃 후 상태 초기화
-            setIsLoggedIn(false);
-            setUserName("");
-            setNickname("");
-            setProfileImageUrl(null);
-            setCoupons(0);
-            resetConversation();
+        setIsLoggedIn(false);
+        setUserName("");
+        setNickname("");
+        setProfileImageUrl(null);
+        setCoupons(0);
+        resetConversation();
         } catch (error) {
             console.error("로그아웃 실패:", error);
             // 🟢 에러 발생 시에도 상태 초기화
@@ -522,9 +522,9 @@ const AIRecommender = () => {
             setCoupons(0);
             resetConversation();
             // 🟢 강제로 홈으로 이동
-            try {
+        try {
                 router.replace("/");
-            } catch {}
+        } catch {}
         }
     };
 
@@ -646,12 +646,12 @@ const AIRecommender = () => {
                 }
                 // 🟢 iOS: 쿠폰 체크 및 차감 건너뛰기 (무제한 사용)
                 if (platform !== "ios") {
-                    if (coupons < 1) {
-                        setShowPaywall(true);
-                        return;
-                    }
-                    const couponUsed = await useCoupon();
-                    if (!couponUsed) return;
+                if (coupons < 1) {
+                    setShowPaywall(true);
+                    return;
+                }
+                const couponUsed = await useCoupon();
+                if (!couponUsed) return;
                 }
 
                 setMessages((prev) => [...prev, { type: "user", text: option.text }]);
@@ -679,7 +679,7 @@ const AIRecommender = () => {
 
                 // 🟢 추천 생성 (비동기로 실행하되 즉시 결과 표시)
                 generateRecommendations(userAnswers).then(() => {
-                    clearInterval(textInterval);
+                clearInterval(textInterval);
                     // 🟢 추천 생성 완료 시 즉시 분석 화면 닫기
                     setIsAnalyzing(false);
                     setIsGenerating(false);
@@ -863,7 +863,7 @@ const AIRecommender = () => {
 
                     if (saveRes !== null) {
                         setSelectedCourseId(courseId);
-                        setShowConfirmModal(false);
+            setShowConfirmModal(false);
                         setSelectedDetailCourse(null);
                         router.push(`/courses/${courseId}`);
                     } else {
@@ -875,8 +875,8 @@ const AIRecommender = () => {
                 } finally {
                     setIsSelecting(false);
                 }
-                return;
-            }
+            return;
+        }
         } catch (error) {
             console.error("코스 정보 조회 오류:", error);
             // 에러 발생 시 기존 로직 계속 진행
@@ -884,11 +884,11 @@ const AIRecommender = () => {
 
         // 🟢 코스가 잠겨있고 쿠폰이 없으면 TicketPlans 모달 표시
         if (coupons < 1) {
-            setIsSelecting(false);
+                setIsSelecting(false);
             setShowConfirmModal(false);
             setShowPaywall(true);
-            return;
-        }
+                return;
+            }
 
         try {
             // 🟢 쿠폰은 이미 "코스 뽑기" 버튼 클릭 시 차감되었으므로 여기서는 차감하지 않음

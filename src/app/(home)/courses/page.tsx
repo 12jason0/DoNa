@@ -66,8 +66,8 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                 if (isIOS) {
                     if (courseGrade === "PREMIUM") isLocked = true;
                     // Basic 코스는 isLocked = false (무료)
-                } else {
-                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+            } else {
+                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
                 }
             }
 

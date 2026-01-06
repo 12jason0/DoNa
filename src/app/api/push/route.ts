@@ -47,11 +47,11 @@ export async function POST(req: NextRequest) {
         // 🟢 성능 최적화: 병렬 쿼리로 빠른 응답
         const [existingToken, user] = await Promise.all([
             prisma.pushToken.findUnique({
-                where: { userId: userIdNum },
+            where: { userId: userIdNum },
             }),
             prisma.user.findUnique({
-                where: { id: userIdNum },
-                select: { isMarketingAgreed: true },
+            where: { id: userIdNum },
+            select: { isMarketingAgreed: true },
             }),
         ]);
 
@@ -92,15 +92,15 @@ export async function POST(req: NextRequest) {
         await Promise.all([
             userUpdatePromise,
             prisma.pushToken.upsert({
-                where: { userId: userIdNum },
-                update: updateData,
-                create: {
-                    userId: userIdNum,
-                    token: pushToken || "",
-                    platform: platform || "expo",
-                    subscribed: updateData.subscribed ?? false,
-                    alarmEnabledAt: updateData.alarmEnabledAt,
-                },
+            where: { userId: userIdNum },
+            update: updateData,
+            create: {
+                userId: userIdNum,
+                token: pushToken || "",
+                platform: platform || "expo",
+                subscribed: updateData.subscribed ?? false,
+                alarmEnabledAt: updateData.alarmEnabledAt,
+            },
             }),
         ]);
 

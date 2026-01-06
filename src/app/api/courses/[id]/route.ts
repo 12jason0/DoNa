@@ -203,8 +203,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         courseGrade === "FREE"
                             ? cp.coaching_tip || null // FREE 코스: 클라이언트에서 처리
                             : hasTipAccess
-                            ? cp.coaching_tip || null
-                            : null; // BASIC/PREMIUM 코스: 권한 체크
+                              ? cp.coaching_tip || null
+                              : null; // BASIC/PREMIUM 코스: 권한 체크
 
                     // 🟢 안전한 숫자 변환
                     const placeId = cp.place?.id;

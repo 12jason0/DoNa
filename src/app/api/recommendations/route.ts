@@ -265,18 +265,18 @@ export async function GET(req: NextRequest) {
         if (userId) {
             const [prefsData, interactionData, savedCourses] = await Promise.all([
                 prisma.userPreference
-                    .findUnique({
-                        where: { userId },
-                        select: { preferences: true },
-                    })
+                .findUnique({
+                    where: { userId },
+                    select: { preferences: true },
+                })
                     .catch(() => null),
                 prisma.userInteraction
-                    .findMany({
-                        where: { userId, action: { in: ["view", "click", "like"] } },
-                        orderBy: { createdAt: "desc" },
-                        take: 10,
-                        select: { course: { select: { concept: true } } },
-                    })
+                .findMany({
+                    where: { userId, action: { in: ["view", "click", "like"] } },
+                    orderBy: { createdAt: "desc" },
+                    take: 10,
+                    select: { course: { select: { concept: true } } },
+                })
                     .catch(() => []), // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
                 // 🟢 AI 추천 모드일 때만 이미 저장한 코스 목록 조회
                 mode === "ai"

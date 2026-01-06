@@ -12,7 +12,7 @@ import CourseCard from "@/components/CourseCard";
 // 🟢 [Performance]: 필터링 로직과 모달을 별도 파일로 분리
 import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
-import { isIOS } from "@/lib/platform";
+import { isIOS, isMobileApp } from "@/lib/platform";
 import CourseReportBanner from "@/components/CourseReportBanner";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
@@ -114,14 +114,14 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     }, []);
 
     useEffect(() => {
-        // 🟢 초기 데이터 로드 시 로딩 해제 (약간의 지연을 두어 로딩 오버레이가 보이도록)
-        const timer = setTimeout(() => {
-            setCourses(initialCourses);
+        // 🟢 초기 데이터 로드 시 즉시 업데이트 (성능 최적화)
+        setCourses(initialCourses);
+        // 🟢 로딩 해제는 다음 프레임에서 실행하여 로딩 오버레이가 보이도록 함
+        requestAnimationFrame(() => {
             setLoading(false);
-            setHasMore(initialCourses.length >= 30);
-            setOffset(30);
-        }, 100);
-        return () => clearTimeout(timer);
+        });
+        setHasMore(initialCourses.length >= 30);
+        setOffset(30);
     }, [initialCourses]);
 
     // 🟢 URL 파라미터 변경 시 상태 동기화 (되돌리기 버튼 클릭 시 필터 상태 복원) - 중복 제거 및 최적화
@@ -177,10 +177,28 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             if (hide) sp.set("hideClosed", "1");
 
             const targetPath = sp.toString() ? `/nearby?${sp.toString()}` : "/nearby";
-            // 🟢 prefetch로 미리 로드하여 빠른 전환
-            router.prefetch(targetPath);
-            // 🟢 [Performance]: 로딩 상태는 서버 컴포넌트가 처리하므로 클라이언트에서는 즉시 이동
-            router.push(targetPath);
+
+            // 🟢 [Performance]: requestAnimationFrame으로 부드러운 전환
+            requestAnimationFrame(() => {
+                // 🟢 [Fix]: 앱 환경에서는 router.push를 먼저 시도하고, 실패 시에만 window.location.href 사용
+                if (isMobileApp()) {
+                    // 앱 환경에서도 router.push를 시도 (더 빠른 전환)
+                    try {
+                        router.push(targetPath);
+                        // router.push가 작동하지 않을 경우를 대비해 타임아웃 설정
+                        setTimeout(() => {
+                            if (window.location.pathname + window.location.search !== targetPath) {
+                                window.location.href = targetPath;
+                            }
+                        }, 100);
+                    } catch {
+                        window.location.href = targetPath;
+                    }
+                } else {
+                    // 🟢 웹 환경: prefetch는 이미 호출되었을 수 있으므로 즉시 push
+                    router.push(targetPath);
+                }
+            });
         },
         [selectedActivities, selectedRegions, selectedTagIds, hideClosedPlaces, searchParams, router]
     );
@@ -415,11 +433,13 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const toggleRegionSingle = (value: string) => {
         const next = selectedRegions.includes(value) ? [] : [value];
         setSelectedRegions(next);
-        // 🟢 지역 카테고리 클릭 시 로딩 상태 설정 및 이전 결과 초기화
-        setLoading(true);
-        setCourses([]); // 이전 결과 초기화
-        // 🟢 즉시 URL 변경 (setTimeout 제거하여 즉시 반응)
-        pushUrlFromState({ regions: next, q: "" });
+        // 🟢 [Performance]: requestAnimationFrame으로 부드러운 전환
+        requestAnimationFrame(() => {
+            // 🟢 지역 카테고리 클릭 시 로딩 상태 설정 및 이전 결과 초기화
+            setLoading(true);
+            setCourses([]); // 이전 결과 초기화
+            pushUrlFromState({ regions: next, q: "" });
+        });
     };
 
     const removeTag = (tagIdToRemove: number) => {
@@ -463,42 +483,45 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     };
 
     const applyCategorySelection = () => {
-        // 🟢 카테고리 선택 시 로딩 상태 설정 및 이전 결과 초기화
-        setLoading(true);
-        setCourses([]); // 이전 결과 초기화
+        // 🟢 [Performance]: requestAnimationFrame으로 부드러운 전환
+        requestAnimationFrame(() => {
+            // 🟢 카테고리 선택 시 로딩 상태 설정 및 이전 결과 초기화
+            setLoading(true);
+            setCourses([]); // 이전 결과 초기화
 
-        // 🟢 [Performance]: 즉시 실행하여 빠른 전환
-        const cleanedLabels = modalSelectedLabels.map((raw) =>
-            String(raw || "")
-                .replace(/^#/, "")
-                .trim()
-        );
+            // 🟢 [Performance]: 즉시 실행하여 빠른 전환
+            const cleanedLabels = modalSelectedLabels.map((raw) =>
+                String(raw || "")
+                    .replace(/^#/, "")
+                    .trim()
+            );
 
-        // 태그로 변환 가능한 필터와 태그로 변환되지 않은 필터 분리
-        const tagIds = Array.from(
-            new Set(
-                cleanedLabels
-                    .map((name) => allTags.find((t) => String(t?.name || "").trim() === name)?.id)
-                    .filter((id): id is number => !!id && id > 0)
-            )
-        );
+            // 태그로 변환 가능한 필터와 태그로 변환되지 않은 필터 분리
+            const tagIds = Array.from(
+                new Set(
+                    cleanedLabels
+                        .map((name) => allTags.find((t) => String(t?.name || "").trim() === name)?.id)
+                        .filter((id): id is number => !!id && id > 0)
+                )
+            );
 
-        // 태그로 변환되지 않은 필터는 concept으로 사용 (Concept/Mood 카테고리의 필터들)
-        const conceptFilters = cleanedLabels.filter(
-            (name) => !allTags.some((t) => String(t?.name || "").trim() === name)
-        );
+            // 태그로 변환되지 않은 필터는 concept으로 사용 (Concept/Mood 카테고리의 필터들)
+            const conceptFilters = cleanedLabels.filter(
+                (name) => !allTags.some((t) => String(t?.name || "").trim() === name)
+            );
 
-        // 선택한 모든 필터 라벨 저장 (태그로 변환되지 않은 것도 포함)
-        setSelectedFilterLabels([...modalSelectedLabels]);
-        setSelectedTagIds(tagIds);
-        setSelectedFilterConcepts(conceptFilters);
-        setShowCategoryModal(false);
+            // 선택한 모든 필터 라벨 저장 (태그로 변환되지 않은 것도 포함)
+            setSelectedFilterLabels([...modalSelectedLabels]);
+            setSelectedTagIds(tagIds);
+            setSelectedFilterConcepts(conceptFilters);
+            setShowCategoryModal(false);
 
-        // concept 필터가 있으면 첫 번째 것을 concept 파라미터로 전달
-        const conceptParam = conceptFilters.length > 0 ? conceptFilters[0] : undefined;
-        pushUrlFromState({
-            tagIds: tagIds,
-            activities: conceptParam ? [conceptParam] : selectedActivities,
+            // concept 필터가 있으면 첫 번째 것을 concept 파라미터로 전달
+            const conceptParam = conceptFilters.length > 0 ? conceptFilters[0] : undefined;
+            pushUrlFromState({
+                tagIds: tagIds,
+                activities: conceptParam ? [conceptParam] : selectedActivities,
+            });
         });
     };
 
@@ -533,13 +556,23 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                     const q = searchInput.trim();
-                                    setSearchInput(""); // 🟢 검색창 초기화
-                                    setSelectedRegions([]);
-                                    setSelectedActivities([]);
-                                    setSelectedTagIds([]);
-                                    setSelectedFilterLabels([]);
-                                    setCourses([]);
-                                    pushUrlFromState({ regions: [], activities: [], tagIds: [], q });
+                                    if (!q) return; // 빈 검색어는 무시
+
+                                    // 🟢 [Performance]: requestAnimationFrame으로 부드러운 전환
+                                    requestAnimationFrame(() => {
+                                        // 🟢 검색 시 로딩 상태 설정 및 이전 결과 초기화
+                                        setLoading(true);
+                                        setCourses([]);
+
+                                        setSearchInput(""); // 🟢 검색창 초기화
+                                        setSelectedRegions([]);
+                                        setSelectedActivities([]);
+                                        setSelectedTagIds([]);
+                                        setSelectedFilterLabels([]);
+
+                                        // 🟢 URL 변경 (로딩 상태가 설정된 후 실행)
+                                        pushUrlFromState({ regions: [], activities: [], tagIds: [], q });
+                                    });
                                 }
                             }}
                             placeholder="성수동 힙한 카페 어디지?"
