@@ -89,6 +89,17 @@ export async function logout(): Promise<boolean> {
                 }
             }
 
+            // 🟢 [배포용 최종 핵무기]: 서버가 못 지우는 로컬/세션 스토리지 강제 삭제
+            // 앱의 WebView가 끈질기게 데이터를 붙잡고 있으므로 API 호출 전에 먼저 삭제
+            if (typeof window !== "undefined") {
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                } catch (e) {
+                    console.warn("[authClient] 스토리지 초기화 중 오류:", e);
+                }
+            }
+
             const res = await fetch("/api/auth/logout", {
                 method: "POST",
                 credentials: "include", // 🟢 쿠키 전송 필수
@@ -98,26 +109,20 @@ export async function logout(): Promise<boolean> {
                 },
             });
 
-            // 🟢 로그아웃 성공 여부와 관계없이 클라이언트 상태 정리
+            // 🟢 로그아웃 성공 여부와 관계없이 추가 정리 (이미 위에서 clear 했지만 안전장치)
             if (typeof window !== "undefined") {
-                // 🟢 [Web Client] 프론트엔드 데이터 완전 청소
-                // localStorage와 sessionStorage를 완전히 비워서 isLoggedIn 같은 상태값이 꼬이지 않도록 함
+                // 🟢 [배포용 최종 핵무기]: 추가로 남아있을 수 있는 데이터 완전 삭제
                 try {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                } catch (e) {
-                    console.warn("[authClient] 스토리지 초기화 중 오류:", e);
-                    // clear() 실패 시 개별 삭제 시도
-                    try {
-                        localStorage.removeItem("authToken");
-                        localStorage.removeItem("user");
-                        localStorage.removeItem("loginTime");
-                        sessionStorage.removeItem("dona-splash-shown");
-                        sessionStorage.removeItem("login_success_trigger");
-                        sessionStorage.removeItem("auth:loggingIn");
-                    } catch (fallbackError) {
-                        console.warn("[authClient] 개별 스토리지 삭제 중 오류:", fallbackError);
-                    }
+                    // clear()가 실패했을 경우를 대비한 개별 삭제
+                    localStorage.removeItem("authToken");
+                    localStorage.removeItem("user");
+                    localStorage.removeItem("loginTime");
+                    localStorage.removeItem("isLoggedIn");
+                    sessionStorage.removeItem("dona-splash-shown");
+                    sessionStorage.removeItem("login_success_trigger");
+                    sessionStorage.removeItem("auth:loggingIn");
+                } catch (fallbackError) {
+                    console.warn("[authClient] 개별 스토리지 삭제 중 오류:", fallbackError);
                 }
 
                 // 🟢 [긴급 Fix]: 로그아웃 이벤트를 여러 번 발생시켜 모든 컴포넌트가 확실히 받도록 함
