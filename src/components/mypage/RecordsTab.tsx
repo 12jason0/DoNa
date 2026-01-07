@@ -85,6 +85,15 @@ const RecordsTab = ({
     const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "casefiles">("favorites");
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
+    
+    // 🟢 iOS 플랫폼 체크
+    const [isIOS, setIsIOS] = useState(false);
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const userAgent = navigator.userAgent.toLowerCase();
+            setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+        }
+    }, []);
 
     const subTabs = [
         { id: "favorites" as const, label: "보관함", count: favorites.length },
@@ -125,11 +134,20 @@ const RecordsTab = ({
                             {favorites.map((favorite) => {
                                 const courseGrade = favorite.course.grade || "FREE";
                                 let isLocked = false;
-                                if (userTier === "PREMIUM") isLocked = false;
-                                else if (userTier === "BASIC") {
+                                
+                                // 🟢 iOS 출시 기념 이벤트: Basic 코스 무료 제공
+                                if (userTier === "PREMIUM") {
+                                    isLocked = false;
+                                } else if (userTier === "BASIC") {
                                     if (courseGrade === "PREMIUM") isLocked = true;
                                 } else {
-                                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                                    // 🟢 iOS: Basic 코스는 무료, Premium만 잠금
+                                    if (isIOS) {
+                                        if (courseGrade === "PREMIUM") isLocked = true;
+                                        // Basic 코스는 isLocked = false (무료)
+                                    } else {
+                                        if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                                    }
                                 }
 
                                 return (

@@ -166,23 +166,32 @@ export async function logout(): Promise<boolean> {
                 // URL 뒤에 타임스탬프를 붙이면 WebView는 이를 완전히 새로운 주소로 인식해 서버에서 새 화면을 받아옴
                 const forceRedirect = () => {
                     const cacheBuster = `t=${Date.now()}`;
-                    window.location.replace(`/?${cacheBuster}`);
+                    // 🟢 [Fix]: 앱 환경에서는 window.location.href를 사용하여 더 확실한 리다이렉트
+                    if (isApp) {
+                        window.location.href = `/?${cacheBuster}`;
+                    } else {
+                        window.location.replace(`/?${cacheBuster}`);
+                    }
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
                     // 🟢 앱 환경: WebView에 로그아웃 완료 메시지 전송 및 강제 리로드
                     try {
                         (window as any).ReactNativeWebView.postMessage(
-                            JSON.stringify({ type: "logout", success: res.ok })
+                            JSON.stringify({ 
+                                type: "logout", 
+                                success: res.ok,
+                                redirect: `/?t=${Date.now()}` // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                            })
                         );
                     } catch (e) {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
-                    // 🟢 앱 환경에서는 쿠키 삭제를 확실히 하기 위해 페이지를 강제로 리로드
-                    // replace를 사용하여 히스토리에 남지 않도록 하고, 더 긴 대기 시간 확보 (200ms -> 500ms)
+                    // 🟢 [Fix]: 앱 환경에서는 쿠키 삭제를 확실히 하기 위해 즉시 리다이렉트
+                    // window.location.href를 사용하여 더 확실한 페이지 이동
                     setTimeout(() => {
                         forceRedirect();
-                    }, 500);
+                    }, 300);
                 } else {
                     // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
                     if (res.ok) {
@@ -232,20 +241,29 @@ export async function logout(): Promise<boolean> {
                 const isApp = isMobileApp();
                 const forceRedirect = () => {
                     const cacheBuster = `t=${Date.now()}`;
-                    window.location.replace(`/?${cacheBuster}`);
+                    // 🟢 [Fix]: 앱 환경에서는 window.location.href를 사용하여 더 확실한 리다이렉트
+                    if (isApp) {
+                        window.location.href = `/?${cacheBuster}`;
+                    } else {
+                        window.location.replace(`/?${cacheBuster}`);
+                    }
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
                     try {
                         (window as any).ReactNativeWebView.postMessage(
-                            JSON.stringify({ type: "logout", success: false })
+                            JSON.stringify({ 
+                                type: "logout", 
+                                success: false,
+                                redirect: `/?t=${Date.now()}` // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                            })
                         );
                     } catch (e) {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
                     setTimeout(() => {
                         forceRedirect();
-                    }, 500);
+                    }, 300);
                 } else {
                     forceRedirect();
                 }

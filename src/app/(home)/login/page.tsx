@@ -122,17 +122,19 @@ const Login = () => {
                 // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
                 sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
-                // 🟢 목적지가 없거나 로그인 페이지 자체라면 메인으로, 있다면 그곳으로 이동
+                // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
+                // loading 상태를 false로 변경하지 않고 바로 리다이렉트하여 버튼 텍스트가 다시 "로그인"으로 바뀌는 것을 방지
                 const redirectPath = !next || next.startsWith("/login") ? "/" : next;
                 router.replace(redirectPath);
+                return; // 🟢 [Fix]: 성공 시 바로 리턴하여 finally 블록의 setLoading(false) 실행 방지
             } else {
                 setError(data.error || "로그인에 실패했습니다.");
+                setLoading(false); // 🟢 [Fix]: 실패 시에만 loading 상태 해제
             }
         } catch (error) {
             console.error("로그인 오류:", error);
             setError("로그인 중 오류가 발생했습니다.");
-        } finally {
-            setLoading(false);
+            setLoading(false); // 🟢 [Fix]: 에러 시에만 loading 상태 해제
         }
     };
     const authReceived = useRef(false);
@@ -212,7 +214,10 @@ const Login = () => {
                         // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
                         sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
-                        cleanup();
+                        // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
+                        // cleanup()에서 setLoading(false)를 호출하지 않고 바로 리다이렉트
+                        cleanupWithoutLoading();
+                        
                         // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
                         const redirectPath = !receivedNext || receivedNext.startsWith("/login") ? "/" : receivedNext;
                         router.replace(redirectPath);
@@ -228,9 +233,13 @@ const Login = () => {
 
             // 3. 리스너 등록 및 팝업 감시 함수
             let intervalId: any = null;
-            const cleanup = () => {
+            // 🟢 [Fix]: 로그인 성공 시 cleanup을 호출하지 않기 위한 별도 함수
+            const cleanupWithoutLoading = () => {
                 if (intervalId) clearInterval(intervalId);
                 window.removeEventListener("message", messageHandler);
+            };
+            const cleanup = () => {
+                cleanupWithoutLoading();
                 setLoading(false);
             };
 
@@ -463,17 +472,19 @@ const Login = () => {
                                         // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
                                         sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
-                                        // 🟢 [Fix]: 쿠키 저장 시간 확보 후 메인 페이지로 이동
+                                        // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
+                                        // setLoading(false)를 호출하지 않고 바로 리다이렉트
                                         const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
                                         const delay = isApp ? 500 : 300; // 앱 환경은 더 긴 지연 시간 필요
                                         
                                         setTimeout(() => {
                                             window.location.replace("/");
                                         }, delay);
+                                        // 🟢 [Fix]: 성공 시 바로 리턴하여 finally 블록의 setLoading(false) 실행 방지
+                                        return;
                                     } catch (err: any) {
                                         setError(err.message || "Apple 로그인에 실패했습니다.");
-                                    } finally {
-                                        setLoading(false);
+                                        setLoading(false); // 🟢 [Fix]: 에러 시에만 loading 상태 해제
                                     }
                                 }}
                                 onError={(error: any) => {
