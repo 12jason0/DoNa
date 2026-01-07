@@ -192,11 +192,18 @@ export async function logout(): Promise<boolean> {
                     setTimeout(() => {
                         forceRedirect();
                     }, 300);
+                    // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화 (페이지 이동 후에는 더 이상 필요 없음)
+                    isLoggingOut = false;
+                    logoutPromise = null;
+                    return res.ok;
                 } else {
                     // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
                     if (res.ok) {
                         // 🟢 서버 로그아웃 성공 - 캐시 버스팅 적용
                         forceRedirect();
+                        // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
+                        isLoggingOut = false;
+                        logoutPromise = null;
                         return true;
                     } else {
                         // 🟢 [Fix]: 로그아웃 실패 시 재시도 (애플 로그인 후 쿠키 동기화 문제 대응)
@@ -212,6 +219,9 @@ export async function logout(): Promise<boolean> {
 
                             if (retryRes.ok) {
                                 forceRedirect();
+                                // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
+                                isLoggingOut = false;
+                                logoutPromise = null;
                                 return true;
                             }
                         } catch (retryError) {
@@ -220,11 +230,12 @@ export async function logout(): Promise<boolean> {
 
                         // 🟢 재시도 실패해도 클라이언트 상태는 정리하고 리다이렉트 (캐시 버스팅 적용)
                         forceRedirect();
+                        // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
+                        isLoggingOut = false;
+                        logoutPromise = null;
                         return false;
                     }
                 }
-
-                return res.ok;
             }
 
             return res.ok;
@@ -264,17 +275,26 @@ export async function logout(): Promise<boolean> {
                     setTimeout(() => {
                         forceRedirect();
                     }, 300);
+                    // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
+                    isLoggingOut = false;
+                    logoutPromise = null;
                 } else {
                     forceRedirect();
+                    // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
+                    isLoggingOut = false;
+                    logoutPromise = null;
                 }
             }
             return false;
         } finally {
-            // 🟢 [Fix]: 로그아웃 완료 후 플래그 초기화 (3초 후)
-            setTimeout(() => {
-                isLoggingOut = false;
-                logoutPromise = null;
-            }, 3000);
+            // 🟢 [Fix]: 에러 발생 시에도 플래그 초기화 (리다이렉트가 실행되지 않은 경우를 대비)
+            // 리다이렉트가 실행된 경우는 이미 위에서 초기화했으므로 여기서는 안전장치 역할
+            if (isLoggingOut) {
+                setTimeout(() => {
+                    isLoggingOut = false;
+                    logoutPromise = null;
+                }, 1000);
+            }
         }
     })();
 

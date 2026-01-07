@@ -123,9 +123,10 @@ const Login = () => {
                 sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                 // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
-                // loading 상태를 false로 변경하지 않고 바로 리다이렉트하여 버튼 텍스트가 다시 "로그인"으로 바뀌는 것을 방지
+                // router.replace는 비동기적으로 작동하여 상태 업데이트가 먼저 일어날 수 있으므로
+                // window.location.href를 사용하여 즉시 페이지 이동
                 const redirectPath = !next || next.startsWith("/login") ? "/" : next;
-                router.replace(redirectPath);
+                window.location.href = redirectPath;
                 return; // 🟢 [Fix]: 성공 시 바로 리턴하여 finally 블록의 setLoading(false) 실행 방지
             } else {
                 setError(data.error || "로그인에 실패했습니다.");
@@ -219,8 +220,10 @@ const Login = () => {
                         cleanupWithoutLoading();
                         
                         // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
+                        // 🟢 [Fix]: router.replace는 비동기적으로 작동하여 상태 업데이트가 먼저 일어날 수 있으므로
+                        // window.location.href를 사용하여 즉시 페이지 이동
                         const redirectPath = !receivedNext || receivedNext.startsWith("/login") ? "/" : receivedNext;
-                        router.replace(redirectPath);
+                        window.location.href = redirectPath;
                     } catch (err: any) {
                         setError(err.message);
                         cleanup();
@@ -473,13 +476,8 @@ const Login = () => {
                                         sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                                         // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
-                                        // setLoading(false)를 호출하지 않고 바로 리다이렉트
-                                        const isApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
-                                        const delay = isApp ? 500 : 300; // 앱 환경은 더 긴 지연 시간 필요
-                                        
-                                        setTimeout(() => {
-                                            window.location.replace("/");
-                                        }, delay);
+                                        // window.location.href를 사용하여 즉시 페이지 이동
+                                        window.location.href = "/";
                                         // 🟢 [Fix]: 성공 시 바로 리턴하여 finally 블록의 setLoading(false) 실행 방지
                                         return;
                                     } catch (err: any) {
