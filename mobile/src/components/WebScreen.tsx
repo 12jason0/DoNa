@@ -161,6 +161,28 @@ export default function WebScreen({ uri: initialUri }: Props) {
                             const data = JSON.parse(ev.nativeEvent.data || "{}");
                             if (data.type === "setAuthToken") {
                                 await saveAuthToken(String(data.payload || ""));
+                            }
+                            // 🟢 [배포용 최종 Fix]: 웹에서 보낸 로그아웃 신호 처리
+                            else if (data.type === "logout") {
+                                // 1. 앱 내 Native 저장소(SecureStore/AsyncStorage) 비우기
+                                await saveAuthToken(null);
+
+                                // 2. WebView의 쿠키와 캐시를 즉시 동기화하기 위해 리다이렉트
+                                // clearState가 true면 전역 상태도 초기화해야 함 (현재는 토큰만 처리)
+                                if (data.redirect) {
+                                    // 웹에서 지정한 리다이렉트 경로로 이동
+                                    webRef.current?.injectJavaScript(`window.location.replace("${data.redirect}");`);
+                                } else {
+                                    // 리다이렉트 경로가 없으면 메인으로 이동
+                                    webRef.current?.injectJavaScript(`window.location.replace("/");`);
+                                }
+
+                                // 3. Android에서는 추가로 reload를 호출하여 확실히 세션 초기화
+                                if (Platform.OS === "android") {
+                                    setTimeout(() => {
+                                        webRef.current?.reload();
+                                    }, 500);
+                                }
                             } else if (data.type === "appleLogin" && data.action === "start") {
                                 if (Platform.OS === "ios") {
                                     try {
