@@ -100,47 +100,24 @@ export async function logout(): Promise<boolean> {
 
             // 🟢 로그아웃 성공 여부와 관계없이 클라이언트 상태 정리
             if (typeof window !== "undefined") {
-                // 🟢 [긴급 Fix]: 모든 스토리지 강제 초기화
-                // 쿠키가 삭제되었더라도 localStorage 등에 잔재가 남아있어 앱이 로그인 상태라고 착각할 수 있음
-                localStorage.removeItem("authToken");
-                localStorage.removeItem("user");
-                localStorage.removeItem("loginTime");
-                localStorage.removeItem("onboardingStep1");
-                localStorage.removeItem("onboardingStep2");
-                localStorage.removeItem("onboardingStep3");
-                localStorage.removeItem("onboardingStep4");
-
-                // 🟢 추가로 남아있을 수 있는 인증 관련 데이터 삭제
+                // 🟢 [Web Client] 프론트엔드 데이터 완전 청소
+                // localStorage와 sessionStorage를 완전히 비워서 isLoggedIn 같은 상태값이 꼬이지 않도록 함
                 try {
-                    const keysToRemove: string[] = [];
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key && (key.includes("auth") || key.includes("token") || key.includes("user"))) {
-                            keysToRemove.push(key);
-                        }
-                    }
-                    keysToRemove.forEach((key) => localStorage.removeItem(key));
+                    localStorage.clear();
+                    sessionStorage.clear();
                 } catch (e) {
-                    console.warn("[authClient] localStorage 정리 중 오류:", e);
-                }
-
-                // 🟢 스플래시 화면을 다시 표시하기 위해 sessionStorage 삭제
-                sessionStorage.removeItem("dona-splash-shown");
-                sessionStorage.removeItem("login_success_trigger");
-                sessionStorage.removeItem("auth:loggingIn");
-
-                // 🟢 추가로 남아있을 수 있는 세션 데이터 삭제
-                try {
-                    const sessionKeysToRemove: string[] = [];
-                    for (let i = 0; i < sessionStorage.length; i++) {
-                        const key = sessionStorage.key(i);
-                        if (key && (key.includes("auth") || key.includes("login"))) {
-                            sessionKeysToRemove.push(key);
-                        }
+                    console.warn("[authClient] 스토리지 초기화 중 오류:", e);
+                    // clear() 실패 시 개별 삭제 시도
+                    try {
+                        localStorage.removeItem("authToken");
+                        localStorage.removeItem("user");
+                        localStorage.removeItem("loginTime");
+                        sessionStorage.removeItem("dona-splash-shown");
+                        sessionStorage.removeItem("login_success_trigger");
+                        sessionStorage.removeItem("auth:loggingIn");
+                    } catch (fallbackError) {
+                        console.warn("[authClient] 개별 스토리지 삭제 중 오류:", fallbackError);
                     }
-                    sessionKeysToRemove.forEach((key) => sessionStorage.removeItem(key));
-                } catch (e) {
-                    console.warn("[authClient] sessionStorage 정리 중 오류:", e);
                 }
 
                 // 🟢 [긴급 Fix]: 로그아웃 이벤트를 여러 번 발생시켜 모든 컴포넌트가 확실히 받도록 함
@@ -175,13 +152,17 @@ export async function logout(): Promise<boolean> {
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
-                    // 🟢 앱 환경: WebView에 로그아웃 완료 메시지 전송 및 강제 리로드
+                    // 🟢 [App] Expo/React Native 클라이언트 대응
+                    // 앱은 웹보다 쿠키 처리에 보수적이므로 API 호출 후 앱 내부의 전역 상태를 반드시 초기화해야 함
                     try {
                         (window as any).ReactNativeWebView.postMessage(
                             JSON.stringify({ 
                                 type: "logout", 
                                 success: res.ok,
-                                redirect: `/?t=${Date.now()}` // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                                redirect: `/?t=${Date.now()}`, // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                                // 🟢 [App] 전역 상태 초기화 지시
+                                clearState: true, // userContext나 Zustand 등에 저장된 유저 정보를 null로 바꾸도록 지시
+                                navigateTo: "Login" // navigation.replace('Login') 실행 지시
                             })
                         );
                     } catch (e) {
@@ -261,12 +242,16 @@ export async function logout(): Promise<boolean> {
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
+                    // 🟢 [App] 에러 발생 시에도 전역 상태 초기화 지시
                     try {
                         (window as any).ReactNativeWebView.postMessage(
                             JSON.stringify({ 
                                 type: "logout", 
                                 success: false,
-                                redirect: `/?t=${Date.now()}` // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                                redirect: `/?t=${Date.now()}`, // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                                // 🟢 [App] 전역 상태 초기화 지시
+                                clearState: true,
+                                navigateTo: "Login"
                             })
                         );
                     } catch (e) {
