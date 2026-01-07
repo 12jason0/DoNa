@@ -135,20 +135,14 @@ export async function logout(): Promise<boolean> {
                     window.dispatchEvent(new CustomEvent("authLogout"));
                 }, 150);
 
-                // 🟢 [Fix]: 앱 환경에서 로그아웃 처리 강화
+                // 🟢 [배포용 최종 Fix]: 앱 환경에서 로그아웃 처리 강화
                 const isApp = isMobileApp();
 
-                // 🟢 [긴급 Fix]: 캐시 버스팅을 위한 리다이렉트 함수
-                // WebView는 로그아웃 후 `/`로 이동했을 때 기존에 캐시된 "로그인 된 상태의 메인 화면"을 보여주는 경우가 많음
-                // URL 뒤에 타임스탬프를 붙이면 WebView는 이를 완전히 새로운 주소로 인식해 서버에서 새 화면을 받아옴
+                // 🟢 [배포용 최종 Fix]: 단순 이동 대신 replace("/")로 히스토리와 캐시를 날림
+                // 타임스탬프를 붙이지 않고 깔끔하게 메인으로 이동하여 무한 루프 방지
                 const forceRedirect = () => {
-                    const cacheBuster = `t=${Date.now()}`;
-                    // 🟢 [Fix]: 앱 환경에서는 window.location.href를 사용하여 더 확실한 리다이렉트
-                    if (isApp) {
-                        window.location.href = `/?${cacheBuster}`;
-                    } else {
-                        window.location.replace(`/?${cacheBuster}`);
-                    }
+                    // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
+                    window.location.replace("/");
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
@@ -159,7 +153,8 @@ export async function logout(): Promise<boolean> {
                             JSON.stringify({ 
                                 type: "logout", 
                                 success: res.ok,
-                                redirect: `/?t=${Date.now()}`, // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                                // 🟢 [배포용 최종 Fix]: 타임스탬프 제거, 깔끔한 리다이렉트
+                                redirect: "/",
                                 // 🟢 [App] 전역 상태 초기화 지시
                                 clearState: true, // userContext나 Zustand 등에 저장된 유저 정보를 null로 바꾸도록 지시
                                 navigateTo: "Login" // navigation.replace('Login') 실행 지시
@@ -168,8 +163,7 @@ export async function logout(): Promise<boolean> {
                     } catch (e) {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
-                    // 🟢 [Fix]: 앱 환경에서는 쿠키 삭제를 확실히 하기 위해 즉시 리다이렉트
-                    // window.location.href를 사용하여 더 확실한 페이지 이동
+                    // 🟢 [배포용 최종 Fix]: 앱 환경에서도 깔끔하게 메인으로 이동
                     setTimeout(() => {
                         forceRedirect();
                     }, 300);
@@ -223,22 +217,23 @@ export async function logout(): Promise<boolean> {
         } catch (error) {
             console.error("[authClient] 로그아웃 실패:", error);
 
-            // 🟢 에러 발생 시에도 안전을 위해 메인으로 강제 이동
+            // 🟢 [배포용 최종 Fix]: 에러 발생 시에도 안전을 위해 메인으로 강제 이동
             if (typeof window !== "undefined") {
-                sessionStorage.removeItem("dona-splash-shown");
-                sessionStorage.removeItem("login_success_trigger");
+                // 스토리지 완전 초기화
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                } catch (e) {
+                    console.warn("[authClient] 스토리지 초기화 중 오류:", e);
+                }
+                
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
-                // 🟢 앱 환경에서는 강제 리로드 (캐시 버스팅 적용)
+                // 🟢 [배포용 최종 Fix]: 단순 이동 대신 replace("/")로 히스토리와 캐시를 날림
                 const isApp = isMobileApp();
                 const forceRedirect = () => {
-                    const cacheBuster = `t=${Date.now()}`;
-                    // 🟢 [Fix]: 앱 환경에서는 window.location.href를 사용하여 더 확실한 리다이렉트
-                    if (isApp) {
-                        window.location.href = `/?${cacheBuster}`;
-                    } else {
-                        window.location.replace(`/?${cacheBuster}`);
-                    }
+                    // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
+                    window.location.replace("/");
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
@@ -248,7 +243,8 @@ export async function logout(): Promise<boolean> {
                             JSON.stringify({ 
                                 type: "logout", 
                                 success: false,
-                                redirect: `/?t=${Date.now()}`, // 🟢 [Fix]: 리다이렉트 URL도 함께 전송
+                                // 🟢 [배포용 최종 Fix]: 타임스탬프 제거, 깔끔한 리다이렉트
+                                redirect: "/",
                                 // 🟢 [App] 전역 상태 초기화 지시
                                 clearState: true,
                                 navigateTo: "Login"

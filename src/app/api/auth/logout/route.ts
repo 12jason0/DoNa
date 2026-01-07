@@ -1,24 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
+export async function POST() {
     const res = NextResponse.json({ success: true });
 
-    // 1. 삭제할 모든 쿠키 리스트 (사용자 스크린샷 기반)
-    const cookieNames = ["authorization", "isLoggedIn", "admin_auth", "ko_e", "ko_id"];
+    // 🟢 [배포용 최종 Fix]: 스크린샷에서 확인된 모든 쿠키 이름을 정확히 나열
+    // 브라우저가 여전히 들고 있을 수 있는 모든 인증 관련 쿠키를 명시적으로 삭제
+    const cookiesToClear = ["authorization", "auth", "isLoggedIn", "admin_auth"];
 
-    // 2. 표준 삭제 옵션 정의
-    // Secure; SameSite=None 옵션이 생성 시와 일치해야 WebView에서 삭제됩니다.
-    const baseOptions = "Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None";
+    // 🟢 핵심: WebView 및 모든 브라우저 호환성을 위한 옵션 정석
+    const options = "Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None";
 
-    cookieNames.forEach((name) => {
-        // HttpOnly 옵션이 있는 경우와 없는 경우를 모두 대응하기 위해 두 번씩 보냅니다.
-        res.headers.append("Set-Cookie", `${name}=; ${baseOptions}; HttpOnly`);
-        res.headers.append("Set-Cookie", `${name}=; ${baseOptions}`);
+    cookiesToClear.forEach((name) => {
+        // HttpOnly 버전과 일반 버전 둘 다 삭제 명령을 보냅니다.
+        res.headers.append("Set-Cookie", `${name}=; ${options}; HttpOnly`);
+        res.headers.append("Set-Cookie", `${name}=; ${options}`);
     });
 
-    // 3. 캐시 파괴 (로그아웃 후 뒤로가기 방지)
+    // 🟢 캐시를 완전히 날려서 ?t= 루프를 방지합니다.
     res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
     res.headers.set("Pragma", "no-cache");
     res.headers.set("Expires", "0");
