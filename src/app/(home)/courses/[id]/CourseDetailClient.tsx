@@ -10,7 +10,7 @@ import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { useAuth } from "@/context/AuthContext";
-import { isIOS } from "@/lib/platform";
+import { isIOS, isMobileApp } from "@/lib/platform";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
 let globalFavoritesPromise: Promise<any[] | null> | null = null;
@@ -638,6 +638,64 @@ export default function CourseDetailClient({
                 ? `${window.location.origin}/courses/${courseId}`
                 : `https://dona.app/courses/${courseId}`;
 
+        // 🟢 [앱 환경]: 웹 공유 링크(Web Sharer) 사용
+        if (isMobileApp() && (window as any).ReactNativeWebView) {
+            try {
+                // 카카오 JS 키 가져오기 (서버 API 우선, 없으면 클라이언트 환경 변수)
+                let jsKey: string | undefined = undefined;
+                try {
+                    const configRes = await fetch("/api/config/kakao-js-key");
+                    if (configRes.ok) {
+                        const configData = await configRes.json();
+                        jsKey = configData.jsKey;
+                    }
+                } catch {}
+
+                if (!jsKey) {
+                    jsKey =
+                        process.env.NEXT_PUBLIC_KAKAO_JS_KEY ||
+                        process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+                }
+
+                if (!jsKey) {
+                    throw new Error("카카오 공유 설정이 완료되지 않았습니다");
+                }
+
+                // 🟢 [Confirmed]: DB 데이터를 템플릿 변수에 매핑
+                const templateArgs = {
+                    title: courseData.title, // DB의 호기심 유발 제목
+                    description: courseData.description || "DoNa에서 추천하는 코스를 확인해보세요!", // DB의 호기심 유발 설명
+                    imageUrl: heroImageUrl || courseData.imageUrl || getS3StaticUrl("logo/donalogo_512.png"), // S3 최적화 이미지 경로
+                    id: courseId.toString(), // 상세 페이지 연결 ID
+                };
+
+                // 웹 공유 링크(Web Sharer) URL 생성
+                const webShareUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=${jsKey}&template_id=127331&template_args=${encodeURIComponent(JSON.stringify(templateArgs))}`;
+
+                // 앱으로 메시지 전송하여 웹 공유 링크 열기
+                (window as any).ReactNativeWebView.postMessage(
+                    JSON.stringify({
+                        type: "kakaoShare",
+                        webShareUrl: webShareUrl,
+                    })
+                );
+
+                setShowShareModal(false);
+                return;
+            } catch (error) {
+                console.error("카카오톡 공유 실패:", error);
+                // Fallback: 링크 복사
+                try {
+                    await navigator.clipboard.writeText(courseUrl);
+                    showToast("링크가 복사되었습니다.", "success");
+                } catch {
+                    showToast("공유에 실패했습니다.", "error");
+                }
+                return;
+            }
+        }
+
+        // 🟢 [웹 환경]: 기존 카카오 SDK 사용
         try {
             const Kakao = await ensureKakaoSdk();
             if (!Kakao) {

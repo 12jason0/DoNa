@@ -190,6 +190,9 @@ function MapPageInner() {
         // 🟢 "c-" 접두사 제거
         const cleanId = course.id.startsWith("c-") ? course.id.replace("c-", "") : course.id;
 
+        // 🟢 iOS 플랫폼 체크
+        const isIOSPlatform = typeof window !== "undefined" && /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+
         // 🟢 1. 코스 등급 확인 (캐싱된 값 우선 사용)
         let courseGrade: string = "FREE";
         if (course.grade) {
@@ -211,6 +214,12 @@ function MapPageInner() {
 
         // 🟢 2. FREE 코스는 모든 유저 접근 가능
         if (courseGrade === "FREE") {
+            router.push(`/courses/${cleanId}`);
+            return;
+        }
+
+        // 🟢 [iOS 출시 기념 이벤트]: iOS에서 Basic 코스는 무료 접근 허용
+        if (isIOSPlatform && courseGrade === "BASIC") {
             router.push(`/courses/${cleanId}`);
             return;
         }
@@ -257,6 +266,7 @@ function MapPageInner() {
         }
 
         // 🟢 3-5. FREE 유저 (BASIC, PREMIUM 코스) → TicketPlans
+        // 🟢 [iOS 출시 기념 이벤트]: iOS에서는 위에서 이미 Basic 코스 처리 완료
         setShowSubscriptionModal(true);
     };
 

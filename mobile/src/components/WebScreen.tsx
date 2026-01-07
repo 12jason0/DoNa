@@ -183,6 +183,23 @@ export default function WebScreen({ uri: initialUri }: Props) {
                                         webRef.current?.reload();
                                     }, 500);
                                 }
+                            }
+                            // 🟢 [카카오 공유]: 웹에서 보낸 카카오 공유 신호 처리
+                            else if (data.type === "kakaoShare" && data.webShareUrl) {
+                                try {
+                                    // 웹 공유 링크(Web Sharer) 열기
+                                    await Linking.openURL(data.webShareUrl);
+                                } catch (error) {
+                                    console.error("카카오 공유 링크 열기 실패:", error);
+                                    // Fallback: 카카오톡 앱 설치 페이지로 이동
+                                    if (Platform.OS === "ios") {
+                                        Linking.openURL("https://apps.apple.com/kr/app/id362033756").catch(() => {});
+                                    } else {
+                                        Linking.openURL(
+                                            "https://play.google.com/store/apps/details?id=com.kakao.talk"
+                                        ).catch(() => {});
+                                    }
+                                }
                             } else if (data.type === "appleLogin" && data.action === "start") {
                                 if (Platform.OS === "ios") {
                                     try {
