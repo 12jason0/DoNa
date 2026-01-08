@@ -6,7 +6,7 @@
 export type Platform = "ios" | "android" | "web";
 
 /**
- * 현재 접속한 플랫폼을 감지합니다.
+ * 수정된 플랫폼 감지 유틸리티
  * @returns 'ios' | 'android' | 'web'
  */
 export function detectPlatform(): Platform {
@@ -14,8 +14,11 @@ export function detectPlatform(): Platform {
 
     const userAgent = window.navigator.userAgent.toLowerCase();
 
-    // iOS 감지 (iPhone, iPad, iPod)
-    if (/iphone|ipad|ipod/.test(userAgent)) {
+    // 🟢 최신 iPadOS 감지 핵심: Macintosh이면서 터치 지점이 있는 경우
+    const isIPadOS = /macintosh/.test(userAgent) && navigator.maxTouchPoints > 0;
+
+    // iOS 감지 (iPhone, iPad, iPod 및 최신 iPadOS 대응)
+    if (/iphone|ipad|ipod/.test(userAgent) || isIPadOS) {
         return "ios";
     }
 
@@ -24,12 +27,12 @@ export function detectPlatform(): Platform {
         return "android";
     }
 
-    // 기본값: 웹
     return "web";
 }
 
 /**
  * iOS 플랫폼인지 확인합니다.
+ * detectPlatform() 함수를 사용하여 일관성 유지
  */
 export function isIOS(): boolean {
     return detectPlatform() === "ios";
