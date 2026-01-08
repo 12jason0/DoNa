@@ -296,7 +296,10 @@ const CourseCard = memo(
                 </div>
 
                 {/* 모달 섹션 (기존 기능 유지) */}
-                {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+                {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
+                {showSubscriptionModal && platform !== 'ios' && (
+                    <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
+                )}
                 {showLoginModal && (
                     <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${course.id}`} />
                 )}

@@ -1222,9 +1222,12 @@ export default function CourseDetailClient({
                                         </svg>
                                     </div>
                                     <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{courseData.title}</h1>
-                                    <p className="text-white/80 text-sm">
-                                        {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용 가능합니다
-                                    </p>
+                                    {/* 🟢 [iOS]: iOS에서는 등급 안내 텍스트 숨김 */}
+                                    {platform !== 'ios' && (
+                                        <p className="text-white/80 text-sm">
+                                            {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용 가능합니다
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1389,7 +1392,8 @@ export default function CourseDetailClient({
                 courseId={parseInt(courseId)}
                 courseName={courseData.title}
             />
-            {showSubscriptionModal && (
+            {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
+            {showSubscriptionModal && platform !== 'ios' && (
                 <TicketPlans
                     onClose={() => {
                         // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)

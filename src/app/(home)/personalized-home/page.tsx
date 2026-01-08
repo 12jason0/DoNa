@@ -1343,7 +1343,8 @@ const AIRecommender = () => {
             <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
-                {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
+                {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
+                {showPaywall && platform !== 'ios' && <TicketPlans onClose={() => setShowPaywall(false)} />}
                 {showCompletionModal && (
                     <CompletionModal isOpen={showCompletionModal} onClose={() => setShowCompletionModal(false)} />
                 )}

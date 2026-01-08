@@ -224,6 +224,11 @@ function MapPageInner() {
             return;
         }
 
+        // 🟢 [iOS]: Premium 코스는 iOS에서 접근 불가
+        if (isIOSPlatform && courseGrade === "PREMIUM") {
+            return; // 아무 동작도 하지 않음
+        }
+
         // 🟢 3. 유료 코스 (BASIC, PREMIUM)
         // 🟢 3-1. 비로그인 유저 → 로그인 모달 (즉시 표시)
         if (!isAuthenticated) {
@@ -260,14 +265,20 @@ function MapPageInner() {
                 return;
             } else if (courseGrade === "PREMIUM") {
                 // BASIC 유저 + PREMIUM 코스 → TicketPlans
-                setShowSubscriptionModal(true);
+                // 🟢 [iOS]: iOS에서는 결제 모달 표시 안함
+                if (!isIOSPlatform) {
+                    setShowSubscriptionModal(true);
+                }
                 return;
             }
         }
 
         // 🟢 3-5. FREE 유저 (BASIC, PREMIUM 코스) → TicketPlans
         // 🟢 [iOS 출시 기념 이벤트]: iOS에서는 위에서 이미 Basic 코스 처리 완료
-        setShowSubscriptionModal(true);
+        // 🟢 [iOS]: iOS에서는 결제 모달 표시 안함
+        if (!isIOSPlatform) {
+            setShowSubscriptionModal(true);
+        }
     };
 
     const handleFindWay = (placeName: string) => {
@@ -423,8 +434,14 @@ function MapPageInner() {
 
                 // (3) 코스 데이터 처리 (ID 접두어: c-)
                 // 기존 코드에서 코스 ID가 숫자 그대로 쓰여서 충돌 났을 확률 높음
+                // 🟢 [iOS]: iOS에서는 Premium 코스 필터링
+                const isIOSPlatform = typeof window !== "undefined" && /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
                 if (myData.courses && Array.isArray(myData.courses)) {
                     myData.courses.forEach((c: any) => {
+                        // iOS에서 Premium 코스는 제외
+                        if (isIOSPlatform && (c.grade === "PREMIUM" || c.grade === "premium")) {
+                            return;
+                        }
                         const id = `c-${c.id}`; // 접두어 강제 적용
                         uniqueCourses.set(id, { ...c, id: id });
                     });
@@ -433,6 +450,10 @@ function MapPageInner() {
                 // 카카오 관련 코스도 처리
                 if (kakaoData.relatedCourses && Array.isArray(kakaoData.relatedCourses)) {
                     kakaoData.relatedCourses.forEach((c: any) => {
+                        // iOS에서 Premium 코스는 제외
+                        if (isIOSPlatform && (c.grade === "PREMIUM" || c.grade === "premium")) {
+                            return;
+                        }
                         const id = `c-${c.id}`;
                         uniqueCourses.set(id, { ...c, id: id });
                     });
@@ -1009,7 +1030,10 @@ function MapPageInner() {
                     )}
                 </div>
             </div>
-            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
+            {showSubscriptionModal && typeof window !== "undefined" && !/iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && (
+                <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
+            )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/map`} />}
         </div>
     );
