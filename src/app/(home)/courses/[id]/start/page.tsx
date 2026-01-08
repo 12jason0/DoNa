@@ -405,9 +405,6 @@ function GuidePageInner() {
                                     <span className="text-lg">💡</span>
                                     <div className="flex items-center gap-2">
                                         <p className="text-xs font-bold text-amber-700">DoNa's Tip</p>
-                                        <span className="text-[10px] px-2 py-0.5 bg-amber-500 text-white rounded-full font-bold">
-                                            🎉 무료 이벤트
-                                        </span>
                                     </div>
                                 </div>
                                 <p className="text-sm text-gray-700">{currentPlace.coaching_tip}</p>

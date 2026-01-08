@@ -1493,14 +1493,6 @@ const AIRecommender = () => {
                                         </div>
                                     </div>
                                 )}
-                                {showUpsell && !showRecommendations && platform === "ios" && (
-                                    <div className="p-4 rounded-2xl bg-linear-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 border border-emerald-100 dark:border-emerald-800/50 text-sm text-emerald-900 dark:text-emerald-200 shadow-sm">
-                                        <div className="font-bold mb-1 flex items-center gap-2">
-                                            <Gift className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                            🎉 iOS 출시 기념 이벤트: AI 추천 무제한 무료 이용 중!
-                                        </div>
-                                    </div>
-                                )}
 
                                 {messages.map((message, index) => (
                                     <div

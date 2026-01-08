@@ -220,12 +220,6 @@ const CourseCard = memo(
                             </span>
                         )}
 
-                        {/* 🟢 iOS: Basic 코스에 무료 이벤트 배너 표시, Premium은 숨김 */}
-                        {platform === "ios" && course.grade === "BASIC" && (
-                            <span className="bg-linear-to-r from-emerald-500 to-emerald-600 text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-emerald-400 animate-pulse">
-                                🎉 무료 이벤트 중
-                            </span>
-                        )}
                         {/* Android/Web: 기존 등급 배지 표시 */}
                         {platform !== "ios" && !course.isLocked && course.grade && course.grade !== "FREE" && (
                             <span className="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-emerald-500">
