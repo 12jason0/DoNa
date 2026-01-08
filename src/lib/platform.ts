@@ -13,12 +13,21 @@ export function detectPlatform(): Platform {
     if (typeof window === "undefined") return "web";
 
     const userAgent = window.navigator.userAgent.toLowerCase();
+    const platform = navigator.platform?.toLowerCase() || "";
 
-    // 🟢 최신 iPadOS 감지 핵심: Macintosh이면서 터치 지점이 있는 경우
-    const isIPadOS = /macintosh/.test(userAgent) && navigator.maxTouchPoints > 0;
+    // 🟢 iPadOS 감지 (더 강력한 체크)
+    // 1. User Agent에 "ipad" 포함
+    // 2. 또는 Macintosh User Agent + maxTouchPoints >= 5 (iPad는 보통 5 이상)
+    // 3. 또는 navigator.platform에 "iPad" 포함
+    const isIPadUA = /ipad/.test(userAgent);
+    const isMacLike = /macintosh|mac os x/.test(userAgent);
+    const hasTouchPoints = navigator.maxTouchPoints >= 5; // iPad는 최소 5개 터치 포인트
+    const isIPadPlatform = /ipad/.test(platform);
+
+    const isIPadOS = isIPadUA || (isMacLike && hasTouchPoints) || isIPadPlatform;
 
     // iOS 감지 (iPhone, iPad, iPod 및 최신 iPadOS 대응)
-    if (/iphone|ipad|ipod/.test(userAgent) || isIPadOS) {
+    if (/iphone|ipod/.test(userAgent) || isIPadOS) {
         return "ios";
     }
 
