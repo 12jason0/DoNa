@@ -98,23 +98,29 @@ export default function PersonalizedSection() {
             }
 
             const recommendations = (data as any)?.recommendations || [];
+            // 🟢 API에서 직접 반환한 hasOnboardingData 사용 (서버에서 정확히 계산된 값)
+            const apiHasOnboardingData = (data as any)?.hasOnboardingData === true;
+            
             if (recommendations.length > 0) {
                 setCourses(recommendations);
 
-                // 🟢 API 응답에 matchScore가 있는 코스가 하나라도 있으면 온보딩 데이터 있음으로 간주
-                // matchScore는 로그인 + 온보딩 완료 시에만 서버에서 계산되어 반환됨
-                if (
-                    isUserAuthenticated &&
-                    recommendations.some((c: any) => c.matchScore !== undefined && c.matchScore !== null)
-                ) {
-                    setHasOnboardingData(true);
-                } else if (isUserAuthenticated) {
-                    // 🟢 [Security] localStorage 의존도 제거: 서버 세션(쿠키) 기반으로 온보딩 정보 확인
-                    // 서버 세션에서 가져온 사용자 정보에 온보딩 완료 여부가 포함되어야 함
-                    const onboardingFromSession =
-                        (session.user as any)?.hasOnboarding === true ||
-                        (session.user as any)?.onboardingComplete === true;
-                    setHasOnboardingData(onboardingFromSession);
+                // 🟢 API에서 반환한 hasOnboardingData 우선 사용
+                if (isUserAuthenticated) {
+                    if (apiHasOnboardingData) {
+                        setHasOnboardingData(true);
+                    } else {
+                        // 🟢 API에서 반환하지 않은 경우 fallback: matchScore 확인
+                        const hasMatchScore = recommendations.some((c: any) => c.matchScore !== undefined && c.matchScore !== null);
+                        if (hasMatchScore) {
+                            setHasOnboardingData(true);
+                        } else {
+                            // 🟢 [Security] localStorage 의존도 제거: 서버 세션(쿠키) 기반으로 온보딩 정보 확인
+                            const onboardingFromSession =
+                                (session.user as any)?.hasOnboarding === true ||
+                                (session.user as any)?.onboardingComplete === true;
+                            setHasOnboardingData(onboardingFromSession);
+                        }
+                    }
                 } else {
                     setHasOnboardingData(false);
                 }

@@ -5,8 +5,8 @@ import React, { useState } from "react";
 type StoreKind = "apple" | "google";
 
 export default function AppInstallQR({
-    appleUrl = "https://apps.apple.com/kr/app",
-    googleUrl = "https://play.google.com/store/apps",
+    appleUrl = "https://apps.apple.com/kr/app/dona/id6756777886",
+    googleUrl = "https://play.google.com/store/apps/details?id=kr.io.dona.dona",
     onClose,
 }: {
     appleUrl?: string;

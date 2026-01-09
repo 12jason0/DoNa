@@ -112,18 +112,14 @@ const MyPage = () => {
             setActiveTab(initialTab);
         } catch {}
 
-        // 🟢 1단계: 필수 데이터만 먼저 로드 (프로필 정보)
-        fetchUserInfo().then((shouldContinue) => {
+        // 🟢 [Performance]: 초기 로딩 최적화 - 병렬 처리 및 빠른 UI 표시
+        // 1단계: 필수 데이터 병렬 로드 (프로필 정보 + 취향 정보)
+        Promise.all([
+            fetchUserInfo(),
+            fetchUserPreferences(), // 프로필 탭에 필요하므로 병렬로 함께 로드
+        ]).then(([shouldContinue]) => {
             if (shouldContinue) {
-                // 🟢 2단계: 프로필 탭에 필요한 데이터 즉시 로드
-                Promise.all([
-                    fetchUserPreferences(), // 프로필 탭에 필요
-                ]).catch((error) => {
-                    console.error("[MyPage] 프로필 데이터 로드 실패:", error);
-                });
-
-                // 🟢 3단계: 모든 데이터를 로드하되, 우선순위를 두어 지연 로드
-                // 🟢 초기 탭에 필요한 데이터는 즉시, 나머지는 지연 로드
+                // 🟢 2단계: 초기 탭에 필요한 데이터만 즉시 로드 (나머지는 지연)
                 const scheduleDeferredLoad = () => {
                     const priorityData: Promise<any>[] = [];
                     const deferredData: Promise<any>[] = [];
@@ -184,19 +180,21 @@ const MyPage = () => {
                                 console.error("[MyPage] 지연 데이터 로드 실패:", error);
                             });
                         }
-                    }, 200); // 🟢 200ms로 단축하여 빠른 로딩
+                    }, 100); // 🟢 100ms로 단축하여 더 빠른 로딩
                 };
 
                 // 🟢 즉시 실행하여 모든 데이터가 확실히 로드되도록 함
                 // 🟢 requestIdleCallback은 브라우저가 idle 상태일 때만 실행되므로,
                 // 🟢 timeout을 짧게 설정하거나 바로 실행하도록 변경
                 if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-                    (window as any).requestIdleCallback(scheduleDeferredLoad, { timeout: 500 });
+                    (window as any).requestIdleCallback(scheduleDeferredLoad, { timeout: 200 });
                 } else {
                     // 폴백: 즉시 실행
-                    setTimeout(scheduleDeferredLoad, 100);
+                    setTimeout(scheduleDeferredLoad, 50);
                 }
             }
+        }).catch((error) => {
+            console.error("[MyPage] 초기 데이터 로드 실패:", error);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // 🟢 초기 마운트 시에만 실행
@@ -226,7 +224,8 @@ const MyPage = () => {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
             const { apiFetch } = await import("@/lib/authClient");
             let { data: raw, response } = await apiFetch<any>("/api/users/profile", {
-                cache: "no-store", // 🟢 서버 캐시 방지 추가
+                cache: "force-cache", // 🟢 [Performance]: 캐싱 활용하여 빠른 로딩
+                next: { revalidate: 60 }, // 🟢 1분 캐싱
             });
 
             // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
@@ -341,6 +340,8 @@ const MyPage = () => {
                 subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
             };
             setUserInfo(finalUserInfo);
+            // 🟢 [Performance]: UI를 빠르게 표시하기 위해 즉시 로딩 상태 해제
+            setLoading(false);
             return true; // 🟢 성공 시 true 반환하여 다른 fetch 함수들이 실행되도록 함
         } catch (error) {
             console.error(error);
@@ -353,9 +354,8 @@ const MyPage = () => {
                 redirectingRef.current = true;
                 router.push("/login"); // 🟢 에러 발생 시 로그인 페이지로 이동
             }
-            return false;
-        } finally {
             setLoading(false);
+            return false;
         }
     }, [router]);
 

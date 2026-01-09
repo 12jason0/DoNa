@@ -265,18 +265,18 @@ export async function GET(req: NextRequest) {
         if (userId) {
             const [prefsData, interactionData, savedCourses] = await Promise.all([
                 prisma.userPreference
-                .findUnique({
-                    where: { userId },
-                    select: { preferences: true },
-                })
+                    .findUnique({
+                        where: { userId },
+                        select: { preferences: true },
+                    })
                     .catch(() => null),
                 prisma.userInteraction
-                .findMany({
-                    where: { userId, action: { in: ["view", "click", "like"] } },
-                    orderBy: { createdAt: "desc" },
-                    take: 10,
-                    select: { course: { select: { concept: true } } },
-                })
+                    .findMany({
+                        where: { userId, action: { in: ["view", "click", "like"] } },
+                        orderBy: { createdAt: "desc" },
+                        take: 10,
+                        select: { course: { select: { concept: true } } },
+                    })
                     .catch(() => []), // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
                 // 🟢 AI 추천 모드일 때만 이미 저장한 코스 목록 조회
                 mode === "ai"
@@ -350,21 +350,21 @@ export async function GET(req: NextRequest) {
 
         // 🟢 날씨 정보 조회: regionToday가 없으면 온보딩에서 저장한 첫 번째 지역 사용
         let weatherToday = "";
-        const rawRegion = regionToday || (longTermPrefs.regions?.[0] || "");
+        const rawRegion = regionToday || longTermPrefs.regions?.[0] || "";
         if (rawRegion) {
             // UI 텍스트를 행정구역명으로 매핑 (온보딩 선택지 → 구 단위)
             const searchKeyword = regionMapping[rawRegion] || rawRegion;
-            
+
             const sidoName =
                 (searchKeyword.split(" ")[0] || "").replace(/시|도$/g, "") === "서울"
                     ? "서울특별시"
                     : searchKeyword.split(" ")[0];
-            
+
             const gridData = await prisma.gridCode.findFirst({
                 where: { region_name: { contains: searchKeyword } },
                 select: { nx: true, ny: true },
             });
-            
+
             const [kma, air] = await Promise.all([
                 gridData ? fetchWeatherAndCache(gridData.nx, gridData.ny) : Promise.resolve(null),
                 fetchAirQualityStatus(sidoName),
@@ -434,6 +434,7 @@ export async function GET(req: NextRequest) {
                     return b.matchScore - a.matchScore;
                 })
                 .slice(0, limit),
+            hasOnboardingData: hasOnboardingData, // 🟢 온보딩 데이터 여부를 직접 반환
         });
     } catch (e: any) {
         console.error("Recommendation Error:", e.message);

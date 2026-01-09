@@ -80,6 +80,8 @@ export async function GET(request: NextRequest) {
                     },
                 },
             },
+            // 🟢 [Fix]: 장소 개수를 위한 _count 추가
+            _count: { select: { coursePlaces: true } },
         };
 
         const formatCourse = (course: any) => {
@@ -91,11 +93,11 @@ export async function GET(request: NextRequest) {
             let isLocked = false;
             const courseGrade = course.grade || "FREE";
             const hasUnlocked = unlockedCourseIds.includes(Number(course.id));
-            
+
             // 🟢 iOS 출시 기념 이벤트: Basic 코스 무료 제공
             const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
             const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
-            
+
             if (hasUnlocked || userTier === "PREMIUM") {
                 isLocked = false;
             } else if (userTier === "BASIC") {
@@ -105,8 +107,8 @@ export async function GET(request: NextRequest) {
                 if (isIOSPlatform) {
                     if (courseGrade === "PREMIUM") isLocked = true;
                     // Basic 코스는 isLocked = false (무료)
-            } else {
-                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                } else {
+                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
                 }
             }
 
@@ -139,6 +141,8 @@ export async function GET(request: NextRequest) {
                               : null,
                       }))
                     : [],
+                // 🟢 [Fix]: _count에서 장소 개수를 확실하게 가져오기 (take 제한과 무관하게)
+                placesCount: course._count?.coursePlaces ?? (course.coursePlaces?.length || 0),
             };
         };
 

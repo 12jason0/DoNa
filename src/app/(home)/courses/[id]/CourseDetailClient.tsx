@@ -258,11 +258,11 @@ export default function CourseDetailClient({
 
     const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
-    const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+    const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
 
     // 🟢 iOS 플랫폼 감지
     useEffect(() => {
-        setPlatform(isIOS() ? 'ios' : 'web');
+        setPlatform(isIOS() ? "ios" : "web");
     }, []);
 
     // 🟢 성능 최적화: 코스 상세 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
@@ -366,7 +366,11 @@ export default function CourseDetailClient({
 
         // 🟢 [Performance]: favorites 동기화를 requestIdleCallback으로 지연
         const syncFavorites = async () => {
-            if (!isAuthenticated) return;
+            if (!isAuthenticated) {
+                setIsSaved(false);
+                return;
+            }
+            // 🟢 [Fix]: 캐시가 있으면 캐시 우선 사용 (사용자가 방금 변경한 상태 반영)
             if (globalFavoritesCache) {
                 setIsSaved(globalFavoritesCache.some((fav: any) => String(fav.course_id) === courseId));
                 return;
@@ -386,6 +390,24 @@ export default function CourseDetailClient({
         // 🟢 [Performance]: 유휴 시간에 favorites 로드
         const ric = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 100));
         ric(syncFavorites);
+
+        // 🟢 [Fix]: favoritesChanged 이벤트 리스너 추가하여 다른 컴포넌트에서 찜하기 변경 시 동기화
+        const handleFavoritesChanged = () => {
+            // 🟢 [Fix]: 캐시를 무효화하지 않고 현재 캐시 상태 유지 (방금 변경한 상태 보존)
+            if (globalFavoritesCache) {
+                setIsSaved(globalFavoritesCache.some((fav: any) => String(fav.course_id) === courseId));
+            } else {
+                // 캐시가 없으면 서버에서 다시 가져오기
+                globalFavoritesPromise = null;
+                ric(syncFavorites);
+            }
+        };
+
+        window.addEventListener("favoritesChanged", handleFavoritesChanged);
+
+        return () => {
+            window.removeEventListener("favoritesChanged", handleFavoritesChanged);
+        };
 
         // 🟢 [Performance]: 조회수 추적도 지연
         const trackView = () => {
@@ -584,18 +606,49 @@ export default function CourseDetailClient({
             setShowLoginModal(true);
             return;
         }
+        // 🟢 [Fix]: API 호출 전에 현재 상태 저장 (상태 변경 전)
+        const currentSavedState = isSaved;
         const nextState = !isSaved;
+
+        // 🟢 [Fix]: 상태를 먼저 변경하여 UI 즉시 반영
         setIsSaved(nextState);
         showToast(nextState ? "취향에 쏙 담겼어요 ✨" : "다음에 다시 담아주세요 💫", "success");
+
         try {
-            const method = isSaved ? "DELETE" : "POST";
-            const url = isSaved ? `/api/users/favorites?courseId=${courseId}` : `/api/users/favorites`;
-            await authenticatedFetch(url, { method, body: isSaved ? undefined : JSON.stringify({ courseId }) });
-            globalFavoritesCache = null;
-            globalFavoritesPromise = null;
-            window.dispatchEvent(new CustomEvent("favoritesChanged"));
+            // 🟢 [Fix]: API 호출 시 변경 전 상태(currentSavedState) 사용
+            const method = currentSavedState ? "DELETE" : "POST";
+            const url = currentSavedState ? `/api/users/favorites?courseId=${courseId}` : `/api/users/favorites`;
+            const response = await authenticatedFetch(url, {
+                method,
+                body: currentSavedState ? undefined : JSON.stringify({ courseId }),
+            });
+
+            // 🟢 API 호출 성공 시에만 캐시 업데이트
+            if (response !== null) {
+                // 🟢 [Fix]: 캐시에 새로운 상태를 즉시 반영하여 favoritesChanged 이벤트 후에도 상태 유지
+                if (!globalFavoritesCache) {
+                    globalFavoritesCache = [];
+                }
+                if (nextState) {
+                    // 찜하기 추가: 캐시에 추가
+                    if (!globalFavoritesCache.some((fav: any) => String(fav.course_id) === courseId)) {
+                        globalFavoritesCache.push({ course_id: Number(courseId) });
+                    }
+                } else {
+                    // 찜하기 제거: 캐시에서 제거
+                    globalFavoritesCache = globalFavoritesCache.filter(
+                        (fav: any) => String(fav.course_id) !== courseId
+                    );
+                }
+                globalFavoritesPromise = null;
+                window.dispatchEvent(new CustomEvent("favoritesChanged"));
+            } else {
+                // 🟢 API 호출 실패 시 상태 롤백
+                setIsSaved(currentSavedState);
+            }
         } catch {
-            setIsSaved(!nextState);
+            // 🟢 에러 발생 시 상태 롤백
+            setIsSaved(currentSavedState);
         }
     };
 
@@ -652,9 +705,7 @@ export default function CourseDetailClient({
                 } catch {}
 
                 if (!jsKey) {
-                    jsKey =
-                        process.env.NEXT_PUBLIC_KAKAO_JS_KEY ||
-                        process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+                    jsKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
                 }
 
                 if (!jsKey) {
@@ -670,7 +721,9 @@ export default function CourseDetailClient({
                 };
 
                 // 웹 공유 링크(Web Sharer) URL 생성
-                const webShareUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=${jsKey}&template_id=127331&template_args=${encodeURIComponent(JSON.stringify(templateArgs))}`;
+                const webShareUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=${jsKey}&template_id=127331&template_args=${encodeURIComponent(
+                    JSON.stringify(templateArgs)
+                )}`;
 
                 // 앱으로 메시지 전송하여 웹 공유 링크 열기
                 (window as any).ReactNativeWebView.postMessage(
@@ -979,10 +1032,10 @@ export default function CourseDetailClient({
                                                           const currentUserTier = (userTier || "FREE").toUpperCase();
 
                                                           // iOS는 모든 Tip 무료, Android/Web은 기존 로직 유지
-                                                          const shouldShowTipButton = platform !== 'ios' && (
-                                                              (courseGrade === "FREE" && currentUserTier === "FREE") ||
-                                                              courseData.isLocked
-                                                          );
+                                                          const shouldShowTipButton =
+                                                              platform !== "ios" &&
+                                                              ((courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                                                  courseData.isLocked);
 
                                                           if (shouldShowTipButton) {
                                                               return (
@@ -1018,14 +1071,14 @@ export default function CourseDetailClient({
                                                                               💡 팁
                                                                           </span>
                                                                       </div>
-                                                                      <p 
+                                                                      <p
                                                                           className="text-xs text-gray-700 leading-relaxed"
                                                                           style={{
-                                                                              display: '-webkit-box',
+                                                                              display: "-webkit-box",
                                                                               WebkitLineClamp: 3,
-                                                                              WebkitBoxOrient: 'vertical',
-                                                                              overflow: 'hidden',
-                                                                              textOverflow: 'ellipsis'
+                                                                              WebkitBoxOrient: "vertical",
+                                                                              overflow: "hidden",
+                                                                              textOverflow: "ellipsis",
                                                                           }}
                                                                       >
                                                                           {coursePlace.coaching_tip}
@@ -1223,9 +1276,10 @@ export default function CourseDetailClient({
                                     </div>
                                     <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{courseData.title}</h1>
                                     {/* 🟢 [iOS]: iOS에서는 등급 안내 텍스트 숨김 */}
-                                    {platform !== 'ios' && (
+                                    {platform !== "ios" && (
                                         <p className="text-white/80 text-sm">
-                                            {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용 가능합니다
+                                            {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용
+                                            가능합니다
                                         </p>
                                     )}
                                 </div>
@@ -1393,7 +1447,7 @@ export default function CourseDetailClient({
                 courseName={courseData.title}
             />
             {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-            {showSubscriptionModal && platform !== 'ios' && (
+            {showSubscriptionModal && platform !== "ios" && (
                 <TicketPlans
                     onClose={() => {
                         // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)
@@ -1459,48 +1513,39 @@ export default function CourseDetailClient({
                             </p>
                             {/* 🟢 팁 섹션 추가 */}
                             {(() => {
-                                const coursePlace = sortedCoursePlaces.find(
-                                    (cp) => cp.place.id === selectedPlace.id
-                                );
+                                const coursePlace = sortedCoursePlaces.find((cp) => cp.place.id === selectedPlace.id);
                                 const coachingTip = coursePlace?.coaching_tip;
-                                
+
                                 if (!coachingTip) return null;
-                                
+
                                 // 🟢 iOS: 모든 Tip 무료 제공 (출시 기념 이벤트)
                                 // 🔒 Android/Web: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
                                 const courseGrade = (courseData.grade || "FREE").toUpperCase();
                                 const currentUserTier = (userTier || "FREE").toUpperCase();
-                                const platform = isIOS() ? 'ios' : 'web';
-                                
+                                const platform = isIOS() ? "ios" : "web";
+
                                 // iOS는 모든 Tip 무료, Android/Web은 기존 로직 유지
-                                const shouldShowTipButton = platform !== 'ios' && (
-                                    (courseGrade === "FREE" && currentUserTier === "FREE") ||
-                                    courseData.isLocked
-                                );
-                                
+                                const shouldShowTipButton =
+                                    platform !== "ios" &&
+                                    ((courseGrade === "FREE" && currentUserTier === "FREE") || courseData.isLocked);
+
                                 if (shouldShowTipButton) {
                                     return (
                                         <div className="mb-5 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
                                             <div className="flex items-center gap-2 mb-1.5">
                                                 <Icons.Bulb />
-                                                <span className="text-xs font-bold text-amber-700">
-                                                    💡 DoNa's Tip
-                                                </span>
+                                                <span className="text-xs font-bold text-amber-700">💡 DoNa's Tip</span>
                                             </div>
-                                            <p className="text-xs text-gray-600">
-                                                BASIC 등급이면 볼 수 있어요
-                                            </p>
+                                            <p className="text-xs text-gray-600">BASIC 등급이면 볼 수 있어요</p>
                                         </div>
                                     );
                                 }
-                                
+
                                 return (
                                     <div className="mb-5 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
                                         <div className="flex items-center gap-2 mb-1.5">
                                             <Icons.Bulb />
-                                            <span className="text-xs font-bold text-amber-700">
-                                                💡 DoNa's Tip
-                                            </span>
+                                            <span className="text-xs font-bold text-amber-700">💡 DoNa's Tip</span>
                                         </div>
                                         <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
                                             {coachingTip}

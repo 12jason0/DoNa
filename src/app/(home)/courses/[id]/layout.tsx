@@ -331,23 +331,49 @@ function CourseDetailPage() {
     // 🟢 [Fix] handleSaveCourse 내의 2304 에러 해결
     const handleSaveCourse = async () => {
         try {
-            const method = isSaved ? "DELETE" : "POST";
-            const url = isSaved ? `/api/users/favorites?courseId=${courseId}` : "/api/users/favorites";
-            const body = isSaved ? undefined : JSON.stringify({ courseId });
+            // 🟢 [Fix]: API 호출 전에 현재 상태 저장 (상태 변경 전)
+            const currentSavedState = isSaved;
+            const nextState = !isSaved;
+            
+            // 🟢 [Fix]: 상태를 먼저 변경하여 UI 즉시 반영
+            setIsSaved(nextState);
+            
+            const method = currentSavedState ? "DELETE" : "POST";
+            const url = currentSavedState ? `/api/users/favorites?courseId=${courseId}` : "/api/users/favorites";
+            const body = currentSavedState ? undefined : JSON.stringify({ courseId });
 
             const result = await authenticatedFetch(url, { method, body });
 
             if (result !== null) {
-                setIsSaved(!isSaved);
-                showToast(isSaved ? "찜 목록에서 제거되었습니다." : "찜 목록에 추가되었습니다.", "success");
-                layoutFavoritesCache = null; // 데이터 변경 시 캐시 무효화
+                showToast(nextState ? "찜 목록에 추가되었습니다." : "찜 목록에서 제거되었습니다.", "success");
+                
+                // 🟢 [Fix]: 캐시에 새로운 상태를 즉시 반영하여 favoritesChanged 이벤트 후에도 상태 유지
+                if (!layoutFavoritesCache) {
+                    layoutFavoritesCache = [];
+                }
+                if (nextState) {
+                    // 찜하기 추가: 캐시에 추가
+                    if (!layoutFavoritesCache.some((fav: any) => fav.course_id.toString() === courseId)) {
+                        layoutFavoritesCache.push({ course_id: Number(courseId) });
+                    }
+                } else {
+                    // 찜하기 제거: 캐시에서 제거
+                    layoutFavoritesCache = layoutFavoritesCache.filter(
+                        (fav: any) => fav.course_id.toString() !== courseId
+                    );
+                }
+                
                 layoutFavoritesPromise = null;
                 window.dispatchEvent(new CustomEvent("favoritesChanged"));
             } else {
+                // 🟢 API 호출 실패 시 상태 롤백
+                setIsSaved(currentSavedState);
                 showToast("로그인이 필요합니다.", "error");
                 router.push("/login");
             }
         } catch {
+            // 🟢 에러 발생 시 상태 롤백
+            setIsSaved(currentSavedState); // 원래 상태로 복원
             showToast("오류가 발생했습니다.", "error");
         }
     };
@@ -394,7 +420,25 @@ function CourseDetailPage() {
 
     useEffect(() => {
         if (courseData) checkFavoriteStatus();
-    }, [courseData, checkFavoriteStatus]);
+        
+        // 🟢 [Fix]: favoritesChanged 이벤트 리스너 추가하여 찜하기 변경 시 동기화
+        const handleFavoritesChanged = () => {
+            // 🟢 [Fix]: 캐시를 무효화하지 않고 현재 캐시 상태 유지 (방금 변경한 상태 보존)
+            if (layoutFavoritesCache) {
+                setIsSaved(layoutFavoritesCache.some((fav: any) => fav.course_id.toString() === courseId));
+            } else {
+                // 캐시가 없으면 서버에서 다시 가져오기
+                layoutFavoritesPromise = null;
+                checkFavoriteStatus();
+            }
+        };
+        
+        window.addEventListener("favoritesChanged", handleFavoritesChanged);
+        
+        return () => {
+            window.removeEventListener("favoritesChanged", handleFavoritesChanged);
+        };
+    }, [courseData, checkFavoriteStatus, courseId]);
     useEffect(() => {
         if (courseData) fetchReviews();
     }, [courseData, fetchReviews]);

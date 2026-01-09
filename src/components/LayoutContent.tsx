@@ -153,7 +153,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                             {/* 5. 앱 다운로드 버튼 */}
                                             <div className="flex items-center gap-4 pt-2">
                                                 <a
-                                                    href="https://apps.apple.com/kr/app"
+                                                    href="https://apps.apple.com/kr/app/dona/id6756777886"
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     aria-label="App Store"
@@ -169,7 +169,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     </span>
                                                 </a>
                                                 <a
-                                                    href="https://play.google.com/store/apps"
+                                                    href="https://play.google.com/store/apps/details?id=kr.io.dona.dona"
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     aria-label="Google Play"

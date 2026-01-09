@@ -51,6 +51,7 @@ export interface CourseCardProps {
         grade?: "FREE" | "BASIC" | "PREMIUM";
         isLocked?: boolean;
         coursePlaces?: CoursePlace[];
+        placesCount?: number; // 🟢 [Fix]: API에서 전달받은 장소 개수
     };
     isPriority?: boolean;
     onToggleFavorite: (e: React.MouseEvent, courseId: string | number) => void;
@@ -134,6 +135,20 @@ const CourseCard = memo(
             return null;
         }, [course.viewCount, course.reviewCount, course.rating]);
 
+        // [Optimization] 실제 유효한 장소 개수 연산 메모이제이션
+        const validPlacesCount = useMemo(() => {
+            // 🟢 [Fix]: API에서 전달받은 placesCount가 있으면 우선 사용
+            if (course.placesCount !== undefined && course.placesCount > 0) {
+                return course.placesCount;
+            }
+
+            // coursePlaces가 없거나 빈 배열인 경우 처리
+            if (!course.coursePlaces || !Array.isArray(course.coursePlaces)) return 0;
+
+            // place 객체가 실제로 존재하는 항목만 필터링
+            return course.coursePlaces.filter((cp) => cp && cp.place && cp.place.id !== undefined).length;
+        }, [course.coursePlaces, course.placesCount]);
+
         // 잠금 상태 클릭 핸들러 (기존 로직 유지)
         const handleLockedClick = async (e: React.MouseEvent) => {
             e.preventDefault();
@@ -154,7 +169,7 @@ const CourseCard = memo(
         };
 
         return (
-            <div className="block group relative cursor-pointer">
+            <div className="block group relative cursor-pointer pb-3">
                 {/* 잠금 여부에 따른 레이어 (기존 로직 유지) */}
                 {course.isLocked ? (
                     <div onClick={handleLockedClick} className="absolute inset-0 z-15 cursor-pointer" />
@@ -276,6 +291,12 @@ const CourseCard = memo(
                                 #{course.duration}
                             </span>
                         )}
+                        {/* 🟢 수정된 장소 개수 표시 섹션 */}
+                        {validPlacesCount > 0 && (
+                            <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-[13px] font-bold text-gray-600 dark:text-white">
+                                #{validPlacesCount} 스팟
+                            </span>
+                        )}
                     </div>
                     <h3 className="text-[18px] font-bold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors break-keep line-clamp-2 tracking-tight">
                         {course.title}
@@ -297,7 +318,7 @@ const CourseCard = memo(
 
                 {/* 모달 섹션 (기존 기능 유지) */}
                 {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-                {showSubscriptionModal && platform !== 'ios' && (
+                {showSubscriptionModal && platform !== "ios" && (
                     <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
                 )}
                 {showLoginModal && (

@@ -130,11 +130,24 @@ export default function HomeClient({
 
     // 🟢 [Optimization]: 상태 업데이트를 프레임 단위로 분산 처리하여 롱 태스크 방지
     const loadUserData = useCallback(async () => {
+        // 🟢 [로그아웃 체크]: 로그인 상태에서만 데이터 로드
+        if (!isAuthenticated) {
+            setUserId(null);
+            setUserName("");
+            setStreak(0);
+            setWeekStamps([false, false, false, false, false, false, false]);
+            setAlreadyToday(false);
+            setIsCheckinLoading(false);
+            setShowCheckinModal(false);
+            return;
+        }
+
         try {
             const [profileRes, checkinRes, preferencesRes] = await Promise.allSettled([
-                apiFetch("/api/users/profile", { cache: "force-cache", next: { revalidate: 300 } }),
+                apiFetch("/api/users/profile", { cache: "no-store" }), // 🟢 프로필은 최신 상태 유지
                 apiFetch("/api/users/checkins", { cache: "force-cache", next: { revalidate: 60 } }),
-                apiFetch("/api/users/preferences", { cache: "force-cache", next: { revalidate: 300 } }),
+                // 🟢 수정: 취향 데이터는 설정을 마친 직후 반영되어야 하므로 캐시를 사용하지 않습니다.
+                apiFetch("/api/users/preferences", { cache: "no-store" }),
             ]);
 
             if (profileRes.status === "fulfilled" && profileRes.value.response.ok && profileRes.value.data) {
@@ -179,11 +192,18 @@ export default function HomeClient({
                     requestAnimationFrame(() => {
                         const prefs = preferencesRes.value.data as any;
                         const prefsData = prefs?.preferences || prefs || {};
+
+                        // 🟢 개선된 온보딩 완료 체크 로직
+                        // 1. 서버에서 명시적으로 준 완료 플래그 확인
+                        // 2. 데이터 배열 중 하나라도 값이 있는지 확인
                         const hasServerData =
+                            prefsData.hasOnboarding === true ||
+                            prefsData.onboardingComplete === true ||
                             (Array.isArray(prefsData.mood) && prefsData.mood.length > 0) ||
                             (Array.isArray(prefsData.concept) && prefsData.concept.length > 0) ||
                             (Array.isArray(prefsData.regions) && prefsData.regions.length > 0) ||
                             (typeof prefsData.companion === "string" && prefsData.companion.trim() !== "");
+
                         setIsOnboardingComplete(hasServerData || localStorage.getItem("onboardingComplete") === "1");
                     });
                 }, 150);
@@ -192,16 +212,24 @@ export default function HomeClient({
                 !preferencesRes.value?.response.ok ||
                 !preferencesRes.value?.data
             ) {
+                // 🟢 API 호출 실패 시에도 세션 정보를 한 번 더 확인하여 오작동 방지
                 requestAnimationFrame(() => {
-                    setIsOnboardingComplete(false);
+                    if (user && ((user as any).hasOnboarding || (user as any).onboardingComplete)) {
+                        setIsOnboardingComplete(true);
+                    } else {
+                        setIsOnboardingComplete(false);
+                    }
                 });
             }
         } catch (error) {
             console.error("User data loading failed:", error);
         }
-    }, []);
+    }, [isAuthenticated, user]); // 🟢 user 의존성 추가로 세션 변경 시 대응
 
     const maybeOpenCheckinModal = useCallback(async () => {
+        // 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 열기
+        if (!isAuthenticated) return;
+
         const result = await fetchWeekStamps();
         if (!result) return;
         setWeekStamps(result.stamps);
@@ -211,7 +239,7 @@ export default function HomeClient({
             setShowCheckinModal(true);
             hasShownCheckinModalRef.current = true;
         }
-    }, []);
+    }, [isAuthenticated]);
 
     useEffect(() => {
         if (isAuthLoading) {
@@ -227,6 +255,10 @@ export default function HomeClient({
                 setUserId(null);
                 setUserName("");
                 setStreak(0);
+                setWeekStamps([false, false, false, false, false, false, false]);
+                setAlreadyToday(false);
+                setIsCheckinLoading(false);
+                setShowCheckinModal(false);
                 setIsOnboardingComplete(false);
                 setIsCheckinLoading(false);
             });
@@ -416,37 +448,42 @@ export default function HomeClient({
                     onConceptClick={() => setIsLoadingCourses(true)}
                 />
 
-                <section className="py-6 px-4" ref={checkinSectionRef}>
-                    <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
-                                🌱
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">출석 현황</div>
-                                {isCheckinLoading && isAuthenticated ? (
-                                    <div className="mt-1 space-y-1">
-                                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
+                {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석현황 표시 */}
+                {isAuthenticated && (
+                    <section className="py-6 px-4" ref={checkinSectionRef}>
+                        <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1">
+                                <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
+                                    🌱
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                        출석 현황
                                     </div>
-                                ) : (
-                                    <div className="text-base font-bold text-gray-900 dark:text-white">
-                                        {userId
-                                            ? streak >= 5
-                                                ? `🔥 ${streak}일 연속!`
-                                                : `${streak}일 연속 출석 중`
-                                            : "로그인하고 도장을 찍어보세요!"}
-                                    </div>
-                                )}
+                                    {isCheckinLoading ? (
+                                        <div className="mt-1 space-y-1">
+                                            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-base font-bold text-gray-900 dark:text-white">
+                                            {userId
+                                                ? streak >= 5
+                                                    ? `🔥 ${streak}일 연속!`
+                                                    : `${streak}일 연속 출석 중`
+                                                : "로그인하고 도장을 찍어보세요!"}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+                            <button
+                                onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
+                                className="w-10 h-10 bg-white dark:bg-[#1a241b] border border-emerald-200 dark:border-emerald-800/50 rounded-full flex items-center justify-center shadow-sm shrink-0"
+                            >
+                                🔔
+                            </button>
                         </div>
-                        <button
-                            onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
-                            className="w-10 h-10 bg-white dark:bg-[#1a241b] border border-emerald-200 dark:border-emerald-800/50 rounded-full flex items-center justify-center shadow-sm shrink-0"
-                        >
-                            🔔
-                        </button>
-                    </div>
-                </section>
+                    </section>
+                )}
 
                 <MemoizedPersonalizedSection />
                 {(!isAuthenticated || !isOnboardingComplete) && (
@@ -454,7 +491,8 @@ export default function HomeClient({
                 )}
             </main>
 
-            {showCheckinModal && (
+            {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 표시 */}
+            {showCheckinModal && isAuthenticated && (
                 <div className="fixed inset-0 bg-black/60 dark:bg-black/80 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-[#1a241b] rounded-2xl p-6 w-full max-w-sm text-center">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">출석 체크</h3>
@@ -614,19 +652,20 @@ function TabbedConcepts({
 
     return (
         <section className="py-6 px-5">
+            {/* 🟢 UI만 수정: 카테고리 필터 버튼 스타일로 변경 (기능은 전체/인기순/새로운 유지) */}
             <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
                 {[
-                    { key: "concept", label: "테마별" },
-                    { key: "popular", label: "인기별" },
+                    { key: "concept", label: "전체" },
+                    { key: "popular", label: "인기순" },
                     { key: "new", label: "새로운" },
                 ].map((tab) => (
                     <button
                         key={tab.key}
                         onClick={() => handleTabChange(tab.key as any)}
-                        className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
+                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap  ${
                             activeTab === tab.key
-                                ? "bg-gray-900 dark:bg-gray-700 text-white shadow-lg scale-105 border-0 dark:border-0"
-                                : "bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-400 border border-gray-100 dark:border-0"
+                                ? "bg-emerald-500 text-white shadow-md border-0"
+                                : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
                         }`}
                     >
                         {tab.label}
@@ -680,7 +719,7 @@ function TabbedConcepts({
                         )}
                     </div>
                 ) : (
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6">
+                    <div className="flex gap-4 overflow-x-auto no-scrollbar pt-6 pb-6">
                         {/* 🟢 인기별/새로운 탭: 데이터가 없을 때 메시지 표시 */}
                         {activeTabCourses.length === 0 ? (
                             <div className="w-full py-12 text-center text-gray-400 dark:text-gray-500">

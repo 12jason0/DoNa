@@ -37,6 +37,8 @@ const courseSelectOptions = {
         orderBy: { order_index: "asc" as const },
         take: 1, // 리스트 페이지이므로 첫 번째 장소 정보만 로드
     },
+    // 🟢 [Fix]: 장소 개수를 위한 _count 추가
+    _count: { select: { coursePlaces: true } },
 };
 
 // 매핑 함수 (기능 100% 보존 및 타입 가드 강화)
@@ -66,8 +68,8 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                 if (isIOS) {
                     if (courseGrade === "PREMIUM") isLocked = true;
                     // Basic 코스는 isLocked = false (무료)
-            } else {
-                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
+                } else {
+                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
                 }
             }
 
@@ -97,6 +99,8 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                               }
                             : null,
                     })) || [],
+                // 🟢 [Fix]: _count에서 장소 개수를 확실하게 가져오기 (take: 1 제한과 무관하게)
+                placesCount: course._count?.coursePlaces ?? (course.coursePlaces?.length || 0),
             };
         })
         .filter((course: any) => course !== null);
@@ -125,7 +129,10 @@ const getCachedDefaultCourses = unstable_cache(
             bIdx = 0,
             pIdx = 0;
 
-        while (interleaved.length < 30 && (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)) {
+        while (
+            interleaved.length < 30 &&
+            (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)
+        ) {
             if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
             if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]);
             if (bIdx < basicRaw.length && interleaved.length < 30) interleaved.push(basicRaw[bIdx++]);
@@ -216,7 +223,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
     const headersList = await headers();
     const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
     const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
-    
+
     return getCachedDefaultCourses(userTier, unlockedCourseIds, isIOSPlatform);
 }
 
