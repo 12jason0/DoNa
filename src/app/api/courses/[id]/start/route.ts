@@ -70,7 +70,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         const courseGrade = course.grade || "FREE";
-        const hasAccess = courseGrade === "FREE" || userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked;
+        
+        // 🟢 iOS: Basic 코스 무료 접근 허용
+        const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
+        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+        
+        const hasAccess =
+            courseGrade === "FREE" || // 무료 코스
+            (isIOSPlatform && courseGrade === "BASIC") || // 🟢 iOS: Basic 코스 무료 접근
+            userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
+            (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
+            hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
         if (!hasAccess) {
             return NextResponse.json({ error: "Access denied", isLocked: true }, { status: 403 });
