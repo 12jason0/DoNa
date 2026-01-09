@@ -459,7 +459,7 @@ function GuidePageInner() {
                                 <div className="flex-1 text-left">
                                     <p className="text-xs font-bold text-gray-600 mb-0.5">🔒 DoNa's Tip 보기</p>
                                     {/* 🟢 [iOS]: iOS에서는 멤버십 구독 안내 텍스트 숨김 */}
-                                    {platform !== 'ios' && (
+                                    {platform === 'web' && (
                                         <p className="text-[10px] text-gray-400">
                                             BASIC 등급 이상만 볼 수 있습니다. 클릭하여 멤버십 구독하기
                                         </p>
@@ -577,8 +577,8 @@ function GuidePageInner() {
                 courseId={Number(courseId)}
                 courseName={course?.title || ""}
             />
-            {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-            {showSubscriptionModal && platform !== 'ios' && (
+            {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
+            {showSubscriptionModal && platform === 'web' && (
                 <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
             )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}

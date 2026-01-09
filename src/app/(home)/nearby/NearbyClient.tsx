@@ -104,9 +104,15 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     const [isRecommendation, setIsRecommendation] = useState(false);
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
 
-    // 🟢 iOS 플랫폼 감지
+    // 🟢 iOS/Android 플랫폼 감지
     useEffect(() => {
-        setPlatform(isIOS() ? "ios" : "web");
+        if (isIOS()) {
+            setPlatform("ios");
+        } else if (typeof window !== "undefined" && /android/.test(navigator.userAgent.toLowerCase())) {
+            setPlatform("android");
+        } else {
+            setPlatform("web");
+        }
     }, []);
 
     useEffect(() => {
@@ -347,9 +353,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         keywords,
     });
 
-    // 🟢 iOS: Basic 코스 무료 접근 (isLocked = false로 설정)
+    // 🟢 iOS/Android: Basic 코스 무료 접근 (isLocked = false로 설정)
     const filtered = useMemo(() => {
-        if (platform === "ios") {
+        if (platform === "ios" || platform === "android") {
             return rawFiltered.map((c) => {
                 if (c.grade === "BASIC" && c.isLocked) {
                     return { ...c, isLocked: false };
@@ -718,8 +724,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 {(displayCourses.length > 0 || isRecommendation) &&
                                     displayCourses
                                         .filter((c) => {
-                                            // iOS에서는 Premium 코스를 숨김
-                                            if (platform === "ios" && c.grade === "PREMIUM") {
+                                            // iOS/Android에서는 Premium 코스를 숨김
+                                            if ((platform === "ios" || platform === "android") && c.grade === "PREMIUM") {
                                                 return false;
                                             }
                                             return true;

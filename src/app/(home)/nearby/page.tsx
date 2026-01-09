@@ -220,7 +220,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 tagIds: string | undefined,
                 userTier: string,
                 unlockedIds: number[],
-                isIOS: boolean
+                isMobile: boolean
             ) => {
                 // 🟢 검색 조건 재구성 (캐싱 함수 내부에서)
                 const filterConditions: any[] = [{ isPublic: true }];
@@ -347,8 +347,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                     } else if (userTier === "BASIC") {
                         if (courseGrade === "PREMIUM") isLocked = true;
                     } else {
-                        // 🟢 iOS: Basic 코스는 무료, Premium만 잠금
-                        if (isIOS) {
+                        // 🟢 iOS/Android: Basic 코스는 무료, Premium만 잠금
+                        if (isMobile) {
                             if (courseGrade === "PREMIUM") isLocked = true;
                             // Basic 코스는 isLocked = false (무료)
                         } else {
@@ -412,7 +412,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         // 🟢 iOS 플랫폼 감지 (서버 사이드)
         const headersList = await headers();
         const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+        // 🟢 iOS/Android 플랫폼 감지
+        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
         return getCachedFilteredCourses(
             keywordRaw,
@@ -421,13 +422,13 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             tagIdsParam,
             userTier,
             unlockedCourseIds,
-            isIOSPlatform
+            isMobilePlatform
         );
     }
 
     // 🟢 [Performance]: 초기 로드 데이터 캐싱
     const getCachedDefaultNearbyCourses = unstable_cache(
-        async (userTier: string, unlockedCourseIds: number[], isIOS: boolean) => {
+        async (userTier: string, unlockedCourseIds: number[], isMobile: boolean) => {
             // 🟢 [5:3:2 비율 로직] 초기 로드 시 실행 (FREE:15, BASIC:9, PREMIUM:6)
             const TARGET_FREE = 15;
             const TARGET_BASIC = 9;
@@ -560,12 +561,12 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     );
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    // 🟢 iOS 플랫폼 감지 (서버 사이드)
+    // 🟢 iOS/Android 플랫폼 감지 (서버 사이드)
     const headersList = await headers();
     const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-    const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+    const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
-    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds, isIOSPlatform);
+    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds, isMobilePlatform);
 }
 
 export default async function NearbyPage({

@@ -235,8 +235,8 @@ const CourseCard = memo(
                             </span>
                         )}
 
-                        {/* Android/Web: 기존 등급 배지 표시 */}
-                        {platform !== "ios" && !course.isLocked && course.grade && course.grade !== "FREE" && (
+                        {/* Web만 등급 배지 표시 (iOS/Android는 숨김) */}
+                        {platform === "web" && !course.isLocked && course.grade && course.grade !== "FREE" && (
                             <span className="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded-md font-bold shadow-sm border border-emerald-500">
                                 {course.grade}
                             </span>
@@ -317,8 +317,8 @@ const CourseCard = memo(
                 </div>
 
                 {/* 모달 섹션 (기존 기능 유지) */}
-                {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-                {showSubscriptionModal && platform !== "ios" && (
+                {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
+                {showSubscriptionModal && platform === "web" && (
                     <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
                 )}
                 {showLoginModal && (

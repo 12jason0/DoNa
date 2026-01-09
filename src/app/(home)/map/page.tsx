@@ -190,8 +190,9 @@ function MapPageInner() {
         // 🟢 "c-" 접두사 제거
         const cleanId = course.id.startsWith("c-") ? course.id.replace("c-", "") : course.id;
 
-        // 🟢 iOS 플랫폼 체크
-        const isIOSPlatform = typeof window !== "undefined" && /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+        // 🟢 iOS/Android 플랫폼 체크
+        const userAgent = typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
         // 🟢 1. 코스 등급 확인 (캐싱된 값 우선 사용)
         let courseGrade: string = "FREE";
@@ -218,14 +219,14 @@ function MapPageInner() {
             return;
         }
 
-        // 🟢 [iOS 출시 기념 이벤트]: iOS에서 Basic 코스는 무료 접근 허용
-        if (isIOSPlatform && courseGrade === "BASIC") {
+        // 🟢 [iOS/Android 출시 기념 이벤트]: iOS/Android에서 Basic 코스는 무료 접근 허용
+        if (isMobilePlatform && courseGrade === "BASIC") {
             router.push(`/courses/${cleanId}`);
             return;
         }
 
-        // 🟢 [iOS]: Premium 코스는 iOS에서 접근 불가
-        if (isIOSPlatform && courseGrade === "PREMIUM") {
+        // 🟢 [iOS/Android]: Premium 코스는 iOS/Android에서 접근 불가
+        if (isMobilePlatform && courseGrade === "PREMIUM") {
             return; // 아무 동작도 하지 않음
         }
 
@@ -265,8 +266,8 @@ function MapPageInner() {
                 return;
             } else if (courseGrade === "PREMIUM") {
                 // BASIC 유저 + PREMIUM 코스 → TicketPlans
-                // 🟢 [iOS]: iOS에서는 결제 모달 표시 안함
-                if (!isIOSPlatform) {
+                // 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함
+                if (!isMobilePlatform) {
                     setShowSubscriptionModal(true);
                 }
                 return;
@@ -274,9 +275,9 @@ function MapPageInner() {
         }
 
         // 🟢 3-5. FREE 유저 (BASIC, PREMIUM 코스) → TicketPlans
-        // 🟢 [iOS 출시 기념 이벤트]: iOS에서는 위에서 이미 Basic 코스 처리 완료
-        // 🟢 [iOS]: iOS에서는 결제 모달 표시 안함
-        if (!isIOSPlatform) {
+        // 🟢 [iOS/Android 출시 기념 이벤트]: iOS/Android에서는 위에서 이미 Basic 코스 처리 완료
+        // 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함
+        if (!isMobilePlatform) {
             setShowSubscriptionModal(true);
         }
     };
@@ -434,12 +435,13 @@ function MapPageInner() {
 
                 // (3) 코스 데이터 처리 (ID 접두어: c-)
                 // 기존 코드에서 코스 ID가 숫자 그대로 쓰여서 충돌 났을 확률 높음
-                // 🟢 [iOS]: iOS에서는 Premium 코스 필터링
-                const isIOSPlatform = typeof window !== "undefined" && /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+                // 🟢 [iOS/Android]: iOS/Android에서는 Premium 코스 필터링
+                const userAgent = typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+                const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
                 if (myData.courses && Array.isArray(myData.courses)) {
                     myData.courses.forEach((c: any) => {
-                        // iOS에서 Premium 코스는 제외
-                        if (isIOSPlatform && (c.grade === "PREMIUM" || c.grade === "premium")) {
+                        // iOS/Android에서 Premium 코스는 제외
+                        if (isMobilePlatform && (c.grade === "PREMIUM" || c.grade === "premium")) {
                             return;
                         }
                         const id = `c-${c.id}`; // 접두어 강제 적용
@@ -450,8 +452,8 @@ function MapPageInner() {
                 // 카카오 관련 코스도 처리
                 if (kakaoData.relatedCourses && Array.isArray(kakaoData.relatedCourses)) {
                     kakaoData.relatedCourses.forEach((c: any) => {
-                        // iOS에서 Premium 코스는 제외
-                        if (isIOSPlatform && (c.grade === "PREMIUM" || c.grade === "premium")) {
+                        // iOS/Android에서 Premium 코스는 제외
+                        if (isMobilePlatform && (c.grade === "PREMIUM" || c.grade === "premium")) {
                             return;
                         }
                         const id = `c-${c.id}`;
@@ -1030,8 +1032,8 @@ function MapPageInner() {
                     )}
                 </div>
             </div>
-            {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-            {showSubscriptionModal && typeof window !== "undefined" && !/iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && (
+            {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
+            {showSubscriptionModal && typeof window !== "undefined" && !/iphone|ipad|ipod|android/.test(navigator.userAgent.toLowerCase()) && (
                 <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
             )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/map`} />}

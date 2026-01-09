@@ -144,20 +144,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const courseGrade = course.grade || "FREE";
         // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 쿠폰으로 구매한 경우만 접근 허용
-        // 🟢 iOS: Basic 코스 무료 접근 허용
+        // 🟢 iOS/Android: Basic 코스 무료 접근 허용
         const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
-        const isIOSPlatform = /iphone|ipad|ipod/.test(userAgent);
+        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
         const hasAccess =
             courseGrade === "FREE" || // 무료 코스
-            (isIOSPlatform && courseGrade === "BASIC") || // 🟢 iOS: Basic 코스 무료 접근
+            (isMobilePlatform && courseGrade === "BASIC") || // 🟢 iOS/Android: Basic 코스 무료 접근
             userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 🔒 팁 표시 권한: iOS는 무료, Android/Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
-        // 🟢 iOS 출시 기념 이벤트: 모든 Tip 무료 제공
-        // 위에서 이미 선언된 isIOSPlatform 재사용
-        const hasTipAccess = isIOSPlatform || userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
+        // 🔒 팁 표시 권한: iOS/Android는 무료, Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
+        // 🟢 iOS/Android 출시 기념 이벤트: 모든 Tip 무료 제공
+        // 위에서 이미 선언된 isMobilePlatform 재사용
+        const hasTipAccess = isMobilePlatform || userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray

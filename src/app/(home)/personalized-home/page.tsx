@@ -644,8 +644,8 @@ const AIRecommender = () => {
                     setShowLogin(true);
                     return;
                 }
-                // 🟢 iOS: 쿠폰 체크 및 차감 건너뛰기 (무제한 사용)
-                if (platform !== "ios") {
+                // 🟢 iOS/Android: 쿠폰 체크 및 차감 건너뛰기 (무제한 사용)
+                if (platform === "web") {
                     if (coupons < 1) {
                         setShowPaywall(true);
                         return;
@@ -1343,8 +1343,8 @@ const AIRecommender = () => {
             <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
                 {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
-                {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-                {showPaywall && platform !== "ios" && <TicketPlans onClose={() => setShowPaywall(false)} />}
+                {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
+                {showPaywall && platform === "web" && <TicketPlans onClose={() => setShowPaywall(false)} />}
                 {showCompletionModal && (
                     <CompletionModal isOpen={showCompletionModal} onClose={() => setShowCompletionModal(false)} />
                 )}
@@ -1475,7 +1475,7 @@ const AIRecommender = () => {
 
                             {/* 채팅 영역 (스크롤 가능) */}
                             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50 relative z-20">
-                                {showUpsell && !showRecommendations && platform !== "ios" && (
+                                {showUpsell && !showRecommendations && platform === "web" && (
                                     <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-900 dark:text-amber-200 shadow-sm">
                                         <div className="font-bold mb-1 flex items-center gap-2">
                                             <Ticket className="w-4 h-4 text-amber-600 dark:text-amber-400" />

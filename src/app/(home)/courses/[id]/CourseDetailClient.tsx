@@ -1031,9 +1031,9 @@ export default function CourseDetailClient({
                                                           ).toUpperCase();
                                                           const currentUserTier = (userTier || "FREE").toUpperCase();
 
-                                                          // iOS는 모든 Tip 무료, Android/Web은 기존 로직 유지
+                                                          // iOS/Android는 모든 Tip 무료, Web만 기존 로직 유지
                                                           const shouldShowTipButton =
-                                                              platform !== "ios" &&
+                                                              platform === "web" &&
                                                               ((courseGrade === "FREE" && currentUserTier === "FREE") ||
                                                                   courseData.isLocked);
 
@@ -1275,8 +1275,8 @@ export default function CourseDetailClient({
                                         </svg>
                                     </div>
                                     <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{courseData.title}</h1>
-                                    {/* 🟢 [iOS]: iOS에서는 등급 안내 텍스트 숨김 */}
-                                    {platform !== "ios" && (
+                                    {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 안내 텍스트 숨김 */}
+                                    {platform === "web" && (
                                         <p className="text-white/80 text-sm">
                                             {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용
                                             가능합니다
@@ -1446,8 +1446,8 @@ export default function CourseDetailClient({
                 courseId={parseInt(courseId)}
                 courseName={courseData.title}
             />
-            {/* 🟢 [iOS]: iOS에서는 결제 모달 표시 안함 */}
-            {showSubscriptionModal && platform !== "ios" && (
+            {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
+            {showSubscriptionModal && platform === "web" && (
                 <TicketPlans
                     onClose={() => {
                         // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)
@@ -1518,15 +1518,15 @@ export default function CourseDetailClient({
 
                                 if (!coachingTip) return null;
 
-                                // 🟢 iOS: 모든 Tip 무료 제공 (출시 기념 이벤트)
-                                // 🔒 Android/Web: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
+                                // 🟢 iOS/Android: 모든 Tip 무료 제공 (출시 기념 이벤트)
+                                // 🔒 Web만: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
                                 const courseGrade = (courseData.grade || "FREE").toUpperCase();
                                 const currentUserTier = (userTier || "FREE").toUpperCase();
-                                const platform = isIOS() ? "ios" : "web";
+                                const currentPlatform = isIOS() ? "ios" : "web";
 
-                                // iOS는 모든 Tip 무료, Android/Web은 기존 로직 유지
+                                // iOS/Android는 모든 Tip 무료, Web만 기존 로직 유지
                                 const shouldShowTipButton =
-                                    platform !== "ios" &&
+                                    currentPlatform === "web" &&
                                     ((courseGrade === "FREE" && currentUserTier === "FREE") || courseData.isLocked);
 
                                 if (shouldShowTipButton) {

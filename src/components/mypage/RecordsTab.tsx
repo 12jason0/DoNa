@@ -86,12 +86,12 @@ const RecordsTab = ({
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
     
-    // 🟢 iOS 플랫폼 체크
-    const [isIOS, setIsIOS] = useState(false);
+    // 🟢 iOS/Android 플랫폼 체크
+    const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         if (typeof window !== "undefined") {
             const userAgent = navigator.userAgent.toLowerCase();
-            setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+            setIsMobile(/iphone|ipad|ipod|android/.test(userAgent));
         }
     }, []);
 
@@ -141,8 +141,8 @@ const RecordsTab = ({
                                 } else if (userTier === "BASIC") {
                                     if (courseGrade === "PREMIUM") isLocked = true;
                                 } else {
-                                    // 🟢 iOS: Basic 코스는 무료, Premium만 잠금
-                                    if (isIOS) {
+                                    // 🟢 iOS/Android: Basic 코스는 무료, Premium만 잠금
+                                    if (isMobile) {
                                         if (courseGrade === "PREMIUM") isLocked = true;
                                         // Basic 코스는 isLocked = false (무료)
                                     } else {
