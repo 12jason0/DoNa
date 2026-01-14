@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Script from "next/script"; // 🟢 카카오 SDK 로드를 위해 추가
+import ClientStyleManager from "@/components/ClientStyleManager";
 
 const lineSeed = localFont({
     src: [
@@ -50,7 +51,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="ko" className={lineSeed.variable} suppressHydrationWarning>
-            <body className={`${lineSeed.className} font-sans antialiased`}>
+            <body className={`${lineSeed.className} font-sans antialiased`} suppressHydrationWarning={true}>
                 {/* 🟢 웹뷰 앱 캐시 문제 해결: 빌드 버전 메타 태그 */}
                 <Script
                     id="build-version"
@@ -61,6 +62,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         }');`,
                     }}
                 />
+                {/* 클라이언트 사이드 스타일 매니저 추가 */}
+                <ClientStyleManager />
                 <Providers>{children}</Providers>
 
                 {/* 🟢 [Kakao SDK]: 공유하기 기능을 위해 추가 - 초기화는 각 컴포넌트에서 처리 */}

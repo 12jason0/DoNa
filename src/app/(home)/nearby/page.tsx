@@ -347,13 +347,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                     } else if (userTier === "BASIC") {
                         if (courseGrade === "PREMIUM") isLocked = true;
                     } else {
-                        // 🟢 iOS/Android: Basic 코스는 무료, Premium만 잠금
-                        if (isMobile) {
-                            if (courseGrade === "PREMIUM") isLocked = true;
-                            // Basic 코스는 isLocked = false (무료)
-                        } else {
-                            if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
-                        }
+                        // FREE 유저는 BASIC, PREMIUM 코스 모두 잠금
+                        if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
                     }
 
                     // 🟢 courseTags 관계 테이블에서 태그 배열 생성

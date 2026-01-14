@@ -64,13 +64,8 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
             } else if (userTier === "BASIC") {
                 if (courseGrade === "PREMIUM") isLocked = true;
             } else {
-                // 🟢 iOS/Android: Basic 코스는 무료, Premium만 잠금
-                if (isMobile) {
-                    if (courseGrade === "PREMIUM") isLocked = true;
-                    // Basic 코스는 isLocked = false (무료)
-                } else {
-                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
-                }
+                // FREE 유저는 BASIC, PREMIUM 코스 모두 잠금
+                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
             }
 
             return {
@@ -219,12 +214,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
     }
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    // 🟢 iOS/Android 플랫폼 감지 (서버 사이드)
-    const headersList = await headers();
-    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-    const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
-
-    return getCachedDefaultCourses(userTier, unlockedCourseIds, isMobilePlatform);
+    return getCachedDefaultCourses(userTier, unlockedCourseIds);
 }
 
 export default async function CoursesPage({

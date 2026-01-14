@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
@@ -12,7 +12,7 @@ import KakaoChannelModal from "@/components/KakaoChannelModal";
 import LogoutModal from "@/components/LogoutModal";
 import LoginModal from "@/components/LoginModal";
 
-// 🟢 [추가] 로그아웃 스플래시 UI
+// 🟢 [로그아웃 스플래시 UI] - 무결성 유지
 const LogoutSplash = () => (
     <div className="fixed inset-0 z-9999 bg-white dark:bg-[#0f1710] flex flex-col items-center justify-center">
         <div className="flex flex-col items-center animate-pulse">
@@ -29,7 +29,8 @@ const LogoutSplash = () => (
     </div>
 );
 
-const Header = () => {
+// 🟢 React.memo를 사용하여 Header의 자체 상태 변경이 부모 레이아웃 전체에 영향을 주지 않도록 격리
+const Header = memo(() => {
     // --- 기존 모든 상태(State) 유지 ---
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [panelRight, setPanelRight] = useState(0);
@@ -49,13 +50,17 @@ const Header = () => {
     const menuButtonRef = useRef<HTMLButtonElement | null>(null);
     const drawerRef = useRef<HTMLDivElement | null>(null);
 
-    // --- 🟢 기능 2: 찜 목록 요약 가져오기 (메모이제이션 적용) ---
+    // 🟢 [찜 목록 요약 가져오기] - 불필요한 상태 업데이트 방지 로직 추가
     const fetchFavoritesSummary = useCallback(async () => {
         try {
             const { authenticatedFetch } = await import("@/lib/authClient");
             // shouldRedirect를 false로 설정하여 배경 요청 실패가 무한 새로고침을 유발하지 않게 함
             const favorites = await authenticatedFetch<any[]>("/api/users/favorites", { cache: "no-store" }, false);
-            if (favorites) setHasFavorites(Array.isArray(favorites) && favorites.length > 0);
+            if (favorites) {
+                const newHasFav = Array.isArray(favorites) && favorites.length > 0;
+                // 이전 값과 같으면 업데이트를 건너뛰어 리렌더링 차단
+                setHasFavorites((prev) => (prev !== newHasFav ? newHasFav : prev));
+            }
         } catch (e) {
             console.error("Failed to fetch favorites summary", e);
         }
@@ -100,7 +105,7 @@ const Header = () => {
     }, [router, pathname]);
 
     // --- 🟢 기능 4: 드로어 위치 및 너비 계산 (recomputeAnchor) ---
-    const recomputeAnchor = () => {
+    const recomputeAnchor = useCallback(() => {
         try {
             const mainEl = document.querySelector("main");
             if (!mainEl) return;
@@ -111,13 +116,13 @@ const Header = () => {
             const isMobile = window.innerWidth < 768;
             setDrawerWidth(isMobile ? Math.round(rect.width * 0.5) : Math.min(333, rect.width));
         } catch {}
-    };
+    }, []);
 
     useEffect(() => {
         recomputeAnchor();
         window.addEventListener("resize", recomputeAnchor);
         return () => window.removeEventListener("resize", recomputeAnchor);
-    }, [pathname]);
+    }, [pathname, recomputeAnchor]);
 
     // --- 🟢 기능 5: 메뉴 토글 및 바디 스크롤 제어 ---
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -204,10 +209,13 @@ const Header = () => {
                                         d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
                                     />
                                 </svg>
-                                <span className="absolute top-2 right-2.5 flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                </span>
+                                {hasFavorites && (
+                                    // 찜 목록이 있을 때만 뱃지 표시
+                                    <span className="absolute top-2 right-2.5 flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                )}
                             </button>
 
                             {/* 햄버거 메뉴 버튼 */}
@@ -231,172 +239,184 @@ const Header = () => {
 
                 {/* --- 드로어(Drawer) 메뉴 영역 --- */}
                 {isMenuOpen && (
-                    <div
-                        className="fixed top-16 bottom-0 z-100 bg-black/30"
-                        style={{ right: panelRight, width: panelWidth }}
-                        onClick={closeMenu}
-                    />
-                )}
-                <div
-                    className={`fixed top-16 bottom-0 z-1500 bg-white dark:bg-[#1a241b] border-l border-gray-200 dark:border-gray-800 transform transition-all ease-in-out duration-300 flex flex-col ${
-                        isMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
-                    }`}
-                    ref={drawerRef}
-                    style={{ right: panelRight, width: drawerWidth }}
-                >
-                    <div className="h-full overflow-y-auto flex flex-col">
-                        <div className="pl-6 pt-2 pr-6 space-y-2">
-                            <Link
-                                href="/"
-                                prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                onClick={closeMenu}
-                            >
-                                홈
-                            </Link>
-                            <Link
-                                href="/courses"
-                                prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                onClick={closeMenu}
-                            >
-                                완벽한 하루
-                            </Link>
-                            <Link
-                                href="/nearby"
-                                prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                onClick={closeMenu}
-                            >
-                                오늘 뭐하지?
-                            </Link>
-                            <Link
-                                href="/personalized-home"
-                                prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                onClick={closeMenu}
-                            >
-                                🎯 AI 추천
-                            </Link>
-                            <Link
-                                href="/map"
-                                prefetch={true}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                onClick={closeMenu}
-                            >
-                                지도
-                            </Link>
-                            <button
-                                onClick={() => {
-                                    closeMenu();
-                                    if (isLoggedIn) {
-                                        setShowComingSoon("escape");
-                                    } else {
-                                        setShowLoginModal(true);
-                                    }
-                                }}
-                                className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
-                            >
-                                <span>🔒커플 미션 게임</span>
-                            </button>
-
-                            <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-                                {isLoggedIn ? (
+                    <>
+                        <div
+                            className="fixed top-16 bottom-0 z-100 bg-black/30"
+                            style={{ right: panelRight, width: panelWidth }}
+                            onClick={closeMenu}
+                        />
+                        <div
+                            className="fixed top-16 bottom-0 z-1500 bg-white dark:bg-[#1a241b] border-l border-gray-200 dark:border-gray-800 transform transition-all ease-in-out duration-300 flex flex-col translate-x-0 opacity-100"
+                            ref={drawerRef}
+                            style={{ right: panelRight, width: drawerWidth }}
+                        >
+                            <div className="h-full overflow-y-auto flex flex-col">
+                                <div className="pl-6 pt-2 pr-6 space-y-2">
                                     <Link
-                                        href="/mypage"
+                                        href="/"
                                         prefetch={true}
                                         className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                         onClick={closeMenu}
                                     >
-                                        마이페이지
+                                        홈
                                     </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href="/login?next=/"
-                                            prefetch={true}
-                                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                            onClick={closeMenu}
-                                        >
-                                            로그인
-                                        </Link>
-                                        <Link
-                                            href="/signup"
-                                            prefetch={true}
-                                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                            onClick={closeMenu}
-                                        >
-                                            회원가입
-                                        </Link>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* 드로어 하단 링크 및 로그아웃 */}
-                        <div className="mt-auto px-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
-                            {isLoggedIn && (
-                                <button
-                                    onClick={openLogoutConfirm}
-                                    className="w-full flex items-center gap-2 px-3 py-2 mt-4 mb-4 rounded-lg text-base font-medium text-red-700 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={2}
-                                        stroke="currentColor"
-                                        className="w-5 h-5"
+                                    <Link
+                                        href="/courses"
+                                        prefetch={true}
+                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        onClick={closeMenu}
                                     >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-                                        />
-                                    </svg>
-                                    <span>로그아웃</span>
-                                </button>
-                            )}
-                            <div className="grid grid-cols-2 gap-y-3 gap-x-2 pb-6 pt-4">
-                                <Link
-                                    href="/about"
-                                    prefetch={true}
-                                    onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                                >
-                                    <span className="text-xs font-medium">서비스 소개</span>
-                                </Link>
-                                <Link
-                                    href="/help"
-                                    prefetch={true}
-                                    onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                                >
-                                    <span className="text-xs font-medium">이용 안내</span>
-                                </Link>
-                                <Link
-                                    href="/privacy"
-                                    prefetch={true}
-                                    onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                                >
-                                    <span className="text-xs font-medium">개인정보처리방침</span>
-                                </Link>
-                                <Link
-                                    href="/terms"
-                                    prefetch={true}
-                                    onClick={closeMenu}
-                                    className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                                >
-                                    <span className="text-xs font-medium">이용약관</span>
-                                </Link>
-                            </div>
-                            <div className="pb-6 text-center">
-                                <p className="text-[10px] text-gray-300 font-medium">버전 1.0.0 | © 2026 DoNa Team</p>
+                                        완벽한 하루
+                                    </Link>
+                                    <Link
+                                        href="/nearby"
+                                        prefetch={true}
+                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        onClick={closeMenu}
+                                    >
+                                        오늘 뭐하지?
+                                    </Link>
+                                    <Link
+                                        href="/personalized-home"
+                                        prefetch={true}
+                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        onClick={closeMenu}
+                                    >
+                                        🎯 AI 추천
+                                    </Link>
+                                    <Link
+                                        href="/map"
+                                        prefetch={true}
+                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        onClick={closeMenu}
+                                    >
+                                        지도
+                                    </Link>
+                                    <button
+                                        onClick={() => {
+                                            closeMenu();
+                                            // 🟢 [SHOP LOCKED]: 두나샵 준비 중 - 토스트 메시지 표시
+                                            alert("더 완벽한 키트를 위해 준비 중이에요! 조금만 기다려주세요 🎁");
+                                        }}
+                                        className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    >
+                                        🛍️ 두나샵
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            closeMenu();
+                                            if (isLoggedIn) {
+                                                setShowComingSoon("escape");
+                                            } else {
+                                                setShowLoginModal(true);
+                                            }
+                                        }}
+                                        className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                                    >
+                                        <span>🔒커플 미션 게임</span>
+                                    </button>
+
+                                    <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+                                        {isLoggedIn ? (
+                                            <Link
+                                                href="/mypage"
+                                                prefetch={true}
+                                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                onClick={closeMenu}
+                                            >
+                                                마이페이지
+                                            </Link>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    href="/login?next=/"
+                                                    prefetch={true}
+                                                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                    onClick={closeMenu}
+                                                >
+                                                    로그인
+                                                </Link>
+                                                <Link
+                                                    href="/signup"
+                                                    prefetch={true}
+                                                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                    onClick={closeMenu}
+                                                >
+                                                    회원가입
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* 드로어 하단 링크 및 로그아웃 */}
+                                <div className="mt-auto px-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
+                                    {isLoggedIn && (
+                                        <button
+                                            onClick={openLogoutConfirm}
+                                            className="w-full flex items-center gap-2 px-3 py-2 mt-4 mb-4 rounded-lg text-base font-medium text-red-700 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                strokeWidth={2}
+                                                stroke="currentColor"
+                                                className="w-5 h-5"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+                                                />
+                                            </svg>
+                                            <span>로그아웃</span>
+                                        </button>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-y-3 gap-x-2 pb-6 pt-4">
+                                        <Link
+                                            href="/about"
+                                            prefetch={true}
+                                            onClick={closeMenu}
+                                            className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                        >
+                                            <span className="text-xs font-medium">서비스 소개</span>
+                                        </Link>
+                                        <Link
+                                            href="/help"
+                                            prefetch={true}
+                                            onClick={closeMenu}
+                                            className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                        >
+                                            <span className="text-xs font-medium">이용 안내</span>
+                                        </Link>
+                                        <Link
+                                            href="/privacy"
+                                            prefetch={true}
+                                            onClick={closeMenu}
+                                            className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                        >
+                                            <span className="text-xs font-medium">개인정보처리방침</span>
+                                        </Link>
+                                        <Link
+                                            href="/terms"
+                                            prefetch={true}
+                                            onClick={closeMenu}
+                                            className="text-center py-1 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                        >
+                                            <span className="text-xs font-medium">이용약관</span>
+                                        </Link>
+                                    </div>
+                                    <div className="pb-6 text-center">
+                                        <p className="text-[10px] text-gray-300 font-medium">
+                                            버전 1.0.0 | © 2026 DoNa Team
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </header>
 
             {/* 모든 모달들 */}
@@ -409,6 +429,8 @@ const Header = () => {
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
         </>
     );
-};
+});
+
+Header.displayName = "Header"; // memo 사용 시 디버깅을 위한 이름 설정
 
 export default Header;

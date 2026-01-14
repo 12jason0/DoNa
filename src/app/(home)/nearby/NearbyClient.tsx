@@ -353,18 +353,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         keywords,
     });
 
-    // 🟢 iOS/Android: Basic 코스 무료 접근 (isLocked = false로 설정)
-    const filtered = useMemo(() => {
-        if (platform === "ios" || platform === "android") {
-            return rawFiltered.map((c) => {
-                if (c.grade === "BASIC" && c.isLocked) {
-                    return { ...c, isLocked: false };
-                }
-                return c;
-            });
-        }
-        return rawFiltered;
-    }, [rawFiltered, platform]);
+    // 필터링된 결과 그대로 사용 (웹과 동일하게 유료 코스 잠금)
+    const filtered = rawFiltered;
 
     // 🟢 [Fix]: 클라이언트 필터링 로직이 서버 데이터와 충돌할 경우를 대비한 안전 장치
     // 서버에서 이미 필터링된 데이터를 클라이언트에서 다시 필터링하다가 전부 걸러진 경우,

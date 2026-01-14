@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 // 👇 [수정됨] lib/prisma가 아니라 lib/db에서 가져옵니다.
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { resolveUserId } from "@/lib/auth"; // 🔐 [보안] 서버 세션 쿠키 검증
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,16 @@ export async function POST(req: NextRequest) {
             userId?: number | string;
         };
 
-        // 1. 필수 파라미터 검증
+        // 🔐 [보안] 1. 서버 세션 쿠키에서 userId 추출 (클라이언트가 보낸 userId 맹신 금지)
+        const authenticatedUserId = resolveUserId(req);
+        if (!authenticatedUserId) {
+            return NextResponse.json(
+                { success: false, error: "UNAUTHORIZED", message: "인증이 필요합니다." },
+                { status: 401 }
+            );
+        }
+
+        // 2. 필수 파라미터 검증
         if (!paymentKey) {
             return NextResponse.json(
                 { success: false, error: "INVALID_REQUEST", message: "paymentKey가 없습니다." },
@@ -71,12 +81,23 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
-        if (!userId) {
+
+        // 🔐 [보안] 3. body의 userId와 서버 세션 쿠키의 userId 일치 확인 (결제 하이재킹 방지)
+        const bodyUserId = userId ? Number(userId) : null;
+        if (bodyUserId && bodyUserId !== authenticatedUserId) {
+            console.error("[Payment Confirm] userId 불일치 감지:", {
+                bodyUserId,
+                authenticatedUserId,
+                orderId,
+            });
             return NextResponse.json(
-                { success: false, error: "INVALID_REQUEST", message: "userId가 없습니다." },
-                { status: 400 }
+                { success: false, error: "UNAUTHORIZED", message: "잘못된 접근입니다." },
+                { status: 403 }
             );
         }
+
+        // 🔐 서버에서 검증한 userId 사용 (body의 userId는 무시)
+        const numericUserId = authenticatedUserId;
 
         // 2. plan이 유효한지 확인
         if (!(plan in PLAN_DATA)) {
@@ -141,8 +162,6 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
-
-        const numericUserId = Number(userId);
 
         // 👇 tx 타입을 명시하여 빨간 줄 제거
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

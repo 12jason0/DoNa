@@ -94,22 +94,13 @@ export async function GET(request: NextRequest) {
             const courseGrade = course.grade || "FREE";
             const hasUnlocked = unlockedCourseIds.includes(Number(course.id));
 
-            // 🟢 iOS/Android 출시 기념 이벤트: Basic 코스 무료 제공
-            const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
-            const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
-
             if (hasUnlocked || userTier === "PREMIUM") {
                 isLocked = false;
             } else if (userTier === "BASIC") {
                 if (courseGrade === "PREMIUM") isLocked = true;
             } else {
-                // 🟢 iOS/Android: Basic 코스는 무료, Premium만 잠금
-                if (isMobilePlatform) {
-                    if (courseGrade === "PREMIUM") isLocked = true;
-                    // Basic 코스는 isLocked = false (무료)
-                } else {
-                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
-                }
+                // FREE 유저는 BASIC, PREMIUM 코스 모두 잠금
+                if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
             }
 
             return {

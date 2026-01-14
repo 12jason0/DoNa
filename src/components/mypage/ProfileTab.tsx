@@ -244,8 +244,8 @@ const ProfileTab = ({
                             <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                 내 정보
                             </h3>
-                            {/* 🟢 [애플 심사 대응]: iOS(아이패드 포함)에서는 등급 배지 완전히 숨김 */}
-                            {/* iOS에서는 등급 배지를 표시하지 않습니다 */}
+                            {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 배지 완전히 숨김 */}
+                            {/* iOS/Android에서는 등급 배지를 표시하지 않습니다 */}
                             {false && (
                                 <span
                                     className={`px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${

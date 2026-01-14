@@ -448,42 +448,38 @@ export default function HomeClient({
                     onConceptClick={() => setIsLoadingCourses(true)}
                 />
 
-                {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석현황 표시 */}
-                {isAuthenticated && (
-                    <section className="py-6 px-4" ref={checkinSectionRef}>
-                        <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1">
-                                <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
-                                    🌱
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                        출석 현황
-                                    </div>
-                                    {isCheckinLoading ? (
-                                        <div className="mt-1 space-y-1">
-                                            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-base font-bold text-gray-900 dark:text-white">
-                                            {userId
-                                                ? streak >= 5
-                                                    ? `🔥 ${streak}일 연속!`
-                                                    : `${streak}일 연속 출석 중`
-                                                : "로그인하고 도장을 찍어보세요!"}
-                                        </div>
-                                    )}
-                                </div>
+                {/* 🟢 출석현황: 로그인/비로그인 모두 표시 (비로그인 시 로그인 유도 메시지) */}
+                <section className="py-6 px-4" ref={checkinSectionRef}>
+                    <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
+                                🌱
                             </div>
-                            <button
-                                onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
-                                className="w-10 h-10 bg-white dark:bg-[#1a241b] border border-emerald-200 dark:border-emerald-800/50 rounded-full flex items-center justify-center shadow-sm shrink-0"
-                            >
-                                🔔
-                            </button>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">출석 현황</div>
+                                {isCheckinLoading && isAuthenticated ? (
+                                    <div className="mt-1 space-y-1">
+                                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
+                                    </div>
+                                ) : (
+                                    <div className="text-base font-bold text-gray-900 dark:text-white">
+                                        {userId
+                                            ? streak >= 5
+                                                ? `🔥 ${streak}일 연속!`
+                                                : `${streak}일 연속 출석 중`
+                                            : "로그인하고 도장을 찍어보세요!"}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </section>
-                )}
+                        <button
+                            onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
+                            className="w-10 h-10 bg-white dark:bg-[#1a241b] border border-emerald-200 dark:border-emerald-800/50 rounded-full flex items-center justify-center shadow-sm shrink-0"
+                        >
+                            🔔
+                        </button>
+                    </div>
+                </section>
 
                 <MemoizedPersonalizedSection />
                 {(!isAuthenticated || !isOnboardingComplete) && (

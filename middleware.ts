@@ -14,6 +14,14 @@ export function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
+    // 🟢 [무한 루프 방지]: 로그아웃 관련 파라미터 제거 (혹시 모를 무한 루프 방지)
+    // _logout 파라미터가 있으면 제거하여 깔끔한 URL 유지
+    if (req.nextUrl.searchParams.has("_logout")) {
+        const cleanUrl = req.nextUrl.clone();
+        cleanUrl.searchParams.delete("_logout");
+        return NextResponse.redirect(cleanUrl);
+    }
+
     // 🟢 [배포용 최종 Fix]: 로그아웃 후 리다이렉트 루프 방지
     // 로그인/회원가입 페이지 예외 처리 - 타임스탬프 파라미터 무시
     if (isAuth && (pathname === "/login" || pathname === "/signup")) {

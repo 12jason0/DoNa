@@ -76,6 +76,22 @@ export function useAuth(): UseAuthReturn {
                 setIsAuthenticated(false);
                 // 🟢 로그아웃 이벤트 발생 (다른 컴포넌트에 알림)
                 window.dispatchEvent(new CustomEvent("authLogout"));
+
+                // 🟢 [이중 안전장치]: 앱(WebView)에 로그아웃 알림 (authClient에서도 보내지만 추가 보장)
+                // authClient의 logout 함수에서 이미 메시지를 보내지만, useAuth에서도 보내어 확실히 처리
+                if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+                    try {
+                        (window as any).ReactNativeWebView.postMessage(
+                            JSON.stringify({
+                                type: "logout", // WebScreen.tsx의 조건문과 반드시 일치해야 함
+                                redirect: "/",
+                                clearState: true,
+                            })
+                        );
+                    } catch (e) {
+                        console.warn("[useAuth] WebView 메시지 전송 실패:", e);
+                    }
+                }
             } else {
                 throw new Error("로그아웃에 실패했습니다.");
             }
@@ -101,7 +117,7 @@ export function useAuth(): UseAuthReturn {
             setUser(null);
             setIsAuthenticated(false);
             setIsLoading(false);
-            
+
             // 🟢 약간의 지연 후 세션 확인하여 확실히 로그아웃 상태 확인
             setTimeout(() => {
                 checkSessionRef.current();

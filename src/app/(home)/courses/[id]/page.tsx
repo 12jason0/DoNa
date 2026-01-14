@@ -259,25 +259,16 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     const courseGrade = (courseData.grade || "FREE").toUpperCase();
     const currentUserTier = userTier.toUpperCase();
 
-    // 🟢 iOS/Android 플랫폼 감지 (서버 사이드)
-    const headersList = await headers();
-    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-    const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
-
     // 🔒 핵심: '쿠폰 구매(hasUnlocked)'를 가장 먼저 체크하여 등급에 상관없이 허용
-    // 🟢 iOS/Android: Basic 코스 무료 접근 허용
     const canAccess =
         courseGrade === "FREE" || // 1. 무료 코스인가?
         hasUnlocked === true || // 2. 쿠폰으로 구매했는가? (FREE 유저라도 OK) - 최우선 체크
-        (isMobilePlatform && courseGrade === "BASIC") || // 🟢 iOS/Android: Basic 코스 무료 접근
         (currentUserTier === "BASIC" && courseGrade === "BASIC") || // 3. BASIC 유저의 BASIC 코스인가?
         currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
 
-    // 🔒 팁 표시 권한: iOS/Android는 무료, Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
-    // 🟢 iOS/Android 출시 기념 이벤트: 모든 Tip 무료 제공
-    // 위에서 이미 선언된 isMobilePlatform 재사용
+    // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
     const hasTipAccess =
-        isMobilePlatform || currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
+        currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
 
     const isLocked = !canAccess;
 

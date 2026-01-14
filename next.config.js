@@ -1,4 +1,23 @@
 /** @type {import('next').NextConfig} */
+const os = require("os");
+
+// 🟢 [추가]: 현재 개발 장비의 로컬 IP 주소를 동적으로 가져오는 로직
+const getLocalExternalIP = () => {
+    const interfaces = os.networkInterfaces();
+    for (const devName in interfaces) {
+        const iface = interfaces[devName];
+        for (let i = 0; i < iface.length; i++) {
+            const alias = iface[i];
+            if (alias.family === "IPv4" && alias.address !== "127.0.0.1" && !alias.internal) {
+                return alias.address;
+            }
+        }
+    }
+    return "localhost";
+};
+
+const localIp = getLocalExternalIP();
+
 const nextConfig = {
     // 1. 기존 유지: 빌드 오류 무시
     typescript: { ignoreBuildErrors: true },
@@ -15,6 +34,10 @@ const nextConfig = {
     // 🟢 [추가]: 패키지 임포트 최적화 (Fast Refresh 속도 개선)
     experimental: {
         optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "lodash"],
+        // 🟢 [수정]: Next.js 16 대응 - 'allowedDevOrigins' 대신 'serverActions.allowedOrigins' 사용
+        serverActions: {
+            allowedOrigins: ["192.168.219.220:3000", "localhost:3000"],
+        },
     },
 
     async headers() {
@@ -98,6 +121,8 @@ const nextConfig = {
                                 "https://region1.google-analytics.com",
                                 "https://analytics.google.com", // 👈 추가
                                 "https://stats.g.doubleclick.net",
+                                "http://192.168.219.220:3000", // 🟢 바뀐 IP 허용
+                                "ws://192.168.219.220:3000", // 🟢 바뀐 웹소켓 허용
                             ].join(" ");
 
                             return [

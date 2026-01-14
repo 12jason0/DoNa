@@ -56,7 +56,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
 
                     <div className="bg-emerald-50/50 rounded-xl p-3 mb-5 border border-emerald-100/50">
                         <p className="text-gray-600 text-xs leading-relaxed">
-                            <span className="font-bold text-emerald-700">1월 10일까지</span>만 드리는 혜택 📅
+                            <span className="font-bold text-emerald-700">1월 31일까지</span>만 드리는 혜택 📅
                             <br />
                             회원가입 즉시 AI 추천 쿠폰 <br />
                             <span className="font-extrabold text-gray-900 underline decoration-emerald-400 decoration-2 underline-offset-2">

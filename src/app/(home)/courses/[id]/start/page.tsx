@@ -577,10 +577,8 @@ function GuidePageInner() {
                 courseId={Number(courseId)}
                 courseName={course?.title || ""}
             />
-            {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
-            {showSubscriptionModal && platform === 'web' && (
-                <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
-            )}
+            {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
+            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
         </div>
     );

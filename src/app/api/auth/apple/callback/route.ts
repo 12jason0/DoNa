@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
             const now = new Date();
             const utc = now.getTime() + now.getTimezoneOffset() * 60000;
             const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
-            const eventEndDate = new Date("2026-01-10T23:59:59+09:00");
+            const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
             const initialCoupons = kstNow <= eventEndDate ? 2 : 1;
 
             const upsertedUser = await tx.user.upsert({

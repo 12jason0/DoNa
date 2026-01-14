@@ -54,6 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 max_participants: true,
                 isPopular: true,
                 grade: true,
+                isPublic: true, // 🟢 [Fix]: isPublic 필드 추가
                 createdAt: true,
                 updatedAt: true,
                 highlights: { select: { id: true, title: true, description: true, icon: true } },
@@ -103,6 +104,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
 
+        // 🟢 [Fix]: 추천 API와 일관성 유지 - isPublic 체크 (단, 이미 구매한 코스는 예외)
+        if (!course.isPublic && !hasUnlocked) {
+            return NextResponse.json({ error: "Course not found" }, { status: 404 });
+        }
+
         const coursePlacesArray = Array.isArray(course.coursePlaces) ? course.coursePlaces : [];
 
         // 🟢 [Debug]: Prisma 쿼리 결과 확인
@@ -144,20 +150,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const courseGrade = course.grade || "FREE";
         // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 쿠폰으로 구매한 경우만 접근 허용
-        // 🟢 iOS/Android: Basic 코스 무료 접근 허용
-        const userAgent = request.headers.get("user-agent")?.toLowerCase() || "";
-        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
         const hasAccess =
             courseGrade === "FREE" || // 무료 코스
-            (isMobilePlatform && courseGrade === "BASIC") || // 🟢 iOS/Android: Basic 코스 무료 접근
             userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 🔒 팁 표시 권한: iOS/Android는 무료, Web은 BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
-        // 🟢 iOS/Android 출시 기념 이벤트: 모든 Tip 무료 제공
-        // 위에서 이미 선언된 isMobilePlatform 재사용
-        const hasTipAccess = isMobilePlatform || userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
+        // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
+        const hasTipAccess = userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
@@ -203,8 +203,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         courseGrade === "FREE"
                             ? cp.coaching_tip || null // FREE 코스: 클라이언트에서 처리
                             : hasTipAccess
-                              ? cp.coaching_tip || null
-                              : null; // BASIC/PREMIUM 코스: 권한 체크
+                            ? cp.coaching_tip || null
+                            : null; // BASIC/PREMIUM 코스: 권한 체크
 
                     // 🟢 안전한 숫자 변환
                     const placeId = cp.place?.id;

@@ -187,18 +187,6 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             });
         }
 
-        // 🟢 iOS: Premium 코스 필터링 및 Basic 코스 무료 접근
-        if (platform === "ios") {
-            filtered = filtered
-                .filter((c) => c.grade !== "PREMIUM")
-                .map((c) => {
-                    // iOS: Basic 코스 무료 접근 (isLocked = false)
-                    if (c.grade === "BASIC" && c.isLocked) {
-                        return { ...c, isLocked: false };
-                    }
-                    return c;
-            });
-        }
 
         // 2. 정렬 (성능 최적화: Date 생성 최소화)
         if (sortBy === "views") {
@@ -311,7 +299,18 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                     </h1>
                     <div className="flex items-center gap-3 text-sm">
                         <button
-                            onClick={() => setSortBy("views")}
+                            onClick={() => {
+                                setSortBy("views");
+                                // 🟢 정렬 변경 시 맨 위로 스크롤 (main 요소 또는 window)
+                                requestAnimationFrame(() => {
+                                    const mainEl = document.querySelector("main");
+                                    if (mainEl) {
+                                        mainEl.scrollTo({ top: 0, behavior: "smooth" });
+                                    } else {
+                                        window.scrollTo({ top: 0, behavior: "smooth" });
+                                    }
+                                });
+                            }}
                             className={`${
                                 sortBy === "views"
                                     ? "font-bold text-emerald-600 dark:text-emerald-400"
@@ -322,7 +321,18 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                         </button>
                         <span className="text-gray-200 dark:text-gray-700 text-xs">|</span>
                         <button
-                            onClick={() => setSortBy("latest")}
+                            onClick={() => {
+                                setSortBy("latest");
+                                // 🟢 정렬 변경 시 맨 위로 스크롤 (main 요소 또는 window)
+                                requestAnimationFrame(() => {
+                                    const mainEl = document.querySelector("main");
+                                    if (mainEl) {
+                                        mainEl.scrollTo({ top: 0, behavior: "smooth" });
+                                    } else {
+                                        window.scrollTo({ top: 0, behavior: "smooth" });
+                                    }
+                                });
+                            }}
                             className={`${
                                 sortBy === "latest"
                                     ? "font-bold text-emerald-600 dark:text-emerald-400"

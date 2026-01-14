@@ -1004,7 +1004,7 @@ export default function CourseDetailClient({
                                                         <p className="text-xs text-gray-500 truncate mb-2">
                                                             {coursePlace.place.address}
                                                         </p>
-                                                        {/* 🟢 예약 버튼 */}
+                                                        {/* 🟢 예약 버튼 - 텍스트 한 줄 유지 */}
                                                         {coursePlace.place.reservationUrl && (
                                                             <a
                                                                 href={coursePlace.place.reservationUrl}
@@ -1013,31 +1013,34 @@ export default function CourseDetailClient({
                                                                 onClick={(e) => {
                                                                     e.stopPropagation(); // 부모 클릭 이벤트 차단
                                                                 }}
-                                                                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 w-fit"
+                                                                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
                                                             >
-                                                                <Icons.ExternalLink className="w-3 h-3" />
+                                                                <Icons.ExternalLink className="w-3 h-3 shrink-0" />
                                                                 예약하기
                                                             </a>
                                                         )}
                                                     </div>
                                                 </div>
-                                                {/* 🟢 팁 섹션 - 코스 잠금 상태 및 유저 등급 기준으로 표시 */}
+                                                {/* 🔒 팁 섹션 - 코스 잠금 상태 및 유저 등급 기준으로 표시 (웹과 동일) */}
                                                 {coursePlace.coaching_tip
                                                     ? (() => {
-                                                          // 🟢 iOS: 모든 Tip 무료 제공 (출시 기념 이벤트)
-                                                          // 🔒 Android/Web: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
+                                                          // 🔒 FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
                                                           const courseGrade = (
                                                               courseData.grade || "FREE"
                                                           ).toUpperCase();
                                                           const currentUserTier = (userTier || "FREE").toUpperCase();
 
-                                                          // iOS/Android는 모든 Tip 무료, Web만 기존 로직 유지
+                                                          // 🔒 FREE 코스 + FREE 유저 또는 잠긴 코스 → 버튼만 표시
                                                           const shouldShowTipButton =
-                                                              platform === "web" &&
-                                                              ((courseGrade === "FREE" && currentUserTier === "FREE") ||
-                                                                  courseData.isLocked);
+                                                              (courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                                              courseData.isLocked;
 
                                                           if (shouldShowTipButton) {
+                                                              // 🟢 [Fix]: 비로그인 유저와 로그인 유저 메시지 구분
+                                                              const tipMessage = !isAuthenticated
+                                                                  ? "로그인하고 숨겨진 꿀팁을 확인하세요!"
+                                                                  : "BASIC 등급이면 볼 수 있어요";
+
                                                               return (
                                                                   <button
                                                                       onClick={(e) => {
@@ -1057,12 +1060,12 @@ export default function CourseDetailClient({
                                                                           </span>
                                                                       </div>
                                                                       <p className="text-xs text-gray-600 line-clamp-2">
-                                                                          BASIC 등급이면 볼 수 있어요
+                                                                          {tipMessage}
                                                                       </p>
                                                                   </button>
                                                               );
                                                           } else {
-                                                              // BASIC/PREMIUM 유저가 FREE 코스를 보거나, 권한이 있는 코스: 팁 표시
+                                                              // 🔒 BASIC/PREMIUM 유저가 FREE 코스를 보거나, 권한이 있는 코스: 팁 표시
                                                               return (
                                                                   <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
                                                                       <div className="flex items-center gap-2 mb-1">
@@ -1446,8 +1449,8 @@ export default function CourseDetailClient({
                 courseId={parseInt(courseId)}
                 courseName={courseData.title}
             />
-            {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
-            {showSubscriptionModal && platform === "web" && (
+            {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
+            {showSubscriptionModal && (
                 <TicketPlans
                     onClose={() => {
                         // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)

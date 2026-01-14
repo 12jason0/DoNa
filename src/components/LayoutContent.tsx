@@ -23,6 +23,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const isEscapeIntroPage = pathname.startsWith("/escape/intro");
     const isEscapeId = pathname ? /^\/escape\/[^/]+$/.test(pathname) : false;
     const isCourseStart = pathname ? /^\/courses\/[^/]+\/start$/.test(pathname) : false;
+    const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
     const homepageBgUrl = getS3StaticUrl("homepage.png");
 
     // 🟢 Effect 1: 마운트 확인 및 세션 체크 (최초 1회)
@@ -32,6 +33,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
         setMounted(true);
         try {
+            // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 표시하지 않음
+            if (isShopPage) {
+                setContentReady(true);
+                return;
+            }
+
             const already = sessionStorage.getItem("dona-splash-shown");
             if (!already) {
                 setShowSplash(true);
@@ -43,7 +50,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             console.error("sessionStorage access error:", e);
             setContentReady(true);
         }
-    }, []);
+    }, [isShopPage]);
 
     // 🟢 Effect 2: 바디 클래스 관리 및 배경색 전환
     useEffect(() => {
@@ -88,7 +95,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 <div className="min-h-screen" style={{ backgroundColor: "#7FCC9F" }} />
             ) : (
                 <>
-                    {showSplash && (
+                    {/* 🟢 [PHYSICAL PRODUCT]: 메인 진입 시에만 스플래시 노출, 샵 페이지 이동 시에는 제외 */}
+                    {showSplash && !isShopPage && (
                         <DonaSplashFinal
                             onDone={() => {
                                 // 🟢 스플래시 종료 시 콘텐츠를 부드럽게 표시

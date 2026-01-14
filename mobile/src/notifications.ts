@@ -36,7 +36,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
             return null;
         }
 
-        const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.manifest?.extra?.eas?.projectId;
+        const projectId =
+            Constants?.expoConfig?.extra?.eas?.projectId ?? (Constants?.manifest as any)?.extra?.eas?.projectId;
 
         if (!projectId) {
             console.error("❌ Project ID 없음");

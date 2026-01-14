@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { X, Check, Sparkles, ChevronRight } from "lucide-react";
+import { isMobileApp } from "@/lib/platform";
 
 const PLANS = [
     {
@@ -32,6 +32,14 @@ const PLANS = [
 ];
 
 const TicketPlans = ({ onClose }: { onClose: () => void }) => {
+    // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 사용 가능
+    const isMobileNative = isMobileApp();
+    
+    // 웹 브라우저에서는 표시하지 않음 (모바일 앱 전용)
+    if (!isMobileNative) {
+        return null;
+    }
+
     const [selectedPlanId, setSelectedPlanId] = useState<string>("sub_basic");
     const [loading, setLoading] = useState(false);
     const [currentTier, setCurrentTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
@@ -70,22 +78,38 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
         fetchUserTier();
     }, []);
 
+    // 🟢 [IN-APP PURCHASE]: WebView 브리지로부터 결제 결과 수신
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const handlePurchaseResult = (event: CustomEvent) => {
+            const { success, error, planId } = event.detail || {};
+            
+            setLoading(false);
+
+            if (success) {
+                // 결제 성공
+                alert("결제가 완료되었습니다!");
+                onClose();
+                // 쿠폰 개수 또는 구독 상태 갱신을 위해 페이지 리로드 또는 이벤트 발생
+                window.dispatchEvent(new CustomEvent("purchaseSuccess"));
+            } else {
+                // 결제 실패
+                const errorMessage = error || "결제 처리 중 오류가 발생했습니다.";
+                alert(errorMessage);
+            }
+        };
+
+        window.addEventListener("purchaseResult", handlePurchaseResult as EventListener);
+
+        return () => {
+            window.removeEventListener("purchaseResult", handlePurchaseResult as EventListener);
+        };
+    }, [onClose]);
+
     const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
 
-    const getClientKey = () => {
-        // 🟢 환경변수 확인 (디버깅용)
-        console.log(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL);
-
-        // 🟢 라이브 API 개별 연동 키 (fallback 값)
-        // 일반 결제(쿠폰): live_ck_ma60RZ... (API 개별 연동용)
-        const generalKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "live_ck_ma60RZblrq7ARpNEZDe3wzYWBn1";
-        // 빌링 결제(구독): live_ck_oEjb0g... (빌링 전용)
-        const billingKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_BILLING || "live_ck_oEjb0gm23PEoPPGwgR9kVpGwBJn5";
-
-        if (!selectedPlan) return generalKey;
-        return selectedPlan.type === "sub" ? billingKey : generalKey;
-    };
-
+    // 🟢 [IN-APP PURCHASE]: RevenueCat 인앱결제 처리 함수
     const handlePayment = async () => {
         if (!selectedPlan) return;
 
@@ -113,62 +137,28 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 return;
             }
 
-            const userId = session.user.id;
-
-            // 🟢 클라이언트 키 가져오기 (환경변수 또는 fallback)
-            const currentClientKey = getClientKey();
-
-            // 🟢 디버깅: 클라이언트 키 확인 (개발 환경에서만)
-            if (process.env.NODE_ENV === "development") {
-                console.log("[결제] 사용할 클라이언트 키:", {
-                    key: currentClientKey?.substring(0, 20) + "...",
-                    planType: selectedPlan.type,
-                    planId: selectedPlan.id,
-                });
+            // 🟢 [IN-APP PURCHASE]: WebView 브리지를 통해 RevenueCat 결제 요청
+            // ReactNativeWebView가 존재하면 (모바일 앱 환경) 네이티브에 결제 요청
+            if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+                (window as any).ReactNativeWebView.postMessage(
+                    JSON.stringify({
+                        type: "requestInAppPurchase",
+                        planId: selectedPlan.id,
+                        planType: selectedPlan.type,
+                    })
+                );
+                // 로딩 상태는 WebView에서 결과를 받을 때까지 유지
+                // 실제 결과 처리는 WebView 브리지에서 처리
+                return;
             }
 
-            // 🟢 토스 SDK 로드 (v2 SDK 사용)
-            const tossPayments = await loadTossPayments(currentClientKey);
-            const customerKey = `user_${userId}`;
-
-            if (selectedPlan.type === "sub") {
-                // 🟢 구독/빌링 결제: requestBillingAuth 사용
-                const planId = selectedPlan.id;
-                const payment = tossPayments.payment({ customerKey });
-                await payment.requestBillingAuth({
-                    method: "CARD",
-                    successUrl: `${window.location.origin}/pay/success-billing?customerKey=${customerKey}&planId=${planId}`,
-                    failUrl: `${window.location.origin}/personalized-home/pay/fail`,
-                });
-            } else {
-                // 🟢 일반 결제(쿠폰): requestPayment 사용
-                const orderId = `order_${selectedPlan.id}_${Date.now()}`;
-                const payment = tossPayments.payment({ customerKey });
-                await payment.requestPayment({
-                    method: "CARD",
-                    amount: {
-                        currency: "KRW",
-                        value: selectedPlan.price,
-                    },
-                    orderId: orderId,
-                    orderName: selectedPlan.name,
-                    successUrl: `${window.location.origin}/personalized-home/pay/success?plan=${selectedPlan.id}`,
-                    failUrl: `${window.location.origin}/personalized-home/pay/fail`,
-                });
-            }
+            // 🟢 웹 브라우저에서는 인앱결제를 사용할 수 없음
+            alert("인앱결제는 모바일 앱에서만 사용 가능합니다.");
+            setLoading(false);
         } catch (error: any) {
-            // 🟢 상세 에러 로깅 (디버깅용)
-            console.error("[결제창 에러 RAW]:", error);
-            console.error("[결제창 에러 details]:", error?.details || error?.error || error?.response);
-
-            // 🟢 사용자 친화적 에러 메시지
-            const errorMessage =
-                error?.message ||
-                error?.details?.message ||
-                error?.error?.message ||
-                "결제창을 불러오는 중 오류가 발생했습니다.";
+            console.error("[인앱결제 에러]:", error);
+            const errorMessage = error?.message || "결제 처리 중 오류가 발생했습니다.";
             alert(errorMessage);
-        } finally {
             setLoading(false);
         }
     };
