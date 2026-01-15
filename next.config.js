@@ -41,11 +41,28 @@ const nextConfig = {
         },
     },
 
+    // 🟢 [2026-01-21] 무한 리다이렉트 루프 방지: 웹에 실제 /courses/[id] 페이지가 존재하므로 리다이렉트 제거
+    // 웹 사용자는 직접 /courses/[id] 경로로 접근 가능하며, 앱이 없을 경우에도 정상적으로 코스 상세 페이지가 표시됩니다.
+    // async redirects() {
+    //     return [
+    //         {
+    //             source: "/courses/:id",
+    //             destination: "/?courseId=:id",
+    //             permanent: false,
+    //         },
+    //     ];
+    // },
+
     async headers() {
         return [
             // 🟢 [신규 추가]: 구글 앱 링크 검증용 Content-Type 설정
             {
                 source: "/.well-known/assetlinks.json",
+                headers: [{ key: "Content-Type", value: "application/json" }],
+            },
+            // 🟢 [2025-12-28] iOS App Links 검증용 Content-Type 설정
+            {
+                source: "/.well-known/apple-app-site-association",
                 headers: [{ key: "Content-Type", value: "application/json" }],
             },
             {

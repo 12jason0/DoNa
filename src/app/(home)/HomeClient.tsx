@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
 import { apiFetch } from "@/lib/authClient";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import HeroSlider from "@/components/HeroSlider";
@@ -125,6 +125,18 @@ export default function HomeClient({
     const [isLoadingCourses, setIsLoadingCourses] = useState<boolean>(false);
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    
+    // 🟢 [2026-01-21] 딥링크 폴백 처리: courseId 쿼리 파라미터가 있으면 해당 코스 상세 페이지로 리다이렉트
+    useEffect(() => {
+        const courseId = searchParams.get("courseId");
+        if (courseId) {
+            console.log("[HomeClient] 딥링크 폴백: courseId 감지, 코스 상세 페이지로 이동:", courseId);
+            // URL에서 courseId 제거하고 코스 상세 페이지로 이동
+            router.replace(`/courses/${courseId}`);
+        }
+    }, [searchParams, router]);
+    
     const hasShownCheckinModalRef = useRef(false);
     const checkinSectionRef = useRef<HTMLDivElement>(null);
 

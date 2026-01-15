@@ -7,6 +7,8 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 // 🟢 [IN-APP PURCHASE]: RevenueCat SDK
 import Purchases from "react-native-purchases";
+// 🟢 [2025-12-28] 안드로이드 키 해시 확인용
+import * as Application from "expo-application";
 
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
@@ -18,17 +20,89 @@ type Props = {
 };
 
 export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }: Props) {
-    // 🟢 [수정]: uri prop이 제대로 전달되었는지 확인 및 기본값 설정
-    const resolvedUri = initialUri || "http://192.168.124.102:3000";
+    // 🟢 [2026-01-21] 딥링크 처리: 앱이 딥링크로 열릴 때 URL 처리
+    const [deepLinkUrl, setDeepLinkUrl] = useState<string | null>(null);
+
+    // 🟢 [2026-01-21] 딥링크 URL 파싱 함수
+    const parseDeepLinkUrl = (url: string): string | null => {
+        try {
+            if (url.includes("dona.io.kr")) {
+                const urlObj = new URL(url);
+                const path = urlObj.pathname;
+                // /courses/:id 형식인 경우 해당 경로로 설정
+                if (path.startsWith("/courses/")) {
+                    return path;
+                } else if (urlObj.searchParams.has("courseId")) {
+                    // 쿼리 파라미터로 courseId가 전달된 경우
+                    const courseId = urlObj.searchParams.get("courseId");
+                    return `/courses/${courseId}`;
+                }
+            }
+        } catch (error) {
+            console.error("[WebScreen] 딥링크 URL 파싱 실패:", error);
+        }
+        return null;
+    };
+
+    // 🟢 [2026-01-21] 앱 시작 시 딥링크 URL 확인
+    useEffect(() => {
+        const checkDeepLink = async () => {
+            try {
+                const initialUrl = await Linking.getInitialURL();
+                if (initialUrl) {
+                    console.log("[WebScreen] 딥링크 URL 감지:", initialUrl);
+                    const parsedPath = parseDeepLinkUrl(initialUrl);
+                    if (parsedPath) {
+                        setDeepLinkUrl(parsedPath);
+                    }
+                }
+            } catch (error) {
+                console.error("[WebScreen] 딥링크 확인 실패:", error);
+            }
+        };
+        checkDeepLink();
+    }, []);
+
+    // 🟢 [2026-01-21] 앱 실행 중 딥링크 수신 처리
+    useEffect(() => {
+        const subscription = Linking.addEventListener("url", (event) => {
+            const { url } = event;
+            console.log("[WebScreen] 앱 실행 중 딥링크 수신:", url);
+            const parsedPath = parseDeepLinkUrl(url);
+            if (parsedPath) {
+                setDeepLinkUrl(parsedPath);
+                // WebView를 해당 경로로 이동 (source prop이 변경되면 자동으로 로드됨)
+                const targetUrl = parsedPath.startsWith("http") ? parsedPath : `https://dona.io.kr${parsedPath}`;
+                if (webRef.current) {
+                    // React Native WebView에서는 source prop 변경 시 자동으로 새 URL 로드
+                    // 또는 injectJavaScript로 location 변경
+                    webRef.current.injectJavaScript(`window.location.href = "${targetUrl}";`);
+                }
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, []);
+
+    // 🟢 [2026-01-21] 딥링크 URL이 있으면 우선 사용, 없으면 기본값 사용
+    const resolvedUri = deepLinkUrl
+        ? deepLinkUrl.startsWith("http")
+            ? deepLinkUrl
+            : `https://dona.io.kr${deepLinkUrl}`
+        : initialUri || "http://192.168.124.102:3000";
 
     // 🟢 [디버깅]: uri 전달 확인
     useEffect(() => {
-        if (!initialUri) {
+        if (deepLinkUrl) {
+            console.log("[WebScreen] 딥링크로 초기 URL 설정:", resolvedUri);
+        } else if (!initialUri) {
             console.warn("[WebScreen] uri prop이 undefined입니다. 기본값을 사용합니다:", resolvedUri);
         } else {
             console.log("[WebScreen] uri prop 전달 확인:", initialUri);
         }
-    }, [initialUri, resolvedUri]);
+    }, [initialUri, resolvedUri, deepLinkUrl]);
 
     const webRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
@@ -51,16 +125,36 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     }, []);
 
     // 🟢 [2025-12-28] 안드로이드 실제 키 해시 확인 (디버깅용)
-    // 참고: 키 해시는 EAS 빌드 시 확인하거나, 다음 명령어로 확인 가능:
-    // keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android
     useEffect(() => {
-        if (Platform.OS === "android") {
-            console.log("------------------------------------------");
-            console.log("🔴 안드로이드 키 해시 확인:");
-            console.log("EAS 빌드 사용 시: eas credentials");
-            console.log("로컬 빌드 시: keytool -list -v -keystore android/app/debug.keystore");
-            console.log("------------------------------------------");
-        }
+        const getRealHash = async () => {
+            if (Platform.OS === "android") {
+                try {
+                    // 🔴 [핵심]: Application SDK를 통해 현재 실행 앱의 진짜 지문을 가져옴
+                    // 타입 에러를 우회하기 위해 any로 캐스팅
+                    const ApplicationAny = Application as any;
+                    const hash = await ApplicationAny.getAndroidSignatureHashAsync?.();
+
+                    if (hash) {
+                        console.log("------------------------------------------");
+                        // hash는 배열이거나 문자열일 수 있음
+                        const hashValue = Array.isArray(hash) ? hash[0] : hash;
+                        console.log("🔴 [진짜 등록할 값]:", hashValue);
+                        console.log("------------------------------------------");
+                    } else {
+                        throw new Error("getAndroidSignatureHashAsync not available");
+                    }
+                } catch (error) {
+                    console.error("[키 해시 확인 실패]:", error);
+                    // Fallback: 안내 메시지 출력
+                    console.log("------------------------------------------");
+                    console.log("🔴 키 해시 자동 확인 실패. 다음 방법으로 확인하세요:");
+                    console.log("EAS 빌드 사용 시: eas credentials");
+                    console.log("로컬 빌드 시: keytool -list -v -keystore android/app/debug.keystore");
+                    console.log("------------------------------------------");
+                }
+            }
+        };
+        getRealHash();
     }, []);
 
     // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
@@ -178,8 +272,9 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             <View style={{ flex: 1 }}>
                 <WebView
                     ref={webRef}
+                    key={deepLinkUrl || "default"} // 🟢 [2026-01-21] 딥링크 URL 변경 시 WebView 재마운트
                     style={{ flex: 1 }}
-                    source={{ uri: resolvedUri }} // 🟢 [수정]: resolvedUri 사용
+                    source={{ uri: resolvedUri }} // 🟢 [수정]: resolvedUri 사용 (딥링크 우선)
                     // 🟢 [추가]: 화이트리스트 설정을 통해 모든 요청 가로채기 활성화
                     originWhitelist={["*"]}
                     // 🟢 핵심 설정: 보안 및 기능 최적화
@@ -211,10 +306,35 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             url.includes("kakaonavi://") ||
                             url.startsWith("duna://")
                         ) {
-                            console.log("[App] 📲 네이티브 앱 실행:", url);
+                            console.log("[App] 📲 네이티브 앱 실행 시도:", url);
+
                             Linking.openURL(url).catch((err) => {
                                 console.error("[App] 앱 실행 실패:", err);
-                                // 앱이 없는 경우 마켓 이동
+
+                                // 🔴 [2025-12-28] intent:// 형식이 실패했을 때, kakaolink 스키마로 재시도
+                                if (url.startsWith("intent://")) {
+                                    try {
+                                        // intent:// URL에서 kakaolink 스키마 추출
+                                        const intentMatch = url.match(/intent:\/\/send([^#]*)/);
+                                        if (intentMatch && intentMatch[1]) {
+                                            const kakaoSchema = "kakaolink://send" + intentMatch[1];
+                                            console.log("[App] 🔄 kakaolink 스키마로 재시도:", kakaoSchema);
+                                            Linking.openURL(kakaoSchema).catch(() => {
+                                                // 둘 다 실패 시 스토어 이동
+                                                const storeUrl =
+                                                    Platform.OS === "ios"
+                                                        ? "https://apps.apple.com/kr/app/id362033756"
+                                                        : "https://play.google.com/store/apps/details?id=com.kakao.talk";
+                                                Linking.openURL(storeUrl).catch(() => {});
+                                            });
+                                            return;
+                                        }
+                                    } catch (parseError) {
+                                        console.error("[App] intent:// 파싱 실패:", parseError);
+                                    }
+                                }
+
+                                // 일반적인 실패 시 스토어 이동
                                 const storeUrl =
                                     Platform.OS === "ios"
                                         ? "https://apps.apple.com/kr/app/id362033756"

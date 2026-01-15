@@ -82,6 +82,28 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isShopPage]);
 
+    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 다시 표시
+    useEffect(() => {
+        const handleAuthLoginSuccess = () => {
+            // 🟢 로그인 성공 시 스플래시를 다시 표시하기 위해 플래그 제거
+            try {
+                sessionStorage.removeItem("dona-splash-shown");
+                // 🟢 스플래시를 다시 표시
+                setContentReady(false);
+                setTimeout(() => {
+                    setShowSplash(true);
+                }, 50);
+            } catch (e) {
+                console.error("로그인 후 스플래시 표시 오류:", e);
+            }
+        };
+
+        window.addEventListener("authLoginSuccess", handleAuthLoginSuccess);
+        return () => {
+            window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
+        };
+    }, []);
+
     // 🟢 Effect 2: 바디 클래스 관리 및 배경색 전환
     useEffect(() => {
         if (!mounted) return;

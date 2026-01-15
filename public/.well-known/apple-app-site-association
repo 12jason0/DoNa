@@ -1,0 +1,11 @@
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "RZCM47FCAG.kr.io.dona.dona",
+                "paths": ["/courses/*", "/"]
+            }
+        ]
+    }
+}

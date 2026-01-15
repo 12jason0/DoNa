@@ -700,17 +700,11 @@ export default function CourseDetailClient({
         }
 
         // 🟢 [2025-12-28] baseUrl 끝의 슬래시 제거 후 URL 생성
-        const cleanBaseUrl = baseUrl.trim().replace(/\/$/, "");
-        const courseUrl = `${cleanBaseUrl}/courses/${courseId}`;
-        const cleanCourseUrl = courseUrl.trim().replace(/\/$/, "");
+        // 🟢 [테스트용]: 운영 도메인으로 하드코딩 (카카오 콘솔 테스트용)
+        const cleanCourseUrl = "https://dona.io.kr/courses/" + courseId;
 
         // 🟢 [2025-12-28] 디버깅: 전달되는 URL 확인 (카카오 콘솔 등록값과 비교용)
-        console.log("[카카오 공유] 전달 URL:", {
-            courseUrl: cleanCourseUrl,
-            baseUrl: cleanBaseUrl,
-            origin: typeof window !== "undefined" ? window.location.origin : "N/A",
-            href: typeof window !== "undefined" ? window.location.href : "N/A",
-        });
+        console.log("[카카오 공유] 테스트용 주소로 공유 시도:", cleanCourseUrl);
 
         try {
             const Kakao = await ensureKakaoSdk();
@@ -729,14 +723,16 @@ export default function CourseDetailClient({
                 : "DoNa에서 추천하는 코스를 확인해보세요!";
 
             // 🟢 [2025-12-28] 이미지 URL: 절대 경로로 변환 (카카오 공유는 절대 경로만 허용)
+            // 🟢 [테스트용]: 운영 도메인 사용 (카카오 서버가 접근 가능하도록)
+            const testBaseUrl = "https://dona.io.kr";
             let shareImageUrl = heroImageUrl || courseData.imageUrl;
             if (shareImageUrl) {
                 // 이미 절대 경로인 경우 그대로 사용
                 if (!shareImageUrl.startsWith("http")) {
-                    // 상대 경로인 경우 baseUrl과 결합
+                    // 상대 경로인 경우 운영 도메인과 결합
                     shareImageUrl = shareImageUrl.startsWith("/")
-                        ? `${baseUrl}${shareImageUrl}`
-                        : `${baseUrl}/${shareImageUrl}`;
+                        ? `${testBaseUrl}${shareImageUrl}`
+                        : `${testBaseUrl}/${shareImageUrl}`;
                 }
             } else {
                 // 기본 로고 사용 (절대 경로)
