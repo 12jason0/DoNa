@@ -68,12 +68,25 @@ export function isWeb(): boolean {
 export function isMobileApp(): boolean {
     if (typeof window === "undefined") return false;
 
-    // ReactNativeWebView 객체 확인
-    const hasWebView = !!(window as any).ReactNativeWebView;
-
-    // User Agent로 Expo/ReactNative 확인
     const userAgent = window.navigator.userAgent;
+    
+    // 🟢 1순위: User Agent에 DoNa_App이 포함되어 있으면 확실히 앱 환경
+    const hasDoNaApp = /DoNa_App/i.test(userAgent);
+    if (hasDoNaApp) return true;
+
+    // 🟢 2순위: ReactNativeWebView 객체 확인 (앱에서 주입됨)
+    const hasWebView = !!(window as any).ReactNativeWebView;
+    
+    // 🟢 3순위: User Agent로 Expo/ReactNative 확인
     const isExpo = /ReactNative|Expo/i.test(userAgent);
+
+    // 🟢 웹 브라우저에서는 ReactNativeWebView가 없어야 함
+    // 단, ReactNativeWebView가 있고 User Agent에 DoNa_App이 없으면 웹 브라우저로 간주
+    // (개발 환경에서 수동으로 주입된 경우 방지)
+    if (hasWebView && !hasDoNaApp && !isExpo) {
+        // 웹 브라우저에서 수동으로 주입된 경우일 수 있으므로 false 반환
+        return false;
+    }
 
     return hasWebView || isExpo;
 }

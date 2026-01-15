@@ -685,74 +685,37 @@ export default function CourseDetailClient({
     };
 
     const handleKakaoShare = async () => {
-        // 🟢 코스 페이지 URL을 명시적으로 생성 (공유된 링크가 해당 코스 페이지로 이동하도록)
-        const courseUrl =
-            typeof window !== "undefined"
-                ? `${window.location.origin}/courses/${courseId}`
-                : `https://dona.app/courses/${courseId}`;
+        // 🟢 [2025-12-28] 통합: 접속 환경에 따라 baseUrl을 자동으로 결정 (로컬 IP 또는 운영 도메인)
+        let baseUrl = "https://dona.io.kr"; // 기본값을 운영 도메인으로 설정
 
-        // 🟢 [앱 환경]: 웹 공유 링크(Web Sharer) 사용
-        if (isMobileApp() && (window as any).ReactNativeWebView) {
-            try {
-                // 카카오 JS 키 가져오기 (서버 API 우선, 없으면 클라이언트 환경 변수)
-                let jsKey: string | undefined = undefined;
-                try {
-                    const configRes = await fetch("/api/config/kakao-js-key");
-                    if (configRes.ok) {
-                        const configData = await configRes.json();
-                        jsKey = configData.jsKey;
-                    }
-                } catch {}
-
-                if (!jsKey) {
-                    jsKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-                }
-
-                if (!jsKey) {
-                    throw new Error("카카오 공유 설정이 완료되지 않았습니다");
-                }
-
-                // 🟢 [Confirmed]: DB 데이터를 템플릿 변수에 매핑
-                const templateArgs = {
-                    title: courseData.title, // DB의 호기심 유발 제목
-                    description: courseData.description || "DoNa에서 추천하는 코스를 확인해보세요!", // DB의 호기심 유발 설명
-                    imageUrl: heroImageUrl || courseData.imageUrl || getS3StaticUrl("logo/donalogo_512.png"), // S3 최적화 이미지 경로
-                    id: courseId.toString(), // 상세 페이지 연결 ID
-                };
-
-                // 웹 공유 링크(Web Sharer) URL 생성
-                const webShareUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=${jsKey}&template_id=127331&template_args=${encodeURIComponent(
-                    JSON.stringify(templateArgs)
-                )}`;
-
-                // 앱으로 메시지 전송하여 웹 공유 링크 열기
-                (window as any).ReactNativeWebView.postMessage(
-                    JSON.stringify({
-                        type: "kakaoShare",
-                        webShareUrl: webShareUrl,
-                    })
-                );
-
-                setShowShareModal(false);
-                return;
-            } catch (error) {
-                console.error("카카오톡 공유 실패:", error);
-                // Fallback: 링크 복사
-                try {
-                    await navigator.clipboard.writeText(courseUrl);
-                    showToast("링크가 복사되었습니다.", "success");
-                } catch {
-                    showToast("공유에 실패했습니다.", "error");
-                }
-                return;
+        if (typeof window !== "undefined") {
+            const origin = window.location.origin.replace(/\/$/, "");
+            // dona.io.kr로 접속 중이면 해당 도메인 사용
+            if (origin.includes("dona.io.kr")) {
+                baseUrl = "https://dona.io.kr";
+            } else if (origin.includes("192.168.") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+                // 로컬 개발 환경: 실제 접속 주소 사용
+                baseUrl = origin;
             }
         }
 
-        // 🟢 [웹 환경]: 기존 카카오 SDK 사용
+        // 🟢 [2025-12-28] baseUrl 끝의 슬래시 제거 후 URL 생성
+        const cleanBaseUrl = baseUrl.trim().replace(/\/$/, "");
+        const courseUrl = `${cleanBaseUrl}/courses/${courseId}`;
+        const cleanCourseUrl = courseUrl.trim().replace(/\/$/, "");
+
+        // 🟢 [2025-12-28] 디버깅: 전달되는 URL 확인 (카카오 콘솔 등록값과 비교용)
+        console.log("[카카오 공유] 전달 URL:", {
+            courseUrl: cleanCourseUrl,
+            baseUrl: cleanBaseUrl,
+            origin: typeof window !== "undefined" ? window.location.origin : "N/A",
+            href: typeof window !== "undefined" ? window.location.href : "N/A",
+        });
+
         try {
             const Kakao = await ensureKakaoSdk();
             if (!Kakao) {
-                throw new Error("Kakao SDK를 불러올 수 없습니다.");
+                throw new Error("Kakao SDK 로드 실패");
             }
 
             // 🟢 카카오톡 공유 4002 오류 해결: 패킷 사이즈 제한(10K) 준수
@@ -765,10 +728,22 @@ export default function CourseDetailClient({
                     : courseData.description
                 : "DoNa에서 추천하는 코스를 확인해보세요!";
 
-            // 🟢 이미지 URL이 너무 길면 기본 로고 사용
-            const shareImageUrl =
-                heroImageUrl && heroImageUrl.length < 500 ? heroImageUrl : getS3StaticUrl("logo/donalogo_512.png");
+            // 🟢 [2025-12-28] 이미지 URL: 절대 경로로 변환 (카카오 공유는 절대 경로만 허용)
+            let shareImageUrl = heroImageUrl || courseData.imageUrl;
+            if (shareImageUrl) {
+                // 이미 절대 경로인 경우 그대로 사용
+                if (!shareImageUrl.startsWith("http")) {
+                    // 상대 경로인 경우 baseUrl과 결합
+                    shareImageUrl = shareImageUrl.startsWith("/")
+                        ? `${baseUrl}${shareImageUrl}`
+                        : `${baseUrl}/${shareImageUrl}`;
+                }
+            } else {
+                // 기본 로고 사용 (절대 경로)
+                shareImageUrl = getS3StaticUrl("logo/donalogo_512.png");
+            }
 
+            // 🟢 [2025-12-28] 통합: 앱/웹 모두 템플릿 번호 없이 '기본 공유' 방식 사용
             Kakao.Share.sendDefault({
                 objectType: "feed",
                 content: {
@@ -776,26 +751,35 @@ export default function CourseDetailClient({
                     description: shareDescription,
                     imageUrl: shareImageUrl,
                     link: {
-                        mobileWebUrl: courseUrl,
-                        webUrl: courseUrl,
+                        mobileWebUrl: cleanCourseUrl,
+                        webUrl: cleanCourseUrl,
                     },
                 },
                 buttons: [
                     {
                         title: "코스 보러가기",
                         link: {
-                            mobileWebUrl: courseUrl,
-                            webUrl: courseUrl,
+                            mobileWebUrl: cleanCourseUrl,
+                            webUrl: cleanCourseUrl,
                         },
                     },
                 ],
             });
+
             setShowShareModal(false);
-        } catch (error) {
-            console.error("카카오톡 공유 실패:", error);
-            // Fallback: 링크 복사
+        } catch (error: any) {
+            console.error("[카카오 공유] 실패:", error);
+            // 🟢 [2025-12-28] 에러 상세 정보 로깅
+            if (error?.message) {
+                console.error("[카카오 공유] 에러 메시지:", error.message);
+            }
+            if (error?.code) {
+                console.error("[카카오 공유] 에러 코드:", error.code);
+            }
+
+            // 실패 시 클립보드 복사 Fallback 유지
             try {
-                await navigator.clipboard.writeText(courseUrl);
+                await navigator.clipboard.writeText(cleanCourseUrl);
                 showToast("링크가 복사되었습니다.", "success");
             } catch {
                 showToast("공유에 실패했습니다.", "error");

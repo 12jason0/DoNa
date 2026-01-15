@@ -379,10 +379,36 @@ function CourseDetailPage() {
     };
 
     const handleKakaoShare = async () => {
-        const url = window.location.href;
+        // 🟢 [2025-12-28] URL 끝의 슬래시 제거하여 카카오 콘솔 등록값과 정확히 일치시킴
+        const url = window.location.href.replace(/\/$/, "").trim(); // 끝의 슬래시 및 공백 제거
+        
+        // 🟢 [2025-12-28] 디버깅: 전달되는 URL 확인
+        console.log("[카카오 공유] 전달 URL:", {
+            url,
+            origin: window.location.origin,
+            href: window.location.href,
+        });
+        
         try {
             const Kakao = (window as any).Kakao;
-            if (Kakao && !Kakao.isInitialized()) Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
+            if (!Kakao) {
+                throw new Error("카카오 SDK가 로드되지 않았습니다.");
+            }
+            
+            const jsKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+            if (!jsKey) {
+                throw new Error("카카오 JS 키가 설정되지 않았습니다.");
+            }
+            
+            if (!Kakao.isInitialized()) {
+                Kakao.init(jsKey);
+            }
+            
+            // 🟢 URL 검증
+            if (!url || !url.startsWith("http")) {
+                throw new Error(`유효하지 않은 URL: ${url}`);
+            }
+            
             Kakao.Share.sendDefault({
                 objectType: "feed",
                 content: {
@@ -394,7 +420,11 @@ function CourseDetailPage() {
                 buttons: [{ title: "코스 보러가기", link: { mobileWebUrl: url, webUrl: url } }],
             });
             setShowShareModal(false);
-        } catch {
+        } catch (error: any) {
+            console.error("[카카오 공유] 실패:", error);
+            if (error?.message) {
+                console.error("[카카오 공유] 에러 메시지:", error.message);
+            }
             navigator.clipboard.writeText(url);
             showToast("링크가 복사되었습니다.", "success");
         }

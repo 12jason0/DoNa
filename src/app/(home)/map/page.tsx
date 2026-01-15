@@ -461,13 +461,30 @@ function MapPageInner() {
             showToast("위치 정보를 사용할 수 없습니다.");
             return;
         }
+
+        // 🟢 HTTP 환경에서 위치 정보 사용 불가 체크
+        if (
+            typeof window !== "undefined" &&
+            window.location.protocol === "http:" &&
+            !window.location.hostname.includes("localhost")
+        ) {
+            showToast("HTTPS 환경에서만 위치 정보를 사용할 수 있습니다.");
+            // 현재 중심점 기준으로 데이터 로드
+            try {
+                await fetchAllData(center);
+            } catch (error) {
+                console.error("데이터 로드 오류:", error);
+            }
+            return;
+        }
+
         setLoading(true);
 
-        // 타임아웃 설정 (10초 후 자동 해제)
+        // 타임아웃 설정 (20초 후 자동 해제 - 더 여유있게)
         const timeoutId = setTimeout(() => {
             setLoading(false);
             showToast("위치 정보를 가져오는 데 시간이 걸리고 있어요.");
-        }, 10000);
+        }, 20000);
 
         navigator.geolocation.getCurrentPosition(
             async (p) => {
@@ -489,7 +506,16 @@ function MapPageInner() {
                 clearTimeout(timeoutId);
                 setLoading(false);
                 console.error("위치 정보 가져오기 실패:", err);
-                showToast("위치를 가져올 수 없습니다.");
+
+                // 🟢 에러 코드별 구체적인 메시지 표시
+                const errorMsgs: { [key: number]: string } = {
+                    1: "위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.",
+                    2: "위치를 확인할 수 없습니다. GPS 신호를 확인해주세요.",
+                    3: "시간이 초과되었습니다. 네트워크 연결을 확인해주세요.",
+                };
+                const errorMsg = errorMsgs[err.code] || "위치를 가져올 수 없습니다.";
+                showToast(errorMsg);
+
                 // 현재 중심점 기준으로 데이터 로드
                 try {
                     fetchAllData(center);
@@ -497,7 +523,12 @@ function MapPageInner() {
                     console.error("데이터 로드 오류:", error);
                 }
             },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            {
+                // 🟢 실내 테스트에 더 적합한 설정
+                enableHighAccuracy: false, // 실내에서는 false가 더 잘 잡힘
+                timeout: 15000, // 타임아웃을 15초로 늘려 대기 시간 확보
+                maximumAge: 0, // 항상 최신 위치를 가져오도록 캐시 끔
+            }
         );
     }, [fetchAllData, center]);
 

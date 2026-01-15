@@ -103,12 +103,12 @@ const Login = () => {
                 localStorage.removeItem("user");
                 localStorage.removeItem("loginTime");
 
-                // 웹뷰 통신 (기존 유지)
+                // 🟢 [Fix]: 웹뷰 통신 - 앱에 userId 전달 (세션 동기화)
                 try {
                     if ((window as any).ReactNativeWebView) {
                         (window as any).ReactNativeWebView.postMessage(
                             JSON.stringify({
-                                type: "loginSuccess",
+                                type: "login", // 🟢 WebScreen.tsx에서 기대하는 타입으로 변경
                                 userId: data?.user?.id ?? null,
                                 // 🟢 token은 쿠키에 있으므로 필요시 세션 API에서 가져옴
                                 token: data?.token ?? null,

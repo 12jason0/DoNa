@@ -50,6 +50,19 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         return () => clearTimeout(timer);
     }, []);
 
+    // 🟢 [2025-12-28] 안드로이드 실제 키 해시 확인 (디버깅용)
+    // 참고: 키 해시는 EAS 빌드 시 확인하거나, 다음 명령어로 확인 가능:
+    // keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android
+    useEffect(() => {
+        if (Platform.OS === "android") {
+            console.log("------------------------------------------");
+            console.log("🔴 안드로이드 키 해시 확인:");
+            console.log("EAS 빌드 사용 시: eas credentials");
+            console.log("로컬 빌드 시: keytool -list -v -keystore android/app/debug.keystore");
+            console.log("------------------------------------------");
+        }
+    }, []);
+
     // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
     const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
@@ -250,12 +263,12 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                         const { nativeEvent } = syntheticEvent;
                         if (nativeEvent.code === -1002) return;
                     }}
-                    // 🟢 카카오 로그인을 위해 UserAgent 끝에 'KAKAOTALK' 명시
+                    // 🟢 [2025-12-28] UserAgent에서 'KAKAOTALK' 제거 (카카오 공유 충돌 방지)
                     // 🟢 [VERSION CONTROL]: 심사용 빌드 식별자를 추가하여 웹에서 버전 분기 처리 가능하도록 함
                     userAgent={
                         Platform.OS === "android"
-                            ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36; KAKAOTALK DoNa_App_v1.2.1_Review_Android"
-                            : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1; KAKAOTALK DoNa_App_v1.2.1_Review_iOS"
+                            ? "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36; DoNa_App_Android"
+                            : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1; DoNa_App_iOS"
                     }
                     injectedJavaScriptBeforeContentLoaded={initialScript || ""}
                     onMessage={async (ev) => {

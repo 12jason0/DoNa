@@ -113,7 +113,9 @@ export default function Footer() {
                         href="/"
                         prefetch={true}
                         aria-label="메인"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/") ? "bg-green-50 dark:bg-gray-800" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
+                            isActive("/") ? "bg-green-50 dark:bg-gray-800" : ""
+                        }`}
                         style={{ color: isActive("/") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
@@ -127,7 +129,9 @@ export default function Footer() {
                         href="/courses"
                         prefetch={true}
                         aria-label="코스"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/courses") ? "bg-green-50 dark:bg-gray-800" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
+                            isActive("/courses") ? "bg-green-50 dark:bg-gray-800" : ""
+                        }`}
                         style={{ color: isActive("/courses") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>
@@ -142,12 +146,19 @@ export default function Footer() {
                         href="/map"
                         prefetch={true}
                         aria-label="맵"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/map") ? "bg-green-50 dark:bg-gray-800" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
+                            isActive("/map") ? "bg-green-50 dark:bg-gray-800" : ""
+                        }`}
                         style={{ color: isActive("/map") ? "#7aa06f" : "#99c08e" }}
                     >
-                        <svg {...svgProps}>
-                            <circle cx="12" cy="12" r="10" />
-                            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="28"
+                            height="28"
+                            viewBox="0 0 256 256"
+                            fill="currentColor"
+                        >
+                            <path d="M112,80a16,16,0,1,1,16,16A16,16,0,0,1,112,80ZM64,80a64,64,0,0,1,128,0c0,59.95-57.58,93.54-60,94.95a8,8,0,0,1-7.94,0C121.58,173.54,64,140,64,80Zm16,0c0,42.2,35.84,70.21,48,78.5,12.15-8.28,48-36.3,48-78.5a48,48,0,0,0-96,0Zm122.77,67.63a8,8,0,0,0-5.54,15C213.74,168.74,224,176.92,224,184c0,13.36-36.52,32-96,32s-96-18.64-96-32c0-7.08,10.26-15.26,26.77-21.36a8,8,0,0,0-5.54-15C29.22,156.49,16,169.41,16,184c0,31.18,57.71,48,112,48s112-16.82,112-48C240,169.41,226.78,156.49,202.77,147.63Z" />
                         </svg>
                     </Link>
 
@@ -161,7 +172,9 @@ export default function Footer() {
                             }
                         }}
                         aria-label="Escape"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${isActive("/escape") ? "bg-green-50 dark:bg-gray-800" : ""}`}
+                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
+                            isActive("/escape") ? "bg-green-50 dark:bg-gray-800" : ""
+                        }`}
                         style={{ color: isActive("/escape") ? "#7aa06f" : "#99c08e" }}
                     >
                         <svg {...svgProps}>

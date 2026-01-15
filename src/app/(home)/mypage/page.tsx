@@ -825,7 +825,8 @@ const MyPage = () => {
     const shareBadgeToKakao = async (badge: UserBadgeItem) => {
         try {
             const Kakao = await ensureKakaoSdk();
-            const link = typeof location !== "undefined" ? location.href : "";
+            // 🟢 [2025-12-28] URL 끝의 슬래시 제거하여 카카오 콘솔 등록값과 정확히 일치시킴
+            const link = typeof location !== "undefined" ? location.href.replace(/\/$/, "") : "";
             const imageUrl = badge.image_url || "";
             const bragText = `${userInfo?.name || "저"}는 '${badge.name}' 배지를 획득했어요! DoNa에서 함께 도전해요 ✨`;
             if (Kakao && Kakao.Share) {

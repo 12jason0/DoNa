@@ -35,8 +35,9 @@ const nextConfig = {
     experimental: {
         optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "lodash"],
         // 🟢 [수정]: Next.js 16 대응 - 'allowedDevOrigins' 대신 'serverActions.allowedOrigins' 사용
+        // 🔴 [수정]: 하드코딩된 IP 삭제하고 동적 변수 사용
         serverActions: {
-            allowedOrigins: ["192.168.219.220:3000", "localhost:3000"],
+            allowedOrigins: [`${localIp}:3000`, "localhost:3000", "dona.io.kr"],
         },
     },
 
@@ -107,22 +108,26 @@ const nextConfig = {
                                 "https://vercel.live",
                             ].join(" ");
 
-                            // 3. API 및 소켓 연결 허용
+                            // 3. API 및 소켓 연결 허용 (IP 동적 적용)
                             const connectSrc = [
                                 "'self'",
                                 "https://*.naver.com",
                                 "https://*.navercorp.com",
                                 "https://*.pstatic.net",
+                                "https://*.kakao.com",
                                 "https://dona.io.kr",
                                 "https://*.pusher.com",
                                 "wss://*.pusher.com",
                                 "https://*.tosspayments.com",
                                 "https://www.google-analytics.com",
                                 "https://region1.google-analytics.com",
-                                "https://analytics.google.com", // 👈 추가
+                                "https://analytics.google.com",
                                 "https://stats.g.doubleclick.net",
-                                "http://192.168.219.220:3000", // 🟢 바뀐 IP 허용
-                                "ws://192.168.219.220:3000", // 🟢 바뀐 웹소켓 허용
+                                // 🔴 [수정]: 하드코딩된 192.168.219.220을 삭제하고 동적 변수 적용
+                                `http://${localIp}:3000`,
+                                `ws://${localIp}:3000`,
+                                "localhost:3000",
+                                "ws://localhost:3000",
                             ].join(" ");
 
                             return [

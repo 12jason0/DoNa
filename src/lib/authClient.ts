@@ -146,8 +146,16 @@ export async function logout(): Promise<boolean> {
                 // 🟢 [배포용 최종 Fix]: 단순 이동 대신 replace("/")로 히스토리와 캐시를 날림
                 // 타임스탬프를 붙이지 않고 깔끔하게 메인으로 이동하여 무한 루프 방지
                 const forceRedirect = () => {
-                    // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
-                    window.location.replace("/");
+                    if (isApp && (window as any).ReactNativeWebView) {
+                        // 🟢 [Fix]: 앱에서는 replace 대신 초기 페이지로 이동 유도만 하고
+                        // 실제 네비게이션은 Native bridge 메시지로 처리하는 것이 가장 안전함
+                        console.log(
+                            "[authClient] App environment detected. Skipping window.location.replace to prevent IP exposure."
+                        );
+                    } else {
+                        // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
+                        window.location.replace("/");
+                    }
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
@@ -155,26 +163,27 @@ export async function logout(): Promise<boolean> {
                     // 앱은 웹보다 쿠키 처리에 보수적이므로 API 호출 후 앱 내부의 전역 상태를 반드시 초기화해야 함
                     try {
                         (window as any).ReactNativeWebView.postMessage(
-                            JSON.stringify({ 
-                                type: "logout", 
+                            JSON.stringify({
+                                type: "logout",
                                 success: res.ok,
                                 // 🟢 [배포용 최종 Fix]: 타임스탬프 제거, 깔끔한 리다이렉트
                                 redirect: "/",
                                 // 🟢 [App] 전역 상태 초기화 지시
                                 clearState: true, // userContext나 Zustand 등에 저장된 유저 정보를 null로 바꾸도록 지시
-                                navigateTo: "Login" // navigation.replace('Login') 실행 지시
+                                navigateTo: "Login", // navigation.replace('Login') 실행 지시
                             })
                         );
                     } catch (e) {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
-                    // 🟢 [배포용 최종 Fix]: 앱 환경에서도 깔끔하게 메인으로 이동
+                    // 🟢 [Fix]: 앱에서는 location.replace("/")가 IP 노출의 주범일 수 있음
+                    // 약간의 지연 후 세션 스토리지만 비우고 네이티브의 처리를 기다림
                     setTimeout(() => {
-                        forceRedirect();
-                    }, 300);
-                    // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화 (페이지 이동 후에는 더 이상 필요 없음)
-                    isLoggingOut = false;
-                    logoutPromise = null;
+                        isLoggingOut = false;
+                        logoutPromise = null;
+                        // 🟢 [Fix]: 앱 환경에서는 window.location.replace 호출하지 않음
+                        // Native bridge 메시지로 네비게이션 처리하도록 함
+                    }, 500);
                     return res.ok;
                 } else {
                     // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
@@ -231,39 +240,47 @@ export async function logout(): Promise<boolean> {
                 } catch (e) {
                     console.warn("[authClient] 스토리지 초기화 중 오류:", e);
                 }
-                
+
                 window.dispatchEvent(new CustomEvent("authLogout"));
 
                 // 🟢 [배포용 최종 Fix]: 단순 이동 대신 replace("/")로 히스토리와 캐시를 날림
                 const isApp = isMobileApp();
                 const forceRedirect = () => {
-                    // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
-                    window.location.replace("/");
+                    if (isApp && (window as any).ReactNativeWebView) {
+                        // 🟢 [Fix]: 앱에서는 replace 대신 초기 페이지로 이동 유도만 하고
+                        // 실제 네비게이션은 Native bridge 메시지로 처리하는 것이 가장 안전함
+                        console.log(
+                            "[authClient] App environment detected. Skipping window.location.replace to prevent IP exposure."
+                        );
+                    } else {
+                        // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
+                        window.location.replace("/");
+                    }
                 };
 
                 if (isApp && (window as any).ReactNativeWebView) {
                     // 🟢 [App] 에러 발생 시에도 전역 상태 초기화 지시
                     try {
                         (window as any).ReactNativeWebView.postMessage(
-                            JSON.stringify({ 
-                                type: "logout", 
+                            JSON.stringify({
+                                type: "logout",
                                 success: false,
                                 // 🟢 [배포용 최종 Fix]: 타임스탬프 제거, 깔끔한 리다이렉트
                                 redirect: "/",
                                 // 🟢 [App] 전역 상태 초기화 지시
                                 clearState: true,
-                                navigateTo: "Login"
+                                navigateTo: "Login",
                             })
                         );
                     } catch (e) {
                         console.warn("[authClient] WebView 메시지 전송 실패:", e);
                     }
+                    // 🟢 [Fix]: 앱 환경에서는 window.location.replace 호출하지 않음
+                    // Native bridge 메시지로 네비게이션 처리하도록 함
                     setTimeout(() => {
-                        forceRedirect();
-                    }, 300);
-                    // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
-                    isLoggingOut = false;
-                    logoutPromise = null;
+                        isLoggingOut = false;
+                        logoutPromise = null;
+                    }, 500);
                 } else {
                     forceRedirect();
                     // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
