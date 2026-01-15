@@ -19,7 +19,7 @@ type Props = {
 
 export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }: Props) {
     // 🟢 [수정]: uri prop이 제대로 전달되었는지 확인 및 기본값 설정
-    const resolvedUri = initialUri || "http://192.168.219.220:3000";
+    const resolvedUri = initialUri || "http://192.168.124.102:3000";
 
     // 🟢 [디버깅]: uri 전달 확인
     useEffect(() => {
@@ -38,21 +38,23 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     const pushToken = useContext(PushTokenContext);
     const [initialScript, setInitialScript] = useState<string | null>(null);
     const [isSplashDone, setIsSplashDone] = useState(false);
+    // 🔴 [Fix]: 로그아웃 처리 중 플래그 - 무한 로그인 루프 방지
+    const isProcessingLogoutRef = useRef(false);
 
     // 🟢 [설정]: 스플래시 배경색 (app.json의 배경색과 일치시켜주세요)
     const SPLASH_COLOR = "#6db48c";
 
     useEffect(() => {
-        // 🟢 성능 최적화: 7초는 너무 깁니다. 2초로 단축하여 체감 속도 향상
-        const timer = setTimeout(() => setIsSplashDone(true), 2000);
+        // 🟢 [설정]: 스플래시 표시 시간 6초
+        const timer = setTimeout(() => setIsSplashDone(true), 6500);
         return () => clearTimeout(timer);
     }, []);
 
-    // 🟢 [수정]: 스플래시 중이든 아니든 항상 상단 안전 여백(insets.top)을 적용하여 덮지 않음
-    const dynamicPaddingTop = insets.top;
+    // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
+    const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
     // 🟢 [추가]: 안드로이드 내비게이션 바 및 iOS 하단 바 영역 확보
-    const dynamicPaddingBottom = insets.bottom;
+    const dynamicPaddingBottom = insets.bottom * 0.6;
 
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {
@@ -65,7 +67,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             }
             return;
         }
-        await WebBrowser.openBrowserAsync(url, { readerMode: false, toolbarColor: "#ffffff" });
+        await WebBrowser.openBrowserAsync(url, { readerMode: false, toolbarColor: "#6db48c" });
     };
 
     const handleAndroidBack = useCallback(() => {
@@ -102,10 +104,40 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             lines.push(
                 `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`
             );
+            // 🔴 [Fix 1]: 세션 복구 로직 강화 - 쿠키가 없으면 아예 서버 요청 차단
+            lines.push(`
+                (async function restoreSession() {
+                    try {
+                        const hasAuth = document.cookie.includes('authorization') || document.cookie.includes('auth');
+                        if (!hasAuth) {
+                            console.log('[세션 복구] 인증 쿠키 없음 - 중단');
+                            return;
+                        }
+
+                        const sessionRes = await fetch('/api/auth/session', { method: 'GET', credentials: 'include' });
+                        const sessionData = await sessionRes.json();
+                        
+                        // 앱 시작 시 혹은 새로고침 시에만 동작
+                        if (sessionData.authenticated && sessionData.user?.id) {
+                            if (window.ReactNativeWebView) {
+                                window.ReactNativeWebView.postMessage(JSON.stringify({
+                                    type: 'login',
+                                    userId: sessionData.user.id,
+                                    fromRestore: true
+                                }));
+                            }
+                        }
+                    } catch (e) { console.warn('[세션 복구] 실패:', e); }
+                })();
+            `);
             lines.push("})();");
             setInitialScript(lines.join("\n"));
         })();
     }, [pushToken]);
+
+    // 🟢 [추가]: 스플래시와 상태바가 동시에 전환되도록 배경색 변수 통일
+    const statusBarBackgroundColor = !isSplashDone ? SPLASH_COLOR : "#ffffff";
+    const containerBackgroundColor = !isSplashDone ? SPLASH_COLOR : "#ffffff";
 
     return (
         // 🟢 [수정]: 상단(paddingTop)뿐만 아니라 하단(paddingBottom) 여백도 시스템 영역만큼 확보
@@ -115,17 +147,18 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                 {
                     paddingTop: dynamicPaddingTop,
                     paddingBottom: dynamicPaddingBottom, // 👈 안드로이드 뒤로가기/홈 버튼 영역 위로 푸터를 올림
-                    backgroundColor: !isSplashDone ? SPLASH_COLOR : "#ffffff",
+                    backgroundColor: containerBackgroundColor, // 🟢 스플래시 종료 시 컨테이너와 상태바가 동시에 흰색으로 전환
                 },
             ]}
         >
-            {/* 🟢 [핵심 수정]: 상태바 배경색을 스플래시 색상과 동기화 */}
+            {/* 🟢 [핵심 수정]: 상태바 배경색을 스플래시 색상과 동기화 - 스플래시 종료 시 동시에 흰색으로 전환 */}
             <StatusBar
                 // 배경이 밝으면 dark-content(검정글자), 어두우면 light-content(흰글자)
                 barStyle="dark-content"
-                translucent={true}
-                // 스플래시 중에는 SPLASH_COLOR, 완료 후에는 흰색(#ffffff)
-                backgroundColor={!isSplashDone ? SPLASH_COLOR : "#ffffff"}
+                // 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 translucent를 false로 설정
+                translucent={!isSplashDone ? false : true}
+                // 🟢 스플래시 종료 시 컨테이너와 동시에 흰색으로 전환
+                backgroundColor={statusBarBackgroundColor}
                 hidden={false} // 👈 상태바를 항상 표시
             />
 
@@ -134,6 +167,8 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                     ref={webRef}
                     style={{ flex: 1 }}
                     source={{ uri: resolvedUri }} // 🟢 [수정]: resolvedUri 사용
+                    // 🟢 [추가]: 화이트리스트 설정을 통해 모든 요청 가로채기 활성화
+                    originWhitelist={["*"]}
                     // 🟢 핵심 설정: 보안 및 기능 최적화
                     sharedCookiesEnabled={true} // 서버 사이드 보안 쿠키 동기화 활성화
                     thirdPartyCookiesEnabled={true} // 인증 도메인 간 쿠키 전달 허용
@@ -153,15 +188,33 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                     }}
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
-                        // 앱 스킴 및 카카오톡 리다이렉트 처리
+
+                        // 1. [네이티브 앱 실행 스킴]: 이건 무조건 Linking.openURL로 처리 (외부 앱 실행)
                         if (
                             url.startsWith("kakaokompassauth://") ||
                             url.startsWith("kakaolink://") ||
                             url.startsWith("kakaotalk://") ||
+                            url.startsWith("intent://") ||
+                            url.includes("kakaonavi://") ||
                             url.startsWith("duna://")
                         ) {
-                            Linking.openURL(url).catch(() => {});
-                            return false;
+                            console.log("[App] 📲 네이티브 앱 실행:", url);
+                            Linking.openURL(url).catch((err) => {
+                                console.error("[App] 앱 실행 실패:", err);
+                                // 앱이 없는 경우 마켓 이동
+                                const storeUrl =
+                                    Platform.OS === "ios"
+                                        ? "https://apps.apple.com/kr/app/id362033756"
+                                        : "https://play.google.com/store/apps/details?id=com.kakao.talk";
+                                Linking.openURL(storeUrl).catch(() => {});
+                            });
+                            return false; // 웹뷰 내부 이동 차단
+                        }
+
+                        // 2. [카카오 웹 공유창]: 🔴 절대 Linking.openURL을 쓰지 말고 웹뷰 내부에서 열리게 허용(true)
+                        if (url.includes("sharer.kakao.com")) {
+                            console.log("[App] 🌏 카카오 웹 공유창 내부 로드");
+                            return true; // 🟢 외부로 나가지 않고 웹뷰 안에서 창을 띄움
                         }
 
                         if (url.includes("#webTalkLogin")) {
@@ -176,12 +229,17 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                         const isCloudFront =
                             url.includes("d13xx6k6chk2in.cloudfront.net") || url.includes("cloudfront.net");
 
+                        // 🟢 [Fix]: 로컬 개발 IP 주소도 내부 주소로 인정하여 외부 브라우저로 열리지 않도록 방지
+                        const isLocalDev =
+                            url.includes("192.168.") || url.includes("localhost") || url.includes("127.0.0.1");
+
                         const isInternal =
                             url.includes("dona.io.kr") ||
                             url.includes("auth.kakao.com") ||
                             url.includes("kauth.kakao.com") ||
                             url.includes("accounts.kakao.com") ||
-                            isCloudFront; // CloudFront 이미지 허용
+                            isCloudFront || // CloudFront 이미지 허용
+                            isLocalDev; // 🟢 [핵심 추가]: 개발용 로컬 IP도 내부 주소로 인정
 
                         if (isInternal) return true;
 
@@ -206,71 +264,75 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             if (data.type === "setAuthToken") {
                                 await saveAuthToken(String(data.payload || ""));
                             }
-                            // 🟢 [추가]: 로그인 이벤트 처리 (RevenueCat 동기화용)
-                            else if (data.type === "login" && data.userId) {
+                            // 🔴 [Fix 2]: 로그인 신호 수신부 - 어떤 로그인 신호도 Cooldown 중엔 차단
+                            if ((data.type === "login" || data.type === "loginSuccess") && data.userId) {
+                                if (isProcessingLogoutRef.current) {
+                                    console.log(
+                                        "[App] 🔴 로그아웃 보호 기간 중 자동 로그인 차단 (유저 ID:",
+                                        data.userId,
+                                        ")"
+                                    );
+                                    return;
+                                }
                                 await AsyncStorage.setItem("userId", String(data.userId));
                                 onUserLogin?.(String(data.userId));
+                                console.log("[App] 로그인 정보 동기화 완료:", data.userId);
                             }
-                            // 🟢 [배포용 최종 Fix]: 웹에서 보낸 로그아웃 신호 처리
+                            // 🔴 [Fix 3]: 로그아웃 신호 처리 - 모든 세션 박멸
                             else if (data.type === "logout") {
-                                // 1. 앱 내 Native 저장소(SecureStore/AsyncStorage) 비우기
-                                await saveAuthToken(null);
-                                await AsyncStorage.removeItem("userId");
-                                onUserLogout?.();
+                                console.log("[App] 🔴 로그아웃 프로세스 강제 시작 - 모든 세션 박멸");
+                                isProcessingLogoutRef.current = true; // 7초간 로그인 신호 차단
 
-                                // 2. 🟢 [핵심]: WebView 내부 세션 및 쿠키 강제 초기화 스크립트 주입
-                                // document.cookie를 만료시키고, 로컬 저장소를 비웁니다.
-                                const redirectUrl = data.redirect || "/";
-                                const clearScript = `
-                                    (function() {
-                                        // 🟢 [도메인 일관성]: 모든 가능한 서브도메인에서 쿠키 삭제
-                                        // 메인 도메인과 서브도메인(api, auth 등) 모두 처리
-                                        const domains = [
-                                            "", // 도메인 없이 (현재 도메인)
-                                            ".dona.io.kr", // 모든 서브도메인 포함 (.으로 시작)
-                                            "dona.io.kr", // 메인 도메인
-                                            "api.dona.io.kr", // API 서브도메인
-                                            "auth.dona.io.kr" // 인증 서브도메인
-                                        ];
-                                        
-                                        // 모든 쿠키 삭제 (HttpOnly 쿠키는 서버에서 삭제되지만, 클라이언트 쿠키도 정리)
-                                        document.cookie.split(";").forEach(function(c) {
-                                            const cookieName = c.split("=")[0].trim();
-                                            if (cookieName) {
-                                                // 각 도메인별로 쿠키 삭제 시도
-                                                domains.forEach(function(domain) {
-                                                    const domainPart = domain ? ";domain=" + domain : "";
-                                                    document.cookie = cookieName + "=;expires=" + new Date(0).toUTCString() + ";path=/" + domainPart;
-                                                    // Secure 및 SameSite 옵션도 시도
-                                                    document.cookie = cookieName + "=;expires=" + new Date(0).toUTCString() + ";path=/;Secure;SameSite=None" + domainPart;
-                                                });
-                                            }
-                                        });
-                                        
-                                        // 로컬/세션 스토리지 완전 초기화
+                                // 네이티브 저장소(AsyncStorage) 무조건 삭제
+                                const forceNativeClear = async () => {
+                                    try {
+                                        await saveAuthToken(null);
+                                        await AsyncStorage.removeItem("userId");
+                                        if (onUserLogout) onUserLogout();
+                                    } catch (e) {
+                                        console.log("[App] Native clear skipped");
+                                    }
+                                };
+                                forceNativeClear();
+
+                                // 🔴 [핵심]: 웹뷰 내부에서 서버 API 직접 호출 및 쿠키/스토리지 파괴
+                                const nuclearClearScript = `
+                                    (async function() {
                                         try {
+                                            // 서버 세션 쿠키 파괴 (API 호출 필수)
+                                            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                                            
+                                            // 로컬 데이터 박멸
                                             localStorage.clear();
                                             sessionStorage.clear();
-                                        } catch(e) {
-                                            console.warn("스토리지 초기화 오류:", e);
+                                            
+                                            // 클라이언트측 쿠키 강제 만료
+                                            const host = window.location.hostname;
+                                            ["", host, "." + host, ".dona.io.kr"].forEach(d => {
+                                                document.cookie.split(";").forEach(c => {
+                                                    const name = c.split("=")[0].trim();
+                                                    if (name) {
+                                                        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" + d;
+                                                        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                                                    }
+                                                });
+                                            });
+
+                                            console.log("[WebView] 모든 세션 파괴 완료");
+                                            // 미들웨어 리다이렉트를 피하기 위해 파라미터와 함께 이동
+                                            window.location.replace("/?logout=true");
+                                        } catch (e) {
+                                            window.location.replace("/");
                                         }
-                                        
-                                        // 🟢 [무한 루프 방지]: _logout 파라미터 대신 해시 사용
-                                        // URL에 파라미터를 추가하지 않고, 리다이렉트만 수행하여 미들웨어와 충돌 방지
-                                        // replace를 사용하여 히스토리도 정리하고, 캐시 버스팅은 서버 헤더로 처리
-                                        window.location.replace("${redirectUrl}");
                                     })();
                                 `;
-                                webRef.current?.injectJavaScript(clearScript);
+                                webRef.current?.injectJavaScript(nuclearClearScript);
 
-                                // 3. Android 캐시 잔류 방지 - reload로 확실히 세션 초기화
-                                if (Platform.OS === "android") {
-                                    setTimeout(() => {
-                                        webRef.current?.reload();
-                                    }, 300);
-                                }
-
-                                console.log("[App] 로그아웃 및 쿠키 삭제 프로세스 완료");
+                                // 3. 루프 방지 Cooldown (7초)
+                                setTimeout(() => {
+                                    isProcessingLogoutRef.current = false;
+                                    console.log("[App] 로그아웃 보호 종료 - 이제 정상 로그인 가능");
+                                }, 7000);
                             }
                             // 🟢 [카카오 공유]: 웹에서 보낸 카카오 공유 신호 처리
                             else if (data.type === "kakaoShare" && data.webShareUrl) {
@@ -425,6 +487,26 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                         window.dispatchEvent(new CustomEvent('appleLoginSuccess', {
                                                             detail: ${JSON.stringify(credential)}
                                                         }));
+                                                        
+                                                        // 🟢 [Fix]: Apple 로그인 성공 후 세션 API 호출하여 userId 가져오기
+                                                        try {
+                                                            const sessionRes = await fetch('/api/auth/session', {
+                                                                method: 'GET',
+                                                                credentials: 'include'
+                                                            });
+                                                            const sessionData = await sessionRes.json();
+                                                            if (sessionData.authenticated && sessionData.user?.id) {
+                                                                // 🟢 앱에 userId 전달
+                                                                if (window.ReactNativeWebView) {
+                                                                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                                                                        type: 'login',
+                                                                        userId: sessionData.user.id
+                                                                    }));
+                                                                }
+                                                            }
+                                                        } catch (e) {
+                                                            console.warn('세션 정보 가져오기 실패:', e);
+                                                        }
                                                         
                                                         // 🟢 [Fix]: 쿠키가 브라우저에 저장될 시간을 충분히 주고 메인 페이지로 이동
                                                         // reload() 대신 replace()를 사용하여 로그인 페이지로 돌아가지 않도록 함

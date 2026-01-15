@@ -113,7 +113,7 @@ export default function App() {
                         */}
                         {/* <WebScreen uri="https://dona.io.kr" /> */}
                         <WebScreen
-                            uri="http://192.168.219.220:3000"
+                            uri="http://192.168.124.102:3000"
                             onUserLogin={async (userId: string) => {
                                 // 🟢 [RevenueCat 동기화]: 로그인 시 사용자 ID를 RevenueCat에 등록
                                 try {
@@ -125,11 +125,25 @@ export default function App() {
                             }}
                             onUserLogout={async () => {
                                 // 🟢 [RevenueCat 동기화]: 로그아웃 시 RevenueCat 계정 연결 해제
+                                // 🟢 [Fix]: Anonymous 에러 방지 - 익명 유저인지 확인 후 로그아웃
                                 try {
-                                    await Purchases.logOut();
-                                    console.log("[RevenueCat] 사용자 로그아웃 완료");
-                                } catch (error) {
-                                    console.error("[RevenueCat] 사용자 로그아웃 실패:", error);
+                                    const isAnonymous = await Purchases.isAnonymous();
+                                    if (!isAnonymous) {
+                                        await Purchases.logOut();
+                                        console.log("[RevenueCat] 사용자 로그아웃 완료");
+                                    } else {
+                                        console.log("[RevenueCat] 이미 익명 유저이므로 로그아웃 스킵");
+                                    }
+                                } catch (error: any) {
+                                    // 🟢 [Fix]: "Anonymous" 에러는 무시 (이미 로그아웃된 상태)
+                                    if (
+                                        error?.message?.includes("anonymous") ||
+                                        error?.message?.includes("Anonymous")
+                                    ) {
+                                        console.log("[RevenueCat] 익명 유저 로그아웃 시도 무시");
+                                    } else {
+                                        console.error("[RevenueCat] 사용자 로그아웃 실패:", error);
+                                    }
                                 }
                             }}
                         />
