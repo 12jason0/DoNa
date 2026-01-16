@@ -1,0 +1,7 @@
+# .easignore
+node_modules/
+.git/
+ios/
+android/
+.expo/
+dist/
