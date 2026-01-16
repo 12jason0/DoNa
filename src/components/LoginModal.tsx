@@ -48,7 +48,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
     if (!mounted) return null;
 
     const modalContent = (
-        <div className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 flex items-center justify-center p-4 animate-in fade-in duration-300">
             {/* 모달 컨테이너: 최대 높이(max-h)와 스크롤(overflow-y-auto) 추가 */}
             <div className="bg-white dark:bg-[#1a241b] rounded-[32px] max-w-md w-full max-h-[90vh] overflow-y-auto relative shadow-[0_20px_50px_rgba(0,0,0,0.2)] transform transition-all animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 scrollbar-hide">
                 {/* 내부 여백을 감싸는 wrapper (p-6~8로 조정) */}
@@ -82,7 +82,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                             )}
                         </h2>
                         <p className="text-gray-500 dark:text-gray-400 text-[14px] sm:text-[16px] font-medium tracking-tight">
-                            {description || "지금 가입하면 무료 추천권 3장을 드려요! 🎁"}
+                            {description || "1월 31일까지 무료 추천권 2장을 드려요! 🎁"}
                         </p>
                     </div>
 
@@ -93,7 +93,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                         </h3>
                         <ul className="space-y-2.5 sm:space-y-3.5">
                             {[
-                                "고민 해결! AI 맞춤 코스 추천권 3장 무료",
+                                "고민 해결! AI 맞춤 코스 추천권 2장 무료",
                                 "우리 취향을 100% 반영한 커스텀 추천",
                                 "멤버십 전용 시크릿 핫플레이스 공개",
                             ].map((benefit, index) => (
@@ -125,7 +125,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                                 "준비 중..."
                             ) : (
                                 <>
-                                    3장 받고 시작하기
+                                    2장 받고 시작하기
                                     <Sparkles className="w-5 h-5 ml-2 group-hover:rotate-12 transition-transform" />
                                 </>
                             )}

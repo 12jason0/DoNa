@@ -19,6 +19,10 @@ const getLocalExternalIP = () => {
 const localIp = getLocalExternalIP();
 
 const nextConfig = {
+    // 🟢 [2026-01-21 추가]: 카카오톡 인앱 브라우저 404 오류 해결
+    // URL 끝의 슬래시(/) 유무를 하나로 통일하여 경로 매칭 실패를 방지합니다.
+    trailingSlash: false,
+
     // 1. 기존 유지: 빌드 오류 무시
     typescript: { ignoreBuildErrors: true },
 

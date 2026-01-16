@@ -217,7 +217,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     ]);
 
     if (!courseData) {
-        console.error(`[CourseDetailPage] 코스 ID ${cleanId}를 찾을 수 없습니다.`);
         notFound();
     }
 

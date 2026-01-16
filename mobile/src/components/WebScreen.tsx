@@ -124,44 +124,11 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         return () => clearTimeout(timer);
     }, []);
 
-    // 🟢 [2025-12-28] 안드로이드 실제 키 해시 확인 (디버깅용)
-    useEffect(() => {
-        const getRealHash = async () => {
-            if (Platform.OS === "android") {
-                try {
-                    // 🔴 [핵심]: Application SDK를 통해 현재 실행 앱의 진짜 지문을 가져옴
-                    // 타입 에러를 우회하기 위해 any로 캐스팅
-                    const ApplicationAny = Application as any;
-                    const hash = await ApplicationAny.getAndroidSignatureHashAsync?.();
-
-                    if (hash) {
-                        console.log("------------------------------------------");
-                        // hash는 배열이거나 문자열일 수 있음
-                        const hashValue = Array.isArray(hash) ? hash[0] : hash;
-                        console.log("🔴 [진짜 등록할 값]:", hashValue);
-                        console.log("------------------------------------------");
-                    } else {
-                        throw new Error("getAndroidSignatureHashAsync not available");
-                    }
-                } catch (error) {
-                    console.error("[키 해시 확인 실패]:", error);
-                    // Fallback: 안내 메시지 출력
-                    console.log("------------------------------------------");
-                    console.log("🔴 키 해시 자동 확인 실패. 다음 방법으로 확인하세요:");
-                    console.log("EAS 빌드 사용 시: eas credentials");
-                    console.log("로컬 빌드 시: keytool -list -v -keystore android/app/debug.keystore");
-                    console.log("------------------------------------------");
-                }
-            }
-        };
-        getRealHash();
-    }, []);
-
     // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
     const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
     // 🟢 [추가]: 안드로이드 내비게이션 바 및 iOS 하단 바 영역 확보
-    const dynamicPaddingBottom = insets.bottom * 0.6;
+    const dynamicPaddingBottom = insets.bottom * 0.8;
 
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {
@@ -297,7 +264,8 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
 
-                        // 1. [네이티브 앱 실행 스킴]: 이건 무조건 Linking.openURL로 처리 (외부 앱 실행)
+                        // 🟢 [2026-01-21] 네이티브 앱 실행 스킴 처리: intent:// 및 카카오 스킴 가로채기
+                        // 안드로이드 WebView에서 intent:// 스킴을 처리하지 못해 발생하는 JSApplicationIllegalArgumentException 에러 방지
                         if (
                             url.startsWith("kakaokompassauth://") ||
                             url.startsWith("kakaolink://") ||
@@ -306,15 +274,39 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             url.includes("kakaonavi://") ||
                             url.startsWith("duna://")
                         ) {
+                            // 🟢 [2026-01-21] intent:// 스킴은 안드로이드에서 우선적으로 처리
+                            if (url.startsWith("intent://") && Platform.OS === "android") {
+                                try {
+                                    // intent:// URL에서 kakaolink 스키마 추출 시도
+                                    const intentMatch = url.match(/intent:\/\/send([^#]*)/);
+                                    if (intentMatch && intentMatch[1]) {
+                                        const kakaoSchema = "kakaolink://send" + intentMatch[1];
+                                        console.log("[App] 🔄 intent:// → kakaolink:// 변환:", kakaoSchema);
+                                        // kakaolink://로 직접 시도 (에러 로그 최소화)
+                                        Linking.openURL(kakaoSchema).catch(() => {
+                                            // 조용히 실패 처리 (에러 로그 없음)
+                                        });
+                                        return false; // 웹뷰 내부 이동 차단
+                                    }
+                                } catch (parseError) {
+                                    // 파싱 실패 시 조용히 처리 (에러 로그 없음)
+                                }
+                            }
+
+                            // 🟢 일반적인 카카오 스킴 처리
                             console.log("[App] 📲 네이티브 앱 실행 시도:", url);
 
                             Linking.openURL(url).catch((err) => {
-                                console.error("[App] 앱 실행 실패:", err);
+                                // 🟢 [2026-01-21] JSApplicationIllegalArgumentException 에러는 조용히 처리
+                                // 안드로이드 WebView에서 intent://를 처리하지 못할 때 발생하는 정상적인 상황
+                                if (err?.message?.includes("JSApplicationIllegalArgumentException")) {
+                                    // 조용히 처리 (에러 로그 없음)
+                                    return;
+                                }
 
-                                // 🔴 [2025-12-28] intent:// 형식이 실패했을 때, kakaolink 스키마로 재시도
+                                // 🔴 intent:// 형식이 실패했을 때, kakaolink 스키마로 재시도
                                 if (url.startsWith("intent://")) {
                                     try {
-                                        // intent:// URL에서 kakaolink 스키마 추출
                                         const intentMatch = url.match(/intent:\/\/send([^#]*)/);
                                         if (intentMatch && intentMatch[1]) {
                                             const kakaoSchema = "kakaolink://send" + intentMatch[1];
@@ -330,7 +322,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                             return;
                                         }
                                     } catch (parseError) {
-                                        console.error("[App] intent:// 파싱 실패:", parseError);
+                                        // 파싱 실패 시 조용히 처리
                                     }
                                 }
 

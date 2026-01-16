@@ -21,11 +21,19 @@ export async function GET(request: NextRequest) {
         const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
         const apiUrl = `${protocol}://${host}/api/auth/kakao`;
 
+        // 🟢 [2026-01-21] 디버깅: API 호출 전 로그
+        console.log("📍 [카카오 콜백] POST API 호출 시도:", apiUrl);
+        console.log("📍 [카카오 콜백] 전송할 데이터:", { code, next });
+        
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code, next }),
         });
+        
+        // 🟢 [2026-01-21] 디버깅: API 응답 확인
+        console.log("📍 [카카오 콜백] API 응답 상태:", response.status, response.statusText);
+        console.log("📍 [카카오 콜백] API 응답 헤더:", Object.fromEntries(response.headers.entries()));
 
         const setCookie = response.headers.get("set-cookie");
 

@@ -120,6 +120,11 @@ const Icons = {
             />
         </svg>
     ),
+    ArrowLeft: ({ className }: { className?: string }) => (
+        <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+        </svg>
+    ),
 };
 
 const ReviewModal = dynamic(() => import("@/components/ReviewModal"), { ssr: false, loading: () => null });
@@ -824,6 +829,14 @@ export default function CourseDetailClient({
                             unoptimized={false}
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
+                        {/* 🟢 [2026-01-21] 뒤로 가기 버튼 추가 */}
+                        <button
+                            onClick={() => router.back()}
+                            className="absolute top-4 left-4 md:top-6 md:left-6 z-20 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg border border-white/10"
+                            aria-label="뒤로 가기"
+                        >
+                            <Icons.ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                        </button>
                         <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white">
                             <div className="flex flex-wrap gap-2.5 mb-4">
                                 <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-[13px] font-bold rounded-full border border-white/20 shadow-sm">
@@ -1240,6 +1253,14 @@ export default function CourseDetailClient({
                                 />
                             )}
                             <div className="absolute inset-0 bg-black/60" />
+                            {/* 🟢 [2026-01-21] 뒤로 가기 버튼 추가 */}
+                            <button
+                                onClick={() => router.back()}
+                                className="absolute top-4 left-4 md:top-6 md:left-6 z-20 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg border border-white/10"
+                                aria-label="뒤로 가기"
+                            >
+                                <Icons.ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                            </button>
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-center text-white px-6">
                                     <div className="mb-4">
