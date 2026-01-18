@@ -76,9 +76,10 @@ interface FootprintTabProps {
     completed: CompletedCourse[];
     aiRecommendations?: any[]; // 🟢 AI 추천 코스 (savedCourses)
     userName?: string; // 🟢 사용자 이름
+    personalStories?: any[]; // 🟢 개인 추억 (isPublic: false인 리뷰)
 }
 
-const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName = "회원" }: FootprintTabProps) => {
+const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName = "회원", personalStories = [] }: FootprintTabProps) => {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     // 🟢 함수형 초기화로 매 렌더링마다 new Date() 호출 방지
@@ -91,6 +92,21 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     const [showDateCoursesModal, setShowDateCoursesModal] = useState(false);
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
+    // 🟢 서브 탭 상태 (달력, 추억)
+    const [activeView, setActiveView] = useState<"calendar" | "memories">("calendar");
+    // 🟢 추억 상세 모달 상태
+    const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
+    const [showMemoryModal, setShowMemoryModal] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const memoryScrollRef = useRef<HTMLDivElement>(null);
+
+    // 🟢 모달이 열릴 때 첫 번째 사진으로 스크롤
+    useEffect(() => {
+        if (showMemoryModal && memoryScrollRef.current) {
+            setCurrentImageIndex(0);
+            memoryScrollRef.current.scrollLeft = 0;
+        }
+    }, [showMemoryModal]);
 
     // 🟢 드래그 기능을 위한 상태
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -98,7 +114,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     // 🟢 가로 스크롤 컨테이너 ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // 🟢 날짜별로 완료 항목 그룹화
+    // 🟢 날짜별로 완료 항목 그룹화 (개인 추억 제외)
     const itemsByDate = useMemo(() => {
         const map = new Map<string, { courses: CompletedCourse[]; aiRecommendations: any[] }>();
 
@@ -162,7 +178,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
         return days;
     }, [currentMonth, itemsByDate]);
 
-    // 🟢 선택한 날짜의 완료 항목
+    // 🟢 선택한 날짜의 완료 항목 (개인 추억 제외)
     const selectedDateItems = useMemo(() => {
         if (!selectedDate) return null;
         const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(
@@ -173,8 +189,12 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
 
     // 🟢 데이터가 있는지 확인 (데이터가 없으면 라이트 모드로 표시)
     const hasData = useMemo(() => {
-        return completed.length > 0 || aiRecommendations.length > 0;
-    }, [completed, aiRecommendations]);
+        if (activeView === "calendar") {
+            return completed.length > 0 || aiRecommendations.length > 0;
+        } else {
+            return personalStories.length > 0;
+        }
+    }, [completed, aiRecommendations, personalStories, activeView]);
 
     // 🟢 상수 배열을 컴포넌트 외부로 이동하여 재생성 방지
     const monthNames = useMemo(
@@ -444,29 +464,71 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
             >
                 {/* 헤더 */}
                 <div
-                    className={`pt-5 pl-5 pr-5 border-b ${
+                    className={`pt-5 pl-5 pr-5 ${
                         hasData
                             ? "border-gray-50 dark:border-gray-800 bg-white dark:bg-[#1a241b]"
                             : "border-gray-50 bg-white"
                     } relative z-10`}
                 >
-                    <h4
-                        className={`text-lg font-bold text-gray-900 ${
-                            hasData ? "dark:text-white" : ""
-                        } mb-1 tracking-tight`}
-                    >
-                        내 발자취 👣
-                    </h4>
-                    <p
-                        className={`text-gray-500 ${
-                            hasData ? "dark:text-gray-400" : ""
-                        } text-xs md:text-sm font-medium`}
-                    >
-                        내가 완료한 미션과 다녀온 코스들을 날짜별로 확인해보세요.
-                    </p>
+                    <div className="flex items-center justify-between mb-4">
+                        <h4
+                            className={`text-lg font-bold text-gray-900 ${
+                                hasData ? "dark:text-white" : ""
+                            } tracking-tight`}
+                        >
+                            내 발자취 👣
+                        </h4>
+                        {/* 🟢 서브 탭 (달력, 추억) - 오른쪽 정렬 */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setActiveView("calendar")}
+                                className={`px-4 py-2 rounded-full font-medium text-sm transition-all whitespace-nowrap ${
+                                    activeView === "calendar"
+                                        ? "bg-gray-900 dark:bg-gray-800 text-white"
+                                        : `bg-gray-100 ${hasData ? "dark:bg-gray-800/50" : ""} text-gray-600 ${
+                                              hasData ? "dark:text-gray-400" : ""
+                                          }`
+                                }`}
+                            >
+                                달력
+                            </button>
+                            <button
+                                onClick={() => setActiveView("memories")}
+                                className={`px-4 py-2 rounded-full font-medium text-sm transition-all whitespace-nowrap ${
+                                    activeView === "memories"
+                                        ? "bg-gray-900 dark:bg-gray-800 text-white"
+                                        : `bg-gray-100 ${hasData ? "dark:bg-gray-800/50" : ""} text-gray-600 ${
+                                              hasData ? "dark:text-gray-400" : ""
+                                          }`
+                                }`}
+                            >
+                                추억 {personalStories.length > 0 && `(${personalStories.length})`}
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"></div>
+                    {activeView === "calendar" && (
+                        <p
+                            className={`text-gray-500 ${
+                                hasData ? "dark:text-gray-400" : ""
+                            } text-xs md:text-sm font-medium`}
+                        >
+                            내가 완료한 미션과 다녀온 코스들을 날짜별로 확인해보세요.
+                        </p>
+                    )}
+                    {activeView === "memories" && (
+                        <p
+                            className={`text-gray-500 ${
+                                hasData ? "dark:text-gray-400" : ""
+                            } text-xs md:text-sm font-medium`}
+                        >
+                            나만의 소중한 추억들을 확인해보세요.
+                        </p>
+                    )}
                 </div>
 
-                {/* 달력 영역 */}
+                {/* 🟢 달력 영역 또는 추억 영역 */}
+                {activeView === "calendar" ? (
                 <div
                     className="p-4 md:p-6"
                     onTouchStart={handleTouchStart}
@@ -648,9 +710,10 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             const dateItems = day.hasItems ? itemsByDate.get(day.dateKey) : null;
                             const firstCourse = dateItems?.courses?.[0];
                             const firstAiRecommendation = dateItems?.aiRecommendations?.[0];
-                            // 🟢 모든 항목 개수 계산
+                            // 🟢 모든 항목 개수 계산 (개인 추억 제외)
                             const totalItemsCount =
-                                (dateItems?.courses?.length || 0) + (dateItems?.aiRecommendations?.length || 0);
+                                (dateItems?.courses?.length || 0) + 
+                                (dateItems?.aiRecommendations?.length || 0);
 
                             return (
                                 <button
@@ -660,7 +723,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                             setSelectedDate(day.date);
                                             const dateItems = itemsByDate.get(day.dateKey);
 
-                                            // 🟢 모든 항목 통합 (완료 코스 + AI 추천)
+                                            // 🟢 모든 항목 통합 (완료 코스 + AI 추천, 개인 추억 제외)
                                             const allItems = [
                                                 ...(dateItems?.courses || []),
                                                 ...(dateItems?.aiRecommendations || []),
@@ -739,7 +802,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                 : "border-gray-200 dark:border-gray-700" // 🟢 빈 날짜: 연한 회색
                                         }`}
                                     >
-                                        {/* 완료 항목이 있으면 작은 표시점 또는 이미지 */}
+                                        {/* 완료 항목이 있으면 작은 표시점 또는 이미지 (개인 추억 제외) */}
                                         {day.hasItems &&
                                             (firstCourse?.imageUrl ? (
                                                 <div className="relative w-10 h-10">
@@ -819,6 +882,121 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                         })}
                     </div>
                 </div>
+                ) : (
+                    /* 🟢 추억 영역 - 타임라인 형식 */
+                    <div className="p-4 md:p-6">
+                        {personalStories.length === 0 ? (
+                            <div className="text-center py-16">
+                                <div className="text-5xl mb-4">💕</div>
+                                <p className={`text-base ${hasData ? "text-gray-500 dark:text-gray-400" : "text-gray-400"} font-medium`}>
+                                    저장된 개인 추억이 없습니다.
+                                </p>
+                                <p className={`text-sm ${hasData ? "text-gray-400 dark:text-gray-500" : "text-gray-400"} mt-2`}>
+                                    코스를 완료하고 추억을 남겨보세요!
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-8">
+                                {(() => {
+                                    // 🟢 월별로 그룹화
+                                    const storiesByMonth = new Map<string, typeof personalStories>();
+                                    personalStories.forEach((story) => {
+                                        const date = new Date(story.createdAt);
+                                        const monthKey = `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+                                        if (!storiesByMonth.has(monthKey)) {
+                                            storiesByMonth.set(monthKey, []);
+                                        }
+                                        storiesByMonth.get(monthKey)!.push(story);
+                                    });
+
+                                    // 🟢 최신순으로 정렬
+                                    const sortedMonths = Array.from(storiesByMonth.entries()).sort((a, b) => {
+                                        const dateA = new Date(a[1][0].createdAt);
+                                        const dateB = new Date(b[1][0].createdAt);
+                                        return dateB.getTime() - dateA.getTime();
+                                    });
+
+                                    return sortedMonths.map(([monthKey, stories]) => (
+                                        <div key={monthKey} className="space-y-4">
+                                            {/* 월 헤더 */}
+                                            <h5 className={`text-lg font-bold ${hasData ? "text-gray-900 dark:text-white" : "text-gray-800"} mb-4`}>
+                                                {monthKey}
+                                            </h5>
+                                            
+                                            {/* 추억 카드 리스트 - 개선된 UI */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {stories
+                                                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                                    .map((story) => {
+                                                        const date = new Date(story.createdAt);
+                                                        const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+                                                        
+                                                        return (
+                                                            <div
+                                                                key={story.id}
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    // 🟢 추억 회상 모달만 열기 (코스 페이지로 이동하지 않음)
+                                                                    setSelectedMemory(story);
+                                                                    setShowMemoryModal(true);
+                                                                }}
+                                                                className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 group"
+                                                            >
+                                                                {/* 이미지 영역 */}
+                                                                {story.imageUrls?.[0] ? (
+                                                                    <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-700">
+                                                                        <Image
+                                                                            src={story.imageUrls[0]}
+                                                                            alt="개인 추억"
+                                                                            fill
+                                                                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                                            sizes="(max-width: 768px) 100vw, 50vw"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-full h-48 bg-linear-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+                                                                        <span className="text-4xl">💕</span>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {/* 내용 영역 */}
+                                                                <div className="p-4">
+                                                                    {/* 날짜 */}
+                                                                    <div className={`text-xs font-medium mb-2 ${hasData ? "text-gray-500 dark:text-gray-400" : "text-gray-400"}`}>
+                                                                        {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일 ({dayOfWeek})
+                                                                    </div>
+                                                                    
+                                                                    {/* 코스명 또는 감상 */}
+                                                                    <div className={`text-base font-bold mb-3 line-clamp-2 ${hasData ? "text-gray-900 dark:text-white" : "text-gray-800"}`}>
+                                                                        {story.comment || story.course?.title || "개인 추억"}
+                                                                    </div>
+                                                                    
+                                                                    {/* 별점 */}
+                                                                    <div className="flex items-center gap-1">
+                                                                        {[...Array(5)].map((_, i) => (
+                                                                            <span
+                                                                                key={i}
+                                                                                className={`text-sm ${
+                                                                                    i < story.rating ? "text-yellow-400" : "text-gray-300 dark:text-gray-600"
+                                                                                }`}
+                                                                            >
+                                                                                ⭐
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* 🟢 [Swipe Detail Modal]: 2개 이상의 코스 가로 스와이프 모달 */}
@@ -850,13 +1028,16 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             ...(selectedDateItems.courses || []).map((c) => ({
                                 ...c,
                                 isAI: false,
+                                isPersonalStory: false,
                                 course: c, // 🟢 완료 코스는 자기 자신이 course
                             })),
                             ...(selectedDateItems.aiRecommendations || []).map((item) => ({
                                 ...item,
                                 course: item.course || item,
                                 isAI: true,
+                                isPersonalStory: false,
                             })),
+                            // 🟢 개인 추억은 달력 뷰에서 제외 (추억 탭에서만 표시)
                         ]
                             .filter((item) => {
                                 // 🟢 유효한 코스 ID가 있는 항목만 필터링 (다양한 ID 형태 모두 체크)
@@ -882,8 +1063,21 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 return (
                                     <div
                                         key={`${courseId}-${idx}`}
-                                        className="snap-center shrink-0 w-[340px] min-w-[340px] bg-white dark:bg-[#1a241b] rounded-[2.5rem] overflow-hidden shadow-2xl relative"
+                                        className="snap-center shrink-0 w-[340px] min-w-[340px] bg-white dark:bg-[#1a241b] rounded-[2.5rem] overflow-hidden shadow-2xl relative flex flex-col"
                                     >
+                                        {/* 날짜 헤더 (세로 레이아웃) */}
+                                        {selectedDate && (
+                                            <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
+                                                <div className="text-gray-900 dark:text-white text-base font-medium">
+                                                    {(() => {
+                                                        const date = selectedDate;
+                                                        const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+                                                        return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* 상단 이미지 */}
                                         <div className="relative w-full h-64 bg-gray-900 dark:bg-gray-800">
                                             <Image
@@ -968,7 +1162,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                 disabled={!courseId}
                                                 className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-sm hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <span>설계도 다시보기</span>
+                                                <span>코스 다시보기</span>
                                                 <ChevronRight className="w-4 h-4 opacity-50" />
                                             </button>
                                         </div>
@@ -1099,7 +1293,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                         disabled={!courseDetail?.id}
                                         className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-base hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <span>설계도 다시보기</span>
+                                        <span>코스 다시보기</span>
                                         <ChevronRight className="w-4 h-4 opacity-50" />
                                     </button>
                                 </div>
@@ -1117,6 +1311,223 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 </button>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* 🟢 추억 상세 모달 - 인스타그램 스토리 스타일 */}
+            {showMemoryModal && selectedMemory && (
+                <div
+                    className="fixed inset-0 z-5000 bg-black flex flex-col animate-in fade-in duration-300"
+                    onClick={() => setShowMemoryModal(false)}
+                >
+                    {/* 닫기 버튼 (우측 상단) - X만 표시 */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMemoryModal(false);
+                        }}
+                        className="absolute top-0 right-0 z-30 text-white hover:text-white/80 transition-colors p-4"
+                        style={{ 
+                            top: "env(safe-area-inset-top, 0)",
+                            right: "env(safe-area-inset-right, 0)",
+                        }}
+                    >
+                        <X className="w-6 h-6 stroke-2" />
+                    </button>
+
+                    {/* 가로 스크롤 사진 갤러리 - 상하단 여백 적용 */}
+                    {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 0 ? (
+                        <div
+                            ref={memoryScrollRef}
+                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                            style={{
+                                height: "calc(100vh - 120px)", // 상하단 여백 60px씩
+                                marginTop: "60px",
+                                marginBottom: "60px",
+                                WebkitOverflowScrolling: "touch",
+                                scrollBehavior: "smooth",
+                            }}
+                            onScroll={(e) => {
+                                const container = e.currentTarget;
+                                const scrollLeft = container.scrollLeft;
+                                const itemWidth = container.clientWidth;
+                                const newIndex = Math.round(scrollLeft / itemWidth);
+                                setCurrentImageIndex(newIndex);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {selectedMemory.placeData && typeof selectedMemory.placeData === 'object' ? (() => {
+                                // 🟢 placeData가 있으면 장소별로 그룹화
+                                const placeData = selectedMemory.placeData as Record<string, { photos: string[]; tags: string[] }>;
+                                const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
+                                let photoIndex = 0;
+                                
+                                return stepIndices.flatMap((stepIndex) => {
+                                    const stepData = placeData[stepIndex];
+                                    const photos = stepData.photos || [];
+                                    const tags = stepData.tags || [];
+                                    
+                                    return photos.map((imageUrl: string, photoIdx: number) => {
+                                        const currentIdx = photoIndex++;
+                                        return (
+                                            <div
+                                                key={`${stepIndex}-${photoIdx}`}
+                                                className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
+                                                style={{ height: "calc(100vh - 120px)" }}
+                                            >
+                                                {/* 사진 - 가로 꽉 채우기 */}
+                                                <div className="absolute inset-0 bg-black">
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={`추억 사진 ${currentIdx + 1}`}
+                                                        fill
+                                                        className="object-cover"
+                                                        sizes="100vw"
+                                                        priority={currentIdx < 2}
+                                                    />
+                                                </div>
+                                                
+                                                {/* 사진 인디케이터 (상단) */}
+                                                {selectedMemory.imageUrls.length > 1 && (
+                                                    <div 
+                                                        className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
+                                                        style={{ 
+                                                            top: "calc(env(safe-area-inset-top, 0) + 1rem)",
+                                                        }}
+                                                    >
+                                                        {selectedMemory.imageUrls.map((_: any, i: number) => (
+                                                            <div
+                                                                key={i}
+                                                                className={`h-1 rounded-full transition-all ${
+                                                                    i === currentIdx
+                                                                        ? "bg-white w-8"
+                                                                        : "bg-white/40 w-1"
+                                                                }`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            
+                                            </div>
+                                        );
+                                    });
+                                });
+                            })() : (
+                                // 🟢 placeData가 없으면 기존 방식 (하위 호환성)
+                                selectedMemory.imageUrls.map((imageUrl: string, idx: number) => (
+                                    <div
+                                        key={idx}
+                                        className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
+                                        style={{ height: "calc(100vh - 120px)" }}
+                                    >
+                                        {/* 사진 - 가로 꽉 채우기 */}
+                                        <div className="absolute inset-0 bg-black">
+                                            <Image
+                                                src={imageUrl}
+                                                alt={`추억 사진 ${idx + 1}`}
+                                                fill
+                                                className="object-cover"
+                                                sizes="100vw"
+                                                priority={idx < 2}
+                                            />
+                                        </div>
+                                
+                                        {/* 사진 인디케이터 (상단) */}
+                                        {selectedMemory.imageUrls.length > 1 && (
+                                            <div 
+                                                className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
+                                                style={{ 
+                                                    top: "calc(env(safe-area-inset-top, 0) + 1rem)",
+                                                }}
+                                            >
+                                                {selectedMemory.imageUrls.map((_: any, i: number) => (
+                                                    <div
+                                                        key={i}
+                                                        className={`h-1 rounded-full transition-all ${
+                                                            i === idx
+                                                                ? "bg-white w-8"
+                                                                : "bg-white/40 w-1.5"
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <div 
+                            className="flex items-center justify-center bg-black" 
+                            style={{ 
+                                height: "calc(100vh - 120px)",
+                                marginTop: "60px",
+                                marginBottom: "60px",
+                            }}
+                        >
+                            <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                <span className="text-6xl">💕</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 하단 날짜 및 태그 표시 (왼쪽 정렬) */}
+                    <div 
+                        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col"
+                        style={{
+                            paddingBottom: "calc(env(safe-area-inset-bottom, 0) + 1.5rem)",
+                            paddingLeft: "1.5rem",
+                            paddingTop: "2rem",
+                            background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)",
+                        }}
+                    >
+                        {/* 날짜 */}
+                        <div className="text-white text-sm font-medium mb-2">
+                            {(() => {
+                                const date = new Date(selectedMemory.createdAt);
+                                const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+                                return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
+                            })()}
+                        </div>
+                        
+                        {/* 🟢 현재 사진에 해당하는 태그 표시 */}
+                        {(() => {
+                            // placeData에서 현재 사진의 태그 가져오기
+                            if (selectedMemory.placeData && typeof selectedMemory.placeData === 'object') {
+                                const placeData = selectedMemory.placeData as Record<string, { photos: string[]; tags: string[] }>;
+                                const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
+                                let photoIndex = 0;
+                                
+                                // 현재 인덱스에 해당하는 태그 찾기
+                                for (const stepIndex of stepIndices) {
+                                    const stepData = placeData[stepIndex];
+                                    const photos = stepData.photos || [];
+                                    const tags = stepData.tags || [];
+                                    
+                                    if (currentImageIndex >= photoIndex && currentImageIndex < photoIndex + photos.length) {
+                                        // 현재 사진이 이 장소의 사진임
+                                        if (tags.length > 0) {
+                                            return (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {tags.map((tag: string, idx: number) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full"
+                                                        >
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        break;
+                                    }
+                                    photoIndex += photos.length;
+                                }
+                            }
+                            return null;
+                        })()}
                     </div>
                 </div>
             )}

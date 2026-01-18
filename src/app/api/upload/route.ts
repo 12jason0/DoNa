@@ -3,6 +3,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getS3Bucket, getS3Client, getS3PublicUrl } from "@/lib/s3";
 import { resolveUserId } from "@/lib/auth";
 import { randomBytes } from "crypto";
+import prisma from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -37,9 +38,16 @@ export async function POST(request: NextRequest) {
 
         // 타입이 지정된 경우 필수 파라미터 검증
         if (type === "review") {
-            if (!userId || !courseId) {
+            if (!courseId) {
                 return NextResponse.json(
-                    { message: "리뷰 업로드에는 userId와 courseId가 필요합니다." },
+                    { message: "리뷰 업로드에는 courseId가 필요합니다." },
+                    { status: 400 }
+                );
+            }
+        } else if (type === "memory") {
+            if (!userId) {
+                return NextResponse.json(
+                    { message: "개인 추억 업로드에는 userId가 필요합니다." },
                     { status: 400 }
                 );
             }
@@ -63,6 +71,27 @@ export async function POST(request: NextRequest) {
         const uploadedUrls: string[] = [];
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD 형식
 
+        // 🟢 memory 타입일 때 유저 이름 가져오기 (개인 추억용)
+        let userName: string | null = null;
+        if (type === "memory" && userId) {
+            try {
+                const user = await prisma.user.findUnique({
+                    where: { id: Number(userId) },
+                    select: { username: true },
+                });
+                if (user?.username) {
+                    // 유저 이름에서 S3 경로에 안전한 문자만 사용 (특수문자는 언더스코어로 변환)
+                    // S3가 허용하는 문자: a-z, A-Z, 0-9, !, -, _, ., *, ', (, )
+                    userName = user.username.replace(/[^a-zA-Z0-9가-힣_!\-.*'()]/g, "_").trim() || `user_${userId}`;
+                } else {
+                    userName = `user_${userId}`;
+                }
+            } catch (err) {
+                console.error("[/api/upload] 유저 이름 조회 실패:", err);
+                userName = `user_${userId}`;
+            }
+        }
+
         for (const file of files) {
             const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -76,8 +105,12 @@ export async function POST(request: NextRequest) {
 
             // 경로 생성: 타입에 따라 다른 경로 사용
             let key: string;
-            if (type === "review" && userId && courseId) {
-                key = `reviews/user_${userId}/course_${courseId}/${dateStr}_${uniqueFileName}`;
+            if (type === "memory" && userId && userName) {
+                // 🟢 개인 추억: courses/{userName}/...
+                key = `courses/${userName}/${dateStr}_${uniqueFileName}`;
+            } else if (type === "review" && courseId) {
+                // 🟢 일반 코스 리뷰: reviews/course_{courseId}/...
+                key = `reviews/course_${courseId}/${dateStr}_${uniqueFileName}`;
             } else if (type === "escape" && userId && escapeId) {
                 key = `escape/user_${userId}/escape_${escapeId}/${dateStr}_${uniqueFileName}`;
             } else {

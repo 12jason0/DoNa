@@ -113,6 +113,8 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     const [isSplashDone, setIsSplashDone] = useState(false);
     // 🔴 [Fix]: 로그아웃 처리 중 플래그 - 무한 로그인 루프 방지
     const isProcessingLogoutRef = useRef(false);
+    // 🟢 [2026-01-21] 다크모드 상태 관리
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     // 🟢 [설정]: 스플래시 배경색 (app.json의 배경색과 일치시켜주세요)
     const SPLASH_COLOR = "#6db48c";
@@ -177,6 +179,46 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             lines.push(
                 `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`
             );
+            // 🟢 [2026-01-21] 다크모드 감지 및 앱에 전달
+            lines.push(`
+                (function detectDarkMode() {
+                    function checkDarkMode() {
+                        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
+                                      document.documentElement.classList.contains('dark') ||
+                                      document.body.classList.contains('dark') ||
+                                      document.documentElement.getAttribute('data-theme') === 'dark';
+                        
+                        if (window.ReactNativeWebView) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                type: 'darkModeChange',
+                                isDark: isDark
+                            }));
+                        }
+                    }
+                    
+                    // 초기 체크
+                    checkDarkMode();
+                    
+                    // 미디어 쿼리 변경 감지
+                    if (window.matchMedia) {
+                        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkDarkMode);
+                    }
+                    
+                    // DOM 변경 감지 (웹에서 다크모드 토글 시)
+                    const observer = new MutationObserver(checkDarkMode);
+                    observer.observe(document.documentElement, {
+                        attributes: true,
+                        attributeFilter: ['class', 'data-theme']
+                    });
+                    observer.observe(document.body, {
+                        attributes: true,
+                        attributeFilter: ['class']
+                    });
+                    
+                    // 주기적으로 체크 (웹에서 동적으로 다크모드 변경 시)
+                    setInterval(checkDarkMode, 1000);
+                })();
+            `);
             // 🔴 [Fix 1]: 세션 복구 로직 강화 - 쿠키가 없으면 아예 서버 요청 차단
             lines.push(`
                 (async function restoreSession() {
@@ -209,8 +251,9 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     }, [pushToken]);
 
     // 🟢 [추가]: 스플래시와 상태바가 동시에 전환되도록 배경색 변수 통일
-    const statusBarBackgroundColor = !isSplashDone ? SPLASH_COLOR : "#ffffff";
-    const containerBackgroundColor = !isSplashDone ? SPLASH_COLOR : "#ffffff";
+    // 🟢 [2026-01-21] 다크모드에 따라 웹뷰 내부 색상과 동일하게 설정
+    const statusBarBackgroundColor = !isSplashDone ? SPLASH_COLOR : isDarkMode ? "#0f1710" : "#f5f7f2";
+    const containerBackgroundColor = !isSplashDone ? SPLASH_COLOR : isDarkMode ? "#0f1710" : "#f5f7f2";
 
     return (
         // 🟢 [수정]: 상단(paddingTop)뿐만 아니라 하단(paddingBottom) 여백도 시스템 영역만큼 확보
@@ -226,11 +269,11 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         >
             {/* 🟢 [핵심 수정]: 상태바 배경색을 스플래시 색상과 동기화 - 스플래시 종료 시 동시에 흰색으로 전환 */}
             <StatusBar
-                // 배경이 밝으면 dark-content(검정글자), 어두우면 light-content(흰글자)
-                barStyle="dark-content"
+                // 🟢 [2026-01-21] 다크모드일 때 light-content(흰글자), 라이트모드일 때 dark-content(검정글자)
+                barStyle={isDarkMode ? "light-content" : "dark-content"}
                 // 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 translucent를 false로 설정
                 translucent={!isSplashDone ? false : true}
-                // 🟢 스플래시 종료 시 컨테이너와 동시에 흰색으로 전환
+                // 🟢 스플래시 종료 시 다크모드에 따라 배경색 변경
                 backgroundColor={statusBarBackgroundColor}
                 hidden={false} // 👈 상태바를 항상 표시
             />
@@ -433,6 +476,10 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             const data = JSON.parse(ev.nativeEvent.data || "{}");
                             if (data.type === "setAuthToken") {
                                 await saveAuthToken(String(data.payload || ""));
+                            }
+                            // 🟢 [2026-01-21] 다크모드 변경 감지
+                            else if (data.type === "darkModeChange") {
+                                setIsDarkMode(data.isDark || false);
                             }
                             // 🔴 [Fix 2]: 로그인 신호 수신부 - 어떤 로그인 신호도 Cooldown 중엔 차단
                             if ((data.type === "login" || data.type === "loginSuccess") && data.userId) {

@@ -468,6 +468,9 @@ model Review {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   imageUrls String[] @default([])
+  isPublic  Boolean  @default(true) @map("is_public")
+  tags      String[] @default([]) // 🟢 태그 필드 추가
+  placeData Json?    @map("place_data") // 🟢 장소별 데이터: { [stepIndex]: { photos: string[], tags: string[] } }
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

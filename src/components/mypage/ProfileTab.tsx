@@ -293,9 +293,20 @@ const ProfileTab = ({
 
                             {/* 텍스트 정보 */}
                             <div className="flex-1 min-w-0">
-                                <h5 className="text-2xl font-black text-gray-900 dark:text-white mb-1 truncate tracking-tight">
-                                    {userInfo.name}
-                                </h5>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h5 className="text-2xl font-black text-gray-900 dark:text-white truncate tracking-tight">
+                                        {userInfo.name}
+                                    </h5>
+                                    {displayTier && displayTier !== "FREE" && (
+                                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${
+                                            displayTier === "PREMIUM"
+                                                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50"
+                                                : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50"
+                                        }`}>
+                                            {displayTier === "PREMIUM" ? "프리미엄" : displayTier === "BASIC" ? "베이직" : displayTier}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base mb-4 truncate font-medium">
                                     {userInfo.email}
                                 </p>

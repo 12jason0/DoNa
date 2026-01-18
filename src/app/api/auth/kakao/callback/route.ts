@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
         const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
         const apiUrl = `${protocol}://${host}/api/auth/kakao`;
-
+        
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -76,25 +76,25 @@ export async function GET(request: NextRequest) {
         // next 값을 JSON.stringify로 안전하게 문자열로 변환 (XSS 방지)
         const safeNext = JSON.stringify(actualNext);
 
-        return new Response(
-            `<html><body><script>
-                (function() {
+            return new Response(
+                `<html><body><script>
+                    (function() {
                     const redirectPath = ${safeNext};
                     if (window.opener) {
                         window.opener.location.href = redirectPath;
-                        window.close();
+                            window.close();
                     } else {
                         window.location.href = redirectPath;
-                    }
-                })();
-            </script></body></html>`,
-            {
-                headers: {
-                    "Content-Type": "text/html; charset=utf-8",
+                        }
+                    })();
+                </script></body></html>`,
+                {
+                    headers: {
+                        "Content-Type": "text/html; charset=utf-8",
                     "Set-Cookie": setCookie || "", // 💡 여기서 쿠키를 확실히 심어줘야 합니다.
-                },
-            }
-        );
+                    },
+                }
+            );
     } catch (err) {
         console.error("Callback 처리 중 오류:", err);
         return NextResponse.redirect(new URL("/login?error=server_error", origin));

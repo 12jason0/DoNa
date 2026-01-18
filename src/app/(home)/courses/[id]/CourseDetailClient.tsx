@@ -59,7 +59,6 @@ const Icons = {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
     ),
-    Rocket: () => <span className="text-lg">🚀</span>,
     Close: ({ className }: { className?: string }) => (
         <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -858,9 +857,11 @@ export default function CourseDetailClient({
                                 <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
                                     ⏳ {courseData.duration}
                                 </div>
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                    <span className="text-yellow-400">★</span> {courseData.rating}
-                                </div>
+                                {courseData.rating > 0 && (
+                                    <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
+                                        <span className="text-yellow-400">★</span> {courseData.rating}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </header>
@@ -1049,7 +1050,7 @@ export default function CourseDetailClient({
                                                                       <div className="flex items-center gap-2 mb-1">
                                                                           <Icons.Bulb />
                                                                           <span className="text-xs font-bold text-amber-700">
-                                                                              💡 팁
+                                                                              팁
                                                                           </span>
                                                                       </div>
                                                                       <p className="text-xs text-gray-600 line-clamp-2">
@@ -1123,20 +1124,22 @@ export default function CourseDetailClient({
                                                     {new Date(review.createdAt).toLocaleDateString()}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-0.5 mb-3">
-                                                {[...Array(5)].map((_, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className={`text-sm ${
-                                                            i < review.rating
-                                                                ? "text-yellow-400"
-                                                                : "text-gray-200 dark:text-gray-600"
-                                                        }`}
-                                                    >
-                                                        ★
-                                                    </span>
-                                                ))}
-                                            </div>
+                                            {review.rating > 0 && (
+                                                <div className="flex items-center gap-0.5 mb-3">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <span
+                                                            key={i}
+                                                            className={`text-sm ${
+                                                                i < review.rating
+                                                                    ? "text-yellow-400"
+                                                                    : "text-gray-200 dark:text-gray-600"
+                                                            }`}
+                                                        >
+                                                            ★
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
                                                 {review.content}
                                             </p>
@@ -1231,7 +1234,7 @@ export default function CourseDetailClient({
                             }}
                             className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
                         >
-                            <Icons.Rocket /> 코스 시작하기
+                             나만의 추억
                         </button>
                     </div>
                 </div>
@@ -1522,16 +1525,14 @@ export default function CourseDetailClient({
 
                                 if (!coachingTip) return null;
 
-                                // 🟢 iOS/Android: 모든 Tip 무료 제공 (출시 기념 이벤트)
-                                // 🔒 Web만: FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
+                                // 🟢 웹/모바일 동일한 팁 표시 정책 적용
+                                // 🔒 FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
                                 const courseGrade = (courseData.grade || "FREE").toUpperCase();
                                 const currentUserTier = (userTier || "FREE").toUpperCase();
-                                const currentPlatform = isIOS() ? "ios" : "web";
 
-                                // iOS/Android는 모든 Tip 무료, Web만 기존 로직 유지
+                                // FREE 코스 + FREE 유저 또는 잠긴 코스 → 버튼만 표시
                                 const shouldShowTipButton =
-                                    currentPlatform === "web" &&
-                                    ((courseGrade === "FREE" && currentUserTier === "FREE") || courseData.isLocked);
+                                    (courseGrade === "FREE" && currentUserTier === "FREE") || courseData.isLocked;
 
                                 if (shouldShowTipButton) {
                                     return (

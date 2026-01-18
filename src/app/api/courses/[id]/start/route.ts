@@ -37,12 +37,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         // 🟢 가이드 페이지에 필요한 최소한의 데이터만 조회
-        const course = await (prisma as any).course.findUnique({
+        const course = await prisma.course.findUnique({
             where: { id: courseId },
             select: {
                 id: true,
                 title: true,
                 grade: true,
+                region: true,
+                imageUrl: true,
                 coursePlaces: {
                     orderBy: { order_index: "asc" },
                     select: {
@@ -53,11 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                             select: {
                                 id: true,
                                 name: true,
-                                address: true,
-                                latitude: true,
-                                longitude: true,
                                 imageUrl: true,
-                                category: true,
                             },
                         },
                     },
@@ -84,35 +82,63 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const coursePlacesArray = Array.isArray(course.coursePlaces) ? course.coursePlaces : [];
 
+        // 🟢 디버깅: Prisma 쿼리 결과 전체 확인
+        console.log("[START API] Raw coursePlacesArray:", JSON.stringify(coursePlacesArray, null, 2));
+        if (coursePlacesArray.length > 0) {
+            console.log("[START API] First coursePlace raw:", JSON.stringify(coursePlacesArray[0], null, 2));
+            console.log("[START API] First place object:", JSON.stringify(coursePlacesArray[0]?.place, null, 2));
+        }
+
         // 🟢 가이드 페이지용 데이터 구조
         const coursePlaces = coursePlacesArray
             .map((cp: any) => {
-                if (!cp || !cp.place) return null;
+                if (!cp || !cp.place) {
+                    console.log("[START API] Skipping coursePlace - no place:", cp);
+                    return null;
+                }
 
                 const coachingTip = cp.coaching_tip || null;
+
+                // 🟢 디버깅: 실제로 받아온 데이터 확인
+                console.log("[START API] Raw place data:", {
+                    placeId: cp.place.id,
+                    placeName: cp.place.name,
+                    placeNameType: typeof cp.place.name,
+                    placeNameValue: cp.place.name,
+                    hasName: !!cp.place.name,
+                    placeImageUrl: cp.place.imageUrl,
+                    fullPlaceObject: cp.place
+                });
 
                 return {
                     order_index: cp.order_index,
                     movement_guide: null, // DB에 필드가 없으므로 null
                     place: {
                         id: cp.place.id,
-                        name: cp.place.name,
-                        address: cp.place.address || "",
-                        latitude: cp.place.latitude ? Number(cp.place.latitude) : null,
-                        longitude: cp.place.longitude ? Number(cp.place.longitude) : null,
+                        name: cp.place.name || null,
                         imageUrl: cp.place.imageUrl || null,
-                        category: cp.place.category || null,
                         coaching_tip: coachingTip, // place 객체에 coaching_tip 포함
                     },
                 };
             })
             .filter((cp: any) => cp !== null);
 
+        // 🟢 디버깅: region 값 확인 및 첫 번째 장소 name 확인
+        console.log("[START API] Course region:", course.region);
+        if (coursePlaces.length > 0) {
+            console.log("[START API] First coursePlace place.name:", coursePlaces[0]?.place?.name);
+            console.log("[START API] First coursePlace full:", JSON.stringify(coursePlaces[0], null, 2));
+        }
+
         const payload = {
             id: String(course.id),
             title: course.title || "",
+            region: course.region || null,
+            imageUrl: course.imageUrl || null,
             coursePlaces,
         };
+
+        console.log("[START API] Payload region:", payload.region);
 
         return NextResponse.json(payload);
     } catch (error: any) {

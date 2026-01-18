@@ -135,19 +135,14 @@ const RecordsTab = ({
                                 const courseGrade = favorite.course.grade || "FREE";
                                 let isLocked = false;
                                 
-                                // 🟢 iOS 출시 기념 이벤트: Basic 코스 무료 제공
+                                // 🟢 웹/모바일 동일한 잠금 정책 적용
                                 if (userTier === "PREMIUM") {
                                     isLocked = false;
                                 } else if (userTier === "BASIC") {
                                     if (courseGrade === "PREMIUM") isLocked = true;
                                 } else {
-                                    // 🟢 iOS/Android: Basic 코스는 무료, Premium만 잠금
-                                    if (isMobile) {
-                                        if (courseGrade === "PREMIUM") isLocked = true;
-                                        // Basic 코스는 isLocked = false (무료)
-                                    } else {
-                                        if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
-                                    }
+                                    // FREE 유저: Basic과 Premium 코스 모두 잠금
+                                    if (courseGrade === "BASIC" || courseGrade === "PREMIUM") isLocked = true;
                                 }
 
                                 return (

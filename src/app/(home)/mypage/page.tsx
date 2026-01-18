@@ -41,6 +41,8 @@ const MyPage = () => {
     const [rewards, setRewards] = useState<UserRewardRow[]>([]);
     const [checkins, setCheckins] = useState<UserCheckinRow[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
+    // 🟢 개인 추억 (isPublic: false인 리뷰)
+    const [personalStories, setPersonalStories] = useState<any[]>([]);
 
     const [activeTab, setActiveTab] = useState("profile");
 
@@ -53,7 +55,7 @@ const MyPage = () => {
 
                 // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
                 if (tab === "footprint" && completed.length === 0 && casefiles.length === 0) {
-                    Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
+                    Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories()]).catch(() => {});
                 } else if (tab === "records" && favorites.length === 0 && savedCourses.length === 0) {
                     Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(
                         () => {}
@@ -138,7 +140,7 @@ const MyPage = () => {
                             fetchPayments()
                         );
                     } else if (initialTab === "footprint") {
-                        priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses());
+                        priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories());
                         deferredData.push(
                             fetchFavorites(),
                             fetchBadges(),
@@ -627,6 +629,43 @@ const MyPage = () => {
         } catch {}
     };
 
+    // 🟢 개인 추억 가져오기 (isPublic: false인 리뷰)
+    const fetchPersonalStories = async () => {
+        try {
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/reviews?userId=me", {
+                cache: "no-store", // 🟢 캐시 비활성화하여 최신 데이터 가져오기
+                next: { revalidate: 0 },
+            });
+            if (response.status === 401) return;
+            if (data && Array.isArray(data)) {
+                // 🟢 디버깅: 원본 데이터 확인
+                console.log("[MyPage] API 응답 데이터:", data);
+                console.log("[MyPage] 첫 번째 리뷰 isPublic 값:", data[0]?.isPublic, "타입:", typeof data[0]?.isPublic);
+                
+                // 🟢 isPublic: false인 리뷰만 필터링 (명시적 체크)
+                const personalStories = data.filter((review: any) => {
+                    const isPublic = review.isPublic;
+                    // 🟢 여러 형태의 false 값 체크
+                    const isPrivate = isPublic === false || isPublic === "false" || isPublic === 0 || String(isPublic).toLowerCase() === "false";
+                    if (isPrivate) {
+                        console.log("[MyPage] 개인 추억 발견:", review.id, "isPublic:", isPublic);
+                    }
+                    return isPrivate;
+                });
+                console.log("[MyPage] 전체 리뷰:", data.length, "개인 추억:", personalStories.length);
+                console.log("[MyPage] 개인 추억 상세:", personalStories);
+                setPersonalStories(personalStories);
+            } else {
+                console.log("[MyPage] 데이터가 배열이 아님:", data);
+                setPersonalStories([]);
+            }
+        } catch (error) {
+            console.error("[MyPage] 개인 추억 조회 오류:", error);
+            setPersonalStories([]);
+        }
+    };
+
     // ----- Handlers -----
 
     const handleSelectTab = (id: string, ev: React.MouseEvent<HTMLButtonElement>) => {
@@ -636,7 +675,7 @@ const MyPage = () => {
 
             // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
             if (id === "footprint" && (completed.length === 0 || casefiles.length === 0 || savedCourses.length === 0)) {
-                Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses()]).catch(() => {});
+                Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories()]).catch(() => {});
             } else if (
                 id === "records" &&
                 (favorites.length === 0 ||
@@ -884,12 +923,10 @@ const MyPage = () => {
                         >
                             {resolvedTheme === "dark" ? (
                                 <>
-                                    <span className="text-lg">☀️</span>
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">라이트</span>
                                 </>
                             ) : (
                                 <>
-                                    <span className="text-lg">🌙</span>
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">다크</span>
                                 </>
                             )}
@@ -973,6 +1010,7 @@ const MyPage = () => {
                             completed={completed}
                             aiRecommendations={savedCourses}
                             userName={userInfo?.name || ""}
+                            personalStories={personalStories}
                         />
                     </Suspense>
                 )}

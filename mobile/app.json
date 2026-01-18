@@ -1,53 +1,53 @@
 {
-    "expo": {
-        "name": "두나(DoNa)",
-        "slug": "duna",
-        "owner": "dona-app",
-        "version": "1.0.13",
+  "expo": {
+    "name": "두나(DoNa)",
+    "slug": "duna",
+    "owner": "dona-app",
+    "version": "1.0.13",
         "scheme": ["duna", "kakaoa6c31213198b3d562121ddace8d1b65f"],
-        "orientation": "portrait",
-        "icon": "./assets/icon.png",
-        "userInterfaceStyle": "automatic",
-        "splash": {
-            "image": "./assets/splash.png",
-            "resizeMode": "contain",
-            "backgroundColor": "#6db48c"
-        },
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6db48c"
+    },
         "assetBundlePatterns": ["**/*"],
-        "ios": {
-            "supportsTablet": false,
-            "bundleIdentifier": "kr.io.dona.dona",
-            "buildNumber": "14",
-            "usesAppleSignIn": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "kr.io.dona.dona",
+      "buildNumber": "14",
+      "usesAppleSignIn": true,
             "associatedDomains": ["applinks:dona.io.kr"],
-            "infoPlist": {
-                "ITSAppUsesNonExemptEncryption": false,
-                "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",
-                "LSApplicationQueriesSchemes": [
-                    "nmap",
-                    "kakaokommunication",
-                    "kakaolink",
-                    "kakaotalk",
-                    "kakaotalk-5.9.7",
-                    "kakaokompassauth"
-                ]
-            }
-        },
-        "android": {
-            "adaptiveIcon": {
-                "foregroundImage": "./assets/adaptive-icon.png",
-                "backgroundColor": "#ffffff"
-            },
-            "package": "kr.io.dona.dona",
-            "versionCode": 15,
-            "googleServicesFile": "./google-services.json",
-            "permissions": [
-                "ACCESS_COARSE_LOCATION",
-                "ACCESS_FINE_LOCATION",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",
+        "LSApplicationQueriesSchemes": [
+          "nmap",
+          "kakaokommunication",
+          "kakaolink",
+          "kakaotalk",
+          "kakaotalk-5.9.7",
+          "kakaokompassauth"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "kr.io.dona.dona",
+      "versionCode": 15,
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
                 "FOREGROUND_SERVICE",
                 "com.android.vending.BILLING"
-            ],
-            "intentFilters": [
+      ],
+      "intentFilters": [
                 {
                     "action": "VIEW",
                     "category": ["BROWSABLE", "DEFAULT"],
@@ -55,69 +55,69 @@
                         "scheme": "duna"
                     }
                 },
-                {
-                    "action": "VIEW",
-                    "autoVerify": true,
-                    "data": [
-                        {
-                            "scheme": "https",
-                            "host": "dona.io.kr",
-                            "pathPrefix": "/"
-                        }
-                    ],
-                    "category": ["BROWSABLE", "DEFAULT"]
-                },
-                {
-                    "action": "VIEW",
-                    "category": ["BROWSABLE", "DEFAULT"],
-                    "data": {
-                        "scheme": "kakaoa6c31213198b3d562121ddace8d1b65f"
-                    }
-                },
-                {
-                    "action": "VIEW",
-                    "category": ["BROWSABLE", "DEFAULT"],
-                    "data": {
-                        "scheme": "kakaolink"
-                    }
-                }
-            ]
-        },
-        "web": {
-            "favicon": "./assets/favicon.png",
-            "bundler": "metro"
-        },
-        "plugins": [
-            "./purchases-plugin.js",
-            "expo-sqlite",
-            "expo-web-browser",
-            "expo-apple-authentication",
-            "expo-notifications",
-            [
-                "@react-native-kakao/core",
-                {
-                    "nativeAppKey": "a6c31213198b3d562121ddace8d1b65f"
-                }
-            ],
-            [
-                "expo-build-properties",
-                {
-                    "android": {
-                        "usesCleartextTraffic": true,
-                        "minSdkVersion": 24,
-                        "compileSdkVersion": 35,
-                        "targetSdkVersion": 35,
-                        "enableProguardInReleaseBuilds": true,
-                        "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
-                    }
-                }
-            ],
-            "expo-font"
-        ],
-        "extra": {
-            "eas": {
-                "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "dona.io.kr",
+              "pathPrefix": "/"
             }
+          ],
+                    "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+                    "category": ["BROWSABLE", "DEFAULT"],
+          "data": {
+            "scheme": "kakaoa6c31213198b3d562121ddace8d1b65f"
+          }
+        },
+        {
+          "action": "VIEW",
+                    "category": ["BROWSABLE", "DEFAULT"],
+          "data": {
+            "scheme": "kakaolink"
+          }
         }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "./purchases-plugin.js",
+      "expo-sqlite",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "expo-notifications",
+      [
+        "@react-native-kakao/core",
+        {
+          "nativeAppKey": "a6c31213198b3d562121ddace8d1b65f"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "minSdkVersion": 24,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "enableProguardInReleaseBuilds": true,
+                        "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
+      }
     }
+  }
 }

@@ -552,6 +552,15 @@ const AIRecommender = () => {
             return;
         }
 
+        // 🟢 쿠폰 체크: 웹에서 쿠폰이 0개이면 경고 모달 표시
+        if (platform === "web" && coupons < 1) {
+            const shouldProceed = window.confirm("쿠폰이 부족합니다. 충전 후 나만의 코스를 뽑아보세요!");
+            if (shouldProceed) {
+                setShowPaywall(true);
+            }
+            return;
+        }
+
         setShowChatModal(true);
         // 초기화가 필요하면 여기서 resetConversation 로직 일부 수행 가능
         if (messages.length === 0) {

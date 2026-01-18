@@ -353,7 +353,6 @@ export async function authenticatedFetch<T>(
                 const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
                 // 🟢 로그인 후 5초 이내에는 401을 무시 (쿠키 동기화 시간 확보)
                 if (timeSinceLogin < 5000) {
-                    console.log("[authenticatedFetch] 로그인 직후 쿠키 동기화 대기 중, 401 무시");
                     return null; // 🟢 리다이렉트하지 않고 null만 반환
                 }
             }
