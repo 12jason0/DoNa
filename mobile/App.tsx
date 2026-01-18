@@ -5,6 +5,7 @@ import { NavigationContainer, DefaultTheme, Theme } from "@react-navigation/nati
 import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as Linking from "expo-linking";
 // 🟢 [IN-APP PURCHASE]: RevenueCat SDK
 import Purchases, { LOG_LEVEL } from "react-native-purchases";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,6 +15,7 @@ import { registerForPushNotificationsAsync } from "./src/notifications";
 import { registerPushTokenToServer } from "./src/api";
 import { initDB } from "./src/utils/storage";
 import { PushTokenContext } from "./src/context/PushTokenContext";
+import { WEB_BASE } from "./src/config";
 
 const navTheme: Theme = {
     ...DefaultTheme,
@@ -35,6 +37,46 @@ export default function App() {
     const [pushToken, setPushToken] = useState<string | null>(null);
     const notificationListener = useRef<Notifications.Subscription | null>(null);
     const responseListener = useRef<Notifications.Subscription | null>(null);
+    // 🟢 [2026-01-21] 딥링크를 통해 전달받은 경로를 관리하는 상태
+    const [initialUri, setInitialUri] = useState<string>(WEB_BASE);
+
+    // 🟢 [2026-01-21] 딥링크 수신 리스너 (duna://success?next=... 신호를 처리)
+    useEffect(() => {
+        const handleDeepLink = (event: { url: string }) => {
+            try {
+                const parsed = Linking.parse(event.url);
+
+                // duna://success 신호를 받았을 때 동작
+                if (event.url.startsWith("duna://success") || parsed.scheme === "duna") {
+                    const nextPath = (parsed.queryParams?.next as string) || "/";
+
+                    // 🟢 WebView의 URL을 성공 경로로 강제 변경하여 '인증 중'을 해제합니다.
+                    const targetUrl = nextPath.startsWith("http") ? nextPath : `${WEB_BASE}${nextPath}`;
+                    setInitialUri(targetUrl);
+                }
+            } catch (error) {
+                console.error("📍 [App] 딥링크 처리 오류:", error);
+            }
+        };
+
+        // 앱 시작 시 딥링크 확인
+        Linking.getInitialURL()
+            .then((url) => {
+                if (url) {
+                    handleDeepLink({ url });
+                }
+            })
+            .catch((error) => {
+                console.error("📍 [App] 초기 딥링크 확인 실패:", error);
+            });
+
+        // 앱 실행 중 딥링크 수신 리스너 등록
+        const subscription = Linking.addEventListener("url", handleDeepLink);
+
+        return () => {
+            subscription.remove();
+        };
+    }, []);
 
     useEffect(() => {
         initDB().catch((error) => {
@@ -113,7 +155,7 @@ export default function App() {
                         */}
                         {/* <WebScreen uri="https://dona.io.kr" /> */}
                         <WebScreen
-                            uri="http://192.168.124.102:3000"
+                            uri={initialUri}
                             onUserLogin={async (userId: string) => {
                                 // 🟢 [RevenueCat 동기화]: 로그인 시 사용자 ID를 RevenueCat에 등록
                                 try {

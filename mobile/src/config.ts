@@ -1,10 +1,13 @@
 // 웹 서버 URL 설정
-// 개발 중: 로컬 서버 사용하려면 아래 주석을 해제하고 배포 URL을 주석 처리하세요
-// export const WEB_BASE = "http://localhost:3000";  // 로컬 개발 (에뮬레이터/시뮬레이터)
-// export const WEB_BASE = "http://192.168.0.XXX:3000";  // 로컬 개발 (실제 기기, 본인 IP로 변경)
+// 🟢 [2026-01-21] 로컬 테스트 지원: 개발 모드일 때는 로컬 IP 사용
+// __DEV__는 Expo 개발 모드일 때 true가 됩니다.
+export const WEB_BASE =
+    typeof __DEV__ !== "undefined" && __DEV__
+        ? "http://192.168.124.102:3000" // 로컬 개발 (유저님 PC의 IP)
+        : "https://dona.io.kr"; // 프로덕션: 배포된 URL
 
-// 프로덕션: 배포된 URL
-export const WEB_BASE = "https://dona.io.kr";
+// 🟢 [2026-01-21] 카카오 인증 URL: 서버가 '앱'임을 인식하도록 파라미터 강제 전달
+export const KAKAO_AUTH_URL = `${WEB_BASE}/api/auth/kakao?next=mobile`;
 
 // 🟢 CloudFront 이미지 CDN 도메인 (웹의 CloudFront 마이그레이션과 일치)
 // 웹에서 사용하는 CloudFront 도메인과 동일하게 설정

@@ -42,7 +42,7 @@ const courseSelectOptions = {
 };
 
 // 매핑 함수 (기능 100% 보존 및 타입 가드 강화)
-function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[], isMobile: boolean = false): any[] {
+function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[]): any[] {
     if (!Array.isArray(courses)) return [];
 
     const imagePolicyApplied = filterCoursesByImagePolicy(courses as unknown as CourseWithPlaces[], "any");
@@ -103,7 +103,7 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
 
 // 🟢 [Performance]: 초기 코스 데이터 캐싱 (검색/필터 없을 때만)
 const getCachedDefaultCourses = unstable_cache(
-    async (userTier: string, unlockedCourseIds: number[], isMobile: boolean) => {
+    async (userTier: string, unlockedCourseIds: number[]) => {
         const rawAll = await prisma.course.findMany({
             where: { isPublic: true },
             take: 60,
@@ -111,9 +111,9 @@ const getCachedDefaultCourses = unstable_cache(
             select: courseSelectOptions,
         });
 
-        const freeRaw = rawAll.filter((c) => c.grade === "FREE");
-        const basicRaw = rawAll.filter((c) => c.grade === "BASIC").slice(0, 9);
-        const premiumRaw = rawAll.filter((c) => c.grade === "PREMIUM").slice(0, 6);
+        const freeRaw = rawAll.filter((c: any) => c.grade === "FREE");
+        const basicRaw = rawAll.filter((c: any) => c.grade === "BASIC").slice(0, 9);
+        const premiumRaw = rawAll.filter((c: any) => c.grade === "PREMIUM").slice(0, 6);
 
         const neededFromFree = 15 + (9 - basicRaw.length) + (6 - premiumRaw.length);
         const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
@@ -134,7 +134,7 @@ const getCachedDefaultCourses = unstable_cache(
             if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
         }
 
-        return mapCourses(interleaved, userTier, unlockedCourseIds, isMobile);
+        return mapCourses(interleaved, userTier, unlockedCourseIds);
     },
     [],
     {
@@ -205,12 +205,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             select: courseSelectOptions,
         });
 
-        // 🟢 iOS 플랫폼 감지 (서버 사이드)
-        const headersList = await headers();
-        const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
-
-        return mapCourses(courses, userTier, unlockedCourseIds, isMobilePlatform);
+        return mapCourses(courses, userTier, unlockedCourseIds);
     }
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]

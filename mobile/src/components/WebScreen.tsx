@@ -12,6 +12,7 @@ import * as Application from "expo-application";
 
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
+import { WEB_BASE } from "../config";
 
 type Props = {
     uri: string;
@@ -26,6 +27,15 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     // 🟢 [2026-01-21] 딥링크 URL 파싱 함수
     const parseDeepLinkUrl = (url: string): string | null => {
         try {
+            // 🟢 [2026-01-21] 카카오 인증 콜백: duna://success?next=... 형식 처리
+            if (url.startsWith("duna://")) {
+                const urlObj = new URL(url.replace("duna://", "https://"));
+                if (urlObj.pathname === "/success" && urlObj.searchParams.has("next")) {
+                    const next = urlObj.searchParams.get("next");
+                    return next || "/";
+                }
+            }
+
             if (url.includes("dona.io.kr")) {
                 const urlObj = new URL(url);
                 const path = urlObj.pathname;
@@ -50,7 +60,6 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             try {
                 const initialUrl = await Linking.getInitialURL();
                 if (initialUrl) {
-                    console.log("[WebScreen] 딥링크 URL 감지:", initialUrl);
                     const parsedPath = parseDeepLinkUrl(initialUrl);
                     if (parsedPath) {
                         setDeepLinkUrl(parsedPath);
@@ -67,12 +76,12 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     useEffect(() => {
         const subscription = Linking.addEventListener("url", (event) => {
             const { url } = event;
-            console.log("[WebScreen] 앱 실행 중 딥링크 수신:", url);
             const parsedPath = parseDeepLinkUrl(url);
             if (parsedPath) {
                 setDeepLinkUrl(parsedPath);
                 // WebView를 해당 경로로 이동 (source prop이 변경되면 자동으로 로드됨)
-                const targetUrl = parsedPath.startsWith("http") ? parsedPath : `https://dona.io.kr${parsedPath}`;
+                // 🟢 [2026-01-21] 로컬 개발 환경 지원 - WEB_BASE 사용
+                const targetUrl = parsedPath.startsWith("http") ? parsedPath : `${WEB_BASE}${parsedPath}`;
                 if (webRef.current) {
                     // React Native WebView에서는 source prop 변경 시 자동으로 새 URL 로드
                     // 또는 injectJavaScript로 location 변경
@@ -87,22 +96,12 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     }, []);
 
     // 🟢 [2026-01-21] 딥링크 URL이 있으면 우선 사용, 없으면 기본값 사용
+    // 🟢 [수정]: 로컬 개발 환경 지원 - WEB_BASE 사용
     const resolvedUri = deepLinkUrl
         ? deepLinkUrl.startsWith("http")
             ? deepLinkUrl
-            : `https://dona.io.kr${deepLinkUrl}`
+            : `${initialUri.replace(/\/$/, "")}${deepLinkUrl}`
         : initialUri || "http://192.168.124.102:3000";
-
-    // 🟢 [디버깅]: uri 전달 확인
-    useEffect(() => {
-        if (deepLinkUrl) {
-            console.log("[WebScreen] 딥링크로 초기 URL 설정:", resolvedUri);
-        } else if (!initialUri) {
-            console.warn("[WebScreen] uri prop이 undefined입니다. 기본값을 사용합니다:", resolvedUri);
-        } else {
-            console.log("[WebScreen] uri prop 전달 확인:", initialUri);
-        }
-    }, [initialUri, resolvedUri, deepLinkUrl]);
 
     const webRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
@@ -264,6 +263,24 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
 
+                        // 🟢 [2026-01-21] 카카오 인증 콜백: duna://success?next=... 형식 처리
+                        if (url.startsWith("duna://success")) {
+                            try {
+                                const urlObj = new URL(url.replace("duna://", "https://"));
+                                if (urlObj.pathname === "/success" && urlObj.searchParams.has("next")) {
+                                    const next = urlObj.searchParams.get("next") || "/";
+                                    const targetUrl = next.startsWith("http") ? next : `https://dona.io.kr${next}`;
+                                    // WebView를 해당 경로로 이동
+                                    setTimeout(() => {
+                                        webRef.current?.injectJavaScript(`window.location.href = "${targetUrl}";`);
+                                    }, 100);
+                                    return false; // 웹뷰 내부 이동 차단
+                                }
+                            } catch (error) {
+                                console.error("[WebScreen] duna://success 파싱 실패:", error);
+                            }
+                        }
+
                         // 🟢 [2026-01-21] 네이티브 앱 실행 스킴 처리: intent:// 및 카카오 스킴 가로채기
                         // 안드로이드 WebView에서 intent:// 스킴을 처리하지 못해 발생하는 JSApplicationIllegalArgumentException 에러 방지
                         if (
@@ -348,6 +365,34 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                 webRef.current?.injectJavaScript(`window.location.href = "${cleanUrl}";`);
                             }, 50);
                             return false;
+                        }
+
+                        // 🟢 [2026-01-21] 예약 URL 감지 및 WebView 내에서 열기
+                        // 예약 URL 패턴 감지 (다양한 예약 사이트 지원)
+                        const isReservationUrl =
+                            url.includes("reservation") ||
+                            url.includes("booking") ||
+                            url.includes("예약") ||
+                            url.includes("catchtable.co.kr") ||
+                            url.includes("catchtable") ||
+                            url.includes("naver.com") ||
+                            url.includes("booking.naver") ||
+                            url.includes("map.naver.com") ||
+                            url.includes("naver.com.map") ||
+                            url.includes("nid.naver.com") ||
+                            url.includes("booking.com") ||
+                            url.includes("yogiyo.com") ||
+                            url.includes("yogiyo") ||
+                            url.includes("baemin.com") ||
+                            url.includes("baemin") ||
+                            url.includes("toss.im") ||
+                            url.includes("toss") ||
+                            (url.includes("kakaomap.com") && url.includes("place")) ||
+                            (url.includes("kakaomap") && url.includes("place"));
+
+                        if (isReservationUrl) {
+                            // 예약 URL은 WebView 내에서 열어서 뒤로가기로 돌아올 수 있게 함
+                            return true;
                         }
 
                         // 🟢 CloudFront 이미지 도메인 허용 (웹의 CloudFront 마이그레이션 지원)

@@ -153,7 +153,9 @@ const Login = () => {
             // 1. 웹뷰 환경 체크
             const isMobileApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
             if (isMobileApp) {
-                window.location.href = `/api/auth/kakao?next=${encodeURIComponent(next)}`;
+                // 🟢 [2026-01-21] 모바일 앱인 경우 next=mobile 파라미터 추가하여 서버가 앱임을 인식하도록 함
+                const mobileNext = next === "/" ? "mobile" : `mobile?redirect=${encodeURIComponent(next)}`;
+                window.location.href = `/api/auth/kakao?next=${encodeURIComponent(mobileNext)}`;
                 return;
             }
 
@@ -218,7 +220,7 @@ const Login = () => {
                         // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
                         // cleanup()에서 setLoading(false)를 호출하지 않고 바로 리다이렉트
                         cleanupWithoutLoading();
-                        
+
                         // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
                         // 🟢 [Fix]: router.replace는 비동기적으로 작동하여 상태 업데이트가 먼저 일어날 수 있으므로
                         // window.location.href를 사용하여 즉시 페이지 이동
@@ -296,7 +298,9 @@ const Login = () => {
                         <div className="mx-auto mb-2 w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                             <span className="text-2xl">🌿</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 font-brand tracking-tight">로그인</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 font-brand tracking-tight">
+                            로그인
+                        </h1>
                         <p className="text-gray-600 dark:text-gray-400 text-sm">DoNa에 오신 것을 환영합니다</p>
                     </div>
                     <div ref={scrollAreaRef}>
@@ -314,7 +318,10 @@ const Login = () => {
 
                         <form onSubmit={handleSubmit} className="space-y-6 text-gray-600 dark:text-gray-400">
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2">
+                                <label
+                                    htmlFor="email"
+                                    className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2"
+                                >
                                     이메일
                                 </label>
                                 <input
@@ -331,7 +338,10 @@ const Login = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2">
+                                <label
+                                    htmlFor="password"
+                                    className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2"
+                                >
                                     비밀번호
                                 </label>
                                 <div className="relative">
@@ -420,7 +430,9 @@ const Login = () => {
                                     <div className="w-full border-t border-green-100 dark:border-gray-700" />
                                 </div>
                                 <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400">또는</span>
+                                    <span className="px-2 bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400">
+                                        또는
+                                    </span>
                                 </div>
                             </div>
                         </div>
