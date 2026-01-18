@@ -1,7 +1,12 @@
-# .easignore
+# .easignore 수정본
 node_modules/
 .git/
-ios/
-android/
 .expo/
 dist/
+
+# 네이티브 폴더 자체는 올리되, 내부의 무거운 빌드 결과물만 제외합니다.
+android/.gradle/
+android/app/build/
+android/.cxx/
+ios/build/
+ios/Pods/
