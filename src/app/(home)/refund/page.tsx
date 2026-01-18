@@ -13,6 +13,7 @@ interface PaymentHistory {
     status: string;
     approvedAt: string;
     paymentKey: string | null;
+    method?: string | null; // 🟢 결제 방법 (토스페이먼츠: null/undefined, 인앱결제: "IN_APP")
 }
 
 export default function RefundPage() {
@@ -66,7 +67,26 @@ export default function RefundPage() {
             });
 
             if (data) {
-                setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
+                // 🟢 인앱결제 환불 안내
+                if ((data as any).isInApp) {
+                    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+                    const platform = isIOS ? "App Store" : "Google Play";
+                    const platformUrl = isIOS 
+                        ? "https://reportaproblem.apple.com/" 
+                        : "https://play.google.com/store/account/orderhistory";
+                    
+                    setSuccess(
+                        `${selectedPayment.orderName} 환불 처리가 완료되었습니다.\n\n` +
+                        `실제 환불은 ${platform}에서 직접 신청해주세요.`
+                    );
+                    
+                    // 플랫폼 환불 페이지로 이동하는 링크 제공
+                    if (window.confirm(`${platform} 환불 페이지로 이동하시겠습니까?`)) {
+                        window.open(platformUrl, "_blank");
+                    }
+                } else {
+                    setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
+                }
                 await fetchPaymentHistory();
             } else {
                 setError((data as any)?.error || "환불 처리 중 오류가 발생했습니다.");
@@ -78,11 +98,12 @@ export default function RefundPage() {
         }
     };
 
-    // 환불 가능 내역 찾기 (쿠폰 + 멤버십 통합)
+    // 환불 가능 내역 찾기 (쿠폰 + 멤버십 통합, 인앱결제 포함)
     const refundablePayments = paymentHistory.filter(
         (p) =>
             p.status === "PAID" &&
-            p.paymentKey &&
+            // 🟢 토스페이먼츠: paymentKey 필요, 인앱결제: method가 "IN_APP" (paymentKey 없을 수 있음)
+            ((p.paymentKey && (!p.method || p.method !== "IN_APP")) || p.method === "IN_APP") &&
             (p.orderName.includes("쿠폰") || p.orderName.includes("멤버십") || p.orderName.includes("프리미엄"))
     );
 
@@ -153,6 +174,27 @@ export default function RefundPage() {
                         {success}
                     </div>
                 )}
+
+                {/* 환불 정책 안내 */}
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-6 text-sm">
+                    <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <span>📋</span> 환불 정책
+                    </h3>
+                    <ul className="space-y-2 text-gray-700 leading-relaxed">
+                        <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong className="text-gray-900">구독권:</strong> 구매 후 7일 이내에만 환불 가능합니다.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong className="text-gray-900">구독 혜택 사용 시:</strong> BASIC/PREMIUM 구독 후 하나의 코스라도 사용하시면 환불이 불가능합니다.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong className="text-gray-900">쿠폰:</strong> 이미 사용한 쿠폰이 있으면 환불이 불가능합니다.</span>
+                        </li>
+                    </ul>
+                </div>
 
                 {/* 환불 가능 카드 */}
                 <h2 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">Available to Refund</h2>

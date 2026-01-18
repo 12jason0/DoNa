@@ -81,6 +81,9 @@ export async function POST(request: NextRequest) {
         } else if (eventType === "UNCANCELLATION") {
             // 취소 복구 처리
             await handleUncancellation(userId, productInfo, event);
+        } else if (eventType === "REFUND") {
+            // 🟢 환불 처리 (플랫폼에서 실제 환불이 처리된 경우)
+            await handleRefund(userId, productInfo, event);
         } else {
             // 기타 이벤트는 무시
             console.log("[RevenueCat Webhook] Unhandled event type:", eventType);
@@ -214,5 +217,98 @@ async function handleUncancellation(
         data: {
             isAutoRenewal: true,
         },
+    });
+}
+
+/**
+ * 🟢 환불 처리 (플랫폼에서 실제 환불이 처리된 경우)
+ * RevenueCat 웹훅이 REFUND 이벤트를 보내면 호출됨
+ */
+async function handleRefund(
+    userId: number,
+    productInfo: { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    event: any
+) {
+    // 🟢 transaction_id로 결제 기록 찾기
+    const transactionId = event.transaction_id || event.original_transaction_id;
+    if (!transactionId) {
+        console.error("[RevenueCat Webhook] REFUND: transaction_id가 없습니다.");
+        return;
+    }
+
+    // 결제 기록 찾기 (orderId가 transactionId와 일치하는 경우)
+    const payment = await prisma.payment.findFirst({
+        where: {
+            userId: userId,
+            orderId: transactionId.toString(),
+            status: "PAID",
+            method: "IN_APP",
+        },
+        include: { user: true },
+    });
+
+    if (!payment) {
+        console.warn("[RevenueCat Webhook] REFUND: 해당 결제 기록을 찾을 수 없습니다:", transactionId);
+        return;
+    }
+
+    // 🟢 이미 환불 처리되었는지 확인
+    if (payment.status === "CANCELLED") {
+        console.log("[RevenueCat Webhook] REFUND: 이미 환불 처리된 결제입니다:", transactionId);
+        return;
+    }
+
+    const isCoupon = productInfo.type === "COUPON";
+    let retrieveCount = 0;
+
+    if (isCoupon) {
+        retrieveCount = productInfo.value;
+        // 쿠폰을 이미 사용했는지 확인 (경고만 표시, 환불은 진행)
+        if (payment.user.couponCount < retrieveCount) {
+            console.warn("[RevenueCat Webhook] REFUND: 쿠폰을 이미 사용함:", {
+                userId,
+                transactionId,
+                couponCount: payment.user.couponCount,
+                retrieveCount,
+            });
+        }
+    }
+
+    // 🟢 DB 업데이트 (트랜잭션으로 일관성 보장)
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // 결제 상태 변경
+        await tx.payment.update({
+            where: { id: payment.id },
+            data: { status: "CANCELLED" },
+        });
+
+        if (isCoupon) {
+            // 쿠폰 개수 차감 (사용한 만큼만 차감)
+            const actualRetrieveCount = Math.min(retrieveCount, payment.user.couponCount);
+            if (actualRetrieveCount > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: { couponCount: { decrement: actualRetrieveCount } },
+                });
+            }
+        } else {
+            // 구독 등급 강등 및 만료 처리
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    subscriptionTier: "FREE",
+                    subscriptionExpiresAt: null,
+                    isAutoRenewal: false,
+                },
+            });
+        }
+    });
+
+    console.log("[RevenueCat Webhook] REFUND: 환불 처리 완료", {
+        userId,
+        transactionId,
+        productName: productInfo.name,
+        isCoupon,
+        retrieveCount,
     });
 }
