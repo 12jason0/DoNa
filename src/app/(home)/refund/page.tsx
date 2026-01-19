@@ -114,7 +114,7 @@ export default function RefundPage() {
             p.status === "PAID" &&
             // 🟢 토스페이먼츠: paymentKey 필요, 인앱결제: method가 "IN_APP" (paymentKey 없을 수 있음)
             ((p.paymentKey && (!p.method || p.method !== "IN_APP")) || p.method === "IN_APP") &&
-            (p.orderName.includes("쿠폰") || p.orderName.includes("멤버십") || p.orderName.includes("프리미엄"))
+            (p.orderName.includes("쿠폰") || p.orderName.includes("멤버십") || p.orderName.includes("프리미엄") || p.orderName.includes("구독"))
     );
 
     if (loading) return <div className="min-h-screen flex items-center justify-center">⏳ 로딩 중...</div>;
