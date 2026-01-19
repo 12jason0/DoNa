@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { VIBE_OPTIONS, VALUE_OPTIONS, CREW_OPTIONS, REGION_GROUPS } from "@/constants/onboardingData";
 import Image from "next/image";
 import { X, ArrowRight } from "lucide-react";
@@ -20,6 +20,7 @@ interface AIOnboardingProps {
 
 const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // =================================================================
     // 상태 관리
@@ -57,6 +58,40 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     const [selectedVibeIds, setSelectedVibeIds] = useState<string[]>([]);
     const [selectedValueId, setSelectedValueId] = useState<string | null>(null);
     const [selectedCrew, setSelectedCrew] = useState<string | null>(null);
+    const [isResetting, setIsResetting] = useState(false); // 🟢 reset 중인지 확인하는 플래그
+
+    // 🟢 reset=true 파라미터가 있으면 첫 단계로 리셋 (다른 useEffect보다 먼저 실행)
+    useEffect(() => {
+        const shouldReset = searchParams?.get("reset") === "true";
+        if (shouldReset) {
+            setIsResetting(true);
+            // localStorage 초기화
+            try {
+                localStorage.removeItem("onboardingStep1");
+                localStorage.removeItem("onboardingStep2");
+                localStorage.removeItem("onboardingStep3");
+                localStorage.removeItem("onboardingStep4");
+                localStorage.removeItem("onboardingComplete");
+            } catch (e) {
+                // localStorage 접근 실패 무시
+            }
+            setCurrentStep(1);
+            setShowIntro(true);
+            setPreferences({
+                concept: [],
+                companion: "",
+                mood: [],
+                regions: [],
+            });
+            setSelectedVibeIds([]);
+            setSelectedValueId(null);
+            setSelectedCrew(null);
+            // URL에서 reset 파라미터 제거
+            const url = new URL(window.location.href);
+            url.searchParams.delete("reset");
+            router.replace(url.pathname + url.search, { scroll: false });
+        }
+    }, [searchParams, router]);
 
     // =================================================================
     // API 저장 로직
@@ -83,6 +118,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     // 🔥 [핵심] 이어하기 & 초기화 로직 개선
     // =================================================================
     useEffect(() => {
+        // 🟢 reset 중이면 이 로직을 실행하지 않음
+        if (isResetting) {
+            setIsResetting(false); // reset 완료
+            return;
+        }
+
         const computeFirstUnansweredStep = (
             prefs: UserPreferences,
             flags: { s1: boolean; s2: boolean; s3: boolean; s4: boolean }
@@ -105,6 +146,13 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
         const init = async () => {
             try {
+                // 🟢 reset 중이면 서버 데이터를 가져오지 않고 초기 상태 유지
+                const shouldReset = searchParams?.get("reset") === "true";
+                if (shouldReset) {
+                    // reset은 이미 위의 useEffect에서 처리되므로 여기서는 아무것도 하지 않음
+                    return;
+                }
+
                 // 🟢 쿠키 기반 인증: authenticatedFetch 사용
                 const { authenticatedFetch } = await import("@/lib/authClient");
                 let serverPrefs: UserPreferences | null = null;
@@ -154,7 +202,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         };
         init();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [searchParams]);
 
     // 자동 저장 트리거
     useEffect(() => {
@@ -334,7 +382,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     if (showIntro) {
         return (
             <div
-                className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out ${
+                className={`fixed inset-0 z-100 flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out ${
                     isIntroFading ? "opacity-0 pointer-events-none" : "opacity-100"
                 }`}
             >
@@ -558,7 +606,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                         <button
                                             key={group.id}
                                             onClick={() => handleRegionSelect(group)}
-                                            className={`group relative flex items-center justify-center px-4 py-4 rounded-2xl text-sm font-bold transition-all duration-200 shadow-sm border ${
+                                            className={`group relative flex items-center justify-center ml-1 mr-1 px-4 py-4 rounded-2xl text-sm font-bold transition-all duration-200 shadow-sm border ${
                                                 isSelected
                                                     ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 dark:border-emerald-600 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500 dark:ring-emerald-600"
                                                     : "bg-white dark:bg-[#0f1710] border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
@@ -573,7 +621,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             </div>
 
                             {/* 하단 고정 버튼 섹션: 그라데이션 및 그림자 추가 */}
-                            <div className="shrink-0 mt-auto pb-8 pt-4 bg-white dark:bg-[#1a241b]">
+                            <div className="shrink-0 mt-auto pb-8 pt-4  dark:bg-[#1a241b]">
                                 <button
                                     onClick={nextStep}
                                     disabled={preferences.regions.length === 0}

@@ -255,20 +255,15 @@ function MapPageInner() {
                 return;
             } else if (courseGrade === "PREMIUM") {
                 // BASIC 유저 + PREMIUM 코스 → TicketPlans
-                // 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함
-                if (!isMobilePlatform) {
-                    setShowSubscriptionModal(true);
-                }
+                // 🟢 모바일에서도 모달 표시 (결제 시 인앱결제 사용)
+                setShowSubscriptionModal(true);
                 return;
             }
         }
 
         // 🟢 3-5. FREE 유저 (BASIC, PREMIUM 코스) → TicketPlans
-        // 🟢 [iOS/Android 출시 기념 이벤트]: iOS/Android에서는 위에서 이미 Basic 코스 처리 완료
-        // 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함
-        if (!isMobilePlatform) {
-            setShowSubscriptionModal(true);
-        }
+        // 🟢 모바일에서도 모달 표시 (결제 시 인앱결제 사용)
+        setShowSubscriptionModal(true);
     };
 
     const handleFindWay = (placeName: string) => {

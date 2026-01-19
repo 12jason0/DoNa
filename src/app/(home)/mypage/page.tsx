@@ -11,6 +11,7 @@ const ProfileTab = lazy(() => import("@/components/mypage/ProfileTab"));
 const FootprintTab = lazy(() => import("@/components/mypage/FootprintTab"));
 const RecordsTab = lazy(() => import("@/components/mypage/RecordsTab"));
 const ActivityTab = lazy(() => import("@/components/mypage/ActivityTab"));
+const TicketPlans = lazy(() => import("@/components/TicketPlans"));
 import {
     UserInfo,
     UserPreferences,
@@ -96,6 +97,9 @@ const MyPage = () => {
     const [pwState, setPwState] = useState({ current: "", next: "", confirm: "" });
     const [pwLoading, setPwLoading] = useState(false);
     const [pwError, setPwError] = useState("");
+
+    // 🟢 TicketPlans 모달 상태
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
     // 🟢 Data Fetching Logic (성능 최적화: 우선순위 기반 로딩)
     useEffect(() => {
@@ -213,9 +217,20 @@ const MyPage = () => {
         const handlePaymentSuccess = () => {
             console.log("[마이페이지] 결제 완료 감지 - 구매 내역 갱신");
             fetchPayments();
+            // 🟢 결제 완료 시 사용자 정보도 갱신
+            fetchUserInfo();
         };
         window.addEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
         return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
+    }, []);
+
+    // 🟢 TicketPlans 모달 열기 이벤트 리스너
+    useEffect(() => {
+        const handleOpenTicketPlans = () => {
+            setShowSubscriptionModal(true);
+        };
+        window.addEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
+        return () => window.removeEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
     }, []);
 
     const fetchUserInfo = useCallback(async (): Promise<boolean> => {
@@ -985,7 +1000,7 @@ const MyPage = () => {
                             userInfo={userInfo}
                             userPreferences={userPreferences}
                             onEditProfile={handleEditClick}
-                            onEditPreferences={() => router.push("/onboarding")}
+                            onEditPreferences={() => router.push("/onboarding?reset=true")}
                             onOpenPwModal={() => {
                                 setPwModalOpen(true);
                                 setPwStep("verify");
@@ -1482,6 +1497,13 @@ const MyPage = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* 🟢 TicketPlans 모달 */}
+            {showSubscriptionModal && (
+                <Suspense fallback={null}>
+                    <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
+                </Suspense>
             )}
         </div>
     );

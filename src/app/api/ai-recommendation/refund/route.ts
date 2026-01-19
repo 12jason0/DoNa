@@ -134,40 +134,40 @@ export async function POST(request: NextRequest) {
 
         // 4. 토스페이먼츠 환불 요청 (인앱결제가 아닌 경우만)
         if (!isInAppPayment) {
-            // 🟢 환불은 일반 결제와 빌링 결제 모두 가능하므로, orderName으로 결제 타입 판단
-            // 일반 결제(쿠폰): orderName에 "쿠폰" 포함 → TOSS_SECRET_KEY_GENERAL (donaudy2at MID)
-            // 빌링 결제(구독): orderName에 "구독" 또는 "멤버십" 포함 → TOSS_SECRET_KEY_BILLING (bill_donaoc44v MID)
-            const isBillingPayment = payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
-            const secretKey = isBillingPayment ? process.env.TOSS_SECRET_KEY_BILLING : process.env.TOSS_SECRET_KEY_GENERAL;
+        // 🟢 환불은 일반 결제와 빌링 결제 모두 가능하므로, orderName으로 결제 타입 판단
+        // 일반 결제(쿠폰): orderName에 "쿠폰" 포함 → TOSS_SECRET_KEY_GENERAL (donaudy2at MID)
+        // 빌링 결제(구독): orderName에 "구독" 또는 "멤버십" 포함 → TOSS_SECRET_KEY_BILLING (bill_donaoc44v MID)
+        const isBillingPayment = payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
+        const secretKey = isBillingPayment ? process.env.TOSS_SECRET_KEY_BILLING : process.env.TOSS_SECRET_KEY_GENERAL;
 
-            if (!secretKey) {
-                return NextResponse.json(
-                    {
-                        error: `환불 시크릿 키가 설정되지 않았습니다. (${isBillingPayment ? "빌링" : "일반"} 결제)`,
-                    },
-                    { status: 500 }
-                );
-            }
+        if (!secretKey) {
+            return NextResponse.json(
+                {
+                    error: `환불 시크릿 키가 설정되지 않았습니다. (${isBillingPayment ? "빌링" : "일반"} 결제)`,
+                },
+                { status: 500 }
+            );
+        }
 
             // 🟢 paymentKey가 없는 경우 (이론적으로는 토스페이먼츠 결제인데 paymentKey가 없으면 오류)
             if (!payment.paymentKey) {
                 return NextResponse.json({ error: "환불 처리에 필요한 결제 정보가 없습니다." }, { status: 400 });
             }
 
-            const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
+        const authHeader = Buffer.from(`${secretKey}:`).toString("base64");
 
-            const tossRes = await fetch(`https://api.tosspayments.com/v1/payments/${payment.paymentKey}/cancel`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Basic ${authHeader}`,
-                    "Content-Type": "application/json",
-                    "Idempotency-Key": `refund_${payment.orderId}`, // 중복 환불 방지
-                },
-                body: JSON.stringify({
-                    cancelReason: cancelReason || "고객 요청 환불",
-                    cancelAmount: payment.amount,
-                }),
-            });
+        const tossRes = await fetch(`https://api.tosspayments.com/v1/payments/${payment.paymentKey}/cancel`, {
+            method: "POST",
+            headers: {
+                Authorization: `Basic ${authHeader}`,
+                "Content-Type": "application/json",
+                "Idempotency-Key": `refund_${payment.orderId}`, // 중복 환불 방지
+            },
+            body: JSON.stringify({
+                cancelReason: cancelReason || "고객 요청 환불",
+                cancelAmount: payment.amount,
+            }),
+        });
 
             if (!tossRes.ok) {
                 const tossError = await tossRes.json().catch(() => ({ message: "알 수 없는 오류" }));

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
                     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
                 }
             } else {
-                whereClause.userId = Number(userId);
+            whereClause.userId = Number(userId);
             }
             // 🟢 마이페이지에서는 개인 추억도 포함 (isPublic 필터링 없음)
         }
@@ -75,27 +75,27 @@ export async function GET(request: NextRequest) {
             }
             
             return {
-                id: r.id,
-                courseId: r.courseId,
-                userId: r.userId,
-                rating: r.rating,
-                comment: r.comment,
-                imageUrls: r.imageUrls || [],
+            id: r.id,
+            courseId: r.courseId,
+            userId: r.userId,
+            rating: r.rating,
+            comment: r.comment,
+            imageUrls: r.imageUrls || [],
                 tags: r.tags || [], // 🟢 태그 추가
                 placeData: r.placeData || null, // 🟢 장소별 데이터 추가
-                createdAt: r.createdAt,
+            createdAt: r.createdAt,
                 isPublic: isPublicValue, // 🟢 명시적으로 Boolean 변환
-                user: {
-                    nickname: r.user?.username || "익명",
-                    initial: (r.user?.username?.[0] || "U").toUpperCase(),
-                    profileImageUrl: r.user?.profileImageUrl || "",
-                },
-                course: r.course
-                    ? {
-                          title: r.course.title,
-                          concept: (r.course as any).concept || "",
-                      }
-                    : undefined,
+            user: {
+                nickname: r.user?.username || "익명",
+                initial: (r.user?.username?.[0] || "U").toUpperCase(),
+                profileImageUrl: r.user?.profileImageUrl || "",
+            },
+            course: r.course
+                ? {
+                      title: r.course.title,
+                      concept: (r.course as any).concept || "",
+                  }
+                : undefined,
             };
         });
         
@@ -157,18 +157,18 @@ export async function POST(request: NextRequest) {
         // 🟢 [단계 1] 코스 완료 체크: 공개 리뷰(isPublic: true)일 때만 코스 완료 필수
         // 개인 추억(isPublic: false)은 코스 완료 없이도 저장 가능
         if (isPublicValue) {
-            const isCompleted = await prisma.completedCourse.findFirst({
-                where: { userId: numericUserId, courseId: numericCourseId },
-            });
+        const isCompleted = await prisma.completedCourse.findFirst({
+            where: { userId: numericUserId, courseId: numericCourseId },
+        });
 
-            if (!isCompleted) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message: "코스를 완료한 후에만 리뷰 보상을 받을 수 있습니다! 🏃‍♂️",
-                    },
-                    { status: 400 }
-                );
+        if (!isCompleted) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "코스를 완료한 후에만 리뷰 보상을 받을 수 있습니다! 🏃‍♂️",
+                },
+                { status: 400 }
+            );
             }
         }
 

@@ -190,7 +190,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     // 🟢 데이터가 있는지 확인 (데이터가 없으면 라이트 모드로 표시)
     const hasData = useMemo(() => {
         if (activeView === "calendar") {
-            return completed.length > 0 || aiRecommendations.length > 0;
+        return completed.length > 0 || aiRecommendations.length > 0;
         } else {
             return personalStories.length > 0;
         }
@@ -471,13 +471,13 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     } relative z-10`}
                 >
                     <div className="flex items-center justify-between mb-4">
-                        <h4
-                            className={`text-lg font-bold text-gray-900 ${
-                                hasData ? "dark:text-white" : ""
+                    <h4
+                        className={`text-lg font-bold text-gray-900 ${
+                            hasData ? "dark:text-white" : ""
                             } tracking-tight`}
-                        >
-                            내 발자취 👣
-                        </h4>
+                    >
+                        내 발자취 👣
+                    </h4>
                         {/* 🟢 서브 탭 (달력, 추억) - 오른쪽 정렬 */}
                         <div className="flex items-center gap-2">
                             <button
@@ -508,13 +508,13 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     </div>
                     <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"></div>
                     {activeView === "calendar" && (
-                        <p
-                            className={`text-gray-500 ${
-                                hasData ? "dark:text-gray-400" : ""
-                            } text-xs md:text-sm font-medium`}
-                        >
-                            내가 완료한 미션과 다녀온 코스들을 날짜별로 확인해보세요.
-                        </p>
+                    <p
+                        className={`text-gray-500 ${
+                            hasData ? "dark:text-gray-400" : ""
+                        } text-xs md:text-sm font-medium`}
+                    >
+                        내가 완료한 미션과 다녀온 코스들을 날짜별로 확인해보세요.
+                    </p>
                     )}
                     {activeView === "memories" && (
                         <p

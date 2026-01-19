@@ -183,6 +183,7 @@ const nextConfig = {
         remotePatterns: [
             { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" },
             { protocol: "https", hostname: "k.kakaocdn.net" }, // 🟢 카카오 프로필 이미지 CDN 허용
+            { protocol: "https", hostname: "images.unsplash.com" }, // 🟢 Unsplash 이미지 허용
         ],
         qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
         deviceSizes: [640, 750, 828, 1080, 1200],

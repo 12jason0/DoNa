@@ -85,7 +85,7 @@ export default function RefundPage() {
                         window.open(platformUrl, "_blank");
                     }
                 } else {
-                    setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
+                setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
                 }
                 await fetchPaymentHistory();
             } else {
