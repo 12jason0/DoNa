@@ -41,22 +41,29 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid product" }, { status: 400 });
         }
 
-        // 🟢 중복 처리 방지: 이미 처리된 transactionId인지 확인
-        const orderId = transactionId?.toString() || `rc_${Date.now()}`;
-        const existingPayment = await prisma.payment.findFirst({
+        // 🟢 중복 처리 방지: orderId 기준으로 확인 (status 무관)
+        const orderId = transactionId?.toString() || `rc_${userId}_${Date.now()}`;
+        const existingPayment = await prisma.payment.findUnique({
             where: {
                 orderId: orderId,
-                userId: userId,
-                status: "PAID",
             },
         });
 
         if (existingPayment) {
-            // 이미 처리된 결제
+            // 이미 처리된 결제 (어떤 상태든 이미 orderId가 존재함)
             const user = await prisma.user.findUnique({ 
                 where: { id: userId }, 
                 select: { couponCount: true, subscriptionTier: true } 
             });
+            
+            // 만약 PAID 상태가 아니면 업데이트 시도 (중요: 이미 존재하므로 지급은 하지 않음)
+            if (existingPayment.status !== "PAID") {
+                await prisma.payment.update({
+                    where: { id: existingPayment.id },
+                    data: { status: "PAID" },
+                });
+            }
+            
             return NextResponse.json({ 
                 success: true, 
                 message: "Already processed",
@@ -89,18 +96,28 @@ export async function POST(request: NextRequest) {
                 });
             }
 
-            // 결제 기록 저장
-            await tx.payment.create({
-                data: {
-                    orderId: orderId,
-                    userId: userId,
-                    orderName: productInfo.name,
-                    amount: 0,
-                    status: "PAID",
-                    method: "IN_APP",
-                    approvedAt: new Date(),
-                },
-            });
+            // 결제 기록 저장 (unique constraint 오류 대비)
+            try {
+                await tx.payment.create({
+                    data: {
+                        orderId: orderId,
+                        userId: userId,
+                        orderName: productInfo.name,
+                        amount: 0,
+                        status: "PAID",
+                        method: "IN_APP",
+                        approvedAt: new Date(),
+                    },
+                });
+            } catch (createError: any) {
+                // unique constraint 오류인 경우 (race condition 대비)
+                if (createError?.code === "P2002" && createError?.meta?.target?.includes("order_id")) {
+                    console.warn("[RevenueCat Confirm] Payment record already exists:", orderId);
+                    // 이미 존재하는 경우 무시하고 진행
+                } else {
+                    throw createError; // 다른 오류는 다시 throw
+                }
+            }
 
             const updatedUser = await tx.user.findUnique({
                 where: { id: userId },
