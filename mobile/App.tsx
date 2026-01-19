@@ -94,6 +94,14 @@ export default function App() {
                         ? process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || ""
                         : process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || "";
 
+                // 🟢 [Debug]: API 키 확인 (키 값의 일부만 로그)
+                console.log("[RevenueCat] 플랫폼:", Platform.OS);
+                console.log("[RevenueCat] API 키 존재 여부:", !!apiKey);
+                console.log("[RevenueCat] API 키 길이:", apiKey.length);
+                if (apiKey.length > 0) {
+                    console.log("[RevenueCat] API 키 앞 10자리:", apiKey.substring(0, 10));
+                }
+
                 if (apiKey) {
                     await Purchases.configure({ apiKey });
                     // 개발 환경에서 디버그 로그 활성화

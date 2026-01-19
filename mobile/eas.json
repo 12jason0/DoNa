@@ -8,8 +8,8 @@
             "developmentClient": true,
             "distribution": "internal",
             "env": {
-                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@REVENUECAT_API_KEY_IOS",
-                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@REVENUECAT_API_KEY_ANDROID"
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@EXPO_PUBLIC_REVENUECAT_API_KEY_IOS",
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID"
             }
         },
         "preview": {
@@ -21,17 +21,17 @@
                 "buildType": "apk"
             },
             "env": {
-                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@REVENUECAT_API_KEY_IOS",
-                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@REVENUECAT_API_KEY_ANDROID"
-              }
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@EXPO_PUBLIC_REVENUECAT_API_KEY_IOS",
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID"
+            }
         },
         "production": {
             "autoIncrement": true,
             "distribution": "store",
             "env": {
-        "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@REVENUECAT_API_KEY_IOS",
-        "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@REVENUECAT_API_KEY_ANDROID"
-      },
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@EXPO_PUBLIC_REVENUECAT_API_KEY_IOS",
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID"
+            },
             "android": {
                 "buildType": "app-bundle"
             }
