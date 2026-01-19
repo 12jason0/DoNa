@@ -156,7 +156,7 @@ const getUserPermission = async (
             prisma.user
                 .findUnique({
                     where: { id: userIdNum },
-                    select: { subscriptionTier: true },
+                    select: { subscriptionTier: true, createdAt: true, subscriptionExpiresAt: true }, // 🟢 [Fix]: createdAt과 subscriptionExpiresAt 추가
                 })
                 .catch((e: any) => {
                     if (process.env.NODE_ENV === "development") {
@@ -180,9 +180,20 @@ const getUserPermission = async (
                 }),
         ]);
 
+        // 🟢 [Fix]: calculateEffectiveSubscription을 사용하여 실제 유효한 등급 반환 (환불 후 등급 변경 즉시 반영)
+        let effectiveTier = "FREE";
+        if (user) {
+            const { calculateEffectiveSubscription } = await import("@/lib/subscription");
+            const effectiveSubscription = calculateEffectiveSubscription(
+                user.subscriptionTier,
+                user.createdAt,
+                user.subscriptionExpiresAt
+            );
+            effectiveTier = effectiveSubscription.tier;
+        }
 
         return {
-            userTier: user?.subscriptionTier || "FREE",
+            userTier: effectiveTier,
             hasUnlocked: !!unlockRecord,
         };
     } catch (e) {

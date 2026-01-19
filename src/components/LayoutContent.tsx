@@ -31,6 +31,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const isEscapeIntroPage = pathname.startsWith("/escape/intro");
     const isEscapeId = pathname ? /^\/escape\/[^/]+$/.test(pathname) : false;
     const isCourseStart = pathname ? /^\/courses\/[^/]+\/start$/.test(pathname) : false;
+    const isCourseDetail = pathname ? /^\/courses\/[^/]+$/.test(pathname) : false; // 🟢 코스 상세 페이지
     const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
     const homepageBgUrl = getS3StaticUrl("homepage.png");
 
@@ -347,7 +348,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide">
                                         {children}
                                     </main>
-                                    <div className={`${isEscapeId || isCourseStart ? "hidden" : "block"} shrink-0`}>
+                                    <div className={`${isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"} shrink-0`}>
                                         <Footer />
                                     </div>
                                 </div>

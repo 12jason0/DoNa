@@ -636,6 +636,13 @@ export default function CourseDetailClient({
                 body: currentSavedState ? undefined : JSON.stringify({ courseId }),
             });
 
+            // 🟢 [Fix]: API 호출 실패 시 상태 되돌리기
+            if (response === null) {
+                setIsSaved(currentSavedState); // 원래 상태로 되돌림
+                showToast("오류가 발생했습니다. 다시 시도해주세요.", "error");
+                return;
+            }
+
             // 🟢 API 호출 성공 시에만 캐시 업데이트
             if (response !== null) {
                 // 🟢 [Fix]: 캐시에 새로운 상태를 즉시 반영하여 favoritesChanged 이벤트 후에도 상태 유지
@@ -1317,7 +1324,9 @@ export default function CourseDetailClient({
                         className="bg-white dark:bg-[#1a241b] rounded-lg w-full max-w-md aspect-4/5 overflow-hidden relative naver-map-container"
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {/* 🟢 [Fix]: 지도 보기 모달에서도 지도가 제대로 표시되도록 키 추가 */}
                         <NaverMap
+                            key="full-map-modal"
                             places={mapPlaces}
                             userLocation={null}
                             selectedPlace={null}
@@ -1325,6 +1334,7 @@ export default function CourseDetailClient({
                             drawPath={true}
                             numberedMarkers={true}
                             className="w-full h-full"
+                            style={{ minHeight: "500px" }}
                             showControls={false}
                         />
                         {modalSelectedPlace ? (

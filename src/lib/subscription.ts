@@ -28,11 +28,17 @@ export function calculateEffectiveSubscription(
     const FREE_BASIC_END_DATE = new Date("2024-03-21T23:59:59.999Z");
     const now = new Date();
 
+    // 🟢 [Fix]: 환불 후에도 무료 BASIC이 적용되지 않도록 만료일이 null이면 무료 BASIC 제공 안 함
+    // 환불 시 subscriptionExpiresAt이 null로 설정되므로, 이 경우 무료 BASIC 로직을 적용하지 않음
+    const wasRefunded = currentExpiresAt === null && currentTier === "FREE";
+    
     // 조건 확인:
     // 1. 가입일이 2월 22일 이전인가?
     // 2. 현재 날짜가 3월 21일 이전인가?
     // 3. 현재 등급이 FREE인가?
+    // 4. 환불되지 않았는가? (만료일이 null이면 환불된 것으로 간주)
     const isEligibleForFreeBasic =
+        !wasRefunded &&
         createdAt < FREE_BASIC_START_DATE &&
         now < FREE_BASIC_END_DATE &&
         currentTier === "FREE";

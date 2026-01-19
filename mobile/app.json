@@ -4,7 +4,10 @@
     "slug": "duna",
     "owner": "dona-app",
     "version": "1.1.0",
-        "scheme": ["duna", "kakaoa6c31213198b3d562121ddace8d1b65f"],
+    "scheme": [
+      "duna",
+      "kakaoa6c31213198b3d562121ddace8d1b65f"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,15 +16,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#6db48c"
     },
-        "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "backgroundColor": "#ffffff",
       "supportsTablet": false,
       "bundleIdentifier": "kr.io.dona.dona",
-      "buildNumber": "24",
+      "buildNumber": "25",
       "usesAppleSignIn": true,
       "userInterfaceStyle": "light",
-            "associatedDomains": ["applinks:dona.io.kr"],
+      "associatedDomains": [
+        "applinks:dona.io.kr"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",
@@ -47,17 +54,20 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-                "FOREGROUND_SERVICE",
-                "com.android.vending.BILLING"
+        "FOREGROUND_SERVICE",
+        "com.android.vending.BILLING"
       ],
       "intentFilters": [
-                {
-                    "action": "VIEW",
-                    "category": ["BROWSABLE", "DEFAULT"],
-                    "data": {
-                        "scheme": "duna"
-                    }
-                },
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": {
+            "scheme": "duna"
+          }
+        },
         {
           "action": "VIEW",
           "autoVerify": true,
@@ -68,18 +78,27 @@
               "pathPrefix": "/"
             }
           ],
-                    "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
-                    "category": ["BROWSABLE", "DEFAULT"],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
           "data": {
             "scheme": "kakaoa6c31213198b3d562121ddace8d1b65f"
           }
         },
         {
           "action": "VIEW",
-                    "category": ["BROWSABLE", "DEFAULT"],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
           "data": {
             "scheme": "kakaolink"
           }
@@ -111,7 +130,9 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "enableProguardInReleaseBuilds": true,
-                        "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+            "extraMavenRepos": [
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ]
           }
         }
       ],

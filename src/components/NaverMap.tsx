@@ -106,10 +106,17 @@ export default function NaverMapComponent({
 
         (async () => {
             if (!(window as any).naver?.maps) await loadNaverMapsScript();
-            if (!mapElementRef.current || mapRef.current || !isMounted) return;
+            if (!mapElementRef.current || !isMounted) return;
+
+            // 🟢 [Fix]: 이미 지도가 초기화되어 있으면 재초기화하지 않음
+            if (mapRef.current) {
+                setMapReady(true);
+                return;
+            }
 
             // 1단계: window 및 전역 객체 존재 여부 통합 검증
             if (typeof window === "undefined" || !(window as any).naver || !(window as any).naver.maps) {
+                console.warn("[NaverMap] Naver Maps SDK가 로드되지 않았습니다.");
                 return;
             }
 
@@ -197,6 +204,22 @@ export default function NaverMapComponent({
             }
         };
     }, []);
+
+    // 🟢 [Fix]: center나 selectedPlace가 변경되면 지도 중심점 업데이트 (재초기화 없이)
+    useEffect(() => {
+        if (!mapReady || !mapRef.current || typeof window === "undefined" || !(window as any).naver?.maps) return;
+        
+        try {
+            const maps = (window as any).naver.maps;
+            const newCenter = center || (selectedPlace ? getCoords(selectedPlace) : null);
+            if (newCenter && isValidLatLng(newCenter)) {
+                const coords = getCoords(newCenter);
+                mapRef.current.setCenter(new maps.LatLng(coords.lat, coords.lng));
+            }
+        } catch (error) {
+            console.warn("지도 중심점 업데이트 실패:", error);
+        }
+    }, [mapReady, center?.lat, center?.lng, selectedPlace?.latitude, selectedPlace?.longitude]);
 
     // 🟢 [기능 유지] Bounds 자동 조정 - 안전한 접근 제어
     useEffect(() => {
@@ -362,20 +385,31 @@ export default function NaverMapComponent({
     );
 
     return (
-        <div className={className} style={{ ...style, width: "100%", height: "100%", position: "relative" }}>
+        <div className={className} style={{ ...style, width: "100%", height: "100%", position: "relative", minHeight: "320px" }}>
             <div
                 ref={mapElementRef}
                 data-naver-map="true"
                 style={{
                     width: "100%",
                     height: "100%",
+                    minHeight: "320px",
                     touchAction: "pan-x pan-y pinch-zoom",
                     overscrollBehavior: "none",
                     willChange: "transform",
                     transform: "translateZ(0)",
                     overflow: "hidden",
+                    backgroundColor: "#f3f4f6", // 🟢 지도 로딩 중 배경색
                 }}
             />
+            {/* 🟢 지도 로딩 중 표시 */}
+            {!mapReady && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">지도 로딩 중...</p>
+                    </div>
+                </div>
+            )}
 
             {/* 🟢 마커 분리 렌더링 - 모든 기존 기능 유지 */}
             {mapReady && (

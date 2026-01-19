@@ -68,15 +68,26 @@ export async function POST(request: NextRequest) {
         });
 
         if (existing) {
-            return NextResponse.json({ error: "Already favorited" }, { status: 409 });
+            // 🟢 [Fix]: 이미 찜한 경우도 성공으로 처리 (중복 클릭 방지)
+            return NextResponse.json({ success: true, message: "Already favorited" });
         }
 
-        await (prisma as any).userFavorite.create({
-            data: {
-                user_id: userId,
-                course_id: courseId,
-            },
-        });
+        // 🟢 [Fix]: Unique constraint 에러 처리 (레이스 컨디션 방지)
+        try {
+            await (prisma as any).userFavorite.create({
+                data: {
+                    user_id: userId,
+                    course_id: courseId,
+                },
+            });
+        } catch (error: any) {
+            // P2002는 Prisma의 unique constraint violation 에러 코드
+            if (error?.code === "P2002") {
+                // 이미 존재하는 경우 성공으로 처리
+                return NextResponse.json({ success: true, message: "Already favorited (race condition)" });
+            }
+            throw error; // 다른 에러는 그대로 throw
+        }
 
         // 상호작용 로그: like 기록
         try {

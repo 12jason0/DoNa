@@ -356,37 +356,37 @@ function CourseDetailPage() {
 
             const result = await authenticatedFetch(url, { method, body });
 
-            if (result !== null) {
-                showToast(nextState ? "찜 목록에 추가되었습니다." : "찜 목록에서 제거되었습니다.", "success");
-                
-                // 🟢 [Fix]: 캐시에 새로운 상태를 즉시 반영하여 favoritesChanged 이벤트 후에도 상태 유지
-                if (!layoutFavoritesCache) {
-                    layoutFavoritesCache = [];
-                }
-                if (nextState) {
-                    // 찜하기 추가: 캐시에 추가
-                    if (!layoutFavoritesCache.some((fav: any) => fav.course_id.toString() === courseId)) {
-                        layoutFavoritesCache.push({ course_id: Number(courseId) });
-                    }
-                } else {
-                    // 찜하기 제거: 캐시에서 제거
-                    layoutFavoritesCache = layoutFavoritesCache.filter(
-                        (fav: any) => fav.course_id.toString() !== courseId
-                    );
-                }
-                
-                layoutFavoritesPromise = null;
-                window.dispatchEvent(new CustomEvent("favoritesChanged"));
-            } else {
-                // 🟢 API 호출 실패 시 상태 롤백
-                setIsSaved(currentSavedState);
-                showToast("로그인이 필요합니다.", "error");
-                router.push("/login");
+            // 🟢 [Fix]: API 호출 실패 시 상태 되돌리기
+            if (result === null) {
+                setIsSaved(currentSavedState); // 원래 상태로 되돌림
+                showToast("오류가 발생했습니다. 다시 시도해주세요.", "error");
+                return;
             }
+
+            showToast(nextState ? "찜 목록에 추가되었습니다." : "찜 목록에서 제거되었습니다.", "success");
+            
+            // 🟢 [Fix]: 캐시에 새로운 상태를 즉시 반영하여 favoritesChanged 이벤트 후에도 상태 유지
+            if (!layoutFavoritesCache) {
+                layoutFavoritesCache = [];
+            }
+            if (nextState) {
+                // 찜하기 추가: 캐시에 추가
+                if (!layoutFavoritesCache.some((fav: any) => fav.course_id.toString() === courseId)) {
+                    layoutFavoritesCache.push({ course_id: Number(courseId) });
+                }
+            } else {
+                // 찜하기 제거: 캐시에서 제거
+                layoutFavoritesCache = layoutFavoritesCache.filter(
+                    (fav: any) => fav.course_id.toString() !== courseId
+                );
+            }
+            
+            layoutFavoritesPromise = null;
+            window.dispatchEvent(new CustomEvent("favoritesChanged"));
         } catch {
             // 🟢 에러 발생 시 상태 롤백
             setIsSaved(currentSavedState); // 원래 상태로 복원
-            showToast("오류가 발생했습니다.", "error");
+            showToast("오류가 발생했습니다. 다시 시도해주세요.", "error");
         }
     };
 
