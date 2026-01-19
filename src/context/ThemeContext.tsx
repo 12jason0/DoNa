@@ -53,9 +53,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             root.classList.remove("dark");
             root.setAttribute("data-theme", "light");
         }
+
+        // 🟢 초기 로드 시에도 theme-color 메타 태그 설정
+        const resolved = resolveTheme(stored || "light");
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        const newThemeColor = resolved === "dark" ? "#0f1710" : "#7FCC9F";
+        
+        if (themeColorMeta) {
+            themeColorMeta.setAttribute("content", newThemeColor);
+        } else {
+            const meta = document.createElement("meta");
+            meta.name = "theme-color";
+            meta.content = newThemeColor;
+            document.head.appendChild(meta);
+        }
     }, []);
 
-    // 🟢 테마 변경 시 document에 클래스 적용
+    // 🟢 테마 변경 시 document에 클래스 적용 및 theme-color 메타 태그 업데이트
     useEffect(() => {
         if (!mounted) return;
 
@@ -69,6 +83,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         } else {
             root.classList.remove("dark");
             root.setAttribute("data-theme", "light");
+        }
+
+        // 🟢 상태표시줄 위아래 영역 색상 동기화: theme-color 메타 태그 업데이트
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        const newThemeColor = resolved === "dark" ? "#0f1710" : "#7FCC9F";
+        
+        if (themeColorMeta) {
+            themeColorMeta.setAttribute("content", newThemeColor);
+        } else {
+            // 메타 태그가 없으면 생성
+            const meta = document.createElement("meta");
+            meta.name = "theme-color";
+            meta.content = newThemeColor;
+            document.head.appendChild(meta);
         }
     }, [theme, mounted]);
 
@@ -102,6 +130,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         } else {
             root.classList.add("dark");
             root.setAttribute("data-theme", "dark");
+        }
+
+        // 🟢 theme-color 메타 태그 즉시 업데이트
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        const newThemeColor = newTheme === "dark" ? "#0f1710" : "#7FCC9F";
+        
+        if (themeColorMeta) {
+            themeColorMeta.setAttribute("content", newThemeColor);
+        } else {
+            const meta = document.createElement("meta");
+            meta.name = "theme-color";
+            meta.content = newThemeColor;
+            document.head.appendChild(meta);
         }
     }, []);
 

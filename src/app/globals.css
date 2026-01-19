@@ -33,6 +33,13 @@
     --border-color: #2d3748;
 }
 
+/* 🟢 html 태그에도 배경색 설정 (상태표시줄 위아래 영역까지 확장) */
+html {
+    background-color: var(--background);
+    /* 🟢 전역 트랜지션: 테마 변경 시 눈의 피로도 감소 */
+    transition: background-color 0.3s ease;
+}
+
 body {
     /* 🟢 테마 변수를 사용하여 배경색 동적 변경 */
     background-color: var(--background);
