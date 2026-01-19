@@ -212,14 +212,32 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 const tossPayments = await loadTossPayments(clientKey);
 
                 const orderId = `${selectedPlan.id}_${userId}_${Date.now()}`;
-                const payment = tossPayments.payment({ customerKey });
 
-                // 🟢 구독 결제인 경우 빌링 키 발급 플로우로 이동
+                // 🟢 구독 결제인 경우 빌링 키 발급 (카드 등록) 플로우
                 if (isSubscription) {
-                    // 구독 결제는 빌링 키 발급 페이지로 이동
-                    window.location.href = `/pay/success-billing?planId=${selectedPlan.id}&customerKey=${encodeURIComponent(customerKey)}`;
+                    // 토스페이먼츠 빌링 SDK로 카드 등록 UI 표시
+                    // 타입 정의에 billing이 없을 수 있으므로 타입 단언 사용
+                    const billing = (tossPayments as any).billing({ customerKey });
+                    
+                    if (!billing) {
+                        throw new Error("빌링 기능을 사용할 수 없습니다. 토스페이먼츠 클라이언트 키를 확인해주세요.");
+                    }
+                    
+                    // plan 정보를 sessionStorage에 저장 (성공 페이지에서 사용)
+                    sessionStorage.setItem('pendingPaymentPlan', selectedPlan.id);
+                    sessionStorage.setItem('pendingPaymentCustomerKey', customerKey);
+                    
+                    await billing.requestBillingAuth({
+                        customerKey: customerKey,
+                        successUrl: `${window.location.origin}/pay/success-billing?planId=${selectedPlan.id}&customerKey=${encodeURIComponent(customerKey)}`,
+                        failUrl: `${window.location.origin}/pay/fail`,
+                    });
+                    // 🟢 결제 완료 후 로딩 상태 해제는 리다이렉트로 처리되므로 여기서는 하지 않음
                     return;
                 }
+
+                // 🟢 쿠폰 결제는 일반 결제로 처리
+                const payment = tossPayments.payment({ customerKey });
 
                 // 🟢 쿠폰 결제는 일반 결제로 처리
                 // 결제 전에 plan 정보 저장 (토스페이먼츠 리다이렉트 시 쿼리 파라미터 손실 방지)

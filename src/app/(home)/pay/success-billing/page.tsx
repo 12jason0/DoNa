@@ -14,21 +14,35 @@ function BillingSuccessContent() {
     useEffect(() => {
         const processBillingSuccess = async () => {
             // URL에서 파라미터 추출
-            const customerKey = searchParams.get("customerKey");
+            // 토스페이먼츠가 리다이렉트할 때 authKey를 쿼리 파라미터로 보내줍니다
+            const customerKey = searchParams.get("customerKey") || 
+                               (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentCustomerKey') : null);
             const authKey = searchParams.get("authKey");
+            const planId = searchParams.get("planId") || 
+                          (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentPlan') : null);
 
-            if (!customerKey || !authKey) {
+            // sessionStorage에서 정보 가져온 경우 정리
+            if (typeof window !== "undefined") {
+                if (sessionStorage.getItem('pendingPaymentPlan')) {
+                    sessionStorage.removeItem('pendingPaymentPlan');
+                }
+                if (sessionStorage.getItem('pendingPaymentCustomerKey')) {
+                    sessionStorage.removeItem('pendingPaymentCustomerKey');
+                }
+            }
+
+            if (!customerKey || !authKey || !planId) {
                 setStatus("error");
                 setErrorMessage("필수 결제 정보가 누락되었습니다.");
                 return;
             }
 
             try {
-                // API 엔드포인트로 요청 전송
+                // API 엔드포인트로 요청 전송 (planId 포함)
                 const res = await fetch(
                     `/api/pay/success-billing?customerKey=${encodeURIComponent(
                         customerKey
-                    )}&authKey=${encodeURIComponent(authKey)}`,
+                    )}&authKey=${encodeURIComponent(authKey)}&planId=${encodeURIComponent(planId)}`,
                     {
                         method: "GET",
                     }
