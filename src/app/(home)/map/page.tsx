@@ -160,22 +160,34 @@ function MapPageInner() {
 
     const { isAuthenticated } = useAuth();
 
+    // 🟢 사용자 등급 가져오기 함수
+    const fetchUserTier = async () => {
+        if (!isAuthenticated) {
+            setUserTier("FREE");
+            return;
+        }
+        try {
+            const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
+            const tier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
+            setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
+        } catch {
+            setUserTier("FREE");
+        }
+    };
+
     // 🟢 사용자 등급 미리 로드 (캐싱)
     useEffect(() => {
-        const fetchUserTier = async () => {
-            if (!isAuthenticated) {
-                setUserTier("FREE");
-                return;
-            }
-            try {
-                const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
-                const tier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
-                setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
-            } catch {
-                setUserTier("FREE");
-            }
-        };
         fetchUserTier();
+    }, [isAuthenticated]);
+
+    // 🟢 구독 변경 이벤트 리스너 (환불 후 실시간 업데이트)
+    useEffect(() => {
+        const handleSubscriptionChanged = () => {
+            console.log("[MapPage] 구독 변경 감지 - 사용자 등급 갱신");
+            fetchUserTier();
+        };
+        window.addEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
+        return () => window.removeEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
     }, [isAuthenticated]);
     const dragStartY = useRef<number>(0);
     const fetchAbortRef = useRef<AbortController | null>(null);

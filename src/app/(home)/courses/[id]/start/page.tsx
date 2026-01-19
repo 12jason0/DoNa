@@ -112,41 +112,52 @@ function GuidePageInner() {
         setIsMinimized((prev) => !prev);
     };
 
-    // 🟢 사용자 정보 가져오기 - 코스 데이터와 병렬 로딩으로 성능 최적화
-    useEffect(() => {
-        const fetchUserInfo = async () => {
-            try {
-                const { authenticatedFetch } = await import("@/lib/authClient");
-                const data = await authenticatedFetch("/api/users/profile");
-                if (data) {
-                    setUserEmail((data as any).email || (data as any).user?.email || null);
-                    const tier = (data as any).user?.subscriptionTier || (data as any).subscriptionTier || "FREE";
-                    setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
-                    setIsLoggedIn(true);
-                    
-                    // 🟢 유저 이름 가져오기
-                    const name = (data as any).name || (data as any).nickname || (data as any).user?.name || (data as any).user?.nickname || null;
-                    if (name) {
-                        setUserName(name);
-                    } else if ((data as any).email) {
-                        // 이름이 없으면 이메일 앞부분 사용
-                        const emailPrefix = (data as any).email.split("@")[0];
-                        setUserName(emailPrefix);
-                    }
-                } else {
-                    setIsLoggedIn(false);
-                    setUserTier("FREE");
-                    setUserName(null);
+    // 🟢 사용자 정보 가져오기 함수
+    const fetchUserInfo = async () => {
+        try {
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            const data = await authenticatedFetch("/api/users/profile");
+            if (data) {
+                setUserEmail((data as any).email || (data as any).user?.email || null);
+                const tier = (data as any).user?.subscriptionTier || (data as any).subscriptionTier || "FREE";
+                setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
+                setIsLoggedIn(true);
+                
+                // 🟢 유저 이름 가져오기
+                const name = (data as any).name || (data as any).nickname || (data as any).user?.name || (data as any).user?.nickname || null;
+                if (name) {
+                    setUserName(name);
+                } else if ((data as any).email) {
+                    // 이름이 없으면 이메일 앞부분 사용
+                    const emailPrefix = (data as any).email.split("@")[0];
+                    setUserName(emailPrefix);
                 }
-            } catch (err) {
+            } else {
                 setIsLoggedIn(false);
                 setUserTier("FREE");
                 setUserName(null);
             }
-        };
-        
+        } catch (err) {
+            setIsLoggedIn(false);
+            setUserTier("FREE");
+            setUserName(null);
+        }
+    };
+
+    // 🟢 사용자 정보 가져오기 - 코스 데이터와 병렬 로딩으로 성능 최적화
+    useEffect(() => {
         // 🟢 지연 제거: 코스 로딩과 병렬로 실행
         fetchUserInfo();
+    }, []);
+
+    // 🟢 구독 변경 이벤트 리스너 (환불 후 실시간 업데이트)
+    useEffect(() => {
+        const handleSubscriptionChanged = () => {
+            console.log("[GuidePage] 구독 변경 감지 - 사용자 정보 갱신");
+            fetchUserInfo();
+        };
+        window.addEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
+        return () => window.removeEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
     }, []);
 
     // 🟢 GPS 도착 체크 및 자동 이동 기능 제거됨

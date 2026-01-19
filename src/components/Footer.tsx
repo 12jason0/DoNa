@@ -80,6 +80,17 @@ export default function Footer() {
         }
     }, [pathname]);
 
+    // 🟢 로그아웃 이벤트 리스너 (로그아웃 시 즉시 상태 초기화)
+    useEffect(() => {
+        const handleAuthLogout = () => {
+            console.log("[Footer] 로그아웃 감지 - 상태 초기화");
+            setIsLoggedIn(false);
+            setNotificationEnabled(null);
+        };
+        window.addEventListener("authLogout", handleAuthLogout as EventListener);
+        return () => window.removeEventListener("authLogout", handleAuthLogout as EventListener);
+    }, []);
+
     if (pathname === "/map" || pathname?.startsWith("/map/")) {
         return null;
     }
@@ -179,27 +190,43 @@ export default function Footer() {
                     </button>
 
                     {/* 5. 마이페이지 */}
-                    <Link
-                        href="/mypage"
-                        prefetch={true}
-                        aria-label="마이페이지"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 relative ${
-                            isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
-                        }`}
-                        style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
-                    >
+                    {isLoggedIn ? (
+                        <Link
+                            href="/mypage"
+                            prefetch={true}
+                            aria-label="마이페이지"
+                            className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 relative ${
+                                isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
+                            }`}
+                            style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
+                        >
                         <svg {...svgProps}>
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                         </svg>
-                        {/* 알림이 꺼져 있을 때만 빨간 점 깜빡임 */}
-                        {isLoggedIn && notificationEnabled === false && (
-                            <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
-                            </span>
-                        )}
-                    </Link>
+                            {/* 알림이 꺼져 있을 때만 빨간 점 깜빡임 */}
+                            {isLoggedIn && notificationEnabled === false && (
+                                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                                </span>
+                            )}
+                        </Link>
+                    ) : (
+                        <button
+                            onClick={() => setShowLoginModal(true)}
+                            aria-label="마이페이지"
+                            className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
+                                isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
+                            }`}
+                            style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
+                        >
+                            <svg {...svgProps}>
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </button>
+                    )}
                 </nav>
             </div>
 

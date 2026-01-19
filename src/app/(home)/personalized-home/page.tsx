@@ -589,6 +589,14 @@ const AIRecommender = () => {
 
             if (data && typeof data.ticketsRemaining === "number") {
                 setCoupons(data.ticketsRemaining);
+                
+                // 🟢 쿠폰 사용 이벤트 발생 (마이페이지 실시간 업데이트용)
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("couponUsed", {
+                        detail: { ticketsRemaining: data.ticketsRemaining }
+                    }));
+                }
+                
                 setIsUsingCoupon(false);
                 return true;
             } else {

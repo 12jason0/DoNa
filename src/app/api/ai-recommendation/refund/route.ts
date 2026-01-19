@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
 
         // 3. 상품 종류 판별
         const isCoupon = payment.orderName.includes("쿠폰");
+        const isSubscription = payment.orderName.includes("구독") || payment.orderName.includes("멤버십") || payment.orderName.includes("프리미엄");
         let retrieveCount = 0;
 
         if (isCoupon) {

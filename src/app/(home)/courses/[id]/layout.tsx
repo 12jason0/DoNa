@@ -285,24 +285,36 @@ function CourseDetailPage() {
         }
     }, [courseId]);
 
-    // 🟢 [Fix] 사용자 등급 조회 (중복 Fetch 방지 패턴 적용)
-    useEffect(() => {
-        const fetchUserTierData = async () => {
-            try {
-                const session = await fetchSession();
-                setIsLoggedIn(session.authenticated);
-                if (session.authenticated) {
-                    const data = await authenticatedFetch("/api/users/profile");
-                    if (data) {
-                        const tier = (data as any).user?.subscriptionTier || (data as any).subscriptionTier || "FREE";
-                        setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
-                    }
+    // 🟢 사용자 등급 가져오기 함수
+    const fetchUserTierData = async () => {
+        try {
+            const session = await fetchSession();
+            setIsLoggedIn(session.authenticated);
+            if (session.authenticated) {
+                const data = await authenticatedFetch("/api/users/profile");
+                if (data) {
+                    const tier = (data as any).user?.subscriptionTier || (data as any).subscriptionTier || "FREE";
+                    setUserTier(tier as "FREE" | "BASIC" | "PREMIUM");
+                }
                 }
             } catch {
                 setIsLoggedIn(false);
             }
         };
+
+    // 🟢 [Fix] 사용자 등급 조회 (중복 Fetch 방지 패턴 적용)
+    useEffect(() => {
         fetchUserTierData();
+    }, []);
+
+    // 🟢 구독 변경 이벤트 리스너 (환불 후 실시간 업데이트)
+    useEffect(() => {
+        const handleSubscriptionChanged = () => {
+            console.log("[CourseLayout] 구독 변경 감지 - 사용자 등급 갱신");
+            fetchUserTierData();
+        };
+        window.addEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
+        return () => window.removeEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
     }, []);
 
     // 🟢 [Fix] checkFavoriteStatus 중복 호출 방지 및 2304 에러 해결

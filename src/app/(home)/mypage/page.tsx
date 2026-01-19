@@ -101,156 +101,7 @@ const MyPage = () => {
     // 🟢 TicketPlans 모달 상태
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
-    // 🟢 Data Fetching Logic (성능 최적화: 우선순위 기반 로딩)
-    useEffect(() => {
-        // 🟢 URL 파라미터에서 초기 탭 읽기
-        let initialTab = "profile";
-        try {
-            const url = new URL(window.location.href);
-            const tab = url.searchParams.get("tab");
-            if (tab === "checkins") {
-                // 🟢 checkins는 activity 탭의 subTab
-                initialTab = "activity";
-                setActivitySubTab("checkins");
-            } else if (["profile", "footprint", "records", "activity"].includes(tab || "")) {
-                initialTab = tab || "profile";
-            }
-            setActiveTab(initialTab);
-        } catch {}
-
-        // 🟢 [Performance]: 초기 로딩 최적화 - 병렬 처리 및 빠른 UI 표시
-        // 1단계: 필수 데이터 병렬 로드 (프로필 정보 + 취향 정보)
-        Promise.all([
-            fetchUserInfo(),
-            fetchUserPreferences(), // 프로필 탭에 필요하므로 병렬로 함께 로드
-        ]).then(([shouldContinue]) => {
-            if (shouldContinue) {
-                // 🟢 2단계: 초기 탭에 필요한 데이터만 즉시 로드 (나머지는 지연)
-                const scheduleDeferredLoad = () => {
-                    const priorityData: Promise<any>[] = [];
-                    const deferredData: Promise<any>[] = [];
-
-                    // 초기 활성 탭에 필요한 데이터를 우선 로드
-                    if (initialTab === "profile") {
-                        // 프로필 탭은 이미 로드됨, 나머지 데이터는 지연 로드
-                        deferredData.push(
-                            fetchFavorites(),
-                            fetchSavedCourses(),
-                            fetchBadges(),
-                            fetchCompleted(),
-                            fetchCasefiles(),
-                            fetchRewards(),
-                            fetchCheckins(),
-                            fetchPayments()
-                        );
-                    } else if (initialTab === "footprint") {
-                        priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories());
-                        deferredData.push(
-                            fetchFavorites(),
-                            fetchBadges(),
-                            fetchRewards(),
-                            fetchCheckins(),
-                            fetchPayments()
-                        );
-                    } else if (initialTab === "records") {
-                        priorityData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
-                        deferredData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
-                    } else if (initialTab === "activity") {
-                        priorityData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
-                        deferredData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
-                    } else {
-                        // 기본: 모든 데이터를 지연 로드
-                        deferredData.push(
-                            fetchFavorites(),
-                            fetchSavedCourses(),
-                            fetchBadges(),
-                            fetchCompleted(),
-                            fetchCasefiles(),
-                            fetchRewards(),
-                            fetchCheckins(),
-                            fetchPayments()
-                        );
-                    }
-
-                    // 우선순위 데이터 먼저 로드
-                    if (priorityData.length > 0) {
-                        Promise.all(priorityData).catch((error) => {
-                            console.error("[MyPage] 우선순위 데이터 로드 실패:", error);
-                        });
-                    }
-
-                    // 나머지 데이터는 추가 지연 후 로드 (초기 렌더링 후)
-                    setTimeout(() => {
-                        if (deferredData.length > 0) {
-                            Promise.all(deferredData).catch((error) => {
-                                console.error("[MyPage] 지연 데이터 로드 실패:", error);
-                            });
-                        }
-                    }, 100); // 🟢 100ms로 단축하여 더 빠른 로딩
-                };
-
-                // 🟢 즉시 실행하여 모든 데이터가 확실히 로드되도록 함
-                // 🟢 requestIdleCallback은 브라우저가 idle 상태일 때만 실행되므로,
-                // 🟢 timeout을 짧게 설정하거나 바로 실행하도록 변경
-                if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-                    (window as any).requestIdleCallback(scheduleDeferredLoad, { timeout: 200 });
-                } else {
-                    // 폴백: 즉시 실행
-                    setTimeout(scheduleDeferredLoad, 50);
-                }
-            }
-        }).catch((error) => {
-            console.error("[MyPage] 초기 데이터 로드 실패:", error);
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // 🟢 초기 마운트 시에만 실행
-
-    // Event Listener for Checkin
-    useEffect(() => {
-        const onCheckinUpdated = () => fetchCheckins();
-        window.addEventListener("checkinUpdated", onCheckinUpdated as EventListener);
-        return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
-    }, []);
-
-    // 🟢 결제 완료 이벤트 리스너 (구매 내역 즉시 업데이트)
-    useEffect(() => {
-        const handlePaymentSuccess = () => {
-            console.log("[마이페이지] 결제 완료 감지 - 구매 내역 갱신");
-            fetchPayments();
-            // 🟢 결제 완료 시 사용자 정보도 갱신
-            fetchUserInfo();
-        };
-        window.addEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
-        return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
-    }, []);
-
-    // 🟢 쿠폰 지급 이벤트 리스너 (쿠폰 지급 시 즉시 데이터 갱신)
-    useEffect(() => {
-        const handleCouponAwarded = () => {
-            console.log("[마이페이지] 쿠폰 지급 감지 - 사용자 정보 및 보상 내역 갱신");
-            // 🟢 캐시 무시 플래그 설정
-            (window as any).__couponAwardedRefresh = true;
-            // 🟢 사용자 정보와 보상 내역을 병렬로 갱신 (캐시 무시)
-            Promise.all([
-                fetchUserInfo(),
-                fetchRewards()
-            ]).catch((err) => {
-                console.error("[마이페이지] 쿠폰 지급 후 데이터 갱신 실패:", err);
-            });
-        };
-        window.addEventListener("couponAwarded", handleCouponAwarded as EventListener);
-        return () => window.removeEventListener("couponAwarded", handleCouponAwarded as EventListener);
-    }, []);
-
-    // 🟢 TicketPlans 모달 열기 이벤트 리스너
-    useEffect(() => {
-        const handleOpenTicketPlans = () => {
-            setShowSubscriptionModal(true);
-        };
-        window.addEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
-        return () => window.removeEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
-    }, []);
-
+    // 🟢 [Fix] 모든 fetch 함수들을 useEffect보다 위로 이동 (TDZ 방지)
     const fetchUserInfo = useCallback(async (): Promise<boolean> => {
         // 🟢 이미 리다이렉트 중이면 중복 실행 방지
         if (redirectingRef.current) return false;
@@ -258,12 +109,16 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
             const { apiFetch } = await import("@/lib/authClient");
-            // 🟢 쿠폰 지급 이벤트로 인한 갱신인 경우 캐시 무시
-            const cacheOption = (window as any).__couponAwardedRefresh 
+            // 🟢 실시간 업데이트가 필요한 경우(결제/환불/쿠폰 사용 등) 캐시 무시
+            const shouldForceRefresh = (window as any).__forceRefreshUserInfo || (window as any).__couponAwardedRefresh;
+            const cacheOption = shouldForceRefresh 
                 ? { cache: "no-store" as const }
                 : { cache: "force-cache" as const, next: { revalidate: 60 } };
             let { data: raw, response } = await apiFetch<any>("/api/users/profile", cacheOption);
             // 🟢 플래그 초기화
+            if ((window as any).__forceRefreshUserInfo) {
+                delete (window as any).__forceRefreshUserInfo;
+            }
             if ((window as any).__couponAwardedRefresh) {
                 delete (window as any).__couponAwardedRefresh;
             }
@@ -325,7 +180,8 @@ const MyPage = () => {
             }
 
             // 🟢 authenticatedFetch가 이미 JSON을 파싱해서 반환함
-            const src: any = (raw as any)?.user ?? raw ?? {};
+            // 🟢 [Fix]: API 응답 구조 확인 - raw에 직접 subscriptionTier, couponCount가 있는지 먼저 확인
+            const src: any = raw ?? {};
 
             // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
             const convertToHttps = (url: string | null | undefined): string => {
@@ -341,55 +197,73 @@ const MyPage = () => {
                 src.profileImage ||
                 src.profileImageUrl ||
                 src.profile_image_url ||
-                (raw as any)?.profileImage ||
-                (raw as any)?.profileImageUrl ||
-                (raw as any)?.user?.profileImage ||
-                (raw as any)?.user?.profileImageUrl ||
+                (src as any)?.user?.profileImage ||
+                (src as any)?.user?.profileImageUrl ||
                 "";
 
-            // 🟢 subscriptionTier 확인: DB의 subscription_tier와 코드의 subscriptionTier 모두 체크
+            // 🟢 subscriptionTier 확인: API 응답의 최상위 레벨과 user 객체 모두 체크
             const tier =
-                src.subscription_tier ||
                 src.subscriptionTier ||
-                (raw as any)?.subscription_tier ||
-                (raw as any)?.subscriptionTier ||
+                src.subscription_tier ||
+                (src as any)?.user?.subscriptionTier ||
+                (src as any)?.user?.subscription_tier ||
                 "FREE";
 
             // subscriptionExpiresAt 추출 (DB 필드명: subscription_expires_at)
             const subscriptionExpiresAt =
                 src.subscriptionExpiresAt ||
                 src.subscription_expires_at ||
-                (raw as any)?.subscriptionExpiresAt ||
-                (raw as any)?.subscription_expires_at ||
+                (src as any)?.user?.subscriptionExpiresAt ||
+                (src as any)?.user?.subscription_expires_at ||
                 null;
 
-            // 🟢 쿠폰 개수 추출 (여러 필드명 체크)
+            // 🟢 쿠폰 개수 추출 (API 응답의 최상위 레벨과 user 객체 모두 체크)
             const couponCount =
                 src.couponCount ??
                 src.coupon_count ??
-                (raw as any)?.couponCount ??
-                (raw as any)?.coupon_count ??
-                (raw as any)?.user?.couponCount ??
-                (raw as any)?.user?.coupon_count ??
+                (src as any)?.user?.couponCount ??
+                (src as any)?.user?.coupon_count ??
                 0;
 
+            // 🟢 [Debug]: API 응답 구조 확인
+            if (process.env.NODE_ENV === "development") {
+                console.log("[MyPage] API 응답 확인:", {
+                    raw,
+                    subscriptionTier: src.subscriptionTier,
+                    couponCount: src.couponCount,
+                    extractedTier: tier,
+                    extractedCouponCount: couponCount,
+                });
+            }
+
             const finalUserInfo = {
-                name: src.name || src.username || src.nickname || "",
-                email: src.email || src.userEmail || "",
+                name: src.name || src.username || src.nickname || (src as any)?.user?.name || (src as any)?.user?.username || "",
+                email: src.email || src.userEmail || (src as any)?.user?.email || "",
                 joinDate: src.joinDate
                     ? new Date(src.joinDate).toLocaleDateString()
                     : src.createdAt
                     ? new Date(src.createdAt).toLocaleDateString()
+                    : (src as any)?.user?.createdAt
+                    ? new Date((src as any).user.createdAt).toLocaleDateString()
                     : "",
                 profileImage: convertToHttps(profileImageUrl),
-                mbti: src.mbti ?? null,
-                age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : null,
-                ageRange: src.ageRange || src.age_range || null,
-                gender: src.gender || null,
+                mbti: src.mbti ?? (src as any)?.user?.mbti ?? null,
+                age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : (src as any)?.user?.age ?? null,
+                ageRange: src.ageRange || src.age_range || (src as any)?.user?.ageRange || (src as any)?.user?.age_range || null,
+                gender: src.gender || (src as any)?.user?.gender || null,
                 subscriptionTier: tier, // 🟢 확정된 등급 삽입
                 subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
                 couponCount: typeof couponCount === "number" ? couponCount : couponCount ? Number(couponCount) : 0, // 🟢 쿠폰 개수 추가
             };
+
+            // 🟢 [Debug]: 최종 userInfo 확인
+            if (process.env.NODE_ENV === "development") {
+                console.log("[MyPage] 최종 userInfo:", {
+                    subscriptionTier: finalUserInfo.subscriptionTier,
+                    couponCount: finalUserInfo.couponCount,
+                    subscriptionExpiresAt: finalUserInfo.subscriptionExpiresAt,
+                });
+            }
             setUserInfo(finalUserInfo);
             // 🟢 [Performance]: UI를 빠르게 표시하기 위해 즉시 로딩 상태 해제
             setLoading(false);
@@ -720,6 +594,210 @@ const MyPage = () => {
             setPersonalStories([]);
         }
     };
+
+    // 🟢 Data Fetching Logic (성능 최적화: 우선순위 기반 로딩)
+    useEffect(() => {
+        // 🟢 URL 파라미터에서 초기 탭 읽기
+        let initialTab = "profile";
+        try {
+            const url = new URL(window.location.href);
+            const tab = url.searchParams.get("tab");
+            if (tab === "checkins") {
+                // 🟢 checkins는 activity 탭의 subTab
+                initialTab = "activity";
+                setActivitySubTab("checkins");
+            } else if (["profile", "footprint", "records", "activity"].includes(tab || "")) {
+                initialTab = tab || "profile";
+            }
+            setActiveTab(initialTab);
+        } catch {}
+
+        // 🟢 [Performance]: 초기 로딩 최적화 - 병렬 처리 및 빠른 UI 표시
+        // 1단계: 필수 데이터 병렬 로드 (프로필 정보 + 취향 정보)
+        Promise.all([
+            fetchUserInfo(),
+            fetchUserPreferences(), // 프로필 탭에 필요하므로 병렬로 함께 로드
+        ]).then(([shouldContinue]) => {
+            if (shouldContinue) {
+                // 🟢 2단계: 초기 탭에 필요한 데이터만 즉시 로드 (나머지는 지연)
+                const scheduleDeferredLoad = () => {
+                    const priorityData: Promise<any>[] = [];
+                    const deferredData: Promise<any>[] = [];
+
+                    // 초기 활성 탭에 필요한 데이터를 우선 로드
+                    if (initialTab === "profile") {
+                        // 프로필 탭은 이미 로드됨, 나머지 데이터는 지연 로드
+                        deferredData.push(
+                            fetchFavorites(),
+                            fetchSavedCourses(),
+                            fetchBadges(),
+                            fetchCompleted(),
+                            fetchCasefiles(),
+                            fetchRewards(),
+                            fetchCheckins(),
+                            fetchPayments()
+                        );
+                    } else if (initialTab === "footprint") {
+                        priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories());
+                        deferredData.push(
+                            fetchFavorites(),
+                            fetchBadges(),
+                            fetchRewards(),
+                            fetchCheckins(),
+                            fetchPayments()
+                        );
+                    } else if (initialTab === "records") {
+                        priorityData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
+                        deferredData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                    } else if (initialTab === "activity") {
+                        priorityData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                        deferredData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
+                    } else {
+                        // 기본: 모든 데이터를 지연 로드
+                        deferredData.push(
+                            fetchFavorites(),
+                            fetchSavedCourses(),
+                            fetchBadges(),
+                            fetchCompleted(),
+                            fetchCasefiles(),
+                            fetchRewards(),
+                            fetchCheckins(),
+                            fetchPayments()
+                        );
+                    }
+
+                    // 우선순위 데이터 먼저 로드
+                    if (priorityData.length > 0) {
+                        Promise.all(priorityData).catch((error) => {
+                            console.error("[MyPage] 우선순위 데이터 로드 실패:", error);
+                        });
+                    }
+
+                    // 나머지 데이터는 추가 지연 후 로드 (초기 렌더링 후)
+                    setTimeout(() => {
+                        if (deferredData.length > 0) {
+                            Promise.all(deferredData).catch((error) => {
+                                console.error("[MyPage] 지연 데이터 로드 실패:", error);
+                            });
+                        }
+                    }, 100); // 🟢 100ms로 단축하여 더 빠른 로딩
+                };
+
+                // 🟢 즉시 실행하여 모든 데이터가 확실히 로드되도록 함
+                // 🟢 requestIdleCallback은 브라우저가 idle 상태일 때만 실행되므로,
+                // 🟢 timeout을 짧게 설정하거나 바로 실행하도록 변경
+                if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+                    (window as any).requestIdleCallback(scheduleDeferredLoad, { timeout: 200 });
+                } else {
+                    // 폴백: 즉시 실행
+                    setTimeout(scheduleDeferredLoad, 50);
+                }
+            }
+        }).catch((error) => {
+            console.error("[MyPage] 초기 데이터 로드 실패:", error);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // 🟢 초기 마운트 시에만 실행
+
+    // Event Listener for Checkin
+    useEffect(() => {
+        const onCheckinUpdated = () => fetchCheckins();
+        window.addEventListener("checkinUpdated", onCheckinUpdated as EventListener);
+        return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
+    }, []);
+
+    // 🟢 결제 완료 이벤트 리스너 (구매 내역 즉시 업데이트)
+    useEffect(() => {
+        const handlePaymentSuccess = () => {
+            console.log("[마이페이지] 결제 완료 감지 - 구매 내역 및 사용자 정보 갱신");
+            // 🟢 캐시 무시하여 최신 정보 가져오기
+            (window as any).__forceRefreshUserInfo = true;
+            Promise.all([
+                fetchUserInfo(),
+                fetchPayments()
+            ]).catch((err) => {
+                console.error("[마이페이지] 결제 완료 후 데이터 갱신 실패:", err);
+            });
+        };
+        window.addEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
+        return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
+    }, [fetchUserInfo]);
+
+    // 🟢 쿠폰 지급 이벤트 리스너 (쿠폰 지급 시 즉시 데이터 갱신)
+    useEffect(() => {
+        const handleCouponAwarded = () => {
+            console.log("[마이페이지] 쿠폰 지급 감지 - 사용자 정보 및 보상 내역 갱신");
+            // 🟢 캐시 무시 플래그 설정
+            (window as any).__forceRefreshUserInfo = true;
+            (window as any).__couponAwardedRefresh = true;
+            // 🟢 사용자 정보와 보상 내역을 병렬로 갱신 (캐시 무시)
+            Promise.all([
+                fetchUserInfo(),
+                fetchRewards()
+            ]).catch((err) => {
+                console.error("[마이페이지] 쿠폰 지급 후 데이터 갱신 실패:", err);
+            });
+        };
+        window.addEventListener("couponAwarded", handleCouponAwarded as EventListener);
+        return () => window.removeEventListener("couponAwarded", handleCouponAwarded as EventListener);
+    }, [fetchUserInfo]);
+
+    // 🟢 쿠폰 사용 이벤트 리스너 (쿠폰 사용 시 즉시 데이터 갱신)
+    useEffect(() => {
+        const handleCouponUsed = () => {
+            console.log("[마이페이지] 쿠폰 사용 감지 - 사용자 정보 갱신");
+            // 🟢 캐시 무시 플래그 설정
+            (window as any).__forceRefreshUserInfo = true;
+            // 🟢 쿠폰 사용 시 사용자 정보만 갱신 (쿠폰 개수 변경 반영)
+            fetchUserInfo().catch((err) => {
+                console.error("[마이페이지] 쿠폰 사용 후 데이터 갱신 실패:", err);
+            });
+        };
+        window.addEventListener("couponUsed", handleCouponUsed as EventListener);
+        return () => window.removeEventListener("couponUsed", handleCouponUsed as EventListener);
+    }, [fetchUserInfo]);
+
+    // 🟢 환불 완료 이벤트 리스너 (환불 후 구독/쿠폰 정보 실시간 업데이트)
+    useEffect(() => {
+        const handleRefundSuccess = (event: any) => {
+            console.log("[마이페이지] 환불 완료 감지 - 사용자 정보 갱신", event.detail);
+            // 🟢 캐시 무시 플래그 설정
+            (window as any).__forceRefreshUserInfo = true;
+            // 🟢 환불 완료 시 사용자 정보와 구매 내역 모두 갱신 (구독/쿠폰 정보 실시간 반영)
+            Promise.all([
+                fetchUserInfo(),
+                fetchPayments()
+            ]).catch((err) => {
+                console.error("[마이페이지] 환불 완료 후 데이터 갱신 실패:", err);
+            });
+        };
+        window.addEventListener("refundSuccess", handleRefundSuccess as EventListener);
+        return () => window.removeEventListener("refundSuccess", handleRefundSuccess as EventListener);
+    }, [fetchUserInfo]);
+
+    // 🟢 구독 변경 이벤트 리스너 (구독 변경 시 즉시 데이터 갱신)
+    useEffect(() => {
+        const handleSubscriptionChanged = () => {
+            console.log("[마이페이지] 구독 변경 감지 - 사용자 정보 갱신");
+            // 🟢 캐시 무시 플래그 설정
+            (window as any).__forceRefreshUserInfo = true;
+            // 🟢 구독 변경 시 사용자 정보 갱신
+            fetchUserInfo().catch((err) => {
+                console.error("[마이페이지] 구독 변경 후 데이터 갱신 실패:", err);
+            });
+        };
+        window.addEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
+        return () => window.removeEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
+    }, [fetchUserInfo]);
+
+    // 🟢 TicketPlans 모달 열기 이벤트 리스너
+    useEffect(() => {
+        const handleOpenTicketPlans = () => {
+            setShowSubscriptionModal(true);
+        };
+        window.addEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
+        return () => window.removeEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
+    }, []);
 
     // ----- Handlers -----
 

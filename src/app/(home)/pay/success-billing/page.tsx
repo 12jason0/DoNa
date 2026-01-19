@@ -37,6 +37,13 @@ function BillingSuccessContent() {
                 const data = await res.json().catch(() => ({}));
 
                 if (res.ok && data.success) {
+                    // 🟢 구독권 결제 완료 이벤트 발생 (마이페이지 구독 정보 실시간 갱신용)
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("paymentSuccess"));
+                        // 🟢 구독 변경 이벤트도 발생 (전역 구독 정보 갱신)
+                        window.dispatchEvent(new CustomEvent("subscriptionChanged"));
+                    }
+                    
                     setStatus("success");
                     // 성공 시 3초 후 메인으로 이동
                     setTimeout(() => router.replace("/personalized-home"), 3000);

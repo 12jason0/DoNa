@@ -53,6 +53,11 @@ export default function RefundPage() {
         }
     };
 
+    // 🟢 상품 타입 확인
+    const isSubscription = (orderName: string) => {
+        return orderName.includes("구독") || orderName.includes("멤버십") || orderName.includes("프리미엄");
+    };
+
     // 환불 실행 함수
     const executeRefund = async () => {
         if (!selectedPayment) return;
@@ -60,7 +65,6 @@ export default function RefundPage() {
         setIsModalOpen(false); // 모달 닫기
 
         try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
             const { authenticatedFetch } = await import("@/lib/authClient");
             const data = await authenticatedFetch("/api/ai-recommendation/refund", {
                 method: "POST",
@@ -89,8 +93,40 @@ export default function RefundPage() {
                         window.open(platformUrl, "_blank");
                     }
                 } else {
-                setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
+                    setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
                 }
+                
+                // 🟢 환불 완료 이벤트 발생 (마이페이지 구독/쿠폰 정보 실시간 갱신용)
+                if (typeof window !== "undefined") {
+                    const isSubscriptionRefund = isSubscription(selectedPayment.orderName);
+                    
+                    // 환불 성공 이벤트
+                    window.dispatchEvent(new CustomEvent("refundSuccess", {
+                        detail: {
+                            orderName: selectedPayment.orderName,
+                            isSubscription: isSubscriptionRefund,
+                            isCoupon: selectedPayment.orderName.includes("쿠폰"),
+                        }
+                    }));
+                    
+                    // 🟢 구독권 환불 시 사용자 정보 강제 갱신 이벤트 (전역 캐시 무효화)
+                    if (isSubscriptionRefund) {
+                        window.dispatchEvent(new CustomEvent("subscriptionChanged"));
+                        // localStorage 캐시도 무효화
+                        try {
+                            const userStr = localStorage.getItem("user");
+                            if (userStr) {
+                                const user = JSON.parse(userStr);
+                                user.subscriptionTier = "FREE";
+                                user.subscriptionExpiresAt = null;
+                                localStorage.setItem("user", JSON.stringify(user));
+                            }
+                        } catch (e) {
+                            console.error("localStorage 업데이트 실패:", e);
+                        }
+                    }
+                }
+                
                 await fetchPaymentHistory();
             } else {
                 // 🟢 환불 실패 시 모달로 에러 메시지 표시
@@ -257,7 +293,7 @@ export default function RefundPage() {
                                 disabled={refunding}
                                 className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all disabled:bg-gray-200 active:scale-[0.98]"
                             >
-                                {refunding ? "처리 중..." : "환불 신청하기"}
+                                {refunding ? "처리 중..." : "환불하기"}
                             </button>
                         </div>
                     ))

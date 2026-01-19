@@ -550,6 +550,17 @@ export default function AdminDashboard() {
                             <p className="text-gray-500 mt-2 text-sm">방탈출 게임 시나리오와 스토리를 관리합니다.</p>
                         </div>
                     </Link>
+
+                    {/* 5. 환불 관리 */}
+                    <Link href="/admin/refunds" className="block group">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
+                            <div className="text-3xl mb-4">💰</div>
+                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600">
+                                환불 관리
+                            </h3>
+                            <p className="text-gray-500 mt-2 text-sm">구독권 환불 요청을 확인하고 승인/거부합니다.</p>
+                        </div>
+                    </Link>
                 </div>
             </section>
         </div>
