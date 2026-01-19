@@ -121,10 +121,28 @@ export async function POST(request: NextRequest) {
                 },
             });
 
-            // 구독 혜택을 사용했다면 환불 불가
-            if (completedCoursesCount > 0 || unlockedCoursesCount > 0) {
+            // 🟢 [Fix]: 구독 기간 동안 조회한 BASIC/PREMIUM 코스 확인 (환불 악용 방지)
+            // 사용자가 구독권으로 코스를 본 기록이 있으면 환불 불가
+            const viewedCoursesCount = await prisma.userInteraction.count({
+                where: {
+                    userId: numericUserId,
+                    action: "view",
+                    createdAt: {
+                        gte: subscriptionStartDate,
+                    },
+                    course: {
+                        grade: {
+                            in: ["BASIC", "PREMIUM"],
+                        },
+                    },
+                },
+            });
+
+            // 구독 혜택을 사용했다면 환불 불가 (완료, 언락, 조회 모두 포함)
+            const totalUsageCount = completedCoursesCount + unlockedCoursesCount + viewedCoursesCount;
+            if (totalUsageCount > 0) {
                 return NextResponse.json({
-                    error: `구독 기간 동안 ${completedCoursesCount + unlockedCoursesCount}개의 코스를 사용하여 환불이 불가합니다.`,
+                    error: `구독 기간 동안 ${totalUsageCount}개의 코스를 사용하여 환불이 불가합니다. (완료: ${completedCoursesCount}, 구매: ${unlockedCoursesCount}, 조회: ${viewedCoursesCount})`,
                 }, { status: 400 });
             }
         }
@@ -134,16 +152,16 @@ export async function POST(request: NextRequest) {
 
         // 4. 토스페이먼츠 환불 요청 (인앱결제가 아닌 경우만)
         if (!isInAppPayment) {
-        // 🟢 환불은 일반 결제와 빌링 결제 모두 가능하므로, orderName으로 결제 타입 판단
-        // 일반 결제(쿠폰): orderName에 "쿠폰" 포함 → TOSS_SECRET_KEY_GENERAL (donaudy2at MID)
-        // 빌링 결제(구독): orderName에 "구독" 또는 "멤버십" 포함 → TOSS_SECRET_KEY_BILLING (bill_donaoc44v MID)
-        const isBillingPayment = payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
-        const secretKey = isBillingPayment ? process.env.TOSS_SECRET_KEY_BILLING : process.env.TOSS_SECRET_KEY_GENERAL;
+        // 🟢 [Fix]: 웹 결제 환불은 항상 GENERAL 키를 사용하도록 고정합니다.
+        // 결제 승인 API(/api/payments/confirm)에서도 GENERAL 키만 사용하므로,
+        // 환불 시에도 동일한 MID의 시크릿 키를 사용해야 합니다.
+        // ⚠️ 중요: 결제할 때 사용한 클라이언트 키와 환불 시 사용하는 시크릿 키의 MID가 일치해야 합니다!
+        const secretKey = process.env.TOSS_SECRET_KEY_GENERAL;
 
         if (!secretKey) {
             return NextResponse.json(
                 {
-                    error: `환불 시크릿 키가 설정되지 않았습니다. (${isBillingPayment ? "빌링" : "일반"} 결제)`,
+                    error: "환불 시크릿 키가 설정되지 않았습니다.",
                 },
                 { status: 500 }
             );
