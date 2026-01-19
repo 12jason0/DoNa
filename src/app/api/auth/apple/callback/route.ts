@@ -108,15 +108,13 @@ export async function POST(request: NextRequest) {
                             next: '${decodedNext}' 
                         }, window.location.origin);
                         
-                        // 2. 부모 창에 이벤트 알림
-                        window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                        // 🟢 [Fix]: dispatchEvent 제거 (cross-origin 오류 방지)
+                        // 부모 창에서 postMessage를 받아서 dispatchEvent 호출
                         
-                        // 🟢 [Fix]: 팝업은 메시지만 전송하고 즉시 닫기 (부모 창 리다이렉트 간섭 금지)
-                        // 3. 팝업 창 즉시 닫기
+                        // 2. 팝업 창 닫기
                         setTimeout(function() {
                             window.close();
-                        }, 0);
-                        window.close();
+                        }, 100);
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
                         window.dispatchEvent(new CustomEvent('authLoginSuccess'));
@@ -127,6 +125,17 @@ export async function POST(request: NextRequest) {
                     // 에러 발생 시 팝업이 아닌 경우에만 직접 리다이렉트
                     if (!window.opener || window.opener.closed) {
                         window.location.replace("${decodedNext}");
+                    } else {
+                        // 팝업인 경우 에러 메시지 전송
+                        try {
+                            window.opener.postMessage({ 
+                                type: 'APPLE_LOGIN_ERROR', 
+                                error: err.message || '알 수 없는 오류'
+                            }, window.location.origin);
+                            window.close();
+                        } catch (e) {
+                            console.error('에러 메시지 전송 실패:', e);
+                        }
                     }
                 }
             })();`,

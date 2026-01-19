@@ -16,8 +16,9 @@ const getAppleRedirectUri = (origin: string) => {
     if (process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI) {
         return process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI;
     }
-    // 🟢 Fallback: 프로덕션은 고정 도메인, 개발은 동적 origin
-    const base = process.env.NODE_ENV === "production" ? "https://dona.io.kr" : origin;
+    // 🟢 [Fix]: 프로덕션에서도 실제 요청 origin 사용 (각 도메인에서 해당 도메인으로 리다이렉트)
+    // dona.io.kr → dona.io.kr, review.dona.io.kr → review.dona.io.kr
+    const base = origin;
     return `${base}/api/auth/apple/callback`;
 };
 
@@ -194,12 +195,13 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                             next: '${decodedNext}' 
                         }, window.location.origin);
                         
-                        // 2. 부모 창에 이벤트 알림
-                        window.opener.dispatchEvent(new CustomEvent('authLoginSuccess'));
+                        // 🟢 [Fix]: dispatchEvent 제거 (cross-origin 오류 방지)
+                        // 부모 창에서 postMessage를 받아서 dispatchEvent 호출
                         
-                        // 🟢 [Fix]: 팝업은 메시지만 전송하고 즉시 닫기 (부모 창 리다이렉트 간섭 금지)
-                        // 3. 팝업 창 즉시 닫기
-                        window.close();
+                        // 2. 팝업 창 닫기
+                        setTimeout(function() {
+                            window.close();
+                        }, 100);
                     } else {
                         // 팝업이 아닌 경우 직접 리다이렉트
                         window.dispatchEvent(new CustomEvent('authLoginSuccess'));
@@ -210,6 +212,17 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                     // 에러 발생 시 팝업이 아닌 경우에만 직접 리다이렉트
                     if (!window.opener || window.opener.closed) {
                         window.location.replace("${decodedNext}");
+                    } else {
+                        // 팝업인 경우 에러 메시지 전송
+                        try {
+                            window.opener.postMessage({ 
+                                type: 'APPLE_LOGIN_ERROR', 
+                                error: err.message || '알 수 없는 오류'
+                            }, window.location.origin);
+                            window.close();
+                        } catch (e) {
+                            console.error('에러 메시지 전송 실패:', e);
+                        }
                     }
                 }
             })();`,
