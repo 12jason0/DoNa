@@ -21,12 +21,15 @@ export default function RefundPage() {
     const [loading, setLoading] = useState(true);
     const [refunding, setRefunding] = useState(false);
     const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
-    const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
     // 팝업(모달) 상태 관리
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<PaymentHistory | null>(null);
+    
+    // 🟢 환불 실패 모달 상태
+    const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
         fetchPaymentHistory();
@@ -43,7 +46,8 @@ export default function RefundPage() {
                 router.push("/login");
             }
         } catch (err) {
-            setError("내역을 불러오는 중 오류가 발생했습니다.");
+            // 내역 불러오기 실패는 조용히 처리 (로딩만 종료)
+            console.error("내역 불러오기 실패:", err);
         } finally {
             setLoading(false);
         }
@@ -89,10 +93,16 @@ export default function RefundPage() {
                 }
                 await fetchPaymentHistory();
             } else {
-                setError((data as any)?.error || "환불 처리 중 오류가 발생했습니다.");
+                // 🟢 환불 실패 시 모달로 에러 메시지 표시
+                const errorMsg = (data as any)?.error || "환불 처리 중 오류가 발생했습니다.";
+                setErrorMessage(errorMsg);
+                setIsErrorModalOpen(true);
             }
-        } catch (err) {
-            setError("서버와의 통신에 실패했습니다.");
+        } catch (err: any) {
+            // 🟢 에러 발생 시 모달로 표시
+            const errorMsg = err?.message || (err as any)?.error || "서버와의 통신에 실패했습니다.";
+            setErrorMessage(errorMsg);
+            setIsErrorModalOpen(true);
         } finally {
             setRefunding(false);
         }
@@ -152,6 +162,33 @@ export default function RefundPage() {
                 </div>
             )}
 
+            {/* 🟢 환불 실패 모달 */}
+            {isErrorModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-4xl p-8 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="text-center">
+                            <div className="text-6xl mb-5">⚠️</div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
+                                환불이 불가능합니다
+                            </h3>
+                            <p className="text-gray-600 text-[15px] leading-relaxed mb-8 whitespace-pre-line">
+                                {errorMessage}
+                            </p>
+
+                            <button
+                                onClick={() => {
+                                    setIsErrorModalOpen(false);
+                                    setErrorMessage("");
+                                }}
+                                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-all active:scale-[0.98]"
+                            >
+                                확인
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <main className="max-w-xl mx-auto px-6 py-12">
                 <Link
                     href="/mypage"
@@ -164,11 +201,6 @@ export default function RefundPage() {
                 <p className="text-gray-500 mb-10 text-sm">결제하신 내역을 확인하고 환불을 진행하세요.</p>
 
                 {/* 메시지 영역 */}
-                {error && (
-                    <div className="bg-red-50 text-red-500 p-4 rounded-2xl mb-6 text-sm font-medium border border-red-100 animate-in fade-in slide-in-from-top-2">
-                        {error}
-                    </div>
-                )}
                 {success && (
                     <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl mb-6 text-sm font-medium border border-emerald-100 animate-in fade-in slide-in-from-top-2">
                         {success}

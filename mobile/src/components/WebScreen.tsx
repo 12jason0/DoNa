@@ -743,6 +743,60 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                         const firstPackage = offerings.current.availablePackages[0];
                                         const { customerInfo } = await Purchases.purchasePackage(firstPackage);
 
+                                        // 🟢 [샌드박스 대응]: 결제 성공 후 즉시 서버에 쿠폰 지급 요청
+                                        try {
+                                            const userIdStr = await AsyncStorage.getItem("userId");
+                                            if (userIdStr) {
+                                                const transactionId = customerInfo?.originalPurchaseDate 
+                                                    ? `rc_${customerInfo.originalPurchaseDate}` 
+                                                    : `rc_${Date.now()}`;
+                                                
+                                                const response = await fetch(`${WEB_BASE}/api/payments/revenuecat/confirm`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                    },
+                                                    credentials: 'include',
+                                                    body: JSON.stringify({
+                                                        planId: planId,
+                                                        planType: planType,
+                                                        transactionId: transactionId,
+                                                        customerInfo: customerInfo
+                                                    })
+                                                });
+                                                
+                                                if (response.ok) {
+                                                    const data = await response.json();
+                                                    console.log("[RevenueCat] 서버 쿠폰 지급 완료:", data);
+                                                    
+                                                    // 🟢 쿠폰 개수 업데이트 이벤트 발생 (UI 즉시 갱신)
+                                                    if (data.couponCount !== undefined) {
+                                                        webRef.current?.injectJavaScript(`
+                                                            window.dispatchEvent(new CustomEvent('couponCountUpdated', {
+                                                                detail: { couponCount: ${data.couponCount} }
+                                                            }));
+                                                        `);
+                                                    }
+                                                    
+                                                    // 🟢 구독 등급 업데이트 이벤트 발생
+                                                    if (data.subscriptionTier) {
+                                                        webRef.current?.injectJavaScript(`
+                                                            window.dispatchEvent(new CustomEvent('subscriptionTierUpdated', {
+                                                                detail: { subscriptionTier: '${data.subscriptionTier}' }
+                                                            }));
+                                                        `);
+                                                    }
+                                                    
+                                                    // 🟢 결제 성공 이벤트 발생
+                                                    webRef.current?.injectJavaScript(`
+                                                        window.dispatchEvent(new CustomEvent('paymentSuccess'));
+                                                    `);
+                                                }
+                                            }
+                                        } catch (error) {
+                                            console.error("[RevenueCat] 서버 쿠폰 지급 요청 실패:", error);
+                                        }
+
                                         // 성공 처리
                                         webRef.current?.injectJavaScript(`
                                             window.dispatchEvent(new CustomEvent('purchaseResult', {
@@ -786,11 +840,26 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                 const data = await response.json();
                                                 console.log("[RevenueCat] 서버 쿠폰 지급 완료:", data);
                                                 
-                                                // 🟢 쿠폰 개수 업데이트 이벤트 발생
+                                                // 🟢 쿠폰 개수 업데이트 이벤트 발생 (UI 즉시 갱신)
+                                                if (data.couponCount !== undefined) {
+                                                    webRef.current?.injectJavaScript(`
+                                                        window.dispatchEvent(new CustomEvent('couponCountUpdated', {
+                                                            detail: { couponCount: ${data.couponCount} }
+                                                        }));
+                                                    `);
+                                                }
+                                                
+                                                // 🟢 구독 등급 업데이트 이벤트 발생
+                                                if (data.subscriptionTier) {
+                                                    webRef.current?.injectJavaScript(`
+                                                        window.dispatchEvent(new CustomEvent('subscriptionTierUpdated', {
+                                                            detail: { subscriptionTier: '${data.subscriptionTier}' }
+                                                        }));
+                                                    `);
+                                                }
+                                                
+                                                // 🟢 결제 성공 이벤트 발생
                                                 webRef.current?.injectJavaScript(`
-                                                    window.dispatchEvent(new CustomEvent('couponCountUpdated', {
-                                                        detail: { couponCount: ${data.couponCount || 0} }
-                                                    }));
                                                     window.dispatchEvent(new CustomEvent('paymentSuccess'));
                                                 `);
                                             } else {

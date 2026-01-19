@@ -237,14 +237,26 @@ body.splash-active {
 }
 
 /* 개발 편의 배지(Next.js Dev Tools) 숨김 - 로컬 개발 화면 가독성 개선 */
+#devtools-indicator,
+[data-nextjs-toast],
+.nextjs-toast,
 [data-next-badge],
+[data-next-badge-root],
 [data-nextjs-dev-tools-button],
 button[data-nextjs-dev-tools-button],
 #nextjs-dev-tools-menu,
-#nextjs-devtools-container {
+#nextjs-devtools-container,
+#next-logo,
+[data-next-mark] {
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
     pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
 }
 
 /* 🟢 다크모드 대응: 네이버 지도 톤 조절 및 마커 보정 */
