@@ -12,31 +12,12 @@ export const dynamic = "force-dynamic";
  * image_e89e4a에서 설정하신 주소와 토씨 하나 안 틀리고 똑같이 맞춰줍니다.
  */
 const getAppleRedirectUri = (origin: string) => {
-    // 🟢 [Fix]: 환경 변수가 설정되어 있고 현재 origin과 일치하면 사용
-    // 각 도메인별로 다른 환경 변수 설정 가능
-    const envRedirectUri = process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI;
-    
-    if (envRedirectUri) {
-        // 환경 변수의 도메인과 현재 origin의 도메인이 일치하는지 확인
-        try {
-            const envUrl = new URL(envRedirectUri);
-            const currentUrl = new URL(origin);
-            
-            // 도메인이 일치하면 환경 변수 사용
-            if (envUrl.hostname === currentUrl.hostname) {
-                return envRedirectUri;
-            }
-            // 도메인이 다르면 실제 origin 사용 (다른 도메인 환경 변수 무시)
-            console.log(`[Apple Auth] 환경 변수 도메인(${envUrl.hostname})과 현재 도메인(${currentUrl.hostname})이 다릅니다. 실제 origin 사용.`);
-        } catch (e) {
-            // URL 파싱 실패 시 실제 origin 사용
-            console.warn('[Apple Auth] 환경 변수 URL 파싱 실패, 실제 origin 사용:', e);
-        }
+    // 🟢 [Fix]: 환경변수로 Redirect URI 직접 설정 (애플 개발자 포털과 정확히 일치)
+    if (process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI) {
+        return process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI;
     }
-    
-    // 환경 변수가 없거나 도메인이 일치하지 않으면 실제 origin 사용
-    // dona.io.kr → dona.io.kr, review.dona.io.kr → review.dona.io.kr
-    const base = origin;
+    // 🟢 Fallback: 프로덕션은 고정 도메인, 개발은 동적 origin
+    const base = process.env.NODE_ENV === "production" ? "https://dona.io.kr" : origin;
     return `${base}/api/auth/apple/callback`;
 };
 
