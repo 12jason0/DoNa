@@ -125,12 +125,11 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
             
             if (email) {
                 // 기존 사용자 확인 (socialId + provider로)
+                // 🟢 [Fix]: findFirst에서는 unique_social_provider를 사용할 수 없으므로 각 필드로 검색
                 const existingAppleUser = await tx.user.findFirst({
                     where: {
-                        unique_social_provider: {
-                            socialId: appleUserId,
-                            provider: "apple",
-                        },
+                        socialId: appleUserId,
+                        provider: "apple",
                     },
                 });
                 
@@ -325,12 +324,11 @@ async function handleAppAppleAuthLogic(
             
             if (email) {
                 // 기존 사용자 확인 (socialId + provider로)
+                // 🟢 [Fix]: findFirst에서는 unique_social_provider를 사용할 수 없으므로 각 필드로 검색
                 const existingAppleUser = await tx.user.findFirst({
                     where: {
-                        unique_social_provider: {
-                            socialId: appleUserId,
-                            provider: "apple",
-                        },
+                        socialId: appleUserId,
+                        provider: "apple",
                     },
                 });
                 
