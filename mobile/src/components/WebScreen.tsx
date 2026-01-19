@@ -101,7 +101,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         ? deepLinkUrl.startsWith("http")
             ? deepLinkUrl
             : `${initialUri.replace(/\/$/, "")}${deepLinkUrl}`
-        : initialUri || "http://192.168.124.100:3000";
+        : initialUri || "https://dona.io.kr";
 
     const webRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
