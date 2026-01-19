@@ -26,20 +26,43 @@ function PaymentSuccessContent() {
             // - amount: 결제 금액
             // - plan: 우리가 successUrl에 포함시킨 상품 ID (sub_premium, ticket_light 등)
             const paymentKey = searchParams.get("paymentKey");
-            const orderId = searchParams.get("orderId");
+            const orderId = searchParams.get("orderId") || (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentOrderId') : null);
             const amount = searchParams.get("amount");
-            const plan = searchParams.get("plan"); // ✅ 중요: 어떤 상품을 샀는지 알 수 있는 키값
+            // 🟢 [Fix]: plan이 URL에 없으면 sessionStorage에서 가져오기 (리다이렉트 시 파라미터 손실 대응)
+            const plan = searchParams.get("plan") || (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentPlan') : null);
 
             // ============================================
-            // 2단계: 사용자 인증 정보 확인
+            // 2단계: 사용자 인증 정보 확인 (서버 세션 사용)
             // ============================================
-            const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-            const user = userStr ? JSON.parse(userStr) : null;
+            // 🟢 [Fix]: localStorage 대신 서버 세션에서 사용자 정보 가져오기
+            let userId: number | null = null;
+            try {
+                const { fetchSession } = await import("@/lib/authClient");
+                const session = await fetchSession();
+                if (session.authenticated && session.user?.id) {
+                    userId = session.user.id;
+                }
+            } catch (error) {
+                console.error("[Payment Success] 세션 확인 실패:", error);
+            }
+
+            // sessionStorage에서 사용한 정보 정리
+            if (typeof window !== "undefined") {
+                sessionStorage.removeItem('pendingPaymentPlan');
+                sessionStorage.removeItem('pendingPaymentOrderId');
+            }
 
             // ============================================
             // 3단계: 필수 정보 검증
             // ============================================
-            if (!paymentKey || !orderId || !amount || !plan || !user) {
+            if (!paymentKey || !orderId || !amount || !plan || !userId) {
+                console.error("[Payment Success] 필수 정보 누락:", {
+                    paymentKey: !!paymentKey,
+                    orderId: !!orderId,
+                    amount: !!amount,
+                    plan: !!plan,
+                    userId: !!userId,
+                });
                 setStatus("error");
                 setErrorMessage("필수 결제 정보나 사용자 인증 정보가 누락되었습니다.");
                 return;
@@ -68,7 +91,8 @@ function PaymentSuccessContent() {
                         orderId, // 우리가 생성한 주문 ID
                         amount: Number(amount), // 결제 금액
                         plan, // ✅ 어떤 상품인지 (sub_premium, ticket_light 등)
-                        userId: user.id, // 누가 샀는지
+                        // 🟢 [Fix]: userId는 서버에서 세션으로 확인하므로 전송하지 않아도 됨
+                        // 하지만 호환성을 위해 남겨둠 (서버에서 무시할 수 있음)
                     }),
                 });
 
@@ -118,7 +142,7 @@ function PaymentSuccessContent() {
                         error: data.error,
                         message: data.message,
                         details: data.details,
-                        받은데이터: { paymentKey, orderId, amount, plan, userId: user.id },
+                        받은데이터: { paymentKey, orderId, amount, plan, userId },
                     });
                     setErrorMessage(errorMsg);
                 }

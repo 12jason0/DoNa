@@ -229,6 +229,15 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 const tossPayments = await loadTossPayments(clientKey);
 
                 const orderId = `${selectedPlan.id}_${Date.now()}`;
+                
+                // 🟢 [Fix]: 토스페이먼츠 리다이렉트 시 파라미터 손실 대비 - sessionStorage에 저장
+                // 인앱 결제 환경(웹뷰)이나 특정 브라우저에서 successUrl 파라미터가 유실될 수 있어
+                // 성공 페이지에서 복원할 수 있도록 미리 저장
+                if (typeof window !== "undefined") {
+                    sessionStorage.setItem('pendingPaymentPlan', selectedPlan.id);
+                    sessionStorage.setItem('pendingPaymentOrderId', orderId);
+                }
+                
                 const payment = tossPayments.payment({ customerKey });
 
                 // 🟢 웹에서는 구독권/쿠폰 모두 일반 결제로 처리

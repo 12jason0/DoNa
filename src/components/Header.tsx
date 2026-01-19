@@ -72,6 +72,7 @@ const Header = memo(() => {
         const session = await fetchSession();
         const isAuth = !!session.authenticated;
 
+        // 🟢 [Fix]: 로그아웃 시 즉시 상태 업데이트
         setIsLoggedIn(isAuth);
         if (isAuth) {
             fetchFavoritesSummary();
@@ -80,6 +81,15 @@ const Header = memo(() => {
         }
     }, [fetchFavoritesSummary]);
 
+    // 🟢 [Fix]: 로그아웃 이벤트 핸들러 - 즉시 상태 초기화
+    const handleAuthLogout = useCallback(() => {
+        setIsLoggedIn(false);
+        setHasFavorites(false);
+        closeMenu(); // 🟢 [Fix]: 로그아웃 시 메뉴 자동 닫기
+        // 로그아웃 후 세션 재확인
+        checkLoginStatus();
+    }, [checkLoginStatus]);
+
     // --- 🟢 기능 3: 이벤트 리스너 등록 (Auth, Favorites) ---
     useEffect(() => {
         checkLoginStatus();
@@ -87,15 +97,15 @@ const Header = memo(() => {
         const handleFavoritesChanged = () => fetchFavoritesSummary();
 
         window.addEventListener("authLoginSuccess", handleAuthChange);
-        window.addEventListener("authLogout", handleAuthChange);
+        window.addEventListener("authLogout", handleAuthLogout); // 🟢 [Fix]: 즉시 상태 초기화 핸들러 사용
         window.addEventListener("favoritesChanged", handleFavoritesChanged);
 
         return () => {
             window.removeEventListener("authLoginSuccess", handleAuthChange);
-            window.removeEventListener("authLogout", handleAuthChange);
+            window.removeEventListener("authLogout", handleAuthLogout);
             window.removeEventListener("favoritesChanged", handleFavoritesChanged);
         };
-    }, [checkLoginStatus, fetchFavoritesSummary]);
+    }, [checkLoginStatus, fetchFavoritesSummary, handleAuthLogout]);
 
     // 🟢 메인 페이지 prefetch (성능 최적화)
     useEffect(() => {
