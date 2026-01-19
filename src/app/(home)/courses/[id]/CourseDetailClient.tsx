@@ -889,59 +889,7 @@ export default function CourseDetailClient({
                         }}
                     >
                         <section className="bg-white dark:bg-[#1a241b] rounded-lg p-8 shadow-lg border border-gray-100 dark:border-gray-800">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">어떤 코스인가요?</h2>
-                            </div>
-                            <p className="text-gray-600 dark:text-gray-300 text-[15px] leading-8 whitespace-pre-wrap font-medium">
-                                {courseData.description}
-                            </p>
-                        </section>
 
-                        <section
-                            ref={mapSectionRef}
-                            className="bg-white dark:bg-[#1a241b] rounded-lg p-4 shadow-lg border border-gray-100 dark:border-gray-800 naver-map-container"
-                        >
-                            <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                                {mapPlaces.length > 0 ? (
-                                    shouldLoadMap ? (
-                                        <NaverMap
-                                            places={mapPlaces}
-                                            userLocation={userLocation}
-                                            selectedPlace={selectedPlace}
-                                            onPlaceClick={handleMapPlaceClick}
-                                            drawPath={true}
-                                            numberedMarkers={true}
-                                            className="w-full h-[320px] md:h-[400px]"
-                                            showControls={false}
-                                        />
-                                    ) : (
-                                        <div className="h-[320px] md:h-[400px] bg-gray-50 flex items-center justify-center text-gray-400 animate-pulse">
-                                            지도 로딩 중...
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="h-64 bg-gray-50 flex items-center justify-center text-gray-400">
-                                        지도 정보 없음
-                                    </div>
-                                )}
-                                <div className="absolute bottom-4 right-4">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleMapActivation();
-                                            window.open(
-                                                `https://map.naver.com/v5/search/${encodeURIComponent(
-                                                    sortedCoursePlaces[0]?.place.name || ""
-                                                )}`
-                                            );
-                                        }}
-                                        className="bg-white/90 dark:bg-[#1a241b]/90 backdrop-blur text-gray-800 dark:text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 flex items-center gap-1.5 active:scale-95 transition-transform"
-                                    >
-                                        <Icons.Map className="w-4 h-4" /> <span>지도 앱에서 보기</span>
-                                    </button>
-                                </div>
-                            </div>
                         </section>
 
                         <section className="relative px-4 pb-20">
