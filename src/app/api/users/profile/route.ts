@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
             couponCount: user.couponCount ?? 0,
             subscriptionTier: user.subscriptionTier, // camelCase
             subscription_tier: user.subscriptionTier, // 🟢 snake_case 추가 (DB 대응)
+            subscriptionExpiresAt: user.subscriptionExpiresAt ? user.subscriptionExpiresAt.toISOString() : null, // 🟢 만료일 추가
             hasSeenConsentModal: user.hasSeenConsentModal ?? false,
             user: {
                 ...user,
@@ -69,6 +70,8 @@ export async function GET(request: NextRequest) {
                 nickname: displayName, // 🟢 내부 user.nickname 추가 (핵심!)
                 profileImage: profileImageUrl,
                 profileImageUrl: profileImageUrl, // 🟢 카카오 프로필 이미지 표시를 위해 추가
+                subscriptionTier: user.subscriptionTier, // 🟢 멤버십 상태 추가
+                subscriptionExpiresAt: user.subscriptionExpiresAt ? user.subscriptionExpiresAt.toISOString() : null, // 🟢 만료일 추가
             },
         };
 

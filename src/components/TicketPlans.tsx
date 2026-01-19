@@ -209,13 +209,21 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
                 const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL;
                 
+                // 🟢 [Debug]: 클라이언트 키 확인
+                console.log("[TicketPlans] 클라이언트 키 확인:", {
+                    hasKey: !!clientKey,
+                    keyPrefix: clientKey?.substring(0, 20) + "...",
+                    fullKey: clientKey
+                });
+                
                 if (!clientKey) {
                     throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다. NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL 환경 변수를 확인해주세요.");
                 }
                 
                 // 🟢 [Fix]: 클라이언트 키가 API 개별 연동 키인지 확인 (ck_로 시작해야 함)
                 if (!clientKey.startsWith("live_ck_") && !clientKey.startsWith("test_ck_")) {
-                    throw new Error("토스페이먼츠 클라이언트 키 형식이 올바르지 않습니다. API 개별 연동 키(ck_로 시작)를 사용해주세요.");
+                    console.error("[TicketPlans] 잘못된 클라이언트 키 형식:", clientKey);
+                    throw new Error(`토스페이먼츠 클라이언트 키 형식이 올바르지 않습니다. API 개별 연동 키(ck_로 시작)를 사용해주세요. 현재 키: ${clientKey.substring(0, 20)}...`);
                 }
                 
                 const tossPayments = await loadTossPayments(clientKey);
