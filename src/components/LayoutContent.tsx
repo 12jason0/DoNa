@@ -82,17 +82,20 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isShopPage]);
 
-    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 다시 표시
+    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 다시 표시 (최적화: 짧은 스플래시만 표시)
     useEffect(() => {
         const handleAuthLoginSuccess = () => {
             // 🟢 로그인 성공 시 스플래시를 다시 표시하기 위해 플래그 제거
             try {
                 sessionStorage.removeItem("dona-splash-shown");
-                // 🟢 스플래시를 다시 표시
-                setContentReady(false);
+                // 🟢 [최적화]: 로그인 후에는 짧은 스플래시만 표시 (렉 방지)
+                // contentReady를 false로 설정하지 않고 바로 스플래시만 표시
+                setShowSplash(true);
+                // 🟢 짧은 스플래시 (2초 후 자동 종료)
                 setTimeout(() => {
-                    setShowSplash(true);
-                }, 50);
+                    setShowSplash(false);
+                    sessionStorage.setItem("dona-splash-shown", "true");
+                }, 2000);
             } catch (e) {
                 console.error("로그인 후 스플래시 표시 오류:", e);
             }

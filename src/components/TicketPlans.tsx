@@ -40,6 +40,8 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     const [selectedPlanId, setSelectedPlanId] = useState<string>("sub_basic");
     const [loading, setLoading] = useState(false);
     const [currentTier, setCurrentTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보
+    const [revenueCatProducts, setRevenueCatProducts] = useState<Record<string, any>>({});
 
     // 🟢 현재 사용자 등급 확인
     useEffect(() => {
@@ -75,6 +77,28 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
         fetchUserTier();
     }, []);
 
+    // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보 수신
+    useEffect(() => {
+        if (typeof window === "undefined" || !isMobileNative) return;
+
+        const handleRevenueCatProducts = (event: CustomEvent) => {
+            const products = event.detail;
+            const productMap: Record<string, any> = {};
+            
+            products.forEach((item: any) => {
+                productMap[item.identifier] = item.product;
+            });
+            
+            setRevenueCatProducts(productMap);
+        };
+
+        window.addEventListener('revenueCatProductsLoaded', handleRevenueCatProducts as EventListener);
+
+        return () => {
+            window.removeEventListener('revenueCatProductsLoaded', handleRevenueCatProducts as EventListener);
+        };
+    }, [isMobileNative]);
+
     // 🟢 [IN-APP PURCHASE]: WebView 브리지로부터 결제 결과 수신
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -104,7 +128,24 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
         };
     }, [onClose]);
 
-    const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
+    // 🟢 RevenueCat 상품 정보로 PLANS 업데이트
+    const updatedPlans = PLANS.map(plan => {
+        const revenueCatProduct = revenueCatProducts[plan.id];
+        if (revenueCatProduct && isMobileNative) {
+            // 가격을 숫자로 변환 (예: "₩7,900" -> 7900)
+            const priceMatch = revenueCatProduct.priceString?.match(/[\d,]+/);
+            const price = priceMatch ? parseInt(priceMatch[0].replace(/,/g, ''), 10) : plan.price;
+            
+            return {
+                ...plan,
+                name: revenueCatProduct.title || plan.name,
+                price: price || plan.price,
+            };
+        }
+        return plan;
+    });
+
+    const selectedPlan = updatedPlans.find((p) => p.id === selectedPlanId);
 
     // 🟢 [IN-APP PURCHASE]: RevenueCat 인앱결제 처리 함수
     const handlePayment = async () => {
@@ -214,7 +255,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                         <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
                             Monthly Membership
                         </h4>
-                        {PLANS.filter((p) => p.type === "sub").map((plan) => {
+                        {updatedPlans.filter((p) => p.type === "sub").map((plan) => {
                             // 🟢 현재 등급이 해당 플랜 등급 이상이면 비활성화
                             const isDisabled =
                                 (currentTier === "BASIC" && plan.tier === "BASIC") ||
@@ -320,7 +361,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                             One-time Ticket
                         </h4>
                         <div className="grid grid-cols-1 gap-3">
-                            {PLANS.filter((p) => p.type === "ticket").map((plan) => (
+                            {updatedPlans.filter((p) => p.type === "ticket").map((plan) => (
                                 <div
                                     key={plan.id}
                                     onClick={() => setSelectedPlanId(plan.id)}

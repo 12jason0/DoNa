@@ -197,6 +197,47 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         }
     }, [handleAndroidBack]);
 
+    // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보를 웹뷰로 전달
+    useEffect(() => {
+        const loadRevenueCatProducts = async () => {
+            try {
+                const offerings = await Purchases.getOfferings();
+                if (offerings.current && offerings.current.availablePackages.length > 0) {
+                    // RevenueCat 패키지 정보를 웹뷰로 전달
+                    const products = offerings.current.availablePackages.map((pkg: any) => ({
+                        identifier: pkg.identifier,
+                        product: {
+                            identifier: pkg.product.identifier,
+                            title: pkg.product.title,
+                            description: pkg.product.description,
+                            price: pkg.product.price,
+                            priceString: pkg.product.priceString,
+                            currencyCode: pkg.product.currencyCode,
+                        },
+                    }));
+
+                    // 웹뷰가 로드된 후 상품 정보 전달
+                    if (webRef.current) {
+                        webRef.current.injectJavaScript(`
+                            window.dispatchEvent(new CustomEvent('revenueCatProductsLoaded', {
+                                detail: ${JSON.stringify(products)}
+                            }));
+                        `);
+                    }
+                }
+            } catch (error) {
+                console.error("[RevenueCat] 상품 정보 로드 실패:", error);
+            }
+        };
+
+        // 웹뷰 로드 후 상품 정보 전달 (약간의 지연을 두어 웹뷰가 완전히 로드될 때까지 대기)
+        const timer = setTimeout(() => {
+            loadRevenueCatProducts();
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, []);
+
     useEffect(() => {
         (async () => {
             const lines: string[] = [];
