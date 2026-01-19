@@ -38,6 +38,8 @@ export default function App() {
     const responseListener = useRef<Notifications.Subscription | null>(null);
     // 🟢 [2026-01-21] 딥링크를 통해 전달받은 경로를 관리하는 상태
     const [initialUri, setInitialUri] = useState<string>(WEB_BASE);
+    // 🟢 [안전 장치]: RevenueCat 초기화 완료 여부
+    const [isPurchasesReady, setIsPurchasesReady] = useState(false);
 
     // 🟢 [2026-01-21] 딥링크 수신 리스너 (duna://success?next=... 신호를 처리)
     useEffect(() => {
@@ -110,11 +112,17 @@ export default function App() {
                             console.error("[RevenueCat] 사용자 로그인 실패:", error);
                         }
                     }
+                    // 🟢 확실히 초기화된 후에만 true
+                    setIsPurchasesReady(true);
                 } else {
                     console.warn("[RevenueCat] API Key가 설정되지 않았습니다.");
+                    // 🟢 API Key가 없어도 앱은 실행되도록 (웹뷰는 정상 작동)
+                    setIsPurchasesReady(true);
                 }
             } catch (error) {
                 console.error("[RevenueCat] 초기화 실패:", error);
+                // 🟢 초기화 실패해도 앱은 실행되도록
+                setIsPurchasesReady(true);
             }
         })();
 
@@ -141,6 +149,9 @@ export default function App() {
             responseListener.current?.remove?.();
         };
     }, []);
+
+    // 🟢 초기화 전에는 웹뷰를 띄우지 않고 대기 (하얀 화면 방지)
+    if (!isPurchasesReady) return null;
 
     return (
         <SafeAreaProvider>
