@@ -44,9 +44,9 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                             <h4 className="text-base font-bold text-gray-900 dark:text-white">
                                 {displayTier === "PREMIUM" ? "프리미엄 멤버십" : displayTier === "BASIC" ? "베이직 멤버십" : "일반 회원"}
                             </h4>
-                            {userInfo?.subscriptionExpiresAt && (
-                                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                                    {new Date(userInfo.subscriptionExpiresAt).toLocaleDateString()} 까지 유효
+                            {userInfo?.subscriptionExpiresAt && displayTier !== "FREE" && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                                    ~ {new Date(userInfo.subscriptionExpiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </p>
                             )}
                         </div>

@@ -207,7 +207,17 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 
                 // 🟢 토스페이먼츠 결제 (웹 전용)
                 const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-                const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "live_ck_ma60RZblrq7ARpNEZDe3wzYWBn1";
+                const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL;
+                
+                if (!clientKey) {
+                    throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다. NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL 환경 변수를 확인해주세요.");
+                }
+                
+                // 🟢 [Fix]: 클라이언트 키가 API 개별 연동 키인지 확인 (ck_로 시작해야 함)
+                if (!clientKey.startsWith("live_ck_") && !clientKey.startsWith("test_ck_")) {
+                    throw new Error("토스페이먼츠 클라이언트 키 형식이 올바르지 않습니다. API 개별 연동 키(ck_로 시작)를 사용해주세요.");
+                }
+                
                 const tossPayments = await loadTossPayments(clientKey);
 
                 const orderId = `${selectedPlan.id}_${Date.now()}`;
