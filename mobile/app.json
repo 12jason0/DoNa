@@ -3,7 +3,7 @@
     "name": "두나(DoNa)",
     "slug": "duna",
     "owner": "dona-app",
-    "version": "1.0.13",
+    "version": "1.1.0",
         "scheme": ["duna", "kakaoa6c31213198b3d562121ddace8d1b65f"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
