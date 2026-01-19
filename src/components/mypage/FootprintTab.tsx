@@ -1333,11 +1333,11 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                         backgroundColor: "#000000",
                     }}
                 >
-                    {/* 🟢 상단 바 영역 (검은색 배경) */}
+                    {/* 🟢 상단 바 영역 (검은색 배경) - 상태바 영역 포함 */}
                     <div 
                         className="absolute top-0 left-0 right-0 bg-black z-10"
                         style={{ 
-                            height: "calc(env(safe-area-inset-top, 0) + 1rem + 1.5rem)",
+                            height: "env(safe-area-inset-top, 0)",
                         }}
                     />
                     

@@ -97,6 +97,24 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
                 padding: 0,
             }}
         >
+            {/* 🟢 상단 safe area 영역 (스플래시 배경색과 동일) */}
+            <div 
+                className="absolute top-0 left-0 right-0 z-10"
+                style={{ 
+                    height: "env(safe-area-inset-top, 0)",
+                    backgroundColor: "#7FCC9F",
+                }}
+            />
+            
+            {/* 🟢 하단 safe area 영역 (안드로이드 네비게이션 바, 스플래시 배경색과 동일) */}
+            <div 
+                className="absolute bottom-0 left-0 right-0 z-10"
+                style={{ 
+                    height: "env(safe-area-inset-bottom, 0)",
+                    backgroundColor: "#7FCC9F",
+                }}
+            />
+            
             {/* 지도 배경 그리드 */}
             <div
                 style={{

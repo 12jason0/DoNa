@@ -64,13 +64,26 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 return;
             }
 
+            // 🟢 로그인 후 스플래시 플래그 확인
+            const loginAfterSplash = sessionStorage.getItem("login-after-splash");
             const already = sessionStorage.getItem("dona-splash-shown");
+            
+            // 🟢 로그인 후에는 절대 스플래시 표시하지 않음
+            if (loginAfterSplash) {
+                setContentReady(true);
+                setShowSplash(false);
+                return;
+            }
+            
             if (!already) {
                 // 🟢 스플래시를 표시하기 전에 contentReady를 false로 유지
                 setContentReady(false);
                 // 🟢 스플래시 컴포넌트가 마운트될 시간을 주기 위해 약간의 지연
                 setTimeout(() => {
-                    setShowSplash(true);
+                    // 🟢 로그인 후 플래그가 설정되지 않았을 때만 스플래시 표시
+                    if (!sessionStorage.getItem("login-after-splash")) {
+                        setShowSplash(true);
+                    }
                 }, 50);
             } else {
                 // 스플래시가 필요 없으면 즉시 콘텐츠 준비
@@ -82,25 +95,27 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isShopPage]);
 
-    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 표시하지 않음 (한 번만 표시)
+    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 중단 및 콘텐츠 표시
     useEffect(() => {
         const handleAuthLoginSuccess = () => {
-            // 🟢 [수정]: 로그인 후에는 스플래시를 다시 표시하지 않음
-            // 스플래시는 앱 시작 시 한 번만 표시되도록 함
+            // 🟢 [수정]: 로그인 후에는 스플래시를 즉시 중단하고 콘텐츠 표시
             try {
-                // 스플래시가 이미 표시되었는지 확인
-                const splashShown = sessionStorage.getItem("dona-splash-shown");
-                if (!splashShown) {
-                    // 스플래시가 아직 표시되지 않았으면 표시 (앱 시작 시)
-                    // 로그인 후에는 표시하지 않음
-                    return;
+                // 로그인 후 스플래시 플래그 설정 (재시작 방지)
+                sessionStorage.setItem("dona-splash-shown", "true");
+                sessionStorage.setItem("login-after-splash", "true");
+                
+                // 🟢 스플래시가 표시 중이면 즉시 숨기기
+                if (showSplash) {
+                    setShowSplash(false);
                 }
-                // 로그인 후에는 스플래시를 표시하지 않고 콘텐츠만 준비
-                if (!contentReady) {
-                    setContentReady(true);
-                }
+                
+                // 🟢 콘텐츠를 즉시 준비 상태로 전환 (스플래시 무시)
+                setContentReady(true);
             } catch (e) {
                 console.error("로그인 후 처리 오류:", e);
+                // 에러가 나도 콘텐츠는 준비 상태로
+                setContentReady(true);
+                setShowSplash(false);
             }
         };
 
@@ -108,7 +123,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         return () => {
             window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
         };
-    }, [contentReady]);
+    }, [showSplash]);
 
     // 🟢 Effect 2: 바디 클래스 관리 및 배경색 전환
     useEffect(() => {
