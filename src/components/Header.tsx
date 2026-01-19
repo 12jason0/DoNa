@@ -174,11 +174,11 @@ const Header = memo(() => {
             <header className="relative z-50 bg-white dark:bg-[#1a241b] shadow-sm dark:shadow-gray-900/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <Link href="/" prefetch={true} className="flex items-center space-x-2" onClick={closeMenu}>
-                            <span className="text-xl font-bold text-gray-900 dark:text-white">DoNa</span>
+                        <Link href="/" prefetch={true} className="flex items-center space-x-2 h-full" onClick={closeMenu}>
+                            <span className="text-xl font-bold text-gray-900 dark:text-white leading-none">DoNa</span>
                         </Link>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 h-full">
                             {/* 검색 버튼 */}
                             <button
                                 onClick={() => window.dispatchEvent(new Event("openSearchModal"))}
@@ -251,7 +251,7 @@ const Header = memo(() => {
                             style={{ right: panelRight, width: drawerWidth }}
                         >
                             <div className="h-full overflow-y-auto flex flex-col">
-                                <div className="pl-6 pt-2 pr-6 space-y-2">
+                                <div className="pl-5 pt-2 pr-5 space-y-2">
                                     <Link
                                         href="/"
                                         prefetch={true}
@@ -279,10 +279,18 @@ const Header = memo(() => {
                                     <Link
                                         href="/personalized-home"
                                         prefetch={true}
-                                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                         onClick={closeMenu}
                                     >
-                                        🎯 AI 추천
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                            <path d="M12 6V2H8"/>
+                                            <path d="M15 11v2"/>
+                                            <path d="M2 12h2"/>
+                                            <path d="M20 12h2"/>
+                                            <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>
+                                            <path d="M9 11v2"/>
+                                        </svg>
+                                        AI 추천
                                     </Link>
                                     <Link
                                         href="/map"
@@ -313,7 +321,11 @@ const Header = memo(() => {
                                         }}
                                         className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
                                     >
-                                        <span>🔒커플 미션 게임</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                        </svg>
+                                        커플 미션 게임
                                     </button>
 
                                     <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
@@ -349,30 +361,8 @@ const Header = memo(() => {
                                     </div>
                                 </div>
 
-                                {/* 드로어 하단 링크 및 로그아웃 */}
+                                {/* 드로어 하단 링크 */}
                                 <div className="mt-auto px-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
-                                    {isLoggedIn && (
-                                        <button
-                                            onClick={openLogoutConfirm}
-                                            className="w-full flex items-center gap-2 px-3 py-2 mt-4 mb-4 rounded-lg text-base font-medium text-red-700 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                strokeWidth={2}
-                                                stroke="currentColor"
-                                                className="w-5 h-5"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-                                                />
-                                            </svg>
-                                            <span>로그아웃</span>
-                                        </button>
-                                    )}
                                     <div className="grid grid-cols-2 gap-y-3 gap-x-2 pb-6 pt-4">
                                         <Link
                                             href="/about"
@@ -409,7 +399,7 @@ const Header = memo(() => {
                                     </div>
                                     <div className="pb-6 text-center">
                                         <p className="text-[10px] text-gray-300 font-medium">
-                                            버전 1.0.0 | © 2026 DoNa Team
+                                            버전 1.1.0 | © 2026 DoNa Team
                                         </p>
                                     </div>
                                 </div>

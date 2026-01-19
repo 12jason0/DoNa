@@ -112,7 +112,7 @@ function GuidePageInner() {
         setIsMinimized((prev) => !prev);
     };
 
-    // 사용자 정보 가져오기 (test@test.com 계정 체크용) - 지연 로드
+    // 🟢 사용자 정보 가져오기 - 코스 데이터와 병렬 로딩으로 성능 최적화
     useEffect(() => {
         const fetchUserInfo = async () => {
             try {
@@ -145,23 +145,22 @@ function GuidePageInner() {
             }
         };
         
-        if (!loading) {
-            setTimeout(fetchUserInfo, 100);
-        }
-    }, [loading]);
+        // 🟢 지연 제거: 코스 로딩과 병렬로 실행
+        fetchUserInfo();
+    }, []);
 
     // 🟢 GPS 도착 체크 및 자동 이동 기능 제거됨
 
-    // 🟢 [Performance]: Fetch Course - 캐싱 및 지연 로딩 최적화
+    // 🟢 [Performance]: Fetch Course - 캐싱 및 병렬 로딩 최적화
     useEffect(() => {
         if (!courseId) return;
 
         const fetchCourse = async () => {
             try {
                 const { apiFetch } = await import("@/lib/authClient");
+                // 🟢 성능 최적화: no-store로 변경하여 최신 데이터 즉시 로드 (캐시 지연 제거)
                 const { data, response } = await apiFetch<Course>(`/api/courses/${courseId}/start`, {
-                    cache: "force-cache",
-                    next: { revalidate: 300 },
+                    cache: "no-store", // 🟢 최신 데이터 즉시 로드
                 });
 
                 if (!response.ok) {
@@ -170,11 +169,8 @@ function GuidePageInner() {
                 }
 
                 if (data) {
-                    // 🟢 디버깅: 받아온 데이터 확인
-                    console.log("[START PAGE] Received course data:", data);
-                    console.log("[START PAGE] First coursePlace:", data.coursePlaces?.[0]);
-                    console.log("[START PAGE] First place name:", data.coursePlaces?.[0]?.place?.name);
                     setCourse(data);
+                    setLoading(false); // 🟢 데이터 받으면 즉시 로딩 해제
                 } else {
                     throw new Error("코스를 찾을 수 없습니다.");
                 }
@@ -526,10 +522,6 @@ function GuidePageInner() {
                 return;
             }
 
-            console.log("[handleSubmit] stepData:", stepData);
-            console.log("[handleSubmit] allPhotos:", allPhotos);
-            console.log("[handleSubmit] allTags:", allTags);
-            console.log("[handleSubmit] placeData:", placeData);
             
             const { authenticatedFetch } = await import("@/lib/authClient");
             const data = await authenticatedFetch<any>("/api/reviews", {
@@ -554,6 +546,16 @@ function GuidePageInner() {
                     setCouponAwarded(true);
                     setCouponAmount((data as any).couponAmount || 0);
                     setCouponMessage((data as any).message || "쿠폰이 지급되었습니다!");
+                    
+                    // 🟢 쿠폰 지급 이벤트 발생 (마이페이지 데이터 갱신용)
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("couponAwarded", {
+                            detail: {
+                                amount: (data as any).couponAmount || 0,
+                                message: (data as any).message || "쿠폰이 지급되었습니다!",
+                            }
+                        }));
+                    }
                 } else {
                     setCouponAwarded(false);
                     setCouponMessage(null);
@@ -636,7 +638,7 @@ function GuidePageInner() {
 
                 {/* 완료 페이지 콘텐츠 */}
                 <div className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] px-6 py-8">
-                    <div className="text-center mb-8">
+                    <div className="text-center mb-6">
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                             추억이 완성되었어요! 💕
                         </h2>
@@ -645,11 +647,51 @@ function GuidePageInner() {
                         </p>
                     </div>
 
+                    {/* 별점 입력 */}
+                    <div className="mb-6">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 text-center">
+                            이 데이트는 어떠셨나요?
+                        </p>
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    onClick={() => setStoryRating(star)}
+                                    className="text-3xl transition-all hover:scale-110 active:scale-95"
+                                    type="button"
+                                >
+                                    <span
+                                        className={
+                                            storyRating >= star
+                                                ? "text-yellow-400 opacity-100"
+                                                : "text-gray-300 dark:text-gray-600 opacity-30"
+                                        }
+                                    >
+                                        ⭐
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                            {storyRating === 5 && "최고였어요! 💕"}
+                            {storyRating === 4 && "정말 좋았어요! 😊"}
+                            {storyRating === 3 && "보통이었어요 😐"}
+                            {storyRating === 2 && "좀 아쉬웠어요 😕"}
+                            {storyRating === 1 && "별로였어요... 😢"}
+                        </p>
+                    </div>
+
                     {/* 저장하기 버튼 */}
                     <div className="flex gap-3">
                         <button
+                            onClick={handlePrev}
+                            className="px-6 h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
+                        >
+                            ← 뒤로
+                        </button>
+                        <button
                             onClick={handleSubmit}
-                            className="w-full h-14 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                            className="flex-1 h-14 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
                         >
                             저장하기
                         </button>
@@ -763,7 +805,7 @@ function GuidePageInner() {
             {/* 3. Bottom Story Card - 다크 모드 지원 - 고정 모달 */}
             <div
                 className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]"
-                style={{ maxHeight: '85vh', minHeight: '50vh', display: 'flex', flexDirection: 'column' }}
+                style={{ maxHeight: '65vh', minHeight: '50vh', display: 'flex', flexDirection: 'column' }}
             >
 
                 {/* 🟢 스크롤 가능한 콘텐츠 영역 */}
@@ -779,20 +821,8 @@ function GuidePageInner() {
                             ? `${course.region} 데이트`
                             : "우리의 데이트"}
                     </h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {(() => {
-                            // 🟢 디버깅: currentPlace 정보 확인
-                            if (currentPlace) {
-                                console.log("[START PAGE] Current place debug:", {
-                                    step: currentStep,
-                                    placeId: currentPlace.id,
-                                    placeName: currentPlace.name,
-                                    hasName: !!currentPlace.name,
-                                    hasImageUrl: !!currentPlace.imageUrl,
-                                    fullCurrentPlace: currentPlace
-                                });
-                            }
-                            
                             return currentPlace?.imageUrl ? (
                                 // 🟢 배경 이미지가 현재 장소 사진일 때: 코스명 · 장소명 (한줄 띄어서)
                                 <>
@@ -809,28 +839,38 @@ function GuidePageInner() {
                                 <span>{course?.title || "코스"}</span>
                             );
                         })()}
-                    </p>
+                    </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">❤️ {currentDate}</p>
                 </div>
 
                 <div className="px-5 pb-24">
-                    {/* Section 2: 평가 - 완료 페이지에서만 표시 (현재는 숨김) */}
-                    {false && storyRating > 0 && (
-                        <div className="py-6 text-center">
-                            <div className="flex justify-center gap-2 mb-3">
+                    {/* Section 2: 별점 평가 - 마지막 장소에서만 표시 */}
+                    {currentStep === totalSteps - 1 && (
+                        <div className="py-6 text-center border-b border-gray-100 dark:border-gray-800 mb-6">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                이 데이트는 어떠셨나요?
+                            </p>
+                            <div className="flex justify-center gap-2 mb-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
                                         key={star}
                                         onClick={() => setStoryRating(star)}
-                                        className={`text-4xl transition-all ${
-                                            storyRating >= star ? "text-yellow-400 opacity-100 scale-110" : "text-gray-300 dark:text-gray-600 opacity-30"
-                                        }`}
+                                        className="text-3xl transition-all hover:scale-110 active:scale-95"
+                                        type="button"
                                     >
-                                        ★
+                                        <span
+                                            className={
+                                                storyRating >= star
+                                                    ? "text-yellow-400 opacity-100"
+                                                    : "text-gray-300 dark:text-gray-600 opacity-30"
+                                            }
+                                        >
+                                            ⭐
+                                        </span>
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
                                 {storyRating === 5 && "최고였어요! 💕"}
                                 {storyRating === 4 && "정말 좋았어요! 😊"}
                                 {storyRating === 3 && "보통이었어요 😐"}
@@ -839,7 +879,6 @@ function GuidePageInner() {
                             </p>
                         </div>
                     )}
-
 
                     {/* Section 4: 태그 - 마지막 step이 아니면 현재 step의 태그만 표시 */}
                     <div className="pb-6">
@@ -1009,12 +1048,20 @@ function GuidePageInner() {
                 {/* 하단 버튼 */}
                 <div className="shrink-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 flex gap-3">
                     {currentStep === totalSteps - 1 ? (
-                        <button
-                            onClick={handleSubmit}
-                            className="w-full h-14 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
-                        >
-                            저장하기
-                        </button>
+                        <>
+                            <button
+                                onClick={handlePrev}
+                                className="px-6 h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
+                            >
+                                ← 이전
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className="flex-1 h-14 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                            >
+                                저장하기
+                            </button>
+                        </>
                     ) : (
                         <>
                             {currentStep > 0 && (

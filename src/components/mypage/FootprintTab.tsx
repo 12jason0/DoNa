@@ -476,7 +476,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             hasData ? "dark:text-white" : ""
                             } tracking-tight`}
                     >
-                        내 발자취 👣
+                        내 발자취 
                     </h4>
                         {/* 🟢 서브 탭 (달력, 추억) - 오른쪽 정렬 */}
                         <div className="flex items-center gap-2">
@@ -653,17 +653,23 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             } rounded-xl transition-colors`}
                         >
                             <svg
-                                className={`w-5 h-5 text-gray-600 ${hasData ? "dark:text-gray-400" : ""}`}
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className={`w-5 h-5 text-gray-600 ${hasData ? "dark:text-gray-400" : ""}`}
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                                />
+                                <path d="M12 6V2H8"/>
+                                <path d="M15 11v2"/>
+                                <path d="M2 12h2"/>
+                                <path d="M20 12h2"/>
+                                <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>
+                                <path d="M9 11v2"/>
                             </svg>
                             <span
                                 className={`text-sm font-medium text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`}

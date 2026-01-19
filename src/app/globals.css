@@ -123,6 +123,17 @@ body.splash-active {
 }
 
 /* 애니메이션 클래스 */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 @keyframes fade-in-up {
     from {
         opacity: 0;

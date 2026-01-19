@@ -180,18 +180,6 @@ const getUserPermission = async (
                 }),
         ]);
 
-        // 🔒 디버깅: DB 조회 결과 확인 (개발 환경에서만)
-        if (process.env.NODE_ENV === "development") {
-            console.log("[DB 조회 결과]", {
-                userIdNum,
-                courseId,
-                userIdType: typeof userIdNum,
-                courseIdType: typeof courseId,
-                unlockRecordFound: !!unlockRecord,
-                unlockRecord,
-                userFound: !!user,
-            });
-        }
 
         return {
             userTier: user?.subscriptionTier || "FREE",
@@ -236,16 +224,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                     userTier = permission.userTier;
                     hasUnlocked = permission.hasUnlocked; // 쿠폰 구매 여부 확인
 
-                    // 🔒 디버깅: 권한 확인 로그 (개발 환경에서만)
-                    if (process.env.NODE_ENV === "development") {
-                        console.log("[권한 확인]", {
-                            userIdNum,
-                            courseId,
-                            userTier,
-                            hasUnlocked,
-                            courseGrade: courseData.grade,
-                        });
-                    }
                 }
             }
         } catch (e) {

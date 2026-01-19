@@ -1797,7 +1797,14 @@ const AIRecommender = () => {
                                 <div className="absolute inset-0 bg-emerald-200 rounded-4xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
 
                                 <div className="relative w-28 h-28 bg-linear-to-br from-white to-emerald-50 rounded-[2.5rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
-                                    <Sparkles className="w-12 h-12 text-emerald-600 drop-shadow-sm" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-emerald-600 drop-shadow-sm">
+                                        <path d="M12 6V2H8"/>
+                                        <path d="M15 11v2"/>
+                                        <path d="M2 12h2"/>
+                                        <path d="M20 12h2"/>
+                                        <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>
+                                        <path d="M9 11v2"/>
+                                    </svg>
 
                                     <span className="absolute top-6 right-6 flex h-3 w-3">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>

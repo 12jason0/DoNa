@@ -465,9 +465,13 @@ export default function HomeClient({
                     <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
                             <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
-                                🌱
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+                                    <path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/>
+                                    <path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/>
+                                    <path d="M5 21h14"/>
+                                </svg>
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 ml-3">
                                 <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">출석 현황</div>
                                 {isCheckinLoading && isAuthenticated ? (
                                     <div className="mt-1 space-y-1">
@@ -484,13 +488,7 @@ export default function HomeClient({
                                 )}
                             </div>
                         </div>
-                        <button
-                            onClick={() => router.push(userId ? "/mypage?tab=checkins" : "/login")}
-                            className="w-10 h-10 bg-white dark:bg-[#1a241b] border border-emerald-200 dark:border-emerald-800/50 rounded-full flex items-center justify-center shadow-sm shrink-0"
-                        >
-                            🔔
-                        </button>
-                    </div>
+                    </div>  
                 </section>
 
                 <MemoizedPersonalizedSection />

@@ -19,49 +19,57 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         let userTier = "FREE";
         let hasUnlocked = false;
 
-        if (userId) {
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                select: { subscriptionTier: true },
-            });
-            if (user?.subscriptionTier) userTier = user.subscriptionTier;
-
-            try {
-                const unlock = await (prisma as any).courseUnlock.findFirst({
-                    where: { userId: userId, courseId: courseId },
-                });
-                hasUnlocked = !!unlock;
-            } catch (e) {
-                console.warn("[Auth] CourseUnlock check failed:", e);
-            }
-        }
-
-        // 🟢 가이드 페이지에 필요한 최소한의 데이터만 조회
-        const course = await prisma.course.findUnique({
-            where: { id: courseId },
-            select: {
-                id: true,
-                title: true,
-                grade: true,
-                region: true,
-                imageUrl: true,
-                coursePlaces: {
-                    orderBy: { order_index: "asc" },
-                    select: {
-                        id: true,
-                        order_index: true,
-                        coaching_tip: true,
-                        place: {
-                            select: {
-                                id: true,
-                                name: true,
-                                imageUrl: true,
+        // 🟢 성능 최적화: 사용자 정보와 코스 정보를 병렬로 조회
+        const [userResult, course] = await Promise.all([
+            userId
+                ? Promise.all([
+                      prisma.user.findUnique({
+                          where: { id: userId },
+                          select: { subscriptionTier: true },
+                      }),
+                      (prisma as any).courseUnlock
+                          .findFirst({
+                              where: { userId: userId, courseId: courseId },
+                          })
+                          .catch(() => null),
+                  ])
+                : Promise.resolve([null, null]),
+            // 🟢 가이드 페이지에 필요한 최소한의 데이터만 조회
+            prisma.course.findUnique({
+                where: { id: courseId },
+                select: {
+                    id: true,
+                    title: true,
+                    grade: true,
+                    region: true,
+                    imageUrl: true,
+                    coursePlaces: {
+                        orderBy: { order_index: "asc" },
+                        select: {
+                            id: true,
+                            order_index: true,
+                            coaching_tip: true,
+                            place: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    imageUrl: true,
+                                },
                             },
                         },
                     },
                 },
-            },
-        });
+            }),
+        ]);
+
+        // 🟢 사용자 정보 처리
+        if (userResult && userResult[0]) {
+            const user = userResult[0];
+            if (user?.subscriptionTier) userTier = user.subscriptionTier;
+        }
+        if (userResult && userResult[1]) {
+            hasUnlocked = !!userResult[1];
+        }
 
         if (!course) {
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
@@ -82,33 +90,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const coursePlacesArray = Array.isArray(course.coursePlaces) ? course.coursePlaces : [];
 
-        // 🟢 디버깅: Prisma 쿼리 결과 전체 확인
-        console.log("[START API] Raw coursePlacesArray:", JSON.stringify(coursePlacesArray, null, 2));
-        if (coursePlacesArray.length > 0) {
-            console.log("[START API] First coursePlace raw:", JSON.stringify(coursePlacesArray[0], null, 2));
-            console.log("[START API] First place object:", JSON.stringify(coursePlacesArray[0]?.place, null, 2));
-        }
-
         // 🟢 가이드 페이지용 데이터 구조
         const coursePlaces = coursePlacesArray
             .map((cp: any) => {
                 if (!cp || !cp.place) {
-                    console.log("[START API] Skipping coursePlace - no place:", cp);
                     return null;
                 }
 
                 const coachingTip = cp.coaching_tip || null;
-
-                // 🟢 디버깅: 실제로 받아온 데이터 확인
-                console.log("[START API] Raw place data:", {
-                    placeId: cp.place.id,
-                    placeName: cp.place.name,
-                    placeNameType: typeof cp.place.name,
-                    placeNameValue: cp.place.name,
-                    hasName: !!cp.place.name,
-                    placeImageUrl: cp.place.imageUrl,
-                    fullPlaceObject: cp.place
-                });
 
                 return {
                     order_index: cp.order_index,
@@ -123,13 +112,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             })
             .filter((cp: any) => cp !== null);
 
-        // 🟢 디버깅: region 값 확인 및 첫 번째 장소 name 확인
-        console.log("[START API] Course region:", course.region);
-        if (coursePlaces.length > 0) {
-            console.log("[START API] First coursePlace place.name:", coursePlaces[0]?.place?.name);
-            console.log("[START API] First coursePlace full:", JSON.stringify(coursePlaces[0], null, 2));
-        }
-
         const payload = {
             id: String(course.id),
             title: course.title || "",
@@ -137,8 +119,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             imageUrl: course.imageUrl || null,
             coursePlaces,
         };
-
-        console.log("[START API] Payload region:", payload.region);
 
         return NextResponse.json(payload);
     } catch (error: any) {

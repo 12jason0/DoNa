@@ -172,13 +172,17 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // [기능 개선] 중복 리뷰 체크 (같은 사용자가 같은 코스에 리뷰를 여러 번 작성하는 것 방지)
-        const existingReview = await prisma.review.findFirst({
-            where: {
-                userId: numericUserId,
-                courseId: numericCourseId,
-            },
-        });
+        // 🟢 [수정] 중복 리뷰 체크: 공개 리뷰(isPublic: true)일 때만 중복 방지
+        // 개인 추억(isPublic: false)은 같은 코스에 여러 개 저장 가능
+        const existingReview = isPublicValue 
+            ? await prisma.review.findFirst({
+                where: {
+                    userId: numericUserId,
+                    courseId: numericCourseId,
+                    isPublic: true, // 🟢 공개 리뷰만 중복 체크
+                },
+            })
+            : null; // 🟢 개인 추억은 중복 체크 안 함
 
         const finalComment: string =
             typeof comment === "string" && comment.trim().length > 0
@@ -187,7 +191,7 @@ export async function POST(request: NextRequest) {
                 ? content.trim()
                 : "";
 
-        // 🟢 트랜잭션으로 리뷰 저장 + 쿠폰 지급 처리
+            // 🟢 트랜잭션으로 리뷰 저장 + 쿠폰 지급 처리
         const result = await prisma.$transaction(async (tx) => {
             let review;
             let isNewReview = false;
@@ -230,6 +234,7 @@ export async function POST(request: NextRequest) {
             let personalMemoryCount: number | undefined = undefined;
 
             // 🟢 개인 추억(isPublic: false) 개수 확인 (모달 표시용)
+            // 🟢 [수정] 새 리뷰 생성 후에 개수 확인 (10번째 저장 시 정확한 개수 반영)
             if (isPublicValue === false) {
                 personalMemoryCount = await (tx as any).review.count({
                     where: { 
@@ -246,7 +251,8 @@ export async function POST(request: NextRequest) {
                     const memoryRewardExists = await tx.userReward.findFirst({
                         where: {
                             userId: numericUserId,
-                            type: "personal_memory_milestone" as any,
+                            type: "personal_memory_milestone" as any, // 🟢 Prisma 클라이언트 재생성 후에도 타입 에러가 있으면 임시로 any 사용
+                            placeId: null, // 🟢 placeId를 명시적으로 null로 체크
                         },
                     });
 
@@ -258,14 +264,23 @@ export async function POST(request: NextRequest) {
                         });
 
                         // 보상 기록 저장
-                        await tx.userReward.create({
+                        const createdReward = await tx.userReward.create({
                             data: {
                                 userId: numericUserId,
-                                type: "personal_memory_milestone" as any,
+                                type: "personal_memory_milestone" as any, // 🟢 Prisma 클라이언트 재생성 후에도 타입 에러가 있으면 임시로 any 사용
                                 amount: 3,
                                 unit: "coupon" as any,
+                                placeId: null, // 🟢 placeId를 명시적으로 null로 설정
                             },
-                        } as any);
+                        });
+
+                        // 🟢 디버깅: 보상 저장 확인
+                        console.log("[리뷰 API] 개인 추억 10개 달성 보상 저장 완료:", {
+                            id: createdReward.id,
+                            type: createdReward.type,
+                            amount: createdReward.amount,
+                            userId: createdReward.userId,
+                        });
 
                         couponAwarded = true;
                         couponAmount = 3;
@@ -290,8 +305,9 @@ export async function POST(request: NextRequest) {
                     const milestoneRewardExists = await tx.userReward.findFirst({
                         where: {
                             userId: numericUserId,
-                            type: "course_completion_milestone" as any,
+                            type: "course_completion_milestone",
                             amount: reviewCount / 5, // 몇 번째 마일스톤인지 (1, 2, 3...)
+                            placeId: null, // 🟢 placeId를 명시적으로 null로 체크
                         },
                     });
 
@@ -306,12 +322,12 @@ export async function POST(request: NextRequest) {
                         await tx.userReward.create({
                             data: {
                                 userId: numericUserId,
-                                courseId: numericCourseId,
-                                type: "course_completion_milestone" as any,
+                                type: "course_completion_milestone",
                                 amount: reviewCount / 5,
-                                unit: "coupon" as any,
+                                unit: "coupon",
+                                placeId: null, // 🟢 courseId 대신 placeId: null 사용 (스키마에 courseId 필드 없음)
                             },
-                        } as any);
+                        });
 
                         couponAwarded = true;
                         couponAmount = 1;
@@ -355,11 +371,19 @@ export async function POST(request: NextRequest) {
         // [보안] 상세한 에러 메시지는 서버 로그에만 기록하고, 클라이언트에는 일반적인 메시지만 반환
         console.error("리뷰 생성 오류:", error);
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const errorStack = error instanceof Error ? error.stack : undefined;
         console.error("에러 상세:", errorMessage);
+        console.error("에러 스택:", errorStack);
 
         // Prisma 에러인 경우 특별 처리
         if (error instanceof Error && error.message.includes("Unique constraint")) {
             return NextResponse.json({ error: "이미 리뷰를 작성하셨습니다." }, { status: 409 });
+        }
+
+        // Prisma 필드 관련 에러 처리
+        if (error instanceof Error && (error.message.includes("Unknown arg") || error.message.includes("Invalid value"))) {
+            console.error("Prisma 필드 에러 - 스키마 확인 필요:", error.message);
+            return NextResponse.json({ error: "데이터베이스 스키마 오류가 발생했습니다." }, { status: 500 });
         }
 
         return NextResponse.json({ error: "리뷰 생성 중 오류가 발생했습니다." }, { status: 500 });

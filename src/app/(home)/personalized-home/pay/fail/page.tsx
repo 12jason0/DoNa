@@ -56,12 +56,6 @@ function PaymentFailContent() {
                 >
                     홈으로 돌아가기
                 </Link>
-                <button
-                    onClick={() => window.history.back()}
-                    className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all active:scale-95"
-                >
-                    뒤로 가기
-                </button>
             </div>
         </div>
     );

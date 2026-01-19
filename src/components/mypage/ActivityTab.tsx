@@ -158,6 +158,8 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                                                 if (type === "ad_watch") return "광고 시청 보상";
                                                 if (type === "purchase") return "구매 보상";
                                                 if (type === "event") return "이벤트 보상";
+                                                if (type === "personal_memory_milestone") return "개인 추억 10개 달성";
+                                                if (type === "course_completion_milestone") return "코스 리뷰 작성 보상";
                                                 return r.type;
                                             })()}
                                         </div>

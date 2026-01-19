@@ -583,7 +583,19 @@ const ProfileTab = ({
                                                     : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500"
                                             }`}
                                         >
-                                            {notificationEnabled === true ? "🔔" : "🔕"}
+                                            {notificationEnabled === true ? (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                                    <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
+                                                    <path d="M6 8a6 6 0 0 1 12 0c0 4.499-1.41 5.956-2.74 7.327A1 1 0 0 1 14 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8Z"/>
+                                                </svg>
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                                    <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
+                                                    <path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/>
+                                                    <path d="m2 2 20 20"/>
+                                                    <path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>
+                                                </svg>
+                                            )}
                                         </div>
 
                                         {/* 🔴 빨간 점 (알림이 꺼져 있을 때 왼쪽 위에 표시) - 로딩 중 아닐 때만 */}
@@ -721,7 +733,11 @@ const ProfileTab = ({
                         >
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-white dark:bg-gray-800 rounded-xl text-red-400 dark:text-red-500 group-hover:text-red-500 dark:group-hover:text-red-400 shadow-sm">
-                                    🚪
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                        <path d="m16 17 5-5-5-5"/>
+                                        <path d="M21 12H9"/>
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                    </svg>
                                 </div>
                                 <span className="font-bold text-red-500 dark:text-red-400 group-hover:text-red-600 dark:group-hover:text-red-300">
                                     로그아웃
@@ -740,7 +756,13 @@ const ProfileTab = ({
                         >
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-white dark:bg-gray-700 rounded-xl text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 shadow-sm">
-                                    🗑️
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                        <path d="M10 11v6"/>
+                                        <path d="M14 11v6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                                        <path d="M3 6h18"/>
+                                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
                                 </div>
                                 <span className="font-bold text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
                                     계정 탈퇴

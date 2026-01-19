@@ -224,6 +224,24 @@ const MyPage = () => {
         return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
     }, []);
 
+    // 🟢 쿠폰 지급 이벤트 리스너 (쿠폰 지급 시 즉시 데이터 갱신)
+    useEffect(() => {
+        const handleCouponAwarded = () => {
+            console.log("[마이페이지] 쿠폰 지급 감지 - 사용자 정보 및 보상 내역 갱신");
+            // 🟢 캐시 무시 플래그 설정
+            (window as any).__couponAwardedRefresh = true;
+            // 🟢 사용자 정보와 보상 내역을 병렬로 갱신 (캐시 무시)
+            Promise.all([
+                fetchUserInfo(),
+                fetchRewards()
+            ]).catch((err) => {
+                console.error("[마이페이지] 쿠폰 지급 후 데이터 갱신 실패:", err);
+            });
+        };
+        window.addEventListener("couponAwarded", handleCouponAwarded as EventListener);
+        return () => window.removeEventListener("couponAwarded", handleCouponAwarded as EventListener);
+    }, []);
+
     // 🟢 TicketPlans 모달 열기 이벤트 리스너
     useEffect(() => {
         const handleOpenTicketPlans = () => {
@@ -240,10 +258,15 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
             const { apiFetch } = await import("@/lib/authClient");
-            let { data: raw, response } = await apiFetch<any>("/api/users/profile", {
-                cache: "force-cache", // 🟢 [Performance]: 캐싱 활용하여 빠른 로딩
-                next: { revalidate: 60 }, // 🟢 1분 캐싱
-            });
+            // 🟢 쿠폰 지급 이벤트로 인한 갱신인 경우 캐시 무시
+            const cacheOption = (window as any).__couponAwardedRefresh 
+                ? { cache: "no-store" as const }
+                : { cache: "force-cache" as const, next: { revalidate: 60 } };
+            let { data: raw, response } = await apiFetch<any>("/api/users/profile", cacheOption);
+            // 🟢 플래그 초기화
+            if ((window as any).__couponAwardedRefresh) {
+                delete (window as any).__couponAwardedRefresh;
+            }
 
             // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
             if (response.status === 401 || !raw) {
@@ -619,10 +642,16 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/rewards", {
-                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
-                next: { revalidate: 300 }, // 🟢 5분 캐싱
-            });
+            // 🟢 쿠폰 지급 이벤트로 인한 갱신인 경우 캐시 무시
+            const shouldRefresh = (window as any).__couponAwardedRefresh;
+            const cacheOption = shouldRefresh
+                ? { cache: "no-store" as const }
+                : { cache: "force-cache" as const, next: { revalidate: 300 } };
+            const { data, response } = await apiFetch<any>("/api/users/rewards", cacheOption);
+            // 🟢 플래그 초기화 (데이터 가져온 후)
+            if (shouldRefresh) {
+                delete (window as any).__couponAwardedRefresh;
+            }
             if (response.status === 401) return; // 401이면 조용히 실패
             if ((data as any)?.success) setRewards((data as any).rewards || []);
         } catch {}
@@ -794,6 +823,7 @@ const MyPage = () => {
                     age: editForm.age ? parseInt(editForm.age) : null,
                     ageRange: editForm.ageRange || null,
                     gender: editForm.gender || null,
+                    couponCount: userInfo?.couponCount ?? 0, // 🟢 쿠폰 개수 유지
                 });
                 setShowEditModal(false);
                 alert("프로필이 성공적으로 수정되었습니다.");
@@ -949,11 +979,27 @@ const MyPage = () => {
                         >
                             {resolvedTheme === "dark" ? (
                                 <>
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">라이트</span>
+                                    <span className="flex flex-col items-center justify-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                            <circle cx="12" cy="12" r="4"/>
+                                            <path d="M12 2v2"/>
+                                            <path d="M12 20v2"/>
+                                            <path d="m4.93 4.93 1.41 1.41"/>
+                                            <path d="m17.66 17.66 1.41 1.41"/>
+                                            <path d="M2 12h2"/>
+                                            <path d="M20 12h2"/>
+                                            <path d="m6.34 17.66-1.41 1.41"/>
+                                            <path d="m19.07 4.93-1.41 1.41"/>
+                                        </svg>
+                                    </span>
                                 </>
                             ) : (
                                 <>
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">다크</span>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                        <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>
+                                    </svg>
+                                    </span>
                                 </>
                             )}
                         </button>
@@ -968,27 +1014,69 @@ const MyPage = () => {
 
                 <div className="flex justify-center mb-6 md:mb-8">
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-lg border border-gray-100 dark:border-gray-800 p-2 overflow-x-auto no-scrollbar"
+                        className="bg-white dark:bg-[#1a241b] rounded-lg border border-gray-100 dark:border-gray-800 p-2 w-full max-w-2xl"
                         ref={tabsTrackRef}
                     >
-                        <div className="flex space-x-2 min-w-max">
+                        <div className="flex space-x-2 w-full">
                             {[
-                                { id: "profile", label: "내 정보", icon: "👤" },
-                                { id: "footprint", label: "발자취", icon: "👣" },
-                                { id: "records", label: "여행 기록", icon: "🗂️" },
-                                { id: "activity", label: "활동 내역", icon: "🏅" },
+                                { 
+                                    id: "profile", 
+                                    label: "내 정보", 
+                                    icon: (
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                        </svg>
+                                    )
+                                },
+                                { 
+                                    id: "footprint", 
+                                    label: "발자취", 
+                                    icon: (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                            <path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/>
+                                            <path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/>
+                                            <path d="M16 17h4"/>
+                                            <path d="M4 13h4"/>
+                                        </svg>
+                                    )
+                                },
+                                { 
+                                    id: "records", 
+                                    label: "여행 기록", 
+                                    icon: (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                            <path d="M16 14v2.2l1.6 1"/>
+                                            <path d="M7 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2"/>
+                                            <circle cx="16" cy="16" r="6"/>
+                                        </svg>
+                                    )
+                                },
+                                { id: "activity", label: "활동 내역", icon: (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                                        <path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/>
+                                        <path d="M11 12 5.12 2.2"/>
+                                        <path d="m13 12 5.88-9.8"/>
+                                        <path d="M8 7h8"/>
+                                        <circle cx="12" cy="17" r="5"/>
+                                        <path d="M12 18v-2h-.5"/>
+                                    </svg>
+                                ) },
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
                                     onClick={(e) => handleSelectTab(tab.id, e)}
                                     aria-selected={activeTab === tab.id}
-                                    className={`min-w-[88px] md:min-w-[110px] px-3 md:px-4 py-2.5 md:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm md:text-base flex flex-col items-center gap-1 whitespace-nowrap ${
+                                    className={`flex-1 px-2 md:px-3 py-2.5 md:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm md:text-base flex flex-col items-center gap-1 whitespace-nowrap ${
                                         activeTab === tab.id
                                             ? "bg-blue-600 dark:bg-blue-700 text-white shadow-lg"
                                             : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                     }`}
                                 >
-                                    <span className="text-base md:text-lg">{tab.icon}</span>
+                                    {typeof tab.icon === "string" ? (
+                                        <span className="text-base md:text-lg">{tab.icon}</span>
+                                    ) : (
+                                        <span className="w-6 h-6 flex items-center justify-center">{tab.icon}</span>
+                                    )}
                                     <span>{tab.label}</span>
                                 </button>
                             ))}
@@ -1303,8 +1391,15 @@ const MyPage = () => {
 
             {/* 모달: 프로필 수정 */}
             {showEditModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-8 max-w-md w-full mx-4">
+                <div className="fixed inset-0 backdrop-blur-sm flex items-end justify-center z-50">
+                    <div 
+                        className="bg-white dark:bg-[#1a241b] rounded-t-3xl border-t border-gray-100 dark:border-gray-800 p-8 w-full max-w-md mx-4 mb-0" 
+                        style={{ 
+                            marginTop: '20vh',
+                            maxHeight: '80vh', 
+                            overflowY: 'auto'
+                        }}
+                    >
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                                 프로필 수정

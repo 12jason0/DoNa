@@ -673,6 +673,7 @@ enum RewardType {
   event
   escape_place_clear
   course_completion_milestone
+  personal_memory_milestone
 }
 
 enum RewardUnit {
