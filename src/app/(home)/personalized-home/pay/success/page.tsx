@@ -25,10 +25,13 @@ function PaymentSuccessContent() {
             // - orderId: 주문 ID (우리가 생성해서 보낸 것)
             // - amount: 결제 금액
             // - plan: 우리가 successUrl에 포함시킨 상품 ID (sub_premium, ticket_light 등)
+            // 🟢 토스페이먼츠 리다이렉트 시 쿼리 파라미터가 손실될 수 있으므로 sessionStorage에서도 확인
             const paymentKey = searchParams.get("paymentKey");
-            const orderId = searchParams.get("orderId");
+            const orderId = searchParams.get("orderId") || 
+                           (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentOrderId') : null);
             const amount = searchParams.get("amount");
-            const plan = searchParams.get("plan"); // ✅ 중요: 어떤 상품을 샀는지 알 수 있는 키값
+            const plan = searchParams.get("plan") || 
+                        (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentPlan') : null); // ✅ 중요: 어떤 상품을 샀는지 알 수 있는 키값
 
             // ============================================
             // 2단계: 사용자 인증 정보 확인
@@ -37,7 +40,19 @@ function PaymentSuccessContent() {
             const user = userStr ? JSON.parse(userStr) : null;
 
             // ============================================
-            // 3단계: 필수 정보 검증
+            // 3단계: sessionStorage에서 정보 가져온 경우 정리
+            // ============================================
+            if (typeof window !== "undefined") {
+                if (sessionStorage.getItem('pendingPaymentPlan')) {
+                    sessionStorage.removeItem('pendingPaymentPlan');
+                }
+                if (sessionStorage.getItem('pendingPaymentOrderId')) {
+                    sessionStorage.removeItem('pendingPaymentOrderId');
+                }
+            }
+
+            // ============================================
+            // 4단계: 필수 정보 검증
             // ============================================
             if (!paymentKey || !orderId || !amount || !plan || !user) {
                 setStatus("error");
@@ -46,7 +61,7 @@ function PaymentSuccessContent() {
             }
 
             // ============================================
-            // 4단계: 중복 요청 방지 (React StrictMode 대응)
+            // 5단계: 중복 요청 방지 (React StrictMode 대응)
             // ============================================
             if (hasCalledAPI.current) return;
             hasCalledAPI.current = true;

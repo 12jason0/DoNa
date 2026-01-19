@@ -35,6 +35,11 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
     
+    // 🟢 [추가 체크]: 웹 브라우저 환경 추가 확인
+    const isWebBrowser = typeof window !== "undefined" && 
+                        !(window as any).ReactNativeWebView &&
+                        !/DoNa_App|ReactNative|Expo/i.test(navigator.userAgent);
+    
     // 🟢 [수정]: 웹에서도 모달 표시 (결제 방식만 분기 처리)
 
     const [selectedPlanId, setSelectedPlanId] = useState<string>("sub_basic");
@@ -186,6 +191,56 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 return;
             }
 
+            // 🟢 [WEB PAYMENT]: 웹 브라우저에서는 무조건 토스페이먼츠 사용
+            if (isWebBrowser || (!isMobileNative)) {
+                const userId = session.user.id;
+                const customerKey = `user_${userId}`;
+                
+                // 🟢 토스페이먼츠 결제 (웹 전용)
+                const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+                
+                // 🟢 구독/쿠폰에 따라 클라이언트 키 분리
+                const isSubscription = selectedPlan.type === "sub";
+                const clientKey = isSubscription 
+                    ? (process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_BILLING || process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL)
+                    : process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL;
+                
+                if (!clientKey) {
+                    throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다.");
+                }
+
+                const tossPayments = await loadTossPayments(clientKey);
+
+                const orderId = `${selectedPlan.id}_${userId}_${Date.now()}`;
+                const payment = tossPayments.payment({ customerKey });
+
+                // 🟢 구독 결제인 경우 빌링 키 발급 플로우로 이동
+                if (isSubscription) {
+                    // 구독 결제는 빌링 키 발급 페이지로 이동
+                    window.location.href = `/pay/success-billing?planId=${selectedPlan.id}&customerKey=${encodeURIComponent(customerKey)}`;
+                    return;
+                }
+
+                // 🟢 쿠폰 결제는 일반 결제로 처리
+                // 결제 전에 plan 정보 저장 (토스페이먼츠 리다이렉트 시 쿼리 파라미터 손실 방지)
+                sessionStorage.setItem('pendingPaymentPlan', selectedPlan.id);
+                sessionStorage.setItem('pendingPaymentOrderId', orderId);
+
+                await payment.requestPayment({
+                    method: "CARD",
+                    amount: {
+                        currency: "KRW",
+                        value: selectedPlan.price,
+                    },
+                    orderId: orderId,
+                    orderName: selectedPlan.name,
+                    successUrl: `${window.location.origin}/personalized-home/pay/success?orderId=${orderId}&plan=${selectedPlan.id}`,
+                    failUrl: `${window.location.origin}/pay/fail`,
+                });
+                // 🟢 결제 완료 후 로딩 상태 해제는 리다이렉트로 처리되므로 여기서는 하지 않음
+                return;
+            }
+
             // 🟢 [IN-APP PURCHASE]: 모바일 앱에서는 인앱결제 사용
             if (isMobileNative && typeof window !== "undefined" && (window as any).ReactNativeWebView) {
                 (window as any).ReactNativeWebView.postMessage(
@@ -200,39 +255,11 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 return;
             }
 
-            // 🟢 [WEB PAYMENT]: 웹 브라우저에서는 토스페이먼츠 사용 (구독권/쿠폰 모두)
-            if (!isMobileNative) {
-                const userId = session.user.id;
-                const customerKey = `user_${userId}`;
-                
-                // 🟢 토스페이먼츠 결제 (웹 전용)
-                const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-                const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL || "live_ck_ma60RZblrq7ARpNEZDe3wzYWBn1";
-                const tossPayments = await loadTossPayments(clientKey);
-
-                const orderId = `${selectedPlan.id}_${Date.now()}`;
-                const payment = tossPayments.payment({ customerKey });
-
-                // 🟢 웹에서는 구독권/쿠폰 모두 일반 결제로 처리
-                await payment.requestPayment({
-                    method: "CARD",
-                    amount: {
-                        currency: "KRW",
-                        value: selectedPlan.price,
-                    },
-                    orderId: orderId,
-                    orderName: selectedPlan.name,
-                    successUrl: `${window.location.origin}/personalized-home/pay/success?plan=${selectedPlan.id}&orderId=${orderId}`,
-                    failUrl: `${window.location.origin}/pay/fail`,
-                });
-                return;
-            }
-
             // 🟢 모바일 앱이지만 ReactNativeWebView가 없는 경우 (예외 처리)
             alert("결제를 진행할 수 없습니다. 앱을 최신 버전으로 업데이트해주세요.");
             setLoading(false);
         } catch (error: any) {
-            console.error("[인앱결제 에러]:", error);
+            console.error("[결제 에러]:", error);
             const errorMessage = error?.message || "결제 처리 중 오류가 발생했습니다.";
             alert(errorMessage);
             setLoading(false);
