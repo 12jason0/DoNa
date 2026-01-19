@@ -197,6 +197,15 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         }
     }, [handleAndroidBack]);
 
+    // 🟢 [IN-APP PURCHASE]: RevenueCat Product ID → plan.id 매핑
+    const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
+        "kr.io.dona.ai_coupon_3": "ticket_light",
+        "kr.io.dona.ai_coupon_5": "ticket_standard",
+        "kr.io.dona.ai_coupon_10": "ticket_pro",
+        "kr.io.dona.ai_basic_monthly": "sub_basic",
+        "kr.io.dona.premium_monthly": "sub_premium",
+    };
+
     // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보를 웹뷰로 전달
     useEffect(() => {
         const loadRevenueCatProducts = async () => {
@@ -204,17 +213,26 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                 const offerings = await Purchases.getOfferings();
                 if (offerings.current && offerings.current.availablePackages.length > 0) {
                     // RevenueCat 패키지 정보를 웹뷰로 전달
-                    const products = offerings.current.availablePackages.map((pkg: any) => ({
-                        identifier: pkg.identifier,
-                        product: {
-                            identifier: pkg.product.identifier,
-                            title: pkg.product.title,
-                            description: pkg.product.description,
-                            price: pkg.product.price,
-                            priceString: pkg.product.priceString,
-                            currencyCode: pkg.product.currencyCode,
-                        },
-                    }));
+                    // 🟢 [수정]: Product ID를 plan.id로 변환하여 매핑
+                    const products = offerings.current.availablePackages.map((pkg: any) => {
+                        const productId = pkg.product.identifier;
+                        // 🟢 Product ID를 plan.id로 변환 (없으면 원본 사용)
+                        const planId = REVENUECAT_TO_PLAN_ID[productId] || productId;
+                        
+                        return {
+                            packageIdentifier: pkg.identifier, // Package identifier (결제용)
+                            productIdentifier: productId, // RevenueCat Product ID
+                            planId: planId, // 변환된 plan.id
+                            product: {
+                                identifier: productId,
+                                title: pkg.product.title,
+                                description: pkg.product.description,
+                                price: pkg.product.price,
+                                priceString: pkg.product.priceString,
+                                currencyCode: pkg.product.currencyCode,
+                            },
+                        };
+                    });
 
                     // 웹뷰가 로드된 후 상품 정보 전달
                     if (webRef.current) {
@@ -696,11 +714,21 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                         throw new Error("상품 목록을 불러올 수 없습니다.");
                                     }
 
-                                    // 🟢 상품 ID 매핑: planId를 RevenueCat Package identifier로 변환
-                                    // RevenueCat에서는 Package identifier가 다를 수 있으므로 확인 필요
-                                    // 예: planId가 "sub_basic"이면 Package identifier도 "sub_basic"이거나 다를 수 있음
+                                    // 🟢 상품 ID 매핑: planId를 RevenueCat Product ID로 변환
+                                    // plan.id → RevenueCat Product ID 매핑
+                                    const PLAN_ID_TO_REVENUECAT: Record<string, string> = {
+                                        "ticket_light": "kr.io.dona.ai_coupon_3",
+                                        "ticket_standard": "kr.io.dona.ai_coupon_5",
+                                        "ticket_pro": "kr.io.dona.ai_coupon_10",
+                                        "sub_basic": "kr.io.dona.ai_basic_monthly",
+                                        "sub_premium": "kr.io.dona.premium_monthly",
+                                    };
+                                    
+                                    const revenueCatProductId = PLAN_ID_TO_REVENUECAT[planId] || planId;
+                                    
+                                    // Product ID로 패키지 찾기
                                     const packageToPurchase = offerings.current.availablePackages.find(
-                                        (pkg: any) => pkg.identifier === planId
+                                        (pkg: any) => pkg.product.identifier === revenueCatProductId || pkg.identifier === planId
                                     );
 
                                     if (!packageToPurchase) {
@@ -730,6 +758,49 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
 
                                     // 🟢 결제 진행
                                     const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+
+                                    // 🟢 [샌드박스 대응]: 결제 성공 후 즉시 서버에 쿠폰 지급 요청
+                                    try {
+                                        const userIdStr = await AsyncStorage.getItem("userId");
+                                        if (userIdStr) {
+                                            // transaction_id 추출 (customerInfo에서)
+                                            const transactionId = customerInfo?.originalPurchaseDate 
+                                                ? `rc_${customerInfo.originalPurchaseDate}` 
+                                                : `rc_${Date.now()}`;
+                                            
+                                            const response = await fetch(`${WEB_BASE}/api/payments/revenuecat/confirm`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                },
+                                                credentials: 'include',
+                                                body: JSON.stringify({
+                                                    planId: planId,
+                                                    planType: planType,
+                                                    transactionId: transactionId,
+                                                    customerInfo: customerInfo
+                                                })
+                                            });
+                                            
+                                            if (response.ok) {
+                                                const data = await response.json();
+                                                console.log("[RevenueCat] 서버 쿠폰 지급 완료:", data);
+                                                
+                                                // 🟢 쿠폰 개수 업데이트 이벤트 발생
+                                                webRef.current?.injectJavaScript(`
+                                                    window.dispatchEvent(new CustomEvent('couponCountUpdated', {
+                                                        detail: { couponCount: ${data.couponCount || 0} }
+                                                    }));
+                                                    window.dispatchEvent(new CustomEvent('paymentSuccess'));
+                                                `);
+                                            } else {
+                                                console.warn("[RevenueCat] 서버 쿠폰 지급 실패 (webhook으로 처리될 예정)");
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.error("[RevenueCat] 서버 쿠폰 지급 요청 실패:", error);
+                                        // 실패해도 webhook으로 처리될 예정이므로 계속 진행
+                                    }
 
                                     // 🟢 결제 성공: WebView로 결과 전달
                                     webRef.current?.injectJavaScript(`

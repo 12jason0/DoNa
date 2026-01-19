@@ -85,10 +85,21 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
             const products = event.detail;
             const productMap: Record<string, any> = {};
             
+            // 🟢 [수정]: planId를 키로 사용하여 매핑 (RevenueCat Product ID → plan.id 변환 완료)
             products.forEach((item: any) => {
-                productMap[item.identifier] = item.product;
+                // planId가 있으면 그것을 키로 사용 (이미 변환됨)
+                const planId = item.planId;
+                if (planId && item.product) {
+                    productMap[planId] = item.product;
+                }
+                // fallback: productIdentifier도 시도
+                const productId = item.productIdentifier || item.product?.identifier;
+                if (productId && item.product) {
+                    productMap[productId] = item.product;
+                }
             });
             
+            console.log("[TicketPlans] RevenueCat 상품 정보 수신:", productMap);
             setRevenueCatProducts(productMap);
         };
 

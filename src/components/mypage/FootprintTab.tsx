@@ -1326,16 +1326,38 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                 <div
                     className="fixed inset-0 z-5000 bg-black flex flex-col animate-in fade-in duration-300"
                     onClick={() => setShowMemoryModal(false)}
+                    style={{
+                        // 🟢 상단/하단 safe area 영역도 검은색으로 채우기
+                        paddingTop: "env(safe-area-inset-top, 0)",
+                        paddingBottom: "env(safe-area-inset-bottom, 0)",
+                        backgroundColor: "#000000",
+                    }}
                 >
-                    {/* 닫기 버튼 (우측 상단) - X만 표시 */}
+                    {/* 🟢 상단 바 영역 (검은색 배경) */}
+                    <div 
+                        className="absolute top-0 left-0 right-0 bg-black z-10"
+                        style={{ 
+                            height: "calc(env(safe-area-inset-top, 0) + 1rem + 1.5rem)",
+                        }}
+                    />
+                    
+                    {/* 🟢 하단 네비게이션 바 영역 (안드로이드용, 검은색 배경) */}
+                    <div 
+                        className="absolute bottom-0 left-0 right-0 bg-black z-10"
+                        style={{ 
+                            height: "env(safe-area-inset-bottom, 0)",
+                        }}
+                    />
+                    
+                    {/* 닫기 버튼 (우측 상단) - 인디케이터와 같은 높이 */}
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             setShowMemoryModal(false);
                         }}
-                        className="absolute top-0 right-0 z-30 text-white hover:text-white/80 transition-colors p-4"
+                        className="absolute right-0 z-30 text-white hover:text-white/80 transition-colors p-4"
                         style={{ 
-                            top: "env(safe-area-inset-top, 0)",
+                            top: "calc(env(safe-area-inset-top, 0) + 1rem)",
                             right: "env(safe-area-inset-right, 0)",
                         }}
                     >

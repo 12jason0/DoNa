@@ -4,6 +4,15 @@ import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+// 🟢 [IN-APP PURCHASE]: RevenueCat Product ID → plan.id 매핑
+const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
+    "kr.io.dona.ai_coupon_3": "ticket_light",
+    "kr.io.dona.ai_coupon_5": "ticket_standard",
+    "kr.io.dona.ai_coupon_10": "ticket_pro",
+    "kr.io.dona.ai_basic_monthly": "sub_basic",
+    "kr.io.dona.premium_monthly": "sub_premium",
+};
+
 // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 ID 매핑
 const PRODUCT_MAPPING: Record<
     string,
@@ -42,7 +51,10 @@ export async function POST(request: NextRequest) {
 
         const eventType = event.type;
         const appUserId = event.app_user_id; // RevenueCat의 사용자 ID
-        const productId = event.product_id; // 상품 ID (예: sub_basic, ticket_light)
+        const revenueCatProductId = event.product_id; // RevenueCat Product ID (예: kr.io.dona.ai_coupon_10)
+        
+        // 🟢 RevenueCat Product ID를 plan.id로 변환
+        const planId = REVENUECAT_TO_PLAN_ID[revenueCatProductId] || revenueCatProductId;
 
         // 🟢 사용자 ID 추출 (app_user_id 형식: "user_123" 또는 숫자)
         const userIdStr = appUserId?.toString().replace("user_", "") || "";
@@ -53,17 +65,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
         }
 
-        // 🟢 상품 정보 확인
-        const productInfo = PRODUCT_MAPPING[productId];
+        // 🟢 상품 정보 확인 (변환된 plan.id 사용)
+        const productInfo = PRODUCT_MAPPING[planId];
         if (!productInfo) {
-            console.warn("[RevenueCat Webhook] Unknown product ID:", productId);
+            console.warn("[RevenueCat Webhook] Unknown product ID:", revenueCatProductId, "→ planId:", planId);
             // 알 수 없는 상품이어도 200 반환 (중요한 오류가 아니므로)
             return NextResponse.json({ success: true, message: "Unknown product, skipping" });
         }
 
         console.log("[RevenueCat Webhook] Event received:", {
             eventType,
-            productId,
+            revenueCatProductId,
+            planId,
             userId,
             productName: productInfo.name,
         });

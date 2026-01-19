@@ -82,22 +82,25 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isShopPage]);
 
-    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 다시 표시 (최적화: 짧은 스플래시만 표시)
+    // 🟢 [2026-01-21] 로그인 성공 시 스플래시 표시하지 않음 (한 번만 표시)
     useEffect(() => {
         const handleAuthLoginSuccess = () => {
-            // 🟢 로그인 성공 시 스플래시를 다시 표시하기 위해 플래그 제거
+            // 🟢 [수정]: 로그인 후에는 스플래시를 다시 표시하지 않음
+            // 스플래시는 앱 시작 시 한 번만 표시되도록 함
             try {
-                sessionStorage.removeItem("dona-splash-shown");
-                // 🟢 [최적화]: 로그인 후에는 짧은 스플래시만 표시 (렉 방지)
-                // contentReady를 false로 설정하지 않고 바로 스플래시만 표시
-                setShowSplash(true);
-                // 🟢 짧은 스플래시 (2초 후 자동 종료)
-                setTimeout(() => {
-                    setShowSplash(false);
-                    sessionStorage.setItem("dona-splash-shown", "true");
-                }, 2000);
+                // 스플래시가 이미 표시되었는지 확인
+                const splashShown = sessionStorage.getItem("dona-splash-shown");
+                if (!splashShown) {
+                    // 스플래시가 아직 표시되지 않았으면 표시 (앱 시작 시)
+                    // 로그인 후에는 표시하지 않음
+                    return;
+                }
+                // 로그인 후에는 스플래시를 표시하지 않고 콘텐츠만 준비
+                if (!contentReady) {
+                    setContentReady(true);
+                }
             } catch (e) {
-                console.error("로그인 후 스플래시 표시 오류:", e);
+                console.error("로그인 후 처리 오류:", e);
             }
         };
 
@@ -105,7 +108,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         return () => {
             window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
         };
-    }, []);
+    }, [contentReady]);
 
     // 🟢 Effect 2: 바디 클래스 관리 및 배경색 전환
     useEffect(() => {
