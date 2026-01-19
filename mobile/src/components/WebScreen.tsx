@@ -113,8 +113,9 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     const [isSplashDone, setIsSplashDone] = useState(false);
     // 🔴 [Fix]: 로그아웃 처리 중 플래그 - 무한 로그인 루프 방지
     const isProcessingLogoutRef = useRef(false);
-    // 🟢 [2026-01-21] 다크모드 상태 관리 - 초기값을 웹에서 감지하도록 설정
-    const [isDarkMode, setIsDarkMode] = useState(false);
+    // 🟢 [2026-01-21] 다크모드 상태 관리 - 초기값을 false로 설정 (라이트 모드 기본값)
+    // 🟢 [수정]: 초기값을 false로 명시적으로 설정하여 검은색 문제 해결
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
     
     // 🟢 [다크모드 초기화]: 웹뷰 로드 시 초기 다크모드 상태 확인
     useEffect(() => {
@@ -134,10 +135,12 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                     }
                 })();
             `;
-            // 웹뷰 로드 후 약간의 지연을 두고 실행
+            // 웹뷰 로드 후 즉시 실행 (지연 제거)
+            webRef.current?.injectJavaScript(checkInitialDarkMode);
+            // 추가로 약간의 지연 후 재확인 (DOM이 완전히 로드된 후)
             setTimeout(() => {
                 webRef.current?.injectJavaScript(checkInitialDarkMode);
-            }, 500);
+            }, 100);
         }
     }, [initialScript]);
 
@@ -153,8 +156,17 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
     const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
-    // 🟢 [추가]: 안드로이드 내비게이션 바 및 iOS 하단 바 영역 확보
-    const dynamicPaddingBottom = insets.bottom * 0.8;
+    // 🟢 [2026-01-21] 색상 및 여백 최적화 설정
+    const MAP_GREEN = "#7FCC9F"; // 유저님이 알려주신 배경색
+    const BRAND_CREAM = "#f5f7f2"; // 기존 기본 배경색
+
+    // 현재 페이지가 지도(게임) 화면인지 확인 (URL 기준)
+    const isMapPage = currentUrl.includes("/start") || currentUrl.includes("map");
+
+    // 🟢 [플랫폼별 여백 처리]: 안드로이드는 가림 방지 여백 유지, iOS는 꽉 차게 0
+    const dynamicPaddingBottom = Platform.OS === "android" 
+        ? insets.bottom  // 안드로이드는 뒤로가기/홈 버튼 영역만큼 띄움
+        : 0;             // iOS는 하단 바 영역까지 배경색이 흐르도록 0으로 설정
 
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {
@@ -277,9 +289,12 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
 
     // 🟢 [추가]: 스플래시와 상태바가 동시에 전환되도록 배경색 변수 통일
     // 🟢 [2026-01-21] 다크모드에 따라 웹뷰 내부 색상과 동일하게 설정
-    // 라이트모드: #f5f7f2 (--brand-cream), 다크모드: #0f1710 (--background dark)
-    const statusBarBackgroundColor = !isSplashDone ? SPLASH_COLOR : isDarkMode ? "#0f1710" : "#f5f7f2";
-    const containerBackgroundColor = !isSplashDone ? SPLASH_COLOR : isDarkMode ? "#0f1710" : "#f5f7f2";
+    // 🟢 [색상 통일]: 스플래시 종료 후, 지도 페이지라면 연두색을 배경으로 사용
+    const containerBackgroundColor = !isSplashDone 
+        ? SPLASH_COLOR 
+        : (isDarkMode ? "#0f1710" : (isMapPage ? MAP_GREEN : BRAND_CREAM));
+
+    const statusBarBackgroundColor = containerBackgroundColor;
 
     return (
         // 🟢 [수정]: 상단(paddingTop)뿐만 아니라 하단(paddingBottom) 여백도 시스템 영역만큼 확보
@@ -296,6 +311,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             {/* 🟢 [핵심 수정]: 상태바 배경색을 스플래시 색상과 동기화 - 스플래시 종료 시 동시에 흰색으로 전환 */}
             <StatusBar
                 // 🟢 [2026-01-21] 다크모드일 때 light-content(흰글자), 라이트모드일 때 dark-content(검정글자)
+                // 🟢 [수정]: isDarkMode가 false일 때는 dark-content 사용 (기본값)
                 barStyle={isDarkMode ? "light-content" : "dark-content"}
                 // 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 translucent를 false로 설정
                 translucent={!isSplashDone ? false : true}
@@ -330,19 +346,25 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                         }
                     }}
                     onLoadEnd={() => {
-                        // 🟢 웹뷰 로드 완료 시 다크모드 상태 확인
+                        // 🟢 웹뷰 로드 완료 시 다크모드 상태 즉시 확인 (더 적극적으로)
                         const checkDarkModeScript = `
                             (function() {
-                                const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                                              document.documentElement.classList.contains('dark') ||
-                                              document.body.classList.contains('dark') ||
-                                              document.documentElement.getAttribute('data-theme') === 'dark';
-                                if (window.ReactNativeWebView) {
-                                    window.ReactNativeWebView.postMessage(JSON.stringify({
-                                        type: 'darkModeChange',
-                                        isDark: isDark
-                                    }));
+                                function checkDarkMode() {
+                                    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
+                                                  document.documentElement.classList.contains('dark') ||
+                                                  document.body.classList.contains('dark') ||
+                                                  document.documentElement.getAttribute('data-theme') === 'dark';
+                                    if (window.ReactNativeWebView) {
+                                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                                            type: 'darkModeChange',
+                                            isDark: isDark
+                                        }));
+                                    }
                                 }
+                                checkDarkMode();
+                                // DOM이 완전히 로드된 후 여러 번 재확인
+                                setTimeout(checkDarkMode, 100);
+                                setTimeout(checkDarkMode, 500);
                             })();
                         `;
                         webRef.current?.injectJavaScript(checkDarkModeScript);
@@ -523,7 +545,10 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             }
                             // 🟢 [2026-01-21] 다크모드 변경 감지
                             else if (data.type === "darkModeChange") {
-                                setIsDarkMode(data.isDark || false);
+                                // 🟢 [수정]: 명시적으로 boolean 값으로 설정 및 디버깅 로그 추가
+                                const newIsDark = data.isDark === true;
+                                setIsDarkMode(newIsDark);
+                                console.log("[WebScreen] 다크모드 상태 변경:", newIsDark);
                             }
                             // 🔴 [Fix 2]: 로그인 신호 수신부 - 어떤 로그인 신호도 Cooldown 중엔 차단
                             if ((data.type === "login" || data.type === "loginSuccess") && data.userId) {

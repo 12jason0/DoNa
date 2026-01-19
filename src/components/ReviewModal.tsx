@@ -92,7 +92,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name}의 크기가 5MB를 초과합니다.`);
+                if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name}의 크기가 10MB를 초과합니다.`);
                 if (!file.type.startsWith("image/")) throw new Error(`${file.name}은(는) 이미지 파일이 아닙니다.`);
                 formData.append("photos", file);
             });

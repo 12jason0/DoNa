@@ -354,7 +354,7 @@ function GuidePageInner() {
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name}의 크기가 5MB를 초과합니다.`);
+                if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name}의 크기가 10MB를 초과합니다.`);
                 formData.append("photos", file);
             });
             if (courseId) {
@@ -400,7 +400,7 @@ function GuidePageInner() {
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name}의 크기가 5MB를 초과합니다.`);
+                if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name}의 크기가 10MB를 초과합니다.`);
                 formData.append("photos", file);
             });
             if (courseId) {
@@ -760,22 +760,16 @@ function GuidePageInner() {
                 )}
             </div>
 
-            {/* 3. Bottom Story Card - 다크 모드 지원 */}
-            <motion.div
-                initial={{ y: 0 }}
-                animate={{ y: isMinimized ? "calc(100% - 50px)" : 0 }}
-                onDragEnd={handleDragEnd}
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] overflow-y-auto scrollbar-hide"
-                style={{ maxHeight: '60vh' }}
+            {/* 3. Bottom Story Card - 다크 모드 지원 - 고정 모달 */}
+            <div
+                className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]"
+                style={{ maxHeight: '85vh', minHeight: '50vh', display: 'flex', flexDirection: 'column' }}
             >
-                {/* 🟢 Drag Handle 제거 - 이미지 디자인에는 드래그 핸들 없음 */}
-                
-                {/* 🟢 하단 카드 - 코스 이름과 날짜 표시 */}
-                <div className="pt-6 pb-4 px-6">
+
+                {/* 🟢 스크롤 가능한 콘텐츠 영역 */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
+                    {/* 🟢 하단 카드 - 코스 이름과 날짜 표시 */}
+                    <div className="pt-4 pb-4 px-6">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                         {userName && course?.region 
                             ? `${userName}의 ${course.region} 데이트`
@@ -800,17 +794,15 @@ function GuidePageInner() {
                             }
                             
                             return currentPlace?.imageUrl ? (
-                                // 🟢 배경 이미지가 현재 장소 사진일 때: 코스명 · 장소명
+                                // 🟢 배경 이미지가 현재 장소 사진일 때: 코스명 · 장소명 (한줄 띄어서)
                                 <>
-                                    {course?.title || "코스"}
-                                    
+                                    <div>{course?.title || "코스"}</div>
                                     {currentPlace?.name && (
-                                        <>
-                                            <span className="mx-2">🎟</span>
+                                        <div className="mt-1">
+                                            <span className="mr-2">🎟</span>
                                             <span>{currentPlace.name}</span>
-                                        </>
+                                        </div>
                                     )}
-
                                 </>
                             ) : (
                                 // 🟢 배경 이미지가 코스 이미지일 때: 코스명만
@@ -1011,10 +1003,11 @@ function GuidePageInner() {
                     </div>
 
                     {/* 🟢 길찾기 버튼 제거됨 */}
+                    </div>
                 </div>
 
                 {/* 하단 버튼 */}
-                <div className="sticky bottom-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 flex gap-3">
+                <div className="shrink-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 flex gap-3">
                     {currentStep === totalSteps - 1 ? (
                         <button
                             onClick={handleSubmit}
@@ -1042,7 +1035,7 @@ function GuidePageInner() {
                         </>
                     )}
                 </div>
-            </motion.div>
+            </div>
 
             {/* Congrats Modal */}
             {showCongrats && (

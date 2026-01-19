@@ -78,55 +78,27 @@ SliderItemComponent.displayName = "SliderItem";
 
 export default function HeroSlider({ items }: HeroSliderProps) {
     const realLength = items.length;
-    const [currentIndex, setCurrentIndex] = useState(realLength);
+    const [currentIndex, setCurrentIndex] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
     const containerWidthRef = useRef<number>(0);
     const isScrollingRef = useRef(false);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null); // 자동 슬라이드 타이머
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // 드래그/스와이프 관련 Ref
     const touchStartX = useRef(0);
     const touchEndX = useRef(0);
 
     const renderItems = useMemo(() => (realLength <= 1 ? items : [...items, ...items, ...items]), [items, realLength]);
 
-    useEffect(() => {
-        if (!scrollRef.current || realLength <= 1) {
-            if (realLength <= 1) setIsInitialized(true);
-            return;
+    // 🟢 타이머 정지 함수
+    const stopTimer = useCallback(() => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
         }
-        const container = scrollRef.current;
-        const width = container.offsetWidth || container.clientWidth || window.innerWidth;
-        containerWidthRef.current = width;
+    }, []);
 
-        // 🟢 초기 위치를 2번째 세트의 첫 번째로 설정 (순간이동)
-        container.style.scrollBehavior = "auto";
-        container.scrollLeft = width * realLength;
-        setIsInitialized(true);
-
-        const observer = new ResizeObserver((entries) => {
-            for (let entry of entries) containerWidthRef.current = entry.contentRect.width;
-        });
-        observer.observe(container);
-        return () => observer.disconnect();
-    }, [realLength]);
-
-    // 🟢 [핵심 수정] handleScroll은 인디케이터만 업데이트, 텔레포트는 moveToNext에서만 처리
-    const handleScroll = useCallback(() => {
-        const container = scrollRef.current;
-        const width = containerWidthRef.current;
-        if (!container || width <= 0 || realLength <= 1 || isScrollingRef.current) return;
-
-        const scrollLeft = container.scrollLeft;
-        // 🟢 Math.floor 사용하여 항상 "지나간 페이지 기준"으로 계산 (round 대신)
-        const index = Math.floor(scrollLeft / width);
-
-        // 🟢 현재 인덱스를 실제 아이템 인덱스로 변환 (0~realLength-1)
-        const actualIndex = index % realLength;
-        setCurrentIndex(actualIndex);
-    }, [realLength]);
-
-    // 🟢 페이지 전환 시에만 smooth 적용 + 텔레포트 로직 포함
+    // 🟢 슬라이드 이동 함수
     const moveToNext = useCallback(
         (nextIdx: number) => {
             if (!scrollRef.current || isScrollingRef.current) return;
@@ -134,39 +106,24 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             const width = containerWidthRef.current;
             const container = scrollRef.current;
 
-            // 🟢 무한 스크롤을 위한 인덱스 조정
-            // 2세트(realLength ~ realLength*2-1) 범위 내에서만 작동하도록 조정
             let adjustedIdx = nextIdx;
-
-            // 🟢 경계값 체크: 3세트의 시작점(realLength * 2)을 넘어가면 2세트의 시작점(realLength)으로
-            if (adjustedIdx >= realLength * 2) {
-                adjustedIdx = realLength;
-            }
-            // 🟢 경계값 체크: 1세트의 끝점(realLength - 1) 이전으로 가면 2세트의 끝점(realLength * 2 - 1)으로
-            else if (adjustedIdx < realLength) {
-                adjustedIdx = realLength * 2 - 1;
-            }
+            if (adjustedIdx >= realLength * 2) adjustedIdx = realLength;
+            else if (adjustedIdx < realLength) adjustedIdx = realLength * 2 - 1;
 
             container.style.scrollBehavior = "smooth";
             container.scrollTo({ left: adjustedIdx * width });
 
-            // 🟢 스크롤 애니메이션이 끝난 후 텔레포트 체크 및 auto로 복원
             setTimeout(() => {
+                if (!container) return;
                 const finalScrollLeft = container.scrollLeft;
-                const finalIndex = Math.floor(finalScrollLeft / width);
+                const finalIndex = Math.round(finalScrollLeft / width);
 
-                // 🟢 텔레포트: 경계값 근처에서 여유 범위를 두고 체크
-                // 3세트 시작점 근처(realLength * 2 - 0.5 이하)에 도달하면 2세트로 순간 이동
-                if (finalIndex >= realLength * 2 - 0.5) {
+                if (finalIndex >= realLength * 2) {
                     container.style.scrollBehavior = "auto";
-                    const offset = finalScrollLeft - width * (realLength * 2);
-                    container.scrollLeft = width * realLength + Math.max(0, offset);
-                }
-                // 1세트 끝점 근처(realLength + 0.5 이상)에 도달하면 2세트 끝으로 순간 이동
-                else if (finalIndex <= realLength - 0.5) {
+                    container.scrollLeft = width * realLength;
+                } else if (finalIndex < realLength) {
                     container.style.scrollBehavior = "auto";
-                    const offset = finalScrollLeft - width * finalIndex;
-                    container.scrollLeft = width * (realLength * 2 - 1) + offset;
+                    container.scrollLeft = width * (realLength * 2 - 1);
                 }
 
                 isScrollingRef.current = false;
@@ -176,8 +133,81 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         [realLength]
     );
 
-    // 🟢 [추가] 모바일 터치 스와이프 핸들러
+    // 🟢 타이머 시작 함수 (3초)
+    const startTimer = useCallback(() => {
+        stopTimer();
+        if (realLength <= 1) return;
+        timerRef.current = setInterval(() => {
+            const container = scrollRef.current;
+            if (container && !isScrollingRef.current) {
+                const width = containerWidthRef.current;
+                const currentIdx = Math.round(container.scrollLeft / width);
+                moveToNext(currentIdx + 1);
+            }
+        }, 3000);
+    }, [moveToNext, realLength, stopTimer]);
+
+    // 초기화 및 리사이즈 감지
+    useEffect(() => {
+        if (!scrollRef.current || realLength <= 1) {
+            if (realLength <= 1) setIsInitialized(true);
+            return;
+        }
+        const container = scrollRef.current;
+        const width = container.offsetWidth || container.clientWidth || window.innerWidth;
+        containerWidthRef.current = width;
+
+        container.style.scrollBehavior = "auto";
+        container.scrollLeft = width * realLength;
+        setIsInitialized(true);
+
+        const observer = new ResizeObserver((entries) => {
+            for (let entry of entries) containerWidthRef.current = entry.contentRect.width;
+        });
+        observer.observe(container);
+
+        startTimer(); // 타이머 시작
+        return () => {
+            observer.disconnect();
+            stopTimer();
+        };
+    }, [realLength, startTimer, stopTimer]);
+
+    // 🟢 Passive Event Listener 오류 해결을 위한 네이티브 리스너 등록
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el || realLength <= 1) return;
+
+        const handleNativeWheel = (e: WheelEvent) => {
+            // 가로 스크롤 의도가 강할 때만 가로채기
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                e.preventDefault(); // 이제 에러 없이 작동합니다.
+                stopTimer(); // 사용자 개입 시 타이머 정지
+                const width = containerWidthRef.current;
+                const currentIdx = Math.round(el.scrollLeft / width);
+                const nextIdx = e.deltaX > 0 ? currentIdx + 1 : currentIdx - 1;
+                moveToNext(nextIdx);
+                startTimer(); // 조작 완료 후 다시 타이머 시작
+            }
+        };
+
+        el.addEventListener("wheel", handleNativeWheel, { passive: false });
+        return () => el.removeEventListener("wheel", handleNativeWheel);
+    }, [realLength, moveToNext, startTimer, stopTimer]);
+
+    const handleScroll = useCallback(() => {
+        const container = scrollRef.current;
+        const width = containerWidthRef.current;
+        if (!container || width <= 0 || realLength <= 1) return;
+
+        const scrollLeft = container.scrollLeft;
+        const index = Math.round(scrollLeft / width);
+        const actualIndex = index % realLength;
+        setCurrentIndex(actualIndex);
+    }, [realLength]);
+
     const onTouchStart = (e: React.TouchEvent) => {
+        stopTimer(); // 터치 시작 시 타이머 중지
         touchStartX.current = e.targetTouches[0].clientX;
     };
 
@@ -186,31 +216,17 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     };
 
     const onTouchEnd = useCallback(() => {
-        if (!scrollRef.current || isScrollingRef.current) return;
-        const width = containerWidthRef.current;
         const diff = touchStartX.current - touchEndX.current;
-        const threshold = 50; // 50px 이상 밀었을 때만 작동
+        const threshold = 50;
 
         if (Math.abs(diff) > threshold) {
-            // 🟢 Math.floor 사용하여 일관된 인덱스 계산
-            const currentIdx = Math.floor(scrollRef.current.scrollLeft / width);
+            const width = containerWidthRef.current;
+            const currentIdx = Math.round(scrollRef.current!.scrollLeft / width);
             const nextIdx = diff > 0 ? currentIdx + 1 : currentIdx - 1;
             moveToNext(nextIdx);
         }
-    }, [moveToNext]);
-
-    const handleWheel = useCallback(
-        (e: React.WheelEvent) => {
-            if (!scrollRef.current || realLength <= 1 || isScrollingRef.current) return;
-            e.preventDefault();
-            const width = containerWidthRef.current;
-            // 🟢 Math.floor 사용하여 일관된 인덱스 계산
-            const currentIdx = Math.floor(scrollRef.current.scrollLeft / width);
-            const nextIdx = (e.deltaX || e.deltaY) > 0 ? currentIdx + 1 : currentIdx - 1;
-            moveToNext(nextIdx);
-        },
-        [realLength, moveToNext]
-    );
+        startTimer(); // 터치 종료 후 타이머 다시 시작
+    }, [moveToNext, startTimer]);
 
     return (
         <section
@@ -221,29 +237,25 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                onWheel={handleWheel}
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
                 className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 will-change-scroll"
-                style={{ scrollBehavior: "auto" }} // 기본은 항상 auto
+                style={{ scrollBehavior: "auto" }}
             >
                 {renderItems.map((item, idx) => (
                     <SliderItemComponent key={`${item.id}-${idx}`} item={item} idx={idx} />
                 ))}
             </div>
             <div className="flex justify-center gap-1.5 mt-4">
-                {items.map((_, i) => {
-                    const actualIndex = currentIndex % realLength;
-                    return (
-                        <div
-                            key={i}
-                            className={`h-1.5 rounded-full transition-all duration-300 ${
-                                actualIndex === i ? "w-6 bg-emerald-500" : "w-1.5 bg-gray-300"
-                            }`}
-                        />
-                    );
-                })}
+                {items.map((_, i) => (
+                    <div
+                        key={i}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                            currentIndex === i ? "w-6 bg-emerald-500" : "w-1.5 bg-gray-300"
+                        }`}
+                    />
+                ))}
             </div>
         </section>
     );
