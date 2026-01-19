@@ -125,19 +125,18 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 🟢 결제 타입에 따라 시크릿 키 분리 (MID 불일치 방지)
-        // 일반 결제(쿠폰): TOSS_SECRET_KEY_GENERAL (donaudy2at MID)
-        // 구독 결제: TOSS_SECRET_KEY_BILLING (bill_donaoc44v MID)
+        // 🟢 [Fix]: 웹 결제 승인(/api/payments/confirm)은 항상 GENERAL 키를 사용하도록 고정합니다.
+        // 프론트엔드(TicketPlans.tsx)에서 구독권/쿠폰 상관없이 NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL을 사용하므로,
+        // 백엔드에서도 동일한 MID의 시크릿 키를 사용해야 합니다.
         // ⚠️ 중요: 프론트엔드에서 사용한 클라이언트 키와 백엔드 시크릿 키의 MID가 일치해야 합니다!
-        const isSubscription = planInfo.type === "SUBSCRIPTION";
-        const secretKey = isSubscription ? process.env.TOSS_SECRET_KEY_BILLING : process.env.TOSS_SECRET_KEY_GENERAL;
+        const secretKey = process.env.TOSS_SECRET_KEY_GENERAL;
 
         if (!secretKey) {
             return NextResponse.json(
                 {
                     success: false,
                     error: "MISSING_SECRET_KEY",
-                    message: `${isSubscription ? "구독" : "일반"} 결제 시크릿 키가 설정되지 않았습니다.`,
+                    message: "일반 결제 시크릿 키가 설정되지 않았습니다.",
                 },
                 { status: 500 }
             );
