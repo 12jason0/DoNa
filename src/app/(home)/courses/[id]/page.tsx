@@ -8,15 +8,51 @@ import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
 
+// 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
+async function retryDatabaseOperation<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delayMs: number = 500
+): Promise<T> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await operation();
+        } catch (error: any) {
+            lastError = error;
+            
+            // 🟢 연결 풀 타임아웃이나 연결 실패 에러인 경우에만 재시도
+            const isRetryableError = 
+                error?.code === "P2024" || // Connection pool timeout
+                error?.message?.includes("Can't reach database server") ||
+                error?.message?.includes("connection pool");
+            
+            if (!isRetryableError || attempt === maxRetries) {
+                throw error;
+            }
+            
+            // 🟢 지수 백오프 (exponential backoff)
+            const delay = delayMs * Math.pow(2, attempt - 1);
+            console.warn(`[Database Retry] 시도 ${attempt}/${maxRetries} 실패, ${delay}ms 후 재시도...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    
+    throw lastError || new Error("Database operation failed after retries");
+}
+
 // 1. 데이터 페칭 함수 (코스 정보 캐싱) - 🟢 성능 최적화: select 사용으로 필요한 필드만 가져오기
 const getCourse = unstable_cache(
     async (id: string): Promise<CourseData | null> => {
         const courseId = Number(id);
         if (isNaN(courseId)) return null;
         try {
-            const course = await (prisma as any).course.findUnique({
-                where: { id: courseId },
-                select: {
+            // 🟢 [Fix]: 재시도 로직이 포함된 데이터베이스 조회
+            const course = await retryDatabaseOperation(async () => {
+                return await (prisma as any).course.findUnique({
+                    where: { id: courseId },
+                    select: {
                     id: true,
                     title: true,
                     description: true,
@@ -83,6 +119,8 @@ const getCourse = unstable_cache(
                     },
                 },
             });
+            });
+
             if (!course) {
                 console.error(`[CourseDetail] 코스를 찾을 수 없습니다: ${courseId}`);
                 return null;
@@ -131,15 +169,25 @@ const getCourse = unstable_cache(
                         : null,
                 })),
             };
-        } catch (e) {
-            console.error(`[CourseDetail] 코스 데이터 로드 실패 (ID: ${id}):`, e);
+        } catch (e: any) {
+            console.error(`[CourseDetail] 코스 데이터 로드 실패 (ID: ${id}):`, {
+                error: e?.message,
+                code: e?.code,
+                courseId: courseId
+            });
+            
+            // 🟢 연결 풀 에러인 경우 null 반환하여 404로 처리
+            if (e?.code === "P2024" || e?.message?.includes("connection pool")) {
+                console.error(`[CourseDetail] 데이터베이스 연결 풀 에러 - 404 반환`);
+            }
+            
             return null;
         }
     },
     // 🟢 빈 배열: 함수 파라미터(id)가 자동으로 캐시 키에 포함됨
     [],
     {
-        revalidate: 180, // 🟢 성능 최적화: 3분 캐싱 (300 -> 180)
+        revalidate: 300, // 🟢 캐시 시간 5분으로 증가 (기존 180초에서) - DB 요청 감소로 연결 풀 부하 감소
         tags: ["course-detail"],
     }
 );
