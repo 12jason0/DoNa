@@ -6,7 +6,11 @@
     "build": {
         "development": {
             "developmentClient": true,
-            "distribution": "internal"
+            "distribution": "internal",
+            "env": {
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@REVENUECAT_API_KEY_IOS",
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@REVENUECAT_API_KEY_ANDROID"
+            }
         },
         "preview": {
             "distribution": "internal",
@@ -15,7 +19,11 @@
             },
             "android": {
                 "buildType": "apk"
-            }
+            },
+            "env": {
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@REVENUECAT_API_KEY_IOS",
+                "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@REVENUECAT_API_KEY_ANDROID"
+              }
         },
         "production": {
             "autoIncrement": true,
