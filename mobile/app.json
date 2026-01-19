@@ -15,6 +15,7 @@
     },
         "assetBundlePatterns": ["**/*"],
     "ios": {
+      "backgroundColor": "#ffffff",
       "supportsTablet": false,
       "bundleIdentifier": "kr.io.dona.dona",
       "buildNumber": "22",
