@@ -915,6 +915,15 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             } else if (data.type === "appleLogin" && data.action === "start") {
                                 if (Platform.OS === "ios") {
                                     try {
+                                        // 🟢 [Debug]: iPad 감지 및 디바이스 정보 상세 로그
+                                        const isIPad = Platform.isPad || false;
+                                        const userAgent = navigator?.userAgent || "";
+                                        console.log("[Apple Login] 디바이스 정보:", {
+                                            platform: Platform.OS,
+                                            isIPad: isIPad,
+                                            userAgent: userAgent.substring(0, 100),
+                                        });
+                                        
                                         const credential = await AppleAuthentication.signInAsync({
                                             requestedScopes: [
                                                 AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -993,11 +1002,48 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                 }
                                             })();
                                         `);
-                                    } catch (error) {
-                                        console.error("Apple 로그인 오류:", error);
+                                    } catch (error: any) {
+                                        // 🟢 [Fix]: 상세한 에러 로그 및 실제 에러 메시지 사용자에게 표시
+                                        const isIPad = Platform.isPad || false;
+                                        const userAgent = navigator?.userAgent || "";
+                                        
+                                        console.error("Apple 로그인 오류 상세:", {
+                                            error: error,
+                                            message: error?.message,
+                                            code: error?.code,
+                                            platform: Platform.OS,
+                                            isIPad: isIPad,
+                                            userAgent: userAgent.substring(0, 100),
+                                        });
+                                        
+                                        // 🟢 실제 에러 메시지를 사용자에게 표시
+                                        let errorMessage = "Apple 로그인에 실패했습니다.";
+                                        if (error?.message) {
+                                            errorMessage = error.message;
+                                        } else if (error?.code) {
+                                            // 에러 코드별 메시지
+                                            switch (error.code) {
+                                                case "ERR_REQUEST_CANCELED":
+                                                    errorMessage = "로그인이 취소되었습니다.";
+                                                    break;
+                                                case "ERR_INVALID_RESPONSE":
+                                                    errorMessage = "Apple 로그인 응답이 올바르지 않습니다.";
+                                                    break;
+                                                case "ERR_NOT_AVAILABLE":
+                                                    errorMessage = "Apple 로그인을 사용할 수 없습니다. 기기에 Apple ID가 로그인되어 있는지 확인하세요.";
+                                                    break;
+                                                default:
+                                                    errorMessage = `Apple 로그인 오류: ${error.code}`;
+                                            }
+                                        }
+                                        
                                         webRef.current?.injectJavaScript(`
                                             window.dispatchEvent(new CustomEvent('appleLoginError', {
-                                                detail: { message: 'Apple 로그인 중 오류가 발생했습니다.' }
+                                                detail: { 
+                                                    message: ${JSON.stringify(errorMessage)},
+                                                    code: ${JSON.stringify(error?.code || "UNKNOWN")},
+                                                    isIPad: ${isIPad}
+                                                }
                                             }));
                                         `);
                                     }

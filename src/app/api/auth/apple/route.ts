@@ -119,6 +119,47 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
             const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
             const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
 
+            // 🟢 [Fix]: email unique constraint 에러 방지 - email이 다른 사용자에게 할당되어 있는지 확인
+            let updateData: any = {};
+            let createEmail = email;
+            
+            if (email) {
+                // 기존 사용자 확인 (socialId + provider로)
+                const existingAppleUser = await tx.user.findFirst({
+                    where: {
+                        unique_social_provider: {
+                            socialId: appleUserId,
+                            provider: "apple",
+                        },
+                    },
+                });
+                
+                // email이 다른 사용자에게 할당되어 있는지 확인 (기존 Apple 사용자 제외)
+                const existingUserWithEmail = await tx.user.findFirst({
+                    where: {
+                        email: email,
+                        NOT: existingAppleUser ? { id: existingAppleUser.id } : undefined,
+                    },
+                });
+                
+                if (existingUserWithEmail) {
+                    // 🟢 [Fix]: email이 다른 사용자에게 할당되어 있으면 email을 null로 설정 (중복 방지)
+                    console.warn(`[Apple Auth] Email ${email} is already assigned to another user, setting email to null for new user`);
+                    if (existingAppleUser) {
+                        // 기존 사용자 업데이트 시 email 업데이트 건너뛰기
+                        updateData.email = undefined; // undefined로 설정하면 업데이트하지 않음
+                    } else {
+                        // 신규 사용자 생성 시 email을 null로 설정
+                        createEmail = null;
+                    }
+                } else {
+                    // email이 사용 가능하면 정상적으로 설정
+                    if (existingAppleUser) {
+                        updateData.email = email;
+                    }
+                }
+            }
+
             // 🟢 upsert로 원자적 처리 (이미 있으면 업데이트, 없으면 생성)
             const upsertedUser = await tx.user.upsert({
                 where: {
@@ -128,12 +169,12 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                     },
                 },
                 update: {
-                    // 기존 유저의 경우 프로필 정보만 업데이트
-                    email: email || undefined,
+                    // 기존 유저의 경우 프로필 정보만 업데이트 (email은 충돌 없을 때만)
+                    ...updateData,
                     // 🟢 [Fix]: Prisma update에서는 함수를 사용할 수 없으므로, upsert 후 별도로 처리
                 },
                 create: {
-                    email,
+                    email: createEmail, // 🟢 충돌 없을 때만 email 설정, 있으면 null
                     username: `user_${appleUserId.substring(0, 6)}`,
                     socialId: appleUserId,
                     provider: "apple",
@@ -215,9 +256,21 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
             })();`,
             serviceToken
         );
-    } catch (err) {
-        console.error("[Apple Auth] 웹 인증 오류:", err);
-        const errorMsg = err instanceof Error ? err.message : "알 수 없는 오류";
+    } catch (err: any) {
+        console.error("[Apple Auth] 웹 인증 오류:", {
+            error: err?.message,
+            code: err?.code,
+            meta: err?.meta,
+            stack: err?.stack,
+        });
+        
+        // 🟢 [Fix]: Unique constraint 에러를 명확히 처리
+        let errorMsg = err instanceof Error ? err.message : "알 수 없는 오류";
+        if (err?.code === "P2002" && err?.meta?.target?.includes("email")) {
+            errorMsg = "이미 다른 계정으로 등록된 이메일입니다.";
+            console.error("[Apple Auth] Email unique constraint 에러 - email이 이미 다른 사용자에게 할당됨");
+        }
+        
         return generateHtmlResponse(
             `(function() {
                 try {
@@ -266,6 +319,54 @@ async function handleAppAppleAuthLogic(
             const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
             const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
 
+            // 🟢 [Fix]: email unique constraint 에러 방지 - email이 다른 사용자에게 할당되어 있는지 확인
+            let updateData: any = {};
+            let createEmail = email;
+            
+            if (email) {
+                // 기존 사용자 확인 (socialId + provider로)
+                const existingAppleUser = await tx.user.findFirst({
+                    where: {
+                        unique_social_provider: {
+                            socialId: appleUserId,
+                            provider: "apple",
+                        },
+                    },
+                });
+                
+                // email이 다른 사용자에게 할당되어 있는지 확인 (기존 Apple 사용자 제외)
+                const existingUserWithEmail = await tx.user.findFirst({
+                    where: {
+                        email: email,
+                        NOT: existingAppleUser ? { id: existingAppleUser.id } : undefined,
+                    },
+                });
+                
+                if (existingUserWithEmail) {
+                    // 🟢 [Fix]: email이 다른 사용자에게 할당되어 있으면 email을 null로 설정 (중복 방지)
+                    console.warn(`[Apple Auth] Email ${email} is already assigned to another user, setting email to null for new user`);
+                    if (existingAppleUser) {
+                        // 기존 사용자 업데이트 시 email 업데이트 건너뛰기
+                        updateData.email = undefined; // undefined로 설정하면 업데이트하지 않음
+                    } else {
+                        // 신규 사용자 생성 시 email을 null로 설정
+                        createEmail = null;
+                    }
+                } else {
+                    // email이 사용 가능하면 정상적으로 설정
+                    if (existingAppleUser) {
+                        updateData.email = email;
+                    }
+                }
+            }
+            
+            if (fullName) {
+                const username = `${fullName.familyName || ""}${fullName.givenName || ""}`.trim();
+                if (username) {
+                    updateData.username = username;
+                }
+            }
+
             // 🟢 upsert로 원자적 처리 (이미 있으면 업데이트, 없으면 생성)
             const upsertedUser = await tx.user.upsert({
                 where: {
@@ -275,13 +376,12 @@ async function handleAppAppleAuthLogic(
                     },
                 },
                 update: {
-                    // 기존 유저의 경우 프로필 정보만 업데이트
-                    email: email || undefined,
-                    username: fullName ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim() : undefined,
+                    // 기존 유저의 경우 프로필 정보만 업데이트 (email은 충돌 없을 때만)
+                    ...updateData,
                     // 🟢 [Fix]: Prisma update에서는 함수를 사용할 수 없으므로, upsert 후 별도로 처리
                 },
                 create: {
-                    email,
+                    email: createEmail, // 🟢 충돌 없을 때만 email 설정, 있으면 null
                     username: fullName
                         ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim()
                         : `user_${appleUserId.substring(0, 6)}`,
@@ -353,8 +453,27 @@ async function handleAppAppleAuthLogic(
         res.headers.set("Set-Cookie", cookieOptions);
 
         return res;
-    } catch (err) {
-        return NextResponse.json({ error: "App 인증 실패" }, { status: 401 });
+    } catch (err: any) {
+        console.error("[Apple Auth] 앱 인증 오류:", {
+            error: err?.message,
+            code: err?.code,
+            meta: err?.meta,
+            stack: err?.stack,
+        });
+        
+        // 🟢 [Fix]: Unique constraint 에러를 명확히 처리
+        if (err?.code === "P2002" && err?.meta?.target?.includes("email")) {
+            console.error("[Apple Auth] Email unique constraint 에러 - email이 이미 다른 사용자에게 할당됨");
+            return NextResponse.json({ 
+                error: "이미 다른 계정으로 등록된 이메일입니다.",
+                code: "EMAIL_ALREADY_EXISTS"
+            }, { status: 409 });
+        }
+        
+        return NextResponse.json({ 
+            error: "App 인증 실패",
+            message: err?.message || "알 수 없는 오류"
+        }, { status: 401 });
     }
 }
 
