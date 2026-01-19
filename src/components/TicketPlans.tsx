@@ -148,7 +148,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 return;
             }
 
-            // 🟢 [WEB PAYMENT]: 웹 브라우저에서는 토스페이먼츠 사용
+            // 🟢 [WEB PAYMENT]: 웹 브라우저에서는 토스페이먼츠 사용 (구독권/쿠폰 모두)
             if (!isMobileNative) {
                 const userId = session.user.id;
                 const customerKey = `user_${userId}`;
@@ -161,34 +161,18 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 const orderId = `${selectedPlan.id}_${Date.now()}`;
                 const payment = tossPayments.payment({ customerKey });
 
-                // 🟢 플랜 타입에 따라 결제 방식 분기
-                const isSubscription = selectedPlan.type === "sub";
-                const billingClientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_BILLING;
-                
-                if (isSubscription && billingClientKey) {
-                    // 구독 결제는 빌링 키 사용
-                    const billingTossPayments = await loadTossPayments(billingClientKey);
-                    const billingPayment = billingTossPayments.payment({ customerKey });
-                    
-                    await billingPayment.requestBillingAuth({
-                        customerKey: customerKey,
-                        successUrl: `${window.location.origin}/pay/success-billing?plan=${selectedPlan.id}&orderId=${orderId}`,
-                        failUrl: `${window.location.origin}/pay/fail`,
-                    });
-                } else {
-                    // 일반 결제 (쿠폰)
-                    await payment.requestPayment({
-                        method: "CARD",
-                        amount: {
-                            currency: "KRW",
-                            value: selectedPlan.price,
-                        },
-                        orderId: orderId,
-                        orderName: selectedPlan.name,
-                        successUrl: `${window.location.origin}/pay/success?plan=${selectedPlan.id}&orderId=${orderId}`,
-                        failUrl: `${window.location.origin}/pay/fail`,
-                    });
-                }
+                // 🟢 웹에서는 구독권/쿠폰 모두 일반 결제로 처리
+                await payment.requestPayment({
+                    method: "CARD",
+                    amount: {
+                        currency: "KRW",
+                        value: selectedPlan.price,
+                    },
+                    orderId: orderId,
+                    orderName: selectedPlan.name,
+                    successUrl: `${window.location.origin}/personalized-home/pay/success?plan=${selectedPlan.id}&orderId=${orderId}`,
+                    failUrl: `${window.location.origin}/pay/fail`,
+                });
                 return;
             }
 

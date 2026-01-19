@@ -9,6 +9,7 @@ export interface UserInfo {
     gender?: string | null;
     subscriptionTier?: "FREE" | "BASIC" | "PREMIUM";
     subscriptionExpiresAt?: string | null;
+    couponCount?: number; // 🟢 쿠폰 개수 추가
 }
 
 export interface UserPreferences {

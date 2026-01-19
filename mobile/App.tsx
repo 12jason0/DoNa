@@ -2,7 +2,6 @@ import "react-native-gesture-handler";
 import React, { useEffect, useRef, useState } from "react";
 import { View, Platform } from "react-native"; // View 추가
 import { NavigationContainer, DefaultTheme, Theme } from "@react-navigation/native";
-import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
@@ -148,7 +147,7 @@ export default function App() {
             {/* 배경색을 흰색으로 지정하여 상태바 영역이 튀지 않게 합니다. */}
             <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
                 <NavigationContainer theme={navTheme}>
-                    <StatusBar style="dark" />
+                    {/* 🟢 StatusBar 제거: WebScreen에서 isDarkMode에 따라 동적으로 관리 */}
                     <PushTokenContext.Provider value={pushToken}>
                         {/* WebScreen 내부에서 이전에 작성한 useSafeAreaInsets 로직이 
                           정상 작동하려면 반드시 SafeAreaProvider 내부에 있어야 합니다. 

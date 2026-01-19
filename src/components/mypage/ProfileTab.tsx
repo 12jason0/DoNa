@@ -17,6 +17,94 @@ interface ProfileTabProps {
     onLogout: () => void;
 }
 
+// 🟢 [최종 심플 버전] 미니멀 대시보드 스타일의 구독/쿠폰 섹션
+const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
+    const displayTier = userInfo?.subscriptionTier || "FREE";
+    const couponCount = userInfo?.couponCount ?? 0; // 🟢 props에서 직접 가져오기
+
+    return (
+        <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100  p-6 md:p-8 shadow-sm">
+            {/* 헤더 섹션 */}
+            <div className="flex items-center gap-2 mb-6">
+                <div className="w-1.5 h-5 bg-[#7FCC9F] rounded-full" />
+                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                    내 구독 · 이용권
+                </h3>
+            </div>
+
+            <div className="space-y-4">
+                {/* 1. 멤버십 섹션 */}
+                <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 md:p-6 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-2xl shadow-inner">
+                            {displayTier === "PREMIUM" ? "👑" : "✨"}
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter mb-0.5">My Membership</p>
+                            <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                                {displayTier === "PREMIUM" ? "프리미엄 멤버십" : displayTier === "BASIC" ? "베이직 멤버십" : "일반 회원"}
+                            </h4>
+                            {userInfo?.subscriptionExpiresAt && (
+                                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                    {new Date(userInfo.subscriptionExpiresAt).toLocaleDateString()} 까지 유효
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {displayTier === "FREE" ? (
+                        <button
+                            onClick={() => {
+                                if (typeof window !== "undefined") {
+                                    window.dispatchEvent(new CustomEvent("openTicketPlans"));
+                                }
+                            }}
+                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                        >
+                            업그레이드
+                        </button>
+                    ) : (
+                        <span className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-lg text-[10px] font-bold border border-gray-100 dark:border-gray-700">
+                            사용 중
+                        </span>
+                    )}  
+                </div>
+
+                {/* 2. 쿠폰 섹션 - 항상 표시 */}
+                <div 
+                    className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 md:p-6 shadow-sm flex items-center justify-between"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-2xl shadow-inner">
+                            🎫
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tighter mb-0.5">My Coupons</p>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-black text-gray-900 dark:text-white leading-none">
+                                    {couponCount}
+                                </span>
+                                <span className="text-sm font-bold text-gray-400">장 보유</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            if (typeof window !== "undefined") {
+                                window.dispatchEvent(new CustomEvent("openTicketPlans"));
+                            }
+                        }}
+                        className="px-4 py-2 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    >
+                        쿠폰 구매
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ProfileTab = ({
     userInfo,
     userPreferences,
@@ -451,6 +539,10 @@ const ProfileTab = ({
                     )}
                 </div>
 
+                {/* ======================================================================
+          2-1. 내 구독 / 이용권 카드 (Subscription & Tickets)
+      ====================================================================== */}
+                <MembershipAndCouponSection userInfo={userInfo} />
                 {/* ======================================================================
           3. 계정 관리 카드 (Account Settings)
       ====================================================================== */}

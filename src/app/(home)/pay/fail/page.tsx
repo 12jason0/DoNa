@@ -1,14 +1,13 @@
 "use client";
 
 import { Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 // 결제 실패 처리 로직 컴포넌트
 function PaymentFailContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     
     // URL 파라미터에서 정보 추출
     const code = searchParams.get("code");

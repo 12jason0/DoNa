@@ -340,6 +340,16 @@ const MyPage = () => {
                 (raw as any)?.subscription_expires_at ||
                 null;
 
+            // 🟢 쿠폰 개수 추출 (여러 필드명 체크)
+            const couponCount =
+                src.couponCount ??
+                src.coupon_count ??
+                (raw as any)?.couponCount ??
+                (raw as any)?.coupon_count ??
+                (raw as any)?.user?.couponCount ??
+                (raw as any)?.user?.coupon_count ??
+                0;
+
             const finalUserInfo = {
                 name: src.name || src.username || src.nickname || "",
                 email: src.email || src.userEmail || "",
@@ -355,6 +365,7 @@ const MyPage = () => {
                 gender: src.gender || null,
                 subscriptionTier: tier, // 🟢 확정된 등급 삽입
                 subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
+                couponCount: typeof couponCount === "number" ? couponCount : couponCount ? Number(couponCount) : 0, // 🟢 쿠폰 개수 추가
             };
             setUserInfo(finalUserInfo);
             // 🟢 [Performance]: UI를 빠르게 표시하기 위해 즉시 로딩 상태 해제

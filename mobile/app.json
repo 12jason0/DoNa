@@ -7,7 +7,7 @@
         "scheme": ["duna", "kakaoa6c31213198b3d562121ddace8d1b65f"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -20,6 +20,7 @@
       "bundleIdentifier": "kr.io.dona.dona",
       "buildNumber": "23",
       "usesAppleSignIn": true,
+      "userInterfaceStyle": "light",
             "associatedDomains": ["applinks:dona.io.kr"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -41,6 +42,7 @@
       },
       "package": "kr.io.dona.dona",
       "versionCode": 23,
+      "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
