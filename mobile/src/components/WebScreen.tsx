@@ -101,7 +101,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         ? deepLinkUrl.startsWith("http")
             ? deepLinkUrl
             : `${initialUri.replace(/\/$/, "")}${deepLinkUrl}`
-        : initialUri || "http://192.168.124.102:3000";
+        : initialUri || "http://192.168.124.100:3000";
 
     const webRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
@@ -113,8 +113,33 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
     const [isSplashDone, setIsSplashDone] = useState(false);
     // 🔴 [Fix]: 로그아웃 처리 중 플래그 - 무한 로그인 루프 방지
     const isProcessingLogoutRef = useRef(false);
-    // 🟢 [2026-01-21] 다크모드 상태 관리
+    // 🟢 [2026-01-21] 다크모드 상태 관리 - 초기값을 웹에서 감지하도록 설정
     const [isDarkMode, setIsDarkMode] = useState(false);
+    
+    // 🟢 [다크모드 초기화]: 웹뷰 로드 시 초기 다크모드 상태 확인
+    useEffect(() => {
+        if (webRef.current && initialScript) {
+            // 웹뷰가 로드된 후 초기 다크모드 상태 확인
+            const checkInitialDarkMode = `
+                (function() {
+                    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
+                                  document.documentElement.classList.contains('dark') ||
+                                  document.body.classList.contains('dark') ||
+                                  document.documentElement.getAttribute('data-theme') === 'dark';
+                    if (window.ReactNativeWebView) {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                            type: 'darkModeChange',
+                            isDark: isDark
+                        }));
+                    }
+                })();
+            `;
+            // 웹뷰 로드 후 약간의 지연을 두고 실행
+            setTimeout(() => {
+                webRef.current?.injectJavaScript(checkInitialDarkMode);
+            }, 500);
+        }
+    }, [initialScript]);
 
     // 🟢 [설정]: 스플래시 배경색 (app.json의 배경색과 일치시켜주세요)
     const SPLASH_COLOR = "#6db48c";
@@ -252,6 +277,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
 
     // 🟢 [추가]: 스플래시와 상태바가 동시에 전환되도록 배경색 변수 통일
     // 🟢 [2026-01-21] 다크모드에 따라 웹뷰 내부 색상과 동일하게 설정
+    // 라이트모드: #f5f7f2 (--brand-cream), 다크모드: #0f1710 (--background dark)
     const statusBarBackgroundColor = !isSplashDone ? SPLASH_COLOR : isDarkMode ? "#0f1710" : "#f5f7f2";
     const containerBackgroundColor = !isSplashDone ? SPLASH_COLOR : isDarkMode ? "#0f1710" : "#f5f7f2";
 
@@ -292,7 +318,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                     geolocationEnabled={true} // 네이버 지도 위치 정확도 및 거리 계산 오류 해결
                     domStorageEnabled={true} // 웹 리소스 저장을 위한 필수 설정
                     cacheEnabled={true} // 2030 세대가 선호하는 빠른 로딩 속도 확보
-                    cacheMode="LOAD_DEFAULT" // 🟢 캐시 설정을 기본으로 하여 안정성 확보
+                    cacheMode="LOAD_NO_CACHE" // 🟢 [캐시 무효화]: 테스트 빌드에서 항상 최신 버전 로드 (프로덕션에서는 "LOAD_DEFAULT"로 변경 가능)
                     allowsInlineMediaPlayback={true}
                     mediaPlaybackRequiresUserAction={false}
                     allowsBackForwardNavigationGestures={true}
@@ -302,6 +328,24 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                         if (!nav.loading) {
                             setLoading(false);
                         }
+                    }}
+                    onLoadEnd={() => {
+                        // 🟢 웹뷰 로드 완료 시 다크모드 상태 확인
+                        const checkDarkModeScript = `
+                            (function() {
+                                const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
+                                              document.documentElement.classList.contains('dark') ||
+                                              document.body.classList.contains('dark') ||
+                                              document.documentElement.getAttribute('data-theme') === 'dark';
+                                if (window.ReactNativeWebView) {
+                                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                                        type: 'darkModeChange',
+                                        isDark: isDark
+                                    }));
+                                }
+                            })();
+                        `;
+                        webRef.current?.injectJavaScript(checkDarkModeScript);
                     }}
                     onShouldStartLoadWithRequest={(request) => {
                         const { url } = request;
