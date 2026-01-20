@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
                     select: {
                         title: true,
                         concept: true,
+                        region: true,
                     },
                 },
             },
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
                 ? {
                       title: r.course.title,
                       concept: (r.course as any).concept || "",
+                      region: (r.course as any).region || null,
                   }
                 : undefined,
             };
