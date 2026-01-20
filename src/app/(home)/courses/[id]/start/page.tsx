@@ -71,6 +71,11 @@ function GuidePageInner() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
+    
+    // 🟢 이미지 슬라이더 상태
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
+    const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
     // 🟢 iOS 플랫폼 감지
     useEffect(() => {
@@ -446,7 +451,15 @@ function GuidePageInner() {
             ...prev,
             [currentStep]: { ...currentStepData, photos: newPhotos },
         }));
+        // 🟢 삭제 후 인덱스 조정
+        if (currentImageIndex >= newPhotos.length && newPhotos.length > 0) {
+            setCurrentImageIndex(newPhotos.length - 1);
+        } else if (newPhotos.length === 0) {
+            setCurrentImageIndex(0);
+        }
     };
+    
+    // 🟢 이미지 슬라이더 스와이프 핸들러는 렌더링 부분에서 정의
 
     const handleKakaoShare = async () => {
         try {
@@ -614,6 +627,45 @@ function GuidePageInner() {
     const galleryPhotos = allPhotos.slice(1);
     const currentDate = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
     const formattedDate = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "numeric", day: "numeric" }).replace(/\s/g, "");
+    
+    // 🟢 이미지 슬라이더 스와이프 핸들러
+    const minSwipeDistance = 50;
+    
+    const onTouchStart = (e: React.TouchEvent) => {
+        setTouchEndX(null);
+        setTouchStartX(e.targetTouches[0].clientX);
+    };
+    
+    const onTouchMove = (e: React.TouchEvent) => {
+        setTouchEndX(e.targetTouches[0].clientX);
+    };
+    
+    const onTouchEnd = () => {
+        if (!touchStartX || !touchEndX) return;
+        const distance = touchStartX - touchEndX;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+        
+        if (isLeftSwipe && currentImageIndex < allPhotos.length - 1) {
+            setCurrentImageIndex(currentImageIndex + 1);
+        } else if (isRightSwipe && currentImageIndex > 0) {
+            setCurrentImageIndex(currentImageIndex - 1);
+        }
+    };
+    
+    // 🟢 currentStep이 변경되면 이미지 인덱스 리셋
+    useEffect(() => {
+        setCurrentImageIndex(0);
+    }, [currentStep]);
+    
+    // 🟢 allPhotos가 변경되면 인덱스 조정
+    useEffect(() => {
+        if (currentImageIndex >= allPhotos.length && allPhotos.length > 0) {
+            setCurrentImageIndex(allPhotos.length - 1);
+        } else if (allPhotos.length === 0) {
+            setCurrentImageIndex(0);
+        }
+    }, [allPhotos.length, currentImageIndex]);
 
     // 🟢 완료 페이지: 저장하기와 공유하기만 표시
     if (isCompletePage) {
@@ -621,7 +673,12 @@ function GuidePageInner() {
             <div className="fixed inset-0 z-100 flex flex-col bg-white dark:bg-[#0f1710] overflow-hidden overscroll-none">
                 {/* Top Bar */}
                 <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-transparent pointer-events-none">
-                    <div className="flex items-center justify-end mb-2 pointer-events-auto">    
+                    <div className="flex items-center justify-between mb-2 pointer-events-auto">    
+                        {course?.region && (
+                            <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{course.region}</span>
+                            </div>
+                        )}
                         <button
                             onClick={() => router.push(`/courses/${courseId}`)}
                             className="w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -776,12 +833,17 @@ function GuidePageInner() {
 
     return (
         <div className="fixed inset-0 z-100 flex flex-col bg-white overflow-hidden overscroll-none">
-            {/* 1. Top Bar (DoNa 로고 & Exit) */}
+            {/* 1. Top Bar (Region & Exit) */}
             <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-transparent pointer-events-none">
-                <div className="flex items-center justify-end mb-2 pointer-events-auto">    
+                <div className="flex items-center justify-between mb-2 pointer-events-auto">    
+                    {course?.region && (
+                        <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{course.region}</span>
+                        </div>
+                    )}
                     <button
                         onClick={() => router.push(`/courses/${courseId}`)}
-                        className="w-8 h-8 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 hover:text-gray-900"
+                        className="w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                     >
                         ✕
                     </button>
@@ -996,16 +1058,44 @@ function GuidePageInner() {
                             </div>
                         ) : (
                             <div className="mb-4">
-                                <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                    <Image src={allPhotos[0]} alt="Main photo" fill className="object-cover" />
+                                <div 
+                                    className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800"
+                                    onTouchStart={onTouchStart}
+                                    onTouchMove={onTouchMove}
+                                    onTouchEnd={onTouchEnd}
+                                >
+                                    {/* 진행 상태 점들 */}
+                                    {allPhotos.length > 1 && (
+                                        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
+                                            {allPhotos.map((_, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                                        idx === currentImageIndex
+                                                            ? "bg-white w-6"
+                                                            : "bg-white/50"
+                                                    }`}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                    <Image 
+                                        src={allPhotos[currentImageIndex] || allPhotos[0]} 
+                                        alt="Main photo" 
+                                        fill 
+                                        className="object-cover" 
+                                    />
                                     <button
-                                        onClick={() => deletePhoto(0)}
-                                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80 transition-colors"
+                                        onClick={() => {
+                                            const photoIndexToDelete = allPhotos.length > 1 ? currentImageIndex : 0;
+                                            deletePhoto(photoIndexToDelete);
+                                        }}
+                                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80 transition-colors z-10"
                                     >
                                         ✕
                                     </button>
                                     {allPhotos.length < 3 && (
-                                        <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-gray-800 shadow-lg transition-all">
+                                        <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-gray-800 shadow-lg transition-all z-10">
                                             <input
                                                 ref={mainImageInputRef}
                                                 type="file"

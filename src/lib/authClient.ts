@@ -120,9 +120,20 @@ export async function logout(options?: { skipRedirect?: boolean }): Promise<bool
                     localStorage.removeItem("user");
                     localStorage.removeItem("loginTime");
                     localStorage.removeItem("isLoggedIn");
-                    sessionStorage.removeItem("dona-splash-shown");
+                    // 🟢 로그아웃 시 스플래시를 표시하지 않도록 설정 (메인으로 이동 후 스플래시가 나오지 않도록)
+                    sessionStorage.setItem("dona-splash-shown", "true");
                     sessionStorage.removeItem("login_success_trigger");
                     sessionStorage.removeItem("auth:loggingIn");
+                    
+                    // 🟢 출석 현황 관련 localStorage 삭제
+                    const checkinKeys = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.includes("checkin") || key.includes("attendance") || key.includes("todayChecked") || key.includes("weekStamps") || key.includes("weekCount") || key.includes("streak"))) {
+                            checkinKeys.push(key);
+                        }
+                    }
+                    checkinKeys.forEach(key => localStorage.removeItem(key));
                 } catch (fallbackError) {
                     console.warn("[authClient] 개별 스토리지 삭제 중 오류:", fallbackError);
                 }

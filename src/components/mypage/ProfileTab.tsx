@@ -19,11 +19,23 @@ interface ProfileTabProps {
 
 // 🟢 [최종 심플 버전] 미니멀 대시보드 스타일의 구독/쿠폰 섹션
 const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
+    // 🟢 [Debug]: userInfo 확인
+    if (process.env.NODE_ENV === "development") {
+        console.log("[ProfileTab] userInfo:", {
+            subscriptionTier: userInfo?.subscriptionTier,
+            subscriptionExpiresAt: userInfo?.subscriptionExpiresAt,
+            couponCount: userInfo?.couponCount,
+        });
+    }
+    
     const displayTier = userInfo?.subscriptionTier || "FREE";
     const couponCount = userInfo?.couponCount ?? 0; // 🟢 props에서 직접 가져오기
+    
+    // 🟢 [Fix]: 만료일이 있고 아직 유효한지 확인
+    const hasValidSubscription = displayTier !== "FREE" && userInfo?.subscriptionExpiresAt && new Date(userInfo.subscriptionExpiresAt) > new Date();
 
     return (
-        <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100  p-6 md:p-8 shadow-sm">
+        <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-transparent p-6 md:p-8 shadow-sm">
             {/* 헤더 섹션 */}
             <div className="flex items-center gap-2 mb-6">
                 <div className="w-1.5 h-5 bg-[#7FCC9F] rounded-full" />
@@ -44,7 +56,7 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                             <h4 className="text-base font-bold text-gray-900 dark:text-white">
                                 {displayTier === "PREMIUM" ? "프리미엄 멤버십" : displayTier === "BASIC" ? "베이직 멤버십" : "일반 회원"}
                             </h4>
-                            {userInfo?.subscriptionExpiresAt && displayTier !== "FREE" && (
+                            {userInfo?.subscriptionExpiresAt && displayTier !== "FREE" && hasValidSubscription && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
                                     ~ {new Date(userInfo.subscriptionExpiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </p>
@@ -282,8 +294,14 @@ const ProfileTab = ({
             if (pushData !== null) {
                 setNotificationStatus("success");
                 setNotificationMessage(
-                    newSubscribedState ? "✅ 알림이 활성화되었습니다!" : "🔕 알림이 비활성화되었습니다."
+                    newSubscribedState ? "알림이 활성화되었습니다!" : " 알림이 비활성화되었습니다."
                 );
+                
+                // 🟢 알림을 끌 때 BenefitConsentModal 숨김 설정 제거 (다음 홈페이지 접속 시 모달 표시)
+                if (!newSubscribedState && typeof window !== "undefined") {
+                    localStorage.removeItem("benefitConsentModalHideUntil");
+                }
+                
                 // 🟢 성능 최적화: 1.5초 후 메시지 제거 (2초 -> 1.5초로 단축)
                 setTimeout(() => {
                     setNotificationMessage("");

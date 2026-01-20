@@ -458,23 +458,15 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     return (
         <div className="space-y-6">
             <div
-                className={`bg-white ${hasData ? "dark:bg-[#1a241b]" : ""} rounded-[24px] shadow-sm border ${
-                    hasData ? "border-gray-100 dark:border-gray-800" : "border-gray-100"
-                } overflow-hidden relative`}
+                className={`bg-white dark:bg-[#1a241b] rounded-[24px] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden relative`}
             >
                 {/* 헤더 */}
                 <div
-                    className={`pt-5 pl-5 pr-5 ${
-                        hasData
-                            ? "border-gray-50 dark:border-gray-800 bg-white dark:bg-[#1a241b]"
-                            : "border-gray-50 bg-white"
-                    } relative z-10`}
+                    className="pt-5 pl-5 pr-5 border-gray-50 dark:border-gray-800 bg-white dark:bg-[#1a241b] relative z-10"
                 >
                     <div className="flex items-center justify-between mb-4">
                     <h4
-                        className={`text-lg font-bold text-gray-900 ${
-                            hasData ? "dark:text-white" : ""
-                            } tracking-tight`}
+                        className="text-lg font-bold text-gray-900 dark:text-white tracking-tight"
                     >
                         내 발자취 
                     </h4>
@@ -485,9 +477,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 className={`px-4 py-2 rounded-full font-medium text-sm transition-all whitespace-nowrap ${
                                     activeView === "calendar"
                                         ? "bg-gray-900 dark:bg-gray-800 text-white"
-                                        : `bg-gray-100 ${hasData ? "dark:bg-gray-800/50" : ""} text-gray-600 ${
-                                              hasData ? "dark:text-gray-400" : ""
-                                          }`
+                                        : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                 }`}
                             >
                                 달력
@@ -497,9 +487,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 className={`px-4 py-2 rounded-full font-medium text-sm transition-all whitespace-nowrap ${
                                     activeView === "memories"
                                         ? "bg-gray-900 dark:bg-gray-800 text-white"
-                                        : `bg-gray-100 ${hasData ? "dark:bg-gray-800/50" : ""} text-gray-600 ${
-                                              hasData ? "dark:text-gray-400" : ""
-                                          }`
+                                        : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                 }`}
                             >
                                 추억 {personalStories.length > 0 && `(${personalStories.length})`}
@@ -509,18 +497,14 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"></div>
                     {activeView === "calendar" && (
                     <p
-                        className={`text-gray-500 ${
-                            hasData ? "dark:text-gray-400" : ""
-                        } text-xs md:text-sm font-medium`}
+                        className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium"
                     >
                         내가 완료한 미션과 다녀온 코스들을 날짜별로 확인해보세요.
                     </p>
                     )}
                     {activeView === "memories" && (
                         <p
-                            className={`text-gray-500 ${
-                                hasData ? "dark:text-gray-400" : ""
-                            } text-xs md:text-sm font-medium`}
+                            className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium"
                         >
                             나만의 소중한 추억들을 확인해보세요.
                         </p>
@@ -539,24 +523,19 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     <div className="flex flex-col mb-4">
                         {/* 년도 표시 (왼쪽 정렬) */}
                         <div
-                            className={`text-sm font-medium text-gray-500 ${hasData ? "dark:text-gray-400" : ""} mb-1`}
+                            className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1"
                         >
                             {currentMonth.getFullYear()}년
                         </div>
                         <div className="relative">
                             <button
                                 onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-                                className={`text-lg font-bold text-gray-900 ${
-                                    hasData ? "dark:text-white" : ""
-                                } flex items-center gap-1 hover:text-emerald-600 ${
-                                    hasData ? "dark:hover:text-emerald-400" : ""
-                                } transition-colors`}
+                                className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                             >
                                 {monthNames[currentMonth.getMonth()]} {userName}
                                 <svg
-                                    className={`w-4 h-4 text-gray-400 ${
-                                        hasData ? "dark:text-gray-500" : ""
-                                    } transition-transform ${showMonthDropdown ? "rotate-180" : ""}`}
+                                    className="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
+                                    style={{ transform: showMonthDropdown ? "rotate(180deg)" : "rotate(0deg)" }}
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -577,26 +556,16 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     <div className="fixed inset-0 z-10" onClick={() => setShowMonthDropdown(false)} />
                                     {/* 드롭다운 메뉴 */}
                                     <div
-                                        className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white ${
-                                            hasData ? "dark:bg-[#1a241b]" : ""
-                                        } rounded-lg shadow-lg border ${
-                                            hasData ? "border-gray-200 dark:border-gray-800" : "border-gray-200"
-                                        } py-2 z-20 min-w-[120px]`}
+                                        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-[#1a241b] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-20 min-w-[120px]"
                                     >
                                         {monthNames.map((month, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => handleMonthSelect(idx)}
-                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-emerald-50 ${
-                                                    hasData ? "dark:hover:bg-emerald-900/30" : ""
-                                                } transition-colors ${
+                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors ${
                                                     currentMonth.getMonth() === idx
-                                                        ? `bg-emerald-50 ${
-                                                              hasData ? "dark:bg-emerald-900/30" : ""
-                                                          } text-emerald-600 ${
-                                                              hasData ? "dark:text-emerald-400" : ""
-                                                          } font-bold`
-                                                        : `text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`
+                                                        ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold"
+                                                        : "text-gray-700 dark:text-gray-300"
                                                 }`}
                                             >
                                                 {month}
@@ -620,7 +589,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             } rounded-xl transition-colors`}
                         >
                             <svg
-                                className={`w-5 h-5 text-gray-600 ${hasData ? "dark:text-gray-400" : ""}`}
+                                className="w-5 h-5 text-gray-600 dark:text-gray-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -633,24 +602,18 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 />
                             </svg>
                             <span
-                                className={`text-sm font-medium text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`}
+                                className="text-sm font-medium text-gray-700 dark:text-gray-300"
                             >
                                 완료 코스
                             </span>
                             <span
-                                className={`text-sm font-bold text-gray-900 ${hasData ? "dark:text-white" : ""} ml-1`}
+                                className="text-sm font-bold text-gray-900 dark:text-white ml-1"
                             >
                                 {completed.length}
                             </span>
                         </button>
                         <button
-                            className={`flex items-center gap-2 px-4 py-2.5 bg-white ${
-                                hasData ? "dark:bg-gray-800/50" : ""
-                            } border ${
-                                hasData
-                                    ? "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    : "border-gray-200 hover:bg-gray-50"
-                            } rounded-xl transition-colors`}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -662,7 +625,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className={`w-5 h-5 text-gray-600 ${hasData ? "dark:text-gray-400" : ""}`}
+                                className="w-5 h-5 text-gray-600 dark:text-gray-400"
                             >
                                 <path d="M12 6V2H8"/>
                                 <path d="M15 11v2"/>
@@ -672,12 +635,12 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 <path d="M9 11v2"/>
                             </svg>
                             <span
-                                className={`text-sm font-medium text-gray-700 ${hasData ? "dark:text-gray-300" : ""}`}
+                                className="text-sm font-medium text-gray-700 dark:text-gray-300"
                             >
                                 AI 추천
                             </span>
                             <span
-                                className={`text-sm font-bold text-gray-900 ${hasData ? "dark:text-white" : ""} ml-1`}
+                                className="text-sm font-bold text-gray-900 dark:text-white ml-1"
                             >
                                 {aiRecommendations.length}
                             </span>
@@ -692,8 +655,8 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                 key={day}
                                 className={`text-center text-xs font-medium py-2 ${
                                     idx === 0
-                                        ? `text-red-500 ${hasData ? "dark:text-red-400" : ""}`
-                                        : `text-gray-500 ${hasData ? "dark:text-gray-400" : ""}`
+                                        ? "text-red-500 dark:text-red-400"
+                                        : "text-gray-500 dark:text-gray-400"
                                 }`}
                             >
                                 {day}
@@ -898,10 +861,10 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                         <path d="M6 4C6 3.44772 6.44772 3 7 3H21C21.5523 3 22 3.44772 22 4V16C22 16.5523 21.5523 17 21 17H18V20C18 20.5523 17.5523 21 17 21H3C2.44772 21 2 20.5523 2 20V8C2 7.44772 2.44772 7 3 7H6V4ZM8 7H17C17.5523 7 18 7.44772 18 8V15H20V5H8V7ZM16 15.7394V9H4V18.6321L11.4911 11.6404L16 15.7394ZM7 13.5C7.82843 13.5 8.5 12.8284 8.5 12C8.5 11.1716 7.82843 10.5 7 10.5C6.17157 10.5 5.5 11.1716 5.5 12C5.5 12.8284 6.17157 13.5 7 13.5Z"></path>
                                     </svg>
                                 </div>
-                                <p className={`text-base ${hasData ? "text-gray-500 dark:text-gray-400" : "text-gray-400"} font-medium`}>
+                                <p className="text-base text-gray-500 dark:text-gray-400 font-medium">
                                     저장된 개인 추억이 없습니다.
                                 </p>
-                                <p className={`text-sm ${hasData ? "text-gray-400 dark:text-gray-500" : "text-gray-400"} mt-2`}>
+                                <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
                                     코스를 완료하고 추억을 남겨보세요!
                                 </p>
                             </div>
@@ -929,7 +892,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                     return sortedMonths.map(([monthKey, stories]) => (
                                         <div key={monthKey} className="space-y-4">
                                             {/* 월 헤더 */}
-                                            <h5 className={`text-lg font-bold ${hasData ? "text-gray-900 dark:text-white" : "text-gray-800"} mb-4`}>
+                                            <h5 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                                                 {monthKey}
                                             </h5>
                                             
@@ -973,12 +936,12 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                                 {/* 내용 영역 */}
                                                                 <div className="p-4">
                                                                     {/* 날짜 */}
-                                                                    <div className={`text-xs font-medium mb-2 ${hasData ? "text-gray-500 dark:text-gray-400" : "text-gray-400"}`}>
+                                                                    <div className="text-xs font-medium mb-2 text-gray-500 dark:text-gray-400">
                                                                         {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일 ({dayOfWeek})
                                                                     </div>
                                                                     
                                                                     {/* 코스명 또는 감상 */}
-                                                                    <div className={`text-base font-bold mb-3 line-clamp-2 ${hasData ? "text-gray-900 dark:text-white" : "text-gray-800"}`}>
+                                                                    <div className="text-base font-bold mb-3 line-clamp-2 text-gray-900 dark:text-white">
                                                                         {story.comment || story.course?.title || "개인 추억"}
                                                                     </div>
                                                                     

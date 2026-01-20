@@ -17,7 +17,7 @@ const LogoutOverlay = () => (
     <div className="fixed inset-0 z-9999 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center">
         <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-200 dark:border-gray-800 px-6 py-4 shadow-xl">
             <p className="text-gray-700 dark:text-gray-300 font-medium tracking-tight">
-                안전하게 로그아웃 중입니다...
+                dona가 안전하게 로그아웃 하고 있습니다
             </p>
         </div>
     </div>
@@ -156,11 +156,33 @@ const Header = memo(() => {
         setIsLoggingOut(true); // 로그아웃 오버레이 시작
 
         try {
+            // 🟢 출석 현황 관련 localStorage 삭제
+            if (typeof window !== "undefined") {
+                try {
+                    // 출석 관련 키들 삭제
+                    const checkinKeys = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.includes("checkin") || key.includes("attendance") || key.includes("todayChecked") || key.includes("weekStamps"))) {
+                            checkinKeys.push(key);
+                        }
+                    }
+                    checkinKeys.forEach(key => localStorage.removeItem(key));
+                } catch (e) {
+                    console.warn("[Header] 출석 관련 localStorage 삭제 중 오류:", e);
+                }
+            }
+
             const { logout } = await import("@/lib/authClient");
             // 🟢 skipRedirect 옵션으로 리다이렉트를 건너뛰고, 로그아웃 완료 후 수동으로 리다이렉트
             const success = await logout({ skipRedirect: true });
+            
+            // 🟢 로그아웃 완료 대기 (서버 쿠키 삭제 완료 대기)
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             if (success) {
-                // 🟢 로그아웃 성공 후 메인 페이지로 리다이렉트 (미로그인 상태로 표시됨)
+                // 🟢 로그아웃 완료 후 메인 페이지로 리다이렉트 (미로그인 상태로 표시됨)
+                // 스플래시 없이 바로 메인으로 이동
                 window.location.replace("/");
             } else {
                 // 로그아웃 실패 시에도 메인 페이지로 이동
@@ -170,6 +192,7 @@ const Header = memo(() => {
         } catch (error) {
             console.error("로그아웃 오류:", error);
             setIsLoggingOut(false);
+            // 에러 발생 시에도 메인으로 이동
             window.location.replace("/");
         }
     };
