@@ -677,12 +677,7 @@ function GuidePageInner() {
             <div className="fixed inset-0 z-100 flex flex-col bg-white dark:bg-[#0f1710] overflow-hidden overscroll-none">
                 {/* Top Bar */}
                 <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-transparent pointer-events-none">
-                    <div className="flex items-center justify-between mb-2 pointer-events-auto">    
-                        {course?.region && (
-                            <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md">
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{course.region}</span>
-                            </div>
-                        )}
+                    <div className="flex items-center justify-end mb-2 pointer-events-auto">
                         <button
                             onClick={() => router.push(`/courses/${courseId}`)}
                             className="w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -838,8 +833,8 @@ function GuidePageInner() {
     return (
         <div className="fixed inset-0 z-100 flex flex-col bg-white overflow-hidden overscroll-none">
             {/* 1. Top Bar (Region & Exit) */}
-            <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-transparent pointer-events-none">
-                <div className="flex items-center justify-between mb-2 pointer-events-auto">    
+            <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-2 pb-2 bg-transparent pointer-events-none" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.5rem)' }}>
+                <div className="flex items-center justify-between mb-2 pointer-events-auto">
                     {course?.region && (
                         <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{course.region}</span>
@@ -1061,28 +1056,31 @@ function GuidePageInner() {
                                 </label>
                             </div>
                         ) : (
-                            <div className="mb-4">
+                            <div className="mb-4 relative">
+                                {/* 진행 상태 점들 - 사진 컨테이너 위에 배치 */}
+                                {allPhotos.length > 1 && (
+                                    <div 
+                                        className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 -top-10" 
+                                        style={{ top: 'calc(env(safe-area-inset-top, 0) + 1rem)' }}
+                                    >
+                                        {allPhotos.map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`h-1 rounded-full transition-all ${
+                                                    idx === currentImageIndex
+                                                        ? "bg-white w-8"
+                                                        : "bg-white/40 w-1"
+                                                }`}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                                 <div 
                                     className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800"
                                     onTouchStart={onTouchStart}
                                     onTouchMove={onTouchMove}
                                     onTouchEnd={onTouchEnd}
                                 >
-                                    {/* 진행 상태 점들 */}
-                                    {allPhotos.length > 1 && (
-                                        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
-                                            {allPhotos.map((_, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                                        idx === currentImageIndex
-                                                            ? "bg-white w-6"
-                                                            : "bg-white/50"
-                                                    }`}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
                                     <Image 
                                         src={allPhotos[currentImageIndex] || allPhotos[0]} 
                                         alt="Main photo" 
@@ -1094,7 +1092,7 @@ function GuidePageInner() {
                                             const photoIndexToDelete = allPhotos.length > 1 ? currentImageIndex : 0;
                                             deletePhoto(photoIndexToDelete);
                                         }}
-                                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80 transition-colors z-10"
+                                        className="absolute top-2 right-3 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80 transition-colors z-10"
                                     >
                                         ✕
                                     </button>

@@ -14,6 +14,12 @@
      * 동시에 여러 번 호출되더라도 서버에는 단 1번만 요청을 보냅니다.
      */
     export async function fetchSession(): Promise<{ authenticated: boolean; user: AuthUser }> {
+        // 🟢 [Fix]: 로그아웃 중이라면 서버에 묻지도 않고 즉시 false 반환
+        if (isLoggingOut) {
+            console.log("[authClient] 로그아웃 중 - 세션 체크 차단");
+            return { authenticated: false, user: null };
+        }
+        
         // 🟢 [Fix]: 로그인/로그아웃 직후라면 캐시를 무시하고 강제로 새로 확인 (로컬/카카오 로그인 통합)
         if (typeof window !== "undefined") {
             // 로그인 직후 강제 갱신
@@ -87,259 +93,53 @@
      * @param options.skipRedirect - true이면 리다이렉트를 하지 않음 (스플래시 표시 후 수동 리다이렉트용)
      */
     export async function logout(options?: { skipRedirect?: boolean }): Promise<boolean> {
-        // 🟢 [Fix]: 이미 로그아웃 중이면 기존 Promise 반환
-        if (isLoggingOut && logoutPromise) {
-            console.warn("[authClient] 로그아웃이 이미 진행 중입니다.");
-            return logoutPromise;
-        }
-
+        if (isLoggingOut) return true;
         isLoggingOut = true;
 
-        // 🟢 [핵심] 메모리에 남은 세션 캐시 즉시 파괴
-        // 사용자가 로그아웃을 눌렀는데, 마침 1초 전에 fetchSession이 실행되어 "로그인 성공" 상태가 5초 캐시에 잡혀있다면
-        // 로그아웃 리다이렉트 직후 홈 화면에서 앱이 다시 로그인 상태라고 착각할 수 있음
-        sessionPromise = null;
-        
-        // 🟢 로그아웃 플래그 설정 (마이페이지 등에서 캐시 무시용)
+        // 🟢 1. [핵심] 즉시 "비로그인 상태"를 캐시에 강제 주입
+        // 이렇게 하면 이후 5초 동안 누가 fetchSession을 호출해도 서버에 묻지 않고 "비로그인"을 반환합니다.
+        sessionPromise = Promise.resolve({ authenticated: false, user: null });
+
         if (typeof window !== "undefined") {
+            // 🟢 2. 로그아웃 직후임을 표시하여 메인 페이지 스플래시 방지
+            // clear() 전에 설정해야 clear()가 실행되어도 플래그가 유지됩니다.
+            sessionStorage.setItem("dona-splash-shown", "true");
             sessionStorage.setItem("auth:loggingOut", Date.now().toString());
+            
+            // 🟢 3. 스토리지 청소 (dona-splash-shown은 위에서 설정했으므로 유지됨)
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // 🟢 4. clear() 후 다시 설정 (clear()가 이미 설정한 플래그를 삭제할 수 있으므로)
+            sessionStorage.setItem("dona-splash-shown", "true");
+            
+            // 🟢 5. 전역 이벤트 발생 (Header/Footer 즉시 반응)
+            window.dispatchEvent(new CustomEvent("authLogout"));
         }
 
-        logoutPromise = (async () => {
-            try {
-                // 🟢 [Fix]: 애플 로그인 직후 쿠키 동기화 대기
-                // 애플 로그인 후 5초 이내라면 쿠키 동기화를 위해 짧은 대기
-                if (typeof window !== "undefined") {
-                    const loginSuccessTime = sessionStorage.getItem("login_success_trigger");
-                    if (loginSuccessTime) {
-                        const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
-                        if (timeSinceLogin < 5000) {
-                            // 🟢 쿠키 동기화를 위해 200ms 대기
-                            await new Promise((resolve) => setTimeout(resolve, 200));
-                        }
-                    }
-                }
+        try {
+            // 서버에 쿠키 삭제 요청
+            await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
 
-                // 🟢 [배포용 최종 핵무기]: 서버가 못 지우는 로컬/세션 스토리지 강제 삭제
-                // 앱의 WebView가 끈질기게 데이터를 붙잡고 있으므로 API 호출 전에 먼저 삭제
-                if (typeof window !== "undefined") {
-                    try {
-                        localStorage.clear();
-                        sessionStorage.clear();
-                    } catch (e) {
-                        console.warn("[authClient] 스토리지 초기화 중 오류:", e);
-                    }
-                }
-
-                const res = await fetch("/api/auth/logout", {
-                    method: "POST",
-                    credentials: "include", // 🟢 쿠키 전송 필수
-                    cache: "no-store", // 🟢 캐시 방지
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                });
-
-                // 🟢 로그아웃 성공 여부와 관계없이 추가 정리 (이미 위에서 clear 했지만 안전장치)
-                if (typeof window !== "undefined") {
-                    // 🟢 [배포용 최종 핵무기]: 추가로 남아있을 수 있는 데이터 완전 삭제
-                    try {
-                        // clear()가 실패했을 경우를 대비한 개별 삭제
-                        localStorage.removeItem("authToken");
-                        localStorage.removeItem("user");
-                        localStorage.removeItem("loginTime");
-                        localStorage.removeItem("isLoggedIn");
-                        // 🟢 로그아웃 시 스플래시를 표시하지 않도록 설정 (메인으로 이동 후 스플래시가 나오지 않도록)
-                        sessionStorage.setItem("dona-splash-shown", "true");
-                        sessionStorage.removeItem("login_success_trigger");
-                        sessionStorage.removeItem("auth:loggingIn");
-                        // 🟢 [Fix]: 로그아웃 시 로그인 관련 플래그도 모두 제거하여 다음 로그인 시 캐시 문제 방지
-                        sessionStorage.removeItem("auth:forceRefresh");
-                        sessionStorage.setItem("auth:loggingOut", Date.now().toString()); // 로그아웃 플래그 설정
-                        
-                        // 🟢 출석 현황 관련 localStorage 삭제
-                        const checkinKeys = [];
-                        for (let i = 0; i < localStorage.length; i++) {
-                            const key = localStorage.key(i);
-                            if (key && (key.includes("checkin") || key.includes("attendance") || key.includes("todayChecked") || key.includes("weekStamps") || key.includes("weekCount") || key.includes("streak"))) {
-                                checkinKeys.push(key);
-                            }
-                        }
-                        checkinKeys.forEach(key => localStorage.removeItem(key));
-                    } catch (fallbackError) {
-                        console.warn("[authClient] 개별 스토리지 삭제 중 오류:", fallbackError);
-                    }
-
-                    // 🟢 전역 이벤트 한 번만 깔끔하게 발생
-                    window.dispatchEvent(new CustomEvent("authLogout"));
-                    window.dispatchEvent(new CustomEvent("authTokenChange"));
-
-                    // 🟢 [배포용 최종 Fix]: 앱 환경에서 로그아웃 처리 강화
-                    const isApp = isMobileApp();
-
-                    // 🟢 [배포용 최종 Fix]: 단순 이동 대신 replace("/")로 히스토리와 캐시를 날림
-                    // 타임스탬프를 붙이지 않고 깔끔하게 메인으로 이동하여 무한 루프 방지
-                    const forceRedirect = () => {
-                        if (isApp && (window as any).ReactNativeWebView) {
-                            // 🟢 [Fix]: 앱에서는 replace 대신 초기 페이지로 이동 유도만 하고
-                            // 실제 네비게이션은 Native bridge 메시지로 처리하는 것이 가장 안전함
-                            console.log(
-                                "[authClient] App environment detected. Skipping window.location.replace to prevent IP exposure."
-                            );
-                        } else {
-                            // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
-                            window.location.replace("/");
-                        }
-                    };
-
-                    if (isApp && (window as any).ReactNativeWebView) {
-                        // 🟢 [App] Expo/React Native 클라이언트 대응
-                        // 앱은 웹보다 쿠키 처리에 보수적이므로 API 호출 후 앱 내부의 전역 상태를 반드시 초기화해야 함
-                        try {
-                            (window as any).ReactNativeWebView.postMessage(
-                                JSON.stringify({
-                                    type: "logout",
-                                    success: res.ok,
-                                    // 🟢 [배포용 최종 Fix]: 타임스탬프 제거, 깔끔한 리다이렉트
-                                    redirect: "/",
-                                    // 🟢 [App] 전역 상태 초기화 지시
-                                    clearState: true, // userContext나 Zustand 등에 저장된 유저 정보를 null로 바꾸도록 지시
-                                    navigateTo: "Login", // navigation.replace('Login') 실행 지시
-                                })
-                            );
-                        } catch (e) {
-                            console.warn("[authClient] WebView 메시지 전송 실패:", e);
-                        }
-                        // 🟢 [Fix]: 앱에서는 location.replace("/")가 IP 노출의 주범일 수 있음
-                        // 약간의 지연 후 세션 스토리지만 비우고 네이티브의 처리를 기다림
-                        setTimeout(() => {
-                            isLoggingOut = false;
-                            logoutPromise = null;
-                            // 🟢 [Fix]: 앱 환경에서는 window.location.replace 호출하지 않음
-                            // Native bridge 메시지로 네비게이션 처리하도록 함
-                        }, 500);
-                        return res.ok;
-                    } else {
-                        // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
-                        if (res.ok) {
-                            // 🟢 skipRedirect 옵션이 있으면 리다이렉트 건너뛰기 (스플래시 표시 후 수동 리다이렉트용)
-                            if (!options?.skipRedirect) {
-                                // 🟢 서버 로그아웃 성공 - 캐시 버스팅 적용
-                                forceRedirect();
-                            }
-                            // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
-                            isLoggingOut = false;
-                            logoutPromise = null;
-                            return true;
-                        } else {
-                            // 🟢 [Fix]: 로그아웃 실패 시 재시도 (애플 로그인 후 쿠키 동기화 문제 대응)
-                            console.warn("[authClient] 로그아웃 실패, 재시도 중...");
-                            try {
-                                // 🟢 100ms 후 재시도
-                                await new Promise((resolve) => setTimeout(resolve, 100));
-                                const retryRes = await fetch("/api/auth/logout", {
-                                    method: "POST",
-                                    credentials: "include",
-                                    cache: "no-store",
-                                });
-
-                                if (retryRes.ok) {
-                                    forceRedirect();
-                                    // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
-                                    isLoggingOut = false;
-                                    logoutPromise = null;
-                                    return true;
-                                }
-                            } catch (retryError) {
-                                console.error("[authClient] 로그아웃 재시도 실패:", retryError);
-                            }
-
-                            // 🟢 재시도 실패해도 클라이언트 상태는 정리하고 리다이렉트 (캐시 버스팅 적용)
-                            forceRedirect();
-                            // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
-                            isLoggingOut = false;
-                            logoutPromise = null;
-                            return false;
-                        }
-                    }
-                }
-
-                return res.ok;
-            } catch (error) {
-                console.error("[authClient] 로그아웃 실패:", error);
-
-                // 🟢 [배포용 최종 Fix]: 에러 발생 시에도 안전을 위해 메인으로 강제 이동
-                if (typeof window !== "undefined") {
-                    // 스토리지 완전 초기화
-                    try {
-                        localStorage.clear();
-                        sessionStorage.clear();
-                    } catch (e) {
-                        console.warn("[authClient] 스토리지 초기화 중 오류:", e);
-                    }
-
-                    window.dispatchEvent(new CustomEvent("authLogout"));
-
-                    // 🟢 [배포용 최종 Fix]: 단순 이동 대신 replace("/")로 히스토리와 캐시를 날림
-                    const isApp = isMobileApp();
-                    const forceRedirect = () => {
-                        if (isApp && (window as any).ReactNativeWebView) {
-                            // 🟢 [Fix]: 앱에서는 replace 대신 초기 페이지로 이동 유도만 하고
-                            // 실제 네비게이션은 Native bridge 메시지로 처리하는 것이 가장 안전함
-                            console.log(
-                                "[authClient] App environment detected. Skipping window.location.replace to prevent IP exposure."
-                            );
-                        } else {
-                            // 🟢 중요: window.location.replace("/")로 히스토리와 캐시를 완전히 날림
-                            window.location.replace("/");
-                        }
-                    };
-
-                    if (isApp && (window as any).ReactNativeWebView) {
-                        // 🟢 [App] 에러 발생 시에도 전역 상태 초기화 지시
-                        try {
-                            (window as any).ReactNativeWebView.postMessage(
-                                JSON.stringify({
-                                    type: "logout",
-                                    success: false,
-                                    // 🟢 [배포용 최종 Fix]: 타임스탬프 제거, 깔끔한 리다이렉트
-                                    redirect: "/",
-                                    // 🟢 [App] 전역 상태 초기화 지시
-                                    clearState: true,
-                                    navigateTo: "Login",
-                                })
-                            );
-                        } catch (e) {
-                            console.warn("[authClient] WebView 메시지 전송 실패:", e);
-                        }
-                        // 🟢 [Fix]: 앱 환경에서는 window.location.replace 호출하지 않음
-                        // Native bridge 메시지로 네비게이션 처리하도록 함
-                        setTimeout(() => {
-                            isLoggingOut = false;
-                            logoutPromise = null;
-                        }, 500);
-                    } else {
-                        forceRedirect();
-                        // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
-                        isLoggingOut = false;
-                        logoutPromise = null;
-                    }
-                }
-                return false;
-            } finally {
-                // 🟢 [Fix]: 에러 발생 시에도 플래그 초기화 (리다이렉트가 실행되지 않은 경우를 대비)
-                // 리다이렉트가 실행된 경우는 이미 위에서 초기화했으므로 여기서는 안전장치 역할
-                if (isLoggingOut) {
-                    setTimeout(() => {
-                        isLoggingOut = false;
-                        logoutPromise = null;
-                    }, 1000);
-                }
+            if (!options?.skipRedirect && typeof window !== "undefined") {
+                // 🟢 4. [핵심] replace 대신 href로 "하드 새로고침"
+                // 모든 자바스크립트 변수와 리액트 상태를 0에서 다시 시작하게 합니다.
+                window.location.href = "/"; 
             }
-        })();
-
-        return logoutPromise;
+            return true;
+        } catch (error) {
+            if (typeof window !== "undefined") window.location.href = "/";
+            return false;
+        } finally {
+            // 리다이렉트가 되므로 의미는 없지만 논리적 완결성을 위해 유지
+            setTimeout(() => { isLoggingOut = false; }, 2000);
+        }
     }
+
+    /**
+     * 🟢 범용 API 호출 헬퍼 (쿠키 자동 포함)
+     * 모든 클라이언트 fetch 요청에 credentials: "include"를 자동으로 추가합니다.
+     */
 
     /**
      * 🟢 범용 API 호출 헬퍼 (쿠키 자동 포함)

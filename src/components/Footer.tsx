@@ -16,69 +16,64 @@ export default function Footer() {
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
 
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            // 🟢 쿠키 기반 인증: fetchSession 사용
-            const { fetchSession } = require("@/lib/authClient");
-            fetchSession().then((session: any) => {
-                setIsLoggedIn(session.authenticated);
+        if (typeof window === "undefined") return;
 
-                // 알림 상태 확인 함수
-                const checkNotificationStatus = async () => {
-                    if (!session.authenticated) {
-                        setNotificationEnabled(null);
-                        return;
+        const checkStatus = async () => {
+            // 🟢 로그아웃 직후라면 아무것도 하지 않음 (이미 리스너에서 처리함)
+            const loggingOutTime = sessionStorage.getItem("auth:loggingOut");
+            if (loggingOutTime && Date.now() - parseInt(loggingOutTime, 10) < 5000) {
+                console.log("[Footer] 로그아웃 직후 - 세션 체크 건너뛰기");
+                return;
+            }
+
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            setIsLoggedIn(session.authenticated);
+
+            // 알림 상태 확인 함수
+            const checkNotificationStatus = async () => {
+                if (!session.authenticated) {
+                    setNotificationEnabled(null);
+                    return;
+                }
+
+                try {
+                    // 🟢 쿠키 기반 인증: userId 가져오기
+                    let userId: number | null = null;
+                    if (session.user) {
+                        userId = session.user.id || null;
                     }
 
-                    try {
-                        // 🟢 쿠키 기반 인증: userId 가져오기
-                        let userId: number | null = null;
-                        if (session.user) {
-                            userId = session.user.id || null;
+                    // API로 userId 가져오기
+                    if (!userId) {
+                        const { authenticatedFetch } = await import("@/lib/authClient");
+                        const userData = await authenticatedFetch("/api/users/profile");
+                        if (userData) {
+                            userId = (userData as any)?.user?.id || (userData as any)?.id || null;
                         }
-
-                        // API로 userId 가져오기
-                        if (!userId) {
-                            const { authenticatedFetch } = await import("@/lib/authClient");
-                            const userData = await authenticatedFetch("/api/users/profile");
-                            if (userData) {
-                                userId = (userData as any)?.user?.id || (userData as any)?.id || null;
-                            }
-                        }
-
-                        // 🟢 [보안] 쿠키 기반 인증: userId를 쿼리 파라미터로 보내지 않음
-                        const { apiFetch } = await import("@/lib/authClient");
-                        const { data: statusData, response: statusResponse } = await apiFetch(`/api/push`);
-                        if (statusResponse.ok && statusData) {
-                            setNotificationEnabled((statusData as any).subscribed ?? false);
-                        }
-                    } catch (error) {
-                        console.error("알림 상태 조회 오류:", error);
-                        // 에러 시 기존 상태 유지 혹은 null
                     }
-                };
 
-                // 1. 초기 로드 시 확인
-                checkNotificationStatus();
-
-                // 2. 주기적으로 상태 확인 (30초마다 - 기존 로직 유지)
-                const interval = setInterval(checkNotificationStatus, 30000);
-
-                // 3. [추가됨] ProfileTab에서 변경 발생 시 즉시 반응하는 리스너
-                const handleNotificationUpdate = (event: CustomEvent) => {
-                    if (event.detail && typeof event.detail.subscribed === "boolean") {
-                        setNotificationEnabled(event.detail.subscribed);
+                    // 🟢 [보안] 쿠키 기반 인증: userId를 쿼리 파라미터로 보내지 않음
+                    const { apiFetch } = await import("@/lib/authClient");
+                    const { data: statusData, response: statusResponse } = await apiFetch(`/api/push`);
+                    if (statusResponse.ok && statusData) {
+                        setNotificationEnabled((statusData as any).subscribed ?? false);
                     }
-                };
+                } catch (error) {
+                    console.error("알림 상태 조회 오류:", error);
+                    // 에러 시 기존 상태 유지 혹은 null
+                }
+            };
 
-                window.addEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
+            // 1. 초기 로드 시 확인
+            await checkNotificationStatus();
+        };
 
-                return () => {
-                    clearInterval(interval);
-                    window.removeEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
-                };
-            });
-        }
-    }, [pathname]);
+        checkStatus();
+        // 30초마다 갱신하는 인터벌 유지
+        const interval = setInterval(checkStatus, 30000);
+        return () => clearInterval(interval);
+    }, [pathname]); // 🟢 pathname이 바뀔 때마다 실행되지만, 로그아웃 시엔 위 가드 로직이 막아줍니다.
 
     // 🟢 로그아웃 이벤트 리스너 (로그아웃 시 즉시 상태 초기화)
     useEffect(() => {
@@ -89,6 +84,17 @@ export default function Footer() {
         };
         window.addEventListener("authLogout", handleAuthLogout as EventListener);
         return () => window.removeEventListener("authLogout", handleAuthLogout as EventListener);
+    }, []);
+
+    // 🟢 알림 업데이트 이벤트 리스너 (ProfileTab에서 변경 발생 시 즉시 반응)
+    useEffect(() => {
+        const handleNotificationUpdate = (event: CustomEvent) => {
+            if (event.detail && typeof event.detail.subscribed === "boolean") {
+                setNotificationEnabled(event.detail.subscribed);
+            }
+        };
+        window.addEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
+        return () => window.removeEventListener("notificationUpdated", handleNotificationUpdate as EventListener);
     }, []);
 
     if (pathname === "/map" || pathname?.startsWith("/map/")) {

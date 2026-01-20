@@ -75,14 +75,16 @@ const Header = memo(() => {
         }
     }, [fetchFavoritesSummary]);
 
-    // 🟢 [Fix]: 로그아웃 이벤트 핸들러 - 즉시 상태 초기화
+    // 🟢 [Fix]: 로그아웃 이벤트 핸들러 - 즉시 상태 초기화 (세션 재확인 제거)
     const handleAuthLogout = useCallback(() => {
+        // 🟢 1. 즉시 UI를 '비로그인'으로 고정
         setIsLoggedIn(false);
         setHasFavorites(false);
-        closeMenu(); // 🟢 [Fix]: 로그아웃 시 메뉴 자동 닫기
-        // 로그아웃 후 세션 재확인
-        checkLoginStatus();
-    }, [checkLoginStatus]);
+        setIsLoggingOut(false); // 오버레이 제거
+        setIsMenuOpen(false); // 메뉴 닫기
+        // 🔴 checkLoginStatus(); <- 이 줄을 반드시 삭제하십시오.
+        // 로그아웃 이벤트가 왔다는 것 자체가 이미 로그아웃이 확정되었음을 의미합니다.
+    }, []);
 
     // --- 🟢 기능 3: 이벤트 리스너 등록 (Auth, Favorites) ---
     useEffect(() => {
@@ -148,43 +150,25 @@ const Header = memo(() => {
     const handleLogout = async () => {
         if (isLoggingOut) return;
 
-        // 1. 🟢 UI 즉시 업데이트 (사용자가 '로그아웃 됨'을 바로 느끼게 함)
+        // 🟢 1. 즉시 오버레이 표시 상태로 변경
+        setIsLoggingOut(true); 
         setIsLoggedIn(false);
         setHasFavorites(false);
         setShowLogoutConfirm(false);
         closeMenu();
-        
-        // 🟢 오버레이가 화면에 표시될 시간을 확보하기 위해 requestAnimationFrame 사용
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        setIsLoggingOut(true); // 로그아웃 오버레이 시작
-        
-        // 🟢 오버레이가 렌더링될 시간을 확보 (최소 100ms)
-        await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
-            // 🟢 출석 현황 관련 localStorage 삭제
-            if (typeof window !== "undefined") {
-                try {
-                    // 출석 관련 키들 삭제
-                    const checkinKeys = [];
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key && (key.includes("checkin") || key.includes("attendance") || key.includes("todayChecked") || key.includes("weekStamps"))) {
-                            checkinKeys.push(key);
-                        }
-                    }
-                    checkinKeys.forEach(key => localStorage.removeItem(key));
-                } catch (e) {
-                    console.warn("[Header] 출석 관련 localStorage 삭제 중 오류:", e);
-                }
-            }
-
             const { logout } = await import("@/lib/authClient");
-            // 2. 🟢 서버 로그아웃 완료까지 대기 (await)
-            await logout({ skipRedirect: true });
             
-            // 3. 🟢 모든 처리가 끝난 후 페이지 이동
-            window.location.replace("/");
+            // 🟢 2. 서버 로그아웃 수행 (리다이렉트 없이 데이터만 처리)
+            await logout({ skipRedirect: true });
+
+            // 🟢 3. [핵심] 오버레이를 보여주기 위한 인위적 대기 (1초)
+            // 이 대기 시간 동안 사용자는 "안전하게 로그아웃 중" 메시지를 보게 됩니다.
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // 🟢 4. 대기 후 페이지 이동
+            window.location.replace("/"); 
         } catch (error) {
             console.error("로그아웃 오류:", error);
             // 에러 발생 시에도 메인으로 이동

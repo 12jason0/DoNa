@@ -4,6 +4,7 @@
     "slug": "duna",
     "owner": "dona-app",
     "version": "1.1.0",
+    "platforms": ["ios", "android"],
     "scheme": [
       "duna",
       "kakaoa6c31213198b3d562121ddace8d1b65f"
@@ -27,19 +28,12 @@
       "usesAppleSignIn": true,
       "userInterfaceStyle": "light",
       "associatedDomains": [
-        "applinks:dona.io.kr",
         "applinks:dona.io.kr"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",
         "LSApplicationQueriesSchemes": [
-          "nmap",
-          "kakaokommunication",
-          "kakaolink",
-          "kakaotalk",
-          "kakaotalk-5.9.7",
-          "kakaokompassauth",
           "nmap",
           "kakaokommunication",
           "kakaolink",
@@ -62,58 +56,9 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "FOREGROUND_SERVICE",
-        "com.android.vending.BILLING",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "FOREGROUND_SERVICE",
         "com.android.vending.BILLING"
       ],
       "intentFilters": [
-        {
-          "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
-          "data": {
-            "scheme": "duna"
-          }
-        },
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "dona.io.kr",
-              "pathPrefix": "/"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        },
-        {
-          "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
-          "data": {
-            "scheme": "kakaoa6c31213198b3d562121ddace8d1b65f"
-          }
-        },
-        {
-          "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
-          "data": {
-            "scheme": "kakaolink"
-          }
-        },
         {
           "action": "VIEW",
           "category": [
