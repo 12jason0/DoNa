@@ -819,11 +819,11 @@ const MyPage = () => {
         return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
     }, []);
 
-    // 🟢 로그아웃 이벤트 리스너 - 로그아웃 시 모든 데이터 초기화 및 리다이렉트
+    // 🟢 로그아웃 이벤트 리스너 - 로그아웃 시 모든 데이터 초기화 (리다이렉트는 Header나 authClient가 담당)
     useEffect(() => {
         const handleAuthLogout = () => {
-            console.log("[MyPage] 로그아웃 이벤트 감지 - 데이터 초기화 및 리다이렉트");
-            // 모든 상태 초기화
+            console.log("[MyPage] 로그아웃 이벤트 감지 - 데이터 초기화");
+            // 1. 🟢 즉시 데이터만 비움 (리다이렉트는 Header나 authClient가 담당)
             setUserInfo(null);
             setUserPreferences(null);
             setFavorites([]);
@@ -835,16 +835,11 @@ const MyPage = () => {
             setCasefiles([]);
             setSavedCourses([]);
             setPersonalStories([]);
-            
-            // 로그인 페이지로 리다이렉트
-            if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-                router.replace("/login");
-            }
         };
 
         window.addEventListener("authLogout", handleAuthLogout as EventListener);
         return () => window.removeEventListener("authLogout", handleAuthLogout as EventListener);
-    }, [router]);
+    }, []);
 
     // 🟢 결제 완료 이벤트 리스너 (구매 내역 즉시 업데이트)
     useEffect(() => {

@@ -146,11 +146,11 @@ const Header = memo(() => {
 
     // --- 🟢 기능 6: 로그아웃 로직 (중복 실행 방지) ---
     const handleLogout = async () => {
-        // 🟢 [Fix]: 이미 로그아웃 중이면 중복 실행 방지
-        if (isLoggingOut) {
-            return;
-        }
+        if (isLoggingOut) return;
 
+        // 1. 🟢 UI 즉시 업데이트 (사용자가 '로그아웃 됨'을 바로 느끼게 함)
+        setIsLoggedIn(false);
+        setHasFavorites(false);
         setShowLogoutConfirm(false);
         closeMenu();
         
@@ -180,24 +180,13 @@ const Header = memo(() => {
             }
 
             const { logout } = await import("@/lib/authClient");
-            // 🟢 skipRedirect 옵션으로 리다이렉트를 건너뛰고, 로그아웃 완료 후 수동으로 리다이렉트
-            const success = await logout({ skipRedirect: true });
+            // 2. 🟢 서버 로그아웃 완료까지 대기 (await)
+            await logout({ skipRedirect: true });
             
-            // 🟢 로그아웃 완료 대기 (서버 쿠키 삭제 완료 대기 + 오버레이 표시 시간)
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            if (success) {
-                // 🟢 로그아웃 완료 후 메인 페이지로 리다이렉트 (미로그인 상태로 표시됨)
-                // 스플래시 없이 바로 메인으로 이동
-                window.location.replace("/");
-            } else {
-                // 로그아웃 실패 시에도 메인 페이지로 이동
-                setIsLoggingOut(false);
-                window.location.replace("/");
-            }
+            // 3. 🟢 모든 처리가 끝난 후 페이지 이동
+            window.location.replace("/");
         } catch (error) {
             console.error("로그아웃 오류:", error);
-            setIsLoggingOut(false);
             // 에러 발생 시에도 메인으로 이동
             window.location.replace("/");
         }

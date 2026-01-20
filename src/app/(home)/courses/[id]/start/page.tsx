@@ -608,21 +608,39 @@ function GuidePageInner() {
         }
     };
 
-    // 🟢 스플래시 제거: 로딩 중이거나 데이터가 없으면 아무것도 렌더링하지 않음
+    // 🟢 [Fix]: 모든 Hook은 리턴문보다 위에 있어야 합니다.
+    
+    // 1. 필요한 변수들을 Hook보다 위에서 계산 (optional chaining 사용)
+    const isLastStep = currentStep === totalSteps - 1;
+    const isCompletePage = currentStep === totalSteps;
+    const currentStepData = useMemo(() => stepData[currentStep] || { photos: [], description: "", tags: [] }, [currentStep, stepData]);
+    
+    const allPhotos = useMemo(() => {
+        if (!course) return [];
+        return isCompletePage
+            ? Object.values(stepData).flatMap(step => step.photos)
+            : currentStepData.photos;
+    }, [isCompletePage, stepData, currentStepData.photos, course]);
+
+    // 2. 이미지 슬라이더 관련 Effect들을 리턴문 위로 이동
+    useEffect(() => {
+        setCurrentImageIndex(0);
+    }, [currentStep]);
+    
+    useEffect(() => {
+        if (currentImageIndex >= allPhotos.length && allPhotos.length > 0) {
+            setCurrentImageIndex(allPhotos.length - 1);
+        } else if (allPhotos.length === 0) {
+            setCurrentImageIndex(0);
+        }
+    }, [allPhotos.length, currentImageIndex]);
+
+    // 3. 🔴 모든 Hook 선언이 끝난 후 조건부 리턴 배치
     if (loading || !course || !course.coursePlaces || course.coursePlaces.length === 0) {
         return null;
     }
 
-    // 🟢 현재 step의 데이터 가져오기
-    const isLastStep = currentStep === totalSteps - 1; // 마지막 장소
-    const isCompletePage = currentStep === totalSteps; // 완료 페이지
-    const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-    
-    // 완료 페이지가 아니면 현재 step의 사진만, 완료 페이지면 모든 사진
-    const allPhotos = isCompletePage
-        ? Object.values(stepData).flatMap(step => step.photos) // 완료 페이지에서는 모든 사진
-        : currentStepData.photos; // 일반 장소에서는 현재 장소의 사진만
-    
+    // --- 이후 렌더링 로직 시작 ---
     const mainImageUrl = allPhotos[0] || currentPlace?.imageUrl;
     const galleryPhotos = allPhotos.slice(1);
     const currentDate = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
@@ -652,20 +670,6 @@ function GuidePageInner() {
             setCurrentImageIndex(currentImageIndex - 1);
         }
     };
-    
-    // 🟢 currentStep이 변경되면 이미지 인덱스 리셋
-    useEffect(() => {
-        setCurrentImageIndex(0);
-    }, [currentStep]);
-    
-    // 🟢 allPhotos가 변경되면 인덱스 조정
-    useEffect(() => {
-        if (currentImageIndex >= allPhotos.length && allPhotos.length > 0) {
-            setCurrentImageIndex(allPhotos.length - 1);
-        } else if (allPhotos.length === 0) {
-            setCurrentImageIndex(0);
-        }
-    }, [allPhotos.length, currentImageIndex]);
 
     // 🟢 완료 페이지: 저장하기와 공유하기만 표시
     if (isCompletePage) {

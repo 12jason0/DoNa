@@ -95,12 +95,12 @@
 
         isLoggingOut = true;
 
-        // 🟢 [긴급 Fix]: 진행 중이거나 캐시된 세션 확인 요청을 즉시 파괴
+        // 🟢 [핵심] 메모리에 남은 세션 캐시 즉시 파괴
         // 사용자가 로그아웃을 눌렀는데, 마침 1초 전에 fetchSession이 실행되어 "로그인 성공" 상태가 5초 캐시에 잡혀있다면
         // 로그아웃 리다이렉트 직후 홈 화면에서 앱이 다시 로그인 상태라고 착각할 수 있음
         sessionPromise = null;
         
-        // 🟢 [Fix]: 로그아웃 플래그를 sessionStorage에 저장하여 다른 컴포넌트에서 세션 캐시를 무시하도록 함
+        // 🟢 로그아웃 플래그 설정 (마이페이지 등에서 캐시 무시용)
         if (typeof window !== "undefined") {
             sessionStorage.setItem("auth:loggingOut", Date.now().toString());
         }
@@ -170,20 +170,9 @@
                         console.warn("[authClient] 개별 스토리지 삭제 중 오류:", fallbackError);
                     }
 
-                    // 🟢 [긴급 Fix]: 로그아웃 이벤트를 여러 번 발생시켜 모든 컴포넌트가 확실히 받도록 함
-                    // 앱 WebView에서는 이벤트 전파가 지연될 수 있으므로 약간의 지연을 두고 여러 번 발생
+                    // 🟢 전역 이벤트 한 번만 깔끔하게 발생
                     window.dispatchEvent(new CustomEvent("authLogout"));
                     window.dispatchEvent(new CustomEvent("authTokenChange"));
-
-                    // 🟢 추가 이벤트 발생 (약간의 지연을 두어 모든 컴포넌트가 확실히 받도록)
-                    setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent("authLogout"));
-                        window.dispatchEvent(new CustomEvent("authTokenChange"));
-                    }, 50);
-
-                    setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent("authLogout"));
-                    }, 150);
 
                     // 🟢 [배포용 최종 Fix]: 앱 환경에서 로그아웃 처리 강화
                     const isApp = isMobileApp();
