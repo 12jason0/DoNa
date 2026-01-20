@@ -1324,7 +1324,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     >
                         {/* 왼쪽: Region */}
                         {selectedMemory.course?.region && (
-                            <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md z-20">
+                            <div className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full z-20">
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     {selectedMemory.course.region}
                                 </span>
@@ -1449,7 +1449,9 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                             }}
                         >
                             <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                                <span className="text-6xl">💕</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-24 h-24 text-pink-500 dark:text-pink-400">
+                                    <path d="M6 4C6 3.44772 6.44772 3 7 3H21C21.5523 3 22 3.44772 22 4V16C22 16.5523 21.5523 17 21 17H18V20C18 20.5523 17.5523 21 17 21H3C2.44772 21 2 20.5523 2 20V8C2 7.44772 2.44772 7 3 7H6V4ZM8 7H17C17.5523 7 18 7.44772 18 8V15H20V5H8V7ZM16 15.7394V9H4V18.6321L11.4911 11.6404L16 15.7394ZM7 13.5C7.82843 13.5 8.5 12.8284 8.5 12C8.5 11.1716 7.82843 10.5 7 10.5C6.17157 10.5 5.5 11.1716 5.5 12C5.5 12.8284 6.17157 13.5 7 13.5Z"></path>
+                                </svg>
                             </div>
                         </div>
                     )}
