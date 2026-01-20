@@ -184,8 +184,8 @@ const MyPage = () => {
             const src: any = raw ?? {};
 
             // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
-            const convertToHttps = (url: string | null | undefined): string => {
-                if (!url) return "";
+            const convertToHttps = (url: string | null | undefined): string | null => {
+                if (!url || url.trim() === "") return null; // 🟢 [Fix]: 빈 문자열이나 null이면 null 반환
                 if (url.startsWith("http://")) {
                     return url.replace(/^http:\/\//, "https://");
                 }
@@ -199,7 +199,18 @@ const MyPage = () => {
                 src.profile_image_url ||
                 (src as any)?.user?.profileImage ||
                 (src as any)?.user?.profileImageUrl ||
-                "";
+                null; // 🟢 [Fix]: 빈 문자열 대신 null 사용하여 기본 이미지가 표시되도록 함
+
+            // 🟢 [Debug]: 프로필 이미지 확인
+            if (process.env.NODE_ENV === "development") {
+                console.log("[MyPage] 프로필 이미지 확인:", {
+                    "src.profileImage": src.profileImage,
+                    "src.profileImageUrl": src.profileImageUrl,
+                    "src.user?.profileImage": (src as any)?.user?.profileImage,
+                    "src.user?.profileImageUrl": (src as any)?.user?.profileImageUrl,
+                    extractedProfileImageUrl: profileImageUrl,
+                });
+            }
 
             // 🟢 subscriptionTier 확인: API 응답의 최상위 레벨과 user 객체 모두 체크
             const tier =
