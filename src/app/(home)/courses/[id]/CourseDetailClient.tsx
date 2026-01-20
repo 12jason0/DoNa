@@ -888,7 +888,7 @@ export default function CourseDetailClient({
                             WebkitOverflowScrolling: "touch", // iOS 부드러운 스크롤 보장
                         }}
                     >
-                        <section className="bg-white dark:bg-[#1a241b] rounded-lg p-8 shadow-lg border border-gray-100 dark:border-gray-800">
+                        <section className="bg-white dark:bg-[#1a241b] rounded-lg p-1 shadow-lg border border-gray-100 dark:border-gray-800">
 
                         </section>
 

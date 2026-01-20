@@ -202,9 +202,15 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
         setLoading(true);
 
         try {
-            // 🟢 쿠키 기반 인증 확인 (localStorage 대신)
-            const { fetchSession } = await import("@/lib/authClient");
-            const session = await fetchSession();
+            // 🟢 [성능 최적화]: 인증 확인과 토스페이먼츠 SDK 로드를 병렬 처리
+            const [sessionData, tossSdk] = await Promise.all([
+                // 쿠키 기반 인증 확인 (localStorage 대신)
+                import("@/lib/authClient").then(({ fetchSession }) => fetchSession()),
+                // 토스페이먼츠 SDK 미리 로드 (웹 결제 시)
+                !isMobileNative ? import("@tosspayments/tosspayments-sdk") : Promise.resolve(null),
+            ]);
+
+            const session = sessionData;
 
             if (!session.authenticated || !session.user) {
                 alert("로그인이 필요합니다.");
@@ -227,20 +233,13 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
             }
 
             // 🟢 [WEB PAYMENT]: 웹 브라우저에서는 토스페이먼츠 사용 (구독권/쿠폰 모두)
-            if (!isMobileNative) {
+            if (!isMobileNative && tossSdk) {
                 const userId = session.user.id;
                 const customerKey = `user_${userId}`;
                 
                 // 🟢 토스페이먼츠 결제 (웹 전용)
-                const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+                const { loadTossPayments } = tossSdk;
                 const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL;
-                
-                // 🟢 [Debug]: 클라이언트 키 확인
-                console.log("[TicketPlans] 클라이언트 키 확인:", {
-                    hasKey: !!clientKey,
-                    keyPrefix: clientKey?.substring(0, 20) + "...",
-                    fullKey: clientKey
-                });
                 
                 if (!clientKey) {
                     throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다. NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL 환경 변수를 확인해주세요.");

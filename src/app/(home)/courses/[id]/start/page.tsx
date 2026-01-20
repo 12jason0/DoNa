@@ -834,12 +834,7 @@ function GuidePageInner() {
         <div className="fixed inset-0 z-100 flex flex-col bg-white overflow-hidden overscroll-none">
             {/* 1. Top Bar (Region & Exit) */}
             <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-2 pb-2 bg-transparent pointer-events-none" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.5rem)' }}>
-                <div className="flex items-center justify-between mb-2 pointer-events-auto">
-                    {course?.region && (
-                        <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{course.region}</span>
-                        </div>
-                    )}
+                <div className="flex items-center justify-end mb-2 pointer-events-auto">
                     <button
                         onClick={() => router.push(`/courses/${courseId}`)}
                         className="w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"

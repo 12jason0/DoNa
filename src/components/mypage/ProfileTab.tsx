@@ -64,22 +64,20 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                         </div>
                     </div>
                     
-                    {displayTier === "FREE" ? (
-                        <button
-                            onClick={() => {
-                                if (typeof window !== "undefined") {
-                                    window.dispatchEvent(new CustomEvent("openTicketPlans"));
-                                }
-                            }}
-                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
-                        >
-                            업그레이드
-                        </button>
-                    ) : (
-                        <span className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-lg text-[10px] font-bold border border-gray-100 dark:border-gray-700">
-                            사용 중
-                        </span>
-                    )}  
+                    <button
+                        onClick={() => {
+                            if (typeof window !== "undefined") {
+                                window.dispatchEvent(new CustomEvent("openTicketPlans"));
+                            }
+                        }}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer ${
+                            displayTier === "PREMIUM"
+                                ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        }`}
+                    >
+                        {displayTier === "PREMIUM" ? "사용 중" : "업그레이드"}
+                    </button>  
                 </div>
 
                 {/* 2. 쿠폰 섹션 - 항상 표시 */}

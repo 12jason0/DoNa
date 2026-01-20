@@ -1291,18 +1291,17 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
             {/* 🟢 추억 상세 모달 - 인스타그램 스토리 스타일 */}
             {showMemoryModal && selectedMemory && (
                 <div
-                    className="fixed inset-0 z-5000 bg-black flex flex-col animate-in fade-in duration-300"
+                    className="fixed inset-0 z-5000 bg-black dark:bg-black flex flex-col animate-in fade-in duration-300"
                     onClick={() => setShowMemoryModal(false)}
                     style={{
                         // 🟢 상단/하단 safe area 영역도 검은색으로 채우기
                         paddingTop: "env(safe-area-inset-top, 0)",
                         paddingBottom: "env(safe-area-inset-bottom, 0)",
-                        backgroundColor: "#000000",
                     }}
                 >
                     {/* 🟢 상단 바 영역 (검은색 배경) - 상태바 영역 포함 */}
                     <div 
-                        className="absolute top-0 left-0 right-0 bg-black z-10"
+                        className="absolute top-0 left-0 right-0 bg-black dark:bg-black z-10"
                         style={{ 
                             height: "env(safe-area-inset-top, 0)",
                         }}
@@ -1310,26 +1309,57 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     
                     {/* 🟢 하단 네비게이션 바 영역 (안드로이드용, 검은색 배경) */}
                     <div 
-                        className="absolute bottom-0 left-0 right-0 bg-black z-10"
+                        className="absolute bottom-0 left-0 right-0 bg-black dark:bg-black z-10"
                         style={{ 
                             height: "env(safe-area-inset-bottom, 0)",
                         }}
                     />
                     
-                    {/* 닫기 버튼 (우측 상단) - 인디케이터와 같은 높이 */}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowMemoryModal(false);
-                        }}
-                        className="absolute right-0 z-30 text-white hover:text-white/80 transition-colors p-4"
+                    {/* 상단 바 영역 - Region, 점 인디케이터, X 버튼 */}
+                    <div 
+                        className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 bg-black dark:bg-black pt-4 pb-4"
                         style={{ 
-                            top: "calc(env(safe-area-inset-top, 0) + 1rem)",
-                            right: "env(safe-area-inset-right, 0)",
+                            top: "env(safe-area-inset-top, 0)",
                         }}
                     >
-                        <X className="w-6 h-6 stroke-2" />
-                    </button>
+                        {/* 왼쪽: Region */}
+                        {selectedMemory.course?.region && (
+                            <div className="px-3 py-1.5 bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md z-20">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {selectedMemory.course.region}
+                                </span>
+                            </div>
+                        )}
+                        
+                        {/* 중앙: 점 인디케이터 */}
+                        {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 1 ? (
+                            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                                {selectedMemory.imageUrls.map((_: any, i: number) => (
+                                    <div
+                                        key={i}
+                                        className={`h-1 rounded-full transition-all ${
+                                            i === currentImageIndex
+                                                ? "bg-white w-8"
+                                                : "bg-white/40 w-1"
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex-1" /> // Region이 없을 때 중앙 정렬을 위한 공간
+                        )}
+                        
+                        {/* 오른쪽: X 버튼 */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMemoryModal(false);
+                            }}
+                            className="text-white hover:text-white/80 transition-colors p-4 z-20"
+                        >
+                            <X className="w-6 h-6 stroke-2" />
+                        </button>
+                    </div>
 
                     {/* 가로 스크롤 사진 갤러리 - 상하단 여백 적용 */}
                     {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 0 ? (
@@ -1382,28 +1412,6 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                         priority={currentIdx < 2}
                                                     />
                                                 </div>
-                                                
-                                                {/* 사진 인디케이터 (상단) */}
-                                                {selectedMemory.imageUrls.length > 1 && (
-                                                    <div 
-                                                        className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
-                                                        style={{ 
-                                                            top: "calc(env(safe-area-inset-top, 0) + 1rem)",
-                                                        }}
-                                                    >
-                                                        {selectedMemory.imageUrls.map((_: any, i: number) => (
-                                                            <div
-                                                                key={i}
-                                                                className={`h-1 rounded-full transition-all ${
-                                                                    i === currentIdx
-                                                                        ? "bg-white w-8"
-                                                                        : "bg-white/40 w-1"
-                                                                }`}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            
                                             </div>
                                         );
                                     });
@@ -1427,27 +1435,6 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                                 priority={idx < 2}
                                             />
                                         </div>
-                                
-                                        {/* 사진 인디케이터 (상단) */}
-                                        {selectedMemory.imageUrls.length > 1 && (
-                                            <div 
-                                                className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
-                                                style={{ 
-                                                    top: "calc(env(safe-area-inset-top, 0) + 1rem)",
-                                                }}
-                                            >
-                                                {selectedMemory.imageUrls.map((_: any, i: number) => (
-                                                    <div
-                                                        key={i}
-                                                        className={`h-1 rounded-full transition-all ${
-                                                            i === idx
-                                                                ? "bg-white w-8"
-                                                                : "bg-white/40 w-1.5"
-                                                        }`}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
                                     </div>
                                 ))
                             )}
