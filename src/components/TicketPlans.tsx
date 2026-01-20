@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Check, Sparkles, ChevronRight } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Check, Sparkles, ChevronRight, ArrowLeft } from "lucide-react";
 import { isMobileApp } from "@/lib/platform";
+import Link from "next/link";
 
 const PLANS = [
     {
@@ -31,7 +32,7 @@ const PLANS = [
     { id: "ticket_pro", type: "ticket", name: "쿠폰 10개", price: 7900, desc: "완벽 마스터용" },
 ];
 
-const TicketPlans = ({ onClose }: { onClose: () => void }) => {
+const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal?: boolean }) => {
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
     
@@ -43,39 +44,64 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
     // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보
     const [revenueCatProducts, setRevenueCatProducts] = useState<Record<string, any>>({});
 
-    // 🟢 현재 사용자 등급 확인
-    useEffect(() => {
-        const fetchUserTier = async () => {
-            try {
-                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-                const { authenticatedFetch } = await import("@/lib/authClient");
-                // 🟢 타입 명시: authenticatedFetch는 이미 파싱된 데이터를 반환
-                const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
+    // 🟢 현재 사용자 등급 확인 함수 (재사용 가능하도록 useCallback으로 정의)
+    const fetchUserTier = useCallback(async () => {
+        try {
+            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            // 🟢 타입 명시: authenticatedFetch는 이미 파싱된 데이터를 반환
+            const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
 
-                if (!data) {
-                    setCurrentTier("FREE");
-                    return;
-                }
-
-                // 🟢 authenticatedFetch는 이미 파싱된 데이터를 반환하므로 직접 사용
-                const tier = data?.user?.subscriptionTier || "FREE";
-                setCurrentTier(tier as "FREE" | "BASIC" | "PREMIUM");
-
-                // 🟢 현재 등급이 BASIC 이상이면 첫 번째 티켓 플랜을 기본 선택으로 변경
-                if (tier !== "FREE" && selectedPlanId.startsWith("sub_")) {
-                    const firstTicket = PLANS.find((p) => p.type === "ticket");
-                    if (firstTicket) {
-                        setSelectedPlanId(firstTicket.id);
-                    }
-                }
-            } catch (error) {
-                console.error("사용자 등급 조회 실패:", error);
+            if (!data) {
                 setCurrentTier("FREE");
+                return;
             }
+
+            // 🟢 authenticatedFetch는 이미 파싱된 데이터를 반환하므로 직접 사용
+            const tier = data?.user?.subscriptionTier || "FREE";
+            setCurrentTier(tier as "FREE" | "BASIC" | "PREMIUM");
+
+            // 🟢 현재 등급이 BASIC 이상이면 첫 번째 티켓 플랜을 기본 선택으로 변경
+            if (tier !== "FREE" && selectedPlanId.startsWith("sub_")) {
+                const firstTicket = PLANS.find((p) => p.type === "ticket");
+                if (firstTicket) {
+                    setSelectedPlanId(firstTicket.id);
+                }
+            }
+        } catch (error) {
+            console.error("사용자 등급 조회 실패:", error);
+            setCurrentTier("FREE");
+        }
+    }, [selectedPlanId]);
+
+    // 🟢 컴포넌트 마운트 시 사용자 등급 확인
+    useEffect(() => {
+        fetchUserTier();
+    }, [fetchUserTier]);
+
+    // 🟢 결제 성공 이벤트 감지하여 사용자 등급 자동 업데이트
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const handlePurchaseSuccess = () => {
+            console.log("[TicketPlans] 결제 성공 이벤트 감지 - 사용자 등급 업데이트 중...");
+            // 약간의 지연 후 업데이트 (결제 처리 완료 대기)
+            setTimeout(() => {
+                fetchUserTier();
+            }, 1000);
         };
 
-        fetchUserTier();
-    }, []);
+        // 여러 이벤트 리스닝 (인앱 결제, 웹 결제 모두 대응)
+        window.addEventListener("purchaseSuccess", handlePurchaseSuccess as EventListener);
+        window.addEventListener("paymentSuccess", handlePurchaseSuccess as EventListener);
+        window.addEventListener("subscriptionChanged", handlePurchaseSuccess as EventListener);
+
+        return () => {
+            window.removeEventListener("purchaseSuccess", handlePurchaseSuccess as EventListener);
+            window.removeEventListener("paymentSuccess", handlePurchaseSuccess as EventListener);
+            window.removeEventListener("subscriptionChanged", handlePurchaseSuccess as EventListener);
+        };
+    }, [fetchUserTier]);
 
     // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보 수신
     useEffect(() => {
@@ -266,28 +292,67 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-10000 flex items-end sm:items-center justify-center bg-black/70 dark:bg-black/80 backdrop-blur-md p-0 sm:p-5">
-            <div className="bg-white dark:bg-[#1a241b] w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-4xl sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl transition-all">
-                {/* 상단 헤더 */}
-                <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
-                    <div>
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">
-                            두나 멤버십으로
-                            <br />
-                            <span className="text-emerald-500 dark:text-emerald-400">데이트 고민 끝! ✨</span>
-                        </h2>
-                        <p className="text-gray-400 dark:text-gray-500 text-sm mt-1 font-medium">
-                            합리적인 가격으로 즐기는 스마트한 데이트
-                        </p>
+    // 🟢 모달 형태일 때와 페이지 형태일 때 다른 레이아웃 적용
+    if (isModal) {
+        return (
+            <div className="fixed inset-0 z-10000 flex items-end sm:items-center justify-center bg-black/70 dark:bg-black/80 backdrop-blur-md p-0 sm:p-5">
+                <div className="bg-white dark:bg-[#1a241b] w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[85vh] rounded-t-4xl sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl transition-all">
+                    {/* 상단 헤더 */}
+                    <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
+                        <div>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">
+                                두나 멤버십으로
+                                <br />
+                                <span className="text-emerald-500 dark:text-emerald-400">데이트 고민 끝! ✨</span>
+                            </h2>
+                            <p className="text-gray-400 dark:text-gray-500 text-sm mt-1 font-medium">
+                                합리적인 가격으로 즐기는 스마트한 데이트
+                            </p>
+                        </div>
+                        <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:rotate-90 transition-all">
+                            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:rotate-90 transition-all">
-                        <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                    </button>
+                    {renderContent()}
                 </div>
+            </div>
+        );
+    }
 
+    // 🟢 페이지 형태 렌더링
+    return (
+        <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0f1710] pb-20">
+            <div className="max-w-2xl mx-auto px-6 py-12">
+                {/* 뒤로 가기 링크 */}
+                <Link
+                    href="/"
+                    className="text-gray-400 dark:text-gray-500 flex items-center gap-1 mb-6 hover:text-gray-900 dark:hover:text-gray-200 transition-all font-medium"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    홈으로
+                </Link>
+                
+                {/* 상단 헤더 */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">
+                        두나 멤버십으로
+                        <br />
+                        <span className="text-emerald-500 dark:text-emerald-400">데이트 고민 끝! ✨</span>
+                    </h1>
+                    <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">
+                        합리적인 가격으로 즐기는 스마트한 데이트
+                    </p>
+                </div>
+                {renderContent()}
+            </div>
+        </div>
+    );
+
+    function renderContent() {
+        return (
+            <>
                 {/* 스크롤 가능한 콘텐츠 영역 */}
-                <div className="flex-1 overflow-y-auto px-6 space-y-8 pb-10 custom-scrollbar">
+                <div className={isModal ? "flex-1 overflow-y-auto px-6 space-y-8 pb-10 custom-scrollbar" : "space-y-8"}>
                     {/* 구독 플랜 */}
                     <div className="space-y-4 pt-2">
                         <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
@@ -443,7 +508,7 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                 </div>
 
                 {/* 하단 고정 결제 버튼 */}
-                <div className="p-6 bg-white dark:bg-[#1a241b] border-t border-gray-50 dark:border-gray-800 shrink-0">
+                <div className={isModal ? "p-6 bg-white dark:bg-[#1a241b] border-t border-gray-50 dark:border-gray-800 shrink-0" : "mt-8"}>
                     <button
                         onClick={handlePayment}
                         disabled={loading}
@@ -459,9 +524,9 @@ const TicketPlans = ({ onClose }: { onClose: () => void }) => {
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
-    );
+            </>
+        );
+    }
 };
 
 export default TicketPlans;

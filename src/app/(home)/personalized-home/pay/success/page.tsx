@@ -130,6 +130,8 @@ function PaymentSuccessContent() {
                         if (data.updatedUser?.subscriptionTier) {
                             window.dispatchEvent(new CustomEvent("subscriptionChanged"));
                         }
+                        // 🟢 purchaseSuccess 이벤트 발생 (TicketPlans 컴포넌트에서 사용자 등급 자동 업데이트용)
+                        window.dispatchEvent(new CustomEvent("purchaseSuccess"));
                     }
 
                     setStatus("success");

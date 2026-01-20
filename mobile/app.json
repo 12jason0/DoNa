@@ -48,7 +48,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "kr.io.dona.dona",
-      "versionCode": 24,
+      "versionCode": 25,
       "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [
