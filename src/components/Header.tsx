@@ -162,9 +162,20 @@ const Header = memo(() => {
         setIsLoggingOut(true); // 스플래시 시작
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1500)); // 1.5초 대기
+            await new Promise((resolve) => setTimeout(resolve, 1500)); // 1.5초 대기 (스플래시 표시)
             const { logout } = await import("@/lib/authClient");
-            await logout(); // 내부에서 window.location.replace("/") 실행됨
+            // 🟢 skipRedirect 옵션으로 리다이렉트를 건너뛰고, 로그아웃 완료 후 수동으로 리다이렉트
+            const success = await logout({ skipRedirect: true });
+            if (success) {
+                // 🟢 로그아웃 성공 후 추가 스플래시 표시 시간 (0.5초)
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                // 🟢 스플래시를 보여준 후 메인 페이지로 리다이렉트
+                window.location.replace("/");
+            } else {
+                // 로그아웃 실패 시에도 메인 페이지로 이동
+                setIsLoggingOut(false);
+                window.location.replace("/");
+            }
         } catch (error) {
             console.error("로그아웃 오류:", error);
             setIsLoggingOut(false);

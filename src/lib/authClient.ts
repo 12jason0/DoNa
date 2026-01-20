@@ -59,8 +59,10 @@ let logoutPromise: Promise<boolean> | null = null;
  *
  * 서버의 쿠키를 삭제하여 로그아웃합니다.
  * localStorage를 사용하지 않고 쿠키만 사용합니다.
+ * 
+ * @param options.skipRedirect - true이면 리다이렉트를 하지 않음 (스플래시 표시 후 수동 리다이렉트용)
  */
-export async function logout(): Promise<boolean> {
+export async function logout(options?: { skipRedirect?: boolean }): Promise<boolean> {
     // 🟢 [Fix]: 이미 로그아웃 중이면 기존 Promise 반환
     if (isLoggingOut && logoutPromise) {
         console.warn("[authClient] 로그아웃이 이미 진행 중입니다.");
@@ -188,8 +190,11 @@ export async function logout(): Promise<boolean> {
                 } else {
                     // 🟢 웹 환경: 로그아웃 성공 여부 확인 후 리다이렉트
                     if (res.ok) {
-                        // 🟢 서버 로그아웃 성공 - 캐시 버스팅 적용
-                        forceRedirect();
+                        // 🟢 skipRedirect 옵션이 있으면 리다이렉트 건너뛰기 (스플래시 표시 후 수동 리다이렉트용)
+                        if (!options?.skipRedirect) {
+                            // 🟢 서버 로그아웃 성공 - 캐시 버스팅 적용
+                            forceRedirect();
+                        }
                         // 🟢 [Fix]: 리다이렉트 후에는 플래그 즉시 초기화
                         isLoggingOut = false;
                         logoutPromise = null;
