@@ -12,17 +12,11 @@ import KakaoChannelModal from "@/components/KakaoChannelModal";
 import LogoutModal from "@/components/LogoutModal";
 import LoginModal from "@/components/LoginModal";
 
-// 🟢 [로그아웃 스플래시 UI] - 무결성 유지
-const LogoutSplash = () => (
-    <div className="fixed inset-0 z-9999 bg-white dark:bg-[#0f1710] flex flex-col items-center justify-center">
-        <div className="flex flex-col items-center animate-pulse">
-            <span className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tighter italic">DoNa</span>
-            <div className="flex gap-1">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
-            </div>
-            <p className="mt-6 text-gray-500 dark:text-gray-400 font-medium tracking-tight">
+// 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시
+const LogoutOverlay = () => (
+    <div className="fixed inset-0 z-9999 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center">
+        <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-200 dark:border-gray-800 px-6 py-4 shadow-xl">
+            <p className="text-gray-700 dark:text-gray-300 font-medium tracking-tight">
                 안전하게 로그아웃 중입니다...
             </p>
         </div>
@@ -159,17 +153,14 @@ const Header = memo(() => {
 
         setShowLogoutConfirm(false);
         closeMenu();
-        setIsLoggingOut(true); // 스플래시 시작
+        setIsLoggingOut(true); // 로그아웃 오버레이 시작
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1500)); // 1.5초 대기 (스플래시 표시)
             const { logout } = await import("@/lib/authClient");
             // 🟢 skipRedirect 옵션으로 리다이렉트를 건너뛰고, 로그아웃 완료 후 수동으로 리다이렉트
             const success = await logout({ skipRedirect: true });
             if (success) {
-                // 🟢 로그아웃 성공 후 추가 스플래시 표시 시간 (0.5초)
-                await new Promise((resolve) => setTimeout(resolve, 500));
-                // 🟢 스플래시를 보여준 후 메인 페이지로 리다이렉트
+                // 🟢 로그아웃 성공 후 메인 페이지로 리다이렉트 (미로그인 상태로 표시됨)
                 window.location.replace("/");
             } else {
                 // 로그아웃 실패 시에도 메인 페이지로 이동
@@ -190,7 +181,7 @@ const Header = memo(() => {
 
     return (
         <>
-            {isLoggingOut && <LogoutSplash />}
+            {isLoggingOut && <LogoutOverlay />}
 
             <header className="relative z-50 bg-white dark:bg-[#1a241b] shadow-sm dark:shadow-gray-900/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -361,14 +352,15 @@ const Header = memo(() => {
                                             </Link>
                                         ) : (
                                             <>
-                                                <Link
-                                                    href="/login?next=/"
-                                                    prefetch={true}
-                                                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                                    onClick={closeMenu}
+                                                <button
+                                                    onClick={() => {
+                                                        closeMenu();
+                                                        setShowLoginModal(true);
+                                                    }}
+                                                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                                 >
                                                     로그인
-                                                </Link>
+                                                </button>
                                                 <Link
                                                     href="/signup"
                                                     prefetch={true}
