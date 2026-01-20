@@ -1325,7 +1325,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                         {/* 왼쪽: Region */}
                         {selectedMemory.course?.region && (
                             <div className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full z-20">
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <span className="text-sm font-medium text-white dark:text-gray-300">
                                     {selectedMemory.course.region}
                                 </span>
                             </div>
