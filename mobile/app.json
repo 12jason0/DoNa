@@ -27,12 +27,19 @@
       "usesAppleSignIn": true,
       "userInterfaceStyle": "light",
       "associatedDomains": [
+        "applinks:dona.io.kr",
         "applinks:dona.io.kr"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "사용자의 현재 위치를 기반으로 주변 데이트 코스를 추천해드리기 위해 위치 정보가 필요합니다.",
         "LSApplicationQueriesSchemes": [
+          "nmap",
+          "kakaokommunication",
+          "kakaolink",
+          "kakaotalk",
+          "kakaotalk-5.9.7",
+          "kakaokompassauth",
           "nmap",
           "kakaokommunication",
           "kakaolink",
@@ -52,6 +59,10 @@
       "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "com.android.vending.BILLING",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "FOREGROUND_SERVICE",
@@ -102,13 +113,55 @@
           "data": {
             "scheme": "kakaolink"
           }
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": {
+            "scheme": "duna"
+          }
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "dona.io.kr",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": {
+            "scheme": "kakaoa6c31213198b3d562121ddace8d1b65f"
+          }
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": {
+            "scheme": "kakaolink"
+          }
         }
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
+
     "plugins": [
       "./purchases-plugin.js",
       "expo-sqlite",
@@ -132,7 +185,8 @@
             "enableProguardInReleaseBuilds": true,
             "extraMavenRepos": [
               "https://devrepo.kakao.com/nexus/content/groups/public/"
-            ]
+            ],
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
@@ -142,6 +196,12 @@
       "eas": {
         "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/78b14f63-823b-4fb6-ba4a-8c5a8528a204"
     }
   }
 }
