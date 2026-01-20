@@ -153,6 +153,9 @@
                         sessionStorage.setItem("dona-splash-shown", "true");
                         sessionStorage.removeItem("login_success_trigger");
                         sessionStorage.removeItem("auth:loggingIn");
+                        // 🟢 [Fix]: 로그아웃 시 로그인 관련 플래그도 모두 제거하여 다음 로그인 시 캐시 문제 방지
+                        sessionStorage.removeItem("auth:forceRefresh");
+                        sessionStorage.setItem("auth:loggingOut", Date.now().toString()); // 로그아웃 플래그 설정
                         
                         // 🟢 출석 현황 관련 localStorage 삭제
                         const checkinKeys = [];

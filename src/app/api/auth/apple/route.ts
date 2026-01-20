@@ -160,27 +160,55 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
             }
 
             // 🟢 upsert로 원자적 처리 (이미 있으면 업데이트, 없으면 생성)
-            const upsertedUser = await tx.user.upsert({
-                where: {
-                    unique_social_provider: {
-                        socialId: appleUserId,
-                        provider: "apple",
-                    },
-                },
-                update: {
-                    // 기존 유저의 경우 프로필 정보만 업데이트 (email은 충돌 없을 때만)
-                    ...updateData,
-                    // 🟢 [Fix]: Prisma update에서는 함수를 사용할 수 없으므로, upsert 후 별도로 처리
-                },
-                create: {
-                    email: createEmail, // 🟢 충돌 없을 때만 email 설정, 있으면 null
-                    username: `user_${appleUserId.substring(0, 6)}`,
+            // 🟢 [Fix]: email 충돌 방지를 위해 update/create 데이터 분리
+            const upsertWhere = {
+                unique_social_provider: {
                     socialId: appleUserId,
                     provider: "apple",
-                    couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
-                    profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                 },
-            });
+            };
+            
+            let upsertedUser;
+            try {
+                upsertedUser = await tx.user.upsert({
+                    where: upsertWhere,
+                    update: {
+                        // 기존 유저의 경우 프로필 정보만 업데이트 (email은 충돌 없을 때만)
+                        ...updateData,
+                    },
+                    create: {
+                        email: createEmail, // 🟢 충돌 없을 때만 email 설정, 있으면 null
+                        username: `user_${appleUserId.substring(0, 6)}`,
+                        socialId: appleUserId,
+                        provider: "apple",
+                        couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
+                        profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
+                    },
+                });
+            } catch (upsertError: any) {
+                // 🟢 [Fix]: upsert 실패 시 (email unique constraint 등) 재시도 로직
+                if (upsertError?.code === "P2002" && upsertError?.meta?.target?.includes("email")) {
+                    console.warn(`[Apple Auth] Email unique constraint 에러 재시도: ${email}`);
+                    // email을 null로 설정하고 재시도
+                    upsertedUser = await tx.user.upsert({
+                        where: upsertWhere,
+                        update: {
+                            ...updateData,
+                            email: undefined, // email 업데이트 건너뛰기
+                        },
+                        create: {
+                            email: null, // 🟢 email 충돌 시 null로 생성
+                            username: `user_${appleUserId.substring(0, 6)}`,
+                            socialId: appleUserId,
+                            provider: "apple",
+                            couponCount: initialCoupons,
+                            profileImageUrl: DEFAULT_PROFILE_IMG,
+                        },
+                    });
+                } else {
+                    throw upsertError; // 다른 에러는 그대로 throw
+                }
+            }
 
             // 🟢 프로필 이미지가 없으면 기본 이미지로 업데이트
             if (!upsertedUser.profileImageUrl) {
@@ -366,29 +394,59 @@ async function handleAppAppleAuthLogic(
             }
 
             // 🟢 upsert로 원자적 처리 (이미 있으면 업데이트, 없으면 생성)
-            const upsertedUser = await tx.user.upsert({
-                where: {
-                    unique_social_provider: {
-                        socialId: appleUserId,
-                        provider: "apple",
-                    },
-                },
-                update: {
-                    // 기존 유저의 경우 프로필 정보만 업데이트 (email은 충돌 없을 때만)
-                    ...updateData,
-                    // 🟢 [Fix]: Prisma update에서는 함수를 사용할 수 없으므로, upsert 후 별도로 처리
-                },
-                create: {
-                    email: createEmail, // 🟢 충돌 없을 때만 email 설정, 있으면 null
-                    username: fullName
-                        ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim()
-                        : `user_${appleUserId.substring(0, 6)}`,
+            // 🟢 [Fix]: email 충돌 방지를 위해 update/create 데이터 분리
+            const upsertWhere = {
+                unique_social_provider: {
                     socialId: appleUserId,
                     provider: "apple",
-                    couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
-                    profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                 },
-            });
+            };
+            
+            let upsertedUser;
+            try {
+                upsertedUser = await tx.user.upsert({
+                    where: upsertWhere,
+                    update: {
+                        // 기존 유저의 경우 프로필 정보만 업데이트 (email은 충돌 없을 때만)
+                        ...updateData,
+                    },
+                    create: {
+                        email: createEmail, // 🟢 충돌 없을 때만 email 설정, 있으면 null
+                        username: fullName
+                            ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim()
+                            : `user_${appleUserId.substring(0, 6)}`,
+                        socialId: appleUserId,
+                        provider: "apple",
+                        couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
+                        profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
+                    },
+                });
+            } catch (upsertError: any) {
+                // 🟢 [Fix]: upsert 실패 시 (email unique constraint 등) 재시도 로직
+                if (upsertError?.code === "P2002" && upsertError?.meta?.target?.includes("email")) {
+                    console.warn(`[Apple Auth] Email unique constraint 에러 재시도: ${email}`);
+                    // email을 null로 설정하고 재시도
+                    upsertedUser = await tx.user.upsert({
+                        where: upsertWhere,
+                        update: {
+                            ...updateData,
+                            email: undefined, // email 업데이트 건너뛰기
+                        },
+                        create: {
+                            email: null, // 🟢 email 충돌 시 null로 생성
+                            username: fullName
+                                ? `${fullName.familyName || ""}${fullName.givenName || ""}`.trim()
+                                : `user_${appleUserId.substring(0, 6)}`,
+                            socialId: appleUserId,
+                            provider: "apple",
+                            couponCount: initialCoupons,
+                            profileImageUrl: DEFAULT_PROFILE_IMG,
+                        },
+                    });
+                } else {
+                    throw upsertError; // 다른 에러는 그대로 throw
+                }
+            }
 
             // 🟢 프로필 이미지가 없으면 기본 이미지로 업데이트
             if (!upsertedUser.profileImageUrl) {

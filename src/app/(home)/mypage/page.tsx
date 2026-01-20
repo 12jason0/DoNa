@@ -119,11 +119,15 @@ const MyPage = () => {
             // 실시간 업데이트가 필요한 경우(결제/환불/쿠폰 사용 등) 캐시 무시
             const shouldForceRefresh = (window as any).__forceRefreshUserInfo || (window as any).__couponAwardedRefresh;
             
-            // 🟢 [Fix]: 로그인 직후 30초 이내라면 캐시를 완전히 무시함 (로컬/카카오 로그인 통합)
-            // 30초로 연장하여 로그인 직후 마이페이지 접속 시 확실히 새 정보를 가져오도록 함
+            // 🟢 [Fix]: 로그인 직후 또는 로그아웃 직후 재로그인 시 캐시를 완전히 무시함
+            // 로그아웃 후 재로그인 시에도 이전 사용자 데이터가 표시되지 않도록 확실히 캐시 무시
+            const timeSinceLogout = loggingOutTime ? (now - parseInt(loggingOutTime, 10)) : Infinity;
+            const timeSinceLogin = forceRefreshTime ? (now - parseInt(forceRefreshTime, 10)) : Infinity;
+            
+            // 로그아웃 직후 60초 이내 또는 로그인 직후 30초 이내라면 캐시 무시
             const shouldIgnoreCache = (
-                (forceRefreshTime && (now - parseInt(forceRefreshTime, 10)) < 30000) ||
-                (loggingOutTime && (now - parseInt(loggingOutTime, 10)) < 10000) ||
+                (forceRefreshTime && timeSinceLogin < 30000) ||
+                (loggingOutTime && timeSinceLogout < 60000) || // 🟢 로그아웃 후 60초간 캐시 무시 (재로그인 감지)
                 shouldForceRefresh
             );
             
@@ -669,39 +673,51 @@ const MyPage = () => {
             setActiveTab(initialTab);
         } catch {}
 
-        // 🟢 [Fix]: 로그인 직후 마이페이지 접속 시 강제로 세션 재확인 및 캐시 무효화 (로컬/카카오 로그인 통합)
+        // 🟢 [Fix]: 로그인 직후 또는 로그아웃 직후 재로그인 시 강제로 세션 재확인 및 캐시 무효화
         const forceRefreshOnMount = async () => {
             const forceRefreshTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:forceRefresh") : null;
-            if (forceRefreshTime) {
-                const timeSinceLogin = Date.now() - parseInt(forceRefreshTime, 10);
-                // 로그인 직후 30초 이내라면 세션 강제 재확인
-                if (timeSinceLogin < 30000) {
-                    try {
-                        // 🟢 세션 캐시 무효화를 위해 fetchSession 먼저 호출
-                        // fetchSession 내부에서 auth:forceRefresh 플래그를 확인하고 캐시를 무효화함
-                        const { fetchSession } = await import("@/lib/authClient");
-                        const sessionResult = await fetchSession();
-                        console.log("[MyPage] 로그인 직후 감지 - 세션 캐시 무효화 완료", {
-                            authenticated: sessionResult.authenticated,
-                            userId: sessionResult.user?.id,
-                            userName: sessionResult.user?.name
-                        });
-                        // fetchUserInfo에서 캐시를 무시하도록 플래그가 이미 설정되어 있음
-                    } catch (error) {
-                        console.error("[MyPage] 세션 재확인 실패:", error);
-                    }
+            const loggingOutTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:loggingOut") : null;
+            const now = Date.now();
+            
+            const timeSinceLogin = forceRefreshTime ? (now - parseInt(forceRefreshTime, 10)) : Infinity;
+            const timeSinceLogout = loggingOutTime ? (now - parseInt(loggingOutTime, 10)) : Infinity;
+            
+            // 로그인 직후 또는 로그아웃 직후 재로그인 시 세션 강제 재확인
+            if ((forceRefreshTime && timeSinceLogin < 30000) || (loggingOutTime && timeSinceLogout < 60000)) {
+                try {
+                    // 🟢 세션 캐시 무효화를 위해 fetchSession 먼저 호출
+                    // fetchSession 내부에서 auth:forceRefresh 플래그를 확인하고 캐시를 무효화함
+                    const { fetchSession } = await import("@/lib/authClient");
+                    const sessionResult = await fetchSession();
+                    console.log("[MyPage] 로그인/재로그인 직후 감지 - 세션 캐시 무효화 완료", {
+                        authenticated: sessionResult.authenticated,
+                        userId: sessionResult.user?.id,
+                        userName: sessionResult.user?.name,
+                        timeSinceLogin,
+                        timeSinceLogout
+                    });
+                    // fetchUserInfo에서 캐시를 무시하도록 플래그가 이미 설정되어 있음
+                } catch (error) {
+                    console.error("[MyPage] 세션 재확인 실패:", error);
                 }
             }
         };
 
         // 🟢 [Performance]: 초기 로딩 최적화 - 병렬 처리 및 빠른 UI 표시
-        // 🟢 [Fix]: 로그인 직후에는 세션 재확인을 먼저 완료한 후 데이터 로드 (캐시 무효화 보장)
+        // 🟢 [Fix]: 로그인 직후 또는 로그아웃 직후 재로그인 시에는 세션 재확인을 먼저 완료한 후 데이터 로드 (캐시 무효화 보장)
         const forceRefreshTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:forceRefresh") : null;
-        const isLoginJustAfter = forceRefreshTime && (Date.now() - parseInt(forceRefreshTime, 10)) < 30000;
+        const loggingOutTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:loggingOut") : null;
+        const now = Date.now();
+        
+        const timeSinceLogin = forceRefreshTime ? (now - parseInt(forceRefreshTime, 10)) : Infinity;
+        const timeSinceLogout = loggingOutTime ? (now - parseInt(loggingOutTime, 10)) : Infinity;
+        
+        const isLoginJustAfter = forceRefreshTime && timeSinceLogin < 30000;
+        const isAfterLogout = loggingOutTime && timeSinceLogout < 60000;
         
         const loadInitialData = async () => {
-            // 로그인 직후: 세션 재확인을 먼저 완료
-            if (isLoginJustAfter) {
+            // 로그인 직후 또는 로그아웃 직후 재로그인: 세션 재확인을 먼저 완료
+            if (isLoginJustAfter || isAfterLogout) {
                 await forceRefreshOnMount();
                 // 잠시 대기하여 세션 캐시 완전 무효화 보장
                 await new Promise(resolve => setTimeout(resolve, 100));
