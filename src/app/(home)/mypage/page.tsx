@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import LogoutModal from "@/components/LogoutModal";
 import PasswordCheckModal from "@/components/passwordChackModal";
 import { useTheme } from "@/context/ThemeContext";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 // 🟢 성능 최적화: 탭 컴포넌트 동적 로딩 (코드 스플리팅)
 const ProfileTab = lazy(() => import("@/components/mypage/ProfileTab"));
@@ -247,7 +248,11 @@ const MyPage = () => {
                 });
             }
 
-            const finalUserInfo = {
+            // 🟢 기본 프로필 이미지 설정
+            const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
+            const convertedProfileImage = convertToHttps(profileImageUrl);
+            
+            const finalUserInfo: UserInfo = {
                 name: src.name || src.username || src.nickname || (src as any)?.user?.name || (src as any)?.user?.username || "",
                 email: src.email || src.userEmail || (src as any)?.user?.email || "",
                 joinDate: src.joinDate
@@ -257,7 +262,7 @@ const MyPage = () => {
                     : (src as any)?.user?.createdAt
                     ? new Date((src as any).user.createdAt).toLocaleDateString()
                     : "",
-                profileImage: convertToHttps(profileImageUrl),
+                profileImage: convertedProfileImage || DEFAULT_PROFILE_IMG, // 🟢 프로필 이미지가 없으면 기본 이미지 사용
                 mbti: src.mbti ?? (src as any)?.user?.mbti ?? null,
                 age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : (src as any)?.user?.age ?? null,
                 ageRange: src.ageRange || src.age_range || (src as any)?.user?.ageRange || (src as any)?.user?.age_range || null,
@@ -1044,7 +1049,14 @@ const MyPage = () => {
             <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-[#0f1710] dark:via-[#0f1710] dark:to-[#1a241b]">
                 <main className="max-w-4xl mx-auto px-4 py-8 pt-24">
                     <div className="text-center">
-                        <div className="text-6xl mb-4">⏳</div>
+                        <div className="mb-4 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700 dark:text-gray-300">
+                                <path d="M5 22h14"/>
+                                <path d="M5 2h14"/>
+                                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+                                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+                            </svg>
+                        </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">로딩 중...</h1>
                         <p className="text-gray-600 dark:text-gray-400">마이페이지 정보를 불러오고 있습니다</p>
                     </div>

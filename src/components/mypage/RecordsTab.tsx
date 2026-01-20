@@ -172,7 +172,11 @@ const RecordsTab = ({
                         </div>
                     ) : (
                         <div className="text-center py-8">
-                            <div className="text-6xl mb-4">💖</div>
+                            <div className="mb-4 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 dark:text-red-400">
+                                    <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>
+                                </svg>
+                            </div>
                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">찜한 코스가 없어요</h4>
                             <p className="text-gray-600 dark:text-gray-400 mb-4">마음에 드는 코스를 찜해보세요!</p>
                             <button
@@ -221,7 +225,16 @@ const RecordsTab = ({
                         </div>
                     ) : (
                         <div className="text-center py-10">
-                            <div className="text-6xl mb-3">✨</div>
+                            <div className="mb-3 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500 dark:text-yellow-400">
+                                    <path d="M12 6V2H8"/>
+                                    <path d="M15 11v2"/>
+                                    <path d="M2 12h2"/>
+                                    <path d="M20 12h2"/>
+                                    <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>
+                                    <path d="M9 11v2"/>
+                                </svg>
+                            </div>
                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">아직 AI 추천 코스가 없어요</h4>
                             <p className="text-gray-600 dark:text-gray-400 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
                             <button
@@ -327,7 +340,12 @@ const RecordsTab = ({
                         </div>
                     ) : (
                         <div className="text-center py-10">
-                            <div className="text-6xl mb-3">✅</div>
+                            <div className="mb-3 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 dark:text-emerald-400">
+                                    <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
+                                    <path d="m9 10 2 2 4-4"/>
+                                </svg>
+                            </div>
                             <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">아직 완료한 코스가 없어요</div>
                             <div className="text-gray-600 dark:text-gray-400 mb-4">코스를 완료하면 여기에서 확인할 수 있어요</div>
                             <button
@@ -387,7 +405,12 @@ const RecordsTab = ({
                         </div>
                     ) : (
                         <div className="text-center py-10">
-                            <div className="text-6xl mb-3">🗂️</div>
+                            <div className="mb-3 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700 dark:text-gray-300">
+                                    <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/>
+                                    <circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>
+                                </svg>
+                            </div>
                             <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                                 아직 완료한 사건 파일이 없어요
                             </div>

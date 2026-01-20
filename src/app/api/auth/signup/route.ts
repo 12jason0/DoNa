@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
+import { getS3StaticUrl } from "@/lib/s3Static";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,9 @@ export async function POST(request: NextRequest) {
         const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
         const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
 
+        // 🟢 기본 프로필 이미지 설정 (로컬 로그인)
+        const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
+
         // 7. Prisma 트랜잭션: 유저 생성 + 보상 기록 (성능 최적화) [cite: 2025-12-24]
         const createdUser = await (prisma as any).$transaction(async (tx: any) => {
             // 사용자 생성
@@ -74,6 +78,7 @@ export async function POST(request: NextRequest) {
                     birthday: birthdayDate,
                     age: computedAge,
                     couponCount: initialCoupons,
+                    profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 로컬 로그인 시 기본 프로필 이미지 저장
                     isMarketingAgreed: isMarketingAgreed === true,
                     marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
                 },

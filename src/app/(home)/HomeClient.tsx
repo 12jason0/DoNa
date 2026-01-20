@@ -169,6 +169,28 @@ export default function HomeClient({
 
                     setTimeout(() => {
                         if (p.hasSeenConsentModal === false) {
+                            // 🟢 localStorage에서 숨김 시간 확인
+                            if (typeof window !== "undefined") {
+                                const hideUntil = localStorage.getItem("benefitConsentModalHideUntil");
+                                if (hideUntil) {
+                                    const hideUntilDate = new Date(hideUntil);
+                                    const now = new Date();
+                                    
+                                    // 한국 시간으로 비교
+                                    const kstOffset = 9 * 60 * 60 * 1000;
+                                    const nowKST = new Date(now.getTime() + kstOffset);
+                                    const hideUntilKST = new Date(hideUntilDate.getTime() + kstOffset);
+                                    
+                                    // 아직 숨김 시간이 지나지 않았으면 모달 표시하지 않음
+                                    if (nowKST < hideUntilKST) {
+                                        return;
+                                    } else {
+                                        // 시간이 지났으면 localStorage에서 제거
+                                        localStorage.removeItem("benefitConsentModalHideUntil");
+                                    }
+                                }
+                            }
+                            
                             requestAnimationFrame(() => {
                                 setShowBenefitConsentModal(true);
                             });

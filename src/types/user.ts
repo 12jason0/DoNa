@@ -2,7 +2,7 @@ export interface UserInfo {
     name: string;
     email: string;
     joinDate: string;
-    profileImage: string;
+    profileImage: string | null;
     mbti?: string | null;
     age?: number | null;
     ageRange?: string | null;

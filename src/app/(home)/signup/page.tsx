@@ -253,7 +253,7 @@ const Signup = () => {
                         <div>
                             {/* 💡 [수정] 필수 표시(*) 제거 및 (선택) 추가 */}
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">
-                                연령대 <span className="text-gray-400 font-normal">(선택)</span>
+                                연령대 <span className="text-gray-400 font-normal"></span>
                             </label>
                             <select
                                 name="ageRange"
@@ -263,14 +263,17 @@ const Signup = () => {
                                 className="block w-full px-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-[#0f1710] dark:text-white focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 outline-none text-sm"
                             >
                                 <option value="">선택 안 함</option>
+                                <option value="10대">10대</option>
                                 <option value="20대">20대</option>
                                 <option value="30대">30대</option>
+                                <option value="40대">40대</option>
+                                <option value="50대">50대</option>
                             </select>
                         </div>
                         <div>
                             {/* 💡 [수정] 필수 표시(*) 제거 및 (선택) 추가 */}
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">
-                                성별 <span className="text-gray-400 font-normal">(선택)</span>
+                                성별 <span className="text-gray-400 font-normal"></span>
                             </label>
                             <select
                                 name="gender"

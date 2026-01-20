@@ -15,6 +15,32 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
         setSelected((prev) => (prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]));
     };
 
+    // 🟢 다음날 한국 시간 00시 계산 함수
+    const getNextDayMidnightKST = (): string => {
+        const now = new Date();
+        // 한국 시간으로 변환 (UTC+9)
+        const kstOffset = 9 * 60 * 60 * 1000;
+        const kstNow = new Date(now.getTime() + kstOffset);
+        
+        // 다음날 00시로 설정 (KST 기준)
+        const nextDayKST = new Date(kstNow);
+        nextDayKST.setUTCDate(nextDayKST.getUTCDate() + 1);
+        nextDayKST.setUTCHours(0, 0, 0, 0);
+        
+        // UTC로 변환하여 ISO 문자열로 반환 (저장용)
+        const nextDayUTC = new Date(nextDayKST.getTime() - kstOffset);
+        return nextDayUTC.toISOString();
+    };
+
+    const handleLater = () => {
+        // 🟢 다음날 한국 시간 00시를 localStorage에 저장
+        const nextDayMidnight = getNextDayMidnightKST();
+        if (typeof window !== "undefined") {
+            localStorage.setItem("benefitConsentModalHideUntil", nextDayMidnight);
+        }
+        onClose();
+    };
+
     const handleConfirm = async () => {
         if (selected.length === 0) {
             alert("받으실 혜택을 하나 이상 선택해주세요!");
@@ -38,7 +64,14 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                 cache: "no-store",
             });
 
-            if (!response.ok) {
+            if (response.ok) {
+                // 🟢 알림 상태 변경 이벤트 dispatch (마이페이지 UI 즉시 업데이트용)
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("notificationUpdated", { detail: { subscribed: true } })
+                    );
+                }
+            } else {
                 // ❌ 실패 시 사용자에게 알림 (모달은 이미 닫혀있음)
                 console.error("알림 동의 처리 실패:", data?.error);
                 // 실패 시 나중에 다시 표시할 수 있도록 처리 (필요시)
@@ -126,11 +159,11 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                         {isSubmitting ? "처리 중..." : "선택한 혜택 소식 받기"}
                     </button>
                     <button
-                        onClick={onClose}
+                        onClick={handleLater}
                         disabled={isSubmitting}
                         className="w-full text-gray-400 dark:text-gray-500 text-[13px] font-medium py-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors disabled:opacity-50"
                     >
-                        나중에 할게요
+                        24시간 뒤에 보기
                     </button>
                 </div>
 

@@ -130,7 +130,16 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                         </div>
                     ) : (
                         <div className="text-center py-10">
-                            <div className="text-6xl mb-3">🏅</div>
+                            <div className="mb-3 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500 dark:text-yellow-400">
+                                    <path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/>
+                                    <path d="M11 12 5.12 2.2"/>
+                                    <path d="m13 12 5.88-9.8"/>
+                                    <path d="M8 7h8"/>
+                                    <circle cx="12" cy="17" r="5"/>
+                                    <path d="M12 18v-2h-.5"/>
+                                </svg>
+                            </div>
                             <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">아직 획득한 뱃지가 없어요</div>
                             <div className="text-gray-600 dark:text-gray-400">스토리를 완료하고 배지를 모아보세요!</div>
                         </div>
@@ -379,7 +388,12 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                         </div>
                     ) : (
                         <div className="text-center py-10">
-                            <div className="text-6xl mb-3">💳</div>
+                            <div className="mb-3 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700 dark:text-gray-300">
+                                    <rect width="20" height="14" x="2" y="5" rx="2"/>
+                                    <line x1="2" x2="22" y1="10" y2="10"/>
+                                </svg>
+                            </div>
                             <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">구매 내역이 없습니다</div>
                             <div className="text-gray-600 dark:text-gray-400 mb-4">쿠폰이나 구독권을 구매하시면 여기에 표시됩니다.</div>
                             <Link

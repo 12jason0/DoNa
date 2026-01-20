@@ -69,11 +69,17 @@ export async function POST(req: NextRequest) {
         if (platform) updateData.platform = platform;
 
         // 알림 설정 변경 시 법적 동의 날짜 기록 및 유저 정보 업데이트
-        const userUpdatePromise = typeof subscribed === "boolean" && subscribed
-            ? prisma.user.update({
-                  where: { id: userIdNum },
-                  data: { isMarketingAgreed: true, marketingAgreedAt: new Date() },
-              })
+        const userUpdatePromise = typeof subscribed === "boolean"
+            ? subscribed
+                ? prisma.user.update({
+                      where: { id: userIdNum },
+                      data: { isMarketingAgreed: true, marketingAgreedAt: new Date() },
+                  })
+                : // 🟢 알림을 끌 때 BenefitConsentModal이 다시 나타나도록 설정
+                  prisma.user.update({
+                      where: { id: userIdNum },
+                      data: { hasSeenConsentModal: false },
+                  })
             : Promise.resolve(null);
 
         if (typeof subscribed === "boolean") {

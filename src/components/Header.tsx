@@ -318,9 +318,14 @@ const Header = memo(() => {
                                             // 🟢 [SHOP LOCKED]: 두나샵 준비 중 - 토스트 메시지 표시
                                             alert("더 완벽한 키트를 위해 준비 중이에요! 조금만 기다려주세요 🎁");
                                         }}
-                                        className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                                     >
-                                        🛍️ 두나샵
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                                            <circle cx="8" cy="21" r="1"/>
+                                            <circle cx="19" cy="21" r="1"/>
+                                            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+                                        </svg>
+                                        두나샵
                                     </button>
                                     <button
                                         onClick={() => {
@@ -352,15 +357,14 @@ const Header = memo(() => {
                                             </Link>
                                         ) : (
                                             <>
-                                                <button
-                                                    onClick={() => {
-                                                        closeMenu();
-                                                        setShowLoginModal(true);
-                                                    }}
-                                                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                <Link
+                                                    href="/login"
+                                                    prefetch={true}
+                                                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                                    onClick={closeMenu}
                                                 >
                                                     로그인
-                                                </button>
+                                                </Link>
                                                 <Link
                                                     href="/signup"
                                                     prefetch={true}

@@ -893,7 +893,11 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                     <div className="p-4 md:p-6">
                         {personalStories.length === 0 ? (
                             <div className="text-center py-16">
-                                <div className="text-5xl mb-4">💕</div>
+                                <div className="mb-4 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16 text-pink-500 dark:text-pink-400">
+                                        <path d="M6 4C6 3.44772 6.44772 3 7 3H21C21.5523 3 22 3.44772 22 4V16C22 16.5523 21.5523 17 21 17H18V20C18 20.5523 17.5523 21 17 21H3C2.44772 21 2 20.5523 2 20V8C2 7.44772 2.44772 7 3 7H6V4ZM8 7H17C17.5523 7 18 7.44772 18 8V15H20V5H8V7ZM16 15.7394V9H4V18.6321L11.4911 11.6404L16 15.7394ZM7 13.5C7.82843 13.5 8.5 12.8284 8.5 12C8.5 11.1716 7.82843 10.5 7 10.5C6.17157 10.5 5.5 11.1716 5.5 12C5.5 12.8284 6.17157 13.5 7 13.5Z"></path>
+                                    </svg>
+                                </div>
                                 <p className={`text-base ${hasData ? "text-gray-500 dark:text-gray-400" : "text-gray-400"} font-medium`}>
                                     저장된 개인 추억이 없습니다.
                                 </p>
