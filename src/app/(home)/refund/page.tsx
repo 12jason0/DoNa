@@ -66,7 +66,14 @@ export default function RefundPage() {
 
         try {
             const { authenticatedFetch } = await import("@/lib/authClient");
-            const data = await authenticatedFetch("/api/ai-recommendation/refund", {
+            
+            // 🟢 구독권인 경우 환불 요청 API 사용, 쿠폰인 경우 즉시 환불 API 사용
+            const isSubscriptionRefund = isSubscription(selectedPayment.orderName);
+            const apiEndpoint = isSubscriptionRefund 
+                ? "/api/refund/request" 
+                : "/api/ai-recommendation/refund";
+            
+            const data = await authenticatedFetch(apiEndpoint, {
                 method: "POST",
                 body: JSON.stringify({
                     orderId: selectedPayment.orderId,
@@ -75,42 +82,12 @@ export default function RefundPage() {
             });
 
             if (data) {
-                // 🟢 인앱결제 환불 안내
-                if ((data as any).isInApp) {
-                    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-                    const platform = isIOS ? "App Store" : "Google Play";
-                    const platformUrl = isIOS 
-                        ? "https://reportaproblem.apple.com/" 
-                        : "https://play.google.com/store/account/orderhistory";
+                // 🟢 구독권 환불 요청인 경우
+                if (isSubscriptionRefund) {
+                    setSuccess("환불 신청이 접수되었습니다.\n\n운영자가 확인 후 환불을 진행하겠습니다.");
                     
-                    setSuccess(
-                        `${selectedPayment.orderName} 환불 처리가 완료되었습니다.\n\n` +
-                        `실제 환불은 ${platform}에서 직접 신청해주세요.`
-                    );
-                    
-                    // 플랫폼 환불 페이지로 이동하는 링크 제공
-                    if (window.confirm(`${platform} 환불 페이지로 이동하시겠습니까?`)) {
-                        window.open(platformUrl, "_blank");
-                    }
-                } else {
-                    setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
-                }
-                
-                // 🟢 환불 완료 이벤트 발생 (마이페이지 구독/쿠폰 정보 실시간 갱신용)
-                if (typeof window !== "undefined") {
-                    const isSubscriptionRefund = isSubscription(selectedPayment.orderName);
-                    
-                    // 환불 성공 이벤트
-                    window.dispatchEvent(new CustomEvent("refundSuccess", {
-                        detail: {
-                            orderName: selectedPayment.orderName,
-                            isSubscription: isSubscriptionRefund,
-                            isCoupon: selectedPayment.orderName.includes("쿠폰"),
-                        }
-                    }));
-                    
-                    // 🟢 구독권 환불 시 사용자 정보 강제 갱신 이벤트 (전역 캐시 무효화)
-                    if (isSubscriptionRefund) {
+                    // 구독권 환불 요청 시 사용자 정보 강제 갱신 이벤트 (멤버십이 FREE로 변경됨)
+                    if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("subscriptionChanged"));
                         // localStorage 캐시도 무효화
                         try {
@@ -124,6 +101,39 @@ export default function RefundPage() {
                         } catch (e) {
                             console.error("localStorage 업데이트 실패:", e);
                         }
+                    }
+                } else {
+                    // 🟢 쿠폰 즉시 환불 (기존 로직)
+                    // 인앱결제 환불 안내
+                    if ((data as any).isInApp) {
+                        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+                        const platform = isIOS ? "App Store" : "Google Play";
+                        const platformUrl = isIOS 
+                            ? "https://reportaproblem.apple.com/" 
+                            : "https://play.google.com/store/account/orderhistory";
+                        
+                        setSuccess(
+                            `${selectedPayment.orderName} 환불 처리가 완료되었습니다.\n\n` +
+                            `실제 환불은 ${platform}에서 직접 신청해주세요.`
+                        );
+                        
+                        // 플랫폼 환불 페이지로 이동하는 링크 제공
+                        if (window.confirm(`${platform} 환불 페이지로 이동하시겠습니까?`)) {
+                            window.open(platformUrl, "_blank");
+                        }
+                    } else {
+                        setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
+                    }
+                    
+                    // 쿠폰 환불 완료 이벤트 발생
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("refundSuccess", {
+                            detail: {
+                                orderName: selectedPayment.orderName,
+                                isSubscription: false,
+                                isCoupon: true,
+                            }
+                        }));
                     }
                 }
                 

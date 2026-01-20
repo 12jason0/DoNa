@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
 
         if (isCoupon) {
             retrieveCount = COUPON_PLAN_MAPPING[payment.orderName] || 0;
-            // 쿠폰을 이미 써버렸다면 환불 불가
+            // 🟢 쿠폰을 한 개라도 사용했으면 환불 불가
             if (payment.user.couponCount < retrieveCount) {
-                return NextResponse.json({ error: "이미 쿠폰을 사용하여 환불이 불가합니다." }, { status: 400 });
+                return NextResponse.json({ error: "쿠폰 사용하여 환불이 불가합니다." }, { status: 400 });
             }
         } else {
             // 🟢 구독권 환불 검증

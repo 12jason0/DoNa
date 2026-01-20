@@ -80,11 +80,11 @@ export default function DeleteUsersModal({
 
     return (
         // [수정] inset-0과 items-center justify-center로 화면 정중앙 배치
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4 sm:p-6">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-2000 p-4 sm:p-6">
             {/* [수정] max-h-[90dvh]와 flex-col로 스크롤 가능하게 구성 */}
-            <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden w-full max-w-[400px] flex flex-col max-h-[90dvh] animate-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-2rem shadow-2xl overflow-hidden w-full max-w-[400px] flex flex-col max-h-[90dvh] animate-in zoom-in-95 duration-200">
                 {/* 상단 장식 바 */}
-                <div style={{ backgroundColor: donaGreen }} className="h-2 w-full flex-shrink-0" />
+                <div style={{ backgroundColor: donaGreen }} className="h-2 w-full shrink-0" />
 
                 {/* [수정] overflow-y-auto를 적용한 스크롤 영역 */}
                 <div className="p-6 sm:p-8 overflow-y-auto flex-1 custom-scrollbar">
@@ -172,7 +172,7 @@ export default function DeleteUsersModal({
                 </div>
 
                 {/* 버튼 영역 (하단 고정) */}
-                <div className="p-6 pt-2 bg-white flex flex-col gap-3 flex-shrink-0">
+                <div className="p-6 pt-2 bg-white flex flex-col gap-3 shrink-0">
                     <button
                         onClick={onClose}
                         disabled={isLoading}

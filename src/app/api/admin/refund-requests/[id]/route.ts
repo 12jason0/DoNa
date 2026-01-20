@@ -49,18 +49,65 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         // 거부 처리
         if (action === "REJECT") {
-            await (prisma as any).refundRequest.update({
-                where: { id: refundRequestId },
-                data: {
-                    status: "REJECTED",
-                    adminNote: adminNote || "관리자 거부",
-                    processedAt: new Date(),
-                },
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                // 1. 환불 요청 상태 변경
+                const updatedRequest = await (tx as any).refundRequest.update({
+                    where: { id: refundRequestId },
+                    data: {
+                        status: "REJECTED",
+                        adminNote: adminNote || "관리자 거부",
+                        processedAt: new Date(),
+                    },
+                });
+
+                // 2. 원래 멤버십으로 복구 (남은 기간 계산)
+                const originalTier = updatedRequest.originalSubscriptionTier;
+                const originalExpiresAt = updatedRequest.originalSubscriptionExpiresAt 
+                    ? new Date(updatedRequest.originalSubscriptionExpiresAt)
+                    : null;
+
+                if (originalTier && originalTier !== "FREE") {
+                    const now = new Date();
+                    
+                    // 원래 만료일이 있고 현재보다 미래라면 원래 멤버십으로 복구
+                    if (originalExpiresAt && originalExpiresAt > now) {
+                        await tx.user.update({
+                            where: { id: refundRequest.userId },
+                            data: {
+                                subscriptionTier: originalTier,
+                                subscriptionExpiresAt: originalExpiresAt,
+                            },
+                        });
+                    } else if (originalExpiresAt && originalExpiresAt <= now) {
+                        // 원래 만료일이 지났지만, 환불 요청 시점부터 원래 만료일까지의 남은 기간 계산
+                        // 환불 요청일을 알기 위해 createdAt 사용 (환불 요청이 생성된 시점)
+                        const requestCreatedAt = updatedRequest.createdAt 
+                            ? new Date(updatedRequest.createdAt)
+                            : now;
+                        
+                        // 환불 요청 시점부터 원래 만료일까지의 남은 기간 계산
+                        const remainingDays = Math.floor((originalExpiresAt.getTime() - requestCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+                        
+                        if (remainingDays > 0) {
+                            // 남은 기간이 있으면 원래 멤버십 복구 (현재 시점 + 남은 기간)
+                            const newExpiresAt = new Date(now.getTime() + remainingDays * 24 * 60 * 60 * 1000);
+                            await tx.user.update({
+                                where: { id: refundRequest.userId },
+                                data: {
+                                    subscriptionTier: originalTier,
+                                    subscriptionExpiresAt: newExpiresAt,
+                                },
+                            });
+                        }
+                    }
+                }
+
+                return { success: true };
             });
 
             return NextResponse.json({
                 success: true,
-                message: "환불 요청이 거부되었습니다.",
+                message: "환불 요청이 거부되었습니다. 원래 멤버십으로 복구되었습니다.",
             });
         }
 

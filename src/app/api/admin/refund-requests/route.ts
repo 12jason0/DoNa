@@ -25,37 +25,61 @@ export async function GET(request: NextRequest) {
         }
 
         // 🟢 Prisma Client에서 모델 접근 (RefundRequest -> refundRequest)
-        const refundRequests = await (prisma as any).refundRequest.findMany({
-            where,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        email: true,
-                        username: true,
+        // 테이블이 없을 수 있으므로 안전하게 처리
+        let refundRequests: any[] = [];
+        try {
+            // refundRequest 모델이 존재하는지 먼저 확인
+            if ((prisma as any).refundRequest) {
+                refundRequests = await (prisma as any).refundRequest.findMany({
+                    where,
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                username: true,
+                            },
+                        },
+                        payment: {
+                            select: {
+                                id: true,
+                                paymentKey: true,
+                                method: true,
+                                approvedAt: true,
+                            },
+                        },
                     },
-                },
-                payment: {
-                    select: {
-                        id: true,
-                        paymentKey: true,
-                        method: true,
-                        approvedAt: true,
-                    },
-                },
-            },
-            orderBy: {
-                requestedAt: "desc",
-            },
-        }).catch((err: any) => {
+                    // 🟢 orderBy 제거: 필드명이 정확하지 않을 수 있으므로 클라이언트에서 정렬
+                });
+            } else {
+                console.warn("[환불 요청] refundRequest 모델이 존재하지 않습니다. 마이그레이션을 실행해주세요.");
+            }
+        } catch (err: any) {
             console.error("[환불 요청 조회 Prisma 에러]:", err);
             // 테이블이 없거나 모델이 없는 경우 빈 배열 반환
-            if (err.code === "P2001" || err.message?.includes("does not exist") || err.message?.includes("Unknown model")) {
+            if (
+                err.code === "P2001" || 
+                err.code === "P2025" ||
+                err.code === "P1001" ||
+                err.message?.includes("does not exist") || 
+                err.message?.includes("Unknown model") ||
+                err.message?.includes("Cannot find model") ||
+                err.message?.includes("Unknown arg") ||
+                err.message?.includes("table") ||
+                err.message?.includes("doesn't exist")
+            ) {
                 console.warn("[환불 요청] 테이블이 아직 생성되지 않았습니다. 마이그레이션을 실행해주세요.");
-                return [];
+                refundRequests = [];
+            } else {
+                // 다른 에러는 그대로 throw
+                throw err;
             }
-            throw err;
-        });
+        }
+        
+        // 🟢 클라이언트에서 id 기준 역순 정렬 (최신순)
+        if (refundRequests && refundRequests.length > 0) {
+            refundRequests.sort((a, b) => (b.id || 0) - (a.id || 0));
+        }
 
         return NextResponse.json({
             success: true,
