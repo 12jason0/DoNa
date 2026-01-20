@@ -169,7 +169,8 @@ export async function POST(request: NextRequest) {
                 // 🟢 기존 유저 업데이트 (정보 보완 및 계정 통합)
                 const updateData: any = {
                     username: nickname || user.username,
-                    profileImageUrl: profileImageUrl || user.profileImageUrl,
+                    // 🟢 [Fix]: 카카오에서 프로필 이미지가 있으면 항상 업데이트 (최신 프로필 반영)
+                    profileImageUrl: profileImageUrl ? profileImageUrl : user.profileImageUrl,
                     // 카카오 계정 연결 (다른 소셜 로그인으로 가입한 경우)
                     socialId: socialId,
                     provider: "kakao",
@@ -286,6 +287,10 @@ export async function POST(request: NextRequest) {
             couponsAwarded: isNewUser ? initialCoupons : 0,
         });
 
+        // 🟢 [Fix]: 이전 세션 파편 완전 제거 (로컬/카카오 로그인 통합)
+        res.cookies.delete("auth");
+        res.cookies.delete("authorization");
+        
         // 🟢 보안 쿠키 설정 (LocalStorage 취약점 해결)
         res.cookies.set("auth", token, {
             httpOnly: true,

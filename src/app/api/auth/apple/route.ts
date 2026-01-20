@@ -430,6 +430,10 @@ async function handleAppAppleAuthLogic(
 
         const res = NextResponse.json({ success: true, user: { id: user.id, name: user.username } });
 
+        // 🟢 [Fix]: 이전 세션 파편 완전 제거 (로컬/카카오/애플 로그인 통합)
+        res.cookies.delete("auth");
+        res.cookies.delete("authorization");
+
         // 🟢 [Fix]: 보안 쿠키 설정 강화 (WebView 환경 대응)
         res.cookies.set("auth", token, {
             httpOnly: true,
@@ -486,6 +490,10 @@ function generateHtmlResponse(script: string, token?: string) {
     });
 
     if (token) {
+        // 🟢 [Fix]: 이전 세션 파편 완전 제거 (로컬/카카오/애플 로그인 통합)
+        response.cookies.delete("auth");
+        response.cookies.delete("authorization");
+        
         // 🟢 [Fix]: 보안 쿠키 설정 강화 (WebView 환경 대응)
         response.cookies.set("auth", token, {
             httpOnly: true,

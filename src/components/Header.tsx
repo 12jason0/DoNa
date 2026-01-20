@@ -153,7 +153,13 @@ const Header = memo(() => {
 
         setShowLogoutConfirm(false);
         closeMenu();
+        
+        // 🟢 오버레이가 화면에 표시될 시간을 확보하기 위해 requestAnimationFrame 사용
+        await new Promise(resolve => requestAnimationFrame(resolve));
         setIsLoggingOut(true); // 로그아웃 오버레이 시작
+        
+        // 🟢 오버레이가 렌더링될 시간을 확보 (최소 100ms)
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
             // 🟢 출석 현황 관련 localStorage 삭제
@@ -177,8 +183,8 @@ const Header = memo(() => {
             // 🟢 skipRedirect 옵션으로 리다이렉트를 건너뛰고, 로그아웃 완료 후 수동으로 리다이렉트
             const success = await logout({ skipRedirect: true });
             
-            // 🟢 로그아웃 완료 대기 (서버 쿠키 삭제 완료 대기)
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // 🟢 로그아웃 완료 대기 (서버 쿠키 삭제 완료 대기 + 오버레이 표시 시간)
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             if (success) {
                 // 🟢 로그아웃 완료 후 메인 페이지로 리다이렉트 (미로그인 상태로 표시됨)

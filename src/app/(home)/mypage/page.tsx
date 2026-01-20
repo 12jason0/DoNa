@@ -110,12 +110,53 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용하여 401 처리 방지
             const { apiFetch } = await import("@/lib/authClient");
-            // 🟢 실시간 업데이트가 필요한 경우(결제/환불/쿠폰 사용 등) 캐시 무시
+            
+            // 🟢 [Fix]: 로그인/로그아웃 모든 상황에서 강제 갱신 플래그 확인 (로컬/카카오 로그인 통합)
+            const forceRefreshTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:forceRefresh") : null;
+            const loggingOutTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:loggingOut") : null;
+            const now = Date.now();
+            
+            // 실시간 업데이트가 필요한 경우(결제/환불/쿠폰 사용 등) 캐시 무시
             const shouldForceRefresh = (window as any).__forceRefreshUserInfo || (window as any).__couponAwardedRefresh;
-            const cacheOption = shouldForceRefresh 
-                ? { cache: "no-store" as const }
+            
+            // 🟢 [Fix]: 로그인 직후 30초 이내라면 캐시를 완전히 무시함 (로컬/카카오 로그인 통합)
+            // 30초로 연장하여 로그인 직후 마이페이지 접속 시 확실히 새 정보를 가져오도록 함
+            const shouldIgnoreCache = (
+                (forceRefreshTime && (now - parseInt(forceRefreshTime, 10)) < 30000) ||
+                (loggingOutTime && (now - parseInt(loggingOutTime, 10)) < 10000) ||
+                shouldForceRefresh
+            );
+            
+            // 🟢 [Fix]: 로그인 직후 캐시 완전 우회를 위한 캐시 버스팅 파라미터 추가
+            let profileUrl = "/api/users/profile";
+            if (shouldIgnoreCache) {
+                // 캐시 버스팅을 위해 타임스탬프 추가
+                const timestamp = Date.now();
+                profileUrl = `${profileUrl}?_t=${timestamp}`;
+            }
+            
+            const cacheOption = shouldIgnoreCache
+                ? { 
+                    cache: "no-store" as const,
+                    headers: {
+                        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0"
+                    }
+                }
                 : { cache: "force-cache" as const, next: { revalidate: 60 } };
-            let { data: raw, response } = await apiFetch<any>("/api/users/profile", cacheOption);
+            let { data: raw, response } = await apiFetch<any>(profileUrl, cacheOption);
+            
+            // 🟢 [Fix]: 데이터를 성공적으로 가져온 후에만 플래그 제거 (무한 no-store 방지)
+            // 401 에러가 아닐 때만 플래그 제거하여 다음 요청에서도 캐시 무시
+            if (shouldIgnoreCache && typeof window !== "undefined" && response.status === 200 && raw) {
+                // 로그인 직후 성공적으로 사용자 정보를 가져왔을 때만 플래그 제거
+                sessionStorage.removeItem("auth:forceRefresh");
+            }
+            // 로그아웃 플래그는 항상 제거 (로그아웃은 한 번만 필요)
+            if (loggingOutTime && typeof window !== "undefined") {
+                sessionStorage.removeItem("auth:loggingOut");
+            }
             // 🟢 플래그 초기화
             if ((window as any).__forceRefreshUserInfo) {
                 delete (window as any).__forceRefreshUserInfo;
@@ -628,12 +669,52 @@ const MyPage = () => {
             setActiveTab(initialTab);
         } catch {}
 
+        // 🟢 [Fix]: 로그인 직후 마이페이지 접속 시 강제로 세션 재확인 및 캐시 무효화 (로컬/카카오 로그인 통합)
+        const forceRefreshOnMount = async () => {
+            const forceRefreshTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:forceRefresh") : null;
+            if (forceRefreshTime) {
+                const timeSinceLogin = Date.now() - parseInt(forceRefreshTime, 10);
+                // 로그인 직후 30초 이내라면 세션 강제 재확인
+                if (timeSinceLogin < 30000) {
+                    try {
+                        // 🟢 세션 캐시 무효화를 위해 fetchSession 먼저 호출
+                        // fetchSession 내부에서 auth:forceRefresh 플래그를 확인하고 캐시를 무효화함
+                        const { fetchSession } = await import("@/lib/authClient");
+                        const sessionResult = await fetchSession();
+                        console.log("[MyPage] 로그인 직후 감지 - 세션 캐시 무효화 완료", {
+                            authenticated: sessionResult.authenticated,
+                            userId: sessionResult.user?.id,
+                            userName: sessionResult.user?.name
+                        });
+                        // fetchUserInfo에서 캐시를 무시하도록 플래그가 이미 설정되어 있음
+                    } catch (error) {
+                        console.error("[MyPage] 세션 재확인 실패:", error);
+                    }
+                }
+            }
+        };
+
         // 🟢 [Performance]: 초기 로딩 최적화 - 병렬 처리 및 빠른 UI 표시
-        // 1단계: 필수 데이터 병렬 로드 (프로필 정보 + 취향 정보)
-        Promise.all([
-            fetchUserInfo(),
-            fetchUserPreferences(), // 프로필 탭에 필요하므로 병렬로 함께 로드
-        ]).then(([shouldContinue]) => {
+        // 🟢 [Fix]: 로그인 직후에는 세션 재확인을 먼저 완료한 후 데이터 로드 (캐시 무효화 보장)
+        const forceRefreshTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:forceRefresh") : null;
+        const isLoginJustAfter = forceRefreshTime && (Date.now() - parseInt(forceRefreshTime, 10)) < 30000;
+        
+        const loadInitialData = async () => {
+            // 로그인 직후: 세션 재확인을 먼저 완료
+            if (isLoginJustAfter) {
+                await forceRefreshOnMount();
+                // 잠시 대기하여 세션 캐시 완전 무효화 보장
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // 필수 데이터 병렬 로드
+            return Promise.all([
+                fetchUserInfo(),
+                fetchUserPreferences(), // 프로필 탭에 필요하므로 병렬로 함께 로드
+            ]);
+        };
+        
+        loadInitialData().then(([shouldContinue]) => {
             if (shouldContinue) {
                 // 🟢 2단계: 초기 탭에 필요한 데이터만 즉시 로드 (나머지는 지연)
                 const scheduleDeferredLoad = () => {
@@ -721,6 +802,33 @@ const MyPage = () => {
         window.addEventListener("checkinUpdated", onCheckinUpdated as EventListener);
         return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
     }, []);
+
+    // 🟢 로그아웃 이벤트 리스너 - 로그아웃 시 모든 데이터 초기화 및 리다이렉트
+    useEffect(() => {
+        const handleAuthLogout = () => {
+            console.log("[MyPage] 로그아웃 이벤트 감지 - 데이터 초기화 및 리다이렉트");
+            // 모든 상태 초기화
+            setUserInfo(null);
+            setUserPreferences(null);
+            setFavorites([]);
+            setBadges([]);
+            setRewards([]);
+            setCheckins([]);
+            setPayments([]);
+            setCompleted([]);
+            setCasefiles([]);
+            setSavedCourses([]);
+            setPersonalStories([]);
+            
+            // 로그인 페이지로 리다이렉트
+            if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+                router.replace("/login");
+            }
+        };
+
+        window.addEventListener("authLogout", handleAuthLogout as EventListener);
+        return () => window.removeEventListener("authLogout", handleAuthLogout as EventListener);
+    }, [router]);
 
     // 🟢 결제 완료 이벤트 리스너 (구매 내역 즉시 업데이트)
     useEffect(() => {
@@ -1494,7 +1602,7 @@ const MyPage = () => {
             {showEditModal && (
                 <div className="fixed inset-0 backdrop-blur-sm flex items-end justify-center z-50">
                     <div 
-                        className="bg-white dark:bg-[#1a241b] rounded-t-3xl border-t border-gray-100 dark:border-gray-800 p-8 w-full max-w-md mx-4 mb-0" 
+                        className="bg-white dark:bg-[#1a241b] rounded-t-3xl border-t border-gray-100 dark:border-gray-800 p-8 w-full max-w-md mx-4 mb-0 scrollbar-hide" 
                         style={{ 
                             marginTop: '20vh',
                             maxHeight: '80vh', 

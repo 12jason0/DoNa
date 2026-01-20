@@ -95,6 +95,12 @@ const Login = () => {
                 // 🟢 쿠키 기반 인증: localStorage 제거
                 // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
 
+                // 🟢 [Fix]: 세션 캐시 강제 갱신 플래그 및 트리거 저장 (로컬/카카오 로그인 통합)
+                if (typeof window !== "undefined") {
+                    sessionStorage.setItem("auth:forceRefresh", Date.now().toString());
+                    sessionStorage.setItem("login_success_trigger", Date.now().toString());
+                }
+
                 // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
                 window.dispatchEvent(new CustomEvent("authLoginSuccess"));
 
@@ -116,11 +122,6 @@ const Login = () => {
                         );
                     }
                 } catch {}
-
-                // ✅ [수정된 부분]
-                // URL에 표시하지 않고, sessionStorage에 '로그인 성공' 흔적을 남깁니다.
-                // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
-                sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                 // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
                 // router.replace는 비동기적으로 작동하여 상태 업데이트가 먼저 일어날 수 있으므로
@@ -205,6 +206,12 @@ const Login = () => {
 
                         if (!response.ok) throw new Error(data.error || "로그인 처리 실패");
 
+                        // 🟢 [Fix]: 세션 캐시 강제 갱신 플래그 및 트리거 저장 (로컬/카카오 로그인 통합)
+                        if (typeof window !== "undefined") {
+                            sessionStorage.setItem("auth:forceRefresh", Date.now().toString());
+                            sessionStorage.setItem("login_success_trigger", Date.now().toString());
+                        }
+
                         // 🟢 쿠키 기반 인증: localStorage 제거
                         // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
                         localStorage.removeItem("authToken");
@@ -213,9 +220,6 @@ const Login = () => {
 
                         // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
                         window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-
-                        // 🟢 [Fix]: 로그인 성공 시간을 타임스탬프로 저장 (쿠키 동기화 시간 계산용)
-                        sessionStorage.setItem("login_success_trigger", Date.now().toString());
 
                         // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
                         // cleanup()에서 setLoading(false)를 호출하지 않고 바로 리다이렉트
