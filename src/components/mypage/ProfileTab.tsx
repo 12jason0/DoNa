@@ -5,7 +5,7 @@ import Image from "next/image";
 import { UserInfo, UserPreferences } from "@/types/user";
 import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import { getS3StaticUrl } from "@/lib/s3Static";
-import { isIOS } from "@/lib/platform";
+import { isIOS, isAndroidReviewBypass } from "@/lib/platform";
 import DeleteUsersModal from "./DeleteUsersModal";
 
 interface ProfileTabProps {
@@ -19,6 +19,9 @@ interface ProfileTabProps {
 
 // 🟢 [최종 심플 버전] 미니멀 대시보드 스타일의 구독/쿠폰 섹션
 const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
+    // 🟢 [Android 리뷰 우회] Android 앱에서만 결제/구독/쿠폰 UI 숨김 (웹·iOS는 그대로 표시)
+    if (typeof window !== "undefined" && isAndroidReviewBypass()) return null;
+
     // 🟢 [Debug]: userInfo 확인
     if (process.env.NODE_ENV === "development") {
         console.log("[ProfileTab] userInfo:", {
