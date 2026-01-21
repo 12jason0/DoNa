@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Check, Sparkles, ChevronRight, ArrowLeft } from "lucide-react";
 import { isMobileApp } from "@/lib/platform";
 import Link from "next/link";
@@ -43,6 +43,32 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
     const [currentTier, setCurrentTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
     // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보
     const [revenueCatProducts, setRevenueCatProducts] = useState<Record<string, any>>({});
+    // 🟢 [결제 속도]: 웹에서 토스 SDK·인스턴스 미리 로드
+    const tossPaymentsRef = useRef<any>(null);
+    const selectedPlanIdRef = useRef(selectedPlanId);
+
+    // 🟢 selectedPlanId ref 동기화 (fetchUserTier에서 최신값 사용)
+    useEffect(() => {
+        selectedPlanIdRef.current = selectedPlanId;
+    }, [selectedPlanId]);
+
+    // 🟢 [결제 속도]: 웹에서 토스 SDK·loadTossPayments 미리 로드
+    useEffect(() => {
+        if (isMobileNative || typeof window === "undefined") return;
+        const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL;
+        if (!clientKey || (!clientKey.startsWith("live_ck_") && !clientKey.startsWith("test_ck_"))) return;
+        import("@tosspayments/tosspayments-sdk").then((mod) => {
+            mod.loadTossPayments(clientKey).then((instance) => {
+                tossPaymentsRef.current = instance;
+            }).catch(() => {});
+        }).catch(() => {});
+    }, [isMobileNative]);
+
+    // 🟢 [결제 속도]: 인앱결제 시 결제 버튼 클릭 전 fetchSession 캐시 예열 (모달 열릴 때 세션 미리 확인)
+    useEffect(() => {
+        if (!isMobileNative || typeof window === "undefined") return;
+        import("@/lib/authClient").then(({ fetchSession }) => fetchSession()).catch(() => {});
+    }, [isMobileNative]);
 
     // 🟢 현재 사용자 등급 확인 함수 (재사용 가능하도록 useCallback으로 정의)
     const fetchUserTier = useCallback(async () => {
@@ -58,21 +84,27 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
             }
 
             // 🟢 authenticatedFetch는 이미 파싱된 데이터를 반환하므로 직접 사용
-            const tier = data?.user?.subscriptionTier || "FREE";
-            setCurrentTier(tier as "FREE" | "BASIC" | "PREMIUM");
+            const tier = (data?.user?.subscriptionTier || "FREE") as "FREE" | "BASIC" | "PREMIUM";
+            setCurrentTier(tier);
 
-            // 🟢 현재 등급이 BASIC 이상이면 첫 번째 티켓 플랜을 기본 선택으로 변경
-            if (tier !== "FREE" && selectedPlanId.startsWith("sub_")) {
+            // 🟢 선택한 멤버십이 이미 보유 등급이어서 구매 불가일 때만 첫 번째 티켓으로 전환
+            // (업그레이드 가능한 멤버십·쿠폰 선택은 그대로 유지)
+            const sid = selectedPlanIdRef.current;
+            const sel = PLANS.find((p) => p.id === sid);
+            const selectedSubIsDisabled =
+                sel?.type === "sub" &&
+                sel?.tier &&
+                ((tier === "BASIC" && sel.tier === "BASIC") ||
+                    (tier === "PREMIUM" && (sel.tier === "BASIC" || sel.tier === "PREMIUM")));
+            if (selectedSubIsDisabled) {
                 const firstTicket = PLANS.find((p) => p.type === "ticket");
-                if (firstTicket) {
-                    setSelectedPlanId(firstTicket.id);
-                }
+                if (firstTicket) setSelectedPlanId(firstTicket.id);
             }
         } catch (error) {
             console.error("사용자 등급 조회 실패:", error);
             setCurrentTier("FREE");
         }
-    }, [selectedPlanId]);
+    }, []);
 
     // 🟢 컴포넌트 마운트 시 사용자 등급 확인
     useEffect(() => {
@@ -202,15 +234,13 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
         setLoading(true);
 
         try {
-            // 🟢 [성능 최적화]: 인증 확인과 토스페이먼츠 SDK 로드를 병렬 처리
-            const [sessionData, tossSdk] = await Promise.all([
-                // 쿠키 기반 인증 확인 (localStorage 대신)
+            // 🟢 [성능 최적화]: 토스가 미리 로드돼 있으면 SDK 로드 생략, 없을 때만 인증·SDK 병렬
+            const [session, tossSdk] = await Promise.all([
                 import("@/lib/authClient").then(({ fetchSession }) => fetchSession()),
-                // 토스페이먼츠 SDK 미리 로드 (웹 결제 시)
-                !isMobileNative ? import("@tosspayments/tosspayments-sdk") : Promise.resolve(null),
+                !isMobileNative && !tossPaymentsRef.current
+                    ? import("@tosspayments/tosspayments-sdk")
+                    : Promise.resolve(null),
             ]);
-
-            const session = sessionData;
 
             if (!session.authenticated || !session.user) {
                 alert("로그인이 필요합니다.");
@@ -232,47 +262,36 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
                 return;
             }
 
-            // 🟢 [WEB PAYMENT]: 웹 브라우저에서는 토스페이먼츠 사용 (구독권/쿠폰 모두)
-            if (!isMobileNative && tossSdk) {
+            // 🟢 [WEB PAYMENT]: 토스페이먼츠 사용 (미리 로드된 인스턴스 우선 → 결제창 속도 개선)
+            if (!isMobileNative && (tossPaymentsRef.current || tossSdk)) {
                 const userId = session.user.id;
                 const customerKey = `user_${userId}`;
-                
-                // 🟢 토스페이먼츠 결제 (웹 전용)
-                const { loadTossPayments } = tossSdk;
                 const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL;
-                
+
                 if (!clientKey) {
                     throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다. NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL 환경 변수를 확인해주세요.");
                 }
-                
-                // 🟢 [Fix]: 클라이언트 키가 API 개별 연동 키인지 확인 (ck_로 시작해야 함)
                 if (!clientKey.startsWith("live_ck_") && !clientKey.startsWith("test_ck_")) {
-                    console.error("[TicketPlans] 잘못된 클라이언트 키 형식:", clientKey);
-                    throw new Error(`토스페이먼츠 클라이언트 키 형식이 올바르지 않습니다. API 개별 연동 키(ck_로 시작)를 사용해주세요. 현재 키: ${clientKey.substring(0, 20)}...`);
+                    throw new Error("토스페이먼츠 클라이언트 키 형식이 올바르지 않습니다. API 개별 연동 키(ck_로 시작)를 사용해주세요.");
                 }
-                
-                const tossPayments = await loadTossPayments(clientKey);
+
+                let tossPayments = tossPaymentsRef.current;
+                if (!tossPayments && tossSdk) {
+                    const { loadTossPayments } = tossSdk;
+                    tossPayments = await loadTossPayments(clientKey);
+                }
 
                 const orderId = `${selectedPlan.id}_${Date.now()}`;
-                
-                // 🟢 [Fix]: 토스페이먼츠 리다이렉트 시 파라미터 손실 대비 - sessionStorage에 저장
-                // 인앱 결제 환경(웹뷰)이나 특정 브라우저에서 successUrl 파라미터가 유실될 수 있어
-                // 성공 페이지에서 복원할 수 있도록 미리 저장
                 if (typeof window !== "undefined") {
-                    sessionStorage.setItem('pendingPaymentPlan', selectedPlan.id);
-                    sessionStorage.setItem('pendingPaymentOrderId', orderId);
+                    sessionStorage.setItem("pendingPaymentPlan", selectedPlan.id);
+                    sessionStorage.setItem("pendingPaymentOrderId", orderId);
                 }
-                
-                const payment = tossPayments.payment({ customerKey });
 
-                // 🟢 웹에서는 구독권/쿠폰 모두 일반 결제로 처리
+                const payment = tossPayments!.payment({ customerKey });
                 await payment.requestPayment({
                     method: "CARD",
-                    amount: {
-                        currency: "KRW",
-                        value: selectedPlan.price,
-                    },
-                    orderId: orderId,
+                    amount: { currency: "KRW", value: selectedPlan.price },
+                    orderId,
                     orderName: selectedPlan.name,
                     successUrl: `${window.location.origin}/personalized-home/pay/success?plan=${selectedPlan.id}&orderId=${orderId}`,
                     failUrl: `${window.location.origin}/pay/fail`,
