@@ -219,8 +219,9 @@ export default function Footer() {
                             )}
                         </Link>
                     ) : (
-                        <button
-                            onClick={() => setShowLoginModal(true)}
+                        <Link
+                            href="/login"
+                            prefetch={false}
                             aria-label="마이페이지"
                             className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
                                 isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
@@ -231,7 +232,7 @@ export default function Footer() {
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                 <circle cx="12" cy="7" r="4" />
                             </svg>
-                        </button>
+                        </Link>
                     )}
                 </nav>
             </div>
