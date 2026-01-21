@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Check, Sparkles, ChevronRight, ArrowLeft } from "lucide-react";
-import { isMobileApp, isAndroidReviewBypass } from "@/lib/platform";
+import { isMobileApp, isAndroid } from "@/lib/platform";
 import Link from "next/link";
 
 const PLANS = [
@@ -34,7 +34,7 @@ const PLANS = [
 
 const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal?: boolean }) => {
     // 🟢 [Android 리뷰 우회] Android 앱에서만 결제 모달 숨김 (웹·iOS는 그대로 표시)
-    if (isAndroidReviewBypass()) return null;
+    if (typeof window !== "undefined" && isMobileApp() && isAndroid()) return null;
 
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
@@ -511,13 +511,32 @@ const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal
 
                     {/* 하단 약관 및 사업자 정보 (스크롤 영역 안으로 이동하여 버튼 공간 확보) */}
                     <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4 pb-4">
-                        <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center space-y-1">
-                            <p className="font-bold text-gray-500 dark:text-gray-400 underline underline-offset-4 mb-2">
-                                서비스 이용 및 환불 정책
-                            </p>
-                            <p className="dark:text-gray-400">• 멤버십 및 쿠폰 구매 후 미사용 시 7일 이내 환불 가능합니다.</p>
-                            <p className="dark:text-gray-400">• 콘텐츠 열람 이력이 있는 경우 환불이 제한될 수 있습니다.</p>
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center space-y-2">
+                        <p className="font-bold text-gray-500 dark:text-gray-400 underline underline-offset-4 mb-1">
+                            법적 필수 안내
+                        </p>
+                        <div className="flex justify-center gap-3 flex-wrap text-[11px]">
+                            <a
+                                href="https://dona.io.kr/privacy"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-500 dark:text-emerald-300 hover:underline hover:text-emerald-600"
+                            >
+                                개인정보 처리방침
+                            </a>
+                            <a
+                                href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-500 dark:text-emerald-300 hover:underline hover:text-emerald-600"
+                            >
+                                이용 약관 (EULA)
+                            </a>
                         </div>
+                        <p className="dark:text-gray-400 text-[10.5px] leading-relaxed">
+                            구독은 현재 기간 종료 최소 24시간 전에 해지하지 않으면 자동으로 갱신됩니다. 구매 확인 시 iTunes 계정으로 결제가 청구됩니다. 구독 관리 및 자동 갱신 해지는 구매 후 App Store 계정 설정에서 할 수 있습니다.
+                        </p>
+                    </div>
                         <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl text-[9px] text-gray-400 dark:text-gray-500 leading-relaxed text-center">
                             <p className="font-bold text-gray-500 dark:text-gray-400 mb-1">두나(DoNa) 사업자 정보</p>
                             <p className="dark:text-gray-400">대표: 오승용 | 사업자등록번호: 166-10-03081</p>
