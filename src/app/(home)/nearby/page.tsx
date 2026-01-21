@@ -3,6 +3,7 @@ import NearbyClient from "./NearbyClient";
 import prisma from "@/lib/db";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { isAndroidAppRequest } from "@/lib/reviewBypass";
 import { unstable_cache } from "next/cache";
 import { REGION_GROUPS } from "@/constants/onboardingData";
 
@@ -208,6 +209,10 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             console.warn("[nearby/page.tsx] JWT 검증 실패:", e instanceof Error ? e.message : String(e));
         }
     }
+    const headersList = await headers();
+    if (token && isAndroidAppRequest(headersList)) userTier = "PREMIUM";
+    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+    const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
     // 🟢 [검색/필터 모드] 검색이나 필터가 있을 때는 캐싱된 데이터 사용
     if (!isDefaultLoad) {
@@ -556,11 +561,6 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     );
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    // 🟢 iOS/Android 플랫폼 감지 (서버 사이드)
-    const headersList = await headers();
-    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-    const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
-
     return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds, isMobilePlatform);
 }
 

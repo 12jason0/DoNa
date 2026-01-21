@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { calculateEffectiveSubscription } from "@/lib/subscription";
+import { isAndroidAppRequest } from "@/lib/reviewBypass";
 
 export const dynamic = "force-dynamic"; // 🟢 실시간 인증 정보를 위해 필수
 export const revalidate = 0; // 🟢 캐시 완전 비활성화
@@ -38,7 +39,8 @@ export async function GET(request: NextRequest) {
             user.createdAt,
             user.subscriptionExpiresAt
         );
-        const effectiveTier = effectiveSubscription.tier;
+        let effectiveTier = effectiveSubscription.tier;
+        if (isAndroidAppRequest(request.headers)) effectiveTier = "PREMIUM";
         const effectiveExpiresAt = effectiveSubscription.expiresAt;
 
         const convertToHttps = (url: string | null | undefined): string | null => {

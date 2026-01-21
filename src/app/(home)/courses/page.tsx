@@ -4,6 +4,7 @@ import prisma from "@/lib/db";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { isAndroidAppRequest } from "@/lib/reviewBypass";
 import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -180,6 +181,8 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             console.warn("[CoursesPage] Auth check failed:", e);
         }
     }
+    const headersList = await headers();
+    if (token && isAndroidAppRequest(headersList)) userTier = "PREMIUM";
 
     const isDefaultLoad = !q && !concept;
 

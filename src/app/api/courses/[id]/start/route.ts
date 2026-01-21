@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { calculateEffectiveSubscription } from "@/lib/subscription";
+import { isAndroidAppRequest } from "@/lib/reviewBypass";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (userResult && userResult[1]) {
             hasUnlocked = !!userResult[1];
         }
+        if (userId && isAndroidAppRequest(request.headers)) userTier = "PREMIUM";
 
         if (!course) {
             return NextResponse.json({ error: "Course not found" }, { status: 404 });

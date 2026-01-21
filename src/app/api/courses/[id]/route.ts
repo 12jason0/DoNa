@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { calculateEffectiveSubscription } from "@/lib/subscription";
+import { isAndroidAppRequest } from "@/lib/reviewBypass";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 console.warn("[Auth] CourseUnlock check failed:", e);
             }
         }
+        if (userId && isAndroidAppRequest(request.headers)) userTier = "PREMIUM";
 
         const course = await (prisma as any).course.findUnique({
             where: { id: courseId },

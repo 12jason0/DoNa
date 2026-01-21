@@ -90,3 +90,12 @@ export function isMobileApp(): boolean {
 
     return hasWebView || isExpo;
 }
+
+/**
+ * Android 앱 WebView에서 리뷰 우회용으로, 클라이언트에서만 사용.
+ * (서버는 reviewBypass.isAndroidAppRequest + User-Agent 사용)
+ * → Android 앱에서만 true, iOS·웹은 false
+ */
+export function isAndroidReviewBypass(): boolean {
+    return isMobileApp() && isAndroid();
+}
