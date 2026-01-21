@@ -3,9 +3,8 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
-import { isAndroidAppRequest } from "@/lib/reviewBypass";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
 
@@ -291,9 +290,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             console.warn("[courses/[id]/page.tsx] JWT 검증 실패:", e instanceof Error ? e.message : String(e));
         }
     }
-    const headersList = await headers();
-    if (token && isAndroidAppRequest(headersList)) userTier = "PREMIUM";
-
     // 🔒 [권한 판정 (Gatekeeping)] 4가지 조건 중 하나라도 충족하면 canAccess = true
     const courseGrade = (courseData.grade || "FREE").toUpperCase();
     const currentUserTier = userTier.toUpperCase();

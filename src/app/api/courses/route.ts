@@ -5,7 +5,6 @@ import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } f
 import { resolveUserId } from "@/lib/auth";
 import { defaultCache } from "@/lib/cache";
 import { calculateEffectiveSubscription } from "@/lib/subscription";
-import { isAndroidAppRequest } from "@/lib/reviewBypass";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -51,8 +50,6 @@ export async function GET(request: NextRequest) {
             }
             unlockedCourseIds = Array.isArray(unlocksResult) ? unlocksResult.map((u: any) => u.courseId) : [];
         }
-        if (userId && Number.isFinite(userId) && isAndroidAppRequest(request.headers)) userTier = "PREMIUM";
-
         const imagePolicy: ImagePolicy = (
             ["any", "all", "none", "all-or-one-missing", "none-or-all"].includes(imagePolicyParam as any)
                 ? imagePolicyParam

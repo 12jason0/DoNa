@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Check, Sparkles, ChevronRight, ArrowLeft } from "lucide-react";
-import { isMobileApp, isAndroid } from "@/lib/platform";
+import { isMobileApp } from "@/lib/platform";
 import Link from "next/link";
 
 const PLANS = [
@@ -33,9 +33,6 @@ const PLANS = [
 ];
 
 const TicketPlans = ({ onClose, isModal = true }: { onClose: () => void; isModal?: boolean }) => {
-    // 🟢 [Android 리뷰 우회] Android 앱에서만 결제 모달 숨김 (웹·iOS는 그대로 표시)
-    if (typeof window !== "undefined" && isMobileApp() && isAndroid()) return null;
-
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
     

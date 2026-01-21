@@ -2,9 +2,8 @@ import { Suspense } from "react";
 import CoursesClient from "./CoursesClient";
 import prisma from "@/lib/db";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
-import { isAndroidAppRequest } from "@/lib/reviewBypass";
 import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -181,9 +180,6 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             console.warn("[CoursesPage] Auth check failed:", e);
         }
     }
-    const headersList = await headers();
-    if (token && isAndroidAppRequest(headersList)) userTier = "PREMIUM";
-
     const isDefaultLoad = !q && !concept;
 
     // 🟢 [Case 1: 검색/필터링 모드] - 캐싱 없이 실시간 검색

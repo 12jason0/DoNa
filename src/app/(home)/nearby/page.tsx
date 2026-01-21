@@ -3,7 +3,6 @@ import NearbyClient from "./NearbyClient";
 import prisma from "@/lib/db";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
-import { isAndroidAppRequest } from "@/lib/reviewBypass";
 import { unstable_cache } from "next/cache";
 import { REGION_GROUPS } from "@/constants/onboardingData";
 
@@ -210,7 +209,6 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         }
     }
     const headersList = await headers();
-    if (token && isAndroidAppRequest(headersList)) userTier = "PREMIUM";
     const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
     const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
