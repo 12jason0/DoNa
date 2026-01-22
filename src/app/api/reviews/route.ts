@@ -188,6 +188,21 @@ export async function POST(request: NextRequest) {
             })
             : null; // 🟢 개인 추억은 중복 체크 안 함
 
+        // 🟢 나만의 추억(isPublic: false)은 최소 3장 이상의 사진이 필요
+        // 🟢 공개 리뷰(isPublic: true)는 사진 없이도 저장 가능
+        if (!isPublicValue) {
+            const imageUrlsArray = Array.isArray(imageUrls) ? imageUrls : [];
+            if (imageUrlsArray.length < 3) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: `나만의 추억을 저장하려면 최소 3장 이상의 사진이 필요합니다. 현재 ${imageUrlsArray.length}장의 사진이 있습니다.`,
+                    },
+                    { status: 400 }
+                );
+            }
+        }
+
         const finalComment: string =
             typeof comment === "string" && comment.trim().length > 0
                 ? comment.trim()
@@ -231,10 +246,10 @@ export async function POST(request: NextRequest) {
             }
 
             // [단계 3] 새 리뷰 작성 시에만 쿠폰 지급 체크
+            // 🟢 쿠폰 지급은 나만의 추억(isPublic: false) 10개 달성 시에만 지급
             let couponAwarded = false;
             let couponAmount = 0;
             let couponMessage = "";
-            let reviewCount = 0;
             let personalMemoryCount: number | undefined = undefined;
 
             // 🟢 개인 추억(isPublic: false) 개수 확인 (모달 표시용)
@@ -250,7 +265,7 @@ export async function POST(request: NextRequest) {
 
             if (isNewReview) {
 
-                // 🟢 개인 추억 10개 달성 시 쿠폰 3개 지급 (중복 지급 방지)
+                // 🟢 개인 추억 10개 달성 시 쿠폰 2개 지급 (중복 지급 방지)
                 if (personalMemoryCount === 10) {
                     const memoryRewardExists = await tx.userReward.findFirst({
                         where: {
@@ -261,10 +276,10 @@ export async function POST(request: NextRequest) {
                     });
 
                     if (!memoryRewardExists) {
-                        // 쿠폰 3개 지급
+                        // 쿠폰 2개 지급
                         await tx.user.update({
                             where: { id: numericUserId },
-                            data: { couponCount: { increment: 3 } },
+                            data: { couponCount: { increment: 2 } },
                         });
 
                         // 보상 기록 저장
@@ -272,7 +287,7 @@ export async function POST(request: NextRequest) {
                             data: {
                                 userId: numericUserId,
                                 type: "personal_memory_milestone" as any, // 🟢 Prisma 클라이언트 재생성 후에도 타입 에러가 있으면 임시로 any 사용
-                                amount: 3,
+                                amount: 2,
                                 unit: "coupon" as any,
                                 placeId: null, // 🟢 placeId를 명시적으로 null로 설정
                             },
@@ -287,60 +302,13 @@ export async function POST(request: NextRequest) {
                         });
 
                         couponAwarded = true;
-                        couponAmount = 3;
-                        couponMessage = `추억 10개 달성! 쿠폰 3개를 지급했습니다! 🎉`;
-                    }
-                }
-
-                // 리뷰 작성한 코스 개수 확인 (중복 제거) - 공개 리뷰만
-                const publicReviews = await (tx as any).review.findMany({
-                    where: { 
-                        userId: numericUserId,
-                        isPublic: true
-                    },
-                    select: { courseId: true },
-                });
-                const uniqueCourseIds = new Set(publicReviews.map((r: any) => r.courseId));
-                reviewCount = uniqueCourseIds.size;
-
-                // 🟢 공개 리뷰 작성한 코스가 5개가 되면 쿠폰 1개 지급 (5, 10, 15, 20...)
-                if (!couponAwarded && reviewCount % 5 === 0 && reviewCount > 0) {
-                    // 중복 지급 방지: 이미 해당 마일스톤에 대한 보상이 지급되었는지 확인
-                    const milestoneRewardExists = await tx.userReward.findFirst({
-                        where: {
-                            userId: numericUserId,
-                            type: "course_completion_milestone",
-                            amount: reviewCount / 5, // 몇 번째 마일스톤인지 (1, 2, 3...)
-                            placeId: null, // 🟢 placeId를 명시적으로 null로 체크
-                        },
-                    });
-
-                    if (!milestoneRewardExists) {
-                        // 쿠폰 지급
-                        await tx.user.update({
-                            where: { id: numericUserId },
-                            data: { couponCount: { increment: 1 } },
-                        });
-
-                        // 보상 기록 저장 (리뷰 보상)
-                        await tx.userReward.create({
-                            data: {
-                                userId: numericUserId,
-                                type: "course_completion_milestone",
-                                amount: reviewCount / 5,
-                                unit: "coupon",
-                                placeId: null, // 🟢 courseId 대신 placeId: null 사용 (스키마에 courseId 필드 없음)
-                            },
-                        });
-
-                        couponAwarded = true;
-                        couponAmount = 1;
-                        couponMessage = `다녀온 코스에 리뷰를 5개 남기면 쿠폰을 드려요! 현재 ${reviewCount}개 작성 완료`;
+                        couponAmount = 2;
+                        couponMessage = `추억 10개 달성! 쿠폰 2개를 지급했습니다! 🎉`;
                     }
                 }
             }
 
-            return { review, couponAwarded, couponAmount, couponMessage, isNewReview, reviewCount, personalMemoryCount };
+            return { review, couponAwarded, couponAmount, couponMessage, isNewReview, personalMemoryCount };
         });
 
         // 응답 반환

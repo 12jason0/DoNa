@@ -92,7 +92,15 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // 🟢 파일 용량 제한 (50MB)
+        const maxBytes = 50 * 1024 * 1024; // 50MB
         for (const file of files) {
+            if (file.size > maxBytes) {
+                return NextResponse.json(
+                    { message: `파일 크기가 너무 큽니다. 최대 50MB까지 업로드 가능합니다. (${file.name})` },
+                    { status: 413 }
+                );
+            }
             const buffer = Buffer.from(await file.arrayBuffer());
 
             // --- ✨ 추가적으로 강화된 파일 이름 생성 로직 ---

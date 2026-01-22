@@ -69,6 +69,8 @@ function GuidePageInner() {
     const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [showPhotoCountModal, setShowPhotoCountModal] = useState(false);
+    const [currentPhotoCount, setCurrentPhotoCount] = useState(0);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
     
@@ -366,7 +368,7 @@ function GuidePageInner() {
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name}의 크기가 10MB를 초과합니다.`);
+                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
                 formData.append("photos", file);
             });
             if (courseId) {
@@ -412,7 +414,7 @@ function GuidePageInner() {
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name}의 크기가 10MB를 초과합니다.`);
+                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
                 formData.append("photos", file);
             });
             if (courseId) {
@@ -543,6 +545,13 @@ function GuidePageInner() {
             if (Object.keys(stepData).length === 0) {
                 console.warn("[handleSubmit] stepData가 비어있습니다!");
                 alert("저장할 추억 데이터가 없습니다. 각 장소에서 사진이나 태그를 추가해주세요.");
+                return;
+            }
+
+            // 🟢 나만의 추억은 최소 3장 이상의 사진이 필요
+            if (allPhotos.length < 3) {
+                setCurrentPhotoCount(allPhotos.length);
+                setShowPhotoCountModal(true);
                 return;
             }
 
@@ -1244,6 +1253,51 @@ function GuidePageInner() {
             {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
+            {/* 🟢 사진 개수 부족 모달 */}
+            {showPhotoCountModal && (
+                <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-3xl p-6 pt-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
+                        {/* 아이콘 영역 */}
+                        <div className="w-16 h-16 mx-auto mb-5 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.8}
+                                stroke="currentColor"
+                                className="w-8 h-8 text-amber-600 dark:text-amber-400"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                                />
+                            </svg>
+                        </div>
+
+                        {/* 제목 및 설명 */}
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                            사진이 부족해요
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                            나만의 추억을 저장하려면<br/>
+                            최소 <span className="font-bold text-amber-600 dark:text-amber-400">3장 이상</span>의 사진이 필요합니다.
+                            <br/><br/>
+                            현재 <span className="font-bold">{currentPhotoCount}장</span>의 사진이 있습니다.
+                        </p>
+
+                        {/* 버튼 */}
+                        <button
+                            onClick={() => setShowPhotoCountModal(false)}
+                            className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl transition-all"
+                            style={{ backgroundColor: '#99c08e' }}
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* 🟢 저장 성공 모달 */}
             {showSaveSuccessModal && (
                 <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
@@ -1275,7 +1329,7 @@ function GuidePageInner() {
                         {!couponAwarded && personalMemoryCount !== null && personalMemoryCount < 10 && (
                             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
                                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                    💡 추억 {10 - personalMemoryCount}개를 더 완료하면 쿠폰 3개를 드려요!
+                                    💡 추억 {10 - personalMemoryCount}개를 더 완료하면 쿠폰 2개를 드려요!
                                 </p>
                             </div>
                         )}

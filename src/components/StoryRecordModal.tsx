@@ -60,8 +60,8 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
         if (!files || files.length === 0) return;
 
         const file = files[0];
-        if (file.size > 5 * 1024 * 1024) {
-            setError("이미지 크기는 5MB 이하여야 합니다.");
+        if (file.size > 50 * 1024 * 1024) {
+            setError("이미지 크기는 50MB 이하여야 합니다.");
             return;
         }
 
@@ -106,7 +106,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
         try {
             const formData = new FormData();
             filesToUpload.forEach((file) => {
-                if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name}의 크기가 5MB를 초과합니다.`);
+                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
                 formData.append("photos", file);
             });
 

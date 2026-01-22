@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "사진 파일이 필요합니다" }, { status: 400 });
         }
 
-        // 간단한 용량 제한(10MB)
-        const maxBytes = 10 * 1024 * 1024;
+        // 간단한 용량 제한(50MB)
+        const maxBytes = 50 * 1024 * 1024;
         if (file.size > maxBytes) {
-            return NextResponse.json({ error: "파일 크기가 너무 큽니다(최대 10MB)" }, { status: 413 });
+            return NextResponse.json({ error: "파일 크기가 너무 큽니다(최대 50MB)" }, { status: 413 });
         }
 
         // 저장은 생략. 파일 버퍼를 읽어 유효성만 간단 확인
