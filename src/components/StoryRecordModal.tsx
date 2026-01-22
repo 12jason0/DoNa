@@ -318,7 +318,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                     <div className="px-5 pb-6 bg-white">
                         <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide -webkit-overflow-scrolling-touch">
                             {galleryPhotos.map((url, idx) => (
-                                <div key={idx} className="relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
+                                <div key={idx} className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100">
                                     <Image src={url} alt={`Photo ${idx + 2}`} fill className="object-cover" />
                                     <button
                                         onClick={() => deletePhoto(idx + 1)}
@@ -329,7 +329,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                                 </div>
                             ))}
                             {photos.length < 10 && (
-                                <label className="w-20 h-20 flex-shrink-0 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#667eea] transition-colors">
+                                <label className="w-20 h-20 shrink-0 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#667eea] transition-colors">
                                     <input
                                         ref={photoInputRef}
                                         type="file"
