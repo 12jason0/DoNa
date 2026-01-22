@@ -7,11 +7,11 @@ type SubscriptionTierInfo = {
 
 /**
  * 🟢 무료 BASIC 멤버십 제공 로직
- * 2월 22일 이전 가입자에게 3월 21일까지 무료 BASIC 제공
+ * 2026년 1월 22일 이전 가입자에게 2월 21일까지 무료 BASIC 제공 (한국 시간 기준)
  * 
  * 조건:
- * - 가입일(createdAt)이 2024-02-22 이전
- * - 현재 날짜가 2024-03-21 이전
+ * - 가입일(createdAt)이 2026-01-22 이전 (한국 시간 기준)
+ * - 현재 날짜가 2026-02-21 이전 (한국 시간 기준)
  * - 기존 등급이 FREE
  * 
  * @param currentTier 현재 등급
@@ -24,8 +24,10 @@ export function calculateEffectiveSubscription(
     createdAt: Date,
     currentExpiresAt: Date | null = null
 ): SubscriptionTierInfo {
-    const FREE_BASIC_START_DATE = new Date("2024-02-22T00:00:00.000Z");
-    const FREE_BASIC_END_DATE = new Date("2024-03-21T23:59:59.999Z");
+    // 🟢 한국 시간(KST, UTC+9) 기준: 1월 22일 00:00:00 KST = 2026-01-21T15:00:00.000Z (UTC)
+    const FREE_BASIC_START_DATE = new Date("2026-01-22T15:00:00.000Z");
+    // 🟢 한국 시간(KST, UTC+9) 기준: 2월 21일 23:59:59 KST = 2026-02-21T14:59:59.999Z (UTC)
+    const FREE_BASIC_END_DATE = new Date("2026-02-21T14:59:59.999Z");
     const now = new Date();
 
     // 🟢 [Fix]: 환불 후에도 무료 BASIC이 적용되지 않도록 만료일이 null이면 무료 BASIC 제공 안 함
@@ -33,8 +35,8 @@ export function calculateEffectiveSubscription(
     const wasRefunded = currentExpiresAt === null && currentTier === "FREE";
     
     // 조건 확인:
-    // 1. 가입일이 2월 22일 이전인가?
-    // 2. 현재 날짜가 3월 21일 이전인가?
+    // 1. 가입일이 1월 22일 이전인가? (한국 시간 기준)
+    // 2. 현재 날짜가 2월 21일 이전인가? (한국 시간 기준)
     // 3. 현재 등급이 FREE인가?
     // 4. 환불되지 않았는가? (만료일이 null이면 환불된 것으로 간주)
     const isEligibleForFreeBasic =

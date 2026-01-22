@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
                         title: true,
                         concept: true,
                         region: true,
+                        imageUrl: true,
                     },
                 },
             },
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
                       title: r.course.title,
                       concept: (r.course as any).concept || "",
                       region: (r.course as any).region || null,
+                      imageUrl: (r.course as any).imageUrl || null,
                   }
                 : undefined,
             };

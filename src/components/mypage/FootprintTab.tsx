@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import Image from "@/components/ImageFallback";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { CasefileItem, CompletedCourse } from "@/types/user";
 // 🟢 [Fix]: 누락된 아이콘 컴포넌트 임포트 추가
@@ -81,6 +81,7 @@ interface FootprintTabProps {
 
 const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName = "회원", personalStories = [] }: FootprintTabProps) => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     // 🟢 함수형 초기화로 매 렌더링마다 new Date() 호출 방지
     const [currentMonth, setCurrentMonth] = useState(() => new Date());
@@ -92,13 +93,49 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
     const [showDateCoursesModal, setShowDateCoursesModal] = useState(false);
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
-    // 🟢 서브 탭 상태 (달력, 추억)
-    const [activeView, setActiveView] = useState<"calendar" | "memories">("calendar");
+    // 🟢 서브 탭 상태 (달력, 추억) - URL 파라미터에 따라 초기값 설정
+    const [activeView, setActiveView] = useState<"calendar" | "memories">(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("view") === "memories" ? "memories" : "calendar";
+        }
+        return "calendar";
+    });
     // 🟢 추억 상세 모달 상태
     const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
     const [showMemoryModal, setShowMemoryModal] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const memoryScrollRef = useRef<HTMLDivElement>(null);
+
+    // 🟢 URL 파라미터에서 추억 ID를 읽어서 자동으로 모달 열기
+    useEffect(() => {
+        const viewParam = searchParams.get("view");
+        const memoryIdParam = searchParams.get("id");
+        
+        // view=memories가 있으면 추억 탭으로 전환
+        if (viewParam === "memories") {
+            setActiveView("memories");
+            
+            // id 파라미터가 있고 추억이 있으면 모달 열기
+            if (memoryIdParam && personalStories.length > 0) {
+                const memoryId = Number(memoryIdParam);
+                const foundMemory = personalStories.find((story: any) => story.id === memoryId);
+                
+                if (foundMemory) {
+                    setSelectedMemory(foundMemory);
+                    setShowMemoryModal(true);
+                    
+                    // URL에서 id 파라미터 제거 (모달이 닫힐 때 다시 열리지 않도록)
+                    const newSearchParams = new URLSearchParams(searchParams.toString());
+                    newSearchParams.delete("id");
+                    const newUrl = newSearchParams.toString() 
+                        ? `/mypage?tab=footprint&view=memories&${newSearchParams.toString()}`
+                        : `/mypage?tab=footprint&view=memories`;
+                    router.replace(newUrl, { scroll: false });
+                }
+            }
+        }
+    }, [searchParams, personalStories, router]);
 
     // 🟢 모달이 열릴 때 첫 번째 사진으로 스크롤
     useEffect(() => {
@@ -490,7 +527,7 @@ const FootprintTab = ({ casefiles, completed, aiRecommendations = [], userName =
                                         : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                 }`}
                             >
-                                추억 {personalStories.length > 0 && `(${personalStories.length})`}
+                                추억
                             </button>
                         </div>
                     </div>

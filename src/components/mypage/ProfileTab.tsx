@@ -71,12 +71,17 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                             }
                         }}
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer ${
-                            displayTier === "PREMIUM"
+                            displayTier === "PREMIUM" || (displayTier === "BASIC" && Boolean(hasValidSubscription))
                                 ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                                 : "bg-emerald-500 hover:bg-emerald-600 text-white"
                         }`}
+                        disabled={displayTier === "PREMIUM" || (displayTier === "BASIC" && Boolean(hasValidSubscription))}
                     >
-                        {displayTier === "PREMIUM" ? "사용 중" : "업그레이드"}
+                        {displayTier === "PREMIUM" 
+                            ? "사용 중" 
+                            : displayTier === "BASIC" && Boolean(hasValidSubscription)
+                            ? "사용 중"
+                            : "업그레이드"}
                     </button>  
                 </div>
 

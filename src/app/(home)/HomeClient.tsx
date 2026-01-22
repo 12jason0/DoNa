@@ -12,6 +12,9 @@ import OnboardingSection from "@/components/OnboardingSection";
 import CompletionModal from "@/components/CompletionModal";
 import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
+import MemoryCTA, { MemoryPreview } from "@/components/MemoryCTA";
+import LoginModal from "@/components/LoginModal";
+import { X } from "lucide-react";
 
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 import { isIOS } from "@/lib/platform";
@@ -123,6 +126,16 @@ export default function HomeClient({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [isLoadingCourses, setIsLoadingCourses] = useState<boolean>(false);
+    const [hasMemories, setHasMemories] = useState(false);
+    const [latestMemory, setLatestMemory] = useState<MemoryPreview | null>(null);
+    const [memories, setMemories] = useState<MemoryPreview[]>([]);
+    const [memoriesLoading, setMemoriesLoading] = useState(false);
+    // 🟢 추억 모달 상태
+    const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
+    const [showMemoryModal, setShowMemoryModal] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const memoryScrollRef = useRef<HTMLDivElement>(null);
+    const [fullMemoryData, setFullMemoryData] = useState<any[]>([]);
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -275,6 +288,90 @@ export default function HomeClient({
         }
     }, [isAuthenticated]);
 
+    // 🟢 모달이 열릴 때 첫 번째 사진으로 스크롤
+    useEffect(() => {
+        if (showMemoryModal && memoryScrollRef.current) {
+            setCurrentImageIndex(0);
+            memoryScrollRef.current.scrollLeft = 0;
+        }
+    }, [showMemoryModal]);
+
+    // 🟢 개인 추억 데이터 가져오기
+    const fetchPersonalMemories = useCallback(async () => {
+        if (!isAuthenticated) {
+            setHasMemories(false);
+            setLatestMemory(null);
+            setMemories([]);
+            setMemoriesLoading(false);
+            return;
+        }
+
+        setMemoriesLoading(true);
+        try {
+            const { data, response } = await apiFetch<any>("/api/reviews?userId=me", {
+                cache: "no-store",
+                next: { revalidate: 0 },
+            });
+
+            if (!response.ok || !Array.isArray(data)) {
+                setHasMemories(false);
+                setLatestMemory(null);
+                setMemories([]);
+                return;
+            }
+
+            const privateStories = data
+                .filter((review: any) => {
+                    const isPublic = review.isPublic;
+                    return (
+                        isPublic === false ||
+                        isPublic === "false" ||
+                        isPublic === 0 ||
+                        String(isPublic).toLowerCase() === "false"
+                    );
+                })
+                .sort((a, b) => {
+                    const getTimestamp = (item: any) =>
+                        new Date(item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0).getTime() || 0;
+                    return getTimestamp(b) - getTimestamp(a);
+                });
+
+            if (privateStories.length === 0) {
+                setHasMemories(false);
+                setLatestMemory(null);
+                setMemories([]);
+                return;
+            }
+
+            const memoriesList = privateStories.map((story: any) => ({
+                id: story.id || null,
+                title: story.title || story.region || story.placeName || "나만의 추억",
+                courseTitle: story.course?.title || story.courseTitle || null,
+                excerpt: story.content || story.description || story.memo || "",
+                imageUrl:
+                    (Array.isArray(story.imageUrls) && story.imageUrls[0]) ||
+                    story.imageUrl ||
+                    story.coverImage ||
+                    story.course?.imageUrl ||
+                    null,
+                createdAt: story.createdAt || story.created_at || story.updatedAt || story.updated_at || null,
+            }));
+
+            setHasMemories(true);
+            setLatestMemory(memoriesList[0]);
+            setMemories(memoriesList);
+            // 🟢 전체 추억 데이터 저장 (모달에서 사용)
+            setFullMemoryData(privateStories);
+        } catch (error) {
+            console.error("[HomeClient] 개인 추억 조회 실패:", error);
+            setHasMemories(false);
+            setLatestMemory(null);
+            setMemories([]);
+        } finally {
+            setMemoriesLoading(false);
+        }
+    }, [isAuthenticated]);
+
     useEffect(() => {
         if (isAuthLoading) {
             setIsCheckinLoading(true);
@@ -415,6 +512,11 @@ export default function HomeClient({
         checkSplashAndShowModal();
     }, [isAuthenticated, isAuthLoading, maybeOpenCheckinModal]);
 
+    // 🟢 개인 추억 데이터 로드
+    useEffect(() => {
+        fetchPersonalMemories();
+    }, [fetchPersonalMemories]);
+
     // 🟢 메인 코스 리스트 (테마별용) - 검색/필터 변경 시에만 업데이트
     useEffect(() => {
         // 🟢 [Optimization] 초기 데이터가 존재하고 사용자의 추가 액션(검색, 태그 선택)이 없다면 API 호출 차단
@@ -465,6 +567,7 @@ export default function HomeClient({
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
             <CompletionModal isOpen={showRewardModal} onClose={() => setShowRewardModal(false)} />
             <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
+            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
             {/* 🟢 코스 로딩 중 오버레이 */}
             {isLoadingCourses && <CourseLoadingOverlay />}
 
@@ -481,6 +584,41 @@ export default function HomeClient({
                     newCourses={newCourses}
                     onConceptClick={() => setIsLoadingCourses(true)}
                 />
+
+                {/* 🟢 나만의 추억 CTA */}
+                <section className="px-4 py-6">
+                    <MemoryCTA
+                        hasMemories={hasMemories}
+                        isAuthenticated={isAuthenticated}
+                        latestMemory={latestMemory}
+                        memories={memories}
+                        isLoading={memoriesLoading}
+                        onAction={() => {
+                            if (!isAuthenticated) {
+                                setShowLoginModal(true);
+                                return;
+                            }
+                            router.push("/mypage?tab=footprint&view=memories");
+                        }}
+                        onMemoryClick={(memory) => {
+                            if (!isAuthenticated) {
+                                setShowLoginModal(true);
+                                return;
+                            }
+                            if (memory.id) {
+                                // 🟢 페이지 전환 없이 모달로 바로 표시
+                                const fullMemory = fullMemoryData.find((story: any) => story.id === memory.id);
+                                if (fullMemory) {
+                                    setSelectedMemory(fullMemory);
+                                    setShowMemoryModal(true);
+                                    setCurrentImageIndex(0);
+                                }
+                            } else {
+                                router.push("/mypage?tab=footprint&view=memories");
+                            }
+                        }}
+                    />
+                </section>
 
                 {/* 🟢 출석현황: 로그인/비로그인 모두 표시 (비로그인 시 로그인 유도 메시지) */}
                 <section className="py-6 px-4" ref={checkinSectionRef}>
@@ -613,6 +751,225 @@ export default function HomeClient({
                                 </button>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 🟢 추억 상세 모달 - 인스타그램 스토리 스타일 */}
+            {showMemoryModal && selectedMemory && (
+                <div
+                    className="fixed inset-0 z-5000 bg-black dark:bg-black flex flex-col animate-in fade-in duration-300"
+                    onClick={() => setShowMemoryModal(false)}
+                    style={{
+                        paddingTop: "env(safe-area-inset-top, 0)",
+                        paddingBottom: "env(safe-area-inset-bottom, 0)",
+                    }}
+                >
+                    {/* 🟢 상단 바 영역 (검은색 배경) */}
+                    <div 
+                        className="absolute top-0 left-0 right-0 bg-black dark:bg-black z-10"
+                        style={{ 
+                            height: "env(safe-area-inset-top, 0)",
+                        }}
+                    />
+                    
+                    {/* 🟢 하단 네비게이션 바 영역 (안드로이드용) */}
+                    <div 
+                        className="absolute bottom-0 left-0 right-0 bg-black dark:bg-black z-10"
+                        style={{ 
+                            height: "env(safe-area-inset-bottom, 0)",
+                        }}
+                    />
+                    
+                    {/* 상단 바 영역 - Region, 점 인디케이터, X 버튼 */}
+                    <div 
+                        className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 bg-black dark:bg-black pt-4 pb-4"
+                        style={{ 
+                            top: "env(safe-area-inset-top, 0)",
+                        }}
+                    >
+                        {/* 왼쪽: Region */}
+                        {selectedMemory.course?.region && (
+                            <div className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full z-20">
+                                <span className="text-sm font-medium text-white dark:text-gray-300">
+                                    {selectedMemory.course.region}
+                                </span>
+                            </div>
+                        )}
+                        
+                        {/* 중앙: 점 인디케이터 */}
+                        {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 1 ? (
+                            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                                {selectedMemory.imageUrls.map((_: any, i: number) => (
+                                    <div
+                                        key={i}
+                                        className={`h-1 rounded-full transition-all ${
+                                            i === currentImageIndex
+                                                ? "bg-white w-8"
+                                                : "bg-white/40 w-1"
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex-1" />
+                        )}
+                        
+                        {/* 오른쪽: X 버튼 */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMemoryModal(false);
+                            }}
+                            className="text-white hover:text-white/80 transition-colors p-4 z-20"
+                        >
+                            <X className="w-6 h-6 stroke-2" />
+                        </button>
+                    </div>
+
+                    {/* 가로 스크롤 사진 갤러리 */}
+                    {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 0 ? (
+                        <div
+                            ref={memoryScrollRef}
+                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                            style={{
+                                height: "calc(100vh - 120px)",
+                                marginTop: "60px",
+                                marginBottom: "60px",
+                                WebkitOverflowScrolling: "touch",
+                                scrollBehavior: "smooth",
+                            }}
+                            onScroll={(e) => {
+                                const container = e.currentTarget;
+                                const scrollLeft = container.scrollLeft;
+                                const itemWidth = container.clientWidth;
+                                const newIndex = Math.round(scrollLeft / itemWidth);
+                                setCurrentImageIndex(newIndex);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {selectedMemory.placeData && typeof selectedMemory.placeData === 'object' ? (() => {
+                                const placeData = selectedMemory.placeData as Record<string, { photos: string[]; tags: string[] }>;
+                                const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
+                                let photoIndex = 0;
+                                
+                                return stepIndices.flatMap((stepIndex) => {
+                                    const stepData = placeData[stepIndex];
+                                    const photos = stepData.photos || [];
+                                    const tags = stepData.tags || [];
+                                    
+                                    return photos.map((imageUrl: string, photoIdx: number) => {
+                                        const currentIdx = photoIndex++;
+                                        return (
+                                            <div
+                                                key={`${stepIndex}-${photoIdx}`}
+                                                className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
+                                                style={{ height: "calc(100vh - 120px)" }}
+                                            >
+                                                <div className="absolute inset-0 bg-black">
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={`추억 사진 ${currentIdx + 1}`}
+                                                        fill
+                                                        className="object-cover"
+                                                        sizes="100vw"
+                                                        priority={currentIdx < 2}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                });
+                            })() : (
+                                selectedMemory.imageUrls.map((imageUrl: string, idx: number) => (
+                                    <div
+                                        key={idx}
+                                        className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
+                                        style={{ height: "calc(100vh - 120px)" }}
+                                    >
+                                        <div className="absolute inset-0 bg-black">
+                                            <Image
+                                                src={imageUrl}
+                                                alt={`추억 사진 ${idx + 1}`}
+                                                fill
+                                                className="object-cover"
+                                                sizes="100vw"
+                                                priority={idx < 2}
+                                            />
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <div 
+                            className="flex items-center justify-center bg-black" 
+                            style={{ 
+                                height: "calc(100vh - 120px)",
+                                marginTop: "60px",
+                                marginBottom: "60px",
+                            }}
+                        >
+                            <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-24 h-24 text-pink-500 dark:text-pink-400">
+                                    <path d="M6 4C6 3.44772 6.44772 3 7 3H21C21.5523 3 22 3.44772 22 4V16C22 16.5523 21.5523 17 21 17H18V20C18 20.5523 17.5523 21 17 21H3C2.44772 21 2 20.5523 2 20V8C2 7.44772 2.44772 7 3 7H6V4ZM8 7H17C17.5523 7 18 7.44772 18 8V15H20V5H8V7ZM16 15.7394V9H4V18.6321L11.4911 11.6404L16 15.7394ZM7 13.5C7.82843 13.5 8.5 12.8284 8.5 12C8.5 11.1716 7.82843 10.5 7 10.5C6.17157 10.5 5.5 11.1716 5.5 12C5.5 12.8284 6.17157 13.5 7 13.5Z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 하단 날짜 및 태그 표시 */}
+                    <div 
+                        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col"
+                        style={{
+                            paddingBottom: "calc(env(safe-area-inset-bottom, 0) + 1.5rem)",
+                            paddingLeft: "1.5rem",
+                            paddingTop: "2rem",
+                            background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)",
+                        }}
+                    >
+                        {/* 날짜 */}
+                        <div className="text-white text-sm font-medium mb-2">
+                            {(() => {
+                                const date = new Date(selectedMemory.createdAt);
+                                const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+                                return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
+                            })()}
+                        </div>
+                        
+                        {/* 현재 사진에 해당하는 태그 표시 */}
+                        {(() => {
+                            if (selectedMemory.placeData && typeof selectedMemory.placeData === 'object') {
+                                const placeData = selectedMemory.placeData as Record<string, { photos: string[]; tags: string[] }>;
+                                const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
+                                let photoIndex = 0;
+                                
+                                for (const stepIndex of stepIndices) {
+                                    const stepData = placeData[stepIndex];
+                                    const photos = stepData.photos || [];
+                                    const tags = stepData.tags || [];
+                                    
+                                    if (currentImageIndex >= photoIndex && currentImageIndex < photoIndex + photos.length) {
+                                        if (tags.length > 0) {
+                                            return (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {tags.map((tag: string, tagIdx: number) => (
+                                                        <span
+                                                            key={tagIdx}
+                                                            className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full"
+                                                        >
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                    }
+                                    photoIndex += photos.length;
+                                }
+                            }
+                            return null;
+                        })()}
                     </div>
                 </div>
             )}
