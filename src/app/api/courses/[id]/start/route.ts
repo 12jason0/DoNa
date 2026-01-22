@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
-import { calculateEffectiveSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 ? Promise.all([
                       prisma.user.findUnique({
                           where: { id: userId },
-                          select: { subscriptionTier: true, createdAt: true, subscriptionExpiresAt: true },
+                          select: { subscriptionTier: true },
                       }),
                       (prisma as any).courseUnlock
                           .findFirst({
@@ -66,14 +65,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // 🟢 사용자 정보 처리
         if (userResult && userResult[0]) {
             const user = userResult[0];
-            if (user) {
-                // 🟢 무료 BASIC 멤버십 계산 (2월 22일 이전 가입자에게 3월 21일까지 무료 BASIC 제공)
-                const effectiveSubscription = calculateEffectiveSubscription(
-                    user.subscriptionTier,
-                    user.createdAt,
-                    user.subscriptionExpiresAt
-                );
-                userTier = effectiveSubscription.tier;
+            if (user?.subscriptionTier) {
+                userTier = user.subscriptionTier;
             }
         }
         if (userResult && userResult[1]) {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
-import { calculateEffectiveSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +22,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (userId) {
             const user = await prisma.user.findUnique({
                 where: { id: userId },
-                select: { subscriptionTier: true, createdAt: true, subscriptionExpiresAt: true },
+                select: { subscriptionTier: true },
             });
-            if (user) {
-                // 🟢 무료 BASIC 멤버십 계산 (2월 22일 이전 가입자에게 3월 21일까지 무료 BASIC 제공)
-                const effectiveSubscription = calculateEffectiveSubscription(
-                    user.subscriptionTier,
-                    user.createdAt,
-                    user.subscriptionExpiresAt
-                );
-                userTier = effectiveSubscription.tier;
+            if (user?.subscriptionTier) {
+                userTier = user.subscriptionTier;
             }
 
             try {

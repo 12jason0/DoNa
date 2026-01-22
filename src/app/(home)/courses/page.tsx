@@ -5,7 +5,6 @@ import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePo
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
-import { calculateEffectiveSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐시 시간 증가
@@ -163,11 +162,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
                     prisma.user
                         .findUnique({
                             where: { id: userIdNum },
-                            select: { 
-                                subscriptionTier: true,
-                                createdAt: true,
-                                subscriptionExpiresAt: true,
-                            },
+                            select: { subscriptionTier: true },
                         })
                         .catch(() => null),
                     (prisma as any).courseUnlock
@@ -178,15 +173,7 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
                         .catch(() => []),
                 ]);
 
-                // 🟢 [Fix]: calculateEffectiveSubscription을 사용하여 실제 유효한 등급 계산
-                if (user) {
-                    const effectiveSubscription = calculateEffectiveSubscription(
-                        user.subscriptionTier,
-                        user.createdAt,
-                        user.subscriptionExpiresAt
-                    );
-                    userTier = effectiveSubscription.tier;
-                }
+                if (user?.subscriptionTier) userTier = user.subscriptionTier;
                 unlockedCourseIds = Array.isArray(unlocks) ? unlocks.map((u: any) => u.courseId) : [];
             }
         } catch (e) {

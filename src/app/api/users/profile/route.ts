@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getS3StaticUrl } from "@/lib/s3Static";
-import { calculateEffectiveSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic"; // 🟢 실시간 인증 정보를 위해 필수
 export const revalidate = 0; // 🟢 캐시 완전 비활성화
@@ -31,15 +30,6 @@ export async function GET(request: NextRequest) {
             },
         });
         if (!user) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-
-        // 🟢 무료 BASIC 멤버십 계산 (2월 22일 이전 가입자에게 3월 21일까지 무료 BASIC 제공)
-        const effectiveSubscription = calculateEffectiveSubscription(
-            user.subscriptionTier,
-            user.createdAt,
-            user.subscriptionExpiresAt
-        );
-        const effectiveTier = effectiveSubscription.tier;
-        const effectiveExpiresAt = effectiveSubscription.expiresAt;
 
         const convertToHttps = (url: string | null | undefined): string | null => {
             if (!url) return null;
@@ -71,9 +61,9 @@ export async function GET(request: NextRequest) {
             ageRange: user.ageRange,
             gender: user.gender,
             couponCount: user.couponCount ?? 0,
-            subscriptionTier: effectiveTier, // 🟢 계산된 등급 반환
-            subscription_tier: effectiveTier, // 🟢 snake_case 추가 (DB 대응)
-            subscriptionExpiresAt: effectiveExpiresAt ? effectiveExpiresAt.toISOString() : null, // 🟢 계산된 만료일 반환
+            subscriptionTier: user.subscriptionTier,
+            subscription_tier: user.subscriptionTier, // 🟢 snake_case 추가 (DB 대응)
+            subscriptionExpiresAt: user.subscriptionExpiresAt ? user.subscriptionExpiresAt.toISOString() : null,
             hasSeenConsentModal: user.hasSeenConsentModal ?? false,
             user: {
                 ...user,
@@ -81,8 +71,8 @@ export async function GET(request: NextRequest) {
                 nickname: displayName, // 🟢 내부 user.nickname 추가 (핵심!)
                 profileImage: profileImageUrl,
                 profileImageUrl: profileImageUrl, // 🟢 카카오 프로필 이미지 표시를 위해 추가
-                subscriptionTier: effectiveTier, // 🟢 계산된 등급 반환
-                subscriptionExpiresAt: effectiveExpiresAt ? effectiveExpiresAt.toISOString() : null, // 🟢 계산된 만료일 반환
+                subscriptionTier: user.subscriptionTier,
+                subscriptionExpiresAt: user.subscriptionExpiresAt ? user.subscriptionExpiresAt.toISOString() : null,
             },
         };
 

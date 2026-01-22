@@ -4,7 +4,6 @@ import { Prisma } from "@prisma/client";
 import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { resolveUserId } from "@/lib/auth";
 import { defaultCache } from "@/lib/cache";
-import { calculateEffectiveSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -32,21 +31,15 @@ export async function GET(request: NextRequest) {
                 prisma.user
                     .findUnique({
                         where: { id: userId },
-                        select: { subscriptionTier: true, createdAt: true, subscriptionExpiresAt: true },
+                        select: { subscriptionTier: true },
                     })
                     .catch(() => null),
                 (prisma as any).courseUnlock
                     .findMany({ where: { userId }, select: { courseId: true } })
                     .catch(() => []),
             ]);
-            if (userResult) {
-                // 🟢 무료 BASIC 멤버십 계산 (2월 22일 이전 가입자에게 3월 21일까지 무료 BASIC 제공)
-                const effectiveSubscription = calculateEffectiveSubscription(
-                    userResult.subscriptionTier,
-                    userResult.createdAt,
-                    userResult.subscriptionExpiresAt
-                );
-                userTier = effectiveSubscription.tier;
+            if (userResult?.subscriptionTier) {
+                userTier = userResult.subscriptionTier;
             }
             unlockedCourseIds = Array.isArray(unlocksResult) ? unlocksResult.map((u: any) => u.courseId) : [];
         }
