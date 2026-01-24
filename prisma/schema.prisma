@@ -75,6 +75,7 @@ model User {
   userFavorites         UserFavorite[]
   interactions          UserInteraction[]
   userPreference        UserPreference?
+  behaviorPatterns      UserBehaviorPattern[]
   rewards               UserReward[]
   userStoryProgress     UserStoryProgress[]
 
@@ -604,6 +605,20 @@ model UserPreference {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
+}
+
+model UserBehaviorPattern {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  conceptPattern Json     @map("concept_pattern") // { "힐링": 8, "활동적인": 3, ... }
+  regionPattern  Json     @map("region_pattern") // { "서울 강남구": 10, "제주": 2, ... }
+  moodPattern    Json     @map("mood_pattern") // { "로맨틱한": 6, "활기찬": 4, ... }
+  goalPattern    Json     @map("goal_pattern") // { "데이트": 12, "혼자만의시간": 3, ... }
+  snapshotDate   DateTime @default(now()) @map("snapshot_date")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, snapshotDate])
+  @@map("user_behavior_patterns")
 }
 
 model UserBadge {

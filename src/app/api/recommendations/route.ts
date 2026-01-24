@@ -258,7 +258,7 @@ export async function GET(req: NextRequest) {
         const strictRegion = searchParams.get("strict") === "true";
 
         let longTermPrefs: any = {};
-        let recentConcepts: string[] = [];
+        let recentBehaviorData: any = { concepts: [], regions: [], moods: [], goals: [] };
 
         // 🟢 [Fixed]: 개별 처리로 TypeScript 타입 추론 에러(18047, 2339) 해결
         let savedCourseIds: number[] = []; // 🟢 이미 저장한 코스 ID 목록
@@ -274,8 +274,17 @@ export async function GET(req: NextRequest) {
                     .findMany({
                         where: { userId, action: { in: ["view", "click", "like"] } },
                         orderBy: { createdAt: "desc" },
-                        take: 10,
-                        select: { course: { select: { concept: true } } },
+                        take: 50, // 🔥 10개 → 50개로 확대
+                        select: {
+                            action: true, // 🔥 행동 유형 추가
+                            course: {
+                                select: {
+                                    concept: true,
+                                    region: true,
+                                    tags: true, // 🔥 mood, goal 추출을 위해 tags 전체 가져오기
+                                },
+                            },
+                        },
                     })
                     .catch(() => []), // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
                 // 🟢 AI 추천 모드일 때만 이미 저장한 코스 목록 조회
@@ -292,7 +301,81 @@ export async function GET(req: NextRequest) {
             if (prefsData?.preferences) {
                 longTermPrefs = prefsData.preferences; // 🟢 명확한 속성 접근 (2339 해결)
             }
-            recentConcepts = interactionData.map((i: any) => i.course?.concept).filter(Boolean);
+
+            // 🔥 다차원 분석: concept, region, mood, goal 추출 + 행동 유형별 가중치 적용
+            const ACTION_WEIGHTS: { [key: string]: number } = {
+                like: 1.0,
+                click: 0.5,
+                view: 0.3,
+            };
+
+            interactionData.forEach((interaction: any) => {
+                const weight = ACTION_WEIGHTS[interaction.action] || 0.3;
+                const course = interaction.course;
+
+                if (!course) return;
+
+                // Concept
+                if (course.concept) {
+                    for (let i = 0; i < weight * 10; i++) {
+                        recentBehaviorData.concepts.push(course.concept);
+                    }
+                }
+
+                // Region
+                if (course.region) {
+                    for (let i = 0; i < weight * 10; i++) {
+                        recentBehaviorData.regions.push(course.region);
+                    }
+                }
+
+                // Mood (tags에서 추출)
+                if (course.tags?.mood) {
+                    for (let i = 0; i < weight * 10; i++) {
+                        recentBehaviorData.moods.push(course.tags.mood);
+                    }
+                }
+
+                // Goal (tags에서 추출)
+                if (course.tags?.goal) {
+                    for (let i = 0; i < weight * 10; i++) {
+                        recentBehaviorData.goals.push(course.tags.goal);
+                    }
+                }
+            });
+
+            // 🔥 패턴 분석 결과를 DB에 저장 (비동기로 저장, 추천 결과에는 영향 없음)
+            if (recentBehaviorData.concepts.length > 0) {
+                // 배열을 빈도 카운트 객체로 변환
+                const countFrequency = (arr: string[]) => {
+                    const freq: { [key: string]: number } = {};
+                    arr.forEach((item) => {
+                        freq[item] = (freq[item] || 0) + 1;
+                    });
+                    return freq;
+                };
+
+                const conceptPattern = countFrequency(recentBehaviorData.concepts);
+                const regionPattern = countFrequency(recentBehaviorData.regions);
+                const moodPattern = countFrequency(recentBehaviorData.moods);
+                const goalPattern = countFrequency(recentBehaviorData.goals);
+
+                // 비동기로 저장 (추천 API 응답에 영향 없음)
+                (prisma as any).userBehaviorPattern
+                    .create({
+                        data: {
+                            userId,
+                            conceptPattern,
+                            regionPattern,
+                            moodPattern,
+                            goalPattern,
+                        },
+                    })
+                    .catch((err: any) => {
+                        console.error("패턴 저장 실패:", err);
+                    });
+            }
+
             savedCourseIds = Array.isArray(savedCourses) ? savedCourses.map((sc: any) => sc.courseId) : [];
         }
 
@@ -403,8 +486,26 @@ export async function GET(req: NextRequest) {
 
             const baseScore = calculateNewRecommendationScore(course.tags, course.region, longTermPrefs, todayContext);
             let bonus = 0;
+            
+            // 에디터 추천 보너스
             if (course.is_editor_pick) bonus += 0.1;
-            if (recentConcepts.includes(course.concept || "")) bonus += 0.1;
+
+            // 🔥 다차원 최근 행동 패턴 보너스 (가중치 반영)
+            const conceptFreq = recentBehaviorData.concepts.filter((c: string) => c === course.concept).length;
+            const regionFreq = recentBehaviorData.regions.filter((r: string) => r === course.region).length;
+            const courseTags = course.tags as any;
+            const moodFreq = courseTags?.mood
+                ? recentBehaviorData.moods.filter((m: string) => m === courseTags.mood).length
+                : 0;
+            const goalFreq = courseTags?.goal
+                ? recentBehaviorData.goals.filter((g: string) => g === courseTags.goal).length
+                : 0;
+
+            // 빈도를 정규화해서 보너스 계산 (최대 50회 = 1.0 가중치로 가정)
+            bonus += Math.min((conceptFreq / 50) * 0.15, 0.15); // concept: 최대 0.15
+            bonus += Math.min((regionFreq / 50) * 0.1, 0.1); // region: 최대 0.1
+            bonus += Math.min((moodFreq / 50) * 0.1, 0.1); // mood: 최대 0.1
+            bonus += Math.min((goalFreq / 50) * 0.1, 0.1); // goal: 최대 0.1
 
             const finalScore = Math.min(baseScore + bonus, 1.0);
 
