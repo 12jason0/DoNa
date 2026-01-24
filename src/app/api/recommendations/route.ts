@@ -272,7 +272,7 @@ export async function GET(req: NextRequest) {
                     .catch(() => null),
                 prisma.userInteraction
                     .findMany({
-                        where: { userId, action: { in: ["view", "click", "like"] } },
+                        where: { userId, action: { in: ["view", "like"] } },
                         orderBy: { createdAt: "desc" },
                         take: 50, // 🔥 10개 → 50개로 확대
                         select: {
@@ -305,7 +305,6 @@ export async function GET(req: NextRequest) {
             // 🔥 다차원 분석: concept, region, mood, goal 추출 + 행동 유형별 가중치 적용
             const ACTION_WEIGHTS: { [key: string]: number } = {
                 like: 1.0,
-                click: 0.5,
                 view: 0.3,
             };
 
