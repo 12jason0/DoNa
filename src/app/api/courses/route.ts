@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
         const courseSelect = {
             id: true,
             title: true,
+            sub_title: true,
             description: true,
             duration: true,
             region: true,
@@ -68,6 +69,11 @@ export async function GET(request: NextRequest) {
             rating: true,
             view_count: true,
             createdAt: true,
+            // 🔥 태그 데이터 추가
+            mood: true,
+            goal: true,
+            budget_range: true,
+            tags: true,
             courseTags: { select: { tag: { select: { name: true } } } },
             coursePlaces: {
                 orderBy: { order_index: "asc" as const },
@@ -112,6 +118,7 @@ export async function GET(request: NextRequest) {
             return {
                 id: String(course.id),
                 title: course.title || "제목 없음",
+                sub_title: course.sub_title || undefined,
                 description: course.description || "",
                 duration: course.duration || "",
                 location: course.region || "",
@@ -122,9 +129,17 @@ export async function GET(request: NextRequest) {
                 rating: Number(course.rating) || 0,
                 view_count: course.view_count || 0,
                 createdAt: course.createdAt || new Date().toISOString(),
+                // 🔥 courseTags (관계 테이블) 배열은 유지
                 tags: Array.isArray(course?.courseTags)
                     ? course.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
                     : [],
+                // 🔥 태그 객체 형식 추가 (UI 호환성)
+                tagData: {
+                    mood: course.mood || [],
+                    goal: course.goal || undefined,
+                    budget: course.budget_range || undefined,
+                    target: (course.tags as any)?.target || [],
+                },
                 coursePlaces: Array.isArray(course.coursePlaces)
                     ? course.coursePlaces.map((cp: any) => ({
                           order_index: cp.order_index,

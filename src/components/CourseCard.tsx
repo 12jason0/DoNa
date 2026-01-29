@@ -39,6 +39,7 @@ export interface CourseCardProps {
     course: {
         id: string;
         title: string;
+        sub_title?: string;
         description?: string;
         imageUrl?: string;
         concept?: string;
@@ -114,7 +115,7 @@ const CourseCard = memo(
         const reservationInfo = useMemo(() => {
             // 🟢 가독성과 정확성을 위해 필터링 후 첫 번째 유효한 URL을 찾음
             const validPlace = course.coursePlaces?.find(
-                (cp) => cp.place?.reservationUrl && cp.place.reservationUrl.trim() !== ""
+                (cp) => cp.place?.reservationUrl && cp.place.reservationUrl.trim() !== "",
             );
 
             return {
@@ -241,7 +242,7 @@ const CourseCard = memo(
                                 {course.grade}
                             </span>
                         )}
-                        <span className="bg-black/40 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-medium border border-white/10">
+                        <span className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded-md font-bold border border-gray-700">
                             #{displayConcept}
                         </span>
                         {showNewBadge && course.reviewCount === 0 && (
@@ -259,7 +260,7 @@ const CourseCard = memo(
                         e.stopPropagation();
                         onToggleFavorite(e, course.id);
                     }}
-                    className="absolute top-3 right-3 z-20 flex items-center justify-center w-11 h-11 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/50 transition-all active:scale-90"
+                    className="absolute top-3 right-3 z-20 flex items-center justify-center w-11 h-11 rounded-full bg-gray-900 hover:bg-gray-800 transition-all active:scale-90 border border-gray-700"
                 >
                     <svg
                         className={`w-7 h-7 drop-shadow-sm transition-colors ${
@@ -280,38 +281,52 @@ const CourseCard = memo(
 
                 {/* 정보 섹션 */}
                 <div className="px-1 pt-1">
-                    <div className="flex flex-wrap gap-2 mb-3">
-                        {(course.region || course.location) && (
-                            <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-[13px] font-bold text-gray-600 dark:text-white">
-                                #{course.region || course.location}
-                            </span>
-                        )}
-                        {course.duration && (
-                            <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-[13px] font-bold text-gray-600 dark:text-white">
-                                #{course.duration}
-                            </span>
-                        )}
-                        {/* 🟢 수정된 장소 개수 표시 섹션 */}
-                        {validPlacesCount > 0 && (
-                            <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-[13px] font-bold text-gray-600 dark:text-white">
-                                #{validPlacesCount} 스팟
-                            </span>
+                    {/* 1. 제목과 설명 영역 */}
+                    <div className="mb-2">
+                        <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">
+                            {course.sub_title || course.title}
+                        </h3>
+                        {course.sub_title && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 font-light mt-1 opacity-90 line-clamp-1">
+                                {course.title}
+                            </p>
                         )}
                     </div>
-                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white leading-snug mb-2 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors break-keep line-clamp-2 tracking-tight">
-                        {course.title}
-                    </h3>
-                    <div className="text-xs font-medium">
-                        {infoDisplay && (
-                            <span
-                                className={
-                                    infoDisplay.type === "views"
-                                        ? "text-orange-600 dark:text-orange-400 font-bold"
-                                        : "text-gray-700 dark:text-white"
-                                }
-                            >
-                                {infoDisplay.content}
-                            </span>
+
+                    {/* 2. 하단 메타 태그 영역 */}
+                    <div className="flex items-center gap-2 mt-3 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                        {/* 지역 */}
+                        {(course.region || course.location) && (
+                            <div className="flex items-center gap-1">
+                                <span>📍</span>
+                                <span>{course.region || course.location}</span>
+                            </div>
+                        )}
+
+                        {/* 구분선 (점) */}
+                        {(course.region || course.location) && validPlacesCount > 0 && (
+                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full"></span>
+                        )}
+
+                        {/* 스팟 수 */}
+                        {validPlacesCount > 0 && (
+                            <div className="flex items-center gap-1">
+                                <span>👣</span>
+                                <span>{validPlacesCount} 스팟</span>
+                            </div>
+                        )}
+
+                        {/* 구분선 */}
+                        {validPlacesCount > 0 && course.duration && (
+                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full"></span>
+                        )}
+
+                        {/* 소요 시간 */}
+                        {course.duration && (
+                            <div className="flex items-center gap-1">
+                                <span>⏳</span>
+                                <span>{course.duration}</span>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -326,7 +341,7 @@ const CourseCard = memo(
                 )}
             </div>
         );
-    }
+    },
 );
 
 CourseCard.displayName = "CourseCard";

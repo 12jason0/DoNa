@@ -120,18 +120,15 @@ const Icons = {
         </svg>
     ),
     ArrowLeft: ({ className }: { className?: string }) => (
-<svg 
-    width="32" height="32" viewBox="0 0 24 24" fill="none" 
-    className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" // 그림자로 가독성 확보
-  >
-    <path 
-      d="M15 18L9 12L15 6"
-      stroke="white" 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    />
-  </svg>
+        <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" // 그림자로 가독성 확보
+        >
+            <path d="M15 18L9 12L15 6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
     ),
 };
 
@@ -188,6 +185,7 @@ export interface CourseData {
     region?: string | null;
     sub_title?: string | null;
     target_situation?: string | null;
+    budget_range?: string | null;
     duration: string;
     price?: string;
     imageUrl: string;
@@ -205,6 +203,13 @@ export interface CourseData {
     updatedAt: string;
     highlights?: any[];
     coursePlaces?: CoursePlace[];
+    tags?: {
+        mood?: string[];
+        goal?: string;
+        budget?: string;
+        target?: string[];
+        [key: string]: any;
+    };
 }
 
 export interface Review {
@@ -366,7 +371,7 @@ export default function CourseDetailClient({
         navigator.geolocation.getCurrentPosition(
             (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
             (err) => console.warn("위치 정보 요청 실패:", err.message),
-            geoOptions
+            geoOptions,
         );
     }, [userLocation]);
 
@@ -452,7 +457,7 @@ export default function CourseDetailClient({
                     observer.disconnect();
                 }
             },
-            { threshold: 0.1, rootMargin: "200px" } // 🟢 200px 전에 미리 로드
+            { threshold: 0.1, rootMargin: "200px" }, // 🟢 200px 전에 미리 로드
         );
         observer.observe(mapSectionRef.current);
         return () => observer.disconnect();
@@ -504,22 +509,6 @@ export default function CourseDetailClient({
         }
     }, [sortedCoursePlaces]);
 
-    // 🟢 모달이 열릴 때 이미지 미리 로드 (즉시 표시를 위해)
-    useEffect(() => {
-        if (showPlaceModal && selectedPlace?.imageUrl) {
-            // 이미지 preload
-            const link = document.createElement("link");
-            link.rel = "preload";
-            link.as = "image";
-            link.href = selectedPlace.imageUrl;
-            document.head.appendChild(link);
-
-            // Image 객체로도 미리 로드 (더 빠른 로딩)
-            const img = document.createElement("img");
-            img.src = selectedPlace.imageUrl;
-        }
-    }, [showPlaceModal, selectedPlace?.imageUrl]);
-
     const handleMapPlaceClick = useCallback(
         (mapPlace: MapPlace) => {
             const fullPlace = sortedCoursePlaces.find((cp) => cp.place.id === mapPlace.id)?.place;
@@ -532,7 +521,7 @@ export default function CourseDetailClient({
                 }
             }
         },
-        [sortedCoursePlaces, showFullMapModal]
+        [sortedCoursePlaces, showFullMapModal],
     );
 
     const heroImageUrl = useMemo(() => {
@@ -557,7 +546,7 @@ export default function CourseDetailClient({
 
     const showToast = useCallback(
         (message: string, type: "success" | "error" | "info" = "info") => setToast({ message, type }),
-        []
+        [],
     );
 
     const handleTimelinePlaceClick = (coursePlace: CoursePlace) => {
@@ -587,7 +576,7 @@ export default function CourseDetailClient({
                             createdAt: r.createdAt,
                             content: r.comment,
                             imageUrls: r.imageUrls || [],
-                        }))
+                        })),
                     );
                 }
             }
@@ -608,7 +597,7 @@ export default function CourseDetailClient({
                     observer.disconnect();
                 }
             },
-            { threshold: 0.1, rootMargin: "100px" }
+            { threshold: 0.1, rootMargin: "100px" },
         );
         observer.observe(reviewsSectionRef.current);
         return () => observer.disconnect();
@@ -657,7 +646,7 @@ export default function CourseDetailClient({
                 } else {
                     // 찜하기 제거: 캐시에서 제거
                     globalFavoritesCache = globalFavoritesCache.filter(
-                        (fav: any) => String(fav.course_id) !== courseId
+                        (fav: any) => String(fav.course_id) !== courseId,
                     );
                 }
                 globalFavoritesPromise = null;
@@ -843,39 +832,65 @@ export default function CourseDetailClient({
                             sizes="(max-width: 768px) 100vw, 33vw"
                             unoptimized={false}
                         />
-                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
+                        {/* 🔥 진한 그라데이션 오버레이 */}
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent" />
+
                         {/* 🟢 [2026-01-21] 뒤로 가기 버튼 추가 */}
                         <button
-    onClick={() => router.back()}
-    className="absolute top-5 left-5 z-20 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm active:scale-90 transition-all"
->
-    <Icons.ArrowLeft className="w-6 h-6 text-white" />
-</button>
-                        <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white">
-                            <div className="flex flex-wrap gap-2.5 mb-4">
-                                <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md text-[13px] font-bold rounded-full border border-white/20 shadow-sm">
-                                    📍 {courseData.region || "서울"}
-                                </span>
+                            onClick={() => router.back()}
+                            className="absolute top-5 left-5 z-20 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm active:scale-90 transition-all"
+                        >
+                            <Icons.ArrowLeft className="w-6 h-6 text-white" />
+                        </button>
+
+                        <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white z-10">
+                            {/* 🔥 Row 1: 핵심 정보 (불투명 태그) */}
+                            <div className="flex flex-wrap gap-2.5 mb-3">
                                 {courseData.target_situation && (
-                                    <span className="px-3.5 py-1.5 bg-rose-500/80 backdrop-blur-md text-[13px] font-bold rounded-full shadow-sm border border-white/10">
+                                    <span className="px-2.5 py-1 text-[11px] font-bold text-white bg-gray-900 border border-gray-700 rounded-lg tracking-wide">
+                                        #
                                         {courseData.target_situation === "SOME"
-                                            ? "💘 썸 탈출"
-                                            : `#${courseData.target_situation}`}
+                                            ? "썸탈출"
+                                            : courseData.target_situation}
+                                    </span>
+                                )}
+                                {courseData.budget_range && (
+                                    <span className="px-2.5 py-1 text-[11px] font-bold text-white bg-gray-900 border border-gray-700 rounded-lg tracking-wide">
+                                        💸 {courseData.budget_range}
                                     </span>
                                 )}
                             </div>
-                            <h1 className="text-2xl md:text-3xl font-extrabold mb-6">{courseData.title}</h1>
-                            <div className="flex items-center gap-3 text-xs font-semibold">
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                    👣 {sortedCoursePlaces.length} 스팟
-                                </div>
-                                <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                    ⏳ {courseData.duration}
-                                </div>
+
+                            {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 */}
+                            <h1 className="text-2xl md:text-3xl font-extrabold mb-2 drop-shadow-lg">
+                                {courseData.title}
+                            </h1>
+                            {courseData.sub_title && (
+                                <p className="text-sm md:text-base font-normal text-white/90 mb-4 leading-relaxed drop-shadow-md">
+                                    {courseData.sub_title}
+                                </p>
+                            )}
+
+                            {/* 🔥 Row 2: 메타 정보 (텍스트만, 박스 제거) */}
+                            <div className="flex items-center gap-3 text-[13px] font-medium flex-wrap drop-shadow-md">
+                                <span>📍 {courseData.region || "서울"}</span>
+                                <span className="text-white/70">·</span>
+                                <span>👣 {sortedCoursePlaces.length} 스팟</span>
+                                <span className="text-white/70">·</span>
+                                <span>⏳ {courseData.duration}</span>
                                 {courseData.rating > 0 && (
-                                    <div className="bg-black/30 backdrop-blur-md px-3 py-2 rounded-md border border-white/10">
-                                        <span className="text-yellow-400">★</span> {courseData.rating}
-                                    </div>
+                                    <>
+                                        <span className="text-white/70">·</span>
+                                        <span>
+                                            <span className="text-yellow-400">★</span> {courseData.rating}
+                                        </span>
+                                    </>
+                                )}
+                                {courseData.tags?.target?.[0] && (
+                                    <>
+                                        <span className="text-white/70">·</span>
+                                        <span>💑 {courseData.tags.target[0]}</span>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -888,9 +903,7 @@ export default function CourseDetailClient({
                             WebkitOverflowScrolling: "touch", // iOS 부드러운 스크롤 보장
                         }}
                     >
-                        <section className="bg-white dark:bg-[#1a241b] rounded-lg p-1 shadow-lg border border-gray-100 dark:border-gray-800">
-
-                        </section>
+                        <section className="bg-white dark:bg-[#1a241b] rounded-lg p-1 shadow-lg border border-gray-100 dark:border-gray-800"></section>
 
                         <section className="relative px-4 pb-20">
                             <div className="absolute left-[34px] top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200" />
@@ -901,23 +914,8 @@ export default function CourseDetailClient({
                                         <div key={coursePlace.id} className="relative">
                                             <div
                                                 onClick={() => {
-                                                    // 🟢 모달 이미지 미리 로드 (즉시 표시를 위해)
-                                                    if (coursePlace.place.imageUrl) {
-                                                        const link = document.createElement("link");
-                                                        link.rel = "preload";
-                                                        link.as = "image";
-                                                        link.href = coursePlace.place.imageUrl;
-                                                        document.head.appendChild(link);
-
-                                                        // 🟢 이미지 객체로도 미리 로드 (더 빠른 로딩)
-                                                        const img = document.createElement("img");
-                                                        img.src = coursePlace.place.imageUrl;
-                                                    }
                                                     setSelectedPlace(coursePlace.place);
-                                                    // 🟢 다음 프레임에서 모달 열기 (이미지 프리로드 시간 확보)
-                                                    requestAnimationFrame(() => {
-                                                        setShowPlaceModal(true);
-                                                    });
+                                                    setShowPlaceModal(true);
                                                 }}
                                                 className={`relative ml-12 bg-white dark:bg-[#1a241b] rounded-lg p-4 transition-all duration-300 border cursor-pointer ${
                                                     isSelected
@@ -1197,7 +1195,7 @@ export default function CourseDetailClient({
                             }}
                             className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
                         >
-                             나만의 추억
+                            나만의 추억
                         </button>
                     </div>
                 </div>
@@ -1218,7 +1216,8 @@ export default function CourseDetailClient({
                                     sizes="(max-width: 768px) 100vw, 33vw"
                                 />
                             )}
-                            <div className="absolute inset-0 bg-black/60" />
+                            {/* 🔥 락 화면 그라데이션도 진하게 */}
+                            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
                             {/* 🟢 [2026-01-21] 뒤로 가기 버튼 추가 */}
                             <button
                                 onClick={() => router.back()}
@@ -1244,7 +1243,13 @@ export default function CourseDetailClient({
                                             />
                                         </svg>
                                     </div>
+                                    {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 */}
                                     <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{courseData.title}</h1>
+                                    {courseData.sub_title && (
+                                        <p className="text-sm text-white/80 mb-3 leading-relaxed">
+                                            {courseData.sub_title}
+                                        </p>
+                                    )}
                                     {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 안내 텍스트 숨김 */}
                                     {platform === "web" && (
                                         <p className="text-white/80 text-sm">
@@ -1321,7 +1326,7 @@ export default function CourseDetailClient({
                                     {/* 🟢 예약 버튼 추가 */}
                                     {(() => {
                                         const fullPlace = sortedCoursePlaces.find(
-                                            (c) => c.place.id === modalSelectedPlace.id
+                                            (c) => c.place.id === modalSelectedPlace.id,
                                         )?.place;
                                         return fullPlace?.reservationUrl ? (
                                             <a
@@ -1340,7 +1345,7 @@ export default function CourseDetailClient({
                                             onClick={() => {
                                                 setShowFullMapModal(false);
                                                 const cp = sortedCoursePlaces.find(
-                                                    (c) => c.place.id === modalSelectedPlace.id
+                                                    (c) => c.place.id === modalSelectedPlace.id,
                                                 );
                                                 if (cp) handleTimelinePlaceClick(cp);
                                             }}
@@ -1463,10 +1468,10 @@ export default function CourseDetailClient({
                                     fill
                                     className="object-cover"
                                     priority
-                                    loading="eager"
-                                    quality={80}
-                                    sizes="(max-width: 768px) 100vw, 33vw"
-                                    fetchPriority="high"
+                                    quality={60}
+                                    sizes="(max-width: 768px) 95vw, 448px"
+                                    placeholder="blur"
+                                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgZmlsbD0iI2VlZSIvPjwvc3ZnPg=="
                                 />
                             )}
                             <button

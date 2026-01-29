@@ -49,7 +49,7 @@ async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | nu
     const baseDate = now.toISOString().slice(0, 10).replace(/-/g, "");
     const baseTime = `${now.getHours().toString().padStart(2, "0")}00`;
     const apiUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst?serviceKey=${encodeURIComponent(
-        KMA_API_KEY
+        KMA_API_KEY,
     )}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
     try {
         const response = await fetch(apiUrl);
@@ -66,7 +66,7 @@ async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
     if (!AIRKOREA_API_KEY || !sidoName) return null;
     try {
         const apiUrl = `https://apis.data.go.kr/B552584/ArpltnInforinquireSvc/getCtprvnRltmMesureDnsty?serviceKey=${encodeURIComponent(
-            AIRKOREA_API_KEY
+            AIRKOREA_API_KEY,
         )}&numOfRows=1&pageNo=1&sidoName=${encodeURIComponent(sidoName)}&ver=1.3&returnType=json`;
         const response = await fetch(apiUrl, { next: { revalidate: 3600 } });
         if (!response.ok) return null;
@@ -84,24 +84,25 @@ async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
     }
 }
 
-function calculateWeatherPenalty(courseTags: any, weatherToday: string): number {
+function calculateWeatherPenalty(courseConcept: string | null, weatherToday: string): number {
     let penalty = 0;
-    const concept = courseTags?.concept || [];
+    if (!courseConcept) return 0;
+
     if (weatherToday.includes("비") || weatherToday.includes("눈")) {
-        if (concept.some((t: string) => t.includes("야외") || t.includes("공원"))) penalty -= 0.2;
-        if (concept.some((t: string) => t.includes("실내"))) penalty += 0.05;
+        if (courseConcept.includes("야외") || courseConcept.includes("공원")) penalty -= 0.2;
+        if (courseConcept.includes("실내")) penalty += 0.05;
     } else if (weatherToday.includes("미세먼지") || weatherToday.includes("황사")) {
-        if (concept.some((t: string) => t.includes("활동적인") || t.includes("야외"))) penalty -= 0.15;
-        if (concept.some((t: string) => t.includes("전시") || t.includes("쇼핑"))) penalty += 0.03;
+        if (courseConcept.includes("활동적인") || courseConcept.includes("야외")) penalty -= 0.15;
+        if (courseConcept.includes("전시") || courseConcept.includes("쇼핑")) penalty += 0.03;
     } else if (weatherToday.includes("맑음")) {
-        if (concept.some((t: string) => t.includes("야외") || t.includes("활동적인"))) penalty += 0.1;
+        if (courseConcept.includes("야외") || courseConcept.includes("활동적인")) penalty += 0.1;
     }
     return penalty;
 }
 
-function calculateConceptMatch(courseTags: any, longTermConcepts: string[], goal: string): number {
-    if (!courseTags?.concept || !Array.isArray(courseTags.concept)) return 0;
-    const courseConcepts = courseTags.concept as string[];
+function calculateConceptMatch(courseConcept: string | null, longTermConcepts: string[], goal: string): number {
+    if (!courseConcept) return 0;
+    const courseConcepts = [courseConcept];
 
     // 🟢 [UX 개선]: 일치하는 컨셉 개수 계산
     let matchCount = 0;
@@ -127,9 +128,8 @@ function calculateConceptMatch(courseTags: any, longTermConcepts: string[], goal
     return 0.7 + (Math.min(matchCount, 3) / 3) * 0.3;
 }
 
-function calculateMoodMatch(courseTags: any, longTermMoods: string[], moodToday: string): number {
-    if (!courseTags?.mood || !Array.isArray(courseTags.mood)) return 0;
-    const courseMoods = courseTags.mood as string[];
+function calculateMoodMatch(courseMoods: string[], longTermMoods: string[], moodToday: string): number {
+    if (!courseMoods || courseMoods.length === 0) return 0;
 
     // 🟢 [UX 개선]: 일치하는 무드 개수 계산
     let matchCount = 0;
@@ -167,30 +167,39 @@ function calculateRegionMatch(courseRegion: string | null, longTermRegions: stri
     return 0.5; // 선호 지역 정보가 없으면 중간값
 }
 
-function calculateGoalMatch(courseTags: any, goal: string, companionToday: string): number {
+function calculateGoalMatch(
+    courseGoal: string | null,
+    courseConcept: string | null,
+    goal: string,
+    companionToday: string,
+): number {
     if (!goal) return 0;
     let score = 0;
-    if (courseTags) {
-        const targetTags = courseTags.target || [];
-        const companionMap: Record<string, string[]> = { 연인: ["연인", "커플"], 친구: ["친구"] };
-        if ((companionMap[companionToday] || []).some((ct) => targetTags.some((tt: string) => tt.includes(ct))))
-            score += 0.5;
-        const goalTags: Record<string, string[]> = { 기념일: ["기념일", "특별한"], 데이트: ["데이트", "로맨틱"] };
-        const combined = [...targetTags, ...(courseTags.concept || [])];
-        if ((goalTags[goal] || []).some((gt) => combined.some((tag: string) => tag.includes(gt)))) score += 0.5;
+
+    // 동반자 매칭
+    if (companionToday && courseGoal) {
+        const companionMap: Record<string, string[]> = { 연인: ["연인", "커플", "데이트"], 친구: ["친구"] };
+        if ((companionMap[companionToday] || []).some((ct) => courseGoal.includes(ct))) score += 0.5;
     }
-    return score;
+
+    // goal 태그 매칭
+    const goalTags: Record<string, string[]> = { 기념일: ["기념일", "특별한"], 데이트: ["데이트", "로맨틱"] };
+    const goalKeywords = goalTags[goal] || [];
+
+    if (courseGoal && goalKeywords.some((gt) => courseGoal.includes(gt))) {
+        score += 0.5;
+    }
+    if (courseConcept && goalKeywords.some((gt) => courseConcept.includes(gt))) {
+        score += 0.5;
+    }
+
+    return Math.min(score, 1.0);
 }
 
 // ---------------------------------------------
 // 🟢 [Fixed]: 데이터 희소성 해결을 위한 동적 가중치 정규화 로직
 // ---------------------------------------------
-function calculateNewRecommendationScore(
-    courseTags: any,
-    courseRegion: string | null,
-    longTermPrefs: any,
-    todayContext: any
-): number {
+function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayContext: any): number {
     // 1. 기본 가중치 설정
     const WEIGHTS = {
         concept: 0.25,
@@ -205,21 +214,23 @@ function calculateNewRecommendationScore(
     // 2. 컨셉/목적 매칭 (데이터가 있을 때만 가중치 합산)
     if ((longTermPrefs.concept && longTermPrefs.concept.length > 0) || todayContext.goal) {
         weightedScoreSum +=
-            calculateConceptMatch(courseTags, longTermPrefs.concept || [], todayContext.goal || "") * WEIGHTS.concept;
+            calculateConceptMatch(course.concept, longTermPrefs.concept || [], todayContext.goal || "") *
+            WEIGHTS.concept;
         activeWeightTotal += WEIGHTS.concept;
     }
 
     // 3. 무드 매칭
     if ((longTermPrefs.mood && longTermPrefs.mood.length > 0) || todayContext.mood_today) {
         weightedScoreSum +=
-            calculateMoodMatch(courseTags, longTermPrefs.mood || [], todayContext.mood_today || "") * WEIGHTS.mood;
+            calculateMoodMatch(course.mood || [], longTermPrefs.mood || [], todayContext.mood_today || "") *
+            WEIGHTS.mood;
         activeWeightTotal += WEIGHTS.mood;
     }
 
     // 4. 지역 매칭
     if ((longTermPrefs.regions && longTermPrefs.regions.length > 0) || todayContext.region_today) {
         weightedScoreSum +=
-            calculateRegionMatch(courseRegion, longTermPrefs.regions || [], todayContext.region_today || "") *
+            calculateRegionMatch(course.region, longTermPrefs.regions || [], todayContext.region_today || "") *
             WEIGHTS.region;
         activeWeightTotal += WEIGHTS.region;
     }
@@ -227,7 +238,12 @@ function calculateNewRecommendationScore(
     // 5. 목적/동반자 매칭
     if (todayContext.goal || todayContext.companion_today) {
         weightedScoreSum +=
-            calculateGoalMatch(courseTags, todayContext.goal || "", todayContext.companion_today || "") * WEIGHTS.goal;
+            calculateGoalMatch(
+                course.goal,
+                course.concept,
+                todayContext.goal || "",
+                todayContext.companion_today || "",
+            ) * WEIGHTS.goal;
         activeWeightTotal += WEIGHTS.goal;
     }
 
@@ -236,7 +252,7 @@ function calculateNewRecommendationScore(
     let finalBaseScore = activeWeightTotal > 0 ? weightedScoreSum / activeWeightTotal : 0.5;
 
     // 7. 날씨 페널티는 정규화된 점수 위에서 최종 가감 (날씨는 선택 사항이 아닌 외부 환경이므로)
-    finalBaseScore += calculateWeatherPenalty(courseTags, todayContext.weather_today || "");
+    finalBaseScore += calculateWeatherPenalty(course.concept, todayContext.weather_today || "");
 
     return Math.max(0, Math.min(finalBaseScore, 1.0));
 }
@@ -270,7 +286,7 @@ export async function GET(req: NextRequest) {
                         select: { preferences: true },
                     })
                     .catch(() => null),
-                prisma.userInteraction
+                (prisma as any).userInteraction
                     .findMany({
                         where: { userId, action: { in: ["view", "like"] } },
                         orderBy: { createdAt: "desc" },
@@ -281,7 +297,8 @@ export async function GET(req: NextRequest) {
                                 select: {
                                     concept: true,
                                     region: true,
-                                    tags: true, // 🔥 mood, goal 추출을 위해 tags 전체 가져오기
+                                    mood: true, // 🔥 컬럼으로 변경
+                                    goal: true, // 🔥 컬럼으로 변경
                                 },
                             },
                         },
@@ -328,17 +345,19 @@ export async function GET(req: NextRequest) {
                     }
                 }
 
-                // Mood (tags에서 추출)
-                if (course.tags?.mood) {
-                    for (let i = 0; i < weight * 10; i++) {
-                        recentBehaviorData.moods.push(course.tags.mood);
-                    }
+                // Mood (배열이므로 각각 추가)
+                if (course.mood && Array.isArray(course.mood)) {
+                    course.mood.forEach((m: string) => {
+                        for (let i = 0; i < weight * 10; i++) {
+                            recentBehaviorData.moods.push(m);
+                        }
+                    });
                 }
 
-                // Goal (tags에서 추출)
-                if (course.tags?.goal) {
+                // Goal (컬럼에서 추출)
+                if (course.goal) {
                     for (let i = 0; i < weight * 10; i++) {
-                        recentBehaviorData.goals.push(course.tags.goal);
+                        recentBehaviorData.goals.push(course.goal);
                     }
                 }
             });
@@ -401,12 +420,13 @@ export async function GET(req: NextRequest) {
             whereConditions.id = { notIn: savedCourseIds };
         }
 
-        const allCourses = await prisma.course.findMany({
+        const allCourses = await (prisma as any).course.findMany({
             where: whereConditions,
             take: 200,
             select: {
                 id: true,
                 title: true,
+                sub_title: true,
                 description: true,
                 imageUrl: true,
                 region: true,
@@ -414,7 +434,23 @@ export async function GET(req: NextRequest) {
                 rating: true,
                 view_count: true,
                 createdAt: true,
-                tags: true,
+
+                // 🔥 JSON에서 컬럼으로 변환된 필드들
+                mood: true,
+                goal: true,
+
+                // 🔥 Context-Aware 신규 필드들
+                scene: true,
+                target_audience: true,
+                budget_level: true,
+                budget_range: true,
+                budget_min: true,
+                budget_max: true,
+                route_difficulty: true,
+                target_description: true,
+                perfect_for: true,
+
+                tags: true, // 기타 정보용 (선택적)
                 is_editor_pick: true,
                 grade: true,
                 coursePlaces: {
@@ -426,7 +462,9 @@ export async function GET(req: NextRequest) {
         });
 
         if (!userId) {
-            const popular = allCourses.sort((a, b) => (b.view_count || 0) - (a.view_count || 0)).slice(0, limit);
+            const popular = allCourses
+                .sort((a: any, b: any) => (b.view_count || 0) - (a.view_count || 0))
+                .slice(0, limit);
             return NextResponse.json({ recommendations: popular });
         }
 
@@ -472,7 +510,7 @@ export async function GET(req: NextRequest) {
             moodToday ||
             regionToday;
 
-        const scoredCourses = allCourses.map((course) => {
+        const scoredCourses = allCourses.map((course: any) => {
             // 🟢 온보딩 데이터가 없으면 matchScore를 null로 설정 (취향저격 표시 안 함)
             if (!hasOnboardingData) {
                 return {
@@ -483,22 +521,27 @@ export async function GET(req: NextRequest) {
                 };
             }
 
-            const baseScore = calculateNewRecommendationScore(course.tags, course.region, longTermPrefs, todayContext);
+            const baseScore = calculateNewRecommendationScore(course, longTermPrefs, todayContext);
             let bonus = 0;
-            
+
             // 에디터 추천 보너스
             if (course.is_editor_pick) bonus += 0.1;
 
             // 🔥 다차원 최근 행동 패턴 보너스 (가중치 반영)
             const conceptFreq = recentBehaviorData.concepts.filter((c: string) => c === course.concept).length;
             const regionFreq = recentBehaviorData.regions.filter((r: string) => r === course.region).length;
-            const courseTags = course.tags as any;
-            const moodFreq = courseTags?.mood
-                ? recentBehaviorData.moods.filter((m: string) => m === courseTags.mood).length
-                : 0;
-            const goalFreq = courseTags?.goal
-                ? recentBehaviorData.goals.filter((g: string) => g === courseTags.goal).length
-                : 0;
+
+            // mood는 배열이므로 각 mood에 대해 빈도 체크
+            const moodFreq =
+                course.mood && Array.isArray(course.mood)
+                    ? course.mood.reduce(
+                          (sum: number, m: string) =>
+                              sum + recentBehaviorData.moods.filter((rm: string) => rm === m).length,
+                          0,
+                      )
+                    : 0;
+
+            const goalFreq = course.goal ? recentBehaviorData.goals.filter((g: string) => g === course.goal).length : 0;
 
             // 빈도를 정규화해서 보너스 계산 (최대 50회 = 1.0 가중치로 가정)
             bonus += Math.min((conceptFreq / 50) * 0.15, 0.15); // concept: 최대 0.15
@@ -526,7 +569,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             recommendations: scoredCourses
-                .sort((a, b) => {
+                .sort((a: any, b: any) => {
                     // 🟢 matchScore가 null인 경우 처리: null은 맨 뒤로
                     if (a.matchScore === null && b.matchScore === null) return 0;
                     if (a.matchScore === null) return 1;

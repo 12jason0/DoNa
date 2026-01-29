@@ -16,8 +16,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     // ---------------------------------------------------------
     const pathname = usePathname();
     const [isQrOpen, setIsQrOpen] = useState(false);
-    const [showSplash, setShowSplash] = useState(false);
-    const [mounted, setMounted] = useState(false);
+    const [showSplash, setShowSplash] = useState(true); // 🔥 즉시 스플래시 표시
+    const [mounted, setMounted] = useState(true); // 🔥 마운트 대기 제거
     const [contentReady, setContentReady] = useState(false);
 
     // 🟢 앱 환경 감지: 초기 렌더링 시점에 즉시 확인 (useEffect 지연 방지)
@@ -68,26 +68,21 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             // 🟢 로그인 후 스플래시 플래그 확인
             const loginAfterSplash = sessionStorage.getItem("login-after-splash");
             const already = sessionStorage.getItem("dona-splash-shown");
-            
+
             // 🟢 로그인 후에는 절대 스플래시 표시하지 않음
             if (loginAfterSplash) {
                 setContentReady(true);
                 setShowSplash(false);
                 return;
             }
-            
+
             if (!already) {
-                // 🟢 스플래시를 표시하기 전에 contentReady를 false로 유지
+                // 🔥 즉시 스플래시 표시 (딜레이 제거)
+                setShowSplash(true);
                 setContentReady(false);
-                // 🟢 스플래시 컴포넌트가 마운트될 시간을 주기 위해 약간의 지연
-                setTimeout(() => {
-                    // 🟢 로그인 후 플래그가 설정되지 않았을 때만 스플래시 표시
-                    if (!sessionStorage.getItem("login-after-splash")) {
-                        setShowSplash(true);
-                    }
-                }, 50);
             } else {
                 // 스플래시가 필요 없으면 즉시 콘텐츠 준비
+                setShowSplash(false);
                 setContentReady(true);
             }
         } catch (e) {
@@ -104,12 +99,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 // 로그인 후 스플래시 플래그 설정 (재시작 방지)
                 sessionStorage.setItem("dona-splash-shown", "true");
                 sessionStorage.setItem("login-after-splash", "true");
-                
+
                 // 🟢 스플래시가 표시 중이면 즉시 숨기기
                 if (showSplash) {
                     setShowSplash(false);
                 }
-                
+
                 // 🟢 콘텐츠를 즉시 준비 상태로 전환 (스플래시 무시)
                 setContentReady(true);
             } catch (e) {
@@ -348,7 +343,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide">
                                         {children}
                                     </main>
-                                    <div className={`${isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"} shrink-0`}>
+                                    <div
+                                        className={`${isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"} shrink-0`}
+                                    >
                                         <Footer />
                                     </div>
                                 </div>

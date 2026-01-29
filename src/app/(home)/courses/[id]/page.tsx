@@ -12,33 +12,33 @@ import { unstable_cache } from "next/cache";
 async function retryDatabaseOperation<T>(
     operation: () => Promise<T>,
     maxRetries: number = 3,
-    delayMs: number = 500
+    delayMs: number = 500,
 ): Promise<T> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             return await operation();
         } catch (error: any) {
             lastError = error;
-            
+
             // 🟢 연결 풀 타임아웃이나 연결 실패 에러인 경우에만 재시도
-            const isRetryableError = 
+            const isRetryableError =
                 error?.code === "P2024" || // Connection pool timeout
                 error?.message?.includes("Can't reach database server") ||
                 error?.message?.includes("connection pool");
-            
+
             if (!isRetryableError || attempt === maxRetries) {
                 throw error;
             }
-            
+
             // 🟢 지수 백오프 (exponential backoff)
             const delay = delayMs * Math.pow(2, attempt - 1);
             console.warn(`[Database Retry] 시도 ${attempt}/${maxRetries} 실패, ${delay}ms 후 재시도...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
         }
     }
-    
+
     throw lastError || new Error("Database operation failed after retries");
 }
 
@@ -53,72 +53,77 @@ const getCourse = unstable_cache(
                 return await (prisma as any).course.findUnique({
                     where: { id: courseId },
                     select: {
-                    id: true,
-                    title: true,
-                    description: true,
-                    region: true,
-                    sub_title: true,
-                    target_situation: true,
-                    duration: true,
-                    imageUrl: true,
-                    concept: true,
-                    rating: true,
-                    isPopular: true,
-                    grade: true,
-                    createdAt: true,
-                    updatedAt: true,
-                    highlights: {
-                        select: {
-                            id: true,
-                            title: true,
-                            description: true,
-                            icon: true,
+                        id: true,
+                        title: true,
+                        description: true,
+                        region: true,
+                        sub_title: true,
+                        target_situation: true,
+                        duration: true,
+                        imageUrl: true,
+                        concept: true,
+                        rating: true,
+                        isPopular: true,
+                        grade: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        // 🔥 태그 데이터 추가
+                        mood: true,
+                        goal: true,
+                        budget_range: true,
+                        tags: true,
+                        highlights: {
+                            select: {
+                                id: true,
+                                title: true,
+                                description: true,
+                                icon: true,
+                            },
                         },
-                    },
-                    coursePlaces: {
-                        orderBy: { order_index: "asc" },
-                        select: {
-                            id: true,
-                            course_id: true,
-                            place_id: true,
-                            order_index: true,
-                            estimated_duration: true,
-                            recommended_time: true,
-                            coaching_tip: true,
-                            place: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    address: true,
-                                    description: true,
-                                    category: true,
-                                    avg_cost_range: true,
-                                    opening_hours: true,
-                                    phone: true,
-                                    parking_available: true,
-                                    reservation_required: true,
-                                    reservationUrl: true, // 🟢 예약 URL 추가
-                                    latitude: true,
-                                    longitude: true,
-                                    imageUrl: true,
-                                    // 🟢 closed_days는 필요할 때만 별도로 가져오기 (성능 최적화)
+                        coursePlaces: {
+                            orderBy: { order_index: "asc" },
+                            select: {
+                                id: true,
+                                course_id: true,
+                                place_id: true,
+                                order_index: true,
+                                estimated_duration: true,
+                                recommended_time: true,
+                                coaching_tip: true,
+                                place: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        address: true,
+                                        description: true,
+                                        category: true,
+                                        avg_cost_range: true,
+                                        opening_hours: true,
+                                        phone: true,
+                                        parking_available: true,
+                                        reservation_required: true,
+                                        reservationUrl: true, // 🟢 예약 URL 추가
+                                        latitude: true,
+                                        longitude: true,
+                                        imageUrl: true,
+                                        // 🟢 closed_days는 필요할 때만 별도로 가져오기 (성능 최적화)
+                                    },
                                 },
                             },
                         },
-                    },
-                    courseDetail: {
-                        select: {
-                            recommended_start_time: true,
-                            season: true,
-                            course_type: true,
-                            transportation: true,
+                        courseDetail: {
+                            select: {
+                                recommended_start_time: true,
+                                season: true,
+                                course_type: true,
+                                transportation: true,
+                            },
+                        },
+                        _count: {
+                            select: { coursePlaces: true },
                         },
                     },
-                    _count: {
-                        select: { coursePlaces: true },
-                    },
-                },
-            });
+                });
             });
 
             if (!course) {
@@ -141,6 +146,7 @@ const getCourse = unstable_cache(
                 region: course.region || null,
                 sub_title: course.sub_title || null,
                 target_situation: course.target_situation || null,
+                budget_range: course.budget_range || null,
                 duration: course.duration || "시간 미정",
                 price: "",
                 imageUrl: course.imageUrl || "",
@@ -156,6 +162,14 @@ const getCourse = unstable_cache(
                 createdAt: course.createdAt.toISOString(),
                 updatedAt: course.updatedAt.toISOString(),
                 highlights: highlights,
+                // 🔥 태그 데이터 추가
+                tags: {
+                    ...((course.tags as any) || {}),
+                    mood: course.mood || [],
+                    goal: course.goal || undefined,
+                    budget: course.budget_range || undefined,
+                    target: (course.tags as any)?.target || [],
+                },
                 coursePlaces: coursePlaces.map((cp: any) => ({
                     ...cp,
                     place: cp.place
@@ -173,14 +187,14 @@ const getCourse = unstable_cache(
             console.error(`[CourseDetail] 코스 데이터 로드 실패 (ID: ${id}):`, {
                 error: e?.message,
                 code: e?.code,
-                courseId: courseId
+                courseId: courseId,
             });
-            
+
             // 🟢 연결 풀 에러인 경우 null 반환하여 404로 처리
             if (e?.code === "P2024" || e?.message?.includes("connection pool")) {
                 console.error(`[CourseDetail] 데이터베이스 연결 풀 에러 - 404 반환`);
             }
-            
+
             return null;
         }
     },
@@ -189,14 +203,14 @@ const getCourse = unstable_cache(
     {
         revalidate: 300, // 🟢 캐시 시간 5분으로 증가 (기존 180초에서) - DB 요청 감소로 연결 풀 부하 감소
         tags: ["course-detail"],
-    }
+    },
 );
 
 // 🔒 권한 확인 함수 (unstable_cache 제거 - 실시간 DB 조회로 쿠폰 구매 즉시 반영)
 // 매 요청마다 실시간으로 DB를 조회하여 쿠폰 구매 즉시 반영되도록 합니다.
 const getUserPermission = async (
     userIdNum: number,
-    courseId: number
+    courseId: number,
 ): Promise<{ userTier: string; hasUnlocked: boolean }> => {
     try {
         // 🟢 최적화: 유저 정보와 구매 기록을 한 번에 조회 (병렬 처리)
@@ -272,7 +286,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                     const permission = await getUserPermission(userIdNum, courseId);
                     userTier = permission.userTier;
                     hasUnlocked = permission.hasUnlocked; // 쿠폰 구매 여부 확인
-
                 }
             }
         } catch (e) {
@@ -292,8 +305,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
 
     // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
-    const hasTipAccess =
-        currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
+    const hasTipAccess = currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
 
     const isLocked = !canAccess;
 
@@ -350,8 +362,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                           courseGrade === "FREE"
                               ? cp.coaching_tip // FREE 코스: 클라이언트에서 처리
                               : hasTipAccess
-                              ? cp.coaching_tip
-                              : null, // BASIC/PREMIUM 코스: 권한 체크
+                                ? cp.coaching_tip
+                                : null, // BASIC/PREMIUM 코스: 권한 체크
                       place: cp.place
                           ? {
                                 ...cp.place,
@@ -359,8 +371,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                                     courseGrade === "FREE"
                                         ? cp.place?.coaching_tip // FREE 코스: 클라이언트에서 처리
                                         : hasTipAccess
-                                        ? cp.place?.coaching_tip
-                                        : null, // BASIC/PREMIUM 코스: 권한 체크
+                                          ? cp.place?.coaching_tip
+                                          : null, // BASIC/PREMIUM 코스: 권한 체크
                             }
                           : null,
                   })) || [],

@@ -9,9 +9,42 @@ function ensureAdmin(req: NextRequest) {
     }
 }
 
+// Budget 파싱 헬퍼 함수
+function parseBudget(budgetString: string | undefined) {
+    if (!budgetString) return null;
+
+    // "3~6만원" 형식 파싱
+    const match = budgetString.match(/(\d+)~(\d+)만원?/);
+    if (match) {
+        const min = parseInt(match[1]) * 10000;
+        const max = parseInt(match[2]) * 10000;
+
+        // budget_level 자동 계산 (1인 기준)
+        let level = "low";
+        const avg = (min + max) / 2;
+        if (avg >= 50000) level = "high";
+        else if (avg >= 30000) level = "mid";
+
+        return { min, max, range: budgetString, level };
+    }
+
+    // "5만원" 단일 값 형식
+    const singleMatch = budgetString.match(/(\d+)만원?/);
+    if (singleMatch) {
+        const value = parseInt(singleMatch[1]) * 10000;
+        let level = "low";
+        if (value >= 50000) level = "high";
+        else if (value >= 30000) level = "mid";
+
+        return { min: value, max: value, range: budgetString, level };
+    }
+
+    return null;
+}
+
 export async function GET(
     req: NextRequest,
-    { params }: { params: Promise<{ id: string }> } // Next.js 15+ 에서는 params가 Promise일 수 있음
+    { params }: { params: Promise<{ id: string }> }, // Next.js 15+ 에서는 params가 Promise일 수 있음
 ) {
     try {
         const { id } = await params;
@@ -34,12 +67,23 @@ export async function GET(
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
 
+        // 🔥 Admin UI 호환성: 컬럼 데이터를 tags 형식으로 변환
+        const courseAny = course as any;
+        const tagsForAdmin = {
+            ...(courseAny.tags || {}),
+            mood: courseAny.mood || [],
+            goal: courseAny.goal || undefined,
+            budget: courseAny.budget_range || undefined,
+        };
+
         // 프론트엔드 편의를 위해 데이터 구조 정리 (선택 사항)
         const formattedCourse = {
-            ...course,
+            ...courseAny,
             // 프론트엔드 formData.places가 기대하는 형태는 coursePlaces 배열 그대로입니다.
             // 필요하다면 여기서 필드명을 places로 바꿔서 보내도 됩니다.
-            places: course.coursePlaces,
+            places: courseAny.coursePlaces,
+            // Admin UI가 기대하는 tags 형식으로 변환
+            tags: tagsForAdmin,
         };
 
         return NextResponse.json(formattedCourse);
@@ -82,22 +126,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // 🟢 [Fix]: region 또는 location 둘 다 처리 (프론트엔드는 region을 보냄)
         const regionValue = region !== undefined ? region : location;
 
+        // 🔥 tags 객체에서 컬럼으로 변환 (tags가 있을 때만)
+        const updateData: any = {
+            ...(title !== undefined ? { title } : {}),
+            ...(description !== undefined ? { description } : {}),
+            ...(duration !== undefined ? { duration } : {}),
+            ...(regionValue !== undefined ? { region: regionValue } : {}),
+            ...(imageUrl !== undefined ? { imageUrl } : {}),
+            ...(concept !== undefined ? { concept } : {}),
+            ...(sub_title !== undefined ? { sub_title } : {}),
+            ...(target_situation !== undefined ? { target_situation } : {}),
+            ...(is_editor_pick !== undefined ? { is_editor_pick } : {}),
+            ...(grade !== undefined ? { grade } : {}),
+            ...(isPublic !== undefined ? { isPublic } : {}),
+            ...(tags !== undefined ? { tags } : {}),
+        };
+
+        // 🔥 tags가 있으면 컬럼으로 변환
+        if (tags !== undefined && typeof tags === "object") {
+            // tags.mood → mood 컬럼 (배열)
+            if (Array.isArray(tags.mood)) {
+                updateData.mood = tags.mood;
+            }
+
+            // tags.goal → goal 컬럼 (문자열)
+            if (typeof tags.goal === "string") {
+                updateData.goal = tags.goal;
+            }
+
+            // tags.budget → budget_min, budget_max, budget_level, budget_range
+            if (typeof tags.budget === "string") {
+                const budgetData = parseBudget(tags.budget);
+                if (budgetData) {
+                    updateData.budget_min = budgetData.min;
+                    updateData.budget_max = budgetData.max;
+                    updateData.budget_range = budgetData.range;
+                    updateData.budget_level = budgetData.level;
+                }
+            }
+        }
+
         const updated = await prisma.course.update({
             where: { id: courseId },
-            data: {
-                ...(title !== undefined ? { title } : {}),
-                ...(description !== undefined ? { description } : {}),
-                ...(duration !== undefined ? { duration } : {}),
-                ...(regionValue !== undefined ? { region: regionValue } : {}),
-                ...(imageUrl !== undefined ? { imageUrl } : {}),
-                ...(concept !== undefined ? { concept } : {}),
-                ...(sub_title !== undefined ? { sub_title } : {}),
-                ...(target_situation !== undefined ? { target_situation } : {}),
-                ...(is_editor_pick !== undefined ? { is_editor_pick } : {}),
-                ...(grade !== undefined ? { grade } : {}),
-                ...(isPublic !== undefined ? { isPublic } : {}),
-                ...(tags !== undefined ? { tags } : {}),
-            },
+            data: updateData,
             select: {
                 id: true,
                 title: true,

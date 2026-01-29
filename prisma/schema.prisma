@@ -111,7 +111,23 @@ model Course {
   region               String?             @db.VarChar(50)
   duration             String?             @db.VarChar(45)
   concept              String?             @db.VarChar(45)
-  tags                 Json?
+  
+  // 🔥 기존 JSON → 컬럼으로 변환
+  mood                 String[]            @default([])                      // tags.mood → 배열 컬럼
+  goal                 String?             @db.VarChar(50)                   // tags.goal → 컬럼
+  
+  // 🔥 신규 Context-Aware 필드
+  scene                String?             @db.VarChar(100)                  // "퇴근 후 3시간", "주말 반나절"
+  target_audience      String?             @db.VarChar(100)                  // "직장인 커플", "대학생"
+  budget_level         String?             @db.VarChar(20)                   // "low" | "mid" | "high"
+  budget_range         String?             @db.VarChar(50)                   // "1인 3~5만"
+  budget_min           Int?                                                  // 30000
+  budget_max           Int?                                                  // 50000
+  route_difficulty     String?             @db.VarChar(20)                   // "편함" | "보통" | "빡셈"
+  target_description   String?             @db.VarChar(500)                  // "회사 근처에서 바로 시작하는..."
+  perfect_for          String[]            @default([])                      // ["직장인", "감성 좋아하는 커플"]
+  
+  tags                 Json?                                                 // 기타 정보 (선택적)
   isPopular            Boolean             @default(false)
   rating               Float               @default(0.0)
   current_participants Int                 @default(0)
@@ -139,6 +155,12 @@ model Course {
   userFavorites        UserFavorite[]
   interactions         UserInteraction[]
 
+  // 🔥 인덱스 추가 (빠른 검색)
+  @@index([scene])
+  @@index([budget_level])
+  @@index([route_difficulty])
+  @@index([mood])
+  @@index([scene, budget_level, route_difficulty])
   @@index([concept])
   @@index([region])
   @@index([title])
