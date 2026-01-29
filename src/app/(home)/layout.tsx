@@ -137,10 +137,72 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
                 }}
             />
 
+            {/* 🔥 초기 HTML 스플래시: WebView 로드 즉시 표시 */}
+            <div
+                id="initial-splash"
+                style={{
+                    position: "fixed",
+                    inset: 0,
+                    backgroundColor: "#7FCC9F",
+                    zIndex: 9999,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column" as const,
+                }}
+            >
+                <img
+                    src={logoUrl}
+                    alt="DoNa"
+                    style={{
+                        width: "120px",
+                        height: "120px",
+                        objectFit: "contain",
+                        marginBottom: "16px",
+                    }}
+                />
+                <div
+                    style={{
+                        color: "white",
+                        fontSize: "24px",
+                        fontWeight: "bold",
+                    }}
+                >
+                    두나
+                </div>
+            </div>
+
             {/* Providers 및 내부 레이아웃 */}
             <Providers>
                 <ClientBodyLayout>{children}</ClientBodyLayout>
             </Providers>
+
+            {/* 🔥 React 로드되면 초기 스플래시 제거 */}
+            <Script
+                id="remove-initial-splash"
+                strategy="afterInteractive"
+                dangerouslySetInnerHTML={{
+                    __html: `
+                        (function() {
+                            function removeSplash() {
+                                const splash = document.getElementById('initial-splash');
+                                if (splash) {
+                                    setTimeout(() => {
+                                        splash.style.opacity = '0';
+                                        splash.style.transition = 'opacity 0.3s';
+                                        setTimeout(() => splash.remove(), 300);
+                                    }, 100);
+                                }
+                            }
+                            if (document.readyState === 'complete') {
+                                removeSplash();
+                            } else {
+                                window.addEventListener('load', removeSplash);
+                            }
+                        })();
+                    `,
+                }}
+            />
         </div>
     );
 }
