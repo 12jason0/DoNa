@@ -203,6 +203,7 @@ export async function GET(request: NextRequest) {
                 OR: [
                     { title: { contains: q, mode: "insensitive" } },
                     { description: { contains: q, mode: "insensitive" } },
+                    { region: { contains: q, mode: "insensitive" } },
                 ],
             });
         }

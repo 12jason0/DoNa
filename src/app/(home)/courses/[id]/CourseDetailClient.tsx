@@ -835,12 +835,22 @@ export default function CourseDetailClient({
                         {/* 🔥 진한 그라데이션 오버레이 */}
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent" />
 
-                        {/* 🟢 [2026-01-21] 뒤로 가기 버튼 추가 */}
+                        {/* 🔥 뒤로 가기 버튼: 배경 없이 강한 그림자 */}
                         <button
                             onClick={() => router.back()}
-                            className="absolute top-5 left-5 z-20 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm active:scale-90 transition-all"
+                            className="absolute top-4 left-4 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all active:scale-95"
+                            aria-label="뒤로 가기"
                         >
-                            <Icons.ArrowLeft className="w-6 h-6 text-white" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2.5}
+                                stroke="currentColor"
+                                className="w-7 h-7"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                            </svg>
                         </button>
 
                         <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white z-10">
@@ -917,10 +927,10 @@ export default function CourseDetailClient({
                                                     setSelectedPlace(coursePlace.place);
                                                     setShowPlaceModal(true);
                                                 }}
-                                                className={`relative ml-12 bg-white dark:bg-[#1a241b] rounded-lg p-4 transition-all duration-300 border cursor-pointer ${
+                                                className={`relative ml-12 bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-5 transition-all duration-300 border cursor-pointer ${
                                                     isSelected
-                                                        ? "shadow-lg border-2 border-emerald-500 scale-[1.01]"
-                                                        : "border-gray-200 dark:border-gray-700 opacity-90 grayscale-[0.3]"
+                                                        ? "shadow-sm border-emerald-500 border-2 scale-[1.01]"
+                                                        : "border-white/40 dark:border-gray-700/40 opacity-90 grayscale-[0.3]"
                                                 }`}
                                             >
                                                 <div
@@ -1055,7 +1065,7 @@ export default function CourseDetailClient({
 
                         <section
                             ref={reviewsSectionRef}
-                            className="bg-white dark:bg-[#1a241b] rounded-lg p-8 shadow-lg border border-gray-100 dark:border-gray-800 mb-24"
+                            className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-8 shadow-sm border border-white/40 dark:border-gray-700/40 mb-24"
                         >
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -1218,13 +1228,26 @@ export default function CourseDetailClient({
                             )}
                             {/* 🔥 락 화면 그라데이션도 진하게 */}
                             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
-                            {/* 🟢 [2026-01-21] 뒤로 가기 버튼 추가 */}
+                            {/* 🔥 뒤로 가기 버튼: 배경 없이 강한 그림자 */}
                             <button
                                 onClick={() => router.back()}
-                                className="absolute top-4 left-4 md:top-6 md:left-6 z-20 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg border border-white/10"
+                                className="absolute top-4 left-4 md:top-6 md:left-6 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all active:scale-95"
                                 aria-label="뒤로 가기"
                             >
-                                <Icons.ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2.5}
+                                    stroke="currentColor"
+                                    className="w-7 h-7"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M15.75 19.5L8.25 12l7.5-7.5"
+                                    />
+                                </svg>
                             </button>
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-center text-white px-6">

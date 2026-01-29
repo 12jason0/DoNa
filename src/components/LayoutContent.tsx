@@ -16,8 +16,21 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     // ---------------------------------------------------------
     const pathname = usePathname();
     const [isQrOpen, setIsQrOpen] = useState(false);
-    const [showSplash, setShowSplash] = useState(true); // 🔥 즉시 스플래시 표시
-    const [mounted, setMounted] = useState(true); // 🔥 마운트 대기 제거
+    // 🔥 초기 상태를 함수로 설정하여 sessionStorage 체크
+    const [showSplash, setShowSplash] = useState(() => {
+        // 서버 사이드에서는 false
+        if (typeof window === "undefined") return false;
+
+        try {
+            // 이미 본 적 있거나 로그인 후면 false, 아니면 true
+            const already = sessionStorage.getItem("dona-splash-shown");
+            const loginAfterSplash = sessionStorage.getItem("login-after-splash");
+            return !already && !loginAfterSplash;
+        } catch {
+            return false; // 에러 시 스플래시 안 보여줌
+        }
+    });
+    const [mounted, setMounted] = useState(true);
     const [contentReady, setContentReady] = useState(false);
 
     // 🟢 앱 환경 감지: 초기 렌더링 시점에 즉시 확인 (useEffect 지연 방지)
@@ -52,44 +65,25 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isApp]);
 
-    // 🟢 Effect 1: 마운트 확인 및 세션 체크 (최초 1회)
+    // 🟢 Effect 1: 초기 설정 및 샵 페이지 체크
     useEffect(() => {
         // 🟢 즉시 초록색 배경 설정하여 흰색 화면 방지
         document.body.style.backgroundColor = "#7FCC9F";
 
         setMounted(true);
-        try {
-            // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 표시하지 않음
-            if (isShopPage) {
-                setContentReady(true);
-                return;
-            }
 
-            // 🟢 로그인 후 스플래시 플래그 확인
-            const loginAfterSplash = sessionStorage.getItem("login-after-splash");
-            const already = sessionStorage.getItem("dona-splash-shown");
+        // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 표시하지 않음
+        if (isShopPage) {
+            setShowSplash(false);
+            setContentReady(true);
+            return;
+        }
 
-            // 🟢 로그인 후에는 절대 스플래시 표시하지 않음
-            if (loginAfterSplash) {
-                setContentReady(true);
-                setShowSplash(false);
-                return;
-            }
-
-            if (!already) {
-                // 🔥 즉시 스플래시 표시 (딜레이 제거)
-                setShowSplash(true);
-                setContentReady(false);
-            } else {
-                // 스플래시가 필요 없으면 즉시 콘텐츠 준비
-                setShowSplash(false);
-                setContentReady(true);
-            }
-        } catch (e) {
-            console.error("sessionStorage access error:", e);
+        // 🔥 스플래시가 표시되지 않으면 즉시 콘텐츠 준비
+        if (!showSplash) {
             setContentReady(true);
         }
-    }, [isShopPage]);
+    }, [isShopPage, showSplash]);
 
     // 🟢 [2026-01-21] 로그인 성공 시 스플래시 중단 및 콘텐츠 표시
     useEffect(() => {
