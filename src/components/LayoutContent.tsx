@@ -16,18 +16,18 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     // ---------------------------------------------------------
     const pathname = usePathname();
     const [isQrOpen, setIsQrOpen] = useState(false);
-    // 🔥 초기 상태를 함수로 설정하여 sessionStorage 체크
+    // 🔥 초기 상태: 서버와 클라이언트 모두 true (Hydration 일치)
     const [showSplash, setShowSplash] = useState(() => {
-        // 서버 사이드에서는 false
-        if (typeof window === "undefined") return false;
+        // ✅ 서버에서도 true (첫 방문 가정)
+        if (typeof window === "undefined") return true;
 
         try {
-            // 이미 본 적 있거나 로그인 후면 false, 아니면 true
+            // 클라이언트: sessionStorage 체크
             const already = sessionStorage.getItem("dona-splash-shown");
             const loginAfterSplash = sessionStorage.getItem("login-after-splash");
             return !already && !loginAfterSplash;
         } catch {
-            return false; // 에러 시 스플래시 안 보여줌
+            return true; // 에러 시에도 스플래시 표시
         }
     });
     const [mounted, setMounted] = useState(true);
