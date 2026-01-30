@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         const token = jwt.sign(
             { userId: createdUser.id, email: createdUser.email, name: createdUser.username },
             JWT_SECRET,
-            { expiresIn: "7d" }
+            { expiresIn: "365d" }
         );
 
         // 9. 🟢 JSON 응답 및 보안 쿠키 설정 [cite: 2025-12-24]
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
             secure: process.env.NODE_ENV === "production", // HTTPS 환경 강제
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 7일 유지
+            maxAge: 60 * 60 * 24 * 365, // 1년 유지
         });
 
         return res;

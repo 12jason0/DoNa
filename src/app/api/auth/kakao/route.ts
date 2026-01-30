@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
         const user = result.user;
         const isNewUser = result.isNew;
 
-        const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "7d" });
+        const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "365d" });
         // 🟢 [2026-01-21] 응답 payload에 사용자 데이터 추가 (ageRange, gender 포함)
         const message = isNewUser
             ? "카카오 회원가입이 완료되었습니다. 쿠폰 2개가 지급되었습니다."
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24 * 365,
         });
 
         return res;

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
                 name: user.nickname,
             },
             getJwtSecret(),
-            { expiresIn: "7d" }
+            { expiresIn: "365d" }
         );
 
         // [법적 필수] 로그인 로그 저장
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 7일
+            maxAge: 60 * 60 * 24 * 365, // 1년
         });
         
         return res;

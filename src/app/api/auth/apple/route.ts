@@ -240,7 +240,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
 
         const user = result.user;
 
-        const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
+        const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "365d" });
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
         const decodedNext =
             next && !next.startsWith("/login") && next !== "/login"
@@ -478,7 +478,7 @@ async function handleAppAppleAuthLogic(
 
         const user = result.user;
 
-        const token = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "7d" });
+        const token = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "365d" });
 
         // [기능 유지] 로그인 로그 저장 로직
         const ip = request.headers.get("x-forwarded-for") || "unknown";
@@ -498,7 +498,7 @@ async function handleAppAppleAuthLogic(
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24 * 365,
         });
         
         // 🟢 [Fix]: WebView에서 쿠키 설정을 확실히 하기 위해 Set-Cookie 헤더 직접 설정
@@ -508,7 +508,7 @@ async function handleAppAppleAuthLogic(
             "HttpOnly",
             process.env.NODE_ENV === "production" ? "Secure" : "",
             "SameSite=Lax",
-            `Max-Age=${60 * 60 * 24 * 7}`,
+            `Max-Age=${60 * 60 * 24 * 365}`,
         ].filter(Boolean).join("; ");
         res.headers.set("Set-Cookie", cookieOptions);
 
@@ -558,7 +558,7 @@ function generateHtmlResponse(script: string, token?: string) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24 * 365,
         });
         
         // 🟢 [Fix]: WebView에서 쿠키 설정을 확실히 하기 위해 Set-Cookie 헤더 직접 설정
@@ -568,7 +568,7 @@ function generateHtmlResponse(script: string, token?: string) {
             "HttpOnly",
             process.env.NODE_ENV === "production" ? "Secure" : "",
             "SameSite=Lax",
-            `Max-Age=${60 * 60 * 24 * 7}`,
+            `Max-Age=${60 * 60 * 24 * 365}`,
         ].filter(Boolean).join("; ");
         response.headers.set("Set-Cookie", cookieOptions);
     }

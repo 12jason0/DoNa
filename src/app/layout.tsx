@@ -69,10 +69,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {/* 🟢 [Kakao SDK]: 공유하기 기능을 위해 추가 - 초기화는 각 컴포넌트에서 처리 */}
                 <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" strategy="afterInteractive" />
 
-                {/* Google AdSense: 사이트 소유권 확인 - <head>에 포함되려면 beforeInteractive */}
+                {/* Google AdSense: afterInteractive로 스플래시·메인 콘텐츠 먼저 렌더 후 로드 (하얀 화면·adtrafficquality 먼저 노출 방지) */}
                 <Script
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1305222191440436"
-                    strategy="beforeInteractive"
+                    strategy="afterInteractive"
                     crossOrigin="anonymous"
                 />
             </body>
