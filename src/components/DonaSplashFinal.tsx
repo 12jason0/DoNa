@@ -27,16 +27,16 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
         body.style.setProperty("overscroll-behavior", "none");
         body.style.setProperty("touch-action", "none");
 
-        // 🟢 타이밍 조정 (총 약 6초 노출)
+        // 🟢 타이밍 조정 (총 4초 노출, 6초→4초 비율 유지)
         const timeline = [
-            { delay: 100, action: () => setStep(1) }, // 더 빠른 시작
-            { delay: 400, action: () => setStep(2) },
-            { delay: 800, action: () => setStep(3) },
-            { delay: 1300, action: () => setStep(4) },
-            { delay: 2000, action: () => setStep(5) },
-            { delay: 3000, action: () => setStep(6) }, // 로고 등장
-            { delay: 5000, action: () => setFadeOut(true) }, // 🟢 페이드아웃 시작 (5초)
-            { delay: 6000, action: () => onDone?.() }, // 🟢 완전 종료 (6초)
+            { delay: 70, action: () => setStep(1) },
+            { delay: 270, action: () => setStep(2) },
+            { delay: 530, action: () => setStep(3) },
+            { delay: 870, action: () => setStep(4) },
+            { delay: 1330, action: () => setStep(5) },
+            { delay: 2000, action: () => setStep(6) }, // 로고 등장
+            { delay: 3330, action: () => setFadeOut(true) }, // 페이드아웃 시작
+            { delay: 4000, action: () => onDone?.() }, // 완전 종료 (4초)
         ];
         const timers = timeline.map(({ delay, action }) => setTimeout(action, delay));
         return () => {

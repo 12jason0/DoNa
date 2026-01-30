@@ -156,19 +156,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                     {showSplash && !isShopPage && (
                         <DonaSplashFinal
                             onDone={() => {
-                                // 🟢 스플래시가 완전히 끝난 후에만 콘텐츠 준비
+                                // 🟢 스플래시가 완전히 끝난 후 즉시 콘텐츠 표시 (대기 시간 제거)
                                 try {
                                     sessionStorage.setItem("dona-splash-shown", "1");
                                 } catch {}
 
-                                // 🟢 페이드아웃 애니메이션 완료 후 콘텐츠 표시 (1초 대기)
-                                setTimeout(() => {
-                                    setContentReady(true);
-                                    // 🟢 콘텐츠가 표시된 후 스플래시 컴포넌트 제거
-                                    setTimeout(() => {
-                                        setShowSplash(false);
-                                    }, 100);
-                                }, 1000);
+                                setContentReady(true);
+                                setShowSplash(false);
                             }}
                         />
                     )}

@@ -52,7 +52,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="ko" className={lineSeed.variable} suppressHydrationWarning>
-            <body className={`${lineSeed.className} font-sans antialiased`} suppressHydrationWarning={true}>
+            <body className={`${lineSeed.className} font-sans antialiased`} style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
                 {/* 🟢 웹뷰 앱 캐시 문제 해결: 빌드 버전 메타 태그 */}
                 <Script
                     id="build-version"
