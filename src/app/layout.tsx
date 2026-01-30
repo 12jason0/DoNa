@@ -3,9 +3,10 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
-import Script from "next/script"; // 🟢 카카오 SDK 로드를 위해 추가
+import Script from "next/script";
 import ClientStyleManager from "@/components/ClientStyleManager";
 import AdSenseScript from "@/components/AdSenseScript";
+import KakaoScript from "@/components/KakaoScript";
 
 const lineSeed = localFont({
     src: [
@@ -67,8 +68,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <ClientStyleManager />
                 <Providers>{children}</Providers>
 
-                {/* 🟢 [Kakao SDK]: 공유하기 기능을 위해 추가 - 초기화는 각 컴포넌트에서 처리 */}
-                <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" strategy="afterInteractive" />
+                {/* 🟢 [Kakao SDK]: 공유·간편 로그인용 - Client Component에서 onLoad로 초기화 */}
+                <KakaoScript />
 
                 {/* Google AdSense: 웹에서만 로드. 앱(WebView)에서는 미로드 → 스플래시·adtrafficquality 동시 노출 방지 */}
                 <AdSenseScript />

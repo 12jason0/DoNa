@@ -154,8 +154,22 @@ const Login = () => {
             // 1. 웹뷰 환경 체크
             const isMobileApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
             if (isMobileApp) {
-                // 🟢 [2026-01-21] 모바일 앱인 경우 next=mobile 파라미터 추가하여 서버가 앱임을 인식하도록 함
+                // 🟢 [2026-01-23] 모바일 앱: Kakao JS SDK authorize 사용 → 카카오톡 앱 간편 로그인 가능
                 const mobileNext = next === "/" ? "mobile" : `mobile?redirect=${encodeURIComponent(next)}`;
+                const Kakao = (window as any).Kakao;
+                const redirectUri = `${window.location.origin}/api/auth/kakao/callback`;
+                if (Kakao?.Auth?.authorize && (Kakao.isInitialized?.() || process.env.NEXT_PUBLIC_KAKAO_JS_KEY)) {
+                    if (Kakao && !Kakao.isInitialized?.()) {
+                        Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
+                    }
+                    Kakao.Auth.authorize({
+                        redirectUri,
+                        state: mobileNext,
+                        scope: "profile_nickname,profile_image,age_range,gender",
+                    });
+                    return;
+                }
+                // SDK 미로드 시 기존 리다이렉트 방식 폴백
                 window.location.href = `/api/auth/kakao?next=${encodeURIComponent(mobileNext)}`;
                 return;
             }
@@ -295,7 +309,7 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-green-50 via-[var(--brand-cream)] to-white dark:from-[#0f1710] dark:via-[#0f1710] dark:to-[#0f1710]">
+        <div className="min-h-screen bg-linear-to-br from-green-50 via-(--brand-cream) to-white dark:from-[#0f1710] dark:via-[#0f1710] dark:to-[#0f1710]">
             <main className="max-w-sm mx-auto px-4 py-8 pb-28 overflow-y-auto">
                 <div className="w-full bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 flex flex-col">
                     <div className="text-center mb-6">
