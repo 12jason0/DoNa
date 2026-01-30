@@ -177,7 +177,6 @@ const MyPage = () => {
                     const timeSinceLogin = Date.now() - parseInt(loginSuccessTime, 10);
                     // 🟢 로그인 후 5초 이내에는 401을 무시하고 재시도 (쿠키 동기화 시간 확보)
                     if (timeSinceLogin < 5000) {
-                        console.log("[MyPage] 로그인 직후 쿠키 동기화 대기 중, 1초 후 재시도");
                         // 🟢 1초 후 재시도
                         await new Promise((resolve) => setTimeout(resolve, 1000));
                         const retryResult = await apiFetch<any>("/api/users/profile", {
@@ -599,25 +598,14 @@ const MyPage = () => {
             });
             if (response.status === 401) return;
             if (data && Array.isArray(data)) {
-                // 🟢 디버깅: 원본 데이터 확인
-                console.log("[MyPage] API 응답 데이터:", data);
-                console.log("[MyPage] 첫 번째 리뷰 isPublic 값:", data[0]?.isPublic, "타입:", typeof data[0]?.isPublic);
-                
                 // 🟢 isPublic: false인 리뷰만 필터링 (명시적 체크)
                 const personalStories = data.filter((review: any) => {
                     const isPublic = review.isPublic;
-                    // 🟢 여러 형태의 false 값 체크
                     const isPrivate = isPublic === false || isPublic === "false" || isPublic === 0 || String(isPublic).toLowerCase() === "false";
-                    if (isPrivate) {
-                        console.log("[MyPage] 개인 추억 발견:", review.id, "isPublic:", isPublic);
-                    }
                     return isPrivate;
                 });
-                console.log("[MyPage] 전체 리뷰:", data.length, "개인 추억:", personalStories.length);
-                console.log("[MyPage] 개인 추억 상세:", personalStories);
                 setPersonalStories(personalStories);
             } else {
-                console.log("[MyPage] 데이터가 배열이 아님:", data);
                 setPersonalStories([]);
             }
         } catch (error) {
@@ -658,14 +646,7 @@ const MyPage = () => {
                     // 🟢 세션 캐시 무효화를 위해 fetchSession 먼저 호출
                     // fetchSession 내부에서 auth:forceRefresh 플래그를 확인하고 캐시를 무효화함
                     const { fetchSession } = await import("@/lib/authClient");
-                    const sessionResult = await fetchSession();
-                    console.log("[MyPage] 로그인/재로그인 직후 감지 - 세션 캐시 무효화 완료", {
-                        authenticated: sessionResult.authenticated,
-                        userId: sessionResult.user?.id,
-                        userName: sessionResult.user?.name,
-                        timeSinceLogin,
-                        timeSinceLogout
-                    });
+                    await fetchSession();
                     // fetchUserInfo에서 캐시를 무시하도록 플래그가 이미 설정되어 있음
                 } catch (error) {
                     console.error("[MyPage] 세션 재확인 실패:", error);
@@ -792,7 +773,6 @@ const MyPage = () => {
     // 🟢 로그아웃 이벤트 리스너 - 로그아웃 시 모든 데이터 초기화 (리다이렉트는 Header나 authClient가 담당)
     useEffect(() => {
         const handleAuthLogout = () => {
-            console.log("[MyPage] 로그아웃 이벤트 감지 - 데이터 초기화");
             // 1. 🟢 즉시 데이터만 비움 (리다이렉트는 Header나 authClient가 담당)
             setUserInfo(null);
             setUserPreferences(null);

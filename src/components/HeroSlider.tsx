@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-/** 3번째·4번째 코스 사이에 노출되는 웹 광고 슬롯 (AdSense). AdSense 대시보드에서 발급한 광고 단위 ID로 data-ad-slot을 채우세요. */
+/** 3번째·4번째 코스 사이에 노출되는 피드형 광고 (AdSense fluid). */
 const AdSlot = memo(() => {
     const insRef = useRef<HTMLModElement>(null);
     useEffect(() => {
@@ -23,9 +23,9 @@ const AdSlot = memo(() => {
                 className="adsbygoogle"
                 style={{ display: "block" }}
                 data-ad-client="ca-pub-1305222191440436"
-                data-ad-slot=""
-                data-ad-format="auto"
-                data-full-width-responsive="true"
+                data-ad-slot="6862339397"
+                data-ad-format="fluid"
+                data-ad-layout-key="+22+s4-1b-27+96"
             />
         </div>
     );

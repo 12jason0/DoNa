@@ -132,8 +132,9 @@ const ProfileTab = ({
     // 기본 프로필 이미지
     const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
-    // 🟢 로그를 보면 subscriptionTier(camelCase)로 정확히 오고 있습니다.
-    const displayTier = userInfo?.subscriptionTier || "FREE";
+    // 🟢 등급 표시: API가 소문자로 올 수 있으므로 대문자로 정규화
+    const rawTier = userInfo?.subscriptionTier ?? "FREE";
+    const displayTier = (typeof rawTier === "string" ? rawTier.toUpperCase() : "FREE") as "FREE" | "BASIC" | "PREMIUM";
 
     // 🟢 [강화]: iOS 감지 - 동기적으로 즉시 체크 (첫 렌더링에서 바로 적용)
     const checkIOSDevice = (): boolean => {
@@ -354,11 +355,11 @@ const ProfileTab = ({
                                 내 정보
                             </h3>
                             <span
-                                className={`px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${
+                                className={`shrink-0 px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${
                                     displayTier === "PREMIUM"
                                         ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50"
                                         : displayTier === "BASIC"
-                                        ? "bg-linear-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
                                         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
                                 }`}
                             >
