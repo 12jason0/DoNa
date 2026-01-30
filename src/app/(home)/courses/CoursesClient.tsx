@@ -122,21 +122,29 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             params.set("offset", String(offset));
             if (conceptParam) params.set("concept", conceptParam);
 
-            const { data, response } = await apiFetch(`/api/courses?${params.toString()}`, {
-                cache: "force-cache",
-                next: { revalidate: 180 },
+            const { data, response } = await apiFetch<{ data?: Course[]; courses?: Course[] }>(`/api/courses?${params.toString()}`, {
+                cache: "no-store", // 🟢 로드 더보기는 항상 최신 데이터 (캐시로 인한 중복/빈 목록 방지)
             });
 
             if (response.ok && data) {
-                const coursesArray = Array.isArray(data) ? data : (data as any).courses || [];
-                if (coursesArray.length > 0) {
+                const raw = Array.isArray(data) ? data : (data as any)?.data ?? (data as any)?.courses ?? [];
+                const coursesArray = Array.isArray(raw) ? raw : [];
+                // 🟢 API는 view_count 등 snake_case를 반환할 수 있음 → Course 타입에 맞게 정규화
+                const normalized = coursesArray.map((c: any) => ({
+                    ...c,
+                    id: String(c?.id ?? ""),
+                    viewCount: typeof c?.viewCount === "number" ? c.viewCount : Number(c?.view_count ?? 0) || 0,
+                    reviewCount: typeof c?.reviewCount === "number" ? c.reviewCount : 0,
+                    participants: typeof c?.participants === "number" ? c.participants : 0,
+                }));
+                if (normalized.length > 0) {
                     setCourses((prev) => {
                         const existingIds = new Set(prev.map((c) => c.id));
-                        const newUniqueCourses = coursesArray.filter((c: Course) => !existingIds.has(c.id));
+                        const newUniqueCourses = normalized.filter((c: Course) => c.id && !existingIds.has(c.id));
                         return [...prev, ...newUniqueCourses];
                     });
                     setOffset((prev) => prev + 30);
-                    setHasMore(coursesArray.length >= 30);
+                    setHasMore(normalized.length >= 30);
                 } else {
                     setHasMore(false);
                 }

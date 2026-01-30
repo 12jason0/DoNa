@@ -212,20 +212,29 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             const apiUrl = `/api/courses/nearby?${params.toString()}`;
             router.prefetch(apiUrl);
 
-            const { data, response } = await apiFetch(apiUrl, {
-                cache: "force-cache", // 🟢 성능 최적화: 캐시 활용
-                next: { revalidate: 60 }, // 🟢 60초 캐시
+            const { data, response } = await apiFetch<{ data?: Course[]; courses?: Course[] }>(apiUrl, {
+                cache: "no-store", // 🟢 로드 더보기는 항상 최신 데이터 (캐시로 인한 중복/빈 목록 방지)
             });
             if (response.ok && data) {
-                const responseData = Array.isArray(data)
-                    ? { data, isRecommendation: false }
-                    : (data as { data?: Course[]; isRecommendation?: boolean });
-                const coursesArray = Array.isArray(responseData.data) ? responseData.data : [];
-                if (coursesArray.length > 0) {
-                    setCourses((prev) => [...prev, ...coursesArray]);
-                    setIsRecommendation(responseData.isRecommendation || false);
+                const raw = Array.isArray(data) ? data : (data as any)?.data ?? (data as any)?.courses ?? [];
+                const coursesArray = Array.isArray(raw) ? raw : [];
+                // 🟢 API는 view_count 등 snake_case를 반환할 수 있음 → Course 타입에 맞게 정규화
+                const normalized = coursesArray.map((c: any) => ({
+                    ...c,
+                    id: String(c?.id ?? ""),
+                    viewCount: typeof c?.viewCount === "number" ? c.viewCount : Number(c?.view_count ?? 0) || 0,
+                    reviewCount: typeof c?.reviewCount === "number" ? c.reviewCount : 0,
+                    participants: typeof c?.participants === "number" ? c.participants : 0,
+                }));
+                if (normalized.length > 0) {
+                    setCourses((prev) => {
+                        const existingIds = new Set(prev.map((c) => c.id));
+                        const newUniqueCourses = normalized.filter((c: Course) => c.id && !existingIds.has(c.id));
+                        return [...prev, ...newUniqueCourses];
+                    });
+                    setIsRecommendation((data as any)?.isRecommendation ?? false);
                     setOffset((prev) => prev + 30);
-                    setHasMore(coursesArray.length >= 30);
+                    setHasMore(normalized.length >= 30);
                 } else {
                     setHasMore(false);
                 }

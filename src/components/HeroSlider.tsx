@@ -44,6 +44,8 @@ export type SliderItem = {
 
 type HeroSliderProps = {
     items: SliderItem[];
+    /** FREE일 때만 광고 노출, BASIC/PREMIUM은 광고 숨김 */
+    userTier?: "FREE" | "BASIC" | "PREMIUM";
 };
 
 const SliderItemComponent = memo(({ item, idx }: { item: SliderItem; idx: number }) => {
@@ -108,12 +110,14 @@ type DisplaySlot = SliderItem | { type: "ad" };
 
 const AD_INDEX = 3; // 3번째·4번째 코스 사이 (0-based로 3번째 위치)
 
-export default function HeroSlider({ items }: HeroSliderProps) {
+export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps) {
     const realLength = items.length;
+    const showAd = userTier === "FREE"; // BASIC, PREMIUM은 광고 미노출
     const displaySlots = useMemo<DisplaySlot[]>(() => {
         if (realLength < 2) return items;
+        if (!showAd) return items;
         return [...items.slice(0, AD_INDEX), { type: "ad" as const }, ...items.slice(AD_INDEX)];
-    }, [items, realLength]);
+    }, [items, realLength, showAd]);
     const totalSlots = displaySlots.length;
 
     const [currentIndex, setCurrentIndex] = useState(0);

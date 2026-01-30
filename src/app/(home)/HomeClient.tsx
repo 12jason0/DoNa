@@ -136,6 +136,8 @@ export default function HomeClient({
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const memoryScrollRef = useRef<HTMLDivElement>(null);
     const [fullMemoryData, setFullMemoryData] = useState<any[]>([]);
+    // 🟢 광고 노출: FREE만 광고 표시, BASIC/PREMIUM은 미표시
+    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -159,6 +161,7 @@ export default function HomeClient({
         if (!isAuthenticated) {
             setUserId(null);
             setUserName("");
+            setUserTier("FREE");
             setStreak(0);
             setWeekStamps([false, false, false, false, false, false, false]);
             setAlreadyToday(false);
@@ -179,6 +182,8 @@ export default function HomeClient({
                 requestAnimationFrame(() => {
                     const p = profileRes.value.data as any;
                     setUserName(p?.user?.nickname ?? p?.nickname ?? "두나");
+                    const tier = (p?.subscriptionTier ?? p?.subscription_tier ?? p?.user?.subscriptionTier ?? "FREE").toString().toUpperCase();
+                    setUserTier((tier === "BASIC" || tier === "PREMIUM" ? tier : "FREE") as "FREE" | "BASIC" | "PREMIUM");
 
                     setTimeout(() => {
                         if (p.hasSeenConsentModal === false) {
@@ -575,7 +580,7 @@ export default function HomeClient({
                 {/* 🟢 HeroSlider를 최우선으로 즉시 렌더링 (LCP 최적화) - 메인과 동시에 표시 */}
                 <div className="pt-4">
                     {/* 🟢 heroCourses가 비어있어도 HeroSlider는 렌더링하여 초기 구조 확보 */}
-                    <MemoizedHeroSlider items={heroSliderItems} />
+                    <MemoizedHeroSlider items={heroSliderItems} userTier={userTier} />
                 </div>
 
                 <MemoizedTabbedConcepts
