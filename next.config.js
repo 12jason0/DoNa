@@ -107,6 +107,10 @@ const nextConfig = {
                                 "https://www.google-analytics.com",
                                 "https://developers.kakao.com",
                                 "https://t1.kakaocdn.net",
+                                "https://pagead2.googlesyndication.com",
+                                "https://googleadservices.com",
+                                "https://tpc.googlesyndication.com",
+                                "https://*.adtrafficquality.google",
                                 ...(isDev ? ["http://*.naver.com", "http://*.map.naver.net"] : []),
                             ].join(" ");
 
@@ -144,6 +148,11 @@ const nextConfig = {
                                 "https://region1.google-analytics.com",
                                 "https://analytics.google.com",
                                 "https://stats.g.doubleclick.net",
+                                "https://pagead2.googlesyndication.com",
+                                "https://googleads.g.doubleclick.net",
+                                "https://tpc.googlesyndication.com",
+                                "https://ep1.adtrafficquality.google",
+                                "https://*.adtrafficquality.google",
                                 // 🔴 [수정]: 하드코딩된 192.168.219.220을 삭제하고 동적 변수 적용
                                 `http://${localIp}:3000`,
                                 `ws://${localIp}:3000`,

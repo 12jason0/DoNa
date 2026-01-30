@@ -2,7 +2,8 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
-import ClientBodyLayout from "./ClientBodyLayout"; // 경로가 한 단계 깊어졌으니 ../ 확인 필요 (파일 위치에 따라 수정)
+import ClientBodyLayout from "./ClientBodyLayout";
+import InitialSplash from "@/components/InitialSplash";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
 
 const logoUrl = getS3StaticUrlForMetadata("logo/donalogo_512.png");
@@ -76,6 +77,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
     return (
         <div
             className="min-h-screen flex flex-col typography-smooth"
+            suppressHydrationWarning
             style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
@@ -137,72 +139,13 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
                 }}
             />
 
-            {/* 🔥 초기 HTML 스플래시: WebView 로드 즉시 표시 */}
-            <div
-                id="initial-splash"
-                style={{
-                    position: "fixed",
-                    inset: 0,
-                    backgroundColor: "#7FCC9F",
-                    zIndex: 9999,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "column" as const,
-                }}
-            >
-                <img
-                    src={logoUrl}
-                    alt="DoNa"
-                    style={{
-                        width: "120px",
-                        height: "120px",
-                        objectFit: "contain",
-                        marginBottom: "16px",
-                    }}
-                />
-                <div
-                    style={{
-                        color: "white",
-                        fontSize: "24px",
-                        fontWeight: "bold",
-                    }}
-                >
-                    두나
-                </div>
-            </div>
+            {/* 🔥 초기 스플래시: 첫 방문에만 표시, F5 시에는 미표시 (sessionStorage) */}
+            <InitialSplash logoUrl={logoUrl} />
 
             {/* Providers 및 내부 레이아웃 */}
             <Providers>
                 <ClientBodyLayout>{children}</ClientBodyLayout>
             </Providers>
-
-            {/* 🔥 React 로드되면 초기 스플래시 제거 */}
-            <Script
-                id="remove-initial-splash"
-                strategy="afterInteractive"
-                dangerouslySetInnerHTML={{
-                    __html: `
-                        (function() {
-                            function removeSplash() {
-                                const splash = document.getElementById('initial-splash');
-                                if (splash) {
-                                    setTimeout(() => {
-                                        splash.style.opacity = '0';
-                                        splash.style.transition = 'opacity 0.3s';
-                                        setTimeout(() => splash.remove(), 300);
-                                    }, 100);
-                                }
-                            }
-                            if (document.readyState === 'complete') {
-                                removeSplash();
-                            } else {
-                                window.addEventListener('load', removeSplash);
-                            }
-                        })();
-                    `,
-                }}
-            />
         </div>
     );
 }

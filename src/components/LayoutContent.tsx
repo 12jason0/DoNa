@@ -16,21 +16,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     // ---------------------------------------------------------
     const pathname = usePathname();
     const [isQrOpen, setIsQrOpen] = useState(false);
-    // 🔥 초기 상태: 서버와 클라이언트 모두 true (Hydration 일치)
-    const [showSplash, setShowSplash] = useState(() => {
-        // ✅ 서버에서도 true (첫 방문 가정)
-        if (typeof window === "undefined") return true;
-
-        try {
-            // 클라이언트: sessionStorage 체크
-            const already = sessionStorage.getItem("dona-splash-shown");
-            const loginAfterSplash = sessionStorage.getItem("login-after-splash");
-            return !already && !loginAfterSplash;
-        } catch {
-            return true; // 에러 시에도 스플래시 표시
-        }
-    });
-    const [mounted, setMounted] = useState(true);
+    // 🟢 Hydration 일치: 서버·클라이언트 모두 false로 시작. 스플래시 여부는 useEffect에서 sessionStorage 확인 후 설정
+    const [showSplash, setShowSplash] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [contentReady, setContentReady] = useState(false);
 
     // 🟢 앱 환경 감지: 초기 렌더링 시점에 즉시 확인 (useEffect 지연 방지)
@@ -65,12 +53,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isApp]);
 
-    // 🟢 Effect 1: 초기 설정 및 샵 페이지 체크
+    // 🟢 Effect 1: 마운트 후 초기 설정, 스플래시 여부(sessionStorage) 및 샵 페이지 체크
     useEffect(() => {
+        setMounted(true);
         // 🟢 즉시 초록색 배경 설정하여 흰색 화면 방지
         document.body.style.backgroundColor = "#7FCC9F";
-
-        setMounted(true);
 
         // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 표시하지 않음
         if (isShopPage) {
@@ -79,11 +66,18 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             return;
         }
 
-        // 🔥 스플래시가 표시되지 않으면 즉시 콘텐츠 준비
-        if (!showSplash) {
+        // 🟢 클라이언트에서만: 첫 방문이면 스플래시 표시, 아니면 콘텐츠 바로 표시
+        try {
+            const already = typeof window !== "undefined" && (sessionStorage.getItem("dona-splash-shown") || sessionStorage.getItem("login-after-splash"));
+            if (!already) {
+                setShowSplash(true);
+            } else {
+                setContentReady(true);
+            }
+        } catch {
             setContentReady(true);
         }
-    }, [isShopPage, showSplash]);
+    }, [isShopPage]);
 
     // 🟢 [2026-01-21] 로그인 성공 시 스플래시 중단 및 콘텐츠 표시
     useEffect(() => {
@@ -154,8 +148,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             `}</style>
 
             {!mounted ? (
-                // 🟢 서버 렌더링 시: 마운트 전에는 빈 구조만 반환 (하이드레이션 일치)
-                <div className="min-h-screen" style={{ backgroundColor: "#7FCC9F" }} />
+                // 🟢 Hydration 일치: 서버가 해당 슬롯을 비울 수 있으므로 클라이언트도 null로 맞춤
+                null
             ) : (
                 <>
                     {/* 🟢 [PHYSICAL PRODUCT]: 메인 진입 시에만 스플래시 노출, 샵 페이지 이동 시에는 제외 */}

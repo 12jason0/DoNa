@@ -14,7 +14,7 @@ const PLANS = [
         originalPrice: 9900,
         desc: "평생 할인 혜택이 적용되는 얼리버드 찬스!",
         badge: "EARLY BIRD",
-        features: ["AI 코스 추천 무제한", "광고 제거", "보관함 영구 저장"],
+        features: ["BASIC 등급 코스 활성화", "나만의 추억 최대 10개 저장", "FREE/BASIC 데이트 팁", "광고 없이 쾌적한 이용"],
         tier: "BASIC",
     },
     {
@@ -24,7 +24,7 @@ const PLANS = [
         price: 9900,
         desc: "베이직 혜택 + 남들 모르는 시크릿 스팟 공개",
         badge: "VIP",
-        features: ["베이직 혜택 포함", "시크릿 스팟 정보", "테마별 스페셜 코스"],
+        features: ["모든 코스 및 시크릿 스팟", "나만의 추억 무제한 저장", "모든 전문 데이트 팁 활성화", "광고 없이 쾌적한 이용", "베이직 모든 혜택 포함"],
         tier: "PREMIUM",
     },
     { id: "ticket_light", type: "ticket", name: "쿠폰 3개", price: 2900, desc: "주말 데이트용" },

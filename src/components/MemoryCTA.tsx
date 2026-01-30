@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { MEMORY_MESSAGES } from "@/constants/memories";
 
 export interface MemoryPreview {
@@ -57,14 +57,20 @@ export default function MemoryCTA({
         }
     };
 
-    // 마우스 휠로 가로 스크롤 처리
+    // 마우스 휠로 가로 스크롤 처리 (passive: false로 등록해야 preventDefault 동작)
     const scrollRef = useRef<HTMLDivElement>(null);
-    const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-        if (scrollRef.current && e.deltaY !== 0) {
-            e.preventDefault();
-            scrollRef.current.scrollLeft += e.deltaY;
-        }
-    };
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const handleWheel = (e: WheelEvent) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                el.scrollLeft += e.deltaY;
+            }
+        };
+        el.addEventListener("wheel", handleWheel, { passive: false });
+        return () => el.removeEventListener("wheel", handleWheel);
+    }, [hasMemories, memories.length]);
 
     return (
         <section className="w-full bg-white/80 dark:bg-[#111b15] rounded-3xl border border-gray-100 dark:border-gray-800 shadow-lg p-6 flex flex-col gap-5">
@@ -74,7 +80,7 @@ export default function MemoryCTA({
                     <div className="flex items-center gap-2">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{content.title}</h3>
                         {hasMemories && (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px] text-gray-600 dark:text-gray-400 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px] text-gray-600 dark:text-gray-400 shrink-0">
                                 <path d="M19 10H20C20.5523 10 21 10.4477 21 11V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V11C3 10.4477 3.44772 10 4 10H5V9C5 5.13401 8.13401 2 12 2C15.866 2 19 5.13401 19 9V10ZM5 12V20H19V12H5ZM11 14H13V18H11V14ZM17 10V9C17 6.23858 14.7614 4 12 4C9.23858 4 7 6.23858 7 9V10H17Z"></path>
                             </svg>
                         )}
@@ -99,7 +105,6 @@ export default function MemoryCTA({
             {hasMemories && memories.length > 0 ? (
                 <div 
                     ref={scrollRef}
-                    onWheel={handleWheel}
                     className="overflow-x-auto no-scrollbar -mx-2 px-2"
                     style={{
                         WebkitOverflowScrolling: 'touch',

@@ -7,6 +7,7 @@ import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isIOS, isMobileApp, isAndroid } from "@/lib/platform";
 import DeleteUsersModal from "./DeleteUsersModal";
+import AdSlot from "@/components/AdSlot";
 
 interface ProfileTabProps {
     userInfo: UserInfo | null;
@@ -19,20 +20,14 @@ interface ProfileTabProps {
 
 // 🟢 [최종 심플 버전] 미니멀 대시보드 스타일의 구독/쿠폰 섹션
 const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
-    // 🟢 [Debug]: userInfo 확인
-    if (process.env.NODE_ENV === "development") {
-        console.log("[ProfileTab] userInfo:", {
-            subscriptionTier: userInfo?.subscriptionTier,
-            subscriptionExpiresAt: userInfo?.subscriptionExpiresAt,
-            couponCount: userInfo?.couponCount,
-        });
-    }
-    
     const displayTier = userInfo?.subscriptionTier || "FREE";
     const couponCount = userInfo?.couponCount ?? 0; // 🟢 props에서 직접 가져오기
-    
+
     // 🟢 [Fix]: 만료일이 있고 아직 유효한지 확인
-    const hasValidSubscription = displayTier !== "FREE" && userInfo?.subscriptionExpiresAt && new Date(userInfo.subscriptionExpiresAt) > new Date();
+    const hasValidSubscription =
+        displayTier !== "FREE" &&
+        userInfo?.subscriptionExpiresAt &&
+        new Date(userInfo.subscriptionExpiresAt) > new Date();
 
     return (
         <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-transparent p-6 md:p-8 shadow-sm">
@@ -52,18 +47,29 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                             {displayTier === "PREMIUM" ? "👑" : "✨"}
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter mb-0.5">My Membership</p>
+                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter mb-0.5">
+                                My Membership
+                            </p>
                             <h4 className="text-base font-bold text-gray-900 dark:text-white">
-                                {displayTier === "PREMIUM" ? "프리미엄 멤버십" : displayTier === "BASIC" ? "베이직 멤버십" : "일반 회원"}
+                                {displayTier === "PREMIUM"
+                                    ? "프리미엄 멤버십"
+                                    : displayTier === "BASIC"
+                                    ? "베이직 멤버십"
+                                    : "일반 회원"}
                             </h4>
                             {userInfo?.subscriptionExpiresAt && displayTier !== "FREE" && hasValidSubscription && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                                    ~ {new Date(userInfo.subscriptionExpiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    ~{" "}
+                                    {new Date(userInfo.subscriptionExpiresAt).toLocaleDateString("ko-KR", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                    })}
                                 </p>
                             )}
                         </div>
                     </div>
-                    
+
                     <button
                         onClick={() => {
                             if (typeof window !== "undefined") {
@@ -71,30 +77,25 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                             }
                         }}
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer ${
-                            displayTier === "PREMIUM" || (displayTier === "BASIC" && Boolean(hasValidSubscription))
+                            displayTier === "PREMIUM"
                                 ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                                 : "bg-emerald-500 hover:bg-emerald-600 text-white"
                         }`}
-                        disabled={displayTier === "PREMIUM" || (displayTier === "BASIC" && Boolean(hasValidSubscription))}
                     >
-                        {displayTier === "PREMIUM" 
-                            ? "사용 중" 
-                            : displayTier === "BASIC" && Boolean(hasValidSubscription)
-                            ? "사용 중"
-                            : "업그레이드"}
-                    </button>  
+                        {displayTier === "PREMIUM" ? "사용 중" : "업그레이드"}
+                    </button>
                 </div>
 
                 {/* 2. 쿠폰 섹션 - 항상 표시 */}
-                <div 
-                    className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 md:p-6 shadow-sm flex items-center justify-between"
-                >
+                <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 md:p-6 shadow-sm flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-2xl shadow-inner">
                             🎫
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tighter mb-0.5">My Coupons</p>
+                            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tighter mb-0.5">
+                                My Coupons
+                            </p>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-xl font-black text-gray-900 dark:text-white leading-none">
                                     {couponCount}
@@ -266,18 +267,19 @@ const ProfileTab = ({
             if (!expoPushToken && (window as any).ReactNativeWebView) {
                 (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "requestPushToken" }));
                 // 🟢 최적화: 더 짧은 대기 시간으로 빠른 응답 (최대 300ms, 토큰이 오면 즉시 진행)
-                await new Promise((resolve) => {
-                    const checkInterval = setInterval(() => {
+                await new Promise<void>((resolve) => {
+                    let timeout: ReturnType<typeof setTimeout>;
+                    const checkInterval: ReturnType<typeof setInterval> = setInterval(() => {
                         const token = localStorage.getItem("expoPushToken");
                         if (token) {
                             clearInterval(checkInterval);
                             clearTimeout(timeout);
-                            resolve(null);
+                            resolve();
                         }
                     }, 50); // 🟢 50ms마다 체크 (더 빠른 응답)
-                    const timeout = setTimeout(() => {
+                    timeout = setTimeout(() => {
                         clearInterval(checkInterval);
-                        resolve(null);
+                        resolve();
                     }, 300); // 🟢 최대 300ms 대기 (500ms -> 300ms로 단축)
                 });
                 expoPushToken = localStorage.getItem("expoPushToken");
@@ -296,15 +298,13 @@ const ProfileTab = ({
 
             if (pushData !== null) {
                 setNotificationStatus("success");
-                setNotificationMessage(
-                    newSubscribedState ? "알림이 활성화되었습니다!" : " 알림이 비활성화되었습니다."
-                );
-                
+                setNotificationMessage(newSubscribedState ? "알림이 활성화되었습니다!" : " 알림이 비활성화되었습니다.");
+
                 // 🟢 알림을 끌 때 BenefitConsentModal 숨김 설정 제거 (다음 홈페이지 접속 시 모달 표시)
                 if (!newSubscribedState && typeof window !== "undefined") {
                     localStorage.removeItem("benefitConsentModalHideUntil");
                 }
-                
+
                 // 🟢 성능 최적화: 1.5초 후 메시지 제거 (2초 -> 1.5초로 단축)
                 setTimeout(() => {
                     setNotificationMessage("");
@@ -353,19 +353,17 @@ const ProfileTab = ({
                             <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                 내 정보
                             </h3>
-                            {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 배지 완전히 숨김 */}
-                            {/* iOS/Android에서는 등급 배지를 표시하지 않습니다 */}
-                            {false && (
-                                <span
-                                    className={`px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${
-                                        displayTier === "BASIC"
-                                            ? "bg-linear-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
-                                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-                                    }`}
-                                >
-                                    {displayTier === "BASIC" ? "베이직" : "무료"}
-                                </span>
-                            )}
+                            <span
+                                className={`px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${
+                                    displayTier === "PREMIUM"
+                                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50"
+                                        : displayTier === "BASIC"
+                                        ? "bg-linear-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
+                                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
+                                }`}
+                            >
+                                {displayTier === "PREMIUM" ? "프리미엄" : displayTier === "BASIC" ? "베이직" : "무료"}
+                            </span>
                         </div>
                         <button
                             onClick={onEditProfile}
@@ -406,15 +404,6 @@ const ProfileTab = ({
                                     <h5 className="text-2xl font-black text-gray-900 dark:text-white truncate tracking-tight">
                                         {userInfo.name}
                                     </h5>
-                                    {displayTier && displayTier !== "FREE" && (
-                                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${
-                                            displayTier === "PREMIUM"
-                                                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50"
-                                                : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50"
-                                        }`}>
-                                            {displayTier === "PREMIUM" ? "프리미엄" : displayTier === "BASIC" ? "베이직" : displayTier}
-                                        </span>
-                                    )}
                                 </div>
                                 <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base mb-4 truncate font-medium">
                                     {userInfo.email}
@@ -564,6 +553,10 @@ const ProfileTab = ({
           2-1. 내 구독 / 이용권 카드 (Subscription & Tickets)
       ====================================================================== */}
                 <MembershipAndCouponSection userInfo={userInfo} />
+
+                {/* 광고 슬롯: AdSense slot ID 설정 시 광고 표시 */}
+                <AdSlot className="my-4" />
+
                 {/* ======================================================================
           3. 계정 관리 카드 (Account Settings)
       ====================================================================== */}
@@ -605,16 +598,38 @@ const ProfileTab = ({
                                             }`}
                                         >
                                             {notificationEnabled === true ? (
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                                                    <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
-                                                    <path d="M6 8a6 6 0 0 1 12 0c0 4.499-1.41 5.956-2.74 7.327A1 1 0 0 1 14 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8Z"/>
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="20"
+                                                    height="20"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    className="w-5 h-5"
+                                                >
+                                                    <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+                                                    <path d="M6 8a6 6 0 0 1 12 0c0 4.499-1.41 5.956-2.74 7.327A1 1 0 0 1 14 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8Z" />
                                                 </svg>
                                             ) : (
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                                                    <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
-                                                    <path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/>
-                                                    <path d="m2 2 20 20"/>
-                                                    <path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="20"
+                                                    height="20"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    className="w-5 h-5"
+                                                >
+                                                    <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+                                                    <path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742" />
+                                                    <path d="m2 2 20 20" />
+                                                    <path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05" />
                                                 </svg>
                                             )}
                                         </div>
@@ -754,10 +769,21 @@ const ProfileTab = ({
                         >
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-white dark:bg-gray-800 rounded-xl text-red-400 dark:text-red-500 group-hover:text-red-500 dark:group-hover:text-red-400 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                                        <path d="m16 17 5-5-5-5"/>
-                                        <path d="M21 12H9"/>
-                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="w-5 h-5"
+                                    >
+                                        <path d="m16 17 5-5-5-5" />
+                                        <path d="M21 12H9" />
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                                     </svg>
                                 </div>
                                 <span className="font-bold text-red-500 dark:text-red-400 group-hover:text-red-600 dark:group-hover:text-red-300">
@@ -777,12 +803,23 @@ const ProfileTab = ({
                         >
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-white dark:bg-gray-700 rounded-xl text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                                        <path d="M10 11v6"/>
-                                        <path d="M14 11v6"/>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
-                                        <path d="M3 6h18"/>
-                                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="w-5 h-5"
+                                    >
+                                        <path d="M10 11v6" />
+                                        <path d="M14 11v6" />
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                        <path d="M3 6h18" />
+                                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                     </svg>
                                 </div>
                                 <span className="font-bold text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
@@ -861,7 +898,9 @@ const ProfileTab = ({
                                 localStorage.removeItem("loginTime");
 
                                 // 인증 상태 변경 이벤트 발생
-                                window.dispatchEvent(new CustomEvent("authTokenChange"));
+                                if (typeof window !== "undefined") {
+                                    window.dispatchEvent(new CustomEvent("authTokenChange"));
+                                }
 
                                 // 메인 페이지로 리디렉션
                                 alert("계정이 성공적으로 삭제되었습니다.");

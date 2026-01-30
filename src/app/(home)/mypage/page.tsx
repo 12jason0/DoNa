@@ -247,17 +247,6 @@ const MyPage = () => {
                 (src as any)?.user?.profileImageUrl ||
                 null; // 🟢 [Fix]: 빈 문자열 대신 null 사용하여 기본 이미지가 표시되도록 함
 
-            // 🟢 [Debug]: 프로필 이미지 확인
-            if (process.env.NODE_ENV === "development") {
-                console.log("[MyPage] 프로필 이미지 확인:", {
-                    "src.profileImage": src.profileImage,
-                    "src.profileImageUrl": src.profileImageUrl,
-                    "src.user?.profileImage": (src as any)?.user?.profileImage,
-                    "src.user?.profileImageUrl": (src as any)?.user?.profileImageUrl,
-                    extractedProfileImageUrl: profileImageUrl,
-                });
-            }
-
             // 🟢 subscriptionTier 확인: API 응답의 최상위 레벨과 user 객체 모두 체크
             const tier =
                 src.subscriptionTier ||
@@ -281,17 +270,6 @@ const MyPage = () => {
                 (src as any)?.user?.couponCount ??
                 (src as any)?.user?.coupon_count ??
                 0;
-
-            // 🟢 [Debug]: API 응답 구조 확인
-            if (process.env.NODE_ENV === "development") {
-                console.log("[MyPage] API 응답 확인:", {
-                    raw,
-                    subscriptionTier: src.subscriptionTier,
-                    couponCount: src.couponCount,
-                    extractedTier: tier,
-                    extractedCouponCount: couponCount,
-                });
-            }
 
             // 🟢 기본 프로필 이미지 설정
             const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
@@ -317,14 +295,6 @@ const MyPage = () => {
                 couponCount: typeof couponCount === "number" ? couponCount : couponCount ? Number(couponCount) : 0, // 🟢 쿠폰 개수 추가
             };
 
-            // 🟢 [Debug]: 최종 userInfo 확인
-            if (process.env.NODE_ENV === "development") {
-                console.log("[MyPage] 최종 userInfo:", {
-                    subscriptionTier: finalUserInfo.subscriptionTier,
-                    couponCount: finalUserInfo.couponCount,
-                    subscriptionExpiresAt: finalUserInfo.subscriptionExpiresAt,
-                });
-            }
             setUserInfo(finalUserInfo);
             // 🟢 [Performance]: UI를 빠르게 표시하기 위해 즉시 로딩 상태 해제
             setLoading(false);

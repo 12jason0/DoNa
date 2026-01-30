@@ -352,7 +352,7 @@ const AboutPage = () => {
                                 >
                                     {loading ? (
                                         [0, 1, 2].map((i) => (
-                                            <div key={i} className="w-full flex-shrink-0">
+                                            <div key={i} className="w-full shrink-0">
                                                 <div className="bg-white dark:bg-[#1a241b] rounded-xl shadow-lg overflow-hidden animate-pulse">
                                                     <div className="h-40 bg-gray-300 dark:bg-gray-700"></div>
                                                     <div className="p-4">
@@ -365,7 +365,7 @@ const AboutPage = () => {
                                         ))
                                     ) : courses.length > 0 ? (
                                         courses.map((course) => (
-                                            <div key={course.id} className="w-full flex-shrink-0">
+                                            <div key={course.id} className="w-full shrink-0">
                                                 <div
                                                     className="bg-white dark:bg-[#1a241b] rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
                                                     onClick={() => router.push(`/courses/${course.id}`)}
@@ -427,7 +427,7 @@ const AboutPage = () => {
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="w-full flex-shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
+                                        <div className="w-full shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
                                             준비된 코스가 없습니다.
                                         </div>
                                     )}
@@ -462,7 +462,7 @@ const AboutPage = () => {
                                 >
                                     {loading ? (
                                         [0, 1, 2].map((i) => (
-                                            <div key={i} className="w-full flex-shrink-0">
+                                            <div key={i} className="w-full shrink-0">
                                                 <div className="bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-lg animate-pulse">
                                                     <div className="flex items-center mb-3">
                                                         <div className="w-10 h-10 bg-gray-300 dark:bg-gray-700 rounded-full mr-3"></div>
@@ -495,7 +495,7 @@ const AboutPage = () => {
                                             };
                                             const { bg, text } = getColorByConcept((review as any).course?.concept);
                                             return (
-                                                <div key={review.id} className="w-full flex-shrink-0">
+                                                <div key={review.id} className="w-full shrink-0">
                                                     <div className="bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-lg">
                                                         <div className="flex items-center mb-3">
                                                             <div
@@ -548,7 +548,7 @@ const AboutPage = () => {
                                             );
                                         })
                                     ) : (
-                                        <div className="w-full flex-shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
+                                        <div className="w-full shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
                                             등록된 후기가 없습니다.
                                         </div>
                                     )}
@@ -630,7 +630,7 @@ const AboutPage = () => {
             {/* 이미지 미리보기 모달 */}
             {previewImage && (
                 <div
-                    className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-9999 bg-black/90 flex items-center justify-center p-4"
                     onClick={() => {
                         setPreviewImage(null);
                         setPreviewImages([]);

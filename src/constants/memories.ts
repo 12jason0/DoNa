@@ -2,7 +2,7 @@
 
 export const MEMORY_MESSAGES = {
     notLoggedIn: {
-        title: "로그인하고 우리만의 소중한 발자국을 기록해 보세요.",
+        title: "로그인하고 우리만의 소중한 추억을 기록해 보세요.",
         subtitle: "",
         button: "로그인하기",
     },

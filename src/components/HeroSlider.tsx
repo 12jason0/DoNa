@@ -4,6 +4,34 @@ import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+/** 3번째·4번째 코스 사이에 노출되는 웹 광고 슬롯 (AdSense). AdSense 대시보드에서 발급한 광고 단위 ID로 data-ad-slot을 채우세요. */
+const AdSlot = memo(() => {
+    const insRef = useRef<HTMLModElement>(null);
+    useEffect(() => {
+        try {
+            if (typeof window !== "undefined" && (window as any).adsbygoogle && insRef.current) {
+                ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+            }
+        } catch {
+            // ignore
+        }
+    }, []);
+    return (
+        <div className="relative min-w-full md:min-w-[400px] aspect-4/5 rounded-xl overflow-hidden snap-center border border-gray-100 dark:border-transparent flex items-center justify-center bg-gray-100 dark:bg-gray-800 shrink-0">
+            <ins
+                ref={insRef}
+                className="adsbygoogle"
+                style={{ display: "block" }}
+                data-ad-client="ca-pub-1305222191440436"
+                data-ad-slot=""
+                data-ad-format="auto"
+                data-full-width-responsive="true"
+            />
+        </div>
+    );
+});
+AdSlot.displayName = "AdSlot";
+
 export type SliderItem = {
     id: string;
     imageUrl?: string;
@@ -76,8 +104,18 @@ const SliderItemComponent = memo(({ item, idx }: { item: SliderItem; idx: number
 });
 SliderItemComponent.displayName = "SliderItem";
 
+type DisplaySlot = SliderItem | { type: "ad" };
+
+const AD_INDEX = 3; // 3번째·4번째 코스 사이 (0-based로 3번째 위치)
+
 export default function HeroSlider({ items }: HeroSliderProps) {
     const realLength = items.length;
+    const displaySlots = useMemo<DisplaySlot[]>(() => {
+        if (realLength < 2) return items;
+        return [...items.slice(0, AD_INDEX), { type: "ad" as const }, ...items.slice(AD_INDEX)];
+    }, [items, realLength]);
+    const totalSlots = displaySlots.length;
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
     const containerWidthRef = useRef<number>(0);
@@ -88,7 +126,10 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const touchStartX = useRef(0);
     const touchEndX = useRef(0);
 
-    const renderItems = useMemo(() => (realLength <= 1 ? items : [...items, ...items, ...items]), [items, realLength]);
+    const renderItems = useMemo(
+        () => (totalSlots <= 1 ? displaySlots : [...displaySlots, ...displaySlots, ...displaySlots]),
+        [displaySlots, totalSlots]
+    );
 
     // 🟢 타이머 정지 함수
     const stopTimer = useCallback(() => {
@@ -107,8 +148,8 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             const container = scrollRef.current;
 
             let adjustedIdx = nextIdx;
-            if (adjustedIdx >= realLength * 2) adjustedIdx = realLength;
-            else if (adjustedIdx < realLength) adjustedIdx = realLength * 2 - 1;
+            if (adjustedIdx >= totalSlots * 2) adjustedIdx = totalSlots;
+            else if (adjustedIdx < totalSlots) adjustedIdx = totalSlots * 2 - 1;
 
             container.style.scrollBehavior = "smooth";
             container.scrollTo({ left: adjustedIdx * width });
@@ -118,25 +159,25 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 const finalScrollLeft = container.scrollLeft;
                 const finalIndex = Math.round(finalScrollLeft / width);
 
-                if (finalIndex >= realLength * 2) {
+                if (finalIndex >= totalSlots * 2) {
                     container.style.scrollBehavior = "auto";
-                    container.scrollLeft = width * realLength;
-                } else if (finalIndex < realLength) {
+                    container.scrollLeft = width * totalSlots;
+                } else if (finalIndex < totalSlots) {
                     container.style.scrollBehavior = "auto";
-                    container.scrollLeft = width * (realLength * 2 - 1);
+                    container.scrollLeft = width * (totalSlots * 2 - 1);
                 }
 
                 isScrollingRef.current = false;
                 container.style.scrollBehavior = "auto";
             }, 500);
         },
-        [realLength]
+        [totalSlots]
     );
 
     // 🟢 타이머 시작 함수 (3초)
     const startTimer = useCallback(() => {
         stopTimer();
-        if (realLength <= 1) return;
+        if (totalSlots <= 1) return;
         timerRef.current = setInterval(() => {
             const container = scrollRef.current;
             if (container && !isScrollingRef.current) {
@@ -145,12 +186,12 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 moveToNext(currentIdx + 1);
             }
         }, 3000);
-    }, [moveToNext, realLength, stopTimer]);
+    }, [moveToNext, totalSlots, stopTimer]);
 
     // 초기화 및 리사이즈 감지
     useEffect(() => {
-        if (!scrollRef.current || realLength <= 1) {
-            if (realLength <= 1) setIsInitialized(true);
+        if (!scrollRef.current || totalSlots <= 1) {
+            if (totalSlots <= 1) setIsInitialized(true);
             return;
         }
         const container = scrollRef.current;
@@ -158,7 +199,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         containerWidthRef.current = width;
 
         container.style.scrollBehavior = "auto";
-        container.scrollLeft = width * realLength;
+        container.scrollLeft = width * totalSlots;
         setIsInitialized(true);
 
         const observer = new ResizeObserver((entries) => {
@@ -171,12 +212,12 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             observer.disconnect();
             stopTimer();
         };
-    }, [realLength, startTimer, stopTimer]);
+    }, [totalSlots, startTimer, stopTimer]);
 
     // 🟢 Passive Event Listener 오류 해결을 위한 네이티브 리스너 등록
     useEffect(() => {
         const el = scrollRef.current;
-        if (!el || realLength <= 1) return;
+        if (!el || totalSlots <= 1) return;
 
         const handleNativeWheel = (e: WheelEvent) => {
             // 가로 스크롤 의도가 강할 때만 가로채기
@@ -193,18 +234,21 @@ export default function HeroSlider({ items }: HeroSliderProps) {
 
         el.addEventListener("wheel", handleNativeWheel, { passive: false });
         return () => el.removeEventListener("wheel", handleNativeWheel);
-    }, [realLength, moveToNext, startTimer, stopTimer]);
+    }, [totalSlots, moveToNext, startTimer, stopTimer]);
 
     const handleScroll = useCallback(() => {
         const container = scrollRef.current;
         const width = containerWidthRef.current;
-        if (!container || width <= 0 || realLength <= 1) return;
+        if (!container || width <= 0 || totalSlots <= 1) return;
 
         const scrollLeft = container.scrollLeft;
         const index = Math.round(scrollLeft / width);
-        const actualIndex = index % realLength;
+        const slotIndex = index % totalSlots;
+        const courseDotIndex =
+            slotIndex === AD_INDEX ? AD_INDEX - 1 : slotIndex < AD_INDEX ? slotIndex : slotIndex - 1;
+        const actualIndex = ((courseDotIndex % realLength) + realLength) % realLength;
         setCurrentIndex(actualIndex);
-    }, [realLength]);
+    }, [totalSlots, realLength]);
 
     const onTouchStart = (e: React.TouchEvent) => {
         stopTimer(); // 터치 시작 시 타이머 중지
@@ -243,9 +287,17 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 gap-3 will-change-scroll"
                 style={{ scrollBehavior: "auto" }}
             >
-                {renderItems.map((item, idx) => (
-                    <SliderItemComponent key={`${item.id}-${idx}`} item={item} idx={idx} />
-                ))}
+                {renderItems.map((slot, idx) =>
+                    slot && typeof slot === "object" && "type" in slot && slot.type === "ad" ? (
+                        <AdSlot key={`ad-${idx}`} />
+                    ) : (
+                        <SliderItemComponent
+                            key={`${(slot as SliderItem).id}-${idx}`}
+                            item={slot as SliderItem}
+                            idx={idx}
+                        />
+                    )
+                )}
             </div>
             <div className="flex justify-center gap-1.5 mt-4">
                 {items.map((_, i) => (

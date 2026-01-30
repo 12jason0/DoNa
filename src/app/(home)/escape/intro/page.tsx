@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import dynamicImport from "next/dynamic";
 import imageCompression from "browser-image-compression";
 import JongroMapFinalExact from "@/components/JongroMapFinalExact";
+import AlbumLimitModal from "@/components/AlbumLimitModal";
 import { getS3StaticUrl } from "@/lib/s3Static";
 function EpilogueFromDB({
     storyId,
@@ -1580,6 +1581,9 @@ function EscapeIntroPageInner() {
 
     // 콜라주 미리보기
     const [showCollagePreview, setShowCollagePreview] = useState<boolean>(false);
+    // 추억 앨범 한도 도달 모달
+    const [showAlbumLimitModal, setShowAlbumLimitModal] = useState<boolean>(false);
+    const [albumLimitMessage, setAlbumLimitMessage] = useState<string>("");
     const [collagePreviewUrl, setCollagePreviewUrl] = useState<string | null>(null);
     // FrameRenderer 기반 미리보기용 템플릿(배경/프레임 좌표)
     const [framePreviewTemplate, setFramePreviewTemplate] = useState<
@@ -2597,14 +2601,23 @@ function EscapeIntroPageInner() {
             const ur = await up.json();
             const url: string | undefined = Array.isArray(ur?.photo_urls) ? ur.photo_urls[0] : undefined;
             if (!url) return null;
-            try {
-                await fetch("/api/collages", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ storyId, collageUrl: url }),
-                });
-            } catch {}
+            const resCollage = await fetch("/api/collages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ storyId, collageUrl: url }),
+            });
+            if (resCollage.status === 403) {
+                const data = await resCollage.json().catch(() => ({}));
+                if (data?.error === "ALBUM_LIMIT_REACHED") {
+                    setAlbumLimitMessage(
+                        data?.message || "추억 앨범 한도에 도달했어요. 업그레이드 후 더 많이 저장할 수 있어요."
+                    );
+                    setShowAlbumLimitModal(true);
+                    return null;
+                }
+            }
+            if (!resCollage.ok) return null;
             try {
                 localStorage.setItem(COLLAGE_URL_KEY, url);
             } catch {}
@@ -4447,6 +4460,14 @@ function EscapeIntroPageInner() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* 추억 앨범 한도 도달 모달 */}
+                {showAlbumLimitModal && (
+                    <AlbumLimitModal
+                        message={albumLimitMessage}
+                        onClose={() => setShowAlbumLimitModal(false)}
+                    />
                 )}
 
                 {/* 미션 풀이 모달 */}

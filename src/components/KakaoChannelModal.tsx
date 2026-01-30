@@ -61,7 +61,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
                     <p className="text-[15px] text-gray-500 leading-relaxed mb-8 max-w-[280px]">
                         나만 아는 데이트 장소를 공유해주세요.
                         <br />
-                        매달달 추첨을 통해 선물을 드립니다.
+                        매달 추첨을 통해 선물을 드립니다.
                     </p>
 
                     {/* 3. 액션 버튼: Flat하고 단단한 디자인 (Solid UI) */}
