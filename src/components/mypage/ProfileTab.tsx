@@ -7,7 +7,6 @@ import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isIOS, isMobileApp, isAndroid } from "@/lib/platform";
 import DeleteUsersModal from "./DeleteUsersModal";
-import AdSlot from "@/components/AdSlot";
 
 interface ProfileTabProps {
     userInfo: UserInfo | null;
@@ -359,7 +358,7 @@ const ProfileTab = ({
                                     displayTier === "PREMIUM"
                                         ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50"
                                         : displayTier === "BASIC"
-                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
+                                        ? "bg-linear-to-r from-emerald-500 to-teal-500 text-white shadow-sm border-emerald-300"
                                         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
                                 }`}
                             >
@@ -554,9 +553,6 @@ const ProfileTab = ({
           2-1. 내 구독 / 이용권 카드 (Subscription & Tickets)
       ====================================================================== */}
                 <MembershipAndCouponSection userInfo={userInfo} />
-
-                {/* 광고 슬롯: AdSense slot ID 설정 시 광고 표시 */}
-                <AdSlot className="my-4" />
 
                 {/* ======================================================================
           3. 계정 관리 카드 (Account Settings)
