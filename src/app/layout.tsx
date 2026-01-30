@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Script from "next/script"; // 🟢 카카오 SDK 로드를 위해 추가
 import ClientStyleManager from "@/components/ClientStyleManager";
+import AdSenseScript from "@/components/AdSenseScript";
 
 const lineSeed = localFont({
     src: [
@@ -69,12 +70,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {/* 🟢 [Kakao SDK]: 공유하기 기능을 위해 추가 - 초기화는 각 컴포넌트에서 처리 */}
                 <Script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" strategy="afterInteractive" />
 
-                {/* Google AdSense: afterInteractive로 스플래시·메인 콘텐츠 먼저 렌더 후 로드 (하얀 화면·adtrafficquality 먼저 노출 방지) */}
-                <Script
-                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1305222191440436"
-                    strategy="afterInteractive"
-                    crossOrigin="anonymous"
-                />
+                {/* Google AdSense: 웹에서만 로드. 앱(WebView)에서는 미로드 → 스플래시·adtrafficquality 동시 노출 방지 */}
+                <AdSenseScript />
             </body>
         </html>
     );
