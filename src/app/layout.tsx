@@ -55,6 +55,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang="ko" className={lineSeed.variable} suppressHydrationWarning>
             <body className={`${lineSeed.className} font-sans antialiased`} style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
+                {/* Google Tag Manager (noscript) - body 바로 뒤 */}
+                <noscript>
+                    <iframe
+                        src="https://www.googletagmanager.com/ns.html?id=GTM-N7NLQRK4"
+                        height={0}
+                        width={0}
+                        style={{ display: "none", visibility: "hidden" }}
+                    />
+                </noscript>
+                {/* Google Tag Manager - 가능한 위에 */}
+                <Script
+                    id="gtm"
+                    strategy="beforeInteractive"
+                    dangerouslySetInnerHTML={{
+                        __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-N7NLQRK4');`,
+                    }}
+                />
                 {/* 🟢 웹뷰 앱 캐시 문제 해결: 빌드 버전 메타 태그 */}
                 <Script
                     id="build-version"

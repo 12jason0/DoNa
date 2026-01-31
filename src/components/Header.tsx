@@ -11,6 +11,7 @@ import ComingSoonModal from "@/components/ComingSoonModal";
 import KakaoChannelModal from "@/components/KakaoChannelModal";
 import LogoutModal from "@/components/LogoutModal";
 import LoginModal from "@/components/LoginModal";
+import { useAuth } from "@/context/AuthContext";
 
 // 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시
 const LogoutOverlay = () => (
@@ -30,7 +31,7 @@ const Header = memo(() => {
     const [panelRight, setPanelRight] = useState(0);
     const [panelWidth, setPanelWidth] = useState(0);
     const [drawerWidth, setDrawerWidth] = useState(0);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const { isAuthenticated } = useAuth();
     const [hasFavorites, setHasFavorites] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false); // 🟢 새로 추가
@@ -60,48 +61,31 @@ const Header = memo(() => {
         }
     }, []);
 
-    // --- 🟢 기능 1: 로그인 세션 체크 (메모이제이션 적용) ---
-    const checkLoginStatus = useCallback(async () => {
-        const { fetchSession } = await import("@/lib/authClient");
-        const session = await fetchSession();
-        const isAuth = !!session.authenticated;
+    // 🟢 로그아웃 이벤트: 찜/메뉴만 초기화 (로그인 상태는 AuthContext가 담당)
+    const handleAuthLogout = useCallback(() => {
+        setHasFavorites(false);
+        setIsLoggingOut(false);
+        setIsMenuOpen(false);
+    }, []);
 
-        // 🟢 [Fix]: 로그아웃 시 즉시 상태 업데이트
-        setIsLoggedIn(isAuth);
-        if (isAuth) {
+    // 🟢 AuthContext 기준 찜 요약: 로그인 시에만 갱신, 이벤트 수신
+    useEffect(() => {
+        if (isAuthenticated) {
             fetchFavoritesSummary();
         } else {
             setHasFavorites(false);
         }
-    }, [fetchFavoritesSummary]);
+    }, [isAuthenticated, fetchFavoritesSummary]);
 
-    // 🟢 [Fix]: 로그아웃 이벤트 핸들러 - 즉시 상태 초기화 (세션 재확인 제거)
-    const handleAuthLogout = useCallback(() => {
-        // 🟢 1. 즉시 UI를 '비로그인'으로 고정
-        setIsLoggedIn(false);
-        setHasFavorites(false);
-        setIsLoggingOut(false); // 오버레이 제거
-        setIsMenuOpen(false); // 메뉴 닫기
-        // 🔴 checkLoginStatus(); <- 이 줄을 반드시 삭제하십시오.
-        // 로그아웃 이벤트가 왔다는 것 자체가 이미 로그아웃이 확정되었음을 의미합니다.
-    }, []);
-
-    // --- 🟢 기능 3: 이벤트 리스너 등록 (Auth, Favorites) ---
     useEffect(() => {
-        checkLoginStatus();
-        const handleAuthChange = () => checkLoginStatus();
         const handleFavoritesChanged = () => fetchFavoritesSummary();
-
-        window.addEventListener("authLoginSuccess", handleAuthChange);
-        window.addEventListener("authLogout", handleAuthLogout); // 🟢 [Fix]: 즉시 상태 초기화 핸들러 사용
+        window.addEventListener("authLogout", handleAuthLogout);
         window.addEventListener("favoritesChanged", handleFavoritesChanged);
-
         return () => {
-            window.removeEventListener("authLoginSuccess", handleAuthChange);
             window.removeEventListener("authLogout", handleAuthLogout);
             window.removeEventListener("favoritesChanged", handleFavoritesChanged);
         };
-    }, [checkLoginStatus, fetchFavoritesSummary, handleAuthLogout]);
+    }, [fetchFavoritesSummary, handleAuthLogout]);
 
     // 🟢 메인 페이지 prefetch (성능 최적화)
     useEffect(() => {
@@ -151,8 +135,7 @@ const Header = memo(() => {
         if (isLoggingOut) return;
 
         // 🟢 1. 즉시 오버레이 표시 상태로 변경
-        setIsLoggingOut(true); 
-        setIsLoggedIn(false);
+        setIsLoggingOut(true);
         setHasFavorites(false);
         setShowLogoutConfirm(false);
         closeMenu();
@@ -205,7 +188,7 @@ const Header = memo(() => {
                             <button
                                 onClick={() => {
                                     setIsMenuOpen(false);
-                                    isLoggedIn ? setShowKakaoChannelModal(true) : setShowNotiModal(true);
+                                    isAuthenticated ? setShowKakaoChannelModal(true) : setShowNotiModal(true);
                                 }}
                                 className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
                             >
@@ -332,7 +315,7 @@ const Header = memo(() => {
                                     <button
                                         onClick={() => {
                                             closeMenu();
-                                            if (isLoggedIn) {
+                                            if (isAuthenticated) {
                                                 setShowComingSoon("escape");
                                             } else {
                                                 setShowLoginModal(true);
@@ -348,7 +331,7 @@ const Header = memo(() => {
                                     </button>
 
                                     <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-                                        {isLoggedIn ? (
+                                        {isAuthenticated ? (
                                             <Link
                                                 href="/mypage"
                                                 prefetch={true}
@@ -431,8 +414,8 @@ const Header = memo(() => {
             {/* 모든 모달들 */}
             {showLogoutConfirm && <LogoutModal onClose={() => setShowLogoutConfirm(false)} onConfirm={handleLogout} />}
             {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(null)} />}
-            {!isLoggedIn && showNotiModal && <NotificationModal onClose={() => setShowNotiModal(false)} />}
-            {isLoggedIn && showKakaoChannelModal && (
+            {!isAuthenticated && showNotiModal && <NotificationModal onClose={() => setShowNotiModal(false)} />}
+            {isAuthenticated && showKakaoChannelModal && (
                 <KakaoChannelModal onClose={() => setShowKakaoChannelModal(false)} />
             )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}

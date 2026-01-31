@@ -7,81 +7,40 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Footer() {
     const pathname = usePathname();
+    const { isAuthenticated } = useAuth();
     const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
 
+    // 🟢 AuthContext 기준: 로그인 시에만 알림 상태 조회 (쿠키로 사용자 식별)
     useEffect(() => {
-        if (typeof window === "undefined") return;
-
-        const checkStatus = async () => {
-            // 🟢 로그아웃 직후라면 아무것도 하지 않음 (이미 리스너에서 처리함)
-            const loggingOutTime = sessionStorage.getItem("auth:loggingOut");
-            if (loggingOutTime && Date.now() - parseInt(loggingOutTime, 10) < 5000) {
-                console.log("[Footer] 로그아웃 직후 - 세션 체크 건너뛰기");
-                return;
-            }
-
-            const { fetchSession } = await import("@/lib/authClient");
-            const session = await fetchSession();
-            setIsLoggedIn(session.authenticated);
-
-            // 알림 상태 확인 함수
-            const checkNotificationStatus = async () => {
-                if (!session.authenticated) {
-                    setNotificationEnabled(null);
-                    return;
-                }
-
-                try {
-                    // 🟢 쿠키 기반 인증: userId 가져오기
-                    let userId: number | null = null;
-                    if (session.user) {
-                        userId = session.user.id || null;
-                    }
-
-                    // API로 userId 가져오기
-                    if (!userId) {
-                        const { authenticatedFetch } = await import("@/lib/authClient");
-                        const userData = await authenticatedFetch("/api/users/profile");
-                        if (userData) {
-                            userId = (userData as any)?.user?.id || (userData as any)?.id || null;
-                        }
-                    }
-
-                    // 🟢 [보안] 쿠키 기반 인증: userId를 쿼리 파라미터로 보내지 않음
-                    const { apiFetch } = await import("@/lib/authClient");
-                    const { data: statusData, response: statusResponse } = await apiFetch(`/api/push`);
-                    if (statusResponse.ok && statusData) {
-                        setNotificationEnabled((statusData as any).subscribed ?? false);
-                    }
-                } catch (error) {
-                    console.error("알림 상태 조회 오류:", error);
-                    // 에러 시 기존 상태 유지 혹은 null
-                }
-            };
-
-            // 1. 초기 로드 시 확인
-            await checkNotificationStatus();
-        };
-
-        checkStatus();
-        // 30초마다 갱신하는 인터벌 유지
-        const interval = setInterval(checkStatus, 30000);
-        return () => clearInterval(interval);
-    }, [pathname]); // 🟢 pathname이 바뀔 때마다 실행되지만, 로그아웃 시엔 위 가드 로직이 막아줍니다.
-
-    // 🟢 로그아웃 이벤트 리스너 (로그아웃 시 즉시 상태 초기화)
-    useEffect(() => {
-        const handleAuthLogout = () => {
-            console.log("[Footer] 로그아웃 감지 - 상태 초기화");
-            setIsLoggedIn(false);
+        if (typeof window === "undefined" || !isAuthenticated) {
             setNotificationEnabled(null);
+            return;
+        }
+        const checkNotificationStatus = async () => {
+            try {
+                const { apiFetch } = await import("@/lib/authClient");
+                const { data: statusData, response: statusResponse } = await apiFetch(`/api/push`);
+                if (statusResponse.ok && statusData) {
+                    setNotificationEnabled((statusData as any).subscribed ?? false);
+                }
+            } catch (error) {
+                console.error("알림 상태 조회 오류:", error);
+            }
         };
+        checkNotificationStatus();
+        const interval = setInterval(checkNotificationStatus, 30000);
+        return () => clearInterval(interval);
+    }, [pathname, isAuthenticated]);
+
+    // 🟢 로그아웃 시 알림 상태만 초기화 (로그인 상태는 AuthContext가 담당)
+    useEffect(() => {
+        const handleAuthLogout = () => setNotificationEnabled(null);
         window.addEventListener("authLogout", handleAuthLogout as EventListener);
         return () => window.removeEventListener("authLogout", handleAuthLogout as EventListener);
     }, []);
@@ -177,7 +136,7 @@ export default function Footer() {
                     {/* 4. Escape */}
                     <button
                         onClick={() => {
-                            if (isLoggedIn) {
+                            if (isAuthenticated) {
                                 setShowEscapeComingSoon(true);
                             } else {
                                 setShowLoginModal(true);
@@ -196,7 +155,7 @@ export default function Footer() {
                     </button>
 
                     {/* 5. 마이페이지 */}
-                    {isLoggedIn ? (
+                    {isAuthenticated ? (
                         <Link
                             href="/mypage"
                             prefetch={true}
@@ -211,7 +170,7 @@ export default function Footer() {
                             <circle cx="12" cy="7" r="4" />
                         </svg>
                             {/* 알림이 꺼져 있을 때만 빨간 점 깜빡임 */}
-                            {isLoggedIn && notificationEnabled === false && (
+                            {isAuthenticated && notificationEnabled === false && (
                                 <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
