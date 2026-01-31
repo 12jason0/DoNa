@@ -667,8 +667,12 @@ const MyPage = () => {
         const isAfterLogout = loggingOutTime && timeSinceLogout < 60000;
         
         const loadInitialData = async () => {
-            // 로그인 직후 또는 로그아웃 직후 재로그인: 세션 재확인을 먼저 완료
+            // 로그인 직후 또는 로그아웃 직후 재로그인: 세션 재확인 + 프로필 캐시 무시 보장
             if (isLoginJustAfter || isAfterLogout) {
+                // 🟢 [Fix] fetchSession()이 auth:forceRefresh를 제거하므로, fetchUserInfo()가 캐시 무시하도록 미리 플래그 설정
+                if (typeof window !== "undefined") {
+                    (window as any).__forceRefreshUserInfo = true;
+                }
                 await forceRefreshOnMount();
                 // 잠시 대기하여 세션 캐시 완전 무효화 보장
                 await new Promise(resolve => setTimeout(resolve, 100));
