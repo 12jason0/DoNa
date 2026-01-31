@@ -102,6 +102,8 @@ const nextConfig = {
                                 "https://*.pstatic.net",
                                 "https://cdn.jsdelivr.net",
                                 "https://vercel.live",
+                                "https://va.vercel-scripts.com",
+                                "https://*.vercel-scripts.com",
                                 "https://*.tosspayments.com",
                                 "https://www.googletagmanager.com",
                                 "https://www.google-analytics.com",
