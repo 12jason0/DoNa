@@ -1317,7 +1317,7 @@ function GuidePageInner() {
                             </svg>
                         </div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                            나만의 추억 저장 한도에 도달했어요
+                            둘만의 추억 창고가 가득 찼어요
                         </h2>
 
                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
