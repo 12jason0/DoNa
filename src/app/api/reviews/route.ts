@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { getMemoryLimit } from "@/constants/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -201,6 +202,28 @@ export async function POST(request: NextRequest) {
                     { status: 400 }
                 );
             }
+
+            // 🟢 나만의 추억 등급별 한도: FREE/BASIC 초과 시 저장 불가, 구독 업그레이드 유도
+            const user = await prisma.user.findUnique({
+                where: { id: numericUserId },
+                select: { subscriptionTier: true },
+            });
+            const tier = (user?.subscriptionTier ?? "FREE") as string;
+            const limit = getMemoryLimit(tier);
+            if (Number.isFinite(limit)) {
+                const currentCount = await (prisma as any).review.count({
+                    where: { userId: numericUserId, isPublic: false },
+                });
+                if (currentCount >= limit) {
+                    const tierLabel = tier === "FREE" ? "FREE" : tier === "BASIC" ? "BASIC" : "PREMIUM";
+                    const message =
+                        `나만의 추억은 ${tierLabel} 등급에서 ${limit}개까지 저장할 수 있어요. 더 저장하려면 구독을 업그레이드해 주세요.`;
+                    return NextResponse.json(
+                        { success: false, error: message, code: "MEMORY_LIMIT_REACHED", tier: tierLabel, limit },
+                        { status: 403 }
+                    );
+                }
+            }
         }
 
         const finalComment: string =
@@ -229,6 +252,27 @@ export async function POST(request: NextRequest) {
                     } as any, // 🟢 타입 캐스팅 (Prisma 클라이언트 타입이 아직 업데이트되지 않음)
                 });
             } else {
+                // 🟢 나만의 추억: 트랜잭션 안에서 한도 재확인 (동시 요청 시 11개 생성 방지)
+                if (!isPublicValue) {
+                    const userInTx = await tx.user.findUnique({
+                        where: { id: numericUserId },
+                        select: { subscriptionTier: true },
+                    });
+                    const tierInTx = (userInTx?.subscriptionTier ?? "FREE") as string;
+                    const limitInTx = getMemoryLimit(tierInTx);
+                    if (Number.isFinite(limitInTx)) {
+                        const countInTx = await (tx as any).review.count({
+                            where: { userId: numericUserId, isPublic: false },
+                        });
+                        if (countInTx >= limitInTx) {
+                            const tierLabel = tierInTx === "FREE" ? "FREE" : tierInTx === "BASIC" ? "BASIC" : "PREMIUM";
+                            const msg = `나만의 추억은 ${tierLabel} 등급에서 ${limitInTx}개까지 저장할 수 있어요. 더 저장하려면 구독을 업그레이드해 주세요.`;
+                            const err = new Error(msg) as Error & { code?: string };
+                            (err as any).code = "MEMORY_LIMIT_REACHED";
+                            throw err;
+                        }
+                    }
+                }
                 // 새 리뷰 생성
                 review = await tx.review.create({
                     data: {
@@ -342,6 +386,15 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         // [보안] 상세한 에러 메시지는 서버 로그에만 기록하고, 클라이언트에는 일반적인 메시지만 반환
         console.error("리뷰 생성 오류:", error);
+
+        // 🟢 나만의 추억 한도 초과 (트랜잭션 안에서 던진 에러)
+        if (error instanceof Error && (error as any).code === "MEMORY_LIMIT_REACHED") {
+            return NextResponse.json(
+                { success: false, error: error.message, code: "MEMORY_LIMIT_REACHED" },
+                { status: 403 }
+            );
+        }
+
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         const errorStack = error instanceof Error ? error.stack : undefined;
         console.error("에러 상세:", errorMessage);

@@ -300,6 +300,7 @@ export default function CourseDetailClient({
         return courseData.isLocked ? true : false;
     });
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
 
     // 🔒 [접근 제어] 인증 상태 확인 후 잠긴 코스의 모달 타입 결정
     useEffect(() => {
@@ -1194,12 +1195,22 @@ export default function CourseDetailClient({
                             </button>
                         </div>
                         <button
-                            onClick={() => {
+                            onClick={async () => {
                                 if (!isLoggedIn) {
                                     setShowLoginModal(true);
                                     return;
                                 }
-                                // 🟢 [Fix]: 사용자 제스처(버튼 클릭)에 의해서만 위치 정보 요청
+                                // 🟢 나만의 추억 한도: 서버에서 항상 확인 (userTier 무관), 꽉 찼으면 모달만 표시
+                                try {
+                                    const { authenticatedFetch } = await import("@/lib/authClient");
+                                    const data = await authenticatedFetch<{ count: number; limit: number | null; tier: string }>("/api/users/me/memory-count");
+                                    if (data && data.limit != null && data.count >= data.limit) {
+                                        setShowMemoryLimitModal(true);
+                                        return;
+                                    }
+                                } catch {
+                                    // API 실패 시 그냥 start로 이동
+                                }
                                 handleMapActivation();
                                 router.push(`/courses/${courseId}/start`);
                             }}
@@ -1473,6 +1484,40 @@ export default function CourseDetailClient({
                     // 🔒 잠긴 코스의 경우 next prop을 전달하지 않음 (자동 리다이렉트 방지)
                     next={courseData.isLocked ? undefined : `/courses/${courseId}`}
                 />
+            )}
+            {/* 🟢 나만의 추억 한도 초과 모달 (클릭 시 start로 가지 않고 업그레이드 유도) */}
+            {showMemoryLimitModal && (
+                <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-3xl p-6 pt-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
+                        <div className="mb-4 flex justify-center">
+                            <span className="text-5xl">🔒</span>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                            나만의 추억 저장 한도에 도달했어요
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                            더 저장하려면 구독을 업그레이드해 주세요.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowMemoryLimitModal(false);
+                                    setShowSubscriptionModal(true);
+                                }}
+                                className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-all"
+                                style={{ backgroundColor: "#99c08e" }}
+                            >
+                                구독 업그레이드
+                            </button>
+                            <button
+                                onClick={() => setShowMemoryLimitModal(false)}
+                                className="w-full py-3 text-gray-600 dark:text-gray-400 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
             {showPlaceModal && selectedPlace && (
                 <div

@@ -455,28 +455,11 @@ export default function JongroMapFinalExact({ data }: Props) {
                     setIsSubmitting(false);
                     return;
                 }
-                const form = new FormData();
-                files.forEach((f) => form.append("photos", f, f.name));
-                
-                // 탈출방 업로드를 위한 파라미터 추가
-                if (storyId) {
-                    form.append("type", "escape");
-                    form.append("escapeId", storyId.toString());
-                }
-                
-                const uploadRes = await fetch("/api/upload", { 
-                    method: "POST", 
-                    body: form,
-                    credentials: "include", // 쿠키를 포함하여 userId를 서버에서 가져올 수 있도록
+                const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+                const urls = await uploadViaPresign(Array.from(files), {
+                    type: "escape",
+                    escapeId: storyId?.toString(),
                 });
-                if (!uploadRes.ok) {
-                    const err = await uploadRes.json().catch(() => ({} as any));
-                    setValidationError(err?.message || "업로드에 실패했습니다.");
-                    setIsSubmitting(false);
-                    return;
-                }
-                const uploadJson = (await uploadRes.json()) as any;
-                const urls: string[] = uploadJson?.photo_urls || uploadJson?.photoUrls || [];
                 if (!Array.isArray(urls) || urls.length < 2) {
                     setValidationError("업로드된 사진 URL을 확인하지 못했습니다.");
                     setIsSubmitting(false);

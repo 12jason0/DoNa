@@ -90,31 +90,18 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
         setError("");
 
         try {
-            const formData = new FormData();
             filesToUpload.forEach((file) => {
                 if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
                 if (!file.type.startsWith("image/")) throw new Error(`${file.name}은(는) 이미지 파일이 아닙니다.`);
-                formData.append("photos", file);
             });
 
-            // 리뷰 업로드를 위한 파라미터 추가
-            if (courseId) {
-                formData.append("type", "review");
-                formData.append("courseId", courseId.toString());
-            }
-
-            const response = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-                credentials: "include", // 쿠키를 포함하여 userId를 서버에서 가져올 수 있도록
+            const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+            const photoUrls = await uploadViaPresign(filesToUpload, {
+                type: "review",
+                courseId: courseId?.toString(),
             });
-
-            const data = await response.json();
-
-            if (response.ok && data.success && data.photo_urls) {
-                setImages([...images, ...data.photo_urls]);
-            } else {
-                throw new Error(data.message || "이미지 업로드에 실패했습니다.");
+            if (photoUrls.length > 0) {
+                setImages([...images, ...photoUrls]);
             }
         } catch (error: any) {
             console.error("이미지 업로드 오류:", error);

@@ -69,17 +69,13 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
         setError("");
 
         try {
-            const formData = new FormData();
-            formData.append("photos", file);
-
-            const { authenticatedFetch } = await import("@/lib/authClient");
-            const data = await authenticatedFetch<{ urls?: string[] }>("/api/upload/review-photos", {
-                method: "POST",
-                body: formData,
+            const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+            const urls = await uploadViaPresign([file], {
+                type: "review",
+                courseId: courseId?.toString(),
             });
-
-            if (data?.urls && data.urls.length > 0) {
-                setPhotos([data.urls[0], ...photos.slice(1)]);
+            if (urls.length > 0) {
+                setPhotos([urls[0], ...photos.slice(1)]);
             }
         } catch (err) {
             console.error("이미지 업로드 오류:", err);
@@ -104,20 +100,16 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
         setError("");
 
         try {
-            const formData = new FormData();
             filesToUpload.forEach((file) => {
                 if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
-                formData.append("photos", file);
             });
-
-            const { authenticatedFetch } = await import("@/lib/authClient");
-            const data = await authenticatedFetch<{ urls?: string[] }>("/api/upload/review-photos", {
-                method: "POST",
-                body: formData,
+            const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+            const urls = await uploadViaPresign(filesToUpload, {
+                type: "review",
+                courseId: courseId?.toString(),
             });
-
-            if (data?.urls) {
-                setPhotos([...photos, ...data.urls]);
+            if (urls.length > 0) {
+                setPhotos([...photos, ...urls]);
             }
         } catch (err) {
             console.error("이미지 업로드 오류:", err);

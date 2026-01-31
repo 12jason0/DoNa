@@ -84,7 +84,7 @@ function WebtoonIntro({ tokens, flow, onComplete }: { tokens?: any; flow?: any; 
         return null;
     }
     return (
-        <div className="fixed inset-0 z-[1400] bg-black/60 flex items-start justify-center p-4 animate-fade-in overflow-y-auto">
+        <div className="fixed inset-0 z-1400 bg-black/60 flex items-start justify-center p-4 animate-fade-in overflow-y-auto">
             <div className="w-full max-w-3xl bg-white/95 rounded-2xl shadow-lg border overflow-hidden">
                 <div className="p-4 md:p-6 space-y-4">
                     {scenes.map((scene: any, si: number) => {
@@ -274,7 +274,7 @@ function WebtoonScrollToMap({
     );
 
     return (
-        <div className="fixed inset-0 z-[1400]">
+        <div className="fixed inset-0 z-1400">
             {bgUrl ? (
                 <>
                     <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgUrl})` }} />
@@ -310,7 +310,7 @@ function WebtoonScrollToMap({
                                             }
                                         >
                                             {msg.type === "system" ? (
-                                                <div className="w-[90%] bg-[rgba(200,170,100,0.08)] border-2 border-[#c8aa64] p-4 text-center outline-[3px] outline-double outline-[rgba(200,170,100,0.3)] outline-offset-[-8px]">
+                                                <div className="w-[90%] bg-[rgba(200,170,100,0.08)] border-2 border-[#c8aa64] p-4 text-center outline-[3px] outline-double outline-[rgba(200,170,100,0.3)] -outline-offset-8">
                                                     <div className="font-serif text-[#c8aa64] font-bold whitespace-pre-wrap">
                                                         {nl2br(msg.text)}
                                                     </div>
@@ -557,7 +557,7 @@ function LoadingSpinner() {
     }, []);
     if (!show) return null;
     return (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center">
+        <div className="fixed inset-0 z-2000 flex items-center justify-center">
             <div className="absolute inset-0 bg-linear-to-b from-black/70 to-black/50" />
             <p className="relative text-[#c8aa64] font-serif text-lg font-bold tracking-wider drop-shadow">
                 이야기를 불러오는 중...
@@ -732,7 +732,7 @@ function PostLoadClockSplash({ text = "시간을 거슬러 이동 중..." }: { t
         };
     }, []);
     return (
-        <div className="fixed inset-0 z-[2000]">
+        <div className="fixed inset-0 z-2000">
             {/* 종로 지도 배경 */}
             <div className="tw3-bg" />
             <div ref={containerRef} className="absolute inset-0" />
@@ -1016,7 +1016,7 @@ const DialogueFlow = ({
     // 도착 알림(중앙 작은 봉투 버튼) – 클릭 시 모달 열림 (텍스트 없이 아이콘만)
     if (letterMode && !showLetter) {
         return (
-            <div className="fixed inset-0 z-[1450] pointer-events-none flex items-center justify-center">
+            <div className="fixed inset-0 z-1450 pointer-events-none flex items-center justify-center">
                 <button
                     onClick={() => setShowLetter(true)}
                     className="pointer-events-auto select-none relative"
@@ -1065,7 +1065,7 @@ const DialogueFlow = ({
             setVisibleMessageCount((n) => Math.min(n + 1, items.length));
         };
         return (
-            <div className="fixed inset-0 z-[1450] bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 pb-[12vh]">
+            <div className="fixed inset-0 z-1450 bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 pb-[12vh]">
                 <div
                     className={`relative w-full max-w-lg transition-transform duration-700 ease-out ${
                         arrived ? "translate-y-0 scale-100 rotate-0" : "-translate-y-16 scale-95 rotate-3"
@@ -1113,7 +1113,7 @@ const DialogueFlow = ({
                                             >
                                                 <div className="max-w-[88%]">
                                                     <div className="rounded-2xl px-5 py-3 bg-white/70 backdrop-blur-[1px] border border-white/40 shadow-md">
-                                                        <p className="text-gray-900 font-medium text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                                        <p className="text-gray-900 font-medium text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
                                                             {m.text}
                                                         </p>
                                                     </div>
@@ -1143,11 +1143,11 @@ const DialogueFlow = ({
                                                 >
                                                     {/* 말꼬리: NPC는 왼쪽, Me는 오른쪽 */}
                                                     {m.isUser ? (
-                                                        <span className="absolute -right-2 bottom-3 w-0 h-0 border-y-[8px] border-y-transparent border-l-[10px] border-l-[#B7D3F5]" />
+                                                        <span className="absolute -right-2 bottom-3 w-0 h-0 border-y-8 border-y-transparent border-l-10 border-l-[#B7D3F5]" />
                                                     ) : (
-                                                        <span className="absolute -left-2 bottom-3 w-0 h-0 border-y-[8px] border-y-transparent border-r-[10px] border-r-[#FFF1D6]" />
+                                                        <span className="absolute -left-2 bottom-3 w-0 h-0 border-y-8 border-y-transparent border-r-10 border-r-[#FFF1D6]" />
                                                     )}
-                                                    <p className="font-medium text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                                    <p className="font-medium text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
                                                         {m.text}
                                                     </p>
                                                 </div>
@@ -1194,7 +1194,7 @@ const DialogueFlow = ({
             .map((s) => s.trim())
             .filter(Boolean);
         return (
-            <div className="fixed inset-0 z-[1400] bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 z-1400 bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 animate-fade-in">
                 <div className="w-full max-w-3xl bg-[#fffef8]/95 rounded-t-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-t border-amber-100 font-['Gowun_Dodum']">
                     <div className="max-h-[46vh] overflow-y-auto space-y-4 pr-1 pb-3">
                         {parts.map((t, i) => (
@@ -1207,7 +1207,7 @@ const DialogueFlow = ({
                                         i % 2 === 0
                                             ? "bg-[#fffdf7] text-gray-900 border border-amber-200 shadow-sm"
                                             : "bg-linear-to-b from-amber-500 to-amber-600 text-white shadow-lg"
-                                    } px-5 py-3 rounded-2xl max-w-[80%] leading-relaxed tracking-wide whitespace-pre-wrap break-words`}
+                                    } px-5 py-3 rounded-2xl max-w-[80%] leading-relaxed tracking-wide whitespace-pre-wrap wrap-break-word`}
                                 >
                                     {t}
                                 </div>
@@ -1230,12 +1230,12 @@ const DialogueFlow = ({
     if (!messages || !Array.isArray(messages)) {
         const text = "이 챕터의 이야기가 시작됩니다.";
         return (
-            <div className="fixed inset-0 z-[1400] bg-black/60 flex items-end justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 z-1400 bg-black/60 flex items-end justify-center p-4 animate-fade-in">
                 <div className="w-full max-w-3xl bg-white/90 rounded-t-2xl p-4 shadow-lg border-t">
                     <div className="max-h-[46vh] overflow-y-auto space-y-3 pr-1 pb-3">
                         <div className="flex justify-start">
                             <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl max-w-[80%] shadow">
-                                <p className="whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+                                <p className="whitespace-pre-wrap wrap-break-word leading-relaxed">{text}</p>
                             </div>
                         </div>
                     </div>
@@ -1263,14 +1263,14 @@ const DialogueFlow = ({
     if (!currentMessage) return null;
 
     return (
-        <div className="fixed inset-0 z-[1400] bg-black/60 flex items-end justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 z-1400 bg-black/60 flex items-end justify-center p-4 animate-fade-in">
             <div className="w-full max-w-3xl bg-white/90 rounded-t-2xl p-6 shadow-lg border-t">
                 {currentMessage.speaker && currentMessage.speaker !== "narrator" && (
                     <p className="font-bold text-lg mb-2 text-gray-800">
                         {currentMessage.speaker === "user" ? "나" : currentMessage.speaker}
                     </p>
                 )}
-                <p className="text-gray-900 text-lg whitespace-pre-wrap break-words min-h-[4em]">
+                <p className="text-gray-900 text-lg whitespace-pre-wrap wrap-break-word min-h-[4em]">
                     {currentMessage.text}
                 </p>
                 <div className="text-right mt-4">
@@ -2594,12 +2594,10 @@ function EscapeIntroPageInner() {
 
             const blob = await getCollageBlob();
             if (!blob) return null;
-            const form = new FormData();
-            form.append("photos", new File([blob], "collage.jpg", { type: "image/jpeg" }));
-            const up = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
-            if (!up.ok) return null;
-            const ur = await up.json();
-            const url: string | undefined = Array.isArray(ur?.photo_urls) ? ur.photo_urls[0] : undefined;
+            const file = new File([blob], "collage.jpg", { type: "image/jpeg" });
+            const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+            const urls = await uploadViaPresign([file], {});
+            const url: string | undefined = urls[0];
             if (!url) return null;
             const resCollage = await fetch("/api/collages", {
                 method: "POST",
@@ -2687,15 +2685,11 @@ function EscapeIntroPageInner() {
             setToast("이미지 업로드 중...");
             let imageUrl = await autoSaveCollage();
             if (!imageUrl) {
-                // 수동 업로드 시도
                 try {
-                    const form = new FormData();
-                    form.append("photos", new File([blob], "collage.jpg", { type: "image/jpeg" }));
-                    const up = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
-                    if (up.ok) {
-                        const ur = await up.json();
-                        imageUrl = Array.isArray(ur?.photo_urls) ? ur.photo_urls[0] : undefined;
-                    }
+                    const file = new File([blob], "collage.jpg", { type: "image/jpeg" });
+                    const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+                    const urls = await uploadViaPresign([file], {});
+                    imageUrl = urls[0];
                 } catch {}
             }
 
@@ -2851,56 +2845,17 @@ function EscapeIntroPageInner() {
                     })
                 );
 
-                const formData = new FormData();
-                compressedFiles.forEach((f) => formData.append("photos", f, f.name));
-                
-                // 탈출방 업로드를 위한 파라미터 추가
-                formData.append("type", "escape");
-                formData.append("escapeId", storyId.toString());
-                
-                try {
-                    console.log(
-                        "[Upload] files",
-                        compressedFiles.map((f) => ({ name: f.name, type: f.type, size: f.size }))
-                    );
-                    console.log("[photoFiles]", photoFiles);
-                    for (const [key, value] of (formData as any).entries()) {
-                        const v: any = value as any;
-                        console.log("FormData entry:", key, v?.name || v);
-                    }
-                } catch {}
-
                 setToast("사진을 업로드하는 중...");
+                const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+                let uploadResult: { photo_urls?: string[] };
                 try {
-                    console.log("[DEBUG-1] Upload start", formData);
-                } catch {}
-                const uploadResponse = await fetch("/api/upload", {
-                    method: "POST",
-                    body: formData,
-                    credentials: "include",
-                    cache: "no-store",
-                });
-                try {
-                    console.log("[DEBUG-2] Upload response status:", uploadResponse.status);
-                } catch {}
-
-                if (!uploadResponse.ok) {
-                    const errText = await uploadResponse.text().catch(() => "(no response)");
-                    throw new Error(`업로드 실패: ${errText}`);
-                }
-
-                // 응답 파싱: JSON 실패 시 raw text로 재시도
-                let uploadResult: any = null;
-                let rawText: string | null = null;
-                try {
-                    uploadResult = await uploadResponse.json();
-                } catch (e) {
-                    try {
-                        rawText = await uploadResponse.text();
-                        uploadResult = JSON.parse(rawText);
-                    } catch {
-                        throw new Error(`업로드 응답 파싱 실패: ${String(rawText || "(empty)").slice(0, 200)}`);
-                    }
+                    const urls = await uploadViaPresign(compressedFiles, {
+                        type: "escape",
+                        escapeId: storyId.toString(),
+                    });
+                    uploadResult = { photo_urls: urls };
+                } catch (e: any) {
+                    throw new Error(`업로드 실패: ${e?.message || String(e)}`);
                 }
                 try {
                     console.log("[DEBUG-3] UploadResult:", uploadResult);
@@ -3467,7 +3422,7 @@ function EscapeIntroPageInner() {
         const bgUrl = story?.imageUrl || getS3StaticUrl("homepage.png");
         return (
             <>
-                <div className="fixed inset-0 z-[1000]">
+                <div className="fixed inset-0 z-1000">
                     <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgUrl})` }} />
                     <div className="absolute inset-0 bg-linear-to-b from-black/60 to-black/20" />
                 </div>
@@ -3501,7 +3456,7 @@ function EscapeIntroPageInner() {
                 <div
                     className={`absolute inset-0 ${
                         letterGateActive ? "bg-transparent" : flowStep === "walk" ? "bg-black/45" : "bg-black/30"
-                    } transition-colors duration-[1400ms]`}
+                    } transition-colors duration-1400`}
                 >
                     {/* 엔딩 편지 봉투/편지: sunset 오버레이 안쪽에 렌더 */}
                     {flowStep === "done" && endingStep === "epilogue" && (
@@ -3524,7 +3479,7 @@ function EscapeIntroPageInner() {
                 >
                     {/* 편지 닫기 전에는 상단 버튼 등 UI 숨김 */}
                     {!letterGateActive && (flowStep as unknown as string) !== "done" ? (
-                        <div className="flex justify-center gap-3 mb-4 absolute inset-x-0 bottom-[100%] md:static md:mb-4">
+                        <div className="flex justify-center gap-3 mb-4 absolute inset-x-0 bottom-full md:static md:mb-4">
                             {inMission && flowStep !== "done" ? (
                                 <button
                                     onClick={() => setShowMapModal(true)}
@@ -3556,7 +3511,7 @@ function EscapeIntroPageInner() {
                     ) : null}
 
                     <div
-                        className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-transform duration-[1400ms] ease-in-out ${
+                        className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-transform duration-1400 ease-in-out ${
                             flowStep === "walk" ? "translate-y-[-40px]" : "translate-y-0"
                         }`}
                     >
@@ -3824,7 +3779,7 @@ function EscapeIntroPageInner() {
                                             </div>
                                         )}
                                         {dialogueQueue.length > 0 ? (
-                                            <div className="text-gray-900 whitespace-pre-wrap break-words">
+                                            <div className="text-gray-900 whitespace-pre-wrap wrap-break-word">
                                                 {dialogueQueue[0]?.speaker && (
                                                     <div className="text-sm text-gray-500 mb-1">
                                                         {dialogueQueue[0].speaker}
@@ -3935,7 +3890,7 @@ function EscapeIntroPageInner() {
                         {/* 우: 엔딩 아웃트로 → 갤러리 */}
                         {flowStep === "done" && endingStep === "badge" && (
                             <ClientPortal>
-                                <div className="fixed inset-0 z-[9999] bg-black/50 animate-fade-in">
+                                <div className="fixed inset-0 z-9999 bg-black/50 animate-fade-in">
                                     {/* ✅ 중앙 정렬 컨테이너 */}
                                     <div className="min-h-screen flex items-center justify-center p-4">
                                         <div
@@ -4005,7 +3960,7 @@ function EscapeIntroPageInner() {
                         )}
 
                         {flowStep === "done" && endingStep === "gallery" ? (
-                            <div className="fixed inset-0 z-[2000] bg-black/40 flex items-end md:items-center justify-center p-2">
+                            <div className="fixed inset-0 z-2000 bg-black/40 flex items-end md:items-center justify-center p-2">
                                 <div className="w-[92vw] max-w-[520px] sm:max-w-[640px] max-h-[76vh] md:max-h-[86vh] rounded-2xl bg-white/90 p-3 border shadow overflow-hidden flex flex-col">
                                     <h3 className="text-lg font-bold text-gray-800 mb-3">
                                         엔딩 갤러리 (최대 {requiredPhotoCount}장 선택)
@@ -4341,7 +4296,7 @@ function EscapeIntroPageInner() {
 
                 {/* 2개 완료 후 진행 버튼 클릭 시 안내 모달 */}
                 {showProceedModal && (
-                    <div className="fixed inset-0 z-[1500] bg-black/50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-1500 bg-black/50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl w-full max-w-md p-6 text-center">
                             <div className="text-lg font-bold text-gray-900 mb-2">조금만 더!</div>
                             <p className="text-gray-700 mb-5">
@@ -4372,7 +4327,7 @@ function EscapeIntroPageInner() {
 
                 {/* 콜라주 미리보기 모달 */}
                 {showCollagePreview && (
-                    <div className="fixed inset-0 z-[2100] bg-black/50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-2100 bg-black/50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl p-4 max-w-[720px] w-full max-h-[90vh] overflow-hidden flex flex-col">
                             <div className="text-center mb-3 font-semibold">템플릿 미리보기</div>
                             <div
@@ -4417,7 +4372,7 @@ function EscapeIntroPageInner() {
 
                 {isMobile && showMapModal && flowStep !== "done" && (
                     <div
-                        className={`fixed inset-0 z-[1400] bg-black/50 flex items-center justify-center p-4 ${
+                        className={`fixed inset-0 z-1400 bg-black/50 flex items-center justify-center p-4 ${
                             flowStep === "walk" ? "animate-[zoomOutBg_1000ms_ease-out]" : ""
                         }`}
                         role="dialog"
@@ -4472,7 +4427,7 @@ function EscapeIntroPageInner() {
 
                 {/* 미션 풀이 모달 */}
                 {missionModalOpen && activeMission && (
-                    <div className="fixed inset-0 z-[1500] bg-black/50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-1500 bg-black/50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl w-full max-w-md p-5 relative">
                             <button
                                 onClick={() => setMissionModalOpen(false)}
@@ -4526,25 +4481,12 @@ function EscapeIntroPageInner() {
                                             const compressedFiles = await Promise.all(
                                                 files.map((f) => imageCompression(f, options))
                                             );
-                                            const formData = new FormData();
-                                            compressedFiles.forEach((file) =>
-                                                formData.append("photos", file, file.name)
-                                            );
                                             setToast("사진을 업로드하는 중...");
-                                            const uploadResponse = await fetch("/api/upload", {
-                                                method: "POST",
-                                                body: formData,
-                                                credentials: "include",
-                                                cache: "no-store",
+                                            const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
+                                            const urls = await uploadViaPresign(compressedFiles, {
+                                                type: "escape",
+                                                escapeId: String(storyId),
                                             });
-                                            if (!uploadResponse.ok) {
-                                                setIsSubmitting(false);
-                                                throw new Error(await uploadResponse.text());
-                                            }
-                                            const uploadResult = await uploadResponse.json();
-                                            const urls: string[] = Array.isArray(uploadResult.photo_urls)
-                                                ? uploadResult.photo_urls
-                                                : [];
                                             if (urls.length === 0) {
                                                 setIsSubmitting(false);
                                                 throw new Error("업로드된 사진 URL이 없습니다.");
@@ -4926,7 +4868,7 @@ function EscapeIntroPageInner() {
 
                 {/* 미션 이후 스토리 모달 (UI 리뉴얼) */}
                 {showPostStory && postStoryQueue.length > 0 && (
-                    <div className="fixed inset-0 z-[1550] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+                    <div className="fixed inset-0 z-1550 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
                         <div className="w-full max-w-sm bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E6E2D6] overflow-hidden relative">
                             {/* 상단 장식 (클립/테이프 느낌) */}
                             <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-[#C8AA64] via-[#E6D2A0] to-[#C8AA64] opacity-80" />

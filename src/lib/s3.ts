@@ -1,4 +1,5 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let _s3: S3Client | null = null;
 
@@ -95,6 +96,27 @@ export function getS3PublicUrl(key: string): string {
         "CloudFront URL을 사용하려면 환경 변수를 설정하세요."
     );
     return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+}
+
+/**
+ * Presigned PUT URL 생성 (클라이언트가 S3에 직접 업로드할 때 사용).
+ * @param key - S3 객체 키
+ * @param contentType - 업로드할 파일의 Content-Type (클라이언트 PUT 시 동일해야 함)
+ * @param expiresIn - URL 유효 시간(초), 기본 15분
+ */
+export async function getPresignedPutUrl(
+    key: string,
+    contentType: string,
+    expiresIn: number = 900
+): Promise<string> {
+    const s3 = getS3Client();
+    const bucket = getS3Bucket();
+    const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        ContentType: contentType,
+    });
+    return getSignedUrl(s3, command, { expiresIn });
 }
 
 // 동일한 자격증명/엔드포인트를 유지하면서 리전만 바꾼 클라이언트를 생성합니다.
