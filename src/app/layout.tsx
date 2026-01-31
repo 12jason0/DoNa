@@ -7,6 +7,7 @@ import Script from "next/script";
 import ClientStyleManager from "@/components/ClientStyleManager";
 import AdSenseScript from "@/components/AdSenseScript";
 import KakaoScript from "@/components/KakaoScript";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const lineSeed = localFont({
     src: [
@@ -73,6 +74,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
                 {/* Google AdSense: 웹에서만 로드. 앱(WebView)에서는 미로드 → 스플래시·adtrafficquality 동시 노출 방지 */}
                 <AdSenseScript />
+
+                {/* Vercel Speed Insights: 성능 메트릭 수집 */}
+                <SpeedInsights />
             </body>
         </html>
     );
