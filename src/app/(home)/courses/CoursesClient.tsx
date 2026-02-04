@@ -302,7 +302,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
             <div className="bg-white dark:bg-[#1a241b] px-5 pt-6 pb-2 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
-                <div className="flex justify-between items-end mb-4">
+                <div className="flex justify-between items-end mb-2">
                     <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
                         완벽한 하루
                     </h1>

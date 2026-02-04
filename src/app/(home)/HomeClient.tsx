@@ -1026,7 +1026,7 @@ function TabbedConcepts({
     return (
         <section className="py-8 px-5">
             {/* 필터 탭·카테고리: 완벽한 하루와 동일 가로 패딩 (가로 스크롤 영역 -mx-5 px-5) */}
-            <div className="flex gap-2 mb-7 overflow-x-auto no-scrollbar -mx-5 px-5">
+            <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar -mx-5 px-5">
                 {[
                     { key: "concept", label: "전체" },
                     { key: "popular", label: "인기순" },
@@ -1046,7 +1046,7 @@ function TabbedConcepts({
                     </TapFeedback>
                 ))}
             </div>
-            <div className="mt-6">
+            <div className="mt-3">
                 {activeTab === "concept" ? (
                     isExpanded && conceptItems.length > 8 ? (
                         /* 클릭 시 해당 위치에 가로 스크롤 사라지고 전체 그리드만 표시 (3개씩, 가운데 정렬) */
