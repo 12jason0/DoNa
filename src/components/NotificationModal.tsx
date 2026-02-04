@@ -17,19 +17,31 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
     };
 
     return (
-        <div className="fixed inset-0 z-2000 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+        <div
+            className="fixed inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            aria-label="알림 모달 닫기"
+        >
+            <div
+                className="fixed bottom-0 left-0 right-0 z-2001 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl"
+                style={{ animation: "slideUp 0.3s ease-out forwards" }}
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* 상단 닫기 버튼 */}
                 <div className="flex justify-end p-4 pb-0">
                     <button
                         onClick={onClose}
-                        className="p-1.5 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors"
+                        className="p-1.5 bg-gray-50 dark:bg-gray-800 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        aria-label="닫기"
                     >
-                        <X className="w-4 h-4 text-gray-400" />
+                        <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     </button>
                 </div>
 
-                <div className="p-5 pt-2 text-center">
+                <div className="p-5 pt-2 text-center pb-6">
                     {/* 프로모션 배지 */}
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full mb-4">
                         <Sparkles className="w-2.5 h-2.5" />
@@ -83,11 +95,6 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                             다음에 할게요
                         </button>
                     </div>
-                </div>
-
-                {/* 하단 정보 바 */}
-                <div className="py-2 bg-gray-50 text-[9px] text-gray-400 font-medium">
-                    * 기간 내 신규 가입 시 자동 지급됩니다
                 </div>
             </div>
         </div>

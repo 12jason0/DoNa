@@ -247,12 +247,16 @@ export default function PersonalizedSection() {
                     </div>
                 ) : (
                     <>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-snug whitespace-pre-line animate-fade-in tracking-tight">
-                            {/* 👇 제목: "00님, 기 빨리는 핫플은 지치시죠?" */}
+                        {/* 1단: Section Label */}
+                        <p className="text-[12px] text-gray-400 dark:text-gray-500 font-medium mb-1 animate-fade-in">
+                            {content.sectionTitle}
+                        </p>
+                        {/* 2단: Personalized Title */}
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-0.5 leading-snug animate-fade-in tracking-tight">
                             {content.title(userName)}
                         </h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                            {/* 👇 부제목: "마음이 차분해지는..." */}
+                        {/* 3단: Subtitle */}
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 animate-fade-in">
                             {content.subtitle}
                         </p>
                     </>
@@ -337,7 +341,7 @@ export default function PersonalizedSection() {
                                   <div className="absolute bottom-4 left-4 right-4 text-left">
                                       {course.region && (
                                           <span className="text-[10px] text-gray-300 block mb-1">
-                                              📍 {course.region}
+                                              {course.region}
                                           </span>
                                       )}
                                       <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 drop-shadow-md tracking-tight">

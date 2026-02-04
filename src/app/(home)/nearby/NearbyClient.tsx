@@ -12,6 +12,7 @@ import CourseCard from "@/components/CourseCard";
 // 🟢 [Performance]: 필터링 로직과 모달을 별도 파일로 분리
 import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
+import TapFeedback from "@/components/TapFeedback";
 import { isIOS, isMobileApp } from "@/lib/platform";
 import CourseReportBanner from "@/components/CourseReportBanner";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
@@ -587,15 +588,15 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             placeholder="성수동 힙한 카페 어디지?"
                             className="w-full bg-gray-50 dark:bg-[#1a241b] rounded-xl py-3.5 pl-12 pr-12 text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700 focus:bg-white dark:focus:bg-[#1a241b] transition-all tracking-tight"
                         />
-                        <button
-                            onClick={() => {
-                                // 필터 모달 열 때 현재 선택된 필터로 초기화
-                                setModalSelectedLabels([...selectedFilterLabels]);
-                                setShowCategoryModal(true);
-                            }}
-                            className="absolute inset-y-0 right-3 flex items-center"
-                        >
-                            <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors">
+                        <TapFeedback>
+                            <button
+                                onClick={() => {
+                                    setModalSelectedLabels([...selectedFilterLabels]);
+                                    setShowCategoryModal(true);
+                                }}
+                                className="absolute inset-y-0 right-3 flex items-center"
+                            >
+                                <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
@@ -604,8 +605,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                         d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
                                     />
                                 </svg>
-                            </div>
-                        </button>
+                                </div>
+                            </button>
+                        </TapFeedback>
                     </div>
 
                     <div className="flex flex-col gap-3">
@@ -613,39 +615,39 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth">
                             {(displayKeyword || selectedTagIds.length > 0 || selectedFilterLabels.length > 0) && (
                                 <>
-                                    <button
-                                        onClick={() => {
-                                            // 모든 필터 상태 명시적으로 초기화
-                                            setSearchInput("");
-                                            setSelectedActivities([]);
-                                            setSelectedRegions([]);
-                                            setSelectedTagIds([]);
-                                            setSelectedFilterLabels([]);
-                                            setSelectedFilterConcepts([]);
-                                            setHideClosedPlaces(false);
-
-                                            // URL 변경 (로딩은 서버 컴포넌트가 처리)
-                                            router.push("/nearby");
-                                        }}
-                                        className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1a241b] border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 active:scale-95 transition-transform"
-                                    >
-                                        ↺
-                                    </button>
+                                    <TapFeedback>
+                                        <button
+                                            onClick={() => {
+                                                setSearchInput("");
+                                                setSelectedActivities([]);
+                                                setSelectedRegions([]);
+                                                setSelectedTagIds([]);
+                                                setSelectedFilterLabels([]);
+                                                setSelectedFilterConcepts([]);
+                                                setHideClosedPlaces(false);
+                                                router.push("/nearby");
+                                            }}
+                                            className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1a241b] border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 transition-transform"
+                                        >
+                                            ↺
+                                        </button>
+                                    </TapFeedback>
                                     <div className="w-px h-4 bg-gray-200 mx-1 shrink-0" />
                                 </>
                             )}
                             {regions.map((r) => (
-                                <button
-                                    key={r}
-                                    onClick={() => toggleRegionSingle(r)}
-                                    className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold transition-all border ${
-                                        selectedRegions.includes(r)
-                                            ? "bg-emerald-600 text-white border-emerald-600"
-                                            : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700"
-                                    }`}
-                                >
-                                    {r}
-                                </button>
+                                <TapFeedback key={r}>
+                                    <button
+                                        onClick={() => toggleRegionSingle(r)}
+                                        className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold transition-all border ${
+                                            selectedRegions.includes(r)
+                                                ? "bg-emerald-600 text-white border-emerald-600"
+                                                : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700"
+                                        }`}
+                                    >
+                                        {r}
+                                    </button>
+                                </TapFeedback>
                             ))}
                         </div>
 
@@ -656,14 +658,15 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     필터:
                                 </div>
                                 {selectedFilterLabels.map((label) => (
-                                    <button
-                                        key={label}
-                                        onClick={() => removeFilterLabel(label)}
-                                        className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5"
-                                    >
-                                        {label}
-                                        <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">✕</span>
-                                    </button>
+                                    <TapFeedback key={label}>
+                                        <button
+                                            onClick={() => removeFilterLabel(label)}
+                                            className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5"
+                                        >
+                                            {label}
+                                            <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">✕</span>
+                                        </button>
+                                    </TapFeedback>
                                 ))}
                             </div>
                         )}
@@ -692,14 +695,16 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             대신 <span className="font-semibold">두나가 엄선한 인기 코스</span>를
                                             확인해보세요!
                                         </p>
-                                        <button
-                                            onClick={() => {
-                                                window.location.href = "/nearby";
-                                            }}
-                                            className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-transform active:scale-95"
-                                        >
-                                            전체 코스 탐색하기
-                                        </button>
+                                        <TapFeedback className="block">
+                                            <button
+                                                onClick={() => {
+                                                    window.location.href = "/nearby";
+                                                }}
+                                                className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-transform"
+                                            >
+                                                전체 코스 탐색하기
+                                            </button>
+                                        </TapFeedback>
                                     </div>
                                 </div>
                             )}
@@ -766,14 +771,16 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
                             {/* 하단에 전체보기 버튼 (상업적 유도) */}
                             {isRecommendation && (
-                                <button
-                                    onClick={() => {
-                                        window.location.href = "/nearby";
-                                    }}
-                                    className="mt-10 w-full py-4 bg-slate-900 text-white text-[15px] font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all"
-                                >
-                                    전체 코스 탐색하기
-                                </button>
+                                <TapFeedback className="block">
+                                    <button
+                                        onClick={() => {
+                                            window.location.href = "/nearby";
+                                        }}
+                                        className="mt-10 w-full py-4 bg-slate-900 text-white text-[15px] font-bold rounded-xl shadow-lg transition-all"
+                                    >
+                                        전체 코스 탐색하기
+                                    </button>
+                                </TapFeedback>
                             )}
                         </>
                     )}

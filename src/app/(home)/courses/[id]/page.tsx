@@ -90,6 +90,7 @@ const getCourse = unstable_cache(
                                 estimated_duration: true,
                                 recommended_time: true,
                                 coaching_tip: true,
+                                coaching_tip_free: true,
                                 place: {
                                     select: {
                                         id: true,
@@ -326,7 +327,9 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                       ...cp,
                       estimated_duration: null, // 마스킹
                       recommended_time: null, // 마스킹
-                      coaching_tip: null, // 마스킹
+                      coaching_tip: null, // 마스킹 (유료)
+                      coaching_tip_free: cp.coaching_tip_free ?? null, // 무료 팁은 표시
+                      hasPaidTip: !!(cp.coaching_tip && String(cp.coaching_tip).trim()), // 유료 팁 존재 여부(잠김 영역 표시용)
                       place: cp.place
                           ? {
                                 id: cp.place.id,
@@ -353,26 +356,17 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         : {
               ...courseData,
               isLocked,
-              // 🔒 FREE 코스의 팁은 클라이언트에서 userTier 체크하여 표시 (버튼/팁 표시 구분)
-              // BASIC/PREMIUM 코스는 hasTipAccess에 따라 마스킹
+              // 무료 팁(coaching_tip_free): 항상 전달. 유료 팁(coaching_tip): hasTipAccess일 때만
               coursePlaces:
                   courseData.coursePlaces?.map((cp: any) => ({
                       ...cp,
-                      coaching_tip:
-                          courseGrade === "FREE"
-                              ? cp.coaching_tip // FREE 코스: 클라이언트에서 처리
-                              : hasTipAccess
-                                ? cp.coaching_tip
-                                : null, // BASIC/PREMIUM 코스: 권한 체크
+                      coaching_tip: hasTipAccess ? (cp.coaching_tip ?? null) : null,
+                      coaching_tip_free: cp.coaching_tip_free ?? null,
+                      hasPaidTip: !!(cp.coaching_tip && String(cp.coaching_tip).trim()), // 유료 팁 존재 여부(잠김 영역 표시용)
                       place: cp.place
                           ? {
                                 ...cp.place,
-                                coaching_tip:
-                                    courseGrade === "FREE"
-                                        ? cp.place?.coaching_tip // FREE 코스: 클라이언트에서 처리
-                                        : hasTipAccess
-                                          ? cp.place?.coaching_tip
-                                          : null, // BASIC/PREMIUM 코스: 권한 체크
+                                coaching_tip: hasTipAccess ? (cp.place?.coaching_tip ?? cp.coaching_tip ?? null) : null,
                             }
                           : null,
                   })) || [],

@@ -171,6 +171,30 @@ function ensureAdminOrUser(req: NextRequest): boolean {
     return userId !== null;
 }
 
+/** closed_days 배열 정규화: { day_of_week?: number|null, specific_date?: string|null, note?: string|null }[] → DB 입력용 */
+function normalizeClosedDays(
+    raw: unknown
+): { day_of_week: number | null; specific_date: Date | null; note: string | null }[] {
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+        .map((item: any) => {
+            const dayOfWeek = item?.day_of_week;
+            const specificDate = item?.specific_date;
+            const note = item?.note;
+            const day =
+                typeof dayOfWeek === "number" && dayOfWeek >= 0 && dayOfWeek <= 6 ? dayOfWeek : null;
+            let date: Date | null = null;
+            if (specificDate != null && specificDate !== "") {
+                const d = new Date(specificDate);
+                if (!isNaN(d.getTime())) date = d;
+            }
+            const noteStr = note != null && String(note).trim() !== "" ? String(note).trim() : null;
+            if (day === null && date === null && noteStr === null) return null;
+            return { day_of_week: day, specific_date: date, note: noteStr };
+        })
+        .filter((x): x is { day_of_week: number | null; specific_date: Date | null; note: string | null } => x != null);
+}
+
 export async function POST(request: NextRequest) {
     try {
         if (!ensureAdminOrUser(request)) {
@@ -193,6 +217,7 @@ export async function POST(request: NextRequest) {
             longitude,
             imageUrl,
             tags,
+            closed_days: rawClosedDays,
         } = body || {};
 
         const coerceTags = (val: any) => {
@@ -218,6 +243,8 @@ export async function POST(request: NextRequest) {
         if (!name) {
             return NextResponse.json({ error: "장소 이름은 필수입니다." }, { status: 400 });
         }
+
+        const closedDaysList = normalizeClosedDays(rawClosedDays);
 
         const created = await (prisma as any).place.create({
             data: {
@@ -246,6 +273,17 @@ export async function POST(request: NextRequest) {
                 tags: true,
             },
         });
+
+        if (closedDaysList.length > 0) {
+            await (prisma as any).placeClosedDay.createMany({
+                data: closedDaysList.map((d: { day_of_week: number | null; specific_date: Date | null; note: string | null }) => ({
+                    place_id: created.id,
+                    day_of_week: d.day_of_week,
+                    specific_date: d.specific_date,
+                    note: d.note || null,
+                })),
+            });
+        }
 
         return NextResponse.json({ success: true, place: created }, { status: 201 });
     } catch (error) {

@@ -10,6 +10,7 @@ import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { useAuth } from "@/context/AuthContext";
+import TapFeedback from "@/components/TapFeedback";
 import { isIOS, isMobileApp } from "@/lib/platform";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
@@ -64,13 +65,23 @@ const Icons = {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
     ),
-    Bulb: () => (
-        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    Bulb: ({ className }: { className?: string }) => (
+        <svg className={className || "w-4 h-4 text-emerald-500 shrink-0"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
                 d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+        </svg>
+    ),
+    Lock: ({ className }: { className?: string }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
             />
         </svg>
     ),
@@ -173,7 +184,9 @@ export interface CoursePlace {
     order_index: number;
     estimated_duration: number;
     recommended_time: string;
-    coaching_tip?: string | null;
+    coaching_tip?: string | null; // 유료 팁
+    coaching_tip_free?: string | null; // 무료 팁
+    hasPaidTip?: boolean; // 서버 전달: 유료 팁 존재 여부(내용 숨김 시 잠김 영역 표시용)
     place: Place;
 }
 
@@ -372,7 +385,7 @@ export default function CourseDetailClient({
         navigator.geolocation.getCurrentPosition(
             (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
             (err) => console.warn("위치 정보 요청 실패:", err.message),
-            geoOptions,
+            geoOptions
         );
     }, [userLocation]);
 
@@ -458,7 +471,7 @@ export default function CourseDetailClient({
                     observer.disconnect();
                 }
             },
-            { threshold: 0.1, rootMargin: "200px" }, // 🟢 200px 전에 미리 로드
+            { threshold: 0.1, rootMargin: "200px" } // 🟢 200px 전에 미리 로드
         );
         observer.observe(mapSectionRef.current);
         return () => observer.disconnect();
@@ -522,7 +535,7 @@ export default function CourseDetailClient({
                 }
             }
         },
-        [sortedCoursePlaces, showFullMapModal],
+        [sortedCoursePlaces, showFullMapModal]
     );
 
     const heroImageUrl = useMemo(() => {
@@ -547,7 +560,7 @@ export default function CourseDetailClient({
 
     const showToast = useCallback(
         (message: string, type: "success" | "error" | "info" = "info") => setToast({ message, type }),
-        [],
+        []
     );
 
     const handleTimelinePlaceClick = (coursePlace: CoursePlace) => {
@@ -577,7 +590,7 @@ export default function CourseDetailClient({
                             createdAt: r.createdAt,
                             content: r.comment,
                             imageUrls: r.imageUrls || [],
-                        })),
+                        }))
                     );
                 }
             }
@@ -598,7 +611,7 @@ export default function CourseDetailClient({
                     observer.disconnect();
                 }
             },
-            { threshold: 0.1, rootMargin: "100px" },
+            { threshold: 0.1, rootMargin: "100px" }
         );
         observer.observe(reviewsSectionRef.current);
         return () => observer.disconnect();
@@ -647,7 +660,7 @@ export default function CourseDetailClient({
                 } else {
                     // 찜하기 제거: 캐시에서 제거
                     globalFavoritesCache = globalFavoritesCache.filter(
-                        (fav: any) => String(fav.course_id) !== courseId,
+                        (fav: any) => String(fav.course_id) !== courseId
                     );
                 }
                 globalFavoritesPromise = null;
@@ -837,22 +850,24 @@ export default function CourseDetailClient({
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent" />
 
                         {/* 🔥 뒤로 가기 버튼: 배경 없이 강한 그림자 */}
-                        <button
-                            onClick={() => router.back()}
-                            className="absolute top-4 left-4 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all active:scale-95"
-                            aria-label="뒤로 가기"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={2.5}
-                                stroke="currentColor"
-                                className="w-7 h-7"
+                        <TapFeedback>
+                            <button
+                                onClick={() => router.back()}
+                                className="absolute top-4 left-4 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all"
+                                aria-label="뒤로 가기"
                             >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
-                        </button>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2.5}
+                                    stroke="currentColor"
+                                    className="w-7 h-7"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                        </TapFeedback>
 
                         <div className="absolute bottom-0 left-0 w-full p-6 pb-14 text-white z-10">
                             {/* 🔥 Row 1: 핵심 정보 (불투명 태그) */}
@@ -987,76 +1002,114 @@ export default function CourseDetailClient({
                                                         )}
                                                     </div>
                                                 </div>
-                                                {/* 🔒 팁 섹션 - 코스 잠금 상태 및 유저 등급 기준으로 표시 (웹과 동일) */}
-                                                {coursePlace.coaching_tip
-                                                    ? (() => {
-                                                          // 🔒 FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
-                                                          const courseGrade = (
-                                                              courseData.grade || "FREE"
-                                                          ).toUpperCase();
-                                                          const currentUserTier = (userTier || "FREE").toUpperCase();
+                                                {/* 🟢 팁 섹션: 무료 팁(항상 표시) + 유료 팁(권한 시만, 없으면 CTA) */}
+                                                {(() => {
+                                                    const courseGrade = (courseData.grade || "FREE").toUpperCase();
+                                                    const currentUserTier = (userTier || "FREE").toUpperCase();
+                                                    const shouldShowPaidTip = !(
+                                                        (courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                                        courseData.isLocked
+                                                    );
 
-                                                          // 🔒 FREE 코스 + FREE 유저 또는 잠긴 코스 → 버튼만 표시
-                                                          const shouldShowTipButton =
-                                                              (courseGrade === "FREE" && currentUserTier === "FREE") ||
-                                                              courseData.isLocked;
+                                                    const hasFreeTip = !!(
+                                                        coursePlace.coaching_tip_free &&
+                                                        coursePlace.coaching_tip_free.trim()
+                                                    );
+                                                    // 서버 전달 hasPaidTip 우선(미로그인/FREE 시 내용 숨겨도 잠김 영역 표시)
+                                                    const hasPaidTip =
+                                                        coursePlace.hasPaidTip ??
+                                                        !!(coursePlace.coaching_tip && coursePlace.coaching_tip.trim());
 
-                                                          if (shouldShowTipButton) {
-                                                              // 🟢 [Fix]: 비로그인 유저와 로그인 유저 메시지 구분
-                                                              const tipMessage = !isAuthenticated
-                                                                  ? "로그인하고 숨겨진 꿀팁을 확인하세요!"
-                                                                  : "BASIC 등급이면 볼 수 있어요";
+                                                    if (!hasFreeTip && !hasPaidTip) return null;
 
-                                                              return (
-                                                                  <button
-                                                                      onClick={(e) => {
-                                                                          e.stopPropagation();
-                                                                          if (isAuthenticated) {
-                                                                              setShowSubscriptionModal(true);
-                                                                          } else {
-                                                                              setShowLoginModal(true);
-                                                                          }
-                                                                      }}
-                                                                      className="mt-3 w-full text-left p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 transition-all"
-                                                                  >
-                                                                      <div className="flex items-center gap-2 mb-1">
-                                                                          <Icons.Bulb />
-                                                                          <span className="text-xs font-bold text-amber-700">
-                                                                              팁
-                                                                          </span>
-                                                                      </div>
-                                                                      <p className="text-xs text-gray-600 line-clamp-2">
-                                                                          {tipMessage}
-                                                                      </p>
-                                                                  </button>
-                                                              );
-                                                          } else {
-                                                              // 🔒 BASIC/PREMIUM 유저가 FREE 코스를 보거나, 권한이 있는 코스: 팁 표시
-                                                              return (
-                                                                  <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                                                      <div className="flex items-center gap-2 mb-1">
-                                                                          <Icons.Bulb />
-                                                                          <span className="text-xs font-bold text-amber-700">
-                                                                              💡 팁
-                                                                          </span>
-                                                                      </div>
-                                                                      <p
-                                                                          className="text-xs text-gray-700 leading-relaxed"
-                                                                          style={{
-                                                                              display: "-webkit-box",
-                                                                              WebkitLineClamp: 3,
-                                                                              WebkitBoxOrient: "vertical",
-                                                                              overflow: "hidden",
-                                                                              textOverflow: "ellipsis",
-                                                                          }}
-                                                                      >
-                                                                          {coursePlace.coaching_tip}
-                                                                      </p>
-                                                                  </div>
-                                                              );
-                                                          }
-                                                      })()
-                                                    : null}
+                                                    return (
+                                                        <div className="mt-2 space-y-1.5">
+                                                            {/* 무료 팁: 배경 없이 Bulb + 연한 회색 텍스트, Dona's Pick 작게 */}
+                                                            {hasFreeTip && (
+                                                                <div className="flex gap-2 items-start">
+                                                                    <Icons.Bulb className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                                                                            Dona&apos;s Pick
+                                                                        </span>
+                                                                        <p
+                                                                            className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 leading-relaxed"
+                                                                            style={{
+                                                                                display: "-webkit-box",
+                                                                                WebkitLineClamp: 3,
+                                                                                WebkitBoxOrient: "vertical",
+                                                                                overflow: "hidden",
+                                                                                textOverflow: "ellipsis",
+                                                                            }}
+                                                                        >
+                                                                            {coursePlace.coaching_tip_free}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* 유료 팁: 딥 그린 카드 + Premium 태그 + 자물쇠 + 서버 보안 멘트 / 잠금 시 동일 스타일 */}
+                                                            {hasPaidTip &&
+                                                                (shouldShowPaidTip ? (
+                                                                    <div className="rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100">
+                                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                                            <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                                            <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
+                                                                                Premium
+                                                                            </span>
+                                                                        </div>
+                                                                        <p
+                                                                            className="text-xs text-gray-100 leading-relaxed"
+                                                                            style={{
+                                                                                display: "-webkit-box",
+                                                                                WebkitLineClamp: 3,
+                                                                                WebkitBoxOrient: "vertical",
+                                                                                overflow: "hidden",
+                                                                                textOverflow: "ellipsis",
+                                                                            }}
+                                                                        >
+                                                                            {coursePlace.coaching_tip}
+                                                                        </p>
+                                                                        <p className="mt-1.5 text-[9px] text-gray-500">
+                                                                            서버 보안으로 보호된 정보
+                                                                        </p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (isAuthenticated)
+                                                                                setShowSubscriptionModal(true);
+                                                                            else setShowLoginModal(true);
+                                                                        }}
+                                                                        className="w-full text-left rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100 hover:border-emerald-500/50 transition-all relative overflow-hidden"
+                                                                    >
+                                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                                            <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                                            <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
+                                                                                Premium
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="relative">
+                                                                            <p className="text-xs text-gray-300 relative z-10">
+                                                                                웨이팅 피하는 시간은...
+                                                                            </p>
+                                                                            <p className="text-xs text-gray-500 mt-0.5 blur-sm select-none pointer-events-none" aria-hidden>
+                                                                                포인트 테이블 위치와 예약 타이밍, 데이트 고수만 아는 비법이 숨겨져 있어요.
+                                                                            </p>
+                                                                        </div>
+                                                                        <p className="mt-1.5 text-[10px] text-gray-400">
+                                                                            {!isAuthenticated
+                                                                                ? "로그인 후 Basic 등급이 되면 이 장소의 숨겨진 유료 팁을 바로 확인할 수 있어요!"
+                                                                                : "인스타 핫플 말고, 진짜 고수들만 아는 유료 팁이 궁금하다면?"}
+                                                                        </p>
+                                                                        <p className="mt-1 text-[9px] text-gray-500">
+                                                                            서버 보안으로 보호된 정보
+                                                                        </p>
+                                                                    </button>
+                                                                ))}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     );
@@ -1158,66 +1211,75 @@ export default function CourseDetailClient({
                     </main>
 
                     {/* 🔵 [기능 유지] 지도 보기 플로팅 버튼 */}
-                    <button
-                        onClick={() => {
-                            if (!isLoggedIn) {
-                                setShowLoginModal(true);
-                                return;
-                            }
-                            setModalSelectedPlace(null); // 모달 열 때 선택 초기화
-                            setShowFullMapModal(true);
-                        }}
-                        className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white dark:bg-[#1a241b] px-4 py-2.5 text-sm font-bold text-gray-800 dark:text-white shadow-xl border border-gray-100 dark:border-gray-700 active:scale-95 transition-all"
-                    >
-                        <Icons.Map className="w-4 h-4 text-emerald-500" />
-                        <span>지도 보기</span>
-                    </button>
-
-                    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
-                        <div className="flex gap-4">
-                            <button
-                                onClick={handleSaveCourse}
-                                className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
-                            >
-                                {isSaved ? <Icons.LikeSolid /> : <Icons.LikeOutline />}
-                                <span
-                                    className={`text-[10px] font-medium ${isSaved ? "text-rose-500" : "text-gray-500"}`}
-                                >
-                                    찜하기
-                                </span>
-                            </button>
-                            <button
-                                onClick={() => setShowShareModal(true)}
-                                className="flex flex-col items-center justify-center gap-0.5 text-gray-400 active:scale-90 transition-all"
-                            >
-                                <Icons.Share />
-                                <span className="text-[10px] font-medium text-gray-500">공유</span>
-                            </button>
-                        </div>
+                    <TapFeedback>
                         <button
-                            onClick={async () => {
+                            onClick={() => {
                                 if (!isLoggedIn) {
                                     setShowLoginModal(true);
                                     return;
                                 }
-                                // 🟢 나만의 추억 한도: 서버에서 항상 확인 (userTier 무관), 꽉 찼으면 모달만 표시
-                                try {
-                                    const { authenticatedFetch } = await import("@/lib/authClient");
-                                    const data = await authenticatedFetch<{ count: number; limit: number | null; tier: string }>("/api/users/me/memory-count");
-                                    if (data && data.limit != null && data.count >= data.limit) {
-                                        setShowMemoryLimitModal(true);
+                                setModalSelectedPlace(null);
+                                setShowFullMapModal(true);
+                            }}
+                            className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white dark:bg-[#1a241b] px-4 py-2.5 text-sm font-bold text-gray-800 dark:text-white shadow-xl border border-gray-100 dark:border-gray-700 transition-all"
+                        >
+                            <Icons.Map className="w-4 h-4 text-emerald-500" />
+                            <span>지도 보기</span>
+                        </button>
+                    </TapFeedback>
+
+                    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
+                        <div className="flex gap-4">
+                            <TapFeedback>
+                                <button
+                                    onClick={handleSaveCourse}
+                                    className="flex flex-col items-center justify-center gap-0.5 text-gray-400 transition-all"
+                                >
+                                    {isSaved ? <Icons.LikeSolid /> : <Icons.LikeOutline />}
+                                    <span
+                                        className={`text-[10px] font-medium ${isSaved ? "text-rose-500" : "text-gray-500"}`}
+                                    >
+                                        찜하기
+                                    </span>
+                                </button>
+                            </TapFeedback>
+                            <TapFeedback>
+                                <button
+                                    onClick={() => setShowShareModal(true)}
+                                    className="flex flex-col items-center justify-center gap-0.5 text-gray-400 transition-all"
+                                >
+                                    <Icons.Share />
+                                    <span className="text-[10px] font-medium text-gray-500">공유</span>
+                                </button>
+                            </TapFeedback>
+                        </div>
+                        <TapFeedback className="flex-1 min-w-0">
+                            <button
+                                onClick={async () => {
+                                    if (!isLoggedIn) {
+                                        setShowLoginModal(true);
                                         return;
                                     }
-                                } catch {
-                                    // API 실패 시 그냥 start로 이동
-                                }
-                                handleMapActivation();
-                                router.push(`/courses/${courseId}/start`);
-                            }}
-                            className="flex-1 h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            나만의 추억
-                        </button>
+                                    try {
+                                        const { authenticatedFetch } = await import("@/lib/authClient");
+                                        const data = await authenticatedFetch<{
+                                            count: number;
+                                            limit: number | null;
+                                            tier: string;
+                                        }>("/api/users/me/memory-count");
+                                        if (data && data.limit != null && data.count >= data.limit) {
+                                            setShowMemoryLimitModal(true);
+                                            return;
+                                        }
+                                    } catch {}
+                                    handleMapActivation();
+                                    router.push(`/courses/${courseId}/start`);
+                                }}
+                                className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center gap-2"
+                            >
+                                나만의 추억
+                            </button>
+                        </TapFeedback>
                     </div>
                 </div>
             ) : (
@@ -1240,11 +1302,12 @@ export default function CourseDetailClient({
                             {/* 🔥 락 화면 그라데이션도 진하게 */}
                             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
                             {/* 🔥 뒤로 가기 버튼: 배경 없이 강한 그림자 */}
-                            <button
-                                onClick={() => router.back()}
-                                className="absolute top-4 left-4 md:top-6 md:left-6 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all active:scale-95"
-                                aria-label="뒤로 가기"
-                            >
+                            <TapFeedback>
+                                <button
+                                    onClick={() => router.back()}
+                                    className="absolute top-4 left-4 md:top-6 md:left-6 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all"
+                                    aria-label="뒤로 가기"
+                                >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"
@@ -1260,6 +1323,7 @@ export default function CourseDetailClient({
                                     />
                                 </svg>
                             </button>
+                            </TapFeedback>
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-center text-white px-6">
                                     <div className="mb-4">
@@ -1360,7 +1424,7 @@ export default function CourseDetailClient({
                                     {/* 🟢 예약 버튼 추가 */}
                                     {(() => {
                                         const fullPlace = sortedCoursePlaces.find(
-                                            (c) => c.place.id === modalSelectedPlace.id,
+                                            (c) => c.place.id === modalSelectedPlace.id
                                         )?.place;
                                         return fullPlace?.reservationUrl ? (
                                             <a
@@ -1379,7 +1443,7 @@ export default function CourseDetailClient({
                                             onClick={() => {
                                                 setShowFullMapModal(false);
                                                 const cp = sortedCoursePlaces.find(
-                                                    (c) => c.place.id === modalSelectedPlace.id,
+                                                    (c) => c.place.id === modalSelectedPlace.id
                                                 );
                                                 if (cp) handleTimelinePlaceClick(cp);
                                             }}
@@ -1557,43 +1621,92 @@ export default function CourseDetailClient({
                             <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
                                 {selectedPlace.description || "상세 설명이 없습니다."}
                             </p>
-                            {/* 🟢 팁 섹션 추가 */}
+                            {/* 🟢 팁 섹션: 무료 팁(항상) + 유료 팁(권한 시만, 없으면 CTA) */}
                             {(() => {
                                 const coursePlace = sortedCoursePlaces.find((cp) => cp.place.id === selectedPlace.id);
-                                const coachingTip = coursePlace?.coaching_tip;
+                                const coachingTipFree = coursePlace?.coaching_tip_free?.trim();
+                                const coachingTip = coursePlace?.coaching_tip?.trim();
+                                const hasFreeTip = !!coachingTipFree;
+                                const hasPaidTip =
+                                    coursePlace?.hasPaidTip ?? !!(coachingTip && coachingTip.length > 0);
 
-                                if (!coachingTip) return null;
+                                if (!hasFreeTip && !hasPaidTip) return null;
 
-                                // 🟢 웹/모바일 동일한 팁 표시 정책 적용
-                                // 🔒 FREE 코스는 userTier 체크, BASIC/PREMIUM 코스는 isLocked 체크
                                 const courseGrade = (courseData.grade || "FREE").toUpperCase();
                                 const currentUserTier = (userTier || "FREE").toUpperCase();
-
-                                // FREE 코스 + FREE 유저 또는 잠긴 코스 → 버튼만 표시
-                                const shouldShowTipButton =
-                                    (courseGrade === "FREE" && currentUserTier === "FREE") || courseData.isLocked;
-
-                                if (shouldShowTipButton) {
-                                    return (
-                                        <div className="mb-5 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <Icons.Bulb />
-                                                <span className="text-xs font-bold text-amber-700">💡 DoNa's Tip</span>
-                                            </div>
-                                            <p className="text-xs text-gray-600">BASIC 등급이면 볼 수 있어요</p>
-                                        </div>
-                                    );
-                                }
+                                const shouldShowPaidTip = !(
+                                    (courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                    courseData.isLocked
+                                );
 
                                 return (
-                                    <div className="mb-5 p-3 rounded-lg bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                        <div className="flex items-center gap-2 mb-1.5">
-                                            <Icons.Bulb />
-                                            <span className="text-xs font-bold text-amber-700">💡 DoNa's Tip</span>
-                                        </div>
-                                        <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                            {coachingTip}
-                                        </p>
+                                    <div className="mb-4 space-y-2">
+                                        {/* 무료 팁: Bulb + 연한 회색, Dona's Pick 작게 */}
+                                        {hasFreeTip && (
+                                            <div className="flex gap-2 items-start">
+                                                <Icons.Bulb className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                                                        Dona&apos;s Pick
+                                                    </span>
+                                                    <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                                                        {coachingTipFree}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* 유료 팁: 딥 그린 카드 + Premium + 자물쇠 + 서버 보안 멘트 / 잠금 시 동일 */}
+                                        {hasPaidTip &&
+                                            (shouldShowPaidTip ? (
+                                                <div className="rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100">
+                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                        <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                        <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
+                                                            Premium
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-100 leading-relaxed whitespace-pre-wrap">
+                                                        {coachingTip}
+                                                    </p>
+                                                    <p className="mt-1.5 text-[9px] text-gray-500">
+                                                        서버 보안으로 보호된 정보
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isAuthenticated)
+                                                            setShowSubscriptionModal(true);
+                                                        else setShowLoginModal(true);
+                                                    }}
+                                                    className="w-full text-left rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100 hover:border-emerald-500/50 transition-all relative overflow-hidden"
+                                                >
+                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                        <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                        <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
+                                                            Premium
+                                                        </span>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <p className="text-xs text-gray-300 relative z-10">
+                                                            웨이팅 피하는 시간은...
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 mt-0.5 blur-sm select-none pointer-events-none" aria-hidden>
+                                                            포인트 테이블 위치와 예약 타이밍, 데이트 고수만 아는 비법이 숨겨져 있어요.
+                                                        </p>
+                                                    </div>
+                                                    <p className="mt-1.5 text-[10px] text-gray-400">
+                                                        {!isAuthenticated
+                                                            ? "로그인 후 Basic 등급이 되면 이 장소의 숨겨진 유료 팁을 바로 확인할 수 있어요!"
+                                                            : "인스타 핫플 말고, 진짜 고수들만 아는 유료 팁이 궁금하다면?"}
+                                                    </p>
+                                                    <p className="mt-1 text-[9px] text-gray-500">
+                                                        서버 보안으로 보호된 정보
+                                                    </p>
+                                                </button>
+                                            ))}
                                     </div>
                                 );
                             })()}

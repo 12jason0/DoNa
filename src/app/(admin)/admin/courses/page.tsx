@@ -68,7 +68,8 @@ type LinkedPlace = {
     order_index: number;
     estimated_duration?: number;
     recommended_time?: string;
-    coaching_tip?: string;
+    coaching_tip?: string; // 유료 팁 (BASIC+ 또는 구매 시만 표시)
+    coaching_tip_free?: string; // 무료 팁 (모두에게 표시)
 };
 
 // 단순 장소 선택용 (드롭다운)
@@ -144,7 +145,8 @@ export default function AdminCoursesPage() {
     const [addOrder, setAddOrder] = useState<number>(1);
     const [addDuration, setAddDuration] = useState<number | "">("");
     const [addRecTime, setAddRecTime] = useState<string>(""); // recommended_time
-    const [addCoachingTip, setAddCoachingTip] = useState<string>(""); // coaching_tip
+    const [addCoachingTip, setAddCoachingTip] = useState<string>(""); // 유료 팁
+    const [addCoachingTipFree, setAddCoachingTipFree] = useState<string>(""); // 무료 팁
 
     // 장소 검색용 State
     const [placeSearchQuery, setPlaceSearchQuery] = useState<string>("");
@@ -159,6 +161,7 @@ export default function AdminCoursesPage() {
         estimated_duration?: number | "";
         recommended_time?: string;
         coaching_tip?: string;
+        coaching_tip_free?: string;
     } | null>(null);
 
     // --- 데이터 불러오기 ---
@@ -580,6 +583,7 @@ export default function AdminCoursesPage() {
                     estimated_duration: addDuration ? Number(addDuration) : undefined,
                     recommended_time: addRecTime || undefined,
                     coaching_tip: addCoachingTip || undefined,
+                    coaching_tip_free: addCoachingTipFree || undefined,
                 }),
             });
 
@@ -596,6 +600,7 @@ export default function AdminCoursesPage() {
                 setAddDuration("");
                 setAddRecTime("");
                 setAddCoachingTip("");
+                setAddCoachingTipFree("");
             } else {
                 const err = await res.json();
                 alert(err.error || "추가 실패");
@@ -637,6 +642,7 @@ export default function AdminCoursesPage() {
             estimated_duration: place.estimated_duration ?? "",
             recommended_time: place.recommended_time ?? "",
             coaching_tip: place.coaching_tip ?? "",
+            coaching_tip_free: place.coaching_tip_free ?? "",
         });
     };
 
@@ -665,6 +671,7 @@ export default function AdminCoursesPage() {
                         editingPlaceData.estimated_duration === "" ? null : editingPlaceData.estimated_duration,
                     recommended_time: editingPlaceData.recommended_time || null,
                     coaching_tip: editingPlaceData.coaching_tip || null,
+                    coaching_tip_free: editingPlaceData.coaching_tip_free ?? null,
                 }),
             });
 
@@ -1250,7 +1257,24 @@ export default function AdminCoursesPage() {
                                                                     </div>
                                                                     <div>
                                                                         <label className="text-xs font-medium text-gray-600">
-                                                                            코칭 팁 (Coaching Tip)
+                                                                            무료 팁 (모두에게 표시)
+                                                                        </label>
+                                                                        <textarea
+                                                                            value={editData.coaching_tip_free ?? ""}
+                                                                            onChange={(e) =>
+                                                                                setEditingPlaceData({
+                                                                                    ...editData,
+                                                                                    coaching_tip_free: e.target.value,
+                                                                                })
+                                                                            }
+                                                                            className="w-full border p-1.5 rounded text-sm mt-1 resize-none"
+                                                                            rows={2}
+                                                                            placeholder="예: 주변 주차 정보"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs font-medium text-gray-600">
+                                                                            유료 팁 (BASIC+ 또는 구매 시만 표시)
                                                                         </label>
                                                                         <textarea
                                                                             value={editData.coaching_tip || ""}
@@ -1290,9 +1314,14 @@ export default function AdminCoursesPage() {
                                                                     {item.recommended_time && (
                                                                         <span>🕒 {item.recommended_time}</span>
                                                                     )}
+                                                                    {item.coaching_tip_free && (
+                                                                        <span className="text-gray-600 font-medium">
+                                                                            📌 무료: {item.coaching_tip_free}
+                                                                        </span>
+                                                                    )}
                                                                     {item.coaching_tip && (
                                                                         <span className="text-green-600 font-medium">
-                                                                            💡 {item.coaching_tip}
+                                                                            💡 유료: {item.coaching_tip}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1433,23 +1462,33 @@ export default function AdminCoursesPage() {
                                         onChange={(e) => setAddRecTime(e.target.value)}
                                     />
                                 </div>
-                                <div className="col-span-12 md:col-span-3 flex gap-2">
-                                    <div className="flex-1">
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                            코칭 팁 (Coaching Tip)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                                            placeholder="예: 여기서는 창가 자리에 앉으세요"
-                                            value={addCoachingTip}
-                                            onChange={(e) => setAddCoachingTip(e.target.value)}
-                                        />
-                                    </div>
+                                <div className="col-span-12 md:col-span-3">
+                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                                        무료 팁 (모두에게 표시)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-500 outline-none mb-2"
+                                        placeholder="예: 주변 주차 정보"
+                                        value={addCoachingTipFree}
+                                        onChange={(e) => setAddCoachingTipFree(e.target.value)}
+                                    />
+                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                                        유료 팁 (BASIC+ 또는 구매 시만)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                                        placeholder="예: 여기서는 창가 자리에 앉으세요"
+                                        value={addCoachingTip}
+                                        onChange={(e) => setAddCoachingTip(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-12 md:col-span-1 flex items-end">
                                     <button
                                         type="button"
                                         onClick={handleAddPlaceToCourse}
-                                        className="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700 h-[38px] self-end shadow-sm"
+                                        className="w-full bg-green-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700 shadow-sm"
                                     >
                                         추가
                                     </button>

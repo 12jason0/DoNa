@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
+import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Footer() {
@@ -62,53 +63,63 @@ export default function Footer() {
 
     const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
-    // 공통 SVG 속성
+    // 공통 SVG 속성 (라인 얇게: strokeWidth 1.25~1.5)
     const svgProps = {
-        width: "28",
-        height: "28",
+        width: "22",
+        height: "22",
         viewBox: "0 0 24 24",
         fill: "none",
         stroke: "currentColor",
-        strokeWidth: "2",
+        strokeWidth: "1.5",
         strokeLinecap: "round" as const,
         strokeLinejoin: "round" as const,
     };
 
     return (
         <footer
-            className="w-full bg-white dark:bg-[#1a241b] border-t-2 border-[rgba(153,192,142,0.5)] dark:border-[rgba(153,192,142,0.2)]"
+            className="w-full flex justify-center px-4 pb-1.5 pt-1"
             style={{
-                paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
-                backdropFilter: "saturate(180%) blur(8px)",
+                paddingBottom: "calc(6px + env(safe-area-inset-bottom))",
             }}
         >
-            <div className="max-w-7xl mx-auto px-4 py-2">
-                <nav className="flex items-center justify-around">
-                    {/* 1. 홈 */}
+            <nav
+                className="flex items-center justify-around rounded-full bg-white dark:bg-[#1a241b] shadow-lg border border-gray-100 dark:border-gray-800 w-full max-w-md py-1.5 px-1.5"
+                style={{
+                    backdropFilter: "saturate(180%) blur(12px)",
+                }}
+            >
+                {/* 1. 홈 */}
+                <TapFeedback>
                     <Link
                         href="/"
                         prefetch={true}
                         aria-label="메인"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
-                            isActive("/") ? "bg-green-50 dark:bg-gray-800" : ""
+                        className={`p-1.5 rounded-full transition-colors block ${
+                            isActive("/")
+                                ? "bg-emerald-500/15 dark:bg-emerald-500/20"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                         }`}
-                        style={{ color: isActive("/") ? "#7aa06f" : "#99c08e" }}
+                        style={{ color: isActive("/") ? "#059669" : "#6b7280" }}
                     >
                         <svg {...svgProps}>
                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                             <polyline points="9 22 9 12 15 12 15 22" />
                         </svg>
                     </Link>
+                </TapFeedback>
 
-                    {/* 2. 코스 */}
+                {/* 2. 코스 */}
+                <TapFeedback>
                     <Link
                         href="/courses"
                         prefetch={true}
                         aria-label="코스"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
-                            isActive("/courses") ? "bg-green-50 dark:bg-gray-800" : ""
+                        className={`p-1.5 rounded-full transition-colors block ${
+                            isActive("/courses")
+                                ? "bg-emerald-500/15 dark:bg-emerald-500/20"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                         }`}
-                        style={{ color: isActive("/courses") ? "#7aa06f" : "#99c08e" }}
+                        style={{ color: isActive("/courses") ? "#059669" : "#6b7280" }}
                     >
                         <svg {...svgProps}>
                             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
@@ -116,24 +127,30 @@ export default function Footer() {
                             <line x1="16" y1="6" x2="16" y2="22" />
                         </svg>
                     </Link>
+                </TapFeedback>
 
-                    {/* 3. 맵 */}
+                {/* 3. 맵 */}
+                <TapFeedback>
                     <Link
                         href="/map"
                         prefetch={true}
                         aria-label="맵"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
-                            isActive("/map") ? "bg-green-50 dark:bg-gray-800" : ""
+                        className={`p-1.5 rounded-full transition-colors block ${
+                            isActive("/map")
+                                ? "bg-emerald-500/15 dark:bg-emerald-500/20"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                         }`}
-                        style={{ color: isActive("/map") ? "#7aa06f" : "#99c08e" }}
+                        style={{ color: isActive("/map") ? "#059669" : "#6b7280" }}
                     >
                         <svg {...svgProps}>
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                             <circle cx="12" cy="10" r="3" />
                         </svg>
                     </Link>
+                </TapFeedback>
 
-                    {/* 4. Escape */}
+                {/* 4. Escape */}
+                <TapFeedback>
                     <button
                         onClick={() => {
                             if (isAuthenticated) {
@@ -143,33 +160,34 @@ export default function Footer() {
                             }
                         }}
                         aria-label="Escape"
-                        className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
-                            isActive("/escape") ? "bg-green-50 dark:bg-gray-800" : ""
-                        }`}
-                        style={{ color: isActive("/escape") ? "#7aa06f" : "#99c08e" }}
+                        className="p-1.5 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 block"
+                        style={{ color: "#6b7280" }}
                     >
                         <svg {...svgProps}>
                             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                             <line x1="4" x2="4" y1="22" y2="15" />
                         </svg>
                     </button>
+                </TapFeedback>
 
-                    {/* 5. 마이페이지 */}
-                    {isAuthenticated ? (
+                {/* 5. 마이페이지 */}
+                {isAuthenticated ? (
+                    <TapFeedback>
                         <Link
                             href="/mypage"
                             prefetch={true}
                             aria-label="마이페이지"
-                            className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 relative ${
-                                isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
+                            className={`p-1.5 rounded-full transition-colors relative block ${
+                                isActive("/mypage")
+                                    ? "bg-emerald-500/15 dark:bg-emerald-500/20"
+                                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
-                            style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
+                            style={{ color: isActive("/mypage") ? "#059669" : "#6b7280" }}
                         >
-                        <svg {...svgProps}>
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                        </svg>
-                            {/* 알림이 꺼져 있을 때만 빨간 점 깜빡임 */}
+                            <svg {...svgProps}>
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
                             {isAuthenticated && notificationEnabled === false && (
                                 <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -177,24 +195,24 @@ export default function Footer() {
                                 </span>
                             )}
                         </Link>
-                    ) : (
+                    </TapFeedback>
+                ) : (
+                    <TapFeedback>
                         <Link
                             href="/login"
                             prefetch={false}
                             aria-label="마이페이지"
-                            className={`p-2 rounded-md hover:bg-green-50 dark:hover:bg-gray-800 ${
-                                isActive("/mypage") ? "bg-green-50 dark:bg-gray-800" : ""
-                            }`}
-                            style={{ color: isActive("/mypage") ? "#7aa06f" : "#99c08e" }}
+                            className="p-1.5 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 block"
+                            style={{ color: "#6b7280" }}
                         >
                             <svg {...svgProps}>
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                 <circle cx="12" cy="7" r="4" />
                             </svg>
                         </Link>
-                    )}
-                </nav>
-            </div>
+                    </TapFeedback>
+                )}
+            </nav>
 
             {/* ✅ 사건 파일 준비 중 모달 (로그인한 경우) */}
             {showEscapeComingSoon && <ComingSoonModal onClose={() => setShowEscapeComingSoon(false)} />}

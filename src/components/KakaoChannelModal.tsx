@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { X, ChevronRight } from "lucide-react"; // lucide-react 아이콘 사용 (없으면 heroicons 등 대체 가능)
-import Image from "next/image";
+import { X } from "lucide-react";
 
 interface KakaoChannelModalProps {
     onClose: () => void;
@@ -17,42 +16,43 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-            {/* 배경: 진중한 느낌의 어두운 오버레이 */}
+        <div
+            className="fixed inset-0 z-100 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            aria-label="카카오 채널 모달 닫기"
+        >
             <div
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
-                onClick={onClose}
-            />
-
-            {/* 모달 본문: 넓고 시원한 레이아웃, 단단한 쉐입 */}
-            <div className="relative w-full max-w-[380px] bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-2 duration-300 z-10 flex flex-col">
-                {/* 1. 상단 이미지 영역 (Commercial Vibe) */}
-                {/* 실제 이미지가 있다면 src에 경로를 넣어주세요. 없으면 은은한 패턴 배경이 나옵니다. */}
-                <div className="relative h-48 w-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                    {/* (옵션) 실제 이미지 사용 시 주석 해제 */}
-                    {/* <Image src="/images/event-bg.jpg" alt="이벤트" fill className="object-cover" /> */}
-
-                    {/* 이미지가 없을 때를 대비한 모던한 그래픽 패턴 */}
+                className="fixed bottom-0 left-0 right-0 z-101 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col"
+                style={{ animation: "slideUp 0.3s ease-out forwards" }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* 1. 상단 이미지 영역 */}
+                <div className="relative h-40 w-full bg-slate-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
                     <div className="absolute inset-0 bg-linear-to-br from-emerald-500/10 to-teal-500/5" />
                     <div className="text-center z-10">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-sm mb-3">
-                            <span className="text-3xl">☕️</span>
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white dark:bg-gray-700 shadow-sm mb-2">
+                            <span className="text-2xl">☕️</span>
                         </div>
-                        <p className="text-xs font-bold text-emerald-600 tracking-wider uppercase">Event Promotion</p>
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tracking-wider uppercase">
+                            Event Promotion
+                        </p>
                     </div>
 
-                    {/* 닫기 버튼 (이미지 위에 오버레이) */}
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-2 bg-white/50 hover:bg-white rounded-full transition-colors backdrop-blur-md"
+                        className="absolute top-3 right-3 p-2 bg-white/50 dark:bg-black/30 hover:bg-white dark:hover:bg-gray-700 rounded-full transition-colors backdrop-blur-md"
+                        aria-label="닫기"
                     >
-                        <X className="w-5 h-5 text-gray-700" />
+                        <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                     </button>
                 </div>
 
-                {/* 2. 컨텐츠 영역: 깔끔하고 직관적인 정보 전달 */}
-                <div className="p-7 flex flex-col items-center text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
+                {/* 2. 컨텐츠 영역 */}
+                <div className="p-6 pb-8 flex flex-col items-center text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
                         숨겨진 맛집 제보하고
                         <br />
                         <span className="text-emerald-600">스타벅스 커피</span> 받기
@@ -79,7 +79,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
                     {/* 보조 버튼: 텍스트 링크 스타일 */}
                     <button
                         onClick={onClose}
-                        className="mt-4 text-sm text-gray-400 hover:text-gray-600 underline decoration-1 underline-offset-4 transition-colors"
+                        className="mt-4 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline decoration-1 underline-offset-4 transition-colors"
                     >
                         다음에 참여할게요
                     </button>

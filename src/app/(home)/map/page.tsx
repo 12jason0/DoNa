@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { Container as MapDiv, NaverMap, Marker } from "react-naver-maps";
+import { Container as MapDiv, NaverMap, Marker, Polyline } from "react-naver-maps";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
+import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch, fetchSession } from "@/lib/authClient";
 
@@ -30,27 +31,175 @@ interface Course {
     longitude?: number;
 }
 
-// --- 1. 아이콘 디자인 (유지) ---
-function createReactNaverMapIcon(category: string, isSelected: boolean = false, source: "kakao" | "db" = "kakao") {
+/** 코스 상세 API 응답 (GET /api/courses/[id] 는 payload를 그대로 반환) */
+interface CourseDetailApiBody {
+    coursePlaces?: Array<{
+        order_index?: number;
+        place?: {
+            id?: number | string;
+            name?: string | null;
+            address?: string | null;
+            category?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+        };
+    }>;
+}
+
+// --- 1. 흰색 핀 + 컬러 아이콘 (카테고리별) ---
+const MARKER_ICONS = {
+    // 식당: 주황색 포크/나이프 (Lucide utensils)
+    restaurant: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>`,
+    // 카페: 갈색 커피잔 (Lucide coffee)
+    cafe: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/></svg>`,
+    // 술집: 파란색 맥주잔 (Lucide beer)
+    bar: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12v6"/><path d="M13 12v6"/><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 2 11 2s2 1.5 3 1.5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z"/><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/></svg>`,
+    // 놀거리/관광: 보라색 티켓 (Lucide ticket)
+    play: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>`,
+    // 서점: 청록색 책 (Lucide book)
+    bookstore: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>`,
+    // 명소: 이색데이트/공방/쇼핑몰 (Lucide landmark)
+    landmark: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>`,
+    // 기본: 회색 핀
+    default: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+};
+
+type CategoryIconKey = keyof typeof MARKER_ICONS;
+
+function getCategoryIconKey(category: string): CategoryIconKey {
     const cat = category?.toLowerCase() || "";
-    let color = "#10B981"; // 기본 초록색
-    let icon = "📍";
+    if (
+        cat.includes("카페") ||
+        cat.includes("cafe") ||
+        cat.includes("커피") ||
+        cat.includes("던킨") ||
+        cat.includes("dunkin")
+    )
+        return "cafe";
+    if (
+        cat.includes("음식") ||
+        cat.includes("식당") ||
+        cat.includes("맛집") ||
+        cat.includes("피자") ||
+        cat.includes("한식") ||
+        cat.includes("중식") ||
+        cat.includes("양식") ||
+        cat.includes("일식") ||
+        cat.includes("이탈리안") ||
+        cat.includes("italian")
+    )
+        return "restaurant";
+    // 미술관·박물관·갤러리·이색데이트·공방·쇼핑몰 → 명소 (bar보다 먼저, '미술관'이 '술'에 걸리지 않도록)
+    if (
+        cat.includes("미술관") ||
+        cat.includes("박물관") ||
+        cat.includes("갤러리") ||
+        cat.includes("도서관") ||
+        cat.includes("이색데이트") ||
+        cat.includes("공방") ||
+        cat.includes("쇼핑몰") ||
+        cat.includes("쇼핑")
+    )
+        return "landmark";
+    if (
+        cat.includes("술") ||
+        cat.includes("바") ||
+        cat.includes("맥주") ||
+        cat.includes("호프") ||
+        cat.includes("주점")
+    )
+        return "bar";
+    if (
+        cat.includes("관광") ||
+        cat.includes("명소") ||
+        cat.includes("놀거리") ||
+        cat.includes("문화") ||
+        cat.includes("뷰티") ||
+        cat.includes("전시") ||
+        cat.includes("테마파크") ||
+        cat.includes("테마타크")
+    )
+        return "play";
+    if (cat.includes("서점") || cat.includes("책") || cat.includes("북") || cat.includes("book")) return "bookstore";
+    return "default";
+}
 
-    if (cat.includes("카페") || cat.includes("cafe") || cat.includes("커피")) {
-        color = "#EA580C"; // 주황색 (이미지 참조)
-        icon = "☕";
-    } else if (cat.includes("음식") || cat.includes("식당") || cat.includes("맛집")) {
-        color = "#059669"; // 짙은 초록색
-        icon = "🍽️";
-    } else if (cat.includes("관광") || cat.includes("명소")) {
-        color = "#7C3AED"; // 보라색
-        icon = "📷";
-    }
+// 리스트용: 둥근 사각형 박스 + 카테고리 아이콘 (F-Pattern, "사진인 척")
+const svgProps = {
+    xmlns: "http://www.w3.org/2000/svg" as const,
+    viewBox: "0 0 24 24",
+    fill: "none" as const,
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+};
+function PlaceListIconBox({ iconKey }: { iconKey: CategoryIconKey }) {
+    const iconClass = "w-8 h-8 shrink-0";
+    return (
+        <div className="flex items-center justify-center shrink-0">
+            {iconKey === "restaurant" && (
+                <svg {...svgProps} className={`${iconClass} text-orange-500 dark:text-orange-400`}>
+                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+                    <path d="M7 2v20" />
+                    <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+                </svg>
+            )}
+            {iconKey === "cafe" && (
+                <svg {...svgProps} className={`${iconClass} text-amber-800 dark:text-amber-600`}>
+                    <path d="M10 2v2" />
+                    <path d="M14 2v2" />
+                    <path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" />
+                    <path d="M6 2v2" />
+                </svg>
+            )}
+            {iconKey === "bar" && (
+                <svg {...svgProps} className={`${iconClass} text-blue-500 dark:text-blue-400`}>
+                    <path d="M17 11h1a3 3 0 0 1 0 6h-1" />
+                    <path d="M9 12v6" />
+                    <path d="M13 12v6" />
+                    <path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 2 11 2s2 1.5 3 1.5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z" />
+                    <path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" />
+                </svg>
+            )}
+            {iconKey === "play" && (
+                <svg {...svgProps} className={`${iconClass} text-purple-500 dark:text-purple-400`}>
+                    <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                    <path d="M13 5v2" />
+                    <path d="M13 17v2" />
+                    <path d="M13 11v2" />
+                </svg>
+            )}
+            {iconKey === "bookstore" && (
+                <svg {...svgProps} className={`${iconClass} text-teal-600 dark:text-teal-400`}>
+                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+                </svg>
+            )}
+            {iconKey === "landmark" && (
+                <svg {...svgProps} className={`${iconClass} text-rose-500 dark:text-rose-400`}>
+                    <path d="M3 21h18" />
+                    <path d="M5 21V7l8-4v18" />
+                    <path d="M19 21V11l-6-4" />
+                    <path d="M9 9v.01" />
+                    <path d="M9 12v.01" />
+                    <path d="M9 15v.01" />
+                    <path d="M9 18v.01" />
+                </svg>
+            )}
+            {iconKey === "default" && (
+                <svg {...svgProps} className={`${iconClass} text-gray-500 dark:text-gray-400`}>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                </svg>
+            )}
+        </div>
+    );
+}
 
-    // 🟢 변경점 1: 전체적인 크기를 줄였습니다 (기존 42/52 -> 34/42)
+function createReactNaverMapIcon(category: string, isSelected: boolean = false, source: "kakao" | "db" = "kakao") {
+    const iconKey = getCategoryIconKey(category);
     const baseSize = isSelected ? 42 : 34;
-    // 아이콘 크기도 비율에 맞게 조정
-    const iconSize = isSelected ? 22 : 18;
+    const iconBox = isSelected ? 20 : 16;
     const zIndexStyle = isSelected ? 999 : source === "db" ? 500 : 100;
 
     return {
@@ -59,37 +208,30 @@ function createReactNaverMapIcon(category: string, isSelected: boolean = false, 
                 width: ${baseSize}px; height: ${baseSize}px;
                 position: relative;
                 z-index: ${zIndexStyle};
-                /* 🟢 변경점 2: 그림자를 더 부드럽고 깔끔하게 변경 */
                 filter: drop-shadow(0 3px 6px rgba(0,0,0,0.15));
                 transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                 ${isSelected ? "transform: scale(1.15);" : ""}
             ">
                 <div style="
                     width: 100%; height: 100%;
-                    background: ${color};
-                    /* 🟢 변경점 3: 흰색 테두리를 조금 더 얇게 조정 (3px -> 2.5px) */
-                    border: 2.5px solid white;
-                    /* 🟢 변경점 4: 물방울 모양 속성 제거 -> 완전한 원으로 변경 */
-                    border-radius: 50%;
-                    /* transform: rotate(-45deg);  <- 삭제됨 */
+                    background: #ffffff;
+                    border: 2px solid rgba(0,0,0,0.08);
+                    border-radius: 50% 50% 50% 0;
+                    transform: rotate(-45deg);
                     display: flex; align-items: center; justify-content: center;
-                    box-sizing: border-box; /* 테두리가 크기 내부에 포함되도록 설정 */
+                    box-sizing: border-box;
                 ">
                     <div style="
-                        /* transform: rotate(45deg); <- 삭제됨 */
-                        font-size: ${iconSize}px;
-                        line-height: 1;
-                        color: white;
-                        /* 이모지 수직 중앙 정렬 보정 */
-                        padding-top: 2px;
+                        width: ${iconBox}px; height: ${iconBox}px;
+                        display: flex; align-items: center; justify-content: center;
+                        transform: rotate(45deg);
                     ">
-                        ${icon}
+                        ${MARKER_ICONS[iconKey]}
                     </div>
                 </div>
             </div>
         `,
         size: { width: baseSize, height: baseSize },
-        // 🟢 변경점 5: 중심점(Anchor)을 원의 정중앙으로 이동
         anchor: { x: baseSize / 2, y: baseSize / 2 },
     };
 }
@@ -157,6 +299,15 @@ function MapPageInner() {
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    /** 코스 탭에서 선택한 코스 → 지도에 루트(폴리라인) 표시 */
+    const [selectedCourseForRoute, setSelectedCourseForRoute] = useState<Course | null>(null);
+    const [courseRoutePath, setCourseRoutePath] = useState<{ lat: number; lng: number }[]>([]);
+    /** 선택한 코스에 포함된 장소만 표시 (코스 클릭 시 장소 검색 결과 대신) */
+    const [coursePlacesList, setCoursePlacesList] = useState<Place[]>([]);
+    /** 코스 클릭 후 장소 목록 로딩 중 (캐시 없을 때만 true) */
+    const [coursePlacesLoading, setCoursePlacesLoading] = useState(false);
+    /** 코스별 장소·경로 캐시 (같은 코스 재클릭 시 즉시 표시) */
+    const courseDetailCacheRef = useRef<Record<string, { path: { lat: number; lng: number }[]; list: Place[] }>>({});
 
     const { isAuthenticated } = useAuth();
 
@@ -197,86 +348,143 @@ function MapPageInner() {
         setTimeout(() => setToastMessage(null), 2000);
     };
 
-    // 🟢 코스 클릭 시 권한 체크 후 모달 표시 또는 이동 (속도 최적화)
-    const handleCourseClick = async (course: any) => {
-        // 🟢 "c-" 접두사 제거
+    // 🟢 코스 클릭 시 권한 체크 후 모달 표시 또는 이동 (캐시만 사용해 즉시 반응)
+    const handleCourseClick = (course: any) => {
         const cleanId = course.id.startsWith("c-") ? course.id.replace("c-", "") : course.id;
+        const courseGrade = (course.grade || "FREE").toUpperCase();
+        const currentUserTier = userTier.toUpperCase();
 
-        // 🟢 iOS/Android 플랫폼 체크
-        const userAgent = typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
-        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
-
-        // 🟢 1. 코스 등급 확인 (캐싱된 값 우선 사용)
-        let courseGrade: string = "FREE";
-        if (course.grade) {
-            courseGrade = (course.grade || "FREE").toUpperCase();
-        } else {
-            // grade 정보가 없으면 API 호출 (타임아웃 1초)
-            try {
-                const { apiFetch } = await import("@/lib/authClient");
-                const result = await Promise.race([
-                    apiFetch<any>(`/api/courses/${cleanId}`),
-                    new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1000)),
-                ]);
-                courseGrade = (result?.data?.grade || "FREE").toUpperCase();
-            } catch (error) {
-                // API 호출 실패 시 기본값 FREE로 처리
-                courseGrade = "FREE";
-            }
-        }
-
-        // 🟢 2. FREE 코스는 모든 유저 접근 가능
         if (courseGrade === "FREE") {
             router.push(`/courses/${cleanId}`);
             return;
         }
-
-        // 🟢 3. 유료 코스 (BASIC, PREMIUM)
-        // 🟢 3-1. 비로그인 유저 → 로그인 모달 (즉시 표시)
         if (!isAuthenticated) {
             setShowLoginModal(true);
             return;
         }
-
-        // 🟢 3-2. 로그인 유저 → 사용자 등급 확인 (캐싱된 값 우선 사용)
-        let currentUserTier: string = userTier.toUpperCase(); // 캐싱된 값 먼저 사용
-        try {
-            // 타임아웃 0.8초로 빠른 응답 보장
-            const data = await Promise.race([
-                authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile"),
-                new Promise<{ user?: { subscriptionTier?: string } }>((_, reject) =>
-                    setTimeout(() => reject(new Error("Timeout")), 800)
-                ),
-            ]);
-            currentUserTier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
-        } catch {
-            // API 호출 실패 시 캐싱된 userTier 사용 (이미 설정됨)
-        }
-
-        // 🟢 3-3. PREMIUM 유저는 모든 코스 접근 가능
         if (currentUserTier === "PREMIUM") {
             router.push(`/courses/${cleanId}`);
             return;
         }
-
-        // 🟢 3-4. BASIC 유저
-        if (currentUserTier === "BASIC") {
-            if (courseGrade === "BASIC") {
-                // BASIC 유저 + BASIC 코스 → 접근 가능
-                router.push(`/courses/${cleanId}`);
-                return;
-            } else if (courseGrade === "PREMIUM") {
-                // BASIC 유저 + PREMIUM 코스 → TicketPlans
-                // 🟢 모바일에서도 모달 표시 (결제 시 인앱결제 사용)
-                setShowSubscriptionModal(true);
-                return;
-            }
+        if (currentUserTier === "BASIC" && courseGrade === "BASIC") {
+            router.push(`/courses/${cleanId}`);
+            return;
         }
-
-        // 🟢 3-5. FREE 유저 (BASIC, PREMIUM 코스) → TicketPlans
-        // 🟢 모바일에서도 모달 표시 (결제 시 인앱결제 사용)
         setShowSubscriptionModal(true);
     };
+
+    /** 코스 상세 fetch + path/list 파싱 (캐시만 채우는 prefetch용) */
+    const fetchCourseDetailToCache = useCallback(async (courseId: string, cleanId: string) => {
+        const { apiFetch } = await import("@/lib/authClient");
+        const { data } = await apiFetch<CourseDetailApiBody>(`/api/courses/${cleanId}`, { cache: "no-store" });
+        const coursePlaces = data?.coursePlaces;
+        if (!Array.isArray(coursePlaces)) return;
+        const sorted = coursePlaces.slice().sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+        const path = sorted
+            .map((cp) => {
+                const lat = cp.place?.latitude;
+                const lng = cp.place?.longitude;
+                if (lat != null && lng != null && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))) {
+                    return { lat: Number(lat), lng: Number(lng) };
+                }
+                return null;
+            })
+            .filter((p): p is { lat: number; lng: number } => p !== null);
+        const list: Place[] = sorted
+            .map((cp) => {
+                const p = cp.place;
+                if (!p) return null;
+                const lat = p.latitude != null ? Number(p.latitude) : NaN;
+                const lng = p.longitude != null ? Number(p.longitude) : NaN;
+                if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+                return {
+                    id: String(p.id ?? ""),
+                    name: p.name ?? "",
+                    category: p.category ?? "",
+                    address: p.address ?? "",
+                    latitude: lat,
+                    longitude: lng,
+                    source: "db" as const,
+                };
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null) as Place[];
+        courseDetailCacheRef.current[courseId] = { path, list };
+    }, []);
+
+    /** 코스 목록 로드 후 상세 데이터 미리 가져오기 (클릭 시 즉시 표시용) */
+    const prefetchCourseDetail = useCallback(
+        (course: { id: string }) => {
+            const courseId = course.id;
+            const cleanId = courseId.startsWith("c-") ? courseId.replace("c-", "") : courseId;
+            if (courseDetailCacheRef.current[courseId]) return;
+            fetchCourseDetailToCache(courseId, cleanId).catch(() => {});
+        },
+        [fetchCourseDetailToCache]
+    );
+
+    /** 코스 탭에서 코스 클릭 시 지도에 루트 표시 + 장소 목록 (캐시 있으면 즉시 표시) */
+    const handleCourseSelectForRoute = useCallback(
+        async (course: any) => {
+            const courseId = course.id;
+            const cleanId = courseId.startsWith("c-") ? courseId.replace("c-", "") : courseId;
+            setSelectedCourseForRoute(course);
+            setSelectedPlace(null);
+
+            const cached = courseDetailCacheRef.current[courseId];
+            if (cached) {
+                setCourseRoutePath(cached.path);
+                setCoursePlacesList(cached.list);
+                setCoursePlacesLoading(false);
+                return;
+            }
+
+            setCourseRoutePath([]);
+            setCoursePlacesList([]);
+            setCoursePlacesLoading(true);
+            try {
+                await fetchCourseDetailToCache(courseId, cleanId);
+                const cachedAfter = courseDetailCacheRef.current[courseId];
+                if (cachedAfter) {
+                    setCourseRoutePath(cachedAfter.path);
+                    setCoursePlacesList(cachedAfter.list);
+                }
+            } catch {
+                setCourseRoutePath([]);
+                setCoursePlacesList([]);
+            } finally {
+                setCoursePlacesLoading(false);
+            }
+        },
+        [fetchCourseDetailToCache]
+    );
+
+    /** 코스 탭 → 장소 탭 전환 시 선택 코스·리스트·로딩 초기화 */
+    useEffect(() => {
+        if (activeTab === "places") {
+            setSelectedCourseForRoute(null);
+            setCourseRoutePath([]);
+            setCoursePlacesList([]);
+            setCoursePlacesLoading(false);
+        }
+    }, [activeTab]);
+
+    /** 코스 클릭 시 해당 코스 루트가 지도에 보이도록 뷰 이동( fitBounds ) */
+    useEffect(() => {
+        if (!selectedCourseForRoute || courseRoutePath.length < 2 || !mapRef.current || !navermaps) return;
+        try {
+            const bounds = new navermaps.LatLngBounds();
+            courseRoutePath.forEach((p) => bounds.extend(new navermaps.LatLng(p.lat, p.lng)));
+            requestAnimationFrame(() => {
+                if (mapRef.current) {
+                    mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+                }
+            });
+        } catch (e) {
+            if (process.env.NODE_ENV === "development") {
+                console.warn("[MapPage] 코스 루트 fitBounds 실패:", e);
+            }
+        }
+    }, [selectedCourseForRoute?.id, courseRoutePath, navermaps]);
 
     const handleFindWay = (placeName: string) => {
         setToastMessage("네이버 지도로 연결합니다 🚀");
@@ -447,8 +655,12 @@ function MapPageInner() {
                 }
 
                 // Map -> Array 변환하여 상태 업데이트
+                const courseArray = Array.from(uniqueCourses.values());
                 setPlaces(Array.from(uniquePlaces.values()));
-                setCourses(Array.from(uniqueCourses.values()));
+                setCourses(courseArray);
+
+                // 코스 상세 미리 가져오기 (클릭 시 즉시 표시)
+                courseArray.slice(0, 10).forEach((c) => prefetchCourseDetail(c));
 
                 if (keyword && uniqueCourses.size > 0) setActiveTab("courses");
             } catch (e: any) {
@@ -460,7 +672,7 @@ function MapPageInner() {
                 }
             }
         },
-        []
+        [prefetchCourseDetail]
     );
 
     const moveToCurrentLocation = useCallback(async () => {
@@ -539,12 +751,13 @@ function MapPageInner() {
         );
     }, [fetchAllData, center]);
 
-    // 초기 로드 시 자동 데이터 로드는 제거 - "현 지도 검색" 버튼을 클릭해야만 데이터 로드
-    // useEffect(() => {
-    //     if (mapsReady) {
-    //         fetchAllData(center);
-    //     }
-    // }, [mapsReady]);
+    // 초기 로드 시 한 번만 현재 지도 중심 기준으로 데이터 로드 → 코스 탭에서 루트 표시 가능
+    const initialFetchDone = useRef(false);
+    useEffect(() => {
+        if (!mapsReady || initialFetchDone.current) return;
+        initialFetchDone.current = true;
+        fetchAllData(center);
+    }, [mapsReady, fetchAllData, center]);
 
     const handleSearch = useCallback(async () => {
         if (!searchInput.trim()) return;
@@ -696,82 +909,122 @@ function MapPageInner() {
         );
 
     return (
-        <div className="relative w-full h-full overflow-hidden bg-gray-100 dark:bg-[#0f1710] font-sans touch-none">
-            {/* 상단 검색창 */}
-            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-4 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none">
-                <div className="flex items-center bg-white dark:bg-[#1a241b] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 dark:border-gray-800 p-3 pointer-events-auto mb-3">
-                    <div className="pl-1 pr-3 text-emerald-500 dark:text-emerald-400">
+        <div className="relative w-full min-h-screen h-full overflow-hidden bg-gray-100 dark:bg-[#0f1710] font-sans touch-none">
+            {/* 상단: 플로팅 UI (지도 움직일 때만 현 지도 검색 노출) */}
+            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-2 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none">
+                <div className="flex items-center gap-1.5 pointer-events-auto mb-1.5">
+                    <button
+                        type="button"
+                        onClick={() => router.back()}
+                        className="shrink-0 h-8 w-8 rounded-lg bg-white dark:bg-gray-800 shadow-md flex items-center justify-center text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                        aria-label="뒤로 가기"
+                    >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-5 h-5 shrink-0"
                         >
-                            <path
-                                fillRule="evenodd"
-                                d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
-                                clipRule="evenodd"
-                            />
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
+                    </button>
+                    <div className="flex-1 flex items-center bg-white dark:bg-[#1a241b] rounded-lg shadow-md px-2 py-1.5 min-w-0">
+                        <div className="pr-1.5 text-emerald-500 dark:text-emerald-400 shrink-0">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="장소, 맛집, 코스 검색"
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                            className="flex-1 bg-transparent focus:outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-xs font-medium min-w-0"
+                        />
                     </div>
-                    <input
-                        type="text"
-                        placeholder="장소, 맛집, 코스 검색"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        className="flex-1 bg-transparent focus:outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-base font-medium"
-                    />
                 </div>
 
-                <div className="flex items-center justify-between pointer-events-auto pl-1 w-full max-w-md mx-auto">
-                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                {/* 탭: 장소 | 코스 (지도 움직이면 현 지도 검색 버튼만 표시) */}
+                <div className="flex items-center justify-between pointer-events-auto w-full max-w-md mx-auto gap-1.5">
+                    <div className="relative flex rounded-full bg-white dark:bg-[#1a241b] shadow-md p-0.5 min-w-0 flex-1 max-w-[160px]">
+                        <div
+                            className="absolute top-0.5 bottom-0.5 rounded-full bg-[#6bb88a] dark:bg-[#6bb88a] transition-[left] duration-200 ease-out"
+                            style={{
+                                width: "calc(50% - 2px)",
+                                left: activeTab === "places" ? "2px" : "calc(50% + 0px)",
+                            }}
+                            aria-hidden
+                        />
                         <button
+                            type="button"
                             onClick={() => {
                                 setActiveTab("places");
                                 setSelectedPlace(null);
                                 setPanelState("default");
                             }}
-                            className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm border transition-all ${
-                                activeTab === "places"
-                                    ? "bg-emerald-600 dark:bg-emerald-700 text-white border-emerald-600 dark:border-emerald-700 shadow-md"
-                                    : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-700"
-                            }`}
+                            className="relative z-10 flex-1 py-1.5 rounded-full text-xs font-bold transition-colors duration-200"
                         >
-                            주변 장소
+                            <span
+                                className={
+                                    activeTab === "places" ? "text-white font-bold" : "text-gray-500 dark:text-gray-400"
+                                }
+                            >
+                                장소
+                            </span>
                         </button>
                         <button
+                            type="button"
                             onClick={() => {
                                 setActiveTab("courses");
                                 setPanelState("default");
                             }}
-                            className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm border transition-all ${
-                                activeTab === "courses"
-                                    ? "bg-emerald-600 dark:bg-emerald-700 text-white border-emerald-600 dark:border-emerald-700 shadow-md"
-                                    : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-300 border-gray-200 dark:border-gray-700"
-                            }`}
+                            className="relative z-10 flex-1 py-1.5 rounded-full text-xs font-bold transition-colors duration-200"
                         >
-                            추천 코스
+                            <span
+                                className={
+                                    activeTab === "courses"
+                                        ? "text-white font-bold"
+                                        : "text-gray-500 dark:text-gray-400"
+                                }
+                            >
+                                코스
+                            </span>
                         </button>
                     </div>
-                    <button
-                        onClick={handleMapSearch}
-                        className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-bold shadow-sm border border-emerald-500 dark:border-emerald-600 bg-white dark:bg-[#1a241b] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all ml-2 whitespace-nowrap"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="w-4 h-4"
+                    {showMapSearchButton && (
+                        <button
+                            onClick={handleMapSearch}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold shadow-md border-0 bg-white dark:bg-[#1a241b] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:scale-95 transition-all whitespace-nowrap shrink-0"
                         >
-                            <path
-                                fillRule="evenodd"
-                                d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                        현 지도 검색
-                    </button>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-3.5 h-3.5"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                            현 지도 검색
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -807,7 +1060,15 @@ function MapPageInner() {
                             />
                         )}
 
-                        {(selectedPlace ? [selectedPlace] : places)
+                        {/* 코스 탭: 코스 선택 시에만 해당 코스 장소 표시. 장소 탭: 현 지도 검색 결과 또는 선택 장소 */}
+                        {(activeTab === "courses"
+                            ? selectedCourseForRoute
+                                ? coursePlacesList
+                                : []
+                            : selectedPlace
+                            ? [selectedPlace]
+                            : places
+                        )
                             .sort((a, b) => (a.source === "kakao" && b.source === "db" ? -1 : 1))
                             .map((place) => {
                                 const isSelected = selectedPlace?.id === place.id;
@@ -826,6 +1087,23 @@ function MapPageInner() {
                                     />
                                 );
                             })}
+
+                        {/* 코스 탭: 코스를 클릭했을 때만 해당 코스 루트 표시 */}
+                        {activeTab === "courses" &&
+                            selectedCourseForRoute &&
+                            courseRoutePath.length >= 2 &&
+                            navermaps && (
+                                <Polyline
+                                    key={`selected-${selectedCourseForRoute.id}`}
+                                    path={courseRoutePath.map((p) => new navermaps.LatLng(p.lat, p.lng))}
+                                    strokeColor="#10b981"
+                                    strokeWeight={6}
+                                    strokeOpacity={1}
+                                    strokeLineCap="round"
+                                    strokeLineJoin="round"
+                                    zIndex={300}
+                                />
+                            )}
                     </NaverMap>
                 </MapDiv>
 
@@ -882,25 +1160,122 @@ function MapPageInner() {
                 </div>
 
                 {!selectedPlace && (
-                    <div className="px-6 pb-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-end">
-                        <div>
-                            <h2 className="font-bold text-xl text-gray-900 dark:text-white leading-tight">
-                                {activeTab === "places" ? "내 주변 장소 🔥" : "추천 데이트 코스 ❤️"}
-                            </h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {activeTab === "places"
-                                    ? `지도에 ${places.length}개의 장소가 있어요`
-                                    : `엄선된 코스를 확인해보세요`}
-                            </p>
+                    <div className="px-4 pb-3 pt-1 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-2">
+                        <div
+                            className={`flex-1 min-w-0 ${
+                                activeTab === "courses" && selectedCourseForRoute ? "cursor-pointer" : ""
+                            }`}
+                            role={activeTab === "courses" && selectedCourseForRoute ? "button" : undefined}
+                            onClick={
+                                activeTab === "courses" && selectedCourseForRoute
+                                    ? () => handleCourseClick(selectedCourseForRoute)
+                                    : undefined
+                            }
+                        >
+                            <TapFeedback className="block w-full">
+                                <h2 className="font-bold text-lg text-gray-900 dark:text-white leading-tight flex items-center gap-1.5">
+                                    {activeTab === "places" ? (
+                                        <>
+                                            내 주변 장소
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="text-orange-500 dark:text-orange-400 shrink-0"
+                                            >
+                                                <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
+                                            </svg>
+                                        </>
+                                    ) : selectedCourseForRoute ? (
+                                        <>
+                                            <span className="line-clamp-1">{selectedCourseForRoute.title}</span>
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="18"
+                                                height="18"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                className="text-emerald-500 dark:text-emerald-400 shrink-0"
+                                            >
+                                                <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                            </svg>
+                                        </>
+                                    ) : (
+                                        <>
+                                            추천 데이트 코스
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="text-rose-500 dark:text-rose-400 shrink-0"
+                                            >
+                                                <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
+                                            </svg>
+                                        </>
+                                    )}
+                                </h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                    {activeTab === "places"
+                                        ? `지도에 ${places.length}개의 장소가 있어요`
+                                        : selectedCourseForRoute
+                                        ? selectedCourseForRoute.description || "코스에 포함된 장소예요"
+                                        : "엄선된 코스를 확인해보세요"}
+                                </p>
+                            </TapFeedback>
                         </div>
+                        {activeTab === "courses" && selectedCourseForRoute && (
+                            <TapFeedback>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedCourseForRoute(null);
+                                        setCourseRoutePath([]);
+                                        setCoursePlacesList([]);
+                                    }}
+                                    className="shrink-0 w-12 h-12 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                                    aria-label="뒤로 가기"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="w-7 h-7"
+                                    >
+                                        <path d="M18 6L6 18M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </TapFeedback>
+                        )}
                     </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1a241b] scrollbar-hide">
                     {loading ? (
                         <LoadingSpinner text="정보를 불러오고 있어요..." />
+                    ) : activeTab === "courses" && selectedCourseForRoute && coursePlacesLoading ? (
+                        <div className="flex flex-col items-center justify-center py-16">
+                            <LoadingSpinner text="장소 불러오는 중..." />
+                        </div>
                     ) : selectedPlace ? (
-                        <div className="px-5 pb-8 pt-0 animate-fadeIn">
+                        <div className="px-5 pt-0 animate-fadeIn">
                             {/* 상세 정보 뷰 (생략 없이 유지) */}
                             <div className="flex justify-between items-start mb-2 mt-1">
                                 <span className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-800/50">
@@ -924,14 +1299,14 @@ function MapPageInner() {
                                     </svg>
                                 </button>
                             </div>
-                            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1 leading-tight tracking-tight">
+                            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1 leading-tight tracking-tight">
                                 {selectedPlace.name}
                             </h2>
                             <div className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex items-start gap-1">
                                 <span className="leading-snug">{selectedPlace.address}</span>
                             </div>
                             {/* ✅ 수정된 버튼 영역 (안전장치 추가됨) */}
-                            <div className="flex gap-3 mb-6 h-14">
+                            <div className="flex gap-2.5 mb-6 h-11">
                                 {/* 1. 전화하기 버튼 (작은 아이콘) */}
                                 <button
                                     onClick={() =>
@@ -939,14 +1314,14 @@ function MapPageInner() {
                                             ? (window.location.href = `tel:${selectedPlace.phone}`)
                                             : showToast("전화번호 정보가 없어요 🥲")
                                     }
-                                    className="w-14 h-full flex items-center justify-center bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 rounded-xl hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:scale-95 transition-all"
+                                    className="w-11 h-full flex items-center justify-center bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 rounded-lg hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:scale-95 transition-all"
                                     aria-label="전화하기"
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
                                         viewBox="0 0 24 24"
                                         fill="currentColor"
-                                        className="w-6 h-6"
+                                        className="w-5 h-5"
                                     >
                                         <path
                                             fillRule="evenodd"
@@ -959,14 +1334,14 @@ function MapPageInner() {
                                 {/* 2. 길찾기 버튼 (메인 강조) */}
                                 <button
                                     onClick={() => handleFindWay(selectedPlace?.name || "")}
-                                    className="flex-1 h-full flex items-center justify-center gap-2 bg-emerald-500 text-white rounded-xl font-bold shadow-md hover:bg-emerald-600 active:scale-95 transition-all"
+                                    className="flex-1 h-full flex items-center justify-center gap-1.5 bg-[#6bb88a] dark:bg-[#6bb88a] text-white rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
                                 >
-                                    <span className="text-lg">길찾기</span>
+                                    <span>길찾기</span>
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
                                         viewBox="0 0 24 24"
                                         fill="currentColor"
-                                        className="w-5 h-5"
+                                        className="w-4 h-4"
                                     >
                                         <path
                                             fillRule="evenodd"
@@ -976,57 +1351,82 @@ function MapPageInner() {
                                     </svg>
                                 </button>
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-                                <h4 className="font-bold text-gray-800 dark:text-white mb-2 text-sm">💡 장소 설명</h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                                    {selectedPlace.description || "이곳은 많은 사람들이 찾는 인기 장소입니다."}
-                                </p>
-                            </div>
                         </div>
                     ) : (
                         <div className="px-5 pb-20 pt-1">
-                            {(activeTab === "places" ? places : courses).length === 0 ? (
+                            {(activeTab === "places" ? places : selectedCourseForRoute ? coursePlacesList : courses)
+                                .length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-60">
                                     <div className="text-4xl mb-2">🤔</div>
                                     <p className="text-gray-500 dark:text-gray-400 font-medium">
-                                        이 근처에는 아직 정보가 없어요.
+                                        {activeTab === "courses" && selectedCourseForRoute
+                                            ? "이 코스에 등록된 장소가 없어요."
+                                            : "이 근처에는 아직 정보가 없어요."}
                                         <br />
-                                        지도를 조금만 이동해볼까요?
+                                        {activeTab === "courses" && selectedCourseForRoute
+                                            ? ""
+                                            : "지도를 조금만 이동해볼까요?"}
                                     </p>
                                 </div>
                             ) : (
-                                (activeTab === "places" ? places : courses).map((item: any) => (
-                                    // ✅ 여기도 key가 중복되면 에러가 납니다. c-*, k-*, db-*로 처리되어 안전합니다.
-                                    <div
-                                        key={item.id}
-                                        onClick={() => {
-                                            activeTab === "courses" ? handleCourseClick(item) : handlePlaceClick(item);
-                                        }}
-                                        className="group bg-white dark:bg-[#1a241b] p-4 mb-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm active:scale-[0.98] transition-all cursor-pointer hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-700"
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
+                                (activeTab === "places"
+                                    ? places
+                                    : selectedCourseForRoute
+                                    ? coursePlacesList
+                                    : courses
+                                ).map((item: any) => {
+                                    const isCourse = "title" in item && typeof item.title === "string";
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => {
+                                                if (activeTab === "courses" && !selectedCourseForRoute)
+                                                    handleCourseSelectForRoute(item);
+                                                else handlePlaceClick(item);
+                                            }}
+                                            className={`group bg-white dark:bg-[#1a241b] px-4 py-2.5 mb-2 rounded-2xl border shadow-sm cursor-pointer flex items-stretch gap-3 transition-all duration-150 hover:bg-gray-50/80 dark:hover:bg-gray-800/30 hover:border-emerald-200 dark:hover:border-emerald-700/50 active:scale-[0.98] active:bg-gray-100/80 dark:active:bg-gray-800/50 ${
+                                                isCourse && selectedCourseForRoute?.id === item.id
+                                                    ? "border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-200 dark:ring-emerald-800/50"
+                                                    : "border-gray-100 dark:border-gray-800"
+                                            }`}
+                                        >
+                                            <PlaceListIconBox
+                                                iconKey={
+                                                    isCourse ? "play" : getCategoryIconKey(item.category || item.name)
+                                                }
+                                            />
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                     <span
-                                                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
-                                                            activeTab === "courses"
+                                                        className={`text-xs font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                                                            isCourse
                                                                 ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50"
                                                                 : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50"
                                                         }`}
                                                     >
-                                                        {activeTab === "courses"
-                                                            ? "추천 코스"
-                                                            : item.category || "장소"}
+                                                        {isCourse ? "추천 코스" : item.category || "장소"}
                                                     </span>
+                                                    {isCourse && selectedCourseForRoute?.id === item.id && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCourseClick(item);
+                                                            }}
+                                                            className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
+                                                        >
+                                                            상세 보기
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <h4 className="text-lg font-bold text-gray-800 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                                <h4 className="text-sm font-semibold text-gray-800 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                                     {item.name || item.title}
                                                 </h4>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
-                                                    {activeTab === "courses" ? item.description : item.address}
+                                                    {isCourse ? item.description : item.address}
                                                 </p>
                                             </div>
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/30 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors ml-2">
+                                            <div className="w-8 h-8 shrink-0 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/30 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors self-center">
                                                 <svg
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     viewBox="0 0 24 24"
@@ -1041,8 +1441,8 @@ function MapPageInner() {
                                                 </svg>
                                             </div>
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     )}

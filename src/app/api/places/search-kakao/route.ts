@@ -74,6 +74,40 @@ const REGION_MAPPING: Record<string, string> = {
 };
 
 // ---------------------------------------------------------
+// 2-2. 데이트 분위기 제외 카테고리 (카카오 category_group_code)
+// 검색·현 지도 검색 모두에서 결과에서 제외
+// ---------------------------------------------------------
+const CATEGORY_BLACKLIST = new Set([
+    "CS2", // 편의점
+    "BK9", // 은행
+    "PO3", // 공공기관 (구청, 주민센터 등)
+    "OL7", // 주유소/충전소
+    "AG2", // 중개업소 (부동산)
+    "MT1", // 대형마트
+    "PS3", // 어린이집
+    "SC4", // 학교
+    "AC5", // 학원
+]);
+
+// category_name / place_name에 포함되면 제외할 키워드
+const KEYWORD_BLACKLIST = [
+    "구내식당",
+    "학생식당",
+    "고시뷔페",
+    "배달전문",
+    "테이크아웃",
+    "스터디카페",
+    "독서실",
+];
+
+function isBlacklistedByKeyword(doc: any): boolean {
+    const categoryName = (doc.category_name || "").trim();
+    const placeName = (doc.place_name || "").trim();
+    const combined = `${categoryName} ${placeName}`;
+    return KEYWORD_BLACKLIST.some((kw) => combined.includes(kw));
+}
+
+// ---------------------------------------------------------
 // 3. 카카오 API 호출 함수
 // ---------------------------------------------------------
 async function kakaoLocalSearch(query: string, lat?: number, lng?: number, radius?: number) {
@@ -126,7 +160,12 @@ export async function GET(request: NextRequest) {
     try {
         // [A] 카카오 검색 수행
         const kakaoRes = await kakaoLocalSearch(effectiveKeyword, lat, lng, radius);
-        const documents = kakaoRes.documents || [];
+        const rawDocuments = kakaoRes.documents || [];
+        const documents = rawDocuments.filter((doc: any) => {
+            if (CATEGORY_BLACKLIST.has((doc.category_group_code || "").trim())) return false;
+            if (isBlacklistedByKeyword(doc)) return false;
+            return true;
+        });
 
         const enrichedPlaces: any[] = [];
         const relatedCourseIds = new Set<number>();
@@ -241,6 +280,7 @@ export async function GET(request: NextRequest) {
                     region: true,
                     concept: true,
                     rating: true,
+                    grade: true,
                 },
             });
             relatedCourses.push(...coursesByPlace);
@@ -272,6 +312,7 @@ export async function GET(request: NextRequest) {
                     region: true,
                     concept: true,
                     rating: true,
+                    grade: true,
                 },
             });
             relatedCourses.push(...regionCourses);

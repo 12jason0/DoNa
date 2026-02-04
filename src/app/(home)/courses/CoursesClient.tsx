@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from "react"; // 🟢 useDeferredValue 추가
 import CourseCard from "@/components/CourseCard";
 import CourseReportBanner from "@/components/CourseReportBanner";
+import TapFeedback from "@/components/TapFeedback";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CONCEPTS } from "@/constants/onboardingData";
 import { isIOS } from "@/lib/platform";
@@ -306,95 +307,97 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                         완벽한 하루
                     </h1>
                     <div className="flex items-center gap-3 text-sm">
-                        <button
-                            onClick={() => {
-                                setSortBy("views");
-                                // 🟢 정렬 변경 시 맨 위로 스크롤 (main 요소 또는 window)
-                                requestAnimationFrame(() => {
-                                    const mainEl = document.querySelector("main");
-                                    if (mainEl) {
-                                        mainEl.scrollTo({ top: 0, behavior: "smooth" });
-                                    } else {
-                                        window.scrollTo({ top: 0, behavior: "smooth" });
-                                    }
-                                });
-                            }}
-                            className={`${
-                                sortBy === "views"
-                                    ? "font-bold text-emerald-600 dark:text-emerald-400"
-                                    : "font-medium text-gray-400 dark:text-gray-500"
-                            } transition-colors`}
-                        >
-                            인기순
-                        </button>
+                        <TapFeedback>
+                            <button
+                                onClick={() => {
+                                    setSortBy("views");
+                                    requestAnimationFrame(() => {
+                                        const mainEl = document.querySelector("main");
+                                        if (mainEl) {
+                                            mainEl.scrollTo({ top: 0, behavior: "smooth" });
+                                        } else {
+                                            window.scrollTo({ top: 0, behavior: "smooth" });
+                                        }
+                                    });
+                                }}
+                                className={`${
+                                    sortBy === "views"
+                                        ? "font-bold text-emerald-600 dark:text-emerald-400"
+                                        : "font-medium text-gray-400 dark:text-gray-500"
+                                } transition-colors`}
+                            >
+                                인기순
+                            </button>
+                        </TapFeedback>
                         <span className="text-gray-200 dark:text-gray-700 text-xs">|</span>
-                        <button
-                            onClick={() => {
-                                setSortBy("latest");
-                                // 🟢 정렬 변경 시 맨 위로 스크롤 (main 요소 또는 window)
-                                requestAnimationFrame(() => {
-                                    const mainEl = document.querySelector("main");
-                                    if (mainEl) {
-                                        mainEl.scrollTo({ top: 0, behavior: "smooth" });
-                                    } else {
-                                        window.scrollTo({ top: 0, behavior: "smooth" });
-                                    }
-                                });
-                            }}
-                            className={`${
-                                sortBy === "latest"
-                                    ? "font-bold text-emerald-600 dark:text-emerald-400"
-                                    : "font-medium text-gray-400 dark:text-gray-500"
-                            } transition-colors`}
-                        >
-                            최신순
-                        </button>
+                        <TapFeedback>
+                            <button
+                                onClick={() => {
+                                    setSortBy("latest");
+                                    requestAnimationFrame(() => {
+                                        const mainEl = document.querySelector("main");
+                                        if (mainEl) {
+                                            mainEl.scrollTo({ top: 0, behavior: "smooth" });
+                                        } else {
+                                            window.scrollTo({ top: 0, behavior: "smooth" });
+                                        }
+                                    });
+                                }}
+                                className={`${
+                                    sortBy === "latest"
+                                        ? "font-bold text-emerald-600 dark:text-emerald-400"
+                                        : "font-medium text-gray-400 dark:text-gray-500"
+                                } transition-colors`}
+                            >
+                                최신순
+                            </button>
+                        </TapFeedback>
                     </div>
                 </div>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5">
-                    <button
-                        onClick={() => {
-                            // 🟢 [Performance]: 다음 프레임에서 실행하여 부드러운 전환
-                            requestAnimationFrame(() => {
-                                setIsNavigating(true);
-                                router.prefetch("/courses");
-                                router.push("/courses");
-                            });
-                        }}
-                        disabled={isNavigating}
-                        className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
-                            activeConcept === ""
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white text-gray-500 border-gray-200"
-                        } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
-                    >
-                        전체
-                    </button>
-                    {STATIC_CONCEPTS.map((tag) => (
+                    <TapFeedback>
                         <button
-                            key={tag}
                             onClick={() => {
-                                // 🟢 [Performance]: 다음 프레임에서 실행하여 부드러운 전환
                                 requestAnimationFrame(() => {
                                     setIsNavigating(true);
-                                    const targetPath =
-                                        activeConcept === tag
-                                            ? "/courses"
-                                            : `/courses?concept=${encodeURIComponent(tag)}`;
-                                    // 🟢 prefetch로 미리 로드하여 빠른 전환
-                                    router.prefetch(targetPath);
-                                    router.push(targetPath);
+                                    router.prefetch("/courses");
+                                    router.push("/courses");
                                 });
                             }}
-                            disabled={isNavigating} // 🟢 네비게이션 중 중복 클릭 방지
+                            disabled={isNavigating}
                             className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
-                                activeConcept === tag
+                                activeConcept === ""
                                     ? "bg-emerald-600 text-white border-emerald-600"
                                     : "bg-white text-gray-500 border-gray-200"
                             } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
                         >
-                            {tag}
+                            전체
                         </button>
+                    </TapFeedback>
+                    {STATIC_CONCEPTS.map((tag) => (
+                        <TapFeedback key={tag}>
+                            <button
+                                onClick={() => {
+                                    requestAnimationFrame(() => {
+                                        setIsNavigating(true);
+                                        const targetPath =
+                                            activeConcept === tag
+                                                ? "/courses"
+                                                : `/courses?concept=${encodeURIComponent(tag)}`;
+                                        router.prefetch(targetPath);
+                                        router.push(targetPath);
+                                    });
+                                }}
+                                disabled={isNavigating}
+                                className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                                    activeConcept === tag
+                                        ? "bg-emerald-600 text-white border-emerald-600"
+                                        : "bg-white text-gray-500 border-gray-200"
+                                } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
+                            >
+                                {tag}
+                            </button>
+                        </TapFeedback>
                     ))}
                 </div>
             </div>
@@ -413,13 +416,15 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                                     <CourseReportBanner />
                                 </div>
                             )}
-                            <CourseCard
-                                course={course}
-                                isPriority={i < 4} // 🟢 상위 4개 이미지만 우선 로딩
-                                isFavorite={favoriteIds.has(Number(course.id))}
-                                onToggleFavorite={toggleFavorite}
-                                showNewBadge={true}
-                            />
+                            <TapFeedback className="block">
+                                <CourseCard
+                                    course={course}
+                                    isPriority={i < 4}
+                                    isFavorite={favoriteIds.has(Number(course.id))}
+                                    onToggleFavorite={toggleFavorite}
+                                    showNewBadge={true}
+                                />
+                            </TapFeedback>
                         </div>
                     );
                 })}

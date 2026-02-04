@@ -126,12 +126,7 @@ export async function POST(request: NextRequest) {
             else if (kakaoGender === "female") gender = "F";
         }
 
-        // 🟢 이벤트 쿠키 지급 로직 (KST 기준)
-        const now = new Date();
-        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
-        const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
-        const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
+        const initialCoupons = 1;
 
         // 🟢 [2026-01-21] 이메일 중복 체크를 포함한 통합 로그인 로직 (계정 통합 지원)
         const result = await (prisma as any).$transaction(async (tx: any) => {

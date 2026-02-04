@@ -15,6 +15,72 @@ function ensureAdminOrUser(req: NextRequest): boolean {
     return userId !== null;
 }
 
+function normalizeClosedDays(
+    raw: unknown
+): { day_of_week: number | null; specific_date: Date | null; note: string | null }[] {
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+        .map((item: any) => {
+            const dayOfWeek = item?.day_of_week;
+            const specificDate = item?.specific_date;
+            const note = item?.note;
+            const day =
+                typeof dayOfWeek === "number" && dayOfWeek >= 0 && dayOfWeek <= 6 ? dayOfWeek : null;
+            let date: Date | null = null;
+            if (specificDate != null && specificDate !== "") {
+                const d = new Date(specificDate);
+                if (!isNaN(d.getTime())) date = d;
+            }
+            const noteStr = note != null && String(note).trim() !== "" ? String(note).trim() : null;
+            if (day === null && date === null && noteStr === null) return null;
+            return { day_of_week: day, specific_date: date, note: noteStr };
+        })
+        .filter((x): x is { day_of_week: number | null; specific_date: Date | null; note: string | null } => x != null);
+}
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        if (!ensureAdminOrUser(request)) {
+            return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+        }
+        const { id } = await params;
+        const placeId = Number(id);
+        if (!placeId || isNaN(placeId)) return NextResponse.json({ error: "Invalid place ID" }, { status: 400 });
+
+        const place = await (prisma as any).place.findUnique({
+            where: { id: placeId },
+            select: {
+                id: true,
+                name: true,
+                address: true,
+                description: true,
+                category: true,
+                avg_cost_range: true,
+                opening_hours: true,
+                phone: true,
+                parking_available: true,
+                latitude: true,
+                longitude: true,
+                imageUrl: true,
+                tags: true,
+                closed_days: {
+                    select: {
+                        id: true,
+                        day_of_week: true,
+                        specific_date: true,
+                        note: true,
+                    },
+                },
+            },
+        });
+        if (!place) return NextResponse.json({ error: "장소를 찾을 수 없습니다." }, { status: 404 });
+        return NextResponse.json({ success: true, place });
+    } catch (error) {
+        console.error("API: 장소 단건 조회 오류:", error);
+        return NextResponse.json({ error: "장소 조회 실패" }, { status: 500 });
+    }
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         if (!ensureAdminOrUser(request)) {
@@ -39,6 +105,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             longitude,
             imageUrl,
             tags,
+            closed_days: rawClosedDays,
         } = body || {};
 
         const coerceTags = (val: any) => {
@@ -89,6 +156,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 tags: true,
             },
         });
+
+        if (rawClosedDays !== undefined) {
+            await (prisma as any).placeClosedDay.deleteMany({ where: { place_id: placeId } });
+            const closedDaysList = normalizeClosedDays(rawClosedDays);
+            if (closedDaysList.length > 0) {
+                await (prisma as any).placeClosedDay.createMany({
+                    data: closedDaysList.map((d: { day_of_week: number | null; specific_date: Date | null; note: string | null }) => ({
+                        place_id: placeId,
+                        day_of_week: d.day_of_week,
+                        specific_date: d.specific_date,
+                        note: d.note || null,
+                    })),
+                });
+            }
+        }
 
         return NextResponse.json({ success: true, place: updated });
     } catch (error) {

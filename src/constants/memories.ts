@@ -2,8 +2,8 @@
 
 export const MEMORY_MESSAGES = {
     notLoggedIn: {
-        title: "로그인하고 우리만의 소중한 추억을 기록해 보세요.",
-        subtitle: "",
+        title: "데이트 기록을 남기고 싶다면?",
+        subtitle: "사진이랑 코스가 자동으로 모여요.",
         button: "로그인하기",
     },
     empty: {

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 
 import { useRouter } from "next/navigation";
 import LogoutModal from "@/components/LogoutModal";
 import PasswordCheckModal from "@/components/passwordChackModal";
-import { useTheme } from "@/context/ThemeContext";
 import { getS3StaticUrl } from "@/lib/s3Static";
 
 // 🟢 성능 최적화: 탭 컴포넌트 동적 로딩 (코드 스플리팅)
@@ -32,7 +31,6 @@ declare global {
 
 const MyPage = () => {
     const router = useRouter();
-    const { resolvedTheme, toggleTheme, setTheme } = useTheme(); // 🟢 다크모드 토글
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
     const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -1140,43 +1138,7 @@ const MyPage = () => {
     return (
         <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 typography-smooth">
             <main className="max-w-4xl mx-auto px-4 py-6 md:py-8 pt-10 ">
-                <div className="text-center mb-6 md:mb-8 relative">
-                    <div className="absolute right-0 top-0">
-                        {/* 🟢 다크모드 토글 버튼 */}
-                        <button
-                            onClick={() => {
-                                toggleTheme();
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            aria-label={resolvedTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-                        >
-                            {resolvedTheme === "dark" ? (
-                                <>
-                                    <span className="flex flex-col items-center justify-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                                            <circle cx="12" cy="12" r="4"/>
-                                            <path d="M12 2v2"/>
-                                            <path d="M12 20v2"/>
-                                            <path d="m4.93 4.93 1.41 1.41"/>
-                                            <path d="m17.66 17.66 1.41 1.41"/>
-                                            <path d="M2 12h2"/>
-                                            <path d="M20 12h2"/>
-                                            <path d="m6.34 17.66-1.41 1.41"/>
-                                            <path d="m19.07 4.93-1.41 1.41"/>
-                                        </svg>
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                                        <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>
-                                    </svg>
-                                    </span>
-                                </>
-                            )}
-                        </button>
-                    </div>
+                <div className="text-center mb-6 md:mb-8">
                     <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2 tracking-tight">
                         마이페이지
                     </h1>

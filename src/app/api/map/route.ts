@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
                     concept: true,
                     rating: true,
                     view_count: true,
+                    grade: true,
                     coursePlaces: {
                         take: 1,
                         orderBy: { order_index: "asc" },

@@ -14,6 +14,7 @@ import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
 import MemoryCTA, { MemoryPreview } from "@/components/MemoryCTA";
 import LoginModal from "@/components/LoginModal";
+import TapFeedback from "@/components/TapFeedback";
 import { X } from "lucide-react";
 
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
@@ -141,7 +142,7 @@ export default function HomeClient({
 
     const router = useRouter();
     const searchParams = useSearchParams();
-    
+
     // 🟢 [2026-01-21] 딥링크 폴백 처리: courseId 쿼리 파라미터가 있으면 해당 코스 상세 페이지로 리다이렉트
     useEffect(() => {
         const courseId = searchParams.get("courseId");
@@ -151,9 +152,8 @@ export default function HomeClient({
             router.replace(`/courses/${courseId}`);
         }
     }, [searchParams, router]);
-    
+
     const hasShownCheckinModalRef = useRef(false);
-    const checkinSectionRef = useRef<HTMLDivElement>(null);
 
     // 🟢 [Optimization]: 상태 업데이트를 프레임 단위로 분산 처리하여 롱 태스크 방지
     const loadUserData = useCallback(async () => {
@@ -182,8 +182,12 @@ export default function HomeClient({
                 requestAnimationFrame(() => {
                     const p = profileRes.value.data as any;
                     setUserName(p?.user?.nickname ?? p?.nickname ?? "두나");
-                    const tier = (p?.subscriptionTier ?? p?.subscription_tier ?? p?.user?.subscriptionTier ?? "FREE").toString().toUpperCase();
-                    setUserTier((tier === "BASIC" || tier === "PREMIUM" ? tier : "FREE") as "FREE" | "BASIC" | "PREMIUM");
+                    const tier = (p?.subscriptionTier ?? p?.subscription_tier ?? p?.user?.subscriptionTier ?? "FREE")
+                        .toString()
+                        .toUpperCase();
+                    setUserTier(
+                        (tier === "BASIC" || tier === "PREMIUM" ? tier : "FREE") as "FREE" | "BASIC" | "PREMIUM"
+                    );
 
                     setTimeout(() => {
                         if (p.hasSeenConsentModal === false) {
@@ -193,12 +197,12 @@ export default function HomeClient({
                                 if (hideUntil) {
                                     const hideUntilDate = new Date(hideUntil);
                                     const now = new Date();
-                                    
+
                                     // 한국 시간으로 비교
                                     const kstOffset = 9 * 60 * 60 * 1000;
                                     const nowKST = new Date(now.getTime() + kstOffset);
                                     const hideUntilKST = new Date(hideUntilDate.getTime() + kstOffset);
-                                    
+
                                     // 아직 숨김 시간이 지나지 않았으면 모달 표시하지 않음
                                     if (nowKST < hideUntilKST) {
                                         return;
@@ -208,7 +212,7 @@ export default function HomeClient({
                                     }
                                 }
                             }
-                            
+
                             requestAnimationFrame(() => {
                                 setShowBenefitConsentModal(true);
                             });
@@ -337,7 +341,9 @@ export default function HomeClient({
                 })
                 .sort((a, b) => {
                     const getTimestamp = (item: any) =>
-                        new Date(item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0).getTime() || 0;
+                        new Date(
+                            item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0
+                        ).getTime() || 0;
                     return getTimestamp(b) - getTimestamp(a);
                 });
 
@@ -403,54 +409,22 @@ export default function HomeClient({
 
     useEffect(() => {
         if (!isAuthenticated || !userId) return;
-
-        let observer: IntersectionObserver | null = null;
-        let hasLoaded = false;
-
-        const loadData = () => {
-            if (!hasLoaded) {
-                hasLoaded = true;
-                loadUserData();
-            }
-        };
-
-        const timer = setTimeout(() => {
-            if (!checkinSectionRef.current) {
-                loadData();
-                return;
-            }
-
-            const rect = checkinSectionRef.current.getBoundingClientRect();
-            const isVisible = rect.top < window.innerHeight + 300 && rect.bottom > -300;
-
-            if (isVisible) {
-                loadData();
-                return;
-            }
-
-            observer = new IntersectionObserver(
-                (entries) => {
-                    for (const entry of entries) {
-                        if (entry.isIntersecting) {
-                            loadData();
-                            if (observer) {
-                                observer.disconnect();
-                            }
-                            break;
-                        }
-                    }
-                },
-                { rootMargin: "300px" }
-            );
-
-            observer.observe(checkinSectionRef.current);
-        }, 200);
-
-        return () => {
-            clearTimeout(timer);
-            if (observer) observer.disconnect();
-        };
+        const timer = setTimeout(loadUserData, 200);
+        return () => clearTimeout(timer);
     }, [isAuthenticated, userId, loadUserData]);
+
+    useEffect(() => {
+        const handleOpenCheckinModal = () => setShowCheckinModal(true);
+        window.addEventListener("openCheckinModal", handleOpenCheckinModal);
+        return () => window.removeEventListener("openCheckinModal", handleOpenCheckinModal);
+    }, []);
+
+    useEffect(() => {
+        if (searchParams.get("openCheckin") === "1" && isAuthenticated) {
+            setShowCheckinModal(true);
+            router.replace("/", { scroll: false });
+        }
+    }, [searchParams, isAuthenticated, router]);
 
     useEffect(() => {
         const handleAuthLoginSuccess = () => {
@@ -576,7 +550,7 @@ export default function HomeClient({
             {/* 🟢 코스 로딩 중 오버레이 */}
             {isLoadingCourses && <CourseLoadingOverlay />}
 
-            <main className="pb-10">
+            <main className="">
                 {/* 🟢 HeroSlider를 최우선으로 즉시 렌더링 (LCP 최적화) - 메인과 동시에 표시 */}
                 <div className="pt-4">
                     {/* 🟢 heroCourses가 비어있어도 HeroSlider는 렌더링하여 초기 구조 확보 */}
@@ -590,8 +564,10 @@ export default function HomeClient({
                     onConceptClick={() => setIsLoadingCourses(true)}
                 />
 
+                <MemoizedPersonalizedSection />
+
                 {/* 🟢 나만의 추억 CTA */}
-                <section className="px-4 py-6">
+                <section className="px-4 py-4">
                     <MemoryCTA
                         hasMemories={hasMemories}
                         isAuthenticated={isAuthenticated}
@@ -624,57 +600,49 @@ export default function HomeClient({
                         }}
                     />
                 </section>
-
-                {/* 🟢 출석현황: 로그인/비로그인 모두 표시 (비로그인 시 로그인 유도 메시지) */}
-                <section className="py-6 px-4" ref={checkinSectionRef}>
-                    <div className="bg-linear-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] flex items-center justify-center text-2xl shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
-                                    <path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/>
-                                    <path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/>
-                                    <path d="M5 21h14"/>
-                                </svg>
-                            </div>
-                            <div className="flex-1 min-w-0 ml-3">
-                                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">출석 현황</div>
-                                {isCheckinLoading && isAuthenticated ? (
-                                    <div className="mt-1 space-y-1">
-                                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-32"></div>
-                                    </div>
-                                ) : (
-                                    <div className="text-base font-bold text-gray-900 dark:text-white">
-                                        {userId
-                                            ? streak >= 5
-                                                ? `🔥 ${streak}일 연속!`
-                                                : `${streak}일 연속 출석 중`
-                                            : "로그인하고 도장을 찍어보세요!"}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>  
-                </section>
-
-                <MemoizedPersonalizedSection />
                 {(!isAuthenticated || !isOnboardingComplete) && (
                     <OnboardingSection onStart={() => router.push("/onboarding")} />
                 )}
             </main>
 
-            {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 표시 */}
+            {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 표시 - 아래에서 올라오는 바텀시트 */}
             {showCheckinModal && isAuthenticated && (
-                <div className="fixed inset-0 bg-black/60 dark:bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-[#1a241b] rounded-2xl p-6 w-full max-w-sm text-center">
+                <div
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={() => setShowCheckinModal(false)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === "Escape" && setShowCheckinModal(false)}
+                    aria-label="출석 체크 모달 닫기"
+                >
+                    <div
+                        className="fixed bottom-0 left-0 right-0 z-51 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl p-6 w-full max-w-sm mx-auto text-center"
+                        style={{ animation: "slideUp 0.3s ease-out forwards" }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">출석 체크</h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-1">이번 주 출석 현황</p>
                         {streak > 0 && (
-                            <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-2 font-semibold">
-                                🔥 {streak}일 연속 출석 중
+                            <p className="flex items-center justify-center gap-1.5 text-sm text-gray-700 dark:text-gray-300 mb-2 font-semibold">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="text-orange-500 dark:text-orange-400 shrink-0"
+                                >
+                                    <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
+                                </svg>
+                                {streak}일 연속 출석 중
                             </p>
                         )}
                         {alreadyToday && (
-                            <p className="text-sm text-green-600 dark:text-green-400 mb-3">오늘 이미 출석했습니다</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">오늘 이미 출석했습니다</p>
                         )}
 
                         <div className="grid grid-cols-7 gap-2 mb-4">
@@ -725,6 +693,7 @@ export default function HomeClient({
                                                 setAlreadyToday(true);
                                                 setStampCompleted(true);
                                                 setIsStamping(false);
+                                                window.dispatchEvent(new Event("checkinUpdated"));
 
                                                 // 7일 완료 시 CompletionModal 표시
                                                 if (data.awarded) {
@@ -737,7 +706,7 @@ export default function HomeClient({
                                         className={`px-4 py-2 rounded-lg text-white font-semibold ${
                                             isStamping
                                                 ? "bg-gray-400"
-                                                : "bg-linear-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600"
+                                                : "bg-gray-800 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
                                         }`}
                                     >
                                         {isStamping ? "도장 찍는 중..." : "출석 체크 하기"}
@@ -750,7 +719,7 @@ export default function HomeClient({
                                         setAnimStamps(null);
                                         setStampCompleted(false);
                                     }}
-                                    className="hover:cursor-pointer px-6 py-2 rounded-lg bg-linear-to-r from-green-500 to-emerald-500 text-white font-semibold hover:from-green-600 hover:to-emerald-600"
+                                    className="hover:cursor-pointer px-6 py-2 rounded-lg bg-gray-800 dark:bg-gray-600 text-white font-semibold hover:bg-gray-700 dark:hover:bg-gray-500"
                                 >
                                     확인
                                 </button>
@@ -760,7 +729,7 @@ export default function HomeClient({
                 </div>
             )}
 
-            {/* 🟢 추억 상세 모달 - 인스타그램 스토리 스타일 */}
+            {/* 🟢 추억 상세 모달*/}
             {showMemoryModal && selectedMemory && (
                 <div
                     className="fixed inset-0 z-5000 bg-black dark:bg-black flex flex-col animate-in fade-in duration-300"
@@ -771,25 +740,25 @@ export default function HomeClient({
                     }}
                 >
                     {/* 🟢 상단 바 영역 (검은색 배경) */}
-                    <div 
+                    <div
                         className="absolute top-0 left-0 right-0 bg-black dark:bg-black z-10"
-                        style={{ 
+                        style={{
                             height: "env(safe-area-inset-top, 0)",
                         }}
                     />
-                    
+
                     {/* 🟢 하단 네비게이션 바 영역 (안드로이드용) */}
-                    <div 
+                    <div
                         className="absolute bottom-0 left-0 right-0 bg-black dark:bg-black z-10"
-                        style={{ 
+                        style={{
                             height: "env(safe-area-inset-bottom, 0)",
                         }}
                     />
-                    
+
                     {/* 상단 바 영역 - Region, 점 인디케이터, X 버튼 */}
-                    <div 
+                    <div
                         className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 bg-black dark:bg-black pt-4 pb-4"
-                        style={{ 
+                        style={{
                             top: "env(safe-area-inset-top, 0)",
                         }}
                     >
@@ -801,7 +770,7 @@ export default function HomeClient({
                                 </span>
                             </div>
                         )}
-                        
+
                         {/* 중앙: 점 인디케이터 */}
                         {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 1 ? (
                             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
@@ -809,9 +778,7 @@ export default function HomeClient({
                                     <div
                                         key={i}
                                         className={`h-1 rounded-full transition-all ${
-                                            i === currentImageIndex
-                                                ? "bg-white w-8"
-                                                : "bg-white/40 w-1"
+                                            i === currentImageIndex ? "bg-white w-8" : "bg-white/40 w-1"
                                         }`}
                                     />
                                 ))}
@@ -819,7 +786,7 @@ export default function HomeClient({
                         ) : (
                             <div className="flex-1" />
                         )}
-                        
+
                         {/* 오른쪽: X 버튼 */}
                         <button
                             onClick={(e) => {
@@ -853,70 +820,78 @@ export default function HomeClient({
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {selectedMemory.placeData && typeof selectedMemory.placeData === 'object' ? (() => {
-                                const placeData = selectedMemory.placeData as Record<string, { photos: string[]; tags: string[] }>;
-                                const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
-                                let photoIndex = 0;
-                                
-                                return stepIndices.flatMap((stepIndex) => {
-                                    const stepData = placeData[stepIndex];
-                                    const photos = stepData.photos || [];
-                                    const tags = stepData.tags || [];
-                                    
-                                    return photos.map((imageUrl: string, photoIdx: number) => {
-                                        const currentIdx = photoIndex++;
-                                        return (
-                                            <div
-                                                key={`${stepIndex}-${photoIdx}`}
-                                                className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
-                                                style={{ height: "calc(100vh - 120px)" }}
-                                            >
-                                                <div className="absolute inset-0 bg-black">
-                                                    <Image
-                                                        src={imageUrl}
-                                                        alt={`추억 사진 ${currentIdx + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                        sizes="100vw"
-                                                        priority={currentIdx < 2}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    });
-                                });
-                            })() : (
-                                selectedMemory.imageUrls.map((imageUrl: string, idx: number) => (
-                                    <div
-                                        key={idx}
-                                        className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
-                                        style={{ height: "calc(100vh - 120px)" }}
-                                    >
-                                        <div className="absolute inset-0 bg-black">
-                                            <Image
-                                                src={imageUrl}
-                                                alt={`추억 사진 ${idx + 1}`}
-                                                fill
-                                                className="object-cover"
-                                                sizes="100vw"
-                                                priority={idx < 2}
-                                            />
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                            {selectedMemory.placeData && typeof selectedMemory.placeData === "object"
+                                ? (() => {
+                                      const placeData = selectedMemory.placeData as Record<
+                                          string,
+                                          { photos: string[]; tags: string[] }
+                                      >;
+                                      const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
+                                      let photoIndex = 0;
+
+                                      return stepIndices.flatMap((stepIndex) => {
+                                          const stepData = placeData[stepIndex];
+                                          const photos = stepData.photos || [];
+                                          const tags = stepData.tags || [];
+
+                                          return photos.map((imageUrl: string, photoIdx: number) => {
+                                              const currentIdx = photoIndex++;
+                                              return (
+                                                  <div
+                                                      key={`${stepIndex}-${photoIdx}`}
+                                                      className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
+                                                      style={{ height: "calc(100vh - 120px)" }}
+                                                  >
+                                                      <div className="absolute inset-0 bg-black">
+                                                          <Image
+                                                              src={imageUrl}
+                                                              alt={`추억 사진 ${currentIdx + 1}`}
+                                                              fill
+                                                              className="object-cover"
+                                                              sizes="100vw"
+                                                              priority={currentIdx < 2}
+                                                          />
+                                                      </div>
+                                                  </div>
+                                              );
+                                          });
+                                      });
+                                  })()
+                                : selectedMemory.imageUrls.map((imageUrl: string, idx: number) => (
+                                      <div
+                                          key={idx}
+                                          className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
+                                          style={{ height: "calc(100vh - 120px)" }}
+                                      >
+                                          <div className="absolute inset-0 bg-black">
+                                              <Image
+                                                  src={imageUrl}
+                                                  alt={`추억 사진 ${idx + 1}`}
+                                                  fill
+                                                  className="object-cover"
+                                                  sizes="100vw"
+                                                  priority={idx < 2}
+                                              />
+                                          </div>
+                                      </div>
+                                  ))}
                         </div>
                     ) : (
-                        <div 
-                            className="flex items-center justify-center bg-black" 
-                            style={{ 
+                        <div
+                            className="flex items-center justify-center bg-black"
+                            style={{
                                 height: "calc(100vh - 120px)",
                                 marginTop: "60px",
                                 marginBottom: "60px",
                             }}
                         >
                             <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-24 h-24 text-pink-500 dark:text-pink-400">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-24 h-24 text-pink-500 dark:text-pink-400"
+                                >
                                     <path d="M6 4C6 3.44772 6.44772 3 7 3H21C21.5523 3 22 3.44772 22 4V16C22 16.5523 21.5523 17 21 17H18V20C18 20.5523 17.5523 21 17 21H3C2.44772 21 2 20.5523 2 20V8C2 7.44772 2.44772 7 3 7H6V4ZM8 7H17C17.5523 7 18 7.44772 18 8V15H20V5H8V7ZM16 15.7394V9H4V18.6321L11.4911 11.6404L16 15.7394ZM7 13.5C7.82843 13.5 8.5 12.8284 8.5 12C8.5 11.1716 7.82843 10.5 7 10.5C6.17157 10.5 5.5 11.1716 5.5 12C5.5 12.8284 6.17157 13.5 7 13.5Z"></path>
                                 </svg>
                             </div>
@@ -924,7 +899,7 @@ export default function HomeClient({
                     )}
 
                     {/* 하단 날짜 및 태그 표시 */}
-                    <div 
+                    <div
                         className="absolute bottom-0 left-0 right-0 z-20 flex flex-col"
                         style={{
                             paddingBottom: "calc(env(safe-area-inset-bottom, 0) + 1.5rem)",
@@ -938,23 +913,31 @@ export default function HomeClient({
                             {(() => {
                                 const date = new Date(selectedMemory.createdAt);
                                 const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
-                                return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
+                                return `${date.getFullYear()}년 ${
+                                    date.getMonth() + 1
+                                }월 ${date.getDate()}일 (${dayOfWeek})`;
                             })()}
                         </div>
-                        
+
                         {/* 현재 사진에 해당하는 태그 표시 */}
                         {(() => {
-                            if (selectedMemory.placeData && typeof selectedMemory.placeData === 'object') {
-                                const placeData = selectedMemory.placeData as Record<string, { photos: string[]; tags: string[] }>;
+                            if (selectedMemory.placeData && typeof selectedMemory.placeData === "object") {
+                                const placeData = selectedMemory.placeData as Record<
+                                    string,
+                                    { photos: string[]; tags: string[] }
+                                >;
                                 const stepIndices = Object.keys(placeData).sort((a, b) => Number(a) - Number(b));
                                 let photoIndex = 0;
-                                
+
                                 for (const stepIndex of stepIndices) {
                                     const stepData = placeData[stepIndex];
                                     const photos = stepData.photos || [];
                                     const tags = stepData.tags || [];
-                                    
-                                    if (currentImageIndex >= photoIndex && currentImageIndex < photoIndex + photos.length) {
+
+                                    if (
+                                        currentImageIndex >= photoIndex &&
+                                        currentImageIndex < photoIndex + photos.length
+                                    ) {
                                         if (tags.length > 0) {
                                             return (
                                                 <div className="flex flex-wrap gap-2">
@@ -1041,75 +1024,134 @@ function TabbedConcepts({
     }, [courses]);
 
     return (
-        <section className="py-6 px-5">
-            {/* 🟢 UI만 수정: 카테고리 필터 버튼 스타일로 변경 (기능은 전체/인기순/새로운 유지) */}
-            <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
+        <section className="py-8 px-5">
+            {/* 필터 탭: pill 배경 */}
+            <div className="flex gap-2 mb-7 overflow-x-auto no-scrollbar">
                 {[
                     { key: "concept", label: "전체" },
                     { key: "popular", label: "인기순" },
                     { key: "new", label: "새로운" },
                 ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        onClick={() => handleTabChange(tab.key as any)}
-                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap  ${
-                            activeTab === tab.key
-                                ? "bg-emerald-500 text-white shadow-md border-0"
-                                : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
+                    <TapFeedback key={tab.key}>
+                        <button
+                            onClick={() => handleTabChange(tab.key as any)}
+                            className={`px-4 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
+                                activeTab === tab.key
+                                    ? "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50"
+                                    : "bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border border-transparent"
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    </TapFeedback>
                 ))}
             </div>
-            <div className="mt-4">
+            <div className="mt-6">
                 {activeTab === "concept" ? (
-                    <div className="grid grid-cols-4 gap-y-6 gap-x-2">
-                        {conceptItems.slice(0, isExpanded ? undefined : 8).map((item: ConceptItem) => {
-                            const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
-                            const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
-                            return (
+                    isExpanded && conceptItems.length > 8 ? (
+                        /* 클릭 시 해당 위치에 가로 스크롤 사라지고 전체 그리드만 표시 */
+                        <div className="grid grid-cols-4 gap-y-5 gap-x-1">
+                            {conceptItems.map((item: ConceptItem) => {
+                                const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
+                                const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
+                                return (
+                                    <TapFeedback key={item.name}>
+                                        <button
+                                            onMouseEnter={() => router.prefetch(targetPath)}
+                                            onClick={() => {
+                                                onConceptClick?.();
+                                                router.prefetch(targetPath);
+                                                router.push(targetPath);
+                                            }}
+                                            className="flex flex-col items-center gap-1.5"
+                                        >
+                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
+                                                <Image
+                                                    src={CATEGORY_ICONS[name] || item.imageUrl || ""}
+                                                    alt={name}
+                                                    width={48}
+                                                    height={48}
+                                                    className="object-contain p-0.5"
+                                                    quality={70}
+                                                />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400">
+                                                {name}
+                                            </span>
+                                        </button>
+                                    </TapFeedback>
+                                );
+                            })}
+                            <TapFeedback>
                                 <button
-                                    key={item.name}
-                                    onMouseEnter={() => {
-                                        router.prefetch(targetPath);
-                                    }}
+                                    type="button"
                                     onClick={() => {
-                                        // 🟢 [Performance]: 즉시 네비게이션하여 빠른 반응
-                                        onConceptClick?.();
-                                        router.prefetch(targetPath);
-                                        router.push(targetPath);
+                                        handleToggleExpand();
+                                        requestAnimationFrame(() => {
+                                            const mainEl = document.querySelector("main");
+                                            if (mainEl) {
+                                                mainEl.scrollTo({ top: 0, behavior: "smooth" });
+                                            } else {
+                                                window.scrollTo({ top: 0, behavior: "smooth" });
+                                            }
+                                        });
                                     }}
-                                    className="flex flex-col items-center gap-2"
+                                    className="col-span-4 mt-3 py-3 text-sm font-medium text-gray-500 dark:text-gray-400"
                                 >
-                                    <div className="w-16 h-16 rounded-full p-1 bg-white dark:bg-[#1a241b] border border-gray-100 dark:border-gray-700 shadow-md">
-                                        <Image
-                                            src={CATEGORY_ICONS[name] || item.imageUrl || ""}
-                                            alt={name}
-                                            width={64}
-                                            height={64}
-                                            className="object-contain p-1"
-                                            quality={70}
-                                            priority={conceptItems.indexOf(item) < 8}
-                                        />
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
-                                        {name}
-                                    </span>
+                                    접기 ▲
                                 </button>
-                            );
-                        })}
-                        {conceptItems.length > 8 && (
-                            <button
-                                onClick={handleToggleExpand}
-                                className="col-span-4 mt-4 py-3 text-sm font-bold text-gray-400 dark:text-gray-300 bg-gray-50 dark:bg-[#1a241b] rounded-xl"
-                            >
-                                {isExpanded ? "접기 ▲" : "테마 더보기 ▼"}
-                            </button>
-                        )}
-                    </div>
+                            </TapFeedback>
+                        </div>
+                    ) : (
+                        /* 가로 스크롤: 8개 + 맨 마지막 전체 보기(텍스트만, 가운데 정렬) */
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-center">
+                            {conceptItems.slice(0, 8).map((item: ConceptItem) => {
+                                const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
+                                const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
+                                return (
+                                    <TapFeedback key={item.name}>
+                                        <button
+                                            onMouseEnter={() => router.prefetch(targetPath)}
+                                            onClick={() => {
+                                                onConceptClick?.();
+                                                router.prefetch(targetPath);
+                                                router.push(targetPath);
+                                            }}
+                                            className="flex flex-col items-center gap-1.5 shrink-0"
+                                        >
+                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
+                                                <Image
+                                                    src={CATEGORY_ICONS[name] || item.imageUrl || ""}
+                                                    alt={name}
+                                                    width={48}
+                                                    height={48}
+                                                    className="object-contain p-0.5"
+                                                    quality={70}
+                                                    priority={conceptItems.indexOf(item) < 8}
+                                                />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                {name}
+                                            </span>
+                                        </button>
+                                    </TapFeedback>
+                                );
+                            })}
+                            {conceptItems.length > 8 && (
+                                <TapFeedback>
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleExpand}
+                                        className="shrink-0 text-xs font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap py-1 text-center"
+                                    >
+                                        전체 보기
+                                    </button>
+                                </TapFeedback>
+                            )}
+                        </div>
+                    )
                 ) : (
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pt-6 pb-6">
+                    <div className="flex gap-5 overflow-x-auto no-scrollbar pt-7 pb-7">
                         {/* 🟢 인기별/새로운 탭: 데이터가 없을 때 메시지 표시 */}
                         {activeTabCourses.length === 0 ? (
                             <div className="w-full py-12 text-center text-gray-400 dark:text-gray-500">
@@ -1121,13 +1163,13 @@ function TabbedConcepts({
                             </div>
                         ) : (
                             activeTabCourses.map((c) => (
-                                <Link
-                                    key={c.id}
-                                    href={`/courses/${c.id}`}
-                                    className="flex flex-col items-center gap-2 shrink-0 w-24"
-                                    prefetch={true}
-                                >
-                                    <div className="relative w-20 h-20 rounded-full p-1 bg-white dark:bg-[#1a241b] border border-gray-100 dark:border-transparent shadow-md">
+                                <TapFeedback key={c.id}>
+                                    <Link
+                                        href={`/courses/${c.id}`}
+                                        className="flex flex-col items-center gap-2 shrink-0 w-24"
+                                        prefetch={true}
+                                    >
+                                    <div className="relative w-20 h-20 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
                                         <div className="w-full h-full rounded-full overflow-hidden relative">
                                             <Image
                                                 src={c.imageUrl || ""}
@@ -1141,12 +1183,12 @@ function TabbedConcepts({
                                             />
                                         </div>
                                         {activeTab === "popular" && (
-                                            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white dark:bg-[#1a241b] rounded-full flex items-center justify-center border border-orange-100 dark:border-transparent shadow-md text-sm">
+                                            <div className="absolute bottom-0 right-0 w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-600 text-sm">
                                                 🔥
                                             </div>
                                         )}
                                         {activeTab === "new" && (
-                                            <div className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-[#1a241b]">
+                                            <div className="absolute top-0 right-0 min-w-[18px] h-[18px] flex items-center justify-center bg-emerald-500 dark:bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0 rounded-full shadow-md border-2 border-white dark:border-[#1a241b]">
                                                 N
                                             </div>
                                         )}
@@ -1158,7 +1200,7 @@ function TabbedConcepts({
                                         <div
                                             className={`text-[9px] font-bold mt-0.5 ${
                                                 activeTab === "popular"
-                                                    ? "text-orange-500 dark:text-orange-400"
+                                                    ? "text-orange-400 dark:text-orange-400/90"
                                                     : "text-emerald-600 dark:text-emerald-400"
                                             }`}
                                         >
@@ -1167,7 +1209,8 @@ function TabbedConcepts({
                                                 : "✨ 신규"}
                                         </div>
                                     </div>
-                                </Link>
+                                    </Link>
+                                </TapFeedback>
                             ))
                         )}
                     </div>

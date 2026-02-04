@@ -56,7 +56,9 @@ model User {
   billingKey            String?                @map("billing_key") @db.VarChar(255)
   deletedAt             DateTime?              @map("deleted_at")
   appleRefreshToken     String?                @map("apple_refresh_token")
+  isSearchHistoryEnabled Boolean               @default(true) @map("is_search_history_enabled")
   completedCourses      CompletedCourse[]
+  searchHistories       SearchHistory[]
   completedEscapes      CompletedEscape[]
   bookings              Booking[]
   unlockedCourses       CourseUnlock[]
@@ -100,6 +102,17 @@ model PushToken {
 
   @@index([userId])
   @@map("push_tokens")
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    Int      @map("user_id")
+  keyword   String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("search_histories")
 }
 
 model Course {
@@ -185,7 +198,7 @@ model Place {
   longitude            Float?
   imageUrl             String?          @db.VarChar(500)
   created_at           DateTime         @default(now())
-  updated_at           DateTime
+  updated_at           DateTime         @updatedAt
   tags                 Json?
   reservationUrl       String?          @db.VarChar(500)
   coursePlaces         CoursePlace[]
@@ -206,7 +219,8 @@ model CoursePlace {
   recommended_time   String?  @db.VarChar(100)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-  coaching_tip       String?  @map("coaching_tip")
+  coaching_tip       String?  @map("coaching_tip")   // 유료 팁 (BASIC+ 또는 구매 시만 표시)
+  coaching_tip_free  String?  @map("coaching_tip_free") // 무료 팁 (모두에게 표시)
   course             Course   @relation(fields: [course_id], references: [id])
   place              Place    @relation(fields: [place_id], references: [id])
 

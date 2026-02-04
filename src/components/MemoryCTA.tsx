@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useEffect } from "react";
+import { Lock, ChevronRight } from "lucide-react";
 import { MEMORY_MESSAGES } from "@/constants/memories";
 
 export interface MemoryPreview {
@@ -72,18 +73,42 @@ export default function MemoryCTA({
         return () => el.removeEventListener("wheel", handleWheel);
     }, [hasMemories, memories.length]);
 
+    // 비로그인: 슬림 알림바 (좌: 2줄 텍스트 / 우: 작은 pill 버튼)
+    if (!isAuthenticated) {
+        return (
+            <section className="w-full bg-white/80 dark:bg-[#111b15] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm py-3 px-4 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug truncate">
+                        {content.title}
+                    </p>
+                    {content.subtitle && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug truncate">
+                            {content.subtitle}
+                        </p>
+                    )}
+                </div>
+                <button
+                    type="button"
+                    onClick={onAction}
+                    disabled={isLoading}
+                    className="shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-colors disabled:opacity-50"
+                >
+                    {isLoading ? "잠시만요..." : content.button}
+                </button>
+            </section>
+        );
+    }
+
     return (
         <section className="w-full bg-white/80 dark:bg-[#111b15] rounded-3xl border border-gray-100 dark:border-gray-800 shadow-lg p-6 flex flex-col gap-5">
             {/* 헤더 영역: 한 줄 정렬 */}
             <div className="flex justify-between items-center mb-1">
                 <div className="flex-1">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{content.title}</h3>
                         {hasMemories && (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px] text-gray-600 dark:text-gray-400 shrink-0">
-                                <path d="M19 10H20C20.5523 10 21 10.4477 21 11V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V11C3 10.4477 3.44772 10 4 10H5V9C5 5.13401 8.13401 2 12 2C15.866 2 19 5.13401 19 9V10ZM5 12V20H19V12H5ZM11 14H13V18H11V14ZM17 10V9C17 6.23858 14.7614 4 12 4C9.23858 4 7 6.23858 7 9V10H17Z"></path>
-                            </svg>
+                            <Lock className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.5} aria-hidden />
                         )}
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{content.title}</h3>
                     </div>
                     {!hasMemories && content.subtitle && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{content.subtitle}</p>
@@ -94,9 +119,14 @@ export default function MemoryCTA({
                         type="button"
                         onClick={onAction}
                         disabled={isLoading}
-                        className="text-emerald-500 dark:text-emerald-400 font-semibold text-sm hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors ml-4 shrink-0"
+                        aria-label="전체보기"
+                        className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-2 shrink-0"
                     >
-                        {isLoading ? "불러오는 중..." : "전체보기 >"}
+                        {isLoading ? (
+                            <span className="text-xs font-medium">불러오는 중...</span>
+                        ) : (
+                            <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
+                        )}
                     </button>
                 )}
             </div>
@@ -123,19 +153,19 @@ export default function MemoryCTA({
                                         onAction();
                                     }
                                 }}
-                                className="shrink-0 w-[180px] h-[240px] bg-white dark:bg-[#0e1b16] border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-md hover:shadow-lg transition-all cursor-pointer active:scale-[0.98]"
+                                className="shrink-0 w-[180px] bg-white dark:bg-[#0e1b16] border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98]"
                                 style={{
                                     scrollSnapAlign: 'start',
                                 }}
                             >
-                                {/* 이미지 영역 (3:4 비율) */}
-                                <div className="relative w-full h-[180px] bg-gray-200 dark:bg-gray-800">
+                                {/* 이미지 영역 (3:2 비율: 풍경/데이트 코스에 안정적) */}
+                                <div className="relative w-full aspect-3/2 bg-gray-200 dark:bg-gray-800">
                                     {memory.imageUrl ? (
                                         <Image
                                             src={memory.imageUrl}
                                             alt={memory.courseTitle || memory.title || "추억 이미지"}
                                             fill
-                                            className="object-cover object-top"
+                                            className="object-cover object-center"
                                             sizes="180px"
                                         />
                                     ) : (
@@ -144,8 +174,8 @@ export default function MemoryCTA({
                                         </div>
                                     )}
                                 </div>
-                                {/* 텍스트 영역 */}
-                                <div className="flex-1 px-3 py-3 flex flex-col justify-between">
+                                {/* 텍스트 영역: gray만 사용해 콘텐츠(사진)에 시선 집중 */}
+                                <div className="flex-1 px-3 py-3 flex flex-col justify-between min-h-[72px]">
                                     <p className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-1">
                                         {truncateTitle(memory.courseTitle || memory.title)}
                                     </p>

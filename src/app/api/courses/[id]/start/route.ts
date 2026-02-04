@@ -49,6 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                             id: true,
                             order_index: true,
                             coaching_tip: true,
+                            coaching_tip_free: true,
                             place: {
                                 select: {
                                     id: true,
@@ -99,6 +100,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 }
 
                 const coachingTip = cp.coaching_tip || null;
+                const coachingTipFree = cp.coaching_tip_free ?? null;
 
                 return {
                     order_index: cp.order_index,
@@ -107,7 +109,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         id: cp.place.id,
                         name: cp.place.name || null,
                         imageUrl: cp.place.imageUrl || null,
-                        coaching_tip: coachingTip, // place 객체에 coaching_tip 포함
+                        coaching_tip: coachingTip, // 유료 팁 (클라이언트에서 권한 체크)
+                        coaching_tip_free: coachingTipFree, // 무료 팁
                     },
                 };
             })

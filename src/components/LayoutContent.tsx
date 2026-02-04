@@ -1,21 +1,31 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image"; // 🟢 img 대신 next/image 사용 (하이드레이션 오류 근본 해결)
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SideMenuDrawer from "@/components/SideMenuDrawer";
 import AppInstallQR from "@/components/AppInstallQR";
 import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isMobileApp } from "@/lib/platform";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
     // ---------------------------------------------------------
     // 1. 모든 Hook은 반드시 최상단에 순서대로 선언 (Rules of Hooks)
     // ---------------------------------------------------------
     const pathname = usePathname();
+    const router = useRouter();
+    const { isAuthenticated } = useAuth();
     const [isQrOpen, setIsQrOpen] = useState(false);
+    const [sideMenuOpen, setSideMenuOpen] = useState(false);
+    const [riseDone, setRiseDone] = useState(false); // 올라오는 애니메이션 끝난 뒤에만 + → 마이페이지 아이콘으로 전환
+    const [drawerAnchorBottom, setDrawerAnchorBottom] = useState(0);
+    const plusButtonRef = useRef<HTMLButtonElement>(null);
+    const riseDoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // 🟢 Hydration 일치: 서버·클라이언트 모두 false로 시작. 스플래시 여부는 useEffect에서 sessionStorage 확인 후 설정
     const [showSplash, setShowSplash] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -33,6 +43,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const isEscapeId = pathname ? /^\/escape\/[^/]+$/.test(pathname) : false;
     const isCourseStart = pathname ? /^\/courses\/[^/]+\/start$/.test(pathname) : false;
     const isCourseDetail = pathname ? /^\/courses\/[^/]+$/.test(pathname) : false; // 🟢 코스 상세 페이지
+    const isMapPage = pathname === "/map" || pathname.startsWith("/map/");
     const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
     const homepageBgUrl = getS3StaticUrl("homepage.png");
 
@@ -53,6 +64,16 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
     }, [isApp]);
 
+    // riseDone 타이머 언마운트 시 정리
+    useEffect(() => {
+        return () => {
+            if (riseDoneTimeoutRef.current) {
+                clearTimeout(riseDoneTimeoutRef.current);
+                riseDoneTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
     // 🟢 Effect 1: 마운트 후 초기 설정, 스플래시 여부(sessionStorage) 및 샵 페이지 체크
     useEffect(() => {
         setMounted(true);
@@ -68,7 +89,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
         // 🟢 클라이언트에서만: 첫 방문이면 스플래시 표시, 아니면 콘텐츠 바로 표시
         try {
-            const already = typeof window !== "undefined" && (sessionStorage.getItem("dona-splash-shown") || sessionStorage.getItem("login-after-splash"));
+            const already =
+                typeof window !== "undefined" &&
+                (sessionStorage.getItem("dona-splash-shown") || sessionStorage.getItem("login-after-splash"));
             if (!already) {
                 setShowSplash(true);
             } else {
@@ -147,10 +170,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 }
             `}</style>
 
-            {!mounted ? (
-                // 🟢 Hydration 일치: 서버가 해당 슬롯을 비울 수 있으므로 클라이언트도 null로 맞춤
-                null
-            ) : (
+            {!mounted ? null : ( // 🟢 Hydration 일치: 서버가 해당 슬롯을 비울 수 있으므로 클라이언트도 null로 맞춤
                 <>
                     {/* 🟢 [PHYSICAL PRODUCT]: 메인 진입 시에만 스플래시 노출, 샵 페이지 이동 시에는 제외 */}
                     {showSplash && !isShopPage && (
@@ -172,7 +192,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                         <div
                             className="min-h-screen homepage-bg-container"
                             style={{
-                                backgroundColor: showSplash || !contentReady ? "#7FCC9F" : "var(--background)",
+                                backgroundColor: showSplash || !contentReady ? "#7FCC9F" : "transparent",
                                 transition: "opacity 0.6s ease-in-out, background-color 1s ease-in-out",
                                 opacity: contentReady ? 1 : 0,
                             }}
@@ -309,26 +329,141 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 )}
 
                                 <div
-                                    className={`relative h-full bg-white dark:bg-[#0f1710] flex flex-col ${
+                                    className={`relative h-full flex flex-col bg-transparent ${
                                         !isApp
                                             ? "lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800"
                                             : "w-full"
-                                    }`}
+                                    } lg:pb-0`}
                                 >
                                     <div
-                                        className={`${
-                                            isEscapeIntroPage || isCourseStart ? "hidden" : "block"
-                                        } shrink-0`}
+                                        className={`shrink-0 bg-white dark:bg-[#0f1710] ${
+                                            isEscapeIntroPage || isCourseStart || isMapPage ? "hidden" : "block"
+                                        }`}
                                     >
                                         <Header />
                                     </div>
-                                    <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide">
-                                        {children}
+                                    <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710]">
+                                        <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>
+                                            {children}
+                                        </div>
                                     </main>
                                     <div
-                                        className={`${isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"} shrink-0`}
+                                        className={`shrink-0 bg-transparent ${
+                                            isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"
+                                        } fixed bottom-2 left-0 right-0 z-40 lg:static lg:z-auto`}
                                     >
+                                        {/* 버튼만 공중에 떠 있게 만드는 플로팅 구조 (지도 페이지에선 숨김). 웹(lg)에서는 앱 패널 오른쪽에 배치 */}
+                                        {!isMapPage && (
+                                            <>
+                                                {/* 드로어 닫혀 있을 때: 인라인 버튼 (클릭 시 위치 계산용 ref) */}
+                                                {!sideMenuOpen && (
+                                                    <div className="fixed bottom-21 right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 lg:bottom-21">
+                                                        <button
+                                                            ref={plusButtonRef}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (plusButtonRef.current) {
+                                                                    const rect =
+                                                                        plusButtonRef.current.getBoundingClientRect();
+                                                                    setDrawerAnchorBottom(
+                                                                        typeof window !== "undefined"
+                                                                            ? window.innerHeight - rect.top
+                                                                            : 0
+                                                                    );
+                                                                }
+                                                                setRiseDone(false);
+                                                                setSideMenuOpen(true);
+                                                                if (riseDoneTimeoutRef.current)
+                                                                    clearTimeout(riseDoneTimeoutRef.current);
+                                                                riseDoneTimeoutRef.current = setTimeout(() => {
+                                                                    setRiseDone(true);
+                                                                    riseDoneTimeoutRef.current = null;
+                                                                }, 400);
+                                                            }}
+                                                            aria-label="메뉴 열기"
+                                                            className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] border-2 border-white/50 dark:border-[#1a241b]/50 flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#7FCC9F] hover:bg-[#6bb88a] text-3xl font-light"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {/* 드로어 열렸을 때: body 포탈로 버튼을 최상단에 렌더 → "마이페이지/로그인"이 흐림 위에 보이게 */}
+                                                {sideMenuOpen &&
+                                                    typeof document !== "undefined" &&
+                                                    createPortal(
+                                                        <div
+                                                            className="fixed bottom-21 right-6 z-2010 pointer-events-none flex items-center gap-2.5"
+                                                            style={{ position: "fixed" }}
+                                                        >
+                                                            {riseDone && (
+                                                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap drop-shadow-md bg-white/90 dark:bg-black/50 px-2 py-1 rounded-md">
+                                                                    {isAuthenticated ? "마이페이지" : "로그인"}
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (riseDoneTimeoutRef.current) {
+                                                                        clearTimeout(riseDoneTimeoutRef.current);
+                                                                        riseDoneTimeoutRef.current = null;
+                                                                    }
+                                                                    setSideMenuOpen(false);
+                                                                    setRiseDone(false);
+                                                                    router.push(isAuthenticated ? "/mypage" : "/login");
+                                                                }}
+                                                                aria-label={
+                                                                    isAuthenticated ? "마이페이지로 이동" : "로그인"
+                                                                }
+                                                                className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.25)] border-2 border-white flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#1a3a2e] hover:bg-[#234a3a]"
+                                                            >
+                                                                {isAuthenticated ? (
+                                                                    <svg
+                                                                        className="h-6 w-6 text-[#99c08e]"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                                                        />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <svg
+                                                                        className="h-6 w-6 text-[#99c08e]"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                                                                        />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        </div>,
+                                                        document.body
+                                                    )}
+                                            </>
+                                        )}
                                         <Footer />
+                                        <SideMenuDrawer
+                                            isOpen={sideMenuOpen}
+                                            onClose={() => {
+                                                if (riseDoneTimeoutRef.current) {
+                                                    clearTimeout(riseDoneTimeoutRef.current);
+                                                    riseDoneTimeoutRef.current = null;
+                                                }
+                                                setSideMenuOpen(false);
+                                                setRiseDone(false);
+                                            }}
+                                            anchorBottom={drawerAnchorBottom}
+                                        />
                                     </div>
                                 </div>
                             </div>

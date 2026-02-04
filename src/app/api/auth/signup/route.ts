@@ -53,12 +53,7 @@ export async function POST(request: NextRequest) {
             computedAge = age;
         }
 
-        // 6. 🎁 이벤트 쿠키 지급 로직 (KST 기준)
-        const now = new Date();
-        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
-        const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
-        const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
+        const initialCoupons = 1;
 
         // 🟢 기본 프로필 이미지 설정 (로컬 로그인)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");

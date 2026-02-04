@@ -77,6 +77,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         estimated_duration: true,
                         recommended_time: true,
                         coaching_tip: true,
+                        coaching_tip_free: true,
                         place: {
                             select: {
                                 id: true,
@@ -167,14 +168,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     if (!cp || !cp.place) return null;
 
                     // 🔒 접근 권한이 없으면 핵심 정보 마스킹
+                    const hasPaidTip = !!(cp.coaching_tip && String(cp.coaching_tip).trim());
                     if (!hasAccess) {
-                        // 기본 정보만 제공 (이름, 카테고리만)
+                        // 기본 정보만 제공 (이름, 카테고리만). 유료 팁 존재 여부는 전달(잠김 영역 표시용)
+                        // 🟢 지도 루트 표시용으로 위·경도는 허용 (주소/상세는 마스킹 유지)
+                        const latForMap = cp.place?.latitude != null ? Number(cp.place.latitude) : null;
+                        const lngForMap = cp.place?.longitude != null ? Number(cp.place.longitude) : null;
                         return {
                             id: cp.id,
                             order_index: cp.order_index,
                             estimated_duration: null, // 마스킹
                             recommended_time: null, // 마스킹
-                            coaching_tip: null, // 마스킹
+                            coaching_tip: null, // 마스킹 (유료 팁)
+                            coaching_tip_free: cp.coaching_tip_free ?? null, // 무료 팁은 권한 없어도 표시
+                            hasPaidTip, // 유료 팁 있음(내용은 숨김, 잠김 영역 표시용)
                             movement_guide: null,
                             place: {
                                 id: cp.place.id,
@@ -188,24 +195,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                                 parking_available: null, // 마스킹
                                 reservation_required: null, // 마스킹
                                 reservationUrl: null, // 마스킹
-                                latitude: null, // 마스킹
-                                longitude: null, // 마스킹
+                                latitude: latForMap, // 지도 루트 표시용 허용
+                                longitude: lngForMap, // 지도 루트 표시용 허용
                                 imageUrl: cp.place.imageUrl, // 이미지는 허용 (흐릿하게 표시용)
                                 closed_days: [],
-                                coaching_tip: null, // 마스킹
+                                coaching_tip: null, // 마스킹 (유료 팁)
+                                coaching_tip_free: cp.coaching_tip_free ?? null,
                             },
                         };
                     }
 
                     // 🟢 접근 권한이 있는 경우 전체 데이터 제공
-                    // 🔒 FREE 코스의 팁은 클라이언트에서 userTier 체크하여 표시 (버튼/팁 표시 구분)
-                    // BASIC/PREMIUM 코스는 hasTipAccess에 따라 마스킹
+                    // 무료 팁(coaching_tip_free): 항상 포함. 유료 팁(coaching_tip): hasTipAccess일 때만 포함
+                    const coachingTipFree = cp.coaching_tip_free ?? null; // 무료 팁 (모두에게)
                     const coachingTip =
                         courseGrade === "FREE"
-                            ? cp.coaching_tip || null // FREE 코스: 클라이언트에서 처리
+                            ? hasTipAccess ? (cp.coaching_tip || null) : null // FREE 코스: 유료 팁은 권한 시만
                             : hasTipAccess
                             ? cp.coaching_tip || null
-                            : null; // BASIC/PREMIUM 코스: 권한 체크
+                            : null; // BASIC/PREMIUM 코스: 유료 팁 권한 체크
+                    const hasPaidTipAccessBranch = !!(cp.coaching_tip && String(cp.coaching_tip).trim());
 
                     // 🟢 안전한 숫자 변환
                     const placeId = cp.place?.id;
@@ -227,7 +236,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         latitude: isNaN(latitude as number) ? null : latitude,
                         longitude: isNaN(longitude as number) ? null : longitude,
                         closed_days: placeId ? closedDaysMap[placeId] || [] : [],
-                        coaching_tip: coachingTip, // 🔒 팁 권한 체크 후 포함 (FREE 코스도 BASIC/PREMIUM 유저에게만)
+                        coaching_tip: coachingTip, // 유료 팁 (권한 시만)
+                        coaching_tip_free: coachingTipFree, // 무료 팁 (항상)
                     };
 
                     // 🟢 [Debug]: 매핑 후 확인
@@ -244,6 +254,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         estimated_duration: cp.estimated_duration,
                         recommended_time: cp.recommended_time,
                         coaching_tip: coachingTip,
+                        coaching_tip_free: coachingTipFree,
+                        hasPaidTip: hasPaidTipAccessBranch, // 유료 팁 존재 여부 (잠김 영역 표시용)
                         movement_guide: null, // DB에 필드가 없으므로 null로 설정 (필요시 나중에 추가)
                         place: mappedPlace,
                     };

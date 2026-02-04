@@ -112,12 +112,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
 
         // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
         const result = await (prisma as any).$transaction(async (tx: any) => {
-            // 🟢 이벤트 쿠키 지급 로직 (KST 기준)
-            const now = new Date();
-            const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-            const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
-            const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
-            const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
+            const initialCoupons = 1;
 
             // 🟢 [Fix]: email unique constraint 에러 방지 - email이 다른 사용자에게 할당되어 있는지 확인
             let updateData: any = {};
@@ -181,7 +176,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         username: `user_${appleUserId.substring(0, 6)}`,
                         socialId: appleUserId,
                         provider: "apple",
-                        couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
+                        couponCount: initialCoupons,
                         profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                     },
                 });
@@ -339,12 +334,7 @@ async function handleAppAppleAuthLogic(
 
         // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
         const result = await (prisma as any).$transaction(async (tx: any) => {
-            // 🟢 이벤트 쿠키 지급 로직 (KST 기준)
-            const now = new Date();
-            const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-            const kstNow = new Date(utc + 9 * 60 * 60 * 1000);
-            const eventEndDate = new Date("2026-01-31T23:59:59+09:00");
-            const initialCoupons = kstNow <= eventEndDate ? 2 : 1; // 🟢 1월 31일 이전: 2개, 이후: 1개
+            const initialCoupons = 1;
 
             // 🟢 [Fix]: email unique constraint 에러 방지 - email이 다른 사용자에게 할당되어 있는지 확인
             let updateData: any = {};
@@ -417,7 +407,7 @@ async function handleAppAppleAuthLogic(
                             : `user_${appleUserId.substring(0, 6)}`,
                         socialId: appleUserId,
                         provider: "apple",
-                        couponCount: initialCoupons, // 🟢 이벤트 기간에 따라 2개 또는 1개 지급
+                        couponCount: initialCoupons,
                         profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
                     },
                 });

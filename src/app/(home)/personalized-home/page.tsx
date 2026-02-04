@@ -10,6 +10,7 @@ import { getS3StaticUrl } from "@/lib/s3Static";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import CompletionModal from "@/components/CompletionModal";
+import TapFeedback from "@/components/TapFeedback";
 import { isIOS } from "@/lib/platform";
 import {
     Sparkles,
@@ -1018,12 +1019,14 @@ const AIRecommender = () => {
                                 {course.title}
                             </h3>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-                        >
-                            <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                        </button>
+                        <TapFeedback>
+                            <button
+                                onClick={onClose}
+                                className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                        </TapFeedback>
                     </div>
 
                     {/* Content (Scrollable) */}
@@ -1098,10 +1101,11 @@ const AIRecommender = () => {
 
                     {/* Footer Action */}
                     <div className="p-4 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800">
-                        <button
-                            onClick={() => handleCourseCommit(course.id, course.title)}
-                            disabled={isSelecting || !!selectedCourseId}
-                            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                        <TapFeedback className="block">
+                            <button
+                                onClick={() => handleCourseCommit(course.id, course.title)}
+                                disabled={isSelecting || !!selectedCourseId}
+                                className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 ${
                                 selectedCourseId || isSelecting
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                     : "bg-gray-900 text-white hover:bg-gray-800"
@@ -1119,7 +1123,8 @@ const AIRecommender = () => {
                                     <CheckCircle className="w-5 h-5" />
                                 </>
                             )}
-                        </button>
+                            </button>
+                        </TapFeedback>
                     </div>
                 </div>
             </div>
@@ -1254,15 +1259,17 @@ const AIRecommender = () => {
                             </div>
 
                             <div className="mt-auto flex gap-2.5">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedDetailCourse(course);
-                                    }}
-                                    className="flex-1 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
-                                >
-                                    상세보기
-                                </button>
+                                <TapFeedback className="flex-1 min-w-0">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedDetailCourse(course);
+                                        }}
+                                        className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                                    >
+                                        상세보기
+                                    </button>
+                                </TapFeedback>
                             </div>
                         </div>
                     </div>
@@ -1745,12 +1752,14 @@ const AIRecommender = () => {
                                     <span>쿠폰 {coupons}개</span>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => setShowLogin(true)}
-                                    className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800/50 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
-                                >
-                                    <span>로그인하고 혜택받기</span>
-                                </button>
+                                <TapFeedback>
+                                    <button
+                                        onClick={() => setShowLogin(true)}
+                                        className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800/50 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                                    >
+                                        <span>로그인하고 혜택받기</span>
+                                    </button>
+                                </TapFeedback>
                             )}
                         </div>
                     </div>
@@ -1838,17 +1847,19 @@ const AIRecommender = () => {
                             </p>
 
                             {/* 3. 버튼 */}
-                            <button
-                                onClick={startConversation} // 모달 오픈 함수 호출
-                                className="group relative px-8 py-4 w-full max-w-[280px] bg-gray-900 text-white rounded-2xl font-bold text-[17px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
-                            >
+                            <TapFeedback className="block w-full max-w-[280px] mx-auto">
+                                <button
+                                    onClick={startConversation}
+                                    className="group relative px-8 py-4 w-full bg-gray-900 text-white rounded-2xl font-bold text-[17px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
+                                >
                                 <div className="absolute inset-0 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-size-[200%_auto] animate-[gradient_3s_ease_infinite]"></div>
 
                                 <div className="relative flex items-center justify-center gap-2">
                                     <span>내 취향 분석 시작하기</span>
                                     <ChevronRight className="w-5 h-5 text-white/90 group-hover:translate-x-1 transition-transform" />
                                 </div>
-                            </button>
+                                </button>
+                            </TapFeedback>
 
                             <div className="mt-6 flex items-center gap-1.5 opacity-60">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>

@@ -42,6 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
             coaching_tip: cp.coaching_tip || null,
+            coaching_tip_free: cp.coaching_tip_free ?? null,
             place: {
                 id: cp.place_id,
                 name: cp.place?.name ?? "",
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const { id: courseIdParam } = await params;
         const course_id = Number(courseIdParam);
         const body = await request.json();
-        const { place_id, order_index, estimated_duration, recommended_time, coaching_tip } = body || {};
+        const { place_id, order_index, estimated_duration, recommended_time, coaching_tip, coaching_tip_free } = body || {};
 
         if (!course_id || !place_id || !order_index) {
             return NextResponse.json({ error: "course_id, place_id, order_index는 필수입니다." }, { status: 400 });
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 estimated_duration: typeof estimated_duration === "number" ? estimated_duration : null,
                 recommended_time: recommended_time || null,
                 coaching_tip: coaching_tip || null,
+                coaching_tip_free: coaching_tip_free ?? null,
             },
         });
 

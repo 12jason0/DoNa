@@ -20,6 +20,12 @@ type Place = {
     tags?: any; // jsonb, string[] 또는 object
 };
 
+/** 휴무일 한 줄 (폼/API용) - day_of_week: 0=일 ~ 6=토, 요일 휴무만 사용 */
+type ClosedDayRow = {
+    day_of_week: number | null;
+    note: string;
+};
+
 const INITIAL_PLACE: Omit<Place, "id"> = {
     name: "",
     address: "",
@@ -38,6 +44,7 @@ const INITIAL_PLACE: Omit<Place, "id"> = {
 export default function AdminPlacesPage() {
     const [places, setPlaces] = useState<Place[]>([]);
     const [formData, setFormData] = useState<Omit<Place, "id">>(INITIAL_PLACE);
+    const [closedDays, setClosedDays] = useState<ClosedDayRow[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -114,7 +121,7 @@ export default function AdminPlacesPage() {
         setFormData((prev) => ({ ...prev, [name]: checked }));
     };
 
-    const startEdit = (place: Place) => {
+    const startEdit = async (place: Place) => {
         setEditingId(place.id);
         setFormData({
             name: place.name || "",
@@ -130,12 +137,47 @@ export default function AdminPlacesPage() {
             imageUrl: place.imageUrl || "",
             tags: place.tags || [],
         });
+        const token = localStorage.getItem("authToken");
+        const headers: HeadersInit = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+        try {
+            const res = await fetch(`/api/places/${place.id}`, { headers, credentials: "include" });
+            const data = await res.json();
+            if (data?.place?.closed_days?.length) {
+                setClosedDays(
+                    data.place.closed_days.map((d: { day_of_week: number | null; note: string | null }) => ({
+                        day_of_week: d.day_of_week ?? null,
+                        note: d.note ?? "",
+                    }))
+                );
+            } else {
+                setClosedDays([]);
+            }
+        } catch {
+            setClosedDays([]);
+        }
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const cancelEdit = () => {
         setEditingId(null);
         setFormData(INITIAL_PLACE);
+        setClosedDays([]);
+    };
+
+    const addClosedDayRow = () => {
+        setClosedDays((prev) => [...prev, { day_of_week: null, note: "" }]);
+    };
+    const removeClosedDayRow = (index: number) => {
+        setClosedDays((prev) => prev.filter((_, i) => i !== index));
+    };
+    const updateClosedDayRow = (index: number, field: keyof ClosedDayRow, value: number | string | null) => {
+        setClosedDays((prev) => {
+            const next = [...prev];
+            if (field === "day_of_week") next[index] = { ...next[index], day_of_week: value as number | null };
+            else if (field === "note") next[index] = { ...next[index], note: String(value ?? "") };
+            return next;
+        });
     };
 
     const handleDelete = async (id: number) => {
@@ -175,15 +217,26 @@ export default function AdminPlacesPage() {
                 headers.Authorization = `Bearer ${token}`;
             }
 
+            const payload = {
+                ...formData,
+                closed_days: closedDays
+                    .filter((row) => row.day_of_week !== null || (row.note && row.note.trim()))
+                    .map((row) => ({
+                        day_of_week: row.day_of_week,
+                        specific_date: null,
+                        note: row.note && row.note.trim() ? row.note.trim() : null,
+                    })),
+            };
             const res = await fetch(url, {
                 method: method,
                 headers,
                 credentials: "include", // 쿠키도 함께 전송 (admin 인증용)
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
             if (res.ok) {
                 alert(editingId ? "장소가 수정되었습니다." : "장소 생성 완료");
                 setFormData(INITIAL_PLACE);
+                setClosedDays([]);
                 setEditingId(null);
                 fetchPlaces(currentPage, false);
             } else {
@@ -278,7 +331,61 @@ export default function AdminPlacesPage() {
                                 className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                             />
                         </div>
+                    </div>
 
+                    {/* 쉬는 날 (휴무일) */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-gray-600">쉬는 날 (휴무일)</label>
+                            <button
+                                type="button"
+                                onClick={addClosedDayRow}
+                                className="text-sm text-green-600 hover:text-green-700 font-medium"
+                            >
+                                + 휴무일 추가
+                            </button>
+                        </div>
+                        {closedDays.length === 0 ? (
+                            <p className="text-xs text-gray-500">휴무일이 없으면 비워두세요. 추가 버튼으로 요일·비고를 입력할 수 있습니다.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {closedDays.map((row, index) => (
+                                    <li key={index} className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                                        <select
+                                            value={row.day_of_week ?? ""}
+                                            onChange={(e) => updateClosedDayRow(index, "day_of_week", e.target.value === "" ? null : Number(e.target.value))}
+                                            className="border p-1.5 rounded text-sm min-w-[100px]"
+                                        >
+                                            <option value="">요일 선택</option>
+                                            <option value="0">일요일</option>
+                                            <option value="1">월요일</option>
+                                            <option value="2">화요일</option>
+                                            <option value="3">수요일</option>
+                                            <option value="4">목요일</option>
+                                            <option value="5">금요일</option>
+                                            <option value="6">토요일</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            placeholder="비고 (선택)"
+                                            value={row.note}
+                                            onChange={(e) => updateClosedDayRow(index, "note", e.target.value)}
+                                            className="flex-1 min-w-[120px] border p-1.5 rounded text-sm"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeClosedDayRow(index)}
+                                            className="text-red-600 hover:text-red-700 text-sm"
+                                        >
+                                            삭제
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-600">위도 (Latitude)</label>
                             <input

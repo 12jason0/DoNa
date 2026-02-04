@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, memo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { UserInfo, UserPreferences } from "@/types/user";
 import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -339,7 +340,7 @@ const ProfileTab = ({
     };
 
     return (
-        <>
+        <React.Fragment>
             <div className="space-y-6 max-w-4xl mx-auto pb-10">
                 {/* ======================================================================
           1. 기본 정보 카드 (Profile Card)
@@ -912,11 +913,10 @@ const ProfileTab = ({
                             }
                         }}
                     />
-
                     {/* 사업자 정보 */}
                     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">사업자 정보</h4>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 leading-relaxed">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 leading-relaxed mb-4">
                             <p className="font-semibold text-gray-600 dark:text-gray-400">(주)두나 (DoNa)</p>
                             <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
                             <p>통신판매업 신고번호: 제 2025-충남홍성-0193 호</p>
@@ -924,10 +924,41 @@ const ProfileTab = ({
                             <p>고객센터: 12jason@donacourse.com</p>
                             <p>유선번호: 010-2271-9824</p>
                         </div>
+                        {/* 서비스 소개, 이용 안내, 개인정보처리방침, 이용약관 */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                            <Link
+                                href="/about"
+                                prefetch={true}
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                            >
+                                서비스 소개
+                            </Link>
+                            <Link
+                                href="/help"
+                                prefetch={true}
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                            >
+                                이용 안내
+                            </Link>
+                            <Link
+                                href="/privacy"
+                                prefetch={true}
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                            >
+                                개인정보처리방침
+                            </Link>
+                            <Link
+                                href="/terms"
+                                prefetch={true}
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                            >
+                                이용약관
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
-        </>
+        </React.Fragment>
     );
 };
 

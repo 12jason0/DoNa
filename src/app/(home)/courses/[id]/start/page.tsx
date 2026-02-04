@@ -17,7 +17,8 @@ type Place = {
     id: number;
     name?: string;
     imageUrl?: string;
-    coaching_tip?: string | null;
+    coaching_tip?: string | null; // 유료 팁
+    coaching_tip_free?: string | null; // 무료 팁
 };
 
 type CoursePlace = {
