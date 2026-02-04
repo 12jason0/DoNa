@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+const DRAG_CLOSE_THRESHOLD = 60;
 
 interface ComingSoonModalProps {
     onClose: () => void;
@@ -9,6 +11,33 @@ interface ComingSoonModalProps {
 
 export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     const [mounted, setMounted] = useState(false);
+    const [slideUp, setSlideUp] = useState(false);
+    const [dragY, setDragY] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const startYRef = useRef(0);
+    const pointerIdRef = useRef<number | null>(null);
+    const dragYRef = useRef(0);
+
+    const getClientY = (e: React.TouchEvent | React.PointerEvent) =>
+        "touches" in e ? e.touches[0]?.clientY : e.clientY;
+
+    const onDragStart = (clientY: number, pointerId?: number) => {
+        startYRef.current = clientY;
+        pointerIdRef.current = pointerId ?? null;
+    };
+    const onDragMove = (clientY: number) => {
+        const dy = Math.max(0, clientY - startYRef.current);
+        dragYRef.current = dy;
+        if (dy > 0) setIsDragging(true);
+        setDragY(dy);
+    };
+    const onDragEnd = () => {
+        if (dragYRef.current > DRAG_CLOSE_THRESHOLD) onClose();
+        else setDragY(0);
+        setIsDragging(false);
+        pointerIdRef.current = null;
+    };
+
     const [hasNotification, setHasNotification] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +72,11 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     useEffect(() => {
         setMounted(true);
         document.body.style.overflow = "hidden";
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setSlideUp(true));
+        });
         return () => {
+            cancelAnimationFrame(t);
             setMounted(false);
             document.body.style.overflow = "unset";
         };
@@ -92,13 +125,52 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center z-9999 p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/40 dark:bg-black/70 flex flex-col justify-end z-9999 animate-in fade-in duration-200"
             onClick={onClose}
         >
             <div
-                className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 w-full max-w-[300px] p-6 text-center transform transition-all animate-scale-up"
+                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center ${
+                    !isDragging ? "transition-transform duration-300 ease-out" : ""
+                }`}
+                style={{
+                    transform: slideUp
+                        ? dragY > 0
+                            ? `translateY(${dragY}px)`
+                            : "translateY(0)"
+                        : "translateY(100%)",
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
+                {/* 하단 시트 그랩버: 아래로 스와이프 시 모달 닫힘 */}
+                <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label="아래로 당겨 닫기"
+                    className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-5 touch-none cursor-grab active:cursor-grabbing"
+                    onTouchStart={(e) => {
+                        onDragStart(getClientY(e));
+                    }}
+                    onTouchMove={(e) => {
+                        onDragMove(getClientY(e));
+                    }}
+                    onTouchEnd={() => {
+                        onDragEnd();
+                    }}
+                    onPointerDown={(e) => {
+                        e.preventDefault();
+                        onDragStart(e.clientY, e.pointerId);
+                        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                    }}
+                    onPointerMove={(e) => {
+                        if (pointerIdRef.current === e.pointerId) onDragMove(e.clientY);
+                    }}
+                    onPointerUp={(e) => {
+                        if (pointerIdRef.current === e.pointerId) {
+                            onDragEnd();
+                            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+                        }
+                    }}
+                />
                 {/* 아이콘 영역: 룰렛 -> 잠금(Lock) 아이콘으로 변경 */}
                 <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
                     <svg

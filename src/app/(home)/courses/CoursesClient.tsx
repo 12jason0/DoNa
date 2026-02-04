@@ -365,10 +365,10 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                                 });
                             }}
                             disabled={isNavigating}
-                            className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
-                                activeConcept === ""
-                                    ? "bg-emerald-600 text-white border-emerald-600"
-                                    : "bg-white text-gray-500 border-gray-200"
+className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                                    activeConcept === ""
+                                        ? "bg-emerald-600 text-white border-emerald-600"
+                                        : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
                             } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
                         >
                             전체
@@ -392,7 +392,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                                 className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
                                     activeConcept === tag
                                         ? "bg-emerald-600 text-white border-emerald-600"
-                                        : "bg-white text-gray-500 border-gray-200"
+                                        : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
                                 } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
                             >
                                 {tag}

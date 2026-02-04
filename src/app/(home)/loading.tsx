@@ -1,5 +1,12 @@
-// (home) 구간 페이지 전환 시 표시 - 기존 코스 로딩 UI와 동일
+"use client";
+
+import { usePathname } from "next/navigation";
+
+// (home) 구간 페이지 전환 시 표시 - 기존 코스 로딩 UI와 동일. 메인(/)일 때는 스플래시만 보이도록 로딩 UI 숨김
 export default function HomeLoading() {
+    const pathname = usePathname();
+    if (pathname === "/") return null;
+
     return (
         <main className="min-h-screen bg-white/80 dark:bg-[#0f1710]/90 backdrop-blur-sm flex flex-col items-center justify-center fixed inset-0 z-9999">
             <div className="flex flex-col items-center gap-6 animate-fadeIn">

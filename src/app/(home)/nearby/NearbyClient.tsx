@@ -795,7 +795,17 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                 modalSelectedLabels={modalSelectedLabels}
                 onCategoryClick={handleCategoryClick}
                 onApply={applyCategorySelection}
-                onReset={() => setModalSelectedLabels([])}
+                onReset={() => {
+                    setModalSelectedLabels([]);
+                    setSelectedFilterLabels([]);
+                    setSelectedFilterConcepts([]);
+                    setSelectedTagIds([]);
+                    setSelectedActivities([]);
+                    setSelectedRegions([]);
+                    setHideClosedPlaces(false);
+                    router.push("/nearby");
+                    setShowCategoryModal(false);
+                }}
             />
         </div>
     );

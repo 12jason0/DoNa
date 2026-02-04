@@ -1025,8 +1025,8 @@ function TabbedConcepts({
 
     return (
         <section className="py-8 px-5">
-            {/* 필터 탭: pill 배경 */}
-            <div className="flex gap-2 mb-7 overflow-x-auto no-scrollbar">
+            {/* 필터 탭·카테고리: 완벽한 하루와 동일 가로 패딩 (가로 스크롤 영역 -mx-5 px-5) */}
+            <div className="flex gap-2 mb-7 overflow-x-auto no-scrollbar -mx-5 px-5">
                 {[
                     { key: "concept", label: "전체" },
                     { key: "popular", label: "인기순" },
@@ -1049,8 +1049,8 @@ function TabbedConcepts({
             <div className="mt-6">
                 {activeTab === "concept" ? (
                     isExpanded && conceptItems.length > 8 ? (
-                        /* 클릭 시 해당 위치에 가로 스크롤 사라지고 전체 그리드만 표시 */
-                        <div className="grid grid-cols-4 gap-y-5 gap-x-1">
+                        /* 클릭 시 해당 위치에 가로 스크롤 사라지고 전체 그리드만 표시 (3개씩, 가운데 정렬) */
+                        <div className="grid grid-cols-3 gap-y-5 gap-x-1 justify-items-center max-w-lg mx-auto">
                             {conceptItems.map((item: ConceptItem) => {
                                 const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
                                 const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
@@ -1065,7 +1065,7 @@ function TabbedConcepts({
                                             }}
                                             className="flex flex-col items-center gap-1.5"
                                         >
-                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
+                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 shrink-0">
                                                 <Image
                                                     src={CATEGORY_ICONS[name] || item.imageUrl || ""}
                                                     alt={name}
@@ -1075,14 +1075,14 @@ function TabbedConcepts({
                                                     quality={70}
                                                 />
                                             </div>
-                                            <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400">
+                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                                 {name}
                                             </span>
                                         </button>
                                     </TapFeedback>
                                 );
                             })}
-                            <TapFeedback>
+                            <TapFeedback className="col-span-3 block">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1096,15 +1096,15 @@ function TabbedConcepts({
                                             }
                                         });
                                     }}
-                                    className="col-span-4 mt-3 py-3 text-sm font-medium text-gray-500 dark:text-gray-400"
+                                    className="mt-3 py-3 text-base font-medium text-gray-500 dark:text-gray-400 text-center w-full block"
                                 >
                                     접기 ▲
                                 </button>
                             </TapFeedback>
                         </div>
                     ) : (
-                        /* 가로 스크롤: 8개 + 맨 마지막 전체 보기(텍스트만, 가운데 정렬) */
-                        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-center">
+                        /* 가로 스크롤: 8개 + 맨 마지막 전체 보기 (아이콘 위, 텍스트 아래, 가운데 정렬) */
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-end -mx-5 px-5 justify-center">
                             {conceptItems.slice(0, 8).map((item: ConceptItem) => {
                                 const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
                                 const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
@@ -1119,7 +1119,7 @@ function TabbedConcepts({
                                             }}
                                             className="flex flex-col items-center gap-1.5 shrink-0"
                                         >
-                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
+                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 shrink-0">
                                                 <Image
                                                     src={CATEGORY_ICONS[name] || item.imageUrl || ""}
                                                     alt={name}
@@ -1130,7 +1130,7 @@ function TabbedConcepts({
                                                     priority={conceptItems.indexOf(item) < 8}
                                                 />
                                             </div>
-                                            <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                                 {name}
                                             </span>
                                         </button>
@@ -1138,20 +1138,18 @@ function TabbedConcepts({
                                 );
                             })}
                             {conceptItems.length > 8 && (
-                                <TapFeedback>
-                                    <button
-                                        type="button"
-                                        onClick={handleToggleExpand}
-                                        className="shrink-0 text-xs font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap py-1 text-center"
-                                    >
-                                        전체 보기
+                                <TapFeedback className="-translate-y-1 shrink-0">
+                                    <button type="button" onClick={handleToggleExpand} className="shrink-0">
+                                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                            전체 보기
+                                        </span>
                                     </button>
                                 </TapFeedback>
                             )}
                         </div>
                     )
                 ) : (
-                    <div className="flex gap-5 overflow-x-auto no-scrollbar pt-7 pb-7">
+                    <div className="flex gap-5 overflow-x-auto no-scrollbar pt-7 pb-7 -mx-5 px-5">
                         {/* 🟢 인기별/새로운 탭: 데이터가 없을 때 메시지 표시 */}
                         {activeTabCourses.length === 0 ? (
                             <div className="w-full py-12 text-center text-gray-400 dark:text-gray-500">
@@ -1169,46 +1167,46 @@ function TabbedConcepts({
                                         className="flex flex-col items-center gap-2 shrink-0 w-24"
                                         prefetch={true}
                                     >
-                                    <div className="relative w-20 h-20 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
-                                        <div className="w-full h-full rounded-full overflow-hidden relative">
-                                            <Image
-                                                src={c.imageUrl || ""}
-                                                alt={c.title}
-                                                width={80}
-                                                height={80}
-                                                className="object-cover w-full h-full"
-                                                quality={75}
-                                                sizes="80px"
-                                                priority={activeTabCourses.indexOf(c) < 4}
-                                            />
-                                        </div>
-                                        {activeTab === "popular" && (
-                                            <div className="absolute bottom-0 right-0 w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-600 text-sm">
-                                                🔥
+                                        <div className="relative w-20 h-20 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
+                                            <div className="w-full h-full rounded-full overflow-hidden relative">
+                                                <Image
+                                                    src={c.imageUrl || ""}
+                                                    alt={c.title}
+                                                    width={80}
+                                                    height={80}
+                                                    className="object-cover w-full h-full"
+                                                    quality={75}
+                                                    sizes="80px"
+                                                    priority={activeTabCourses.indexOf(c) < 4}
+                                                />
                                             </div>
-                                        )}
-                                        {activeTab === "new" && (
-                                            <div className="absolute top-0 right-0 min-w-[18px] h-[18px] flex items-center justify-center bg-emerald-500 dark:bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0 rounded-full shadow-md border-2 border-white dark:border-[#1a241b]">
-                                                N
+                                            {activeTab === "popular" && (
+                                                <div className="absolute bottom-0 right-0 w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-600 text-sm">
+                                                    🔥
+                                                </div>
+                                            )}
+                                            {activeTab === "new" && (
+                                                <div className="absolute top-0 right-0 min-w-[18px] h-[18px] flex items-center justify-center bg-emerald-500 dark:bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0 rounded-full shadow-md border-2 border-white dark:border-[#1a241b]">
+                                                    N
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-center w-full">
+                                            <div className="text-[10px] font-extrabold text-gray-800 dark:text-gray-300 truncate px-1">
+                                                {c.title}
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="text-center w-full">
-                                        <div className="text-[10px] font-extrabold text-gray-800 dark:text-gray-300 truncate px-1">
-                                            {c.title}
+                                            <div
+                                                className={`text-[9px] font-bold mt-0.5 ${
+                                                    activeTab === "popular"
+                                                        ? "text-orange-400 dark:text-orange-400/90"
+                                                        : "text-emerald-600 dark:text-emerald-400"
+                                                }`}
+                                            >
+                                                {activeTab === "popular"
+                                                    ? `${(c.view_count || 0).toLocaleString()} views`
+                                                    : "✨ 신규"}
+                                            </div>
                                         </div>
-                                        <div
-                                            className={`text-[9px] font-bold mt-0.5 ${
-                                                activeTab === "popular"
-                                                    ? "text-orange-400 dark:text-orange-400/90"
-                                                    : "text-emerald-600 dark:text-emerald-400"
-                                            }`}
-                                        >
-                                            {activeTab === "popular"
-                                                ? `${(c.view_count || 0).toLocaleString()} views`
-                                                : "✨ 신규"}
-                                        </div>
-                                    </div>
                                     </Link>
                                 </TapFeedback>
                             ))

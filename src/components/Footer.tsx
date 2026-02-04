@@ -10,7 +10,9 @@ import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 
-export default function Footer() {
+type FooterProps = { isApp?: boolean };
+
+export default function Footer({ isApp = false }: FooterProps) {
     const pathname = usePathname();
     const { isAuthenticated } = useAuth();
     const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
@@ -83,7 +85,11 @@ export default function Footer() {
             }}
         >
             <nav
-                className="flex items-center justify-around rounded-full bg-white dark:bg-[#1a241b] shadow-lg border border-gray-100 dark:border-gray-800 w-full max-w-md py-1.5 px-1.5"
+                className={`flex items-center justify-around rounded-full shadow-lg border border-gray-100 dark:border-gray-800 w-full max-w-md py-1.5 px-1.5 ${
+                    isApp
+                        ? "bg-white dark:bg-[#1a241b]"
+                        : "bg-white/75 dark:bg-[#1a241b]/85"
+                }`}
                 style={{
                     backdropFilter: "saturate(180%) blur(12px)",
                 }}

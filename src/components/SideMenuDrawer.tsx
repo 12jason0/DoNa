@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
+import ShopModal from "@/components/ShopModal";
 
 interface SideMenuDrawerProps {
     isOpen: boolean;
@@ -22,6 +23,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
     const pathname = usePathname();
     const { isAuthenticated } = useAuth();
     const [showComingSoon, setShowComingSoon] = useState<null | string>(null);
+    const [showShopModal, setShowShopModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [animateUp, setAnimateUp] = useState(false);
 
@@ -49,7 +51,22 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
         }
     }, [isOpen]);
 
-    if (!isOpen) return null;
+    // 🟢 드로어가 닫혀 있어도 모달(두나샵, Escape, 로그인)은 body 포탈로 렌더해 바로 표시
+    if (!isOpen) {
+        return (
+            <>
+                {showShopModal &&
+                    typeof document !== "undefined" &&
+                    createPortal(<ShopModal onClose={() => setShowShopModal(false)} />, document.body)}
+                {showComingSoon &&
+                    typeof document !== "undefined" &&
+                    createPortal(<ComingSoonModal onClose={() => setShowComingSoon(null)} />, document.body)}
+                {showLoginModal &&
+                    typeof document !== "undefined" &&
+                    createPortal(<LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />, document.body)}
+            </>
+        );
+    }
 
     const overlayAndPanel = (
         <>
@@ -141,7 +158,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                             type="button"
                             onClick={() => {
                                 onClose();
-                                alert("더 완벽한 키트를 위해 준비 중이에요! 조금만 기다려주세요 🎁");
+                                setShowShopModal(true);
                             }}
                             className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
                         >
@@ -278,6 +295,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
             </div>
 
             {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(null)} />}
+            {showShopModal && <ShopModal onClose={() => setShowShopModal(false)} />}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
         </>
     );

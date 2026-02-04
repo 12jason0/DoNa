@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { getS3StaticUrl } from "@/lib/s3Static";
 
 export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
     const [fadeOut, setFadeOut] = useState(false);
     const [step, setStep] = useState(0);
+    const onDoneRef = useRef(onDone);
+    onDoneRef.current = onDone;
 
     useEffect(() => {
         // 모바일에서 주소창/당김 새로고침 등으로 인한 레이아웃 이동 방지: 스크롤 락
@@ -27,7 +29,7 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
         body.style.setProperty("overscroll-behavior", "none");
         body.style.setProperty("touch-action", "none");
 
-        // 🟢 타이밍 조정 (총 4초 노출, 6초→4초 비율 유지)
+        // 🟢 타이밍 조정 (총 4초 노출, 6초→4초 비율 유지). ref 사용으로 부모 재렌더 시 타임라인 재시작 방지
         const timeline = [
             { delay: 70, action: () => setStep(1) },
             { delay: 270, action: () => setStep(2) },
@@ -36,7 +38,7 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
             { delay: 1330, action: () => setStep(5) },
             { delay: 2000, action: () => setStep(6) }, // 로고 등장
             { delay: 3330, action: () => setFadeOut(true) }, // 페이드아웃 시작
-            { delay: 4000, action: () => onDone?.() }, // 완전 종료 (4초)
+            { delay: 4000, action: () => onDoneRef.current?.() }, // 완전 종료 (4초)
         ];
         const timers = timeline.map(({ delay, action }) => setTimeout(action, delay));
         return () => {
@@ -55,7 +57,7 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
             if (prevBodyTouchAction) body.style.setProperty("touch-action", prevBodyTouchAction);
             else body.style.removeProperty("touch-action");
         };
-    }, [onDone]);
+    }, []);
 
     // 🟢 fadeOut 시작 시 스크롤 락을 미리 해제하여 콘텐츠가 바로 보이도록
     useEffect(() => {
@@ -70,7 +72,7 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
             body.style.removeProperty("overscroll-behavior");
             body.style.removeProperty("touch-action");
         }
-    }, [onDone]);
+    }, [fadeOut]);
 
     return (
         <div

@@ -31,12 +31,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [mounted, setMounted] = useState(false);
     const [contentReady, setContentReady] = useState(false);
 
-    // 🟢 앱 환경 감지: 초기 렌더링 시점에 즉시 확인 (useEffect 지연 방지)
-    // 서버 사이드에서는 항상 false (웹으로 간주)
-    const [isApp, setIsApp] = useState(() => {
-        if (typeof window === "undefined") return false;
-        return isMobileApp();
-    });
+    // 🟢 앱 환경 감지: 서버/클라이언트 첫 렌더를 같게 해서 hydration mismatch 방지. 실제 값은 useEffect에서 설정
+    const [isApp, setIsApp] = useState(false);
 
     // 경로 변수들
     const isEscapeIntroPage = pathname.startsWith("/escape/intro");
@@ -88,11 +84,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         }
 
         // 🟢 클라이언트에서만: 첫 방문이면 스플래시 표시, 아니면 콘텐츠 바로 표시
+        // 🟢 dona-splash-started: 리마운트 시 스플래시 재시작 방지 (한 번이라도 시작했으면 재진입 시 스킵)
         try {
             const already =
                 typeof window !== "undefined" &&
                 (sessionStorage.getItem("dona-splash-shown") || sessionStorage.getItem("login-after-splash"));
-            if (!already) {
+            const splashStarted =
+                typeof window !== "undefined" && sessionStorage.getItem("dona-splash-started");
+            if (!already && !splashStarted) {
+                if (typeof window !== "undefined") sessionStorage.setItem("dona-splash-started", "1");
                 setShowSplash(true);
             } else {
                 setContentReady(true);
@@ -170,33 +170,27 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 }
             `}</style>
 
-            {!mounted ? null : ( // 🟢 Hydration 일치: 서버가 해당 슬롯을 비울 수 있으므로 클라이언트도 null로 맞춤
-                <>
-                    {/* 🟢 [PHYSICAL PRODUCT]: 메인 진입 시에만 스플래시 노출, 샵 페이지 이동 시에는 제외 */}
-                    {showSplash && !isShopPage && (
-                        <DonaSplashFinal
-                            onDone={() => {
-                                // 🟢 스플래시가 완전히 끝난 후 즉시 콘텐츠 표시 (대기 시간 제거)
-                                try {
-                                    sessionStorage.setItem("dona-splash-shown", "1");
-                                } catch {}
+            {/* 🟢 LCP 개선: 메인 콘텐츠는 항상 DOM에 렌더 (히어로 이미지 즉시 로드). 스플래시는 오버레이만 표시 */}
+            {showSplash && !isShopPage && (
+                <DonaSplashFinal
+                    onDone={() => {
+                        try {
+                            sessionStorage.setItem("dona-splash-shown", "1");
+                        } catch {}
+                        setContentReady(true);
+                        setShowSplash(false);
+                    }}
+                />
+            )}
 
-                                setContentReady(true);
-                                setShowSplash(false);
-                            }}
-                        />
-                    )}
-
-                    {/* 🟢 스플래시가 완전히 끝난 후에만 메인 콘텐츠 표시 */}
-                    {contentReady && (
-                        <div
-                            className="min-h-screen homepage-bg-container"
-                            style={{
-                                backgroundColor: showSplash || !contentReady ? "#7FCC9F" : "transparent",
-                                transition: "opacity 0.6s ease-in-out, background-color 1s ease-in-out",
-                                opacity: contentReady ? 1 : 0,
-                            }}
-                        >
+            {/* 🟢 메인 콘텐츠 항상 렌더 (스플래시 중에도 DOM에 있어 이미지 로드 → LCP 2.5초 이내 목표) */}
+            <div
+                className="min-h-screen homepage-bg-container"
+                style={{
+                    backgroundColor: showSplash && !contentReady ? "#7FCC9F" : "transparent",
+                    transition: "opacity 0.6s ease-in-out, background-color 1s ease-in-out",
+                }}
+            >
                             <div
                                 className={`h-screen ${
                                     !isApp ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6" : ""
@@ -357,7 +351,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                             <>
                                                 {/* 드로어 닫혀 있을 때: 인라인 버튼 (클릭 시 위치 계산용 ref) */}
                                                 {!sideMenuOpen && (
-                                                    <div className="fixed bottom-21 right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 lg:bottom-21">
+                                                    <div className="fixed bottom-28 right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 lg:bottom-28">
                                                         <button
                                                             ref={plusButtonRef}
                                                             type="button"
@@ -392,7 +386,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     typeof document !== "undefined" &&
                                                     createPortal(
                                                         <div
-                                                            className="fixed bottom-21 right-6 z-2010 pointer-events-none flex items-center gap-2.5"
+                                                            className="fixed bottom-28 right-6 z-2010 pointer-events-none flex items-center gap-2.5"
                                                             style={{ position: "fixed" }}
                                                         >
                                                             {riseDone && (
@@ -451,7 +445,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     )}
                                             </>
                                         )}
-                                        <Footer />
+                                        <Footer isApp={isApp} />
                                         <SideMenuDrawer
                                             isOpen={sideMenuOpen}
                                             onClose={() => {
@@ -468,9 +462,6 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 </div>
                             </div>
                         </div>
-                    )}
-                </>
-            )}
         </>
     );
 }
