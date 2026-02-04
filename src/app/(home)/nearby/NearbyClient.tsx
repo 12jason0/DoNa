@@ -543,7 +543,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             {isActuallyLoading && <CourseLoadingOverlay />}
             <section className="max-w-[500px] lg:max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
                 {/* --- Header & Search Section --- */}
-                <div className="sticky top-0 z-40 bg-white dark:bg-[#0f1710] px-5 pt-4 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0">
+                <div className="sticky top-[env(safe-area-inset-top,0)] z-40 bg-white dark:bg-[#0f1710] px-5 pt-[calc(env(safe-area-inset-top,0)+1rem)] pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0">
                     <div className="relative mb-3">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                             <svg
@@ -723,7 +723,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 </div>
                             )}
 
-                            <div className="space-y-8">
+                            <div className="flex flex-col gap-8">
                                 {/* 🟢 iOS: Premium 코스 필터링, Android/Web: 모든 코스 표시 */}
                                 {(displayCourses.length > 0 || isRecommendation) &&
                                     displayCourses

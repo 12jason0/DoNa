@@ -301,7 +301,7 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
-            <div className="bg-white dark:bg-[#1a241b] px-5 pt-6 pb-2 sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
+            <div className="bg-white dark:bg-[#1a241b] px-5 pt-[calc(env(safe-area-inset-top,0)+1.5rem)] pb-2 sticky top-[env(safe-area-inset-top,0)] z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
                 <div className="flex justify-between items-end mb-2">
                     <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
                         완벽한 하루
@@ -402,7 +402,7 @@ className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibo
                 </div>
             </div>
 
-            <div className="px-5 py-6 space-y-6">
+            <div className="px-5 py-6 flex flex-col gap-6">
                 {/* 🟢 [Performance]: 네비게이션 로딩 표시 */}
                 {isNavigating && <CourseLoadingOverlay />}
                 {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
