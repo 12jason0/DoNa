@@ -416,7 +416,7 @@ className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibo
                                     <CourseReportBanner />
                                 </div>
                             )}
-                            <TapFeedback className="block">
+                            <TapFeedback className="block w-full">
                                 <CourseCard
                                     course={course}
                                     isPriority={i < 4}

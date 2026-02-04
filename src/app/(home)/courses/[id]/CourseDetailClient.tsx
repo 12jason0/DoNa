@@ -308,6 +308,7 @@ export default function CourseDetailClient({
     const [showShareModal, setShowShareModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
+    const [placeModalSlideUp, setPlaceModalSlideUp] = useState(false);
     // 🔒 [접근 제어] 잠긴 코스는 초기 state에서 즉시 모달 표시 (페이지가 보이기 전에)
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
         return courseData.isLocked ? true : false;
@@ -338,6 +339,15 @@ export default function CourseDetailClient({
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const mapSectionRef = useRef<HTMLDivElement | null>(null);
+
+    // 🟢 장소 모달 하단 시트: 열릴 때 slideUp 애니메이션
+    useEffect(() => {
+        if (!showPlaceModal || !selectedPlace) return;
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setPlaceModalSlideUp(true));
+        });
+        return () => cancelAnimationFrame(t);
+    }, [showPlaceModal, selectedPlace]);
 
     // 🟢 [Fix]: 지도 랙(Lag) 및 preventDefault 에러 원천 차단 패치
     useEffect(() => {
@@ -1585,11 +1595,17 @@ export default function CourseDetailClient({
             )}
             {showPlaceModal && selectedPlace && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-9999 flex items-center justify-center p-4 animate-fade-in"
-                    onClick={() => setShowPlaceModal(false)}
+                    className="fixed inset-0 bg-black/60 z-9999 flex flex-col justify-end animate-fade-in"
+                    onClick={() => {
+                        setPlaceModalSlideUp(false);
+                        setTimeout(() => setShowPlaceModal(false), 300);
+                    }}
                 >
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-lg w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl"
+                        className="bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl mx-auto transition-transform duration-300 ease-out pb-[env(safe-area-inset-bottom)]"
+                        style={{
+                            transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                        }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
@@ -1607,7 +1623,10 @@ export default function CourseDetailClient({
                                 />
                             )}
                             <button
-                                onClick={() => setShowPlaceModal(false)}
+                                onClick={() => {
+                                    setPlaceModalSlideUp(false);
+                                    setTimeout(() => setShowPlaceModal(false), 300);
+                                }}
                                 className="absolute top-4 right-4 bg-black/30 text-white w-9 h-9 rounded-full flex items-center justify-center"
                             >
                                 ×
@@ -1725,7 +1744,10 @@ export default function CourseDetailClient({
                                 )}
                                 <button
                                     className="w-full py-3 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
-                                    onClick={() => setShowPlaceModal(false)}
+                                    onClick={() => {
+                                        setPlaceModalSlideUp(false);
+                                        setTimeout(() => setShowPlaceModal(false), 300);
+                                    }}
                                 >
                                     닫기
                                 </button>

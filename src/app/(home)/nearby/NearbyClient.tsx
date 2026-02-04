@@ -594,7 +594,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     setModalSelectedLabels([...selectedFilterLabels]);
                                     setShowCategoryModal(true);
                                 }}
-                                className="absolute inset-y-0 right-3 flex items-center"
+                                className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-12"
                             >
                                 <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -612,7 +612,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
                     <div className="flex flex-col gap-3">
                         {/* 지역 카테고리 */}
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth">
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth flex-nowrap">
                             {(displayKeyword || selectedTagIds.length > 0 || selectedFilterLabels.length > 0) && (
                                 <>
                                     <TapFeedback>
@@ -639,7 +639,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 <TapFeedback key={r}>
                                     <button
                                         onClick={() => toggleRegionSingle(r)}
-                                        className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold transition-all border ${
+                                        className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold transition-all border whitespace-nowrap ${
                                             selectedRegions.includes(r)
                                                 ? "bg-emerald-600 text-white border-emerald-600"
                                                 : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700"
@@ -653,15 +653,15 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
 
                         {/* 선택한 필터 표시 */}
                         {selectedFilterLabels.length > 0 && (
-                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth">
-                                <div className="text-[12px] text-gray-500 dark:text-gray-400 font-medium shrink-0 mr-1">
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth flex-nowrap">
+                                <div className="text-[12px] text-gray-500 dark:text-gray-400 font-medium shrink-0 mr-1 whitespace-nowrap">
                                     필터:
                                 </div>
                                 {selectedFilterLabels.map((label) => (
                                     <TapFeedback key={label}>
                                         <button
                                             onClick={() => removeFilterLabel(label)}
-                                            className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5"
+                                            className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5 whitespace-nowrap"
                                         >
                                             {label}
                                             <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">✕</span>
