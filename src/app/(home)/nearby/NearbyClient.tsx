@@ -594,17 +594,17 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     setModalSelectedLabels([...selectedFilterLabels]);
                                     setShowCategoryModal(true);
                                 }}
-                                className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-12"
+                                className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-12 -translate-y-3"
                             >
-                                <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                                    />
-                                </svg>
+                                <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                                        />
+                                    </svg>
                                 </div>
                             </button>
                         </TapFeedback>
@@ -664,7 +664,9 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             className="shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5 whitespace-nowrap"
                                         >
                                             {label}
-                                            <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">✕</span>
+                                            <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">
+                                                ✕
+                                            </span>
                                         </button>
                                     </TapFeedback>
                                 ))}
@@ -729,7 +731,10 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     displayCourses
                                         .filter((c) => {
                                             // iOS/Android에서는 Premium 코스를 숨김
-                                            if ((platform === "ios" || platform === "android") && c.grade === "PREMIUM") {
+                                            if (
+                                                (platform === "ios" || platform === "android") &&
+                                                c.grade === "PREMIUM"
+                                            ) {
                                                 return false;
                                             }
                                             return true;

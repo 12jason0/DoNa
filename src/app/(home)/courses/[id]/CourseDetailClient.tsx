@@ -309,6 +309,7 @@ export default function CourseDetailClient({
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
     const [placeModalSlideUp, setPlaceModalSlideUp] = useState(false);
+    const [shareModalSlideUp, setShareModalSlideUp] = useState(false);
     // 🔒 [접근 제어] 잠긴 코스는 초기 state에서 즉시 모달 표시 (페이지가 보이기 전에)
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
         return courseData.isLocked ? true : false;
@@ -348,6 +349,15 @@ export default function CourseDetailClient({
         });
         return () => cancelAnimationFrame(t);
     }, [showPlaceModal, selectedPlace]);
+
+    // 🟢 공유 모달 하단 시트: 열릴 때 slideUp 애니메이션
+    useEffect(() => {
+        if (!showShareModal) return;
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setShareModalSlideUp(true));
+        });
+        return () => cancelAnimationFrame(t);
+    }, [showShareModal]);
 
     // 🟢 [Fix]: 지도 랙(Lag) 및 preventDefault 에러 원천 차단 패치
     useEffect(() => {
@@ -1487,21 +1497,30 @@ export default function CourseDetailClient({
                 </div>
             )}
 
-            {/* 공유 모달 */}
+            {/* 공유 모달 - 하단 시트 + 다크모드 */}
             {showShareModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-9999 flex items-center justify-center p-4 animate-fade-in"
-                    onClick={() => setShowShareModal(false)}
+                    className="fixed inset-0 bg-black/60 dark:bg-black/70 z-9999 flex flex-col justify-end animate-fade-in"
+                    onClick={() => {
+                        setShareModalSlideUp(false);
+                        setTimeout(() => setShowShareModal(false), 300);
+                    }}
                 >
                     <div
-                        className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl"
+                        className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl transition-transform duration-300 ease-out"
+                        style={{
+                            transform: shareModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                        }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-bold text-gray-900">공유하기</h3>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">공유하기</h3>
                             <button
-                                onClick={() => setShowShareModal(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                onClick={() => {
+                                    setShareModalSlideUp(false);
+                                    setTimeout(() => setShowShareModal(false), 300);
+                                }}
+                                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                             >
                                 <Icons.Close className="w-6 h-6" />
                             </button>
@@ -1516,10 +1535,10 @@ export default function CourseDetailClient({
                             </button>
                             <button
                                 onClick={handleCopyLink}
-                                className="flex items-center gap-4 p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors active:scale-95"
+                                className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors active:scale-95"
                             >
                                 <Icons.Link />
-                                <span className="font-bold text-gray-900">링크 복사</span>
+                                <span className="font-bold text-gray-900 dark:text-white">링크 복사</span>
                             </button>
                         </div>
                     </div>
