@@ -1166,28 +1166,20 @@ export default function CourseDetailClient({
                                                                         className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
                                                                     >
                                                                         <div className="flex items-center gap-1.5 mb-1">
-                                                                            <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
                                                                             <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
                                                                                 PREMIUM TIP
                                                                             </span>
                                                                         </div>
-                                                                        <div className="relative">
-                                                                            <p className="text-xs text-gray-700 dark:text-gray-100 relative z-10">
-                                                                                웨이팅 피하는 시간은...
-                                                                            </p>
-                                                                            <p
-                                                                                className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 blur-sm select-none pointer-events-none"
-                                                                                aria-hidden
-                                                                            >
-                                                                                포인트 테이블 위치와 예약 타이밍, 데이트
-                                                                                고수만 아는 비법이 숨겨져 있어요.
-                                                                            </p>
-                                                                        </div>
-                                                                        <p className="mt-1.5 text-[10px] text-gray-600 dark:text-gray-300">
-                                                                            {!isAuthenticated
-                                                                                ? "로그인 후 Basic 등급이 되면 이 장소의 숨겨진 유료 팁을 바로 확인할 수 있어요!"
-                                                                                : "인스타 핫플 말고, 진짜 고수들만 아는 유료 팁이 궁금하다면?"}
+                                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                                                            🔒 이곳의 시크릿 꿀팁 잠금 해제
                                                                         </p>
+                                                                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                                                                            베이직(Basic) 멤버십으로 완벽한 데이트를
+                                                                            준비하세요.
+                                                                        </p>
+                                                                        <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                                                                            멤버십 가입하고 확인하기 &gt;
+                                                                        </span>
                                                                     </button>
                                                                 ))}
                                                         </div>
@@ -1685,9 +1677,13 @@ export default function CourseDetailClient({
                         >
                             <span className="w-6 h-6 shrink-0 text-red-500 dark:text-red-400 [&_svg]:size-full">
                                 {favoriteSheetType === "added" ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 4.52853C14.35 2.42 17.98 2.49 20.2426 4.75736C22.5053 7.02472 22.583 10.637 20.4786 12.993L11.9999 21.485L3.52138 12.993C1.41705 10.637 1.49571 7.01901 3.75736 4.75736C6.02157 2.49315 9.64519 2.41687 12.001 4.52853Z"></path></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12.001 4.52853C14.35 2.42 17.98 2.49 20.2426 4.75736C22.5053 7.02472 22.583 10.637 20.4786 12.993L11.9999 21.485L3.52138 12.993C1.41705 10.637 1.49571 7.01901 3.75736 4.75736C6.02157 2.49315 9.64519 2.41687 12.001 4.52853Z"></path>
+                                    </svg>
                                 ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 4.52853C14.35 2.42 17.98 2.49 20.2426 4.75736C22.5053 7.02472 22.583 10.637 20.4786 12.993L11.9999 21.485L3.52138 12.993C1.41705 10.637 1.49571 7.01901 3.75736 4.75736C6.02157 2.49315 9.64519 2.41687 12.001 4.52853ZM18.827 6.1701C17.3279 4.66794 14.9076 4.60701 13.337 6.01687L12.0019 7.21524L10.6661 6.01781C9.09098 4.60597 6.67506 4.66808 5.17157 6.17157C3.68183 7.66131 3.60704 10.0473 4.97993 11.6232L11.9999 18.6543L19.0201 11.6232C20.3935 10.0467 20.319 7.66525 18.827 6.1701Z"></path></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12.001 4.52853C14.35 2.42 17.98 2.49 20.2426 4.75736C22.5053 7.02472 22.583 10.637 20.4786 12.993L11.9999 21.485L3.52138 12.993C1.41705 10.637 1.49571 7.01901 3.75736 4.75736C6.02157 2.49315 9.64519 2.41687 12.001 4.52853ZM18.827 6.1701C17.3279 4.66794 14.9076 4.60701 13.337 6.01687L12.0019 7.21524L10.6661 6.01781C9.09098 4.60597 6.67506 4.66808 5.17157 6.17157C3.68183 7.66131 3.60704 10.0473 4.97993 11.6232L11.9999 18.6543L19.0201 11.6232C20.3935 10.0467 20.319 7.66525 18.827 6.1701Z"></path>
+                                    </svg>
                                 )}
                             </span>
                             <p className="text-sm font-medium text-gray-900 dark:text-white flex-1">
@@ -1742,13 +1738,13 @@ export default function CourseDetailClient({
                     }}
                 >
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl mx-auto transition-transform duration-300 ease-out pb-[env(safe-area-inset-bottom)]"
+                        className="bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col shadow-2xl mx-auto transition-transform duration-300 ease-out pb-[env(safe-area-inset-bottom)]"
                         style={{
                             transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
+                        <div className="relative h-48 shrink-0 bg-gray-100 dark:bg-gray-800">
                             {selectedPlace.imageUrl && (
                                 <Image
                                     src={selectedPlace.imageUrl}
@@ -1772,7 +1768,7 @@ export default function CourseDetailClient({
                                 ×
                             </button>
                         </div>
-                        <div className="p-5 text-black dark:text-white">
+                        <div className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto">
                             <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
                             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
                                 {selectedPlace.address}
@@ -1845,23 +1841,15 @@ export default function CourseDetailClient({
                                                             PREMIUM TIP
                                                         </span>
                                                     </div>
-                                                    <div className="relative">
-                                                        <p className="text-xs text-gray-700 dark:text-gray-100 relative z-10">
-                                                            웨이팅 피하는 시간은...
-                                                        </p>
-                                                        <p
-                                                            className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 blur-sm select-none pointer-events-none"
-                                                            aria-hidden
-                                                        >
-                                                            포인트 테이블 위치와 예약 타이밍, 데이트 고수만 아는 비법이
-                                                            숨겨져 있어요.
-                                                        </p>
-                                                    </div>
-                                                    <p className="mt-1.5 text-[10px] text-gray-600 dark:text-gray-300">
-                                                        {!isAuthenticated
-                                                            ? "로그인 후 Basic 등급이 되면 이 장소의 숨겨진 유료 팁을 바로 확인할 수 있어요!"
-                                                            : "인스타 핫플 말고, 진짜 고수들만 아는 유료 팁이 궁금하다면?"}
+                                                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                                        🔒 이곳의 시크릿 꿀팁 잠금 해제
                                                     </p>
+                                                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                                                        베이직(Basic) 멤버십으로 완벽한 데이트를 준비하세요.
+                                                    </p>
+                                                    <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                                                        멤버십 가입하고 확인하기 &gt;
+                                                    </span>
                                                 </button>
                                             ))}
                                     </div>
