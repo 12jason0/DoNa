@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { getS3StaticUrl } from "@/lib/s3Static";
 
-export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
+/** overlayOnly: true면 배경/로고는 그리지 않고 서버 스플래시 위에 애니메이션만 올림 (스플래시 두 번 느낌 방지) */
+export default function DonaSplashFinal({ onDone, overlayOnly = false }: { onDone?: () => void; overlayOnly?: boolean }) {
     const [fadeOut, setFadeOut] = useState(false);
     const [step, setStep] = useState(0);
     const onDoneRef = useRef(onDone);
@@ -88,34 +89,38 @@ export default function DonaSplashFinal({ onDone }: { onDone?: () => void }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "#7FCC9F", // 🟢 스플래시는 항상 라이트 모드 색상 유지
+                background: overlayOnly ? "transparent" : "#7FCC9F", // 🟢 overlayOnly면 서버 스플래시가 보이도록 투명
                 transition: "opacity 1s ease",
                 opacity: fadeOut ? 0 : 1,
-                zIndex: 9999,
+                zIndex: 100000,
                 overscrollBehavior: "none",
                 touchAction: "none",
-                // 🟢 상태표시줄까지 덮기 위한 추가 설정
                 margin: 0,
                 padding: 0,
+                pointerEvents: "auto",
             }}
         >
-            {/* 🟢 상단 safe area 영역 (스플래시 배경색과 동일) */}
-            <div 
-                className="absolute top-0 left-0 right-0 z-10"
-                style={{ 
-                    height: "env(safe-area-inset-top, 0)",
-                    backgroundColor: "#7FCC9F",
-                }}
-            />
-            
-            {/* 🟢 하단 safe area 영역 (안드로이드 네비게이션 바, 스플래시 배경색과 동일) */}
-            <div 
-                className="absolute bottom-0 left-0 right-0 z-10"
-                style={{ 
-                    height: "env(safe-area-inset-bottom, 0)",
-                    backgroundColor: "#7FCC9F",
-                }}
-            />
+            {/* 🟢 상단 safe area 영역 (overlayOnly가 아니면만 배경색 적용) */}
+            {!overlayOnly && (
+                <div
+                    className="absolute top-0 left-0 right-0 z-10"
+                    style={{
+                        height: "env(safe-area-inset-top, 0)",
+                        backgroundColor: "#7FCC9F",
+                    }}
+                />
+            )}
+
+            {/* 🟢 하단 safe area 영역 (overlayOnly가 아니면만 배경색 적용) */}
+            {!overlayOnly && (
+                <div
+                    className="absolute bottom-0 left-0 right-0 z-10"
+                    style={{
+                        height: "env(safe-area-inset-bottom, 0)",
+                        backgroundColor: "#7FCC9F",
+                    }}
+                />
+            )}
             
             {/* 지도 배경 그리드 */}
             <div

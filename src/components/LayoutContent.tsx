@@ -70,6 +70,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         };
     }, []);
 
+    // 🟢 서버 스플래시 제거 (첫 HTML에 그려진 #server-splash를 클라이언트에서 제거)
+    const removeServerSplash = () => {
+        if (typeof document === "undefined") return;
+        const el = document.getElementById("server-splash");
+        if (el?.parentNode) el.parentNode.removeChild(el);
+    };
+
     // 🟢 Effect 1: 마운트 후 초기 설정, 스플래시 여부(sessionStorage) 및 샵 페이지 체크
     useEffect(() => {
         setMounted(true);
@@ -80,6 +87,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         if (isShopPage) {
             setShowSplash(false);
             setContentReady(true);
+            removeServerSplash();
             return;
         }
 
@@ -96,9 +104,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 setShowSplash(true);
             } else {
                 setContentReady(true);
+                removeServerSplash();
             }
         } catch {
             setContentReady(true);
+            removeServerSplash();
         }
     }, [isShopPage]);
 
@@ -131,6 +141,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
         };
     }, [showSplash]);
+
+    // 🟢 contentReady가 true가 되면 서버 스플래시 제거 (재방문·스플래시 완료 시). showSplash일 때는 제거하지 않음 → 서버 스플래시 위에 DonaSplashFinal 오버레이만 그려서 한 번만 보이게 함
+    useEffect(() => {
+        if (!contentReady) return;
+        removeServerSplash();
+    }, [contentReady]);
 
     // 🟢 Effect 2: 바디 클래스 관리 및 배경색 전환
     useEffect(() => {
@@ -173,6 +189,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             {/* 🟢 LCP 개선: 메인 콘텐츠는 항상 DOM에 렌더 (히어로 이미지 즉시 로드). 스플래시는 오버레이만 표시 */}
             {showSplash && !isShopPage && (
                 <DonaSplashFinal
+                    overlayOnly
                     onDone={() => {
                         try {
                             sessionStorage.setItem("dona-splash-shown", "1");
@@ -396,6 +413,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                             )}
                                                             <button
                                                                 type="button"
+                                                                onPointerDown={() => {
+                                                                    if (isAuthenticated) router.prefetch("/mypage");
+                                                                }}
                                                                 onClick={() => {
                                                                     if (riseDoneTimeoutRef.current) {
                                                                         clearTimeout(riseDoneTimeoutRef.current);

@@ -98,6 +98,19 @@ const KEYWORD_BLACKLIST = [
     "테이크아웃",
     "스터디카페",
     "독서실",
+    "증권",
+    "기업",
+    "회사",
+    "노인정",
+    "의료",
+    "인테리어",
+    "건강",
+    "산업",
+    "종교",
+    "자동차",
+    "부동산",
+    "가정",
+    "생활",
 ];
 
 function isBlacklistedByKeyword(doc: any): boolean {

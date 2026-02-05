@@ -1024,7 +1024,7 @@ function TabbedConcepts({
     }, [courses]);
 
     return (
-        <section className="py-8 px-5">
+        <section className="py-8 px-5" suppressHydrationWarning>
             {/* 필터 탭·카테고리: 완벽한 하루와 동일 가로 패딩 (가로 스크롤 영역 -mx-5 px-5) */}
             <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar -mx-5 px-5">
                 {[

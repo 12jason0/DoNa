@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import ClientBodyLayout from "./ClientBodyLayout";
-import InitialSplash from "@/components/InitialSplash";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
 
 const logoUrl = getS3StaticUrlForMetadata("logo/donalogo_512.png");
@@ -139,8 +138,17 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
                 }}
             />
 
-            {/* 🔥 초기 스플래시: 첫 방문에만 표시, F5 시에는 미표시 (sessionStorage) */}
-            <InitialSplash logoUrl={logoUrl} />
+            {/* 🟢 서버 렌더 스플래시: 첫 HTML부터 초록 배경만 표시 → 로고/텍스트 없이 바로 DonaSplashFinal로 이어짐. 클라이언트에서 제거. */}
+            <div
+                id="server-splash"
+                suppressHydrationWarning
+                style={{
+                    position: "fixed",
+                    inset: 0,
+                    backgroundColor: "#7FCC9F",
+                    zIndex: 99999,
+                }}
+            />
 
             {/* Providers 및 내부 레이아웃 */}
             <Providers>

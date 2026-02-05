@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
@@ -14,6 +14,7 @@ type FooterProps = { isApp?: boolean };
 
 export default function Footer({ isApp = false }: FooterProps) {
     const pathname = usePathname();
+    const router = useRouter();
     const { isAuthenticated } = useAuth();
     const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -182,6 +183,8 @@ export default function Footer({ isApp = false }: FooterProps) {
                         <Link
                             href="/mypage"
                             prefetch={true}
+                            onMouseEnter={() => router.prefetch("/mypage")}
+                            onFocus={() => router.prefetch("/mypage")}
                             aria-label="마이페이지"
                             className={`p-1.5 rounded-full transition-colors relative block ${
                                 isActive("/mypage")

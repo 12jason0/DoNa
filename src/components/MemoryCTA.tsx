@@ -33,10 +33,10 @@ export default function MemoryCTA({
     onAction,
     onMemoryClick,
 }: MemoryCTAProps) {
-    const content = !isAuthenticated 
-        ? MEMORY_MESSAGES.notLoggedIn 
-        : hasMemories 
-        ? MEMORY_MESSAGES.filled 
+    const content = !isAuthenticated
+        ? MEMORY_MESSAGES.notLoggedIn
+        : hasMemories
+        ? MEMORY_MESSAGES.filled
         : MEMORY_MESSAGES.empty;
 
     // 제목을 10글자로 제한하는 함수
@@ -76,7 +76,7 @@ export default function MemoryCTA({
     // 비로그인: 슬림 알림바 (좌: 2줄 텍스트 / 우: 작은 pill 버튼)
     if (!isAuthenticated) {
         return (
-            <section className="w-full bg-white/80 dark:bg-[#111b15] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm py-3 px-4 flex items-center justify-between gap-3">
+            <section className="w-full bg-white dark:bg-[#111b15] rounded-xl border border-transparent dark:border-transparent shadow-sm py-3 px-4 flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug truncate">
                         {content.title}
@@ -91,7 +91,7 @@ export default function MemoryCTA({
                     type="button"
                     onClick={onAction}
                     disabled={isLoading}
-                    className="shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-colors disabled:opacity-50"
+                    className="shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-white bg-[#7aa06f] hover:bg-[#6b8f62] dark:bg-[#7aa06f] dark:hover:bg-[#6b8f62] transition-colors disabled:opacity-50"
                 >
                     {isLoading ? "잠시만요..." : content.button}
                 </button>
@@ -106,9 +106,15 @@ export default function MemoryCTA({
                 <div className="flex-1">
                     <div className="flex items-center gap-2">
                         {hasMemories && (
-                            <Lock className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.5} aria-hidden />
+                            <Lock
+                                className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0"
+                                strokeWidth={1.5}
+                                aria-hidden
+                            />
                         )}
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{content.title}</h3>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">
+                            {content.title}
+                        </h3>
                     </div>
                     {!hasMemories && content.subtitle && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{content.subtitle}</p>
@@ -133,16 +139,16 @@ export default function MemoryCTA({
 
             {/* 추억 카드 가로 스크롤 영역 */}
             {hasMemories && memories.length > 0 ? (
-                <div 
+                <div
                     ref={scrollRef}
                     className="overflow-x-auto no-scrollbar -mx-2 px-2"
                     style={{
-                        WebkitOverflowScrolling: 'touch',
-                        scrollSnapType: 'x mandatory',
-                        touchAction: 'pan-x',
+                        WebkitOverflowScrolling: "touch",
+                        scrollSnapType: "x mandatory",
+                        touchAction: "pan-x",
                     }}
                 >
-                    <div className="flex gap-5 pb-2" style={{ width: 'max-content', minWidth: '100%' }}>
+                    <div className="flex gap-5 pb-2" style={{ width: "max-content", minWidth: "100%" }}>
                         {memories.map((memory, index) => (
                             <div
                                 key={memory.id || index}
@@ -155,7 +161,7 @@ export default function MemoryCTA({
                                 }}
                                 className="shrink-0 w-[180px] bg-white dark:bg-[#0e1b16] border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98]"
                                 style={{
-                                    scrollSnapAlign: 'start',
+                                    scrollSnapAlign: "start",
                                 }}
                             >
                                 {/* 이미지 영역 (3:2 비율: 풍경/데이트 코스에 안정적) */}

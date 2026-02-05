@@ -29,7 +29,8 @@ export default function TapFeedback({
     const onPointerCancel = useCallback(() => setPressed(false), []);
 
     return (
-        <span
+        <div
+            role="presentation"
             className={`tap-feedback-wrapper inline-block relative select-none ${className}`}
             style={{
                 WebkitTapHighlightColor: "transparent",
@@ -55,6 +56,6 @@ export default function TapFeedback({
                     />
                 )}
             </span>
-        </span>
+        </div>
     );
 }

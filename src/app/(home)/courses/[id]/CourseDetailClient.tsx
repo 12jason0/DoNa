@@ -66,7 +66,12 @@ const Icons = {
         </svg>
     ),
     Bulb: ({ className }: { className?: string }) => (
-        <svg className={className || "w-4 h-4 text-emerald-500 shrink-0"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+            className={className || "w-4 h-4 text-emerald-500 shrink-0"}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+        >
             <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -83,6 +88,13 @@ const Icons = {
                 strokeWidth="2"
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
             />
+        </svg>
+    ),
+    Crown: ({ className }: { className?: string }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2 17h20" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 17V8l5-4 5 4v9" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 17l3-6 3 4 3-6 3 4 3-6" />
         </svg>
     ),
     Kakao: () => (
@@ -245,7 +257,7 @@ const ToastPopup = ({
     onClose: () => void;
 }) => {
     useEffect(() => {
-        const timer = setTimeout(onClose, 2000);
+        const timer = setTimeout(onClose, 1000);
         return () => clearTimeout(timer);
     }, [onClose]);
     const bgColor = type === "error" ? "bg-rose-600/90" : "bg-[#1A1A1A]/90";
@@ -301,6 +313,24 @@ export default function CourseDetailClient({
         router.prefetch("/");
     }, [router]);
 
+    // 🟢 나만의 추억 클릭 시 빠른 진입: start 페이지 미리 prefetch
+    useEffect(() => {
+        if (courseId) router.prefetch(`/courses/${courseId}/start`);
+    }, [courseId, router]);
+
+    // 🟢 나만의 추억: 로그인 시 한도 체크 API 미리 요청 → 클릭 시 대기 없이 진입
+    useEffect(() => {
+        if (!isAuthenticated || authLoading || memoryCountPromiseRef.current) return;
+        memoryCountPromiseRef.current = (async () => {
+            const { authenticatedFetch } = await import("@/lib/authClient");
+            return authenticatedFetch<{
+                count: number;
+                limit: number | null;
+                tier: string;
+            }>("/api/users/me/memory-count");
+        })();
+    }, [isAuthenticated, authLoading]);
+
     // --- State ---
     const [reviews, setReviews] = useState<Review[]>(initialReviews);
     const [isSaved, setIsSaved] = useState(false);
@@ -316,6 +346,9 @@ export default function CourseDetailClient({
     });
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
+    const [showFavoriteAddedModal, setShowFavoriteAddedModal] = useState(false);
+    const [favoriteSheetType, setFavoriteSheetType] = useState<"added" | "removed">("added");
+    const [favoriteModalSlideUp, setFavoriteModalSlideUp] = useState(false);
 
     // 🔒 [접근 제어] 인증 상태 확인 후 잠긴 코스의 모달 타입 결정
     useEffect(() => {
@@ -340,6 +373,10 @@ export default function CourseDetailClient({
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const mapSectionRef = useRef<HTMLDivElement | null>(null);
+    // 🟢 나만의 추억: 터치/마우스 다운 시 한도 체크 미리 요청해 클릭 시 대기 최소화
+    const memoryCountPromiseRef = useRef<Promise<{ count: number; limit: number | null; tier: string } | null> | null>(
+        null
+    );
 
     // 🟢 장소 모달 하단 시트: 열릴 때 slideUp 애니메이션
     useEffect(() => {
@@ -358,6 +395,25 @@ export default function CourseDetailClient({
         });
         return () => cancelAnimationFrame(t);
     }, [showShareModal]);
+
+    // 🟢 찜 추가 하단 시트: 열릴 때 slideUp, 1초 뒤 자동 닫기
+    useEffect(() => {
+        if (!showFavoriteAddedModal) return;
+        setFavoriteModalSlideUp(false);
+        const raf = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setFavoriteModalSlideUp(true));
+        });
+        let hideTimer: ReturnType<typeof setTimeout> | null = null;
+        const closeTimer = setTimeout(() => {
+            setFavoriteModalSlideUp(false);
+            hideTimer = setTimeout(() => setShowFavoriteAddedModal(false), 300);
+        }, 1000);
+        return () => {
+            cancelAnimationFrame(raf);
+            clearTimeout(closeTimer);
+            if (hideTimer != null) clearTimeout(hideTimer);
+        };
+    }, [showFavoriteAddedModal]);
 
     // 🟢 [Fix]: 지도 랙(Lag) 및 preventDefault 에러 원천 차단 패치
     useEffect(() => {
@@ -646,9 +702,10 @@ export default function CourseDetailClient({
         const currentSavedState = isSaved;
         const nextState = !isSaved;
 
-        // 🟢 [Fix]: 상태를 먼저 변경하여 UI 즉시 반영
+        // 🟢 클릭 즉시 하단 시트 표시 (찜 추가/취소 둘 다, 1초 후 자동 닫힘)
         setIsSaved(nextState);
-        showToast(nextState ? "취향에 쏙 담겼어요 ✨" : "다음에 다시 담아주세요 💫", "success");
+        setFavoriteSheetType(nextState ? "added" : "removed");
+        setShowFavoriteAddedModal(true);
 
         try {
             // 🟢 [Fix]: API 호출 시 변경 전 상태(currentSavedState) 사용
@@ -659,9 +716,11 @@ export default function CourseDetailClient({
                 body: currentSavedState ? undefined : JSON.stringify({ courseId }),
             });
 
-            // 🟢 [Fix]: API 호출 실패 시 상태 되돌리기
+            // 🟢 [Fix]: API 호출 실패 시 상태 되돌리기 + 시트 닫기
             if (response === null) {
                 setIsSaved(currentSavedState); // 원래 상태로 되돌림
+                setFavoriteModalSlideUp(false);
+                setTimeout(() => setShowFavoriteAddedModal(false), 300);
                 showToast("오류가 발생했습니다. 다시 시도해주세요.", "error");
                 return;
             }
@@ -884,7 +943,11 @@ export default function CourseDetailClient({
                                     stroke="currentColor"
                                     className="w-7 h-7"
                                 >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M15.75 19.5L8.25 12l7.5-7.5"
+                                    />
                                 </svg>
                             </button>
                         </TapFeedback>
@@ -1043,42 +1106,44 @@ export default function CourseDetailClient({
                                                     if (!hasFreeTip && !hasPaidTip) return null;
 
                                                     return (
-                                                        <div className="mt-2 space-y-1.5">
-                                                            {/* 무료 팁: 배경 없이 Bulb + 연한 회색 텍스트, Dona's Pick 작게 */}
+                                                        <div className="mt-2 flex flex-col gap-2">
+                                                            {/* 무료 팁: 연한 블루그레이 배경 + 녹색 라벨 (이미지 스타일) */}
                                                             {hasFreeTip && (
-                                                                <div className="flex gap-2 items-start">
-                                                                    <Icons.Bulb className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
-                                                                            Dona&apos;s Pick
-                                                                        </span>
-                                                                        <p
-                                                                            className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 leading-relaxed"
-                                                                            style={{
-                                                                                display: "-webkit-box",
-                                                                                WebkitLineClamp: 3,
-                                                                                WebkitBoxOrient: "vertical",
-                                                                                overflow: "hidden",
-                                                                                textOverflow: "ellipsis",
-                                                                            }}
-                                                                        >
-                                                                            {coursePlace.coaching_tip_free}
-                                                                        </p>
+                                                                <div className="rounded-xl px-5 py-4 bg-[#F0F4F8] dark:bg-gray-800">
+                                                                    <div className="flex gap-2 items-start">
+                                                                        <Icons.Bulb className="w-4 h-4 text-emerald-600 dark:text-emerald-500 mt-0.5 shrink-0" />
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                                                                Dona&apos;s Pick
+                                                                            </span>
+                                                                            <p
+                                                                                className="mt-0.5 text-xs text-gray-700 dark:text-gray-100 leading-relaxed"
+                                                                                style={{
+                                                                                    display: "-webkit-box",
+                                                                                    WebkitLineClamp: 3,
+                                                                                    WebkitBoxOrient: "vertical",
+                                                                                    overflow: "hidden",
+                                                                                    textOverflow: "ellipsis",
+                                                                                }}
+                                                                            >
+                                                                                {coursePlace.coaching_tip_free}
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            {/* 유료 팁: 딥 그린 카드 + Premium 태그 + 자물쇠 + 서버 보안 멘트 / 잠금 시 동일 스타일 */}
+                                                            {/* 유료 팁: 연한 크림/골드 배경 + 골드 라벨 (이미지 스타일) */}
                                                             {hasPaidTip &&
                                                                 (shouldShowPaidTip ? (
-                                                                    <div className="rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100">
+                                                                    <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
                                                                         <div className="flex items-center gap-1.5 mb-1">
-                                                                            <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                                                            <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
-                                                                                Premium
+                                                                            <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                                                PREMIUM TIP
                                                                             </span>
                                                                         </div>
                                                                         <p
-                                                                            className="text-xs text-gray-100 leading-relaxed"
+                                                                            className="text-xs text-gray-800 dark:text-gray-100 leading-relaxed"
                                                                             style={{
                                                                                 display: "-webkit-box",
                                                                                 WebkitLineClamp: 3,
@@ -1089,9 +1154,6 @@ export default function CourseDetailClient({
                                                                         >
                                                                             {coursePlace.coaching_tip}
                                                                         </p>
-                                                                        <p className="mt-1.5 text-[9px] text-gray-500">
-                                                                            서버 보안으로 보호된 정보
-                                                                        </p>
                                                                     </div>
                                                                 ) : (
                                                                     <button
@@ -1101,29 +1163,30 @@ export default function CourseDetailClient({
                                                                                 setShowSubscriptionModal(true);
                                                                             else setShowLoginModal(true);
                                                                         }}
-                                                                        className="w-full text-left rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100 hover:border-emerald-500/50 transition-all relative overflow-hidden"
+                                                                        className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
                                                                     >
                                                                         <div className="flex items-center gap-1.5 mb-1">
-                                                                            <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                                                            <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
-                                                                                Premium
+                                                                            <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                                                PREMIUM TIP
                                                                             </span>
                                                                         </div>
                                                                         <div className="relative">
-                                                                            <p className="text-xs text-gray-300 relative z-10">
+                                                                            <p className="text-xs text-gray-700 dark:text-gray-100 relative z-10">
                                                                                 웨이팅 피하는 시간은...
                                                                             </p>
-                                                                            <p className="text-xs text-gray-500 mt-0.5 blur-sm select-none pointer-events-none" aria-hidden>
-                                                                                포인트 테이블 위치와 예약 타이밍, 데이트 고수만 아는 비법이 숨겨져 있어요.
+                                                                            <p
+                                                                                className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 blur-sm select-none pointer-events-none"
+                                                                                aria-hidden
+                                                                            >
+                                                                                포인트 테이블 위치와 예약 타이밍, 데이트
+                                                                                고수만 아는 비법이 숨겨져 있어요.
                                                                             </p>
                                                                         </div>
-                                                                        <p className="mt-1.5 text-[10px] text-gray-400">
+                                                                        <p className="mt-1.5 text-[10px] text-gray-600 dark:text-gray-300">
                                                                             {!isAuthenticated
                                                                                 ? "로그인 후 Basic 등급이 되면 이 장소의 숨겨진 유료 팁을 바로 확인할 수 있어요!"
                                                                                 : "인스타 핫플 말고, 진짜 고수들만 아는 유료 팁이 궁금하다면?"}
-                                                                        </p>
-                                                                        <p className="mt-1 text-[9px] text-gray-500">
-                                                                            서버 보안으로 보호된 정보
                                                                         </p>
                                                                     </button>
                                                                 ))}
@@ -1139,9 +1202,13 @@ export default function CourseDetailClient({
 
                         <section
                             ref={reviewsSectionRef}
-                            className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-8 shadow-sm border border-white/40 dark:border-gray-700/40 mb-24"
+                            className={
+                                reviews.length > 0
+                                    ? "bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-8 shadow-sm border border-white/40 dark:border-gray-700/40 mb-24"
+                                    : "mb-24"
+                            }
                         >
-                            <div className="flex justify-between items-center mb-8">
+                            <div className={`flex justify-between items-center ${reviews.length > 0 ? "mb-8" : ""}`}>
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                                     이용후기 <span className="text-emerald-500 ml-1">{reviews.length}</span>
                                 </h2>
@@ -1219,14 +1286,7 @@ export default function CourseDetailClient({
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <div className="text-center py-16 bg-gray-50 dark:bg-[#1a241b] rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-                                    <p className="text-gray-600 dark:text-[#e7efe4] text-sm">
-                                        아직 작성된 후기가 없어요.
-                                        <br />첫 번째 후기를 남겨보세요!
-                                    </p>
-                                </div>
-                            )}
+                            ) : null}
                         </section>
                     </main>
 
@@ -1257,7 +1317,9 @@ export default function CourseDetailClient({
                                 >
                                     {isSaved ? <Icons.LikeSolid /> : <Icons.LikeOutline />}
                                     <span
-                                        className={`text-[10px] font-medium ${isSaved ? "text-rose-500" : "text-gray-500"}`}
+                                        className={`text-[10px] font-medium ${
+                                            isSaved ? "text-rose-500" : "text-gray-500"
+                                        }`}
                                     >
                                         찜하기
                                     </span>
@@ -1275,6 +1337,18 @@ export default function CourseDetailClient({
                         </div>
                         <TapFeedback className="flex-1 min-w-0">
                             <button
+                                onPointerDown={() => {
+                                    if (!isLoggedIn) return;
+                                    if (memoryCountPromiseRef.current) return;
+                                    memoryCountPromiseRef.current = (async () => {
+                                        const { authenticatedFetch } = await import("@/lib/authClient");
+                                        return authenticatedFetch<{
+                                            count: number;
+                                            limit: number | null;
+                                            tier: string;
+                                        }>("/api/users/me/memory-count");
+                                    })();
+                                }}
                                 onClick={async () => {
                                     if (!isLoggedIn) {
                                         setShowLoginModal(true);
@@ -1282,18 +1356,24 @@ export default function CourseDetailClient({
                                     }
                                     try {
                                         const { authenticatedFetch } = await import("@/lib/authClient");
-                                        const data = await authenticatedFetch<{
-                                            count: number;
-                                            limit: number | null;
-                                            tier: string;
-                                        }>("/api/users/me/memory-count");
+                                        const promise =
+                                            memoryCountPromiseRef.current ??
+                                            (memoryCountPromiseRef.current = authenticatedFetch<{
+                                                count: number;
+                                                limit: number | null;
+                                                tier: string;
+                                            }>("/api/users/me/memory-count"));
+                                        const data = await promise;
+                                        memoryCountPromiseRef.current = null;
                                         if (data && data.limit != null && data.count >= data.limit) {
                                             setShowMemoryLimitModal(true);
                                             return;
                                         }
-                                    } catch {}
-                                    handleMapActivation();
+                                    } catch {
+                                        memoryCountPromiseRef.current = null;
+                                    }
                                     router.push(`/courses/${courseId}/start`);
+                                    handleMapActivation();
                                 }}
                                 className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center gap-2"
                             >
@@ -1328,21 +1408,21 @@ export default function CourseDetailClient({
                                     className="absolute top-4 left-4 md:top-6 md:left-6 z-50 p-2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] hover:opacity-80 transition-all"
                                     aria-label="뒤로 가기"
                                 >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={2.5}
-                                    stroke="currentColor"
-                                    className="w-7 h-7"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M15.75 19.5L8.25 12l7.5-7.5"
-                                    />
-                                </svg>
-                            </button>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={2.5}
+                                        stroke="currentColor"
+                                        className="w-7 h-7"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M15.75 19.5L8.25 12l7.5-7.5"
+                                        />
+                                    </svg>
+                                </button>
                             </TapFeedback>
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-center text-white px-6">
@@ -1429,7 +1509,7 @@ export default function CourseDetailClient({
                                         <h4 className="font-bold text-gray-900 dark:text-white truncate">
                                             {modalSelectedPlace.name}
                                         </h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                                             {modalSelectedPlace.address}
                                         </p>
                                     </div>
@@ -1578,6 +1658,47 @@ export default function CourseDetailClient({
                     next={courseData.isLocked ? undefined : `/courses/${courseId}`}
                 />
             )}
+            {/* 🟢 찜 추가/취소 하단 시트: 클릭 즉시 아래에서 올라옴, 1초 뒤 자동 사라짐 */}
+            {showFavoriteAddedModal && (
+                <>
+                    <div
+                        className="fixed inset-0 z-5000 bg-black/40 backdrop-blur-sm"
+                        style={{ pointerEvents: "none" }}
+                        aria-hidden
+                    />
+                    <div
+                        className="fixed left-0 right-0 bottom-0 z-5001 flex justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-auto"
+                        style={{
+                            transform: favoriteModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                            transition: "transform 0.3s ease-out",
+                        }}
+                    >
+                        <div
+                            className="bg-white dark:bg-[#1a241b] rounded-t-2xl rounded-b-2xl px-6 py-4 shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-sm flex items-center gap-3 cursor-pointer"
+                            onClick={() => {
+                                setFavoriteModalSlideUp(false);
+                                setTimeout(() => {
+                                    setShowFavoriteAddedModal(false);
+                                    if (favoriteSheetType === "added") router.push("/mypage");
+                                }, 300);
+                            }}
+                        >
+                            <span className="w-6 h-6 shrink-0 text-red-500 dark:text-red-400 [&_svg]:size-full">
+                                {favoriteSheetType === "added" ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 4.52853C14.35 2.42 17.98 2.49 20.2426 4.75736C22.5053 7.02472 22.583 10.637 20.4786 12.993L11.9999 21.485L3.52138 12.993C1.41705 10.637 1.49571 7.01901 3.75736 4.75736C6.02157 2.49315 9.64519 2.41687 12.001 4.52853Z"></path></svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 4.52853C14.35 2.42 17.98 2.49 20.2426 4.75736C22.5053 7.02472 22.583 10.637 20.4786 12.993L11.9999 21.485L3.52138 12.993C1.41705 10.637 1.49571 7.01901 3.75736 4.75736C6.02157 2.49315 9.64519 2.41687 12.001 4.52853ZM18.827 6.1701C17.3279 4.66794 14.9076 4.60701 13.337 6.01687L12.0019 7.21524L10.6661 6.01781C9.09098 4.60597 6.67506 4.66808 5.17157 6.17157C3.68183 7.66131 3.60704 10.0473 4.97993 11.6232L11.9999 18.6543L19.0201 11.6232C20.3935 10.0467 20.319 7.66525 18.827 6.1701Z"></path></svg>
+                                )}
+                            </span>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white flex-1">
+                                {favoriteSheetType === "added"
+                                    ? "찜한 코스는 마이페이지에서 확인할 수 있어요"
+                                    : "찜이 해제되었어요"}
+                            </p>
+                        </div>
+                    </div>
+                </>
+            )}
             {/* 🟢 나만의 추억 한도 초과 모달 (클릭 시 start로 가지 않고 업그레이드 유도) */}
             {showMemoryLimitModal && (
                 <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
@@ -1665,8 +1786,7 @@ export default function CourseDetailClient({
                                 const coachingTipFree = coursePlace?.coaching_tip_free?.trim();
                                 const coachingTip = coursePlace?.coaching_tip?.trim();
                                 const hasFreeTip = !!coachingTipFree;
-                                const hasPaidTip =
-                                    coursePlace?.hasPaidTip ?? !!(coachingTip && coachingTip.length > 0);
+                                const hasPaidTip = coursePlace?.hasPaidTip ?? !!(coachingTip && coachingTip.length > 0);
 
                                 if (!hasFreeTip && !hasPaidTip) return null;
 
@@ -1678,36 +1798,35 @@ export default function CourseDetailClient({
                                 );
 
                                 return (
-                                    <div className="mb-4 space-y-2">
-                                        {/* 무료 팁: Bulb + 연한 회색, Dona's Pick 작게 */}
+                                    <div className="mb-4 flex flex-col gap-2">
+                                        {/* 무료 팁: 연한 블루그레이 배경 + 녹색 라벨 (이미지 스타일) */}
                                         {hasFreeTip && (
-                                            <div className="flex gap-2 items-start">
-                                                <Icons.Bulb className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
-                                                        Dona&apos;s Pick
-                                                    </span>
-                                                    <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                                                        {coachingTipFree}
-                                                    </p>
+                                            <div className="rounded-xl p-3 bg-[#F0F4F8] dark:bg-gray-800">
+                                                <div className="flex gap-2 items-start">
+                                                    <Icons.Bulb className="w-4 h-4 text-emerald-600 dark:text-emerald-500 mt-0.5 shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                                            Dona&apos;s Pick
+                                                        </span>
+                                                        <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
+                                                            {coachingTipFree}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
-                                        {/* 유료 팁: 딥 그린 카드 + Premium + 자물쇠 + 서버 보안 멘트 / 잠금 시 동일 */}
+                                        {/* 유료 팁: 연한 크림/골드 배경 + 골드 라벨 (이미지 스타일) */}
                                         {hasPaidTip &&
                                             (shouldShowPaidTip ? (
-                                                <div className="rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100">
+                                                <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
                                                     <div className="flex items-center gap-1.5 mb-1">
-                                                        <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                                        <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
-                                                            Premium
+                                                        <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                        <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                            PREMIUM TIP
                                                         </span>
                                                     </div>
-                                                    <p className="text-xs text-gray-100 leading-relaxed whitespace-pre-wrap">
+                                                    <p className="text-xs text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
                                                         {coachingTip}
-                                                    </p>
-                                                    <p className="mt-1.5 text-[9px] text-gray-500">
-                                                        서버 보안으로 보호된 정보
                                                     </p>
                                                 </div>
                                             ) : (
@@ -1715,33 +1834,33 @@ export default function CourseDetailClient({
                                                     type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        if (isAuthenticated)
-                                                            setShowSubscriptionModal(true);
+                                                        if (isAuthenticated) setShowSubscriptionModal(true);
                                                         else setShowLoginModal(true);
                                                     }}
-                                                    className="w-full text-left rounded-lg bg-gray-800 dark:bg-gray-900 border border-emerald-500/30 p-2.5 text-gray-100 hover:border-emerald-500/50 transition-all relative overflow-hidden"
+                                                    className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
                                                 >
                                                     <div className="flex items-center gap-1.5 mb-1">
-                                                        <Icons.Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                                        <span className="text-[9px] font-bold tracking-wide text-emerald-400 uppercase">
-                                                            Premium
+                                                        <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                        <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                            PREMIUM TIP
                                                         </span>
                                                     </div>
                                                     <div className="relative">
-                                                        <p className="text-xs text-gray-300 relative z-10">
+                                                        <p className="text-xs text-gray-700 dark:text-gray-100 relative z-10">
                                                             웨이팅 피하는 시간은...
                                                         </p>
-                                                        <p className="text-xs text-gray-500 mt-0.5 blur-sm select-none pointer-events-none" aria-hidden>
-                                                            포인트 테이블 위치와 예약 타이밍, 데이트 고수만 아는 비법이 숨겨져 있어요.
+                                                        <p
+                                                            className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 blur-sm select-none pointer-events-none"
+                                                            aria-hidden
+                                                        >
+                                                            포인트 테이블 위치와 예약 타이밍, 데이트 고수만 아는 비법이
+                                                            숨겨져 있어요.
                                                         </p>
                                                     </div>
-                                                    <p className="mt-1.5 text-[10px] text-gray-400">
+                                                    <p className="mt-1.5 text-[10px] text-gray-600 dark:text-gray-300">
                                                         {!isAuthenticated
                                                             ? "로그인 후 Basic 등급이 되면 이 장소의 숨겨진 유료 팁을 바로 확인할 수 있어요!"
                                                             : "인스타 핫플 말고, 진짜 고수들만 아는 유료 팁이 궁금하다면?"}
-                                                    </p>
-                                                    <p className="mt-1 text-[9px] text-gray-500">
-                                                        서버 보안으로 보호된 정보
                                                     </p>
                                                 </button>
                                             ))}

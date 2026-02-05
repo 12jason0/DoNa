@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
@@ -21,6 +21,7 @@ interface SideMenuDrawerProps {
 
 export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: SideMenuDrawerProps) {
     const pathname = usePathname();
+    const router = useRouter();
     const { isAuthenticated } = useAuth();
     const [showComingSoon, setShowComingSoon] = useState<null | string>(null);
     const [showShopModal, setShowShopModal] = useState(false);
@@ -191,6 +192,8 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 <Link
                                     href="/mypage"
                                     prefetch={true}
+                                    onMouseEnter={() => router.prefetch("/mypage")}
+                                    onFocus={() => router.prefetch("/mypage")}
                                     className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
                                     onClick={onClose}
                                 >

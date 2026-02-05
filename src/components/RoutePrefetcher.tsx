@@ -12,6 +12,11 @@ export default function RoutePrefetcher() {
         const secondaryRoutes = ["/personalized-home", "/onboarding", "/login", "/about"];
         let secondaryTimer: ReturnType<typeof setTimeout> | null = null;
 
+        // 🟢 마이페이지는 바로 prefetch (idle 대기 없이) → 클릭 시 빠른 진입
+        try {
+            if (pathname !== "/mypage") router.prefetch("/mypage");
+        } catch {}
+
         const doPrefetch = () => {
             try {
                 priorityRoutes.forEach((r) => {

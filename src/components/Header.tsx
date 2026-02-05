@@ -179,7 +179,10 @@ const Header = memo(() => {
         <>
             {isLoggingOut && <LogoutOverlay />}
 
-            <header className="relative z-50 bg-white dark:bg-[#1a241b] pt-[env(safe-area-inset-top,0)]">
+            <header
+                className="relative z-50 bg-white dark:bg-[#1a241b]"
+                style={{ paddingTop: "env(safe-area-inset-top, 0)" }}
+            >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-12">
                         <div className="flex items-center h-full">

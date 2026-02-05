@@ -12,6 +12,29 @@ export async function GET(request: NextRequest) {
         // "식물원:1" 형태 방어 - 콜론 앞부분만 사용
         const query = raw.split(":")[0].trim();
 
+        // 검색 결과에서 제외할 키워드 (증권·기업·회사·노인정·의료·인테리어 등)
+        const KEYWORD_BLACKLIST = [
+            "증권",
+            "기업",
+            "회사",
+            "노인정",
+            "의료",
+            "인테리어",
+            "건강",
+            "산업",
+            "종교",
+            "자동차",
+            "부동산",
+            "가정",
+            "생활",
+        ];
+        const isBlacklisted = (doc: { place_name?: string; category_name?: string }) => {
+            const name = (doc.place_name || "").trim();
+            const cat = (doc.category_name || "").trim();
+            const combined = `${name} ${cat}`;
+            return KEYWORD_BLACKLIST.some((kw) => combined.includes(kw));
+        };
+
         // 1) Places 테이블에서 이름/주소 부분 일치 검색
         const place = await prisma.place.findFirst({
             where: {
@@ -68,14 +91,15 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // 3) 외부 Kakao 키워드 검색으로 좌표 획득
+        // 3) 외부 Kakao 키워드 검색으로 좌표 획득 (블랙리스트 제외 후 첫 결과 사용)
         const kakaoKey = process.env.KAKAO_REST_API_KEY as string | undefined;
         if (kakaoKey) {
-            const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=1`;
+            const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=15`;
             const res = await fetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` }, cache: "no-store" });
             if (res.ok) {
                 const data = await res.json();
-                const first = Array.isArray((data as any)?.documents) ? (data as any).documents[0] : null;
+                const docs = Array.isArray((data as any)?.documents) ? (data as any).documents : [];
+                const first = docs.find((d: any) => !isBlacklisted(d));
                 if (first) {
                     return NextResponse.json({
                         success: true,

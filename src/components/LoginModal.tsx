@@ -19,6 +19,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
     const pathname = usePathname();
     const [loginNavigating, setLoginNavigating] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [slideUp, setSlideUp] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -28,6 +29,12 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
             document.body.style.overflow = "";
         };
     }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+        const t = requestAnimationFrame(() => setSlideUp(true));
+        return () => cancelAnimationFrame(t);
+    }, [mounted]);
 
     const handleLogin = () => {
         if (loginNavigating) return;
@@ -48,19 +55,34 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
     if (!mounted) return null;
 
     const modalContent = (
-        <div className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 flex items-center justify-center p-4 animate-in fade-in duration-300">
-            {/* 모달 컨테이너: 최대 높이(max-h)와 스크롤(overflow-y-auto) 추가 */}
-            <div className="bg-white dark:bg-[#1a241b] rounded-[32px] max-w-md w-full max-h-[90vh] overflow-y-auto relative shadow-[0_20px_50px_rgba(0,0,0,0.2)] transform transition-all animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 scrollbar-hide">
-                {/* 내부 여백을 감싸는 wrapper (p-6~8로 조정) */}
-                <div className="p-6 sm:p-8">
-                    {/* 닫기 버튼 - 위치 고정을 위해 absolute 유지 */}
-                    <button
-                        onClick={onClose}
-                        aria-label="닫기"
-                        className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all flex items-center justify-center active:scale-90 z-20"
-                    >
-                        x
-                    </button>
+        <>
+            {/* 배경 딤드 */}
+            <div
+                className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300"
+                onClick={onClose}
+                aria-hidden
+            />
+            {/* 하단 시트: 아래·양쪽에 붙이고 상단만 둥글게 */}
+            <div
+                className="fixed left-0 right-0 bottom-0 z-10000 w-full max-h-[90vh]"
+                style={{ pointerEvents: "auto" }}
+            >
+                <div
+                    className="bg-white dark:bg-[#1a241b] rounded-t-[32px] border-t border-gray-100 dark:border-gray-800 w-full max-h-full overflow-y-auto shadow-[0_20px_50px_rgba(0,0,0,0.2)] scrollbar-hide transition-transform duration-300 ease-out"
+                    style={{
+                        transform: slideUp ? "translateY(0)" : "translateY(100%)",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="p-6 sm:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] relative">
+                        {/* 닫기 버튼 */}
+                        <button
+                            onClick={onClose}
+                            aria-label="닫기"
+                            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all flex items-center justify-center active:scale-90 z-20"
+                        >
+                            x
+                        </button>
 
                     {/* 상단 비주얼 - 모바일 대응 크기 조정 */}
                     <div className="text-center mb-6 sm:mb-8">
@@ -134,9 +156,9 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                             <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-linear-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
                         )}
                     </button>
+                    </div>
                 </div>
             </div>
-
             <style jsx>{`
                 @keyframes shine {
                     from {
@@ -149,7 +171,6 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                 .animate-shine {
                     animation: shine 1.5s infinite;
                 }
-                /* 스크롤바 숨기기 */
                 .scrollbar-hide::-webkit-scrollbar {
                     display: none;
                 }
@@ -158,7 +179,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                     scrollbar-width: none;
                 }
             `}</style>
-        </div>
+        </>
     );
 
     return createPortal(modalContent, document.body);

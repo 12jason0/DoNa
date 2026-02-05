@@ -70,6 +70,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     const handleSearch = async (keyword: string) => {
         const trimmed = keyword.trim();
         if (!trimmed) return;
+        inputRef.current?.blur();
         const sp = new URLSearchParams();
         sp.set("q", trimmed);
         router.prefetch(`/nearby?${sp.toString()}`);
@@ -146,7 +147,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
     return (
         <div
-            className="fixed inset-0 z-9999 bg-black/50 dark:bg-black/60 flex items-end justify-center"
+            className="fixed inset-0 z-9999 bg-black/50 dark:bg-black/60 flex items-start justify-center"
             onClick={onClose}
             role="button"
             tabIndex={0}
@@ -154,8 +155,11 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             aria-label="검색 모달 닫기"
         >
             <div
-                className="fixed bottom-0 left-0 right-0 z-10000 max-h-[calc(100vh-3rem)] flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden"
-                style={{ animation: "slideUp 0.3s ease-out forwards" }}
+                className="fixed left-0 right-0 bottom-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden"
+                style={{
+                    top: "calc(env(safe-area-inset-top, 0px) + 3rem)",
+                    animation: "slideUp 0.3s ease-out forwards",
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 1. 헤더: "search" + 닫기(X) */}
