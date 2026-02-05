@@ -344,6 +344,8 @@ export default function CourseDetailClient({
     const placeModalDragYRef = useRef(0);
     const placeModalHandleRef = useRef<HTMLElement | null>(null);
     const placeModalPointerIdRef = useRef<number | null>(null);
+    const placeModalScrollRef = useRef<HTMLDivElement | null>(null);
+    const placeModalTouchStartY = useRef(0);
     const [shareModalSlideUp, setShareModalSlideUp] = useState(false);
     // 🔒 [접근 제어] 잠긴 코스는 초기 state에서 즉시 모달 표시 (페이지가 보이기 전에)
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
@@ -1941,7 +1943,25 @@ export default function CourseDetailClient({
                                 <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md" />
                             </div>
                         </div>
-                        <div className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+                        <div
+                            ref={placeModalScrollRef}
+                            className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide"
+                            onWheel={(e) => {
+                                if (placeModalScrollRef.current && placeModalScrollRef.current.scrollTop <= 0 && e.deltaY > 0) {
+                                    e.preventDefault();
+                                    placeModalClose();
+                                }
+                            }}
+                            onTouchStart={(e) => {
+                                placeModalTouchStartY.current = e.touches[0].clientY;
+                            }}
+                            onTouchMove={(e) => {
+                                if (placeModalScrollRef.current && placeModalScrollRef.current.scrollTop <= 0) {
+                                    const dy = e.touches[0].clientY - placeModalTouchStartY.current;
+                                    if (dy > 30) placeModalClose();
+                                }
+                            }}
+                        >
                             <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
                             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
                                 {selectedPlace.address}
@@ -2085,7 +2105,7 @@ export default function CourseDetailClient({
                                     onPointerDown={handleWebSheetPointerDown}
                                     className="flex justify-center items-center touch-none cursor-grab active:cursor-grabbing"
                                 >
-                                    <span className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                                    <span className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
                                 </div>
                             </div>
                             <iframe
