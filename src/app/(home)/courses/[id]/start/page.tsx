@@ -73,6 +73,7 @@ function GuidePageInner() {
     const [showPhotoCountModal, setShowPhotoCountModal] = useState(false);
     const [currentPhotoCount, setCurrentPhotoCount] = useState(0);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
+    const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
     const [memoryLimitMessage, setMemoryLimitMessage] = useState<string>("");
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
@@ -86,6 +87,16 @@ function GuidePageInner() {
     useEffect(() => {
         setPlatform(isIOS() ? "ios" : "web");
     }, []);
+
+    // 🟢 나만의 추억 한도 모달 하단 시트: 열릴 때 slideUp
+    useEffect(() => {
+        if (!showMemoryLimitModal) return;
+        setMemoryLimitModalSlideUp(false);
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setMemoryLimitModalSlideUp(true));
+        });
+        return () => cancelAnimationFrame(t);
+    }, [showMemoryLimitModal]);
 
     // ✅ 토스트(카드) 최소화 상태 관리
     const [isMinimized, setIsMinimized] = useState(false);
@@ -1298,53 +1309,60 @@ function GuidePageInner() {
                     </div>
                 </div>
             )}
-            {/* 🟢 나만의 추억 한도 초과 모달 (구독 업그레이드 유도) */}
+            {/* 🟢 나만의 추억 한도 초과 하단 시트 (아래에서 위로 올라옴) */}
             {showMemoryLimitModal && (
-                <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-[#1a241b] rounded-3xl p-6 pt-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
-                        <div className="mb-4 flex justify-center">
-                            <svg
-                                className="w-12 h-12 text-gray-600 dark:text-gray-300"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
-                            </svg>
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                            둘만의 추억 창고가 가득 찼어요
-                        </h2>
-
-                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                            {memoryLimitMessage || "더 저장하려면 구독을 업그레이드해 주세요."}
-                        </p>
-
-                        <div className="flex flex-col gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowMemoryLimitModal(false);
-                                    setShowSubscriptionModal(true);
-                                }} // 변경: 더 선명한 녹색 그라데이션과 그림자, 호버 효과 적용
-                                className="w-full py-4 text-white rounded-xl font-bold text-lg shadow-md hover:shadow-xl transition-all bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 scale-100 hover:scale-[1.02] active:scale-95"
-                            >
-                                구독 업그레이드
-                            </button>
-
-                            <button
-                                onClick={() => setShowMemoryLimitModal(false)}
-                                className="w-full py-3 text-gray-600 dark:text-gray-400 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                                닫기
-                            </button>
+                <>
+                    <div
+                        className="fixed inset-0 z-5000 bg-black/60 backdrop-blur-sm animate-fade-in"
+                        onClick={() => setShowMemoryLimitModal(false)}
+                        aria-hidden
+                    />
+                    <div className="fixed left-0 right-0 bottom-0 z-5001 w-full">
+                        <div
+                            className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
+                            style={{
+                                transform: memoryLimitModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-6 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] text-center">
+                                <div className="mb-4 flex justify-center">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="w-12 h-12 text-gray-600 dark:text-gray-300"
+                                    >
+                                        <path d="M19 10H20C20.5523 10 21 10.4477 21 11V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V11C3 10.4477 3.44772 10 4 10H5V9C5 5.13401 8.13401 2 12 2C15.866 2 19 5.13401 19 9V10ZM5 12V20H19V12H5ZM11 14H13V18H11V14ZM17 10V9C17 6.23858 14.7614 4 12 4C9.23858 4 7 6.23858 7 9V10H17Z" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                                    둘만의 추억 창고가 가득 찼어요
+                                </h2>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                                    {memoryLimitMessage || "더 저장하려면 구독을 업그레이드해 주세요."}
+                                </p>
+                                <div className="flex flex-col gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setShowMemoryLimitModal(false);
+                                            setShowSubscriptionModal(true);
+                                        }}
+                                        className="w-full py-4 text-white rounded-xl font-bold text-lg shadow-md hover:shadow-xl transition-all bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 scale-100 hover:scale-[1.02] active:scale-95"
+                                    >
+                                        구독 업그레이드
+                                    </button>
+                                    <button
+                                        onClick={() => setShowMemoryLimitModal(false)}
+                                        className="w-full py-3 text-gray-600 dark:text-gray-400 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                    >
+                                        닫기
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </>
             )}
             {/* 🟢 저장 성공 모달 */}
             {showSaveSuccessModal && (

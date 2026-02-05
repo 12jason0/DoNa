@@ -346,6 +346,7 @@ export default function CourseDetailClient({
     });
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
+    const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
     const [showFavoriteAddedModal, setShowFavoriteAddedModal] = useState(false);
     const [favoriteSheetType, setFavoriteSheetType] = useState<"added" | "removed">("added");
     const [favoriteModalSlideUp, setFavoriteModalSlideUp] = useState(false);
@@ -377,6 +378,16 @@ export default function CourseDetailClient({
     const memoryCountPromiseRef = useRef<Promise<{ count: number; limit: number | null; tier: string } | null> | null>(
         null
     );
+
+    // 🟢 나만의 추억 한도 모달 하단 시트: 열릴 때 slideUp
+    useEffect(() => {
+        if (!showMemoryLimitModal) return;
+        setMemoryLimitModalSlideUp(false);
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setMemoryLimitModalSlideUp(true));
+        });
+        return () => cancelAnimationFrame(t);
+    }, [showMemoryLimitModal]);
 
     // 🟢 장소 모달 하단 시트: 열릴 때 slideUp 애니메이션
     useEffect(() => {
@@ -1695,39 +1706,54 @@ export default function CourseDetailClient({
                     </div>
                 </>
             )}
-            {/* 🟢 나만의 추억 한도 초과 모달 (클릭 시 start로 가지 않고 업그레이드 유도) */}
+            {/* 🟢 나만의 추억 한도 초과 하단 시트 (아래에서 위로 올라옴) */}
             {showMemoryLimitModal && (
-                <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-[#1a241b] rounded-3xl p-6 pt-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
-                        <div className="mb-4 flex justify-center">
-                            <span className="text-5xl">🔒</span>
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                            나만의 추억 저장 한도에 도달했어요
-                        </h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                            더 저장하려면 구독을 업그레이드해 주세요.
-                        </p>
-                        <div className="flex flex-col gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowMemoryLimitModal(false);
-                                    setShowSubscriptionModal(true);
-                                }}
-                                className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-all"
-                                style={{ backgroundColor: "#99c08e" }}
-                            >
-                                구독 업그레이드
-                            </button>
-                            <button
-                                onClick={() => setShowMemoryLimitModal(false)}
-                                className="w-full py-3 text-gray-600 dark:text-gray-400 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                                닫기
-                            </button>
+                <>
+                    <div
+                        className="fixed inset-0 z-5000 bg-black/60 backdrop-blur-sm animate-fade-in"
+                        onClick={() => setShowMemoryLimitModal(false)}
+                        aria-hidden
+                    />
+                    <div className="fixed left-0 right-0 bottom-0 z-5001 w-full">
+                        <div
+                            className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
+                            style={{
+                                transform: memoryLimitModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-6 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] text-center">
+                                <div className="mb-4 flex justify-center">
+                                    <span className="text-5xl">🔒</span>
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                                    나만의 추억 저장 한도에 도달했어요
+                                </h2>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                                    더 저장하려면 구독을 업그레이드해 주세요.
+                                </p>
+                                <div className="flex flex-col gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setShowMemoryLimitModal(false);
+                                            setShowSubscriptionModal(true);
+                                        }}
+                                        className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-all"
+                                        style={{ backgroundColor: "#99c08e" }}
+                                    >
+                                        구독 업그레이드
+                                    </button>
+                                    <button
+                                        onClick={() => setShowMemoryLimitModal(false)}
+                                        className="w-full py-3 text-gray-600 dark:text-gray-400 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                    >
+                                        닫기
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </>
             )}
             {showPlaceModal && selectedPlace && (
                 <div
