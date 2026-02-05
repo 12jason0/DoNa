@@ -486,14 +486,55 @@ function MapPageInner() {
         }
     }, [selectedCourseForRoute?.id, courseRoutePath, navermaps]);
 
-    const handleFindWay = (placeName: string) => {
-        setToastMessage("네이버 지도로 연결합니다 🚀");
-        setTimeout(() => {
-            const query = encodeURIComponent(placeName);
-            window.open(`https://map.naver.com/p/search/${query}`, "_blank");
-            setToastMessage(null);
-        }, 700);
-    };
+    /** 길찾기: 앱(nmap) 또는 웹(출발=현재위치, 도착=해당 장소) */
+    const handleFindWay = useCallback((place: Place | null) => {
+        if (!place) return;
+
+        const dlat = Number(place.latitude);
+        const dlng = Number(place.longitude);
+        const destination = place.name || place.address || "목적지";
+
+        if (Number.isNaN(dlat) || Number.isNaN(dlng)) {
+            showToast("해당 장소의 위치 정보가 없어요.");
+            return;
+        }
+
+        const appUrl = `nmap://route/public?dlat=${dlat}&dlng=${dlng}&dname=${encodeURIComponent(destination)}&appname=${encodeURIComponent("kr.io.dona.dona")}`;
+        const searchOnlyUrl = `https://map.naver.com/p/search/${encodeURIComponent(destination)}`;
+
+        const openWebDirections = () => {
+            if (!navigator.geolocation) {
+                window.open(searchOnlyUrl, "_blank", "noopener,noreferrer");
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const slng = pos.coords.longitude;
+                    const slat = pos.coords.latitude;
+                    const directionsUrl = `https://map.naver.com/index.nhn?slng=${slng}&slat=${slat}&stext=${encodeURIComponent("현재 위치")}&elng=${dlng}&elat=${dlat}&etext=${encodeURIComponent(destination)}&menu=route`;
+                    window.open(directionsUrl, "_blank", "noopener,noreferrer");
+                },
+                () => {
+                    window.open(searchOnlyUrl, "_blank", "noopener,noreferrer");
+                },
+                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+            );
+        };
+
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            const startTime = Date.now();
+            window.location.href = appUrl;
+            setTimeout(() => {
+                if (document.visibilityState === "visible" && Date.now() - startTime < 1500) {
+                    openWebDirections();
+                }
+            }, 500);
+        } else {
+            openWebDirections();
+        }
+    }, []);
 
     // 1. 네이버 지도 SDK 로드
     useEffect(() => {
@@ -1333,7 +1374,8 @@ function MapPageInner() {
 
                                 {/* 2. 길찾기 버튼 (메인 강조) */}
                                 <button
-                                    onClick={() => handleFindWay(selectedPlace?.name || "")}
+                                    type="button"
+                                    onClick={() => handleFindWay(selectedPlace)}
                                     className="flex-1 h-full flex items-center justify-center gap-1.5 bg-[#6bb88a] dark:bg-[#6bb88a] text-white rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
                                 >
                                     <span>길찾기</span>

@@ -339,6 +339,11 @@ export default function CourseDetailClient({
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
     const [placeModalSlideUp, setPlaceModalSlideUp] = useState(false);
+    const [placeModalDragY, setPlaceModalDragY] = useState(0);
+    const placeModalDragStartY = useRef(0);
+    const placeModalDragYRef = useRef(0);
+    const placeModalHandleRef = useRef<HTMLElement | null>(null);
+    const placeModalPointerIdRef = useRef<number | null>(null);
     const [shareModalSlideUp, setShareModalSlideUp] = useState(false);
     // 🔒 [접근 제어] 잠긴 코스는 초기 state에서 즉시 모달 표시 (페이지가 보이기 전에)
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
@@ -350,6 +355,15 @@ export default function CourseDetailClient({
     const [showFavoriteAddedModal, setShowFavoriteAddedModal] = useState(false);
     const [favoriteSheetType, setFavoriteSheetType] = useState<"added" | "removed">("added");
     const [favoriteModalSlideUp, setFavoriteModalSlideUp] = useState(false);
+    // 🟢 예약/네이버 지도 하단 시트 (아래에서 위로, 헤더 아래까지)
+    const [showWebSheet, setShowWebSheet] = useState(false);
+    const [webSheetUrl, setWebSheetUrl] = useState<string>("");
+    const [webSheetSlideUp, setWebSheetSlideUp] = useState(false);
+    const [webSheetDragY, setWebSheetDragY] = useState(0);
+    const webSheetDragStartY = useRef(0);
+    const webSheetDragYRef = useRef(0);
+    const webSheetHandleRef = useRef<HTMLElement | null>(null);
+    const webSheetPointerIdRef = useRef<number | null>(null);
 
     // 🔒 [접근 제어] 인증 상태 확인 후 잠긴 코스의 모달 타입 결정
     useEffect(() => {
@@ -389,14 +403,121 @@ export default function CourseDetailClient({
         return () => cancelAnimationFrame(t);
     }, [showMemoryLimitModal]);
 
-    // 🟢 장소 모달 하단 시트: 열릴 때 slideUp 애니메이션
+    // 🟢 장소 모달 하단 시트: 열릴 때 slideUp 애니메이션 + 드래그 초기화
     useEffect(() => {
         if (!showPlaceModal || !selectedPlace) return;
+        setPlaceModalDragY(0);
+        placeModalDragYRef.current = 0;
         const t = requestAnimationFrame(() => {
             requestAnimationFrame(() => setPlaceModalSlideUp(true));
         });
         return () => cancelAnimationFrame(t);
     }, [showPlaceModal, selectedPlace]);
+
+    // 🟢 예약/네이버 지도 시트: 열릴 때 slideUp + 드래그 초기화
+    useEffect(() => {
+        if (!showWebSheet) return;
+        setWebSheetDragY(0);
+        webSheetDragYRef.current = 0;
+        setWebSheetSlideUp(false);
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setWebSheetSlideUp(true));
+        });
+        return () => cancelAnimationFrame(t);
+    }, [showWebSheet]);
+
+    const webSheetClose = useCallback(() => {
+        setWebSheetSlideUp(false);
+        setWebSheetDragY(0);
+        setTimeout(() => {
+            setShowWebSheet(false);
+            setWebSheetUrl("");
+        }, 300);
+    }, []);
+
+    const handleWebSheetPointerDown = useCallback(
+        (e: React.PointerEvent) => {
+            const target = e.target as HTMLElement;
+            webSheetDragStartY.current = e.clientY;
+            webSheetHandleRef.current = target;
+            webSheetPointerIdRef.current = e.pointerId;
+            target.setPointerCapture(e.pointerId);
+            const onMove = (ev: PointerEvent) => {
+                const dy = Math.max(0, ev.clientY - webSheetDragStartY.current);
+                setWebSheetDragY(dy);
+                webSheetDragYRef.current = dy;
+            };
+            const onUp = () => {
+                const handle = webSheetHandleRef.current;
+                const pid = webSheetPointerIdRef.current;
+                if (handle && pid !== null) {
+                    try {
+                        handle.releasePointerCapture(pid);
+                    } catch (_) {}
+                }
+                webSheetHandleRef.current = null;
+                webSheetPointerIdRef.current = null;
+                window.removeEventListener("pointermove", onMove);
+                window.removeEventListener("pointerup", onUp);
+                window.removeEventListener("pointercancel", onUp);
+                if (webSheetDragYRef.current > 80) {
+                    webSheetClose();
+                } else {
+                    setWebSheetDragY(0);
+                    webSheetDragYRef.current = 0;
+                }
+            };
+            window.addEventListener("pointermove", onMove);
+            window.addEventListener("pointerup", onUp);
+            window.addEventListener("pointercancel", onUp);
+        },
+        [webSheetClose]
+    );
+
+    // 🟢 장소 모달: 위에서 잡고 내리면 닫기
+    const placeModalClose = useCallback(() => {
+        setPlaceModalSlideUp(false);
+        setPlaceModalDragY(0);
+        setTimeout(() => setShowPlaceModal(false), 300);
+    }, []);
+    const handlePlaceModalPointerDown = useCallback(
+        (e: React.PointerEvent) => {
+            const target = e.target as HTMLElement;
+            placeModalDragStartY.current = e.clientY;
+            placeModalHandleRef.current = target;
+            placeModalPointerIdRef.current = e.pointerId;
+            target.setPointerCapture(e.pointerId);
+            const onMove = (ev: PointerEvent) => {
+                const dy = Math.max(0, ev.clientY - placeModalDragStartY.current);
+                setPlaceModalDragY(dy);
+                placeModalDragYRef.current = dy;
+            };
+            const onUp = () => {
+                const handle = placeModalHandleRef.current;
+                const pid = placeModalPointerIdRef.current;
+                if (handle && pid !== null) {
+                    try {
+                        handle.releasePointerCapture(pid);
+                    } catch (_) {}
+                }
+                placeModalHandleRef.current = null;
+                placeModalPointerIdRef.current = null;
+                window.removeEventListener("pointermove", onMove);
+                window.removeEventListener("pointerup", onUp);
+                window.removeEventListener("pointercancel", onUp);
+                if (placeModalDragYRef.current > 80) {
+                    placeModalClose();
+                } else {
+                    setPlaceModalDragY(0);
+                    placeModalDragYRef.current = 0;
+                }
+            };
+            window.addEventListener("pointermove", onMove);
+            window.addEventListener("pointerup", onUp);
+            window.addEventListener("pointercancel", onUp);
+        },
+        [placeModalClose]
+    );
 
     // 🟢 공유 모달 하단 시트: 열릴 때 slideUp 애니메이션
     useEffect(() => {
@@ -1079,20 +1200,20 @@ export default function CourseDetailClient({
                                                         <p className="text-xs text-gray-500 truncate mb-2">
                                                             {coursePlace.place.address}
                                                         </p>
-                                                        {/* 🟢 예약 버튼 - 텍스트 한 줄 유지 */}
+                                                        {/* 🟢 예약 버튼 - 하단 시트로 열기 */}
                                                         {coursePlace.place.reservationUrl && (
-                                                            <a
-                                                                href={coursePlace.place.reservationUrl}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
+                                                            <button
+                                                                type="button"
                                                                 onClick={(e) => {
-                                                                    e.stopPropagation(); // 부모 클릭 이벤트 차단
+                                                                    e.stopPropagation();
+                                                                    setWebSheetUrl(coursePlace.place.reservationUrl!);
+                                                                    setShowWebSheet(true);
                                                                 }}
                                                                 className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
                                                             >
                                                                 <Icons.ExternalLink className="w-3 h-3 shrink-0" />
                                                                 예약하기
-                                                            </a>
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1530,17 +1651,31 @@ export default function CourseDetailClient({
                                             (c) => c.place.id === modalSelectedPlace.id
                                         )?.place;
                                         return fullPlace?.reservationUrl ? (
-                                            <a
-                                                href={fullPlace.reservationUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setWebSheetUrl(fullPlace.reservationUrl!);
+                                                    setShowWebSheet(true);
+                                                }}
                                                 className="w-full py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                                             >
                                                 <Icons.ExternalLink className="w-4 h-4" />
                                                 예약하기
-                                            </a>
+                                            </button>
                                         ) : null;
                                     })()}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const q = encodeURIComponent(modalSelectedPlace.name);
+                                            const url = `https://map.naver.com/v5/search/${q}?c=${modalSelectedPlace.longitude},${modalSelectedPlace.latitude},15,0,0,0,dh`;
+                                            setWebSheetUrl(url);
+                                            setShowWebSheet(true);
+                                        }}
+                                        className="w-full py-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-bold text-xs hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-600 mb-2"
+                                    >
+                                        네이버 지도
+                                    </button>
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {
@@ -1772,9 +1907,12 @@ export default function CourseDetailClient({
                 >
                     <div className="fixed left-0 right-0 top-14 bottom-0 flex flex-col pointer-events-none">
                         <div
-                            className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md h-full overflow-hidden flex flex-col shadow-2xl mx-auto transition-transform duration-300 ease-out pb-[env(safe-area-inset-bottom)]"
+                            className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md h-full overflow-hidden flex flex-col shadow-2xl mx-auto pb-[env(safe-area-inset-bottom)]"
                             style={{
-                                transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                                transform: placeModalSlideUp
+                                    ? `translateY(${placeModalDragY}px)`
+                                    : "translateY(100%)",
+                                transition: placeModalDragY === 0 ? "transform 0.3s ease-out" : "none",
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -1792,17 +1930,18 @@ export default function CourseDetailClient({
                                     blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgZmlsbD0iI2VlZSIvPjwvc3ZnPg=="
                                 />
                             )}
-                            <button
-                                onClick={() => {
-                                    setPlaceModalSlideUp(false);
-                                    setTimeout(() => setShowPlaceModal(false), 300);
-                                }}
-                                className="absolute top-4 right-4 bg-black/30 text-white w-9 h-9 rounded-full flex items-center justify-center"
+                            {/* 드래그 핸들: 이미지 위에 올려서 잡고 내리면 모달 닫힘 */}
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                aria-label="모달 닫기"
+                                onPointerDown={handlePlaceModalPointerDown}
+                                className="absolute top-0 left-0 right-0 flex justify-center pt-3 pb-6 touch-none cursor-grab active:cursor-grabbing z-10"
                             >
-                                ×
-                            </button>
+                                <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md" />
+                            </div>
                         </div>
-                        <div className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto">
+                        <div className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                             <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
                             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
                                 {selectedPlace.address}
@@ -1890,17 +2029,19 @@ export default function CourseDetailClient({
                                 );
                             })()}
                             <div className="flex flex-col gap-2">
-                                {/* 🟢 예약 버튼 추가 */}
+                                {/* 🟢 예약하기: 하단 시트로 열기 */}
                                 {selectedPlace.reservationUrl && (
-                                    <a
-                                        href={selectedPlace.reservationUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setWebSheetUrl(selectedPlace.reservationUrl!);
+                                            setShowWebSheet(true);
+                                        }}
                                         className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                     >
                                         <Icons.ExternalLink className="w-4 h-4" />
                                         예약하기
-                                    </a>
+                                    </button>
                                 )}
                                 <button
                                     className="w-full py-3 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
@@ -1916,6 +2057,46 @@ export default function CourseDetailClient({
                     </div>
                     </div>
                 </div>
+            )}
+
+            {/* 🟢 예약하기 / 네이버 지도 바텀 시트 (헤더 아래~하단 전체, 핸들바만) */}
+            {showWebSheet && webSheetUrl && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/60 z-10000 animate-fade-in"
+                        onClick={webSheetClose}
+                        aria-hidden
+                    />
+                    <div className="fixed top-14 left-0 right-0 bottom-0 z-10010 pointer-events-none">
+                        <div
+                            className="pointer-events-auto h-full bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full overflow-hidden flex flex-col shadow-2xl transition-transform duration-300 ease-out"
+                            style={{
+                                transform: webSheetSlideUp ? `translateY(${webSheetDragY}px)` : "translateY(100%)",
+                                transition: webSheetDragY === 0 ? "transform 0.3s ease-out" : "none",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* 핸들바(아래로 당기면 닫힘) */}
+                            <div className="flex items-center justify-center shrink-0 pt-3 pb-2">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label="시트 닫기"
+                                    onPointerDown={handleWebSheetPointerDown}
+                                    className="flex justify-center items-center touch-none cursor-grab active:cursor-grabbing"
+                                >
+                                    <span className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                                </div>
+                            </div>
+                            <iframe
+                                src={webSheetUrl}
+                                title="예약 / 지도"
+                                className="flex-1 w-full min-h-0 border-0"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                            />
+                        </div>
+                    </div>
+                </>
             )}
 
             {/* 이미지 미리보기 모달 */}
