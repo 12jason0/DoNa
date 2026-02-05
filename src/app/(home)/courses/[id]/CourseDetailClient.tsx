@@ -1911,170 +1911,175 @@ export default function CourseDetailClient({
                         <div
                             className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md h-full overflow-hidden flex flex-col shadow-2xl mx-auto pb-[env(safe-area-inset-bottom)]"
                             style={{
-                                transform: placeModalSlideUp
-                                    ? `translateY(${placeModalDragY}px)`
-                                    : "translateY(100%)",
+                                transform: placeModalSlideUp ? `translateY(${placeModalDragY}px)` : "translateY(100%)",
                                 transition: placeModalDragY === 0 ? "transform 0.3s ease-out" : "none",
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                        <div className="relative h-48 shrink-0 bg-gray-100 dark:bg-gray-800">
-                            {selectedPlace.imageUrl && (
-                                <Image
-                                    src={selectedPlace.imageUrl}
-                                    alt={selectedPlace.name}
-                                    fill
-                                    className="object-cover"
-                                    priority
-                                    quality={60}
-                                    sizes="(max-width: 768px) 95vw, 448px"
-                                    placeholder="blur"
-                                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgZmlsbD0iI2VlZSIvPjwvc3ZnPg=="
-                                />
-                            )}
-                            {/* 드래그 핸들: 이미지 위에 올려서 잡고 내리면 모달 닫힘 */}
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                aria-label="모달 닫기"
-                                onPointerDown={handlePlaceModalPointerDown}
-                                className="absolute top-0 left-0 right-0 flex justify-center pt-3 pb-6 touch-none cursor-grab active:cursor-grabbing z-10"
-                            >
-                                <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md" />
+                            <div className="relative h-56 shrink-0 bg-gray-100 dark:bg-gray-800">
+                                {selectedPlace.imageUrl && (
+                                    <Image
+                                        src={selectedPlace.imageUrl}
+                                        alt={selectedPlace.name}
+                                        fill
+                                        className="object-cover"
+                                        priority
+                                        quality={60}
+                                        sizes="(max-width: 768px) 95vw, 448px"
+                                        placeholder="blur"
+                                        blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgZmlsbD0iI2VlZSIvPjwvc3ZnPg=="
+                                    />
+                                )}
+                                {/* 드래그 핸들: 이미지 위에 올려서 잡고 내리면 모달 닫힘 */}
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label="모달 닫기"
+                                    onPointerDown={handlePlaceModalPointerDown}
+                                    className="absolute top-0 left-0 right-0 flex justify-center pt-3 pb-6 touch-none cursor-grab active:cursor-grabbing z-10"
+                                >
+                                    <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md" />
+                                </div>
                             </div>
-                        </div>
-                        <div
-                            ref={placeModalScrollRef}
-                            className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide"
-                            onWheel={(e) => {
-                                if (placeModalScrollRef.current && placeModalScrollRef.current.scrollTop <= 0 && e.deltaY > 0) {
-                                    e.preventDefault();
-                                    placeModalClose();
-                                }
-                            }}
-                            onTouchStart={(e) => {
-                                placeModalTouchStartY.current = e.touches[0].clientY;
-                            }}
-                            onTouchMove={(e) => {
-                                if (placeModalScrollRef.current && placeModalScrollRef.current.scrollTop <= 0) {
-                                    const dy = e.touches[0].clientY - placeModalTouchStartY.current;
-                                    if (dy > 30) placeModalClose();
-                                }
-                            }}
-                        >
-                            <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
-                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
-                                {selectedPlace.address}
-                            </p>
-                            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
-                                {selectedPlace.description || "상세 설명이 없습니다."}
-                            </p>
-                            {/* 🟢 팁 섹션: 무료 팁(항상) + 유료 팁(권한 시만, 없으면 CTA) */}
-                            {(() => {
-                                const coursePlace = sortedCoursePlaces.find((cp) => cp.place.id === selectedPlace.id);
-                                const coachingTipFree = coursePlace?.coaching_tip_free?.trim();
-                                const coachingTip = coursePlace?.coaching_tip?.trim();
-                                const hasFreeTip = !!coachingTipFree;
-                                const hasPaidTip = coursePlace?.hasPaidTip ?? !!(coachingTip && coachingTip.length > 0);
+                            <div
+                                ref={placeModalScrollRef}
+                                className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide"
+                                onWheel={(e) => {
+                                    if (
+                                        placeModalScrollRef.current &&
+                                        placeModalScrollRef.current.scrollTop <= 0 &&
+                                        e.deltaY > 0
+                                    ) {
+                                        e.preventDefault();
+                                        placeModalClose();
+                                    }
+                                }}
+                                onTouchStart={(e) => {
+                                    placeModalTouchStartY.current = e.touches[0].clientY;
+                                }}
+                                onTouchMove={(e) => {
+                                    if (placeModalScrollRef.current && placeModalScrollRef.current.scrollTop <= 0) {
+                                        const dy = e.touches[0].clientY - placeModalTouchStartY.current;
+                                        if (dy > 30) placeModalClose();
+                                    }
+                                }}
+                            >
+                                <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
+                                    {selectedPlace.address}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
+                                    {selectedPlace.description || "상세 설명이 없습니다."}
+                                </p>
+                                {/* 🟢 팁 섹션: 무료 팁(항상) + 유료 팁(권한 시만, 없으면 CTA) */}
+                                {(() => {
+                                    const coursePlace = sortedCoursePlaces.find(
+                                        (cp) => cp.place.id === selectedPlace.id
+                                    );
+                                    const coachingTipFree = coursePlace?.coaching_tip_free?.trim();
+                                    const coachingTip = coursePlace?.coaching_tip?.trim();
+                                    const hasFreeTip = !!coachingTipFree;
+                                    const hasPaidTip =
+                                        coursePlace?.hasPaidTip ?? !!(coachingTip && coachingTip.length > 0);
 
-                                if (!hasFreeTip && !hasPaidTip) return null;
+                                    if (!hasFreeTip && !hasPaidTip) return null;
 
-                                const courseGrade = (courseData.grade || "FREE").toUpperCase();
-                                const currentUserTier = (userTier || "FREE").toUpperCase();
-                                const shouldShowPaidTip = !(
-                                    (courseGrade === "FREE" && currentUserTier === "FREE") ||
-                                    courseData.isLocked
-                                );
+                                    const courseGrade = (courseData.grade || "FREE").toUpperCase();
+                                    const currentUserTier = (userTier || "FREE").toUpperCase();
+                                    const shouldShowPaidTip = !(
+                                        (courseGrade === "FREE" && currentUserTier === "FREE") ||
+                                        courseData.isLocked
+                                    );
 
-                                return (
-                                    <div className="mb-4 flex flex-col gap-2">
-                                        {/* 무료 팁: 연한 블루그레이 배경 + 녹색 라벨 (이미지 스타일) */}
-                                        {hasFreeTip && (
-                                            <div className="rounded-xl p-3 bg-[#F0F4F8] dark:bg-gray-800">
-                                                <div className="flex gap-2 items-start">
-                                                    <Icons.Bulb className="w-4 h-4 text-emerald-600 dark:text-emerald-500 mt-0.5 shrink-0" />
-                                                    <div className="min-w-0 flex-1">
-                                                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                                                            Dona&apos;s Pick
-                                                        </span>
-                                                        <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
-                                                            {coachingTipFree}
+                                    return (
+                                        <div className="mb-4 flex flex-col gap-2">
+                                            {/* 무료 팁: 연한 블루그레이 배경 + 녹색 라벨 (이미지 스타일) */}
+                                            {hasFreeTip && (
+                                                <div className="rounded-xl p-3 bg-[#F0F4F8] dark:bg-gray-800">
+                                                    <div className="flex gap-2 items-start">
+                                                        <Icons.Bulb className="w-4 h-4 text-emerald-600 dark:text-emerald-500 mt-0.5 shrink-0" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                                                                Dona&apos;s Pick
+                                                            </span>
+                                                            <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
+                                                                {coachingTipFree}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* 유료 팁: 연한 크림/골드 배경 + 골드 라벨 (이미지 스타일) */}
+                                            {hasPaidTip &&
+                                                (shouldShowPaidTip ? (
+                                                    <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
+                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                            <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                                PREMIUM TIP
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
+                                                            {coachingTip}
                                                         </p>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {/* 유료 팁: 연한 크림/골드 배경 + 골드 라벨 (이미지 스타일) */}
-                                        {hasPaidTip &&
-                                            (shouldShowPaidTip ? (
-                                                <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
-                                                    <div className="flex items-center gap-1.5 mb-1">
-                                                        <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                        <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                            PREMIUM TIP
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (isAuthenticated) setShowSubscriptionModal(true);
+                                                            else setShowLoginModal(true);
+                                                        }}
+                                                        className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
+                                                    >
+                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                            <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                                PREMIUM TIP
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                                            🔒 이곳의 시크릿 꿀팁 잠금 해제
+                                                        </p>
+                                                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                                                            베이직(Basic) 멤버십으로 완벽한 데이트를 준비하세요.
+                                                        </p>
+                                                        <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                                                            멤버십 가입하고 확인하기 &gt;
                                                         </span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
-                                                        {coachingTip}
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (isAuthenticated) setShowSubscriptionModal(true);
-                                                        else setShowLoginModal(true);
-                                                    }}
-                                                    className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
-                                                >
-                                                    <div className="flex items-center gap-1.5 mb-1">
-                                                        <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                        <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                            PREMIUM TIP
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
-                                                        🔒 이곳의 시크릿 꿀팁 잠금 해제
-                                                    </p>
-                                                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-                                                        베이직(Basic) 멤버십으로 완벽한 데이트를 준비하세요.
-                                                    </p>
-                                                    <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                                                        멤버십 가입하고 확인하기 &gt;
-                                                    </span>
-                                                </button>
-                                            ))}
-                                    </div>
-                                );
-                            })()}
-                            <div className="flex flex-col gap-2">
-                                {/* 🟢 예약하기: 하단 시트로 열기 */}
-                                {selectedPlace.reservationUrl && (
+                                                    </button>
+                                                ))}
+                                        </div>
+                                    );
+                                })()}
+                                <div className="flex flex-col gap-2">
+                                    {/* 🟢 예약하기: 하단 시트로 열기 */}
+                                    {selectedPlace.reservationUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setWebSheetUrl(selectedPlace.reservationUrl!);
+                                                setShowWebSheet(true);
+                                            }}
+                                            className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+                                        >
+                                            <Icons.ExternalLink className="w-4 h-4" />
+                                            예약하기
+                                        </button>
+                                    )}
                                     <button
-                                        type="button"
+                                        className="w-full py-3 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
                                         onClick={() => {
-                                            setWebSheetUrl(selectedPlace.reservationUrl!);
-                                            setShowWebSheet(true);
+                                            setPlaceModalSlideUp(false);
+                                            setTimeout(() => setShowPlaceModal(false), 300);
                                         }}
-                                        className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                     >
-                                        <Icons.ExternalLink className="w-4 h-4" />
-                                        예약하기
+                                        닫기
                                     </button>
-                                )}
-                                <button
-                                    className="w-full py-3 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
-                                    onClick={() => {
-                                        setPlaceModalSlideUp(false);
-                                        setTimeout(() => setShowPlaceModal(false), 300);
-                                    }}
-                                >
-                                    닫기
-                                </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     </div>
                 </div>
             )}
@@ -2096,17 +2101,15 @@ export default function CourseDetailClient({
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* 핸들바(아래로 당기면 닫힘) */}
-                            <div className="flex items-center justify-center shrink-0 pt-3 pb-2">
-                                <div
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label="시트 닫기"
-                                    onPointerDown={handleWebSheetPointerDown}
-                                    className="flex justify-center items-center touch-none cursor-grab active:cursor-grabbing"
-                                >
-                                    <span className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-                                </div>
+                            {/* 핸들바 영역 전체 드래그로 닫기 */}
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                aria-label="시트 닫기"
+                                onPointerDown={handleWebSheetPointerDown}
+                                className="flex items-center justify-center shrink-0 pt-3 pb-3 touch-none cursor-grab active:cursor-grabbing"
+                            >
+                                <span className="w-12 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
                             </div>
                             <iframe
                                 src={webSheetUrl}
