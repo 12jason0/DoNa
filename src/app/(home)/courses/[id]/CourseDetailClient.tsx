@@ -1770,13 +1770,14 @@ export default function CourseDetailClient({
                         setTimeout(() => setShowPlaceModal(false), 300);
                     }}
                 >
-                    <div
-                        className="bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col shadow-2xl mx-auto transition-transform duration-300 ease-out pb-[env(safe-area-inset-bottom)]"
-                        style={{
-                            transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                    <div className="fixed left-0 right-0 top-14 bottom-0 flex flex-col pointer-events-none">
+                        <div
+                            className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md h-full overflow-hidden flex flex-col shadow-2xl mx-auto transition-transform duration-300 ease-out pb-[env(safe-area-inset-bottom)]"
+                            style={{
+                                transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
                         <div className="relative h-48 shrink-0 bg-gray-100 dark:bg-gray-800">
                             {selectedPlace.imageUrl && (
                                 <Image
@@ -1912,6 +1913,7 @@ export default function CourseDetailClient({
                                 </button>
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             )}
