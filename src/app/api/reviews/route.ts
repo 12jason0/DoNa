@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMemoryLimit } from "@/constants/subscription";
+import { decrypt, encrypt } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
             courseId: r.courseId,
             userId: r.userId,
             rating: r.rating,
-            comment: r.comment,
+            comment: r.comment ? decrypt(r.comment) : "", // 🟢 AES-256 복호화 (관리자 DB 직접 열람 시에도 내용 비공개)
             imageUrls: r.imageUrls || [],
                 tags: r.tags || [], // 🟢 태그 추가
                 placeData: r.placeData || null, // 🟢 장소별 데이터 추가
@@ -233,6 +234,9 @@ export async function POST(request: NextRequest) {
                 ? content.trim()
                 : "";
 
+        // 🟢 AES-256 암호화: 민감 텍스트는 DB 저장 전 암호화 (디지털 금고)
+        const encryptedComment = finalComment ? encrypt(finalComment) : finalComment;
+
             // 🟢 트랜잭션으로 리뷰 저장 + 쿠폰 지급 처리
         const result = await prisma.$transaction(async (tx) => {
             let review;
@@ -244,7 +248,7 @@ export async function POST(request: NextRequest) {
                     where: { id: existingReview.id },
                     data: {
                         rating: numericRating,
-                        comment: finalComment,
+                        comment: encryptedComment,
                         imageUrls: Array.isArray(imageUrls) ? imageUrls : existingReview.imageUrls || [],
                         isPublic: isPublicValue,
                         tags: Array.isArray(tags) ? tags : [], // 🟢 태그 저장
@@ -279,7 +283,7 @@ export async function POST(request: NextRequest) {
                         userId: numericUserId,
                         courseId: numericCourseId,
                         rating: numericRating,
-                        comment: finalComment,
+                        comment: encryptedComment,
                         imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
                         isPublic: isPublicValue,
                         tags: Array.isArray(tags) ? tags : [], // 🟢 태그 저장
@@ -355,11 +359,15 @@ export async function POST(request: NextRequest) {
             return { review, couponAwarded, couponAmount, couponMessage, isNewReview, personalMemoryCount };
         });
 
-        // 응답 반환
+        // 응답 반환 (클라이언트에는 복호화된 comment 전달)
+        const reviewForClient = {
+            ...result.review,
+            comment: result.review.comment ? decrypt(result.review.comment) : "",
+        };
         if (result.isNewReview) {
             return NextResponse.json(
                 {
-                    ...result.review,
+                    ...reviewForClient,
                     couponAwarded: result.couponAwarded,
                     couponAmount: result.couponAmount || 0,
                     message: result.couponMessage || undefined,
@@ -379,7 +387,7 @@ export async function POST(request: NextRequest) {
                 });
             }
             return NextResponse.json({
-                ...result.review,
+                ...reviewForClient,
                 personalMemoryCount,
             }, { status: 200 });
         }
