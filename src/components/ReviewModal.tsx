@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "@/components/ImageFallback";
 
 // 🟢 1. 서버 응답 데이터의 타입을 정의합니다.
@@ -27,7 +27,14 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
     const [uploadingImages, setUploadingImages] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [mounted, setMounted] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // 아래에서 위로 올라오는 애니메이션
+    useEffect(() => {
+        if (isOpen) setMounted(true);
+        else setMounted(false);
+    }, [isOpen]);
 
     // 🟢 2. 후기 제출 함수 (쿠폰 지급 로직 포함)
     const handleSubmit = async (e: React.FormEvent) => {
@@ -131,16 +138,31 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-hidden">
-            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-xl">
-                <div className="p-6 min-w-0">
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+            {/* 딤드 배경 */}
+            <div
+                className="absolute inset-0 bg-black/60 transition-opacity duration-300"
+                aria-hidden
+                onClick={handleClose}
+            />
+            {/* 바텀시트: 아래에 붙이고 아래에서 위로 올라옴 */}
+            <div
+                className={`relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-t-2xl bg-zinc-900 shadow-2xl transition-transform duration-300 ease-out ${
+                    mounted ? "translate-y-0" : "translate-y-full"
+                }`}
+            >
+                {/* 드래그 핸들 */}
+                <div className="sticky top-0 z-10 flex justify-center pt-3 pb-1 bg-zinc-900">
+                    <div className="w-10 h-1 rounded-full bg-zinc-600" />
+                </div>
+                <div className="px-5 pb-8 pt-2 min-w-0">
                     {/* 헤더 */}
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">후기 작성하기</h2>
+                        <h2 className="text-xl font-bold text-white tracking-tight">후기 작성하기</h2>
                         <button
                             onClick={handleClose}
                             disabled={isSubmitting}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            className="p-1 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
@@ -154,23 +176,23 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     </div>
 
                     {/* 대상 정보 */}
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600 mb-1">후기 대상</p>
-                        <p className="font-medium text-gray-900 wrap-break-word">
+                    <div className="mb-4 p-3 bg-zinc-800 rounded-xl">
+                        <p className="text-xs text-zinc-400 mb-1">후기 대상</p>
+                        <p className="font-medium text-white wrap-break-word">
                             {courseName || placeName || "알 수 없는 대상"}
                         </p>
                     </div>
 
                     {error && (
-                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-red-600 text-sm">{error}</p>
+                        <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-xl">
+                            <p className="text-red-400 text-sm">{error}</p>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* 평점 */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">평점 *</label>
+                            <label className="block text-sm font-medium text-zinc-400 mb-2">평점 *</label>
                             <div className="flex items-center space-x-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
@@ -178,19 +200,19 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                         type="button"
                                         onClick={() => setRating(star)}
                                         className={`text-2xl transition-colors ${
-                                            star <= rating ? "text-yellow-400" : "text-gray-300"
+                                            star <= rating ? "text-yellow-400" : "text-zinc-600"
                                         }`}
                                     >
                                         ★
                                     </button>
                                 ))}
-                                <span className="ml-2 text-sm text-gray-600">{rating}/5</span>
+                                <span className="ml-2 text-sm text-zinc-500">{rating}/5</span>
                             </div>
                         </div>
 
                         {/* 후기 내용 */}
                         <div>
-                            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="content" className="block text-sm font-medium text-zinc-400 mb-2">
                                 후기 내용 *
                             </label>
                             <textarea
@@ -201,11 +223,11 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                 minLength={10}
                                 maxLength={500}
                                 rows={4}
-                                className="text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-xl text-white placeholder-zinc-500 focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500 resize-none"
                                 placeholder="이 곳에 대한 솔직한 후기를 작성해주세요. (최소 10자)"
                             />
                             <div className="mt-1 text-right">
-                                <span className={`text-xs ${content.length >= 10 ? "text-gray-500" : "text-red-500"}`}>
+                                <span className={`text-xs ${content.length >= 10 ? "text-zinc-500" : "text-red-400"}`}>
                                     {content.length}/500
                                 </span>
                             </div>
@@ -213,14 +235,14 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
                         {/* 사진 업로드 */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">사진 추가 (선택)</label>
+                            <label className="block text-sm font-medium text-zinc-400 mb-2">사진 추가 (선택)</label>
                             <div className="space-y-3">
                                 {images.length > 0 && (
                                     <div className="grid grid-cols-3 gap-2">
                                         {images.map((url, index) => (
                                             <div
                                                 key={index}
-                                                className="relative aspect-square rounded-lg overflow-hidden border border-gray-200"
+                                                className="relative aspect-square rounded-xl overflow-hidden border border-zinc-700"
                                             >
                                                 <Image
                                                     src={url}
@@ -231,7 +253,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveImage(index)}
-                                                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center"
+                                                    className="absolute top-1 right-1 w-6 h-6 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90"
                                                 >
                                                     ✕
                                                 </button>
@@ -244,7 +266,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploadingImages}
-                                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 flex items-center justify-center gap-2 text-gray-600 disabled:opacity-50"
+                                        className="w-full py-3 border-2 border-dashed border-zinc-600 rounded-xl hover:border-zinc-500 flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-300 disabled:opacity-50"
                                     >
                                         {uploadingImages ? "업로드 중..." : `사진 추가 (${images.length}/5)`}
                                     </button>
@@ -261,19 +283,19 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                         </div>
 
                         {/* 버튼 섹션 */}
-                        <div className="flex space-x-3 pt-4">
+                        <div className="flex gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={handleClose}
                                 disabled={isSubmitting}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                className="flex-1 py-2.5 border border-zinc-600 rounded-xl text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
                             >
                                 취소
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || content.trim().length < 10}
-                                className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 py-2.5 bg-white text-zinc-900 rounded-xl text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isSubmitting ? "작성 중..." : "후기 작성"}
                             </button>

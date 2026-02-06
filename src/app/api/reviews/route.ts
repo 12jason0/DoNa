@@ -68,22 +68,20 @@ export async function GET(request: NextRequest) {
         });
 
         const formatted = (reviews || []).map((r: any) => {
-            // 🟢 isPublic 필드 명시적 확인 (DB에서 가져온 값 또는 기본값)
-            // Prisma에서 가져온 원본 데이터 확인
             const rawIsPublic = (r as any).isPublic;
             const isPublicValue = rawIsPublic !== undefined && rawIsPublic !== null ? Boolean(rawIsPublic) : true;
-            
-            // 🟢 디버깅: userId가 "me"일 때만 로그 출력
-            if (userId === "me" && reviews.length > 0) {
-                console.log(`[API] Review ID: ${r.id}, isPublic (raw): ${rawIsPublic}, isPublic (processed): ${isPublicValue}`);
+            let commentText = "";
+            try {
+                commentText = r.comment ? decrypt(r.comment) : "";
+            } catch {
+                commentText = "";
             }
-            
             return {
             id: r.id,
             courseId: r.courseId,
             userId: r.userId,
             rating: r.rating,
-            comment: r.comment ? decrypt(r.comment) : "", // 🟢 AES-256 복호화 (관리자 DB 직접 열람 시에도 내용 비공개)
+            comment: commentText,
             imageUrls: r.imageUrls || [],
                 tags: r.tags || [], // 🟢 태그 추가
                 placeData: r.placeData || null, // 🟢 장소별 데이터 추가
@@ -160,35 +158,10 @@ export async function POST(request: NextRequest) {
         // 🟢 isPublic 기본값: true (공개 리뷰), start 페이지에서 저장할 때는 false (개인 추억)
         const isPublicValue = typeof isPublic === "boolean" ? isPublic : true;
 
-        // 🟢 [단계 1] 코스 완료 체크: 공개 리뷰(isPublic: true)일 때만 코스 완료 필수
-        // 개인 추억(isPublic: false)은 코스 완료 없이도 저장 가능
-        if (isPublicValue) {
-        const isCompleted = await prisma.completedCourse.findFirst({
-            where: { userId: numericUserId, courseId: numericCourseId },
-        });
+        // 🟢 코스 리뷰(공개)는 코스 완료 없이 작성 가능. 나만의 추억(비공개)은 코스 진행 중/완료 시 작성.
 
-        if (!isCompleted) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "코스를 완료한 후에만 리뷰 보상을 받을 수 있습니다! 🏃‍♂️",
-                },
-                { status: 400 }
-            );
-            }
-        }
-
-        // 🟢 [수정] 중복 리뷰 체크: 공개 리뷰(isPublic: true)일 때만 중복 방지
-        // 개인 추억(isPublic: false)은 같은 코스에 여러 개 저장 가능
-        const existingReview = isPublicValue 
-            ? await prisma.review.findFirst({
-                where: {
-                    userId: numericUserId,
-                    courseId: numericCourseId,
-                    isPublic: true, // 🟢 공개 리뷰만 중복 체크
-                },
-            })
-            : null; // 🟢 개인 추억은 중복 체크 안 함
+        // 🟢 코스 리뷰(공개): 같은 코스에 여러 개 허용. 나만의 추억(비공개)은 별도 로직 유지.
+        const existingReview = null;
 
         // 🟢 나만의 추억(isPublic: false)은 최소 3장 이상의 사진이 필요
         // 🟢 공개 리뷰(isPublic: true)는 사진 없이도 저장 가능
@@ -242,21 +215,8 @@ export async function POST(request: NextRequest) {
             let review;
             let isNewReview = false;
 
-            if (existingReview) {
-                // 기존 리뷰가 있으면 업데이트
-                review = await tx.review.update({
-                    where: { id: existingReview.id },
-                    data: {
-                        rating: numericRating,
-                        comment: encryptedComment,
-                        imageUrls: Array.isArray(imageUrls) ? imageUrls : existingReview.imageUrls || [],
-                        isPublic: isPublicValue,
-                        tags: Array.isArray(tags) ? tags : [], // 🟢 태그 저장
-                        placeData: placeData || null, // 🟢 장소별 데이터 저장
-                    } as any, // 🟢 타입 캐스팅 (Prisma 클라이언트 타입이 아직 업데이트되지 않음)
-                });
-            } else {
-                // 🟢 나만의 추억: 트랜잭션 안에서 한도 재확인 (동시 요청 시 11개 생성 방지)
+            // 🟢 항상 새 리뷰 생성 (코스 리뷰·나만의 추억 모두 여러 개 허용, 나만의 추억은 별도)
+            // 🟢 나만의 추억: 트랜잭션 안에서 한도 재확인 (동시 요청 시 11개 생성 방지)
                 if (!isPublicValue) {
                     const userInTx = await tx.user.findUnique({
                         where: { id: numericUserId },
@@ -290,8 +250,7 @@ export async function POST(request: NextRequest) {
                         placeData: placeData || null, // 🟢 장소별 데이터 저장
                     } as any, // 🟢 타입 캐스팅 (Prisma 클라이언트 타입이 아직 업데이트되지 않음)
                 });
-                isNewReview = true;
-            }
+            isNewReview = true;
 
             // [단계 3] 새 리뷰 작성 시에만 쿠폰 지급 체크
             // 🟢 쿠폰 지급은 나만의 추억(isPublic: false) 10개 달성 시에만 지급

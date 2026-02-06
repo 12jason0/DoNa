@@ -785,47 +785,50 @@ export default function CourseDetailClient({
     const fetchReviews = useCallback(async () => {
         if (!courseId) return;
         try {
-            const response = await fetch(`/api/reviews?courseId=${courseId}`, {
-                cache: "force-cache", // 🟢 캐싱으로 성능 향상
-                next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
+            const url = `/api/reviews?courseId=${courseId}`;
+            const response = await fetch(url, {
+                cache: "no-store",
+                credentials: "include",
             });
-            if (response.ok) {
-                const data = await response.json();
-                if (Array.isArray(data)) {
-                    setReviews(
-                        data.map((r: any) => ({
-                            id: r.id,
-                            rating: r.rating,
-                            userName: r.user?.nickname || "익명",
-                            createdAt: r.createdAt,
-                            content: r.comment,
-                            imageUrls: r.imageUrls || [],
-                        }))
-                    );
-                }
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                console.error("[리뷰 조회 실패]", response.status, url, data);
+                return;
             }
-        } catch {}
+            if (Array.isArray(data)) {
+                setReviews(
+                    data.map((r: any) => ({
+                        id: r.id,
+                        rating: r.rating,
+                        userName: r.user?.nickname || "익명",
+                        createdAt: r.createdAt,
+                        content: r.comment,
+                        imageUrls: r.imageUrls || [],
+                    }))
+                );
+            } else {
+                console.warn("[리뷰 조회] 배열이 아님", typeof data, data);
+            }
+        } catch (e) {
+            console.error("[리뷰 조회 오류]", e);
+        }
     }, [courseId]);
 
-    // 🟢 [Performance]: 리뷰 섹션이 보일 때만 로드
-    const [shouldLoadReviews, setShouldLoadReviews] = useState(false);
     const reviewsSectionRef = useRef<HTMLElement | null>(null);
 
+    // 🟢 코스 상세 진입 시 해당 코스 리뷰 바로 로드 (공개 리뷰만 표시)
     useEffect(() => {
-        if (!reviewsSectionRef.current || shouldLoadReviews) return;
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0]?.isIntersecting) {
-                    setShouldLoadReviews(true);
-                    fetchReviews();
-                    observer.disconnect();
-                }
-            },
-            { threshold: 0.1, rootMargin: "100px" }
-        );
-        observer.observe(reviewsSectionRef.current);
-        return () => observer.disconnect();
-    }, [shouldLoadReviews, fetchReviews]);
+        if (courseId) fetchReviews();
+    }, [courseId, fetchReviews]);
+
+    // 🟢 후기 작성 성공 시 바로 목록 갱신
+    useEffect(() => {
+        const handleReviewSubmitted = () => {
+            setTimeout(() => fetchReviews(), 100); // DB 반영 후 갱신
+        };
+        window.addEventListener("reviewSubmitted", handleReviewSubmitted);
+        return () => window.removeEventListener("reviewSubmitted", handleReviewSubmitted);
+    }, [fetchReviews]);
 
     const handleSaveCourse = async () => {
         if (!isLoggedIn) {
