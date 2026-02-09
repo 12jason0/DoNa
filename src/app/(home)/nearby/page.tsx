@@ -334,10 +334,12 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 }
 
                 const whereClause = filterConditions.length > 0 ? { AND: filterConditions } : { isPublic: true };
+                // 🟢 검색(q)일 때만 200개, 지역/컨셉/태그만 선택했을 때는 30개
+                const takeLimit = keyword ? 200 : 30;
                 const courses = await prisma.course.findMany({
                     where: whereClause,
                     orderBy: { id: "desc" },
-                    take: 30,
+                    take: takeLimit,
                     select: courseSelectOptions,
                 });
 

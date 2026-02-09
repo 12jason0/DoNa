@@ -1270,22 +1270,8 @@ export default function CourseDetailClient({
                                                                         {getCategoryLabel(cat)}
                                                                     </span>
                                                                 ))}
-                                                                {hasPaidTip &&
-                                                                    shouldShowPaidTip &&
-                                                                    paidCategories.map((cat) => (
-                                                                        <span
-                                                                            key={`paid-${cat}`}
-                                                                            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#FFFBEB] dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50"
-                                                                        >
-                                                                            <TipCategoryIcon
-                                                                                category={cat}
-                                                                                className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-amber-600 dark:text-amber-400"
-                                                                            />
-                                                                            {getCategoryLabel(cat)}
-                                                                        </span>
-                                                                    ))}
                                                             </div>
-                                                            {hasPaidTip && !shouldShowPaidTip && (
+                                                            {hasPaidTip && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => {
@@ -1917,7 +1903,7 @@ export default function CourseDetailClient({
                                         src={selectedPlace.imageUrl}
                                         alt={selectedPlace.name}
                                         fill
-                                        className="object-cover"
+                                        className="object-cover pointer-events-none"
                                         priority
                                         quality={60}
                                         sizes="(max-width: 768px) 95vw, 448px"
@@ -1925,15 +1911,15 @@ export default function CourseDetailClient({
                                         blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjE5MiIgZmlsbD0iI2VlZSIvPjwvc3ZnPg=="
                                     />
                                 )}
-                                {/* 드래그 핸들: 이미지 위에 올려서 잡고 내리면 모달 닫힘 */}
+                                {/* 이미지 전체 영역: 잡고 내리면 모달 닫힘 */}
                                 <div
                                     role="button"
                                     tabIndex={0}
                                     aria-label="모달 닫기"
                                     onPointerDown={handlePlaceModalPointerDown}
-                                    className="absolute top-0 left-0 right-0 flex justify-center pt-3 pb-6 touch-none cursor-grab active:cursor-grabbing z-10"
+                                    className="absolute inset-0 flex flex-col items-center pt-3 touch-none cursor-grab active:cursor-grabbing z-10"
                                 >
-                                    <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md" />
+                                    <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md shrink-0" />
                                 </div>
                             </div>
                             <div
