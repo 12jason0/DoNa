@@ -9,6 +9,7 @@ import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CONCEPTS } from "@/constants/onboardingData";
 import { isIOS } from "@/lib/platform";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
+import { getPlaceStatus } from "@/lib/placeStatus";
 
 // --- Type Definitions (기존과 100% 동일) ---
 type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
@@ -423,6 +424,24 @@ className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibo
                                     isFavorite={favoriteIds.has(Number(course.id))}
                                     onToggleFavorite={toggleFavorite}
                                     showNewBadge={true}
+                                    hasClosedPlace={(c) =>
+                                        (c.coursePlaces ?? []).some((cp: CoursePlace) =>
+                                            cp.place &&
+                                            getPlaceStatus(
+                                                cp.place.opening_hours || null,
+                                                cp.place.closed_days || []
+                                            ).status === "휴무"
+                                        )
+                                    }
+                                    getClosedPlaceCount={(c) =>
+                                        (c.coursePlaces ?? []).filter((cp: CoursePlace) =>
+                                            cp.place &&
+                                            getPlaceStatus(
+                                                cp.place.opening_hours || null,
+                                                cp.place.closed_days || []
+                                            ).status === "휴무"
+                                        ).length
+                                    }
                                 />
                             </TapFeedback>
                         </div>

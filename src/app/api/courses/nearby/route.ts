@@ -114,7 +114,11 @@ export async function GET(request: NextRequest) {
                         latitude: true,
                         longitude: true,
                         address: true,
-                        reservationUrl: true, // 🟢 예약 URL 추가
+                        reservationUrl: true,
+                        opening_hours: true,
+                        closed_days: {
+                            select: { day_of_week: true, specific_date: true, note: true },
+                        },
                     },
                 },
             },

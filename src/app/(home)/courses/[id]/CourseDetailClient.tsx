@@ -11,6 +11,9 @@ import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { useAuth } from "@/context/AuthContext";
 import TapFeedback from "@/components/TapFeedback";
+import { TipSection, TipCategoryIcon } from "@/components/TipSection";
+import { parseTipsFromDb, FREE_TIP_CATEGORIES, PAID_TIP_CATEGORIES } from "@/types/tip";
+import { getPremiumQuestions } from "../../../../lib/placeCategory";
 import { isIOS, isMobileApp } from "@/lib/platform";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
@@ -345,7 +348,6 @@ export default function CourseDetailClient({
     const placeModalHandleRef = useRef<HTMLElement | null>(null);
     const placeModalPointerIdRef = useRef<number | null>(null);
     const placeModalScrollRef = useRef<HTMLDivElement | null>(null);
-    const placeModalTouchStartY = useRef(0);
     const [shareModalSlideUp, setShareModalSlideUp] = useState(false);
     // 🔒 [접근 제어] 잠긴 코스는 초기 state에서 즉시 모달 표시 (페이지가 보이기 전에)
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
@@ -1202,7 +1204,7 @@ export default function CourseDetailClient({
                                                         <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate mb-1">
                                                             {coursePlace.place.name}
                                                         </h3>
-                                                        <p className="text-xs text-gray-500 truncate mb-2">
+                                                        <p className="text-xs text-gray-500 mb-2">
                                                             {coursePlace.place.address}
                                                         </p>
                                                         {/* 🟢 예약 버튼 - 하단 시트로 열기 */}
@@ -1222,7 +1224,7 @@ export default function CourseDetailClient({
                                                         )}
                                                     </div>
                                                 </div>
-                                                {/* 🟢 팁 섹션: 무료 팁(항상 표시) + 유료 팁(권한 시만, 없으면 CTA) */}
+                                                {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
                                                 {(() => {
                                                     const courseGrade = (courseData.grade || "FREE").toUpperCase();
                                                     const currentUserTier = (userTier || "FREE").toUpperCase();
@@ -1231,94 +1233,84 @@ export default function CourseDetailClient({
                                                         courseData.isLocked
                                                     );
 
-                                                    const hasFreeTip = !!(
-                                                        coursePlace.coaching_tip_free &&
-                                                        coursePlace.coaching_tip_free.trim()
-                                                    );
-                                                    // 서버 전달 hasPaidTip 우선(미로그인/FREE 시 내용 숨겨도 잠김 영역 표시)
-                                                    const hasPaidTip =
-                                                        coursePlace.hasPaidTip ??
-                                                        !!(coursePlace.coaching_tip && coursePlace.coaching_tip.trim());
+                                                    const freeTips = parseTipsFromDb(coursePlace.coaching_tip_free);
+                                                    const paidTips = parseTipsFromDb(coursePlace.coaching_tip);
+                                                    const hasFreeTip = freeTips.length > 0;
+                                                    const hasPaidTip = coursePlace.hasPaidTip ?? paidTips.length > 0;
 
                                                     if (!hasFreeTip && !hasPaidTip) return null;
 
+                                                    const getCategoryLabel = (cat: string) =>
+                                                        FREE_TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
+                                                        PAID_TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
+                                                        "기타";
+
+                                                    const freeCategories = [
+                                                        ...new Set(freeTips.map((t) => t.category)),
+                                                    ];
+                                                    const paidCategories = [
+                                                        ...new Set(paidTips.map((t) => t.category)),
+                                                    ];
+
                                                     return (
-                                                        <div className="mt-2 flex flex-col gap-2">
-                                                            {/* 무료 팁: 연한 블루그레이 배경 + 녹색 라벨 (이미지 스타일) */}
-                                                            {hasFreeTip && (
-                                                                <div className="rounded-xl px-5 py-4 bg-[#F0F4F8] dark:bg-gray-800">
-                                                                    <div className="flex gap-2 items-start">
-                                                                        <Icons.Bulb className="w-4 h-4 text-emerald-600 dark:text-emerald-500 mt-0.5 shrink-0" />
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                                                                                Dona&apos;s Pick
-                                                                            </span>
-                                                                            <p
-                                                                                className="mt-0.5 text-xs text-gray-700 dark:text-gray-100 leading-relaxed"
-                                                                                style={{
-                                                                                    display: "-webkit-box",
-                                                                                    WebkitLineClamp: 3,
-                                                                                    WebkitBoxOrient: "vertical",
-                                                                                    overflow: "hidden",
-                                                                                    textOverflow: "ellipsis",
-                                                                                }}
-                                                                            >
-                                                                                {coursePlace.coaching_tip_free}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {/* 유료 팁: 연한 크림/골드 배경 + 골드 라벨 (이미지 스타일) */}
-                                                            {hasPaidTip &&
-                                                                (shouldShowPaidTip ? (
-                                                                    <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
-                                                                        <div className="flex items-center gap-1.5 mb-1">
-                                                                            <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                                                PREMIUM TIP
-                                                                            </span>
-                                                                        </div>
-                                                                        <p
-                                                                            className="text-xs text-gray-800 dark:text-gray-100 leading-relaxed"
-                                                                            style={{
-                                                                                display: "-webkit-box",
-                                                                                WebkitLineClamp: 3,
-                                                                                WebkitBoxOrient: "vertical",
-                                                                                overflow: "hidden",
-                                                                                textOverflow: "ellipsis",
-                                                                            }}
-                                                                        >
-                                                                            {coursePlace.coaching_tip}
-                                                                        </p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            if (isAuthenticated)
-                                                                                setShowSubscriptionModal(true);
-                                                                            else setShowLoginModal(true);
-                                                                        }}
-                                                                        className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
+                                                        <div className="mt-2 flex flex-col gap-1.5">
+                                                            <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                                                                ✨ 보유 꿀팁
+                                                            </span>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {freeCategories.map((cat) => (
+                                                                    <span
+                                                                        key={`free-${cat}`}
+                                                                        className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
                                                                     >
-                                                                        <div className="flex items-center gap-1.5 mb-1">
-                                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                                                PREMIUM TIP
-                                                                            </span>
-                                                                        </div>
-                                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
-                                                                            🔒 이곳의 시크릿 꿀팁 잠금 해제
-                                                                        </p>
-                                                                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-                                                                            베이직(Basic) 멤버십으로 완벽한 데이트를
-                                                                            준비하세요.
-                                                                        </p>
-                                                                        <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                                                                            멤버십 가입하고 확인하기 &gt;
-                                                                        </span>
-                                                                    </button>
+                                                                        <TipCategoryIcon
+                                                                            category={cat}
+                                                                            className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
+                                                                        />
+                                                                        {getCategoryLabel(cat)}
+                                                                    </span>
                                                                 ))}
+                                                                {hasPaidTip &&
+                                                                    shouldShowPaidTip &&
+                                                                    paidCategories.map((cat) => (
+                                                                        <span
+                                                                            key={`paid-${cat}`}
+                                                                            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#FFFBEB] dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50"
+                                                                        >
+                                                                            <TipCategoryIcon
+                                                                                category={cat}
+                                                                                className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-amber-600 dark:text-amber-400"
+                                                                            />
+                                                                            {getCategoryLabel(cat)}
+                                                                        </span>
+                                                                    ))}
+                                                            </div>
+                                                            {hasPaidTip && !shouldShowPaidTip && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (isAuthenticated)
+                                                                            setShowSubscriptionModal(true);
+                                                                        else setShowLoginModal(true);
+                                                                    }}
+                                                                    className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
+                                                                >
+                                                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                                                        <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                                                                            시크릿 꿀팁
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
+                                                                        {
+                                                                            getPremiumQuestions(
+                                                                                coursePlace.place?.category
+                                                                            ).headline
+                                                                        }
+                                                                    </p>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     );
                                                 })()}
@@ -1635,10 +1627,10 @@ export default function CourseDetailClient({
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-gray-900 dark:text-white truncate">
+                                        <h4 className="font-bold text-gray-900 dark:text-white">
                                             {modalSelectedPlace.name}
                                         </h4>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {modalSelectedPlace.address}
                                         </p>
                                     </div>
@@ -1947,25 +1939,6 @@ export default function CourseDetailClient({
                             <div
                                 ref={placeModalScrollRef}
                                 className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide"
-                                onWheel={(e) => {
-                                    if (
-                                        placeModalScrollRef.current &&
-                                        placeModalScrollRef.current.scrollTop <= 0 &&
-                                        e.deltaY > 0
-                                    ) {
-                                        e.preventDefault();
-                                        placeModalClose();
-                                    }
-                                }}
-                                onTouchStart={(e) => {
-                                    placeModalTouchStartY.current = e.touches[0].clientY;
-                                }}
-                                onTouchMove={(e) => {
-                                    if (placeModalScrollRef.current && placeModalScrollRef.current.scrollTop <= 0) {
-                                        const dy = e.touches[0].clientY - placeModalTouchStartY.current;
-                                        if (dy > 30) placeModalClose();
-                                    }
-                                }}
                             >
                                 <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
                                 <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
@@ -1979,11 +1952,10 @@ export default function CourseDetailClient({
                                     const coursePlace = sortedCoursePlaces.find(
                                         (cp) => cp.place.id === selectedPlace.id
                                     );
-                                    const coachingTipFree = coursePlace?.coaching_tip_free?.trim();
-                                    const coachingTip = coursePlace?.coaching_tip?.trim();
-                                    const hasFreeTip = !!coachingTipFree;
-                                    const hasPaidTip =
-                                        coursePlace?.hasPaidTip ?? !!(coachingTip && coachingTip.length > 0);
+                                    const freeTips = parseTipsFromDb(coursePlace?.coaching_tip_free);
+                                    const paidTips = parseTipsFromDb(coursePlace?.coaching_tip);
+                                    const hasFreeTip = freeTips.length > 0;
+                                    const hasPaidTip = coursePlace?.hasPaidTip ?? paidTips.length > 0;
 
                                     if (!hasFreeTip && !hasPaidTip) return null;
 
@@ -1996,36 +1968,12 @@ export default function CourseDetailClient({
 
                                     return (
                                         <div className="mb-4 flex flex-col gap-2">
-                                            {/* 무료 팁: 연한 블루그레이 배경 + 녹색 라벨 (이미지 스타일) */}
                                             {hasFreeTip && (
-                                                <div className="rounded-xl p-3 bg-[#F0F4F8] dark:bg-gray-800">
-                                                    <div className="flex gap-2 items-start">
-                                                        <Icons.Bulb className="w-4 h-4 text-emerald-600 dark:text-emerald-500 mt-0.5 shrink-0" />
-                                                        <div className="min-w-0 flex-1">
-                                                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                                                                Dona&apos;s Pick
-                                                            </span>
-                                                            <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
-                                                                {coachingTipFree}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <TipSection tips={freeTips} variant="free" compact={false} />
                                             )}
-                                            {/* 유료 팁: 연한 크림/골드 배경 + 골드 라벨 (이미지 스타일) */}
                                             {hasPaidTip &&
                                                 (shouldShowPaidTip ? (
-                                                    <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
-                                                        <div className="flex items-center gap-1.5 mb-1">
-                                                            <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                                PREMIUM TIP
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
-                                                            {coachingTip}
-                                                        </p>
-                                                    </div>
+                                                    <TipSection tips={paidTips} variant="paid" compact={false} />
                                                 ) : (
                                                     <button
                                                         type="button"
@@ -2036,21 +1984,43 @@ export default function CourseDetailClient({
                                                         }}
                                                         className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
                                                     >
-                                                        <div className="flex items-center gap-1.5 mb-1">
-                                                            <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                            <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                                PREMIUM TIP
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
-                                                            🔒 이곳의 시크릿 꿀팁 잠금 해제
-                                                        </p>
-                                                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-                                                            베이직(Basic) 멤버십으로 완벽한 데이트를 준비하세요.
-                                                        </p>
-                                                        <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                                                            멤버십 가입하고 확인하기 &gt;
-                                                        </span>
+                                                        {(() => {
+                                                            const copy = getPremiumQuestions(selectedPlace?.category);
+                                                            return (
+                                                                <>
+                                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                                        <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                                        <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
+                                                                            이 구역 시크릿 공략집
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="pl-5">
+                                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                                                            {copy.headline}
+                                                                        </p>
+                                                                        {copy.questions.length > 0 && (
+                                                                            <ul className="mt-1.5 space-y-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                                                                                {copy.questions.map((q, i) => (
+                                                                                    <li
+                                                                                        key={i}
+                                                                                        className="flex gap-1.5 items-start"
+                                                                                    >
+                                                                                        <TipCategoryIcon
+                                                                                            category={q.iconCategory}
+                                                                                            className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
+                                                                                        />
+                                                                                        <span>{q.text}</span>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        )}
+                                                                        <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                                                                            커피 한 잔 값으로 정답 확인하기 &gt;
+                                                                        </span>
+                                                                    </div>
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </button>
                                                 ))}
                                         </div>

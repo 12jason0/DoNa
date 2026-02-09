@@ -29,13 +29,17 @@ const courseSelectOptions = {
             place: {
                 select: {
                     id: true,
+                    name: true,
                     imageUrl: true,
                     reservationUrl: true,
+                    opening_hours: true,
+                    closed_days: {
+                        select: { day_of_week: true, specific_date: true, note: true },
+                    },
                 },
             },
         },
         orderBy: { order_index: "asc" as const },
-        take: 1, // 리스트 페이지이므로 첫 번째 장소 정보만 로드
     },
     // 🟢 [Fix]: 장소 개수를 위한 _count 추가
     _count: { select: { coursePlaces: true } },
@@ -89,8 +93,11 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                         place: cp.place
                             ? {
                                   id: cp.place.id,
+                                  name: cp.place.name,
                                   imageUrl: cp.place.imageUrl,
                                   reservationUrl: cp.place.reservationUrl,
+                                  opening_hours: cp.place.opening_hours || null,
+                                  closed_days: cp.place.closed_days || [],
                               }
                             : null,
                     })) || [],

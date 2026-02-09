@@ -4,6 +4,15 @@ import React, { useEffect, useState, FormEvent, useMemo, useRef } from "react";
 import type { DoNaCourseTags, ConceptTag, MoodTag, TargetTag, BudgetTag } from "@/types/tag";
 import NaverMapComponent from "@/components/NaverMap";
 import type { Place } from "@/types/map";
+import {
+    parseTipsFromDb,
+    tipsToJson,
+    FREE_TIP_CATEGORIES,
+    PAID_TIP_CATEGORIES,
+    type TipItem,
+    type FreeTipCategory,
+    type PaidTipCategory,
+} from "@/types/tip";
 
 // --- 1. 선택지 상수 정의 ---
 const CONCEPT_OPTIONS: ConceptTag[] = [
@@ -49,6 +58,82 @@ const MOOD_OPTIONS: MoodTag[] = [
 const TARGET_OPTIONS: TargetTag[] = ["연인", "썸", "친구", "가족", "혼자", "반려동물", "단체/모임"];
 
 const BUDGET_OPTIONS: BudgetTag[] = ["3만원 이하", "3~6만원", "6~10만원", "10~20만원", "20만원 이상"];
+
+// --- 팁 에디터 (카테고리+내용 배열) ---
+function TipItemEditor({
+    tips,
+    onChange,
+    label,
+    variant,
+}: {
+    tips: TipItem[];
+    onChange: (tips: TipItem[]) => void;
+    label: string;
+    variant: "free" | "paid";
+}) {
+    const addTip = () =>
+        onChange([
+            ...tips,
+            {
+                category: (variant === "free" ? "PARKING" : "PHOTO_ZONE") as FreeTipCategory | PaidTipCategory,
+                content: "",
+            },
+        ]);
+    const updateTip = (index: number, field: "category" | "content", value: string) => {
+        const next = [...tips];
+        next[index] = { ...next[index], [field]: value };
+        onChange(next);
+    };
+    const removeTip = (index: number) => onChange(tips.filter((_, i) => i !== index));
+
+    return (
+        <div>
+            <label className="text-xs font-medium text-gray-600 block mb-1">{label}</label>
+            <div className="space-y-2 border rounded p-2 bg-gray-50">
+                {tips.map((t, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                        <select
+                            value={t.category}
+                            onChange={(e) => updateTip(i, "category", e.target.value)}
+                            className="border p-1.5 rounded text-xs w-32 shrink-0"
+                        >
+                            {(variant === "free" ? FREE_TIP_CATEGORIES : PAID_TIP_CATEGORIES).map((c) => (
+                                <option key={c.value} value={c.value}>
+                                    {c.label}
+                                </option>
+                            ))}
+                        </select>
+                        <textarea
+                            value={t.content}
+                            onChange={(e) => updateTip(i, "content", e.target.value)}
+                            className="flex-1 border p-1.5 rounded text-sm resize-none min-h-[60px]"
+                            placeholder={
+                                variant === "free"
+                                    ? "예: 주변 주차 정보"
+                                    : "예: 여기서는 창가 자리에 앉으세요"
+                            }
+                            rows={2}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => removeTip(i)}
+                            className="shrink-0 px-2 py-1 text-red-500 text-xs hover:bg-red-50 rounded"
+                        >
+                            삭제
+                        </button>
+                    </div>
+                ))}
+                <button
+                    type="button"
+                    onClick={addTip}
+                    className="text-xs text-green-600 font-medium hover:underline"
+                >
+                    + 팁 추가
+                </button>
+            </div>
+        </div>
+    );
+}
 
 // --- 2. 타입 정의 ---
 
@@ -145,8 +230,8 @@ export default function AdminCoursesPage() {
     const [addOrder, setAddOrder] = useState<number>(1);
     const [addDuration, setAddDuration] = useState<number | "">("");
     const [addRecTime, setAddRecTime] = useState<string>(""); // recommended_time
-    const [addCoachingTip, setAddCoachingTip] = useState<string>(""); // 유료 팁
-    const [addCoachingTipFree, setAddCoachingTipFree] = useState<string>(""); // 무료 팁
+    const [addTipsFree, setAddTipsFree] = useState<TipItem[]>([]); // 무료 팁 (카테고리+내용)
+    const [addTipsPaid, setAddTipsPaid] = useState<TipItem[]>([]); // 유료 팁
 
     // 장소 검색용 State
     const [placeSearchQuery, setPlaceSearchQuery] = useState<string>("");
@@ -160,8 +245,8 @@ export default function AdminCoursesPage() {
         order_index: number;
         estimated_duration?: number | "";
         recommended_time?: string;
-        coaching_tip?: string;
-        coaching_tip_free?: string;
+        tipsFree: TipItem[];
+        tipsPaid: TipItem[];
     } | null>(null);
 
     // --- 데이터 불러오기 ---
@@ -476,7 +561,8 @@ export default function AdminCoursesPage() {
             setAddPlaceId("");
             setAddDuration("");
             setAddRecTime("");
-            setAddCoachingTip("");
+            setAddTipsFree([]);
+            setAddTipsPaid([]);
 
             window.scrollTo({ top: 0, behavior: "smooth" });
         } catch (e) {
@@ -582,8 +668,8 @@ export default function AdminCoursesPage() {
                     order_index: Number(addOrder),
                     estimated_duration: addDuration ? Number(addDuration) : undefined,
                     recommended_time: addRecTime || undefined,
-                    coaching_tip: addCoachingTip || undefined,
-                    coaching_tip_free: addCoachingTipFree || undefined,
+                    coaching_tip: tipsToJson(addTipsPaid) ?? undefined,
+                    coaching_tip_free: tipsToJson(addTipsFree) ?? undefined,
                 }),
             });
 
@@ -599,8 +685,8 @@ export default function AdminCoursesPage() {
                 setShowPlaceSearchResults(false);
                 setAddDuration("");
                 setAddRecTime("");
-                setAddCoachingTip("");
-                setAddCoachingTipFree("");
+                setAddTipsFree([]);
+                setAddTipsPaid([]);
             } else {
                 const err = await res.json();
                 alert(err.error || "추가 실패");
@@ -641,8 +727,8 @@ export default function AdminCoursesPage() {
             order_index: place.order_index,
             estimated_duration: place.estimated_duration ?? "",
             recommended_time: place.recommended_time ?? "",
-            coaching_tip: place.coaching_tip ?? "",
-            coaching_tip_free: place.coaching_tip_free ?? "",
+            tipsFree: parseTipsFromDb(place.coaching_tip_free),
+            tipsPaid: parseTipsFromDb(place.coaching_tip),
         });
     };
 
@@ -670,8 +756,8 @@ export default function AdminCoursesPage() {
                     estimated_duration:
                         editingPlaceData.estimated_duration === "" ? null : editingPlaceData.estimated_duration,
                     recommended_time: editingPlaceData.recommended_time || null,
-                    coaching_tip: editingPlaceData.coaching_tip || null,
-                    coaching_tip_free: editingPlaceData.coaching_tip_free ?? null,
+                    coaching_tip: tipsToJson(editingPlaceData.tipsPaid) ?? null,
+                    coaching_tip_free: tipsToJson(editingPlaceData.tipsFree) ?? null,
                 }),
             });
 
@@ -1255,40 +1341,28 @@ export default function AdminCoursesPage() {
                                                                             />
                                                                         </div>
                                                                     </div>
-                                                                    <div>
-                                                                        <label className="text-xs font-medium text-gray-600">
-                                                                            무료 팁 (모두에게 표시)
-                                                                        </label>
-                                                                        <textarea
-                                                                            value={editData.coaching_tip_free ?? ""}
-                                                                            onChange={(e) =>
-                                                                                setEditingPlaceData({
-                                                                                    ...editData,
-                                                                                    coaching_tip_free: e.target.value,
-                                                                                })
-                                                                            }
-                                                                            className="w-full border p-1.5 rounded text-sm mt-1 resize-none"
-                                                                            rows={2}
-                                                                            placeholder="예: 주변 주차 정보"
-                                                                        />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="text-xs font-medium text-gray-600">
-                                                                            유료 팁 (BASIC+ 또는 구매 시만 표시)
-                                                                        </label>
-                                                                        <textarea
-                                                                            value={editData.coaching_tip || ""}
-                                                                            onChange={(e) =>
-                                                                                setEditingPlaceData({
-                                                                                    ...editData,
-                                                                                    coaching_tip: e.target.value,
-                                                                                })
-                                                                            }
-                                                                            className="w-full border p-1.5 rounded text-sm mt-1 resize-none"
-                                                                            rows={2}
-                                                                            placeholder="예: 여기서는 창가 자리에 앉으세요"
-                                                                        />
-                                                                    </div>
+                                                                    <TipItemEditor
+                                                                        label="무료 팁 (모두에게 표시)"
+                                                                        tips={editData.tipsFree}
+                                                                        variant="free"
+                                                                        onChange={(tipsFree) =>
+                                                                            setEditingPlaceData({
+                                                                                ...editData,
+                                                                                tipsFree,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                    <TipItemEditor
+                                                                        label="유료 팁 (BASIC+ 또는 구매 시만 표시)"
+                                                                        tips={editData.tipsPaid}
+                                                                        variant="paid"
+                                                                        onChange={(tipsPaid) =>
+                                                                            setEditingPlaceData({
+                                                                                ...editData,
+                                                                                tipsPaid,
+                                                                            })
+                                                                        }
+                                                                    />
                                                                     <div className="flex gap-2 mt-2">
                                                                         <button
                                                                             type="button"
@@ -1314,14 +1388,24 @@ export default function AdminCoursesPage() {
                                                                     {item.recommended_time && (
                                                                         <span>🕒 {item.recommended_time}</span>
                                                                     )}
-                                                                    {item.coaching_tip_free && (
+                                                                    {parseTipsFromDb(item.coaching_tip_free).length >
+                                                                        0 && (
                                                                         <span className="text-gray-600 font-medium">
-                                                                            📌 무료: {item.coaching_tip_free}
+                                                                            📌 무료:{" "}
+                                                                            {parseTipsFromDb(
+                                                                                item.coaching_tip_free
+                                                                            )
+                                                                                .map((t) => t.content)
+                                                                                .join(" / ")}
                                                                         </span>
                                                                     )}
-                                                                    {item.coaching_tip && (
+                                                                    {parseTipsFromDb(item.coaching_tip).length >
+                                                                        0 && (
                                                                         <span className="text-green-600 font-medium">
-                                                                            💡 유료: {item.coaching_tip}
+                                                                            💡 유료:{" "}
+                                                                            {parseTipsFromDb(item.coaching_tip)
+                                                                                .map((t) => t.content)
+                                                                                .join(" / ")}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1463,25 +1547,17 @@ export default function AdminCoursesPage() {
                                     />
                                 </div>
                                 <div className="col-span-12 md:col-span-3">
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                        무료 팁 (모두에게 표시)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-500 outline-none mb-2"
-                                        placeholder="예: 주변 주차 정보"
-                                        value={addCoachingTipFree}
-                                        onChange={(e) => setAddCoachingTipFree(e.target.value)}
+                                    <TipItemEditor
+                                        label="무료 팁 (모두에게 표시)"
+                                        tips={addTipsFree}
+                                        variant="free"
+                                        onChange={setAddTipsFree}
                                     />
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                        유료 팁 (BASIC+ 또는 구매 시만)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                                        placeholder="예: 여기서는 창가 자리에 앉으세요"
-                                        value={addCoachingTip}
-                                        onChange={(e) => setAddCoachingTip(e.target.value)}
+                                    <TipItemEditor
+                                        label="유료 팁 (BASIC+ 또는 구매 시만)"
+                                        tips={addTipsPaid}
+                                        variant="paid"
+                                        onChange={setAddTipsPaid}
                                     />
                                 </div>
                                 <div className="col-span-12 md:col-span-1 flex items-end">

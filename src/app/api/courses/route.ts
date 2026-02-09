@@ -88,6 +88,9 @@ export async function GET(request: NextRequest) {
                             longitude: true,
                             opening_hours: true,
                             reservationUrl: true,
+                            closed_days: {
+                                select: { day_of_week: true, specific_date: true, note: true },
+                            },
                         },
                     },
                 },
@@ -148,7 +151,8 @@ export async function GET(request: NextRequest) {
                                     ...cp.place,
                                     latitude: Number(cp.place.latitude),
                                     longitude: Number(cp.place.longitude),
-                                    reservationUrl: cp.place.reservationUrl || null, // 🟢 reservationUrl 명시적으로 포함
+                                    reservationUrl: cp.place.reservationUrl || null,
+                                    closed_days: cp.place.closed_days || [],
                                 }
                               : null,
                       }))

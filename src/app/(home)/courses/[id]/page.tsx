@@ -103,11 +103,13 @@ const getCourse = unstable_cache(
                                         phone: true,
                                         parking_available: true,
                                         reservation_required: true,
-                                        reservationUrl: true, // 🟢 예약 URL 추가
+                                        reservationUrl: true,
                                         latitude: true,
                                         longitude: true,
                                         imageUrl: true,
-                                        // 🟢 closed_days는 필요할 때만 별도로 가져오기 (성능 최적화)
+                                        closed_days: {
+                                            select: { day_of_week: true, specific_date: true, note: true },
+                                        },
                                     },
                                 },
                             },
@@ -136,9 +138,6 @@ const getCourse = unstable_cache(
             const courseDetail = course.courseDetail || null;
             const highlights = course.highlights || [];
             const coursePlaces = course.coursePlaces || [];
-
-            // 🟢 closed_days는 클라이언트에서 필요할 때만 로드 (성능 최적화: 초기 로드 제거)
-            const closedDaysMap: Record<number, any[]> = {};
 
             return {
                 id: String(course.id),
@@ -176,10 +175,10 @@ const getCourse = unstable_cache(
                     place: cp.place
                         ? {
                               ...cp.place,
-                              reservationUrl: cp.place.reservationUrl || null, // 🟢 reservationUrl 명시적으로 포함
+                              reservationUrl: cp.place.reservationUrl || null,
                               latitude: cp.place.latitude ? Number(cp.place.latitude) : null,
                               longitude: cp.place.longitude ? Number(cp.place.longitude) : null,
-                              closed_days: closedDaysMap[cp.place.id] || [],
+                              closed_days: cp.place.closed_days || [],
                           }
                         : null,
                 })),

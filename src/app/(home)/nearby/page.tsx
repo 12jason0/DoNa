@@ -164,7 +164,10 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                         latitude: true,
                         longitude: true,
                         opening_hours: true,
-                        reservationUrl: true, // 🟢 예약 URL 추가
+                        reservationUrl: true,
+                        closed_days: {
+                            select: { day_of_week: true, specific_date: true, note: true },
+                        },
                     },
                 },
             },
@@ -385,7 +388,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                                             latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
                                             longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
                                             opening_hours: cp.place.opening_hours || null,
-                                            reservationUrl: cp.place.reservationUrl || null, // 🟢 예약 URL 추가
+                                            reservationUrl: cp.place.reservationUrl || null,
+                                            closed_days: cp.place.closed_days || [],
                                         }
                                       : null,
                               }))
@@ -536,7 +540,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                                         latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
                                         longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
                                         opening_hours: cp.place.opening_hours || null,
-                                        reservationUrl: cp.place.reservationUrl || null, // 🟢 예약 URL 추가
+                                        reservationUrl: cp.place.reservationUrl || null,
+                                        closed_days: cp.place.closed_days || [],
                                     }
                                   : null,
                           }))
