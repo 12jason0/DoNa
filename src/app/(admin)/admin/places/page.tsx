@@ -26,6 +26,153 @@ type ClosedDayRow = {
     note: string;
 };
 
+/** 영업시간 그룹 - 요일 + 여러 영업 구간 + 선택적 브레이크. 휴무인 요일은 휴무일에서 관리 */
+type TimeRange = { open: string; close: string };
+type OpeningHourGroup = {
+    days: number[];
+    ranges: TimeRange[];
+    break?: { start: string; end: string };
+};
+
+const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
+function padTime(t: string): string {
+    return t.length === 5 ? t : t.replace(/^(\d):/, "0$1:");
+}
+
+/** 세그먼트 문자열 파싱: "월-목: 11:00-14:00, 17:00-21:00 (브레이크 14:00-17:00)" */
+function parseSegmentToGroup(seg: string): OpeningHourGroup | null {
+    const breakRegex = /\s*\(브레이크\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\)\s*$/;
+    const breakMatch = seg.match(breakRegex);
+    let rest = seg.trim();
+    let breakRange: { start: string; end: string } | undefined;
+    if (breakMatch) {
+        breakRange = {
+            start: `${breakMatch[1].padStart(2, "0")}:${breakMatch[2]}`,
+            end: `${breakMatch[3].padStart(2, "0")}:${breakMatch[4]}`,
+        };
+        rest = seg.replace(breakRegex, "").trim();
+    }
+
+    const dayRangeMatch = rest.match(/^([월화수목금토일])-([월화수목금토일]):\s*(.+)$/);
+    const singleDayMatch = rest.match(/^([월화수목금토일]):\s*(.+)$/);
+    let days: number[] = [];
+    let timePart = "";
+
+    if (dayRangeMatch) {
+        const startIdx = DAY_NAMES.indexOf(dayRangeMatch[1] as (typeof DAY_NAMES)[number]);
+        const endIdx = DAY_NAMES.indexOf(dayRangeMatch[2] as (typeof DAY_NAMES)[number]);
+        if (startIdx <= endIdx) for (let i = startIdx; i <= endIdx; i++) days.push(i);
+        else {
+            for (let i = startIdx; i <= 6; i++) days.push(i);
+            for (let i = 0; i <= endIdx; i++) days.push(i);
+        }
+        timePart = dayRangeMatch[3].trim();
+    } else if (singleDayMatch) {
+        const idx = DAY_NAMES.indexOf(singleDayMatch[1] as (typeof DAY_NAMES)[number]);
+        days = [idx];
+        timePart = singleDayMatch[2].trim();
+    } else return null;
+
+    const ranges: TimeRange[] = [];
+    const rangeRegex = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
+    let m: RegExpExecArray | null;
+    while ((m = rangeRegex.exec(timePart)) !== null) {
+        ranges.push({
+            open: `${m[1].padStart(2, "0")}:${m[2]}`,
+            close: `${m[3].padStart(2, "0")}:${m[4]}`,
+        });
+    }
+    if (ranges.length === 0) return null;
+    return { days, ranges, break: breakRange };
+}
+
+/** 기존 opening_hours 문자열을 그룹 배열로 파싱 */
+function parseOpeningHoursToGroups(str: string | null | undefined): OpeningHourGroup[] {
+    const s = (str || "").trim();
+    if (!s) return [];
+
+    // 새 형식: 세그먼트가 ";" 로 구분
+    if (s.includes(";")) {
+        const segments = s.split(";").map((x) => x.trim()).filter(Boolean);
+        const groups: OpeningHourGroup[] = [];
+        for (const seg of segments) {
+            const g = parseSegmentToGroup(seg);
+            if (g) groups.push(g);
+        }
+        return groups;
+    }
+
+    // 단순 형식: "09:00-22:00" 또는 "매일 09:00-22:00"
+    const simpleFormat = /^(?:매일\s*)?(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/;
+    const simpleMatch = s.match(simpleFormat);
+    if (simpleMatch && !/[일월화수목금토]/.test(s)) {
+        const open = `${simpleMatch[1].padStart(2, "0")}:${simpleMatch[2]}`;
+        const close = `${simpleMatch[3].padStart(2, "0")}:${simpleMatch[4]}`;
+        return [{ days: [0, 1, 2, 3, 4, 5, 6], ranges: [{ open, close }] }];
+    }
+
+    // 요일별 단일 구간 (기존)
+    const groups: OpeningHourGroup[] = [];
+    const dayRangeRegex = /([월화수목금토일])-([월화수목금토일]):\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
+    let m: RegExpExecArray | null;
+    while ((m = dayRangeRegex.exec(s)) !== null) {
+        const startIdx = DAY_NAMES.indexOf(m[1] as (typeof DAY_NAMES)[number]);
+        const endIdx = DAY_NAMES.indexOf(m[2] as (typeof DAY_NAMES)[number]);
+        if (startIdx === -1 || endIdx === -1) continue;
+        const days: number[] = [];
+        if (startIdx <= endIdx) for (let i = startIdx; i <= endIdx; i++) days.push(i);
+        else {
+            for (let i = startIdx; i <= 6; i++) days.push(i);
+            for (let i = 0; i <= endIdx; i++) days.push(i);
+        }
+        const open = `${m[3].padStart(2, "0")}:${m[4]}`;
+        const close = `${m[5].padStart(2, "0")}:${m[6]}`;
+        groups.push({ days, ranges: [{ open, close }] });
+    }
+
+    const singleDayRegex = /([월화수목금토일]):\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
+    while ((m = singleDayRegex.exec(s)) !== null) {
+        const idx = DAY_NAMES.indexOf(m[1] as (typeof DAY_NAMES)[number]);
+        if (idx === -1 || groups.some((g) => g.days.includes(idx))) continue;
+        const open = `${m[2].padStart(2, "0")}:${m[3]}`;
+        const close = `${m[4].padStart(2, "0")}:${m[5]}`;
+        groups.push({ days: [idx], ranges: [{ open, close }] });
+    }
+
+    if (groups.length === 0) {
+        const everydayMatch = s.match(/매일\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+        if (everydayMatch) {
+            const open = `${everydayMatch[1].padStart(2, "0")}:${everydayMatch[2]}`;
+            const close = `${everydayMatch[3].padStart(2, "0")}:${everydayMatch[4]}`;
+            return [{ days: [0, 1, 2, 3, 4, 5, 6], ranges: [{ open, close }] }];
+        }
+    }
+    return groups;
+}
+
+/** 그룹 배열을 opening_hours 문자열로 변환 (placeStatus 파싱 형식) */
+function buildOpeningHoursFromGroups(groups: OpeningHourGroup[]): string {
+    if (groups.length === 0) return "";
+
+    const segmentParts: string[] = [];
+    for (const g of groups) {
+        const sorted = [...g.days].sort((a, b) => a - b);
+        const dayLabel =
+            sorted.length === 1
+                ? `${DAY_NAMES[sorted[0]]}`
+                : `${DAY_NAMES[sorted[0]]}-${DAY_NAMES[sorted[sorted.length - 1]]}`;
+        const rangeStr = g.ranges
+            .map((r) => `${padTime(r.open)}-${padTime(r.close)}`)
+            .join(", ");
+        const breakStr = g.break
+            ? ` (브레이크 ${padTime(g.break.start)}-${padTime(g.break.end)})`
+            : "";
+        segmentParts.push(`${dayLabel}: ${rangeStr}${breakStr}`);
+    }
+    return segmentParts.join("; ");
+}
+
 const INITIAL_PLACE: Omit<Place, "id"> = {
     name: "",
     address: "",
@@ -41,9 +188,15 @@ const INITIAL_PLACE: Omit<Place, "id"> = {
     tags: [],
 };
 
+const DEFAULT_OPENING_GROUP: OpeningHourGroup = {
+    days: [],
+    ranges: [{ open: "10:00", close: "21:00" }],
+};
+
 export default function AdminPlacesPage() {
     const [places, setPlaces] = useState<Place[]>([]);
     const [formData, setFormData] = useState<Omit<Place, "id">>(INITIAL_PLACE);
+    const [openingHourGroups, setOpeningHourGroups] = useState<OpeningHourGroup[]>([]);
     const [closedDays, setClosedDays] = useState<ClosedDayRow[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,6 +290,8 @@ export default function AdminPlacesPage() {
             imageUrl: place.imageUrl || "",
             tags: place.tags || [],
         });
+        const parsed = parseOpeningHoursToGroups(place.opening_hours || "");
+        setOpeningHourGroups(parsed.length > 0 ? parsed : [{ ...DEFAULT_OPENING_GROUP }]);
         const token = localStorage.getItem("authToken");
         const headers: HeadersInit = {};
         if (token) headers.Authorization = `Bearer ${token}`;
@@ -162,7 +317,60 @@ export default function AdminPlacesPage() {
     const cancelEdit = () => {
         setEditingId(null);
         setFormData(INITIAL_PLACE);
+        setOpeningHourGroups([]);
         setClosedDays([]);
+    };
+
+    const addOpeningHourGroup = () => {
+        setOpeningHourGroups((prev) => [...prev, { days: [], ranges: [{ open: "10:00", close: "21:00" }] }]);
+    };
+    const removeOpeningHourGroup = (index: number) => {
+        setOpeningHourGroups((prev) => prev.filter((_, i) => i !== index));
+    };
+    const toggleGroupDay = (index: number, day: number) => {
+        setOpeningHourGroups((prev) => {
+            const next = [...prev];
+            const days = next[index].days.includes(day)
+                ? next[index].days.filter((d) => d !== day)
+                : [...next[index].days, day].sort((a, b) => a - b);
+            next[index] = { ...next[index], days };
+            return next;
+        });
+    };
+    const addTimeRangeToGroup = (groupIndex: number) => {
+        setOpeningHourGroups((prev) => {
+            const next = [...prev];
+            next[groupIndex] = {
+                ...next[groupIndex],
+                ranges: [...next[groupIndex].ranges, { open: "10:00", close: "21:00" }],
+            };
+            return next;
+        });
+    };
+    const removeTimeRangeFromGroup = (groupIndex: number, rangeIndex: number) => {
+        setOpeningHourGroups((prev) => {
+            const next = [...prev];
+            const ranges = next[groupIndex].ranges.filter((_, i) => i !== rangeIndex);
+            if (ranges.length === 0) return prev;
+            next[groupIndex] = { ...next[groupIndex], ranges };
+            return next;
+        });
+    };
+    const updateTimeRange = (groupIndex: number, rangeIndex: number, field: "open" | "close", value: string) => {
+        setOpeningHourGroups((prev) => {
+            const next = [...prev];
+            const ranges = [...next[groupIndex].ranges];
+            ranges[rangeIndex] = { ...ranges[rangeIndex], [field]: value };
+            next[groupIndex] = { ...next[groupIndex], ranges };
+            return next;
+        });
+    };
+    const setGroupBreak = (groupIndex: number, breakRange: { start: string; end: string } | null) => {
+        setOpeningHourGroups((prev) => {
+            const next = [...prev];
+            next[groupIndex] = { ...next[groupIndex], break: breakRange ?? undefined };
+            return next;
+        });
     };
 
     const addClosedDayRow = () => {
@@ -219,6 +427,7 @@ export default function AdminPlacesPage() {
 
             const payload = {
                 ...formData,
+                opening_hours: buildOpeningHoursFromGroups(openingHourGroups),
                 closed_days: closedDays
                     .filter((row) => row.day_of_week !== null || (row.note && row.note.trim()))
                     .map((row) => ({
@@ -236,6 +445,7 @@ export default function AdminPlacesPage() {
             if (res.ok) {
                 alert(editingId ? "장소가 수정되었습니다." : "장소 생성 완료");
                 setFormData(INITIAL_PLACE);
+                setOpeningHourGroups([]);
                 setClosedDays([]);
                 setEditingId(null);
                 fetchPlaces(currentPage, false);
@@ -311,15 +521,131 @@ export default function AdminPlacesPage() {
                             />
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium text-gray-600">영업 시간</label>
-                            <input
-                                name="opening_hours"
-                                placeholder="매일 10:00 - 22:00"
-                                value={formData.opening_hours || ""}
-                                onChange={handleInputChange}
-                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                            />
+                        {/* 영업 시간 (요일별 그룹) */}
+                        <div className="space-y-3 md:col-span-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-600">영업 시간</label>
+                                <button
+                                    type="button"
+                                    onClick={addOpeningHourGroup}
+                                    className="text-sm text-green-600 hover:text-green-700 font-medium"
+                                >
+                                    + 그룹 추가
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                영업하는 요일끼리 묶고, 시간대를 여러 개 넣을 수 있습니다. 브레이크가 있으면 &quot;브레이크&quot;를 추가하세요. 휴무인 요일은 아래 &quot;쉬는 날&quot;에서 추가하세요.
+                            </p>
+                            {openingHourGroups.length === 0 ? (
+                                <p className="text-sm text-gray-500 py-2">그룹을 추가한 뒤 요일과 시간을 입력하세요.</p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {openingHourGroups.map((group, index) => (
+                                        <li
+                                            key={index}
+                                            className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                        >
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <span className="text-xs font-medium text-gray-500">요일</span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {DAY_NAMES.map((name, d) => (
+                                                        <label key={d} className="flex items-center gap-1 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={group.days.includes(d)}
+                                                                onChange={() => toggleGroupDay(index, d)}
+                                                                className="rounded border-gray-300 text-green-600"
+                                                            />
+                                                            <span className="text-sm">{name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeOpeningHourGroup(index)}
+                                                    className="text-red-600 hover:text-red-700 text-sm shrink-0 ml-auto"
+                                                >
+                                                    그룹 삭제
+                                                </button>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <span className="text-xs font-medium text-gray-500 block">영업 시간대</span>
+                                                {group.ranges.map((range, ri) => (
+                                                    <div key={ri} className="flex items-center gap-2 flex-wrap">
+                                                        <input
+                                                            type="time"
+                                                            value={range.open}
+                                                            onChange={(e) => updateTimeRange(index, ri, "open", e.target.value)}
+                                                            className="border p-1.5 rounded text-sm"
+                                                        />
+                                                        <span className="text-gray-400">~</span>
+                                                        <input
+                                                            type="time"
+                                                            value={range.close}
+                                                            onChange={(e) => updateTimeRange(index, ri, "close", e.target.value)}
+                                                            className="border p-1.5 rounded text-sm"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeTimeRangeFromGroup(index, ri)}
+                                                            disabled={group.ranges.length <= 1}
+                                                            className="text-red-600 hover:text-red-700 text-sm disabled:opacity-40"
+                                                        >
+                                                            삭제
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => addTimeRangeToGroup(index)}
+                                                    className="text-sm text-green-600 hover:text-green-700 font-medium"
+                                                >
+                                                    + 시간대 추가
+                                                </button>
+                                            </div>
+                                            <div className="border-t border-gray-200 pt-2">
+                                                <span className="text-xs font-medium text-gray-500 block mb-1">브레이크 (선택)</span>
+                                                {group.break ? (
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <input
+                                                            type="time"
+                                                            value={group.break.start}
+                                                            onChange={(e) =>
+                                                                setGroupBreak(index, { ...group.break!, start: e.target.value })
+                                                            }
+                                                            className="border p-1.5 rounded text-sm"
+                                                        />
+                                                        <span className="text-gray-400">~</span>
+                                                        <input
+                                                            type="time"
+                                                            value={group.break.end}
+                                                            onChange={(e) =>
+                                                                setGroupBreak(index, { ...group.break!, end: e.target.value })
+                                                            }
+                                                            className="border p-1.5 rounded text-sm"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setGroupBreak(index, null)}
+                                                            className="text-red-600 hover:text-red-700 text-sm"
+                                                        >
+                                                            브레이크 제거
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setGroupBreak(index, { start: "14:00", end: "17:00" })}
+                                                        className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                                                    >
+                                                        + 브레이크 추가
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-600">가격대</label>

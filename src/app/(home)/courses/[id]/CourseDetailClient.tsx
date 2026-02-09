@@ -14,6 +14,8 @@ import TapFeedback from "@/components/TapFeedback";
 import { TipSection, TipCategoryIcon } from "@/components/TipSection";
 import { parseTipsFromDb, FREE_TIP_CATEGORIES, PAID_TIP_CATEGORIES } from "@/types/tip";
 import { getPremiumQuestions } from "../../../../lib/placeCategory";
+import { getPlaceStatus } from "@/lib/placeStatus";
+import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { isIOS, isMobileApp } from "@/lib/platform";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
@@ -1198,13 +1200,47 @@ export default function CourseDetailClient({
                                                         )}
                                                     </div>
                                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                                            {coursePlace.place.category}
-                                                        </span>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                                                {coursePlace.place.category}
+                                                            </span>
+                                                            {(() => {
+                                                                const status = getPlaceStatus(
+                                                                    coursePlace.place.opening_hours ?? null,
+                                                                    coursePlace.place.closed_days ?? []
+                                                                ).status;
+                                                                const statusStyles: Record<string, string> = {
+                                                                    영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+                                                                    "곧 마감":
+                                                                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                    "곧 브레이크":
+                                                                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                    "브레이크 중":
+                                                                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                    "오픈 준비중":
+                                                                        "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+                                                                    휴무: "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
+                                                                    영업종료:
+                                                                        "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
+                                                                    "정보 없음":
+                                                                        "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
+                                                                };
+                                                                return (
+                                                                    <span
+                                                                        className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
+                                                                            statusStyles[status] ??
+                                                                            statusStyles["정보 없음"]
+                                                                        }`}
+                                                                    >
+                                                                        {status}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
                                                         <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate mb-1">
                                                             {coursePlace.place.name}
                                                         </h3>
-                                                        <p className="text-xs text-gray-500 mb-2">
+                                                        <p className="text-xs text-gray-500 truncate mb-2">
                                                             {coursePlace.place.address}
                                                         </p>
                                                         {/* 🟢 예약 버튼 - 하단 시트로 열기 */}
@@ -1616,7 +1652,7 @@ export default function CourseDetailClient({
                                         <h4 className="font-bold text-gray-900 dark:text-white">
                                             {modalSelectedPlace.name}
                                         </h4>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                                             {modalSelectedPlace.address}
                                         </p>
                                     </div>
@@ -1927,7 +1963,18 @@ export default function CourseDetailClient({
                                 className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide"
                             >
                                 <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
-                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium">
+                                <div className="mb-3">
+                                    <PlaceStatusBadge
+                                        place={{
+                                            opening_hours: selectedPlace.opening_hours ?? null,
+                                            closed_days: selectedPlace.closed_days ?? [],
+                                        }}
+                                        closedDays={selectedPlace.closed_days}
+                                        showHours={false}
+                                        size="sm"
+                                    />
+                                </div>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium truncate">
                                     {selectedPlace.address}
                                 </p>
                                 <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">

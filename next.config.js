@@ -144,6 +144,7 @@ const nextConfig = {
                                 "https://*.navercorp.com",
                                 "https://*.pstatic.net",
                                 "https://*.kakao.com",
+                                "https://*.onkakao.net",
                                 "https://bc.ad.daum.net",
                                 "http://bc.ad.daum.net",
                                 "https://stylemap-seoul.s3.ap-northeast-2.amazonaws.com",

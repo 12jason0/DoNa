@@ -50,6 +50,21 @@ export default function PlaceStatusBadge({
             text: "text-orange-800",
             dot: "bg-orange-500",
         },
+        "곧 브레이크": {
+            bg: "bg-amber-100",
+            text: "text-amber-800",
+            dot: "bg-amber-500",
+        },
+        "브레이크 중": {
+            bg: "bg-amber-100",
+            text: "text-amber-800",
+            dot: "bg-amber-500",
+        },
+        "오픈 준비중": {
+            bg: "bg-blue-100",
+            text: "text-blue-800",
+            dot: "bg-blue-500",
+        },
         휴무: {
             bg: "bg-gray-100",
             text: "text-gray-800",
@@ -96,6 +111,9 @@ export function PlaceStatusDot({ place, closedDays = [] }: { place: Place; close
     const dotColors: Record<PlaceStatusInfo["status"], string> = {
         영업중: "bg-green-500",
         "곧 마감": "bg-orange-500",
+        "곧 브레이크": "bg-amber-500",
+        "브레이크 중": "bg-amber-500",
+        "오픈 준비중": "bg-blue-500",
         휴무: "bg-gray-500",
         영업종료: "bg-red-500",
         "정보 없음": "bg-gray-400",
