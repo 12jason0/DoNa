@@ -115,6 +115,7 @@ export function useCourseFilter({
                 const courseContent = [
                     c.title,
                     c.region,
+                    c.location, // 🟢 nearby는 region을 location으로만 넘기므로 둘 다 검색
                     c.concept,
                     c.description,
                     ...courseTags, // tags 배열도 검색에 포함
