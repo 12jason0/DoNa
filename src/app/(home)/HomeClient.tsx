@@ -173,7 +173,7 @@ export default function HomeClient({
         try {
             const [profileRes, checkinRes, preferencesRes] = await Promise.allSettled([
                 apiFetch("/api/users/profile", { cache: "no-store" }), // 🟢 프로필은 최신 상태 유지
-                apiFetch("/api/users/checkins", { cache: "force-cache", next: { revalidate: 60 } }),
+                apiFetch("/api/users/checkins", { cache: "no-store" }),
                 // 🟢 수정: 취향 데이터는 설정을 마친 직후 반영되어야 하므로 캐시를 사용하지 않습니다.
                 apiFetch("/api/users/preferences", { cache: "no-store" }),
             ]);

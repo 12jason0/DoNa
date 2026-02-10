@@ -6,6 +6,7 @@ import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
+import BridgeModal, { checkAndClearOpenSubscriptionAfterLogin } from "@/components/BridgeModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -356,6 +357,7 @@ export default function CourseDetailClient({
         return courseData.isLocked ? true : false;
     });
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [showBridgeModal, setShowBridgeModal] = useState(false);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
     const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
     const [showFavoriteAddedModal, setShowFavoriteAddedModal] = useState(false);
@@ -385,6 +387,17 @@ export default function CourseDetailClient({
             setShowLoginModal(false);
         }
     }, [courseData.isLocked, isAuthenticated, authLoading]);
+
+    // 🟢 브릿지 모달 → 로그인 후 돌아왔을 때 구독 모달 자동 오픈
+    useEffect(() => {
+        if (authLoading || !isAuthenticated) return;
+        if (checkAndClearOpenSubscriptionAfterLogin()) {
+            setShowSubscriptionModal(true);
+            setShowLoginModal(false);
+            setShowBridgeModal(false);
+        }
+    }, [isAuthenticated, authLoading]);
+
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -1044,7 +1057,7 @@ export default function CourseDetailClient({
     // 🔒 [조건부 렌더링] isUnlocked 상태를 기준으로 콘텐츠 렌더링
     const isUnlocked = !courseData.isLocked;
     // 🔒 모달이 표시될 때는 코스 콘텐츠를 완전히 숨김
-    const shouldShowContent = isUnlocked && !showSubscriptionModal && !showLoginModal;
+    const shouldShowContent = isUnlocked && !showSubscriptionModal && !showLoginModal && !showBridgeModal;
 
     return (
         <>
@@ -1314,7 +1327,7 @@ export default function CourseDetailClient({
                                                                         e.stopPropagation();
                                                                         if (isAuthenticated)
                                                                             setShowSubscriptionModal(true);
-                                                                        else setShowLoginModal(true);
+                                                                        else setShowBridgeModal(true);
                                                                     }}
                                                                     className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
                                                                 >
@@ -1801,6 +1814,15 @@ export default function CourseDetailClient({
                     }}
                 />
             )}
+            {showBridgeModal && (
+                <BridgeModal
+                    onClose={() => setShowBridgeModal(false)}
+                    onProceedToLogin={() => {
+                        setShowBridgeModal(false);
+                        setShowLoginModal(true);
+                    }}
+                />
+            )}
             {showLoginModal && (
                 <LoginModal
                     onClose={() => {
@@ -2008,53 +2030,56 @@ export default function CourseDetailClient({
                                                 (shouldShowPaidTip ? (
                                                     <TipSection tips={paidTips} variant="paid" compact={false} />
                                                 ) : (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (isAuthenticated) setShowSubscriptionModal(true);
-                                                            else setShowLoginModal(true);
-                                                        }}
-                                                        className="w-full text-left rounded-xl p-3 transition-all relative overflow-hidden hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50"
-                                                    >
-                                                        {(() => {
-                                                            const copy = getPremiumQuestions(selectedPlace?.category);
-                                                            return (
-                                                                <>
-                                                                    <div className="flex items-center gap-1.5 mb-1">
-                                                                        <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                                        <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                                                                            이 구역 시크릿 공략집
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="pl-5">
-                                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
-                                                                            {copy.headline}
-                                                                        </p>
-                                                                        {copy.questions.length > 0 && (
-                                                                            <ul className="mt-1.5 space-y-0.5 text-[11px] text-gray-600 dark:text-gray-400">
-                                                                                {copy.questions.map((q, i) => (
-                                                                                    <li
-                                                                                        key={i}
-                                                                                        className="flex gap-1.5 items-start"
-                                                                                    >
-                                                                                        <TipCategoryIcon
-                                                                                            category={q.iconCategory}
-                                                                                            className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
-                                                                                        />
-                                                                                        <span>{q.text}</span>
-                                                                                    </li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        )}
-                                                                        <span className="inline-block mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                                                                            커피 한 잔 값으로 정답 확인하기 &gt;
-                                                                        </span>
-                                                                    </div>
-                                                                </>
-                                                            );
-                                                        })()}
-                                                    </button>
+                                                    <>
+                                                        <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
+                                                            {(() => {
+                                                                const copy = getPremiumQuestions(selectedPlace?.category);
+                                                                return (
+                                                                    <>
+                                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                                            <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
+                                                                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                                                                                이 구역 시크릿 공략집
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="pl-5">
+                                                                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                                                                {copy.headline}
+                                                                            </p>
+                                                                            {copy.questions.length > 0 && (
+                                                                                <ul className="mt-1.5 space-y-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                                                                                    {copy.questions.map((q, i) => (
+                                                                                        <li
+                                                                                            key={i}
+                                                                                            className="flex gap-1.5 items-start"
+                                                                                        >
+                                                                                            <TipCategoryIcon
+                                                                                                category={q.iconCategory}
+                                                                                                className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
+                                                                                            />
+                                                                                            <span>{q.text}</span>
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            )}
+                                                                        </div>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (isAuthenticated) setShowSubscriptionModal(true);
+                                                                else setShowBridgeModal(true);
+                                                            }}
+                                                            className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+                                                        >
+                                                            <Icons.Lock className="w-4 h-4" />
+                                                            시크릿 꿀팁 잠금 해제 (커피 한 잔 값)
+                                                        </button>
+                                                    </>
                                                 ))}
                                         </div>
                                     );
@@ -2075,13 +2100,14 @@ export default function CourseDetailClient({
                                         </button>
                                     )}
                                     <button
-                                        className="w-full py-3 rounded-lg bg-gray-900 text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
+                                        type="button"
+                                        className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                                         onClick={() => {
                                             setPlaceModalSlideUp(false);
                                             setTimeout(() => setShowPlaceModal(false), 300);
                                         }}
                                     >
-                                        닫기
+                                        그냥 닫기
                                     </button>
                                 </div>
                             </div>

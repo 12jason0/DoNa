@@ -104,7 +104,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                             )}
                         </h2>
                         <p className="text-gray-500 dark:text-gray-400 text-[14px] sm:text-[16px] font-medium tracking-tight">
-                            {description || "1월 31일까지 무료 추천권 2장을 드려요! 🎁"}
+                            {description || "로그인 시 쿠폰 1장을 드려요! 🎁"}
                         </p>
                     </div>
 
@@ -115,7 +115,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                         </h3>
                         <ul className="space-y-2.5 sm:space-y-3.5">
                             {[
-                                "고민 해결! AI 맞춤 코스 추천권 2장 무료",
+                                "고민 해결! AI 맞춤 코스 추천권 1장 무료",
                                 "우리 취향을 100% 반영한 커스텀 추천",
                                 "멤버십 전용 시크릿 핫플레이스 공개",
                             ].map((benefit, index) => (
@@ -147,7 +147,7 @@ export default function LoginModal({ onClose, next, title, description }: LoginM
                                 "준비 중..."
                             ) : (
                                 <>
-                                    2장 받고 시작하기
+                                    1장 받고 시작하기
                                     <Sparkles className="w-5 h-5 ml-2 group-hover:rotate-12 transition-transform" />
                                 </>
                             )}

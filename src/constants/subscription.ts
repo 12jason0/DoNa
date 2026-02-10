@@ -1,3 +1,6 @@
+/** 베이직 멤버십 월 요금 (원) */
+export const BASIC_MONTHLY_PRICE = 4900;
+
 /**
  * 등급별 추억 앨범 개수 한도
  * FREE: 5개, BASIC: 10개, PREMIUM: 무제한

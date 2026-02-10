@@ -122,7 +122,7 @@ export function TipSection({ tips, variant, className = "", compact = false }: T
 
     const isFree = variant === "free";
     const wrapperClass = isFree
-        ? "rounded-xl px-5 py-4 bg-[#F0F4F8] dark:bg-gray-800"
+        ? "rounded-xl px-5 py-4 bg-[#E8F5E9] dark:bg-emerald-950/40"
         : "rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50";
 
     return (
