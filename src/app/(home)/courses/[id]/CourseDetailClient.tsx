@@ -409,7 +409,7 @@ export default function CourseDetailClient({
     const mapSectionRef = useRef<HTMLDivElement | null>(null);
     // 🟢 나만의 추억: 터치/마우스 다운 시 한도 체크 미리 요청해 클릭 시 대기 최소화
     const memoryCountPromiseRef = useRef<Promise<{ count: number; limit: number | null; tier: string } | null> | null>(
-        null
+        null,
     );
 
     // 🟢 나만의 추억 한도 모달 하단 시트: 열릴 때 slideUp
@@ -490,7 +490,7 @@ export default function CourseDetailClient({
             window.addEventListener("pointerup", onUp);
             window.addEventListener("pointercancel", onUp);
         },
-        [webSheetClose]
+        [webSheetClose],
     );
 
     // 🟢 장소 모달: 위에서 잡고 내리면 닫기
@@ -535,7 +535,7 @@ export default function CourseDetailClient({
             window.addEventListener("pointerup", onUp);
             window.addEventListener("pointercancel", onUp);
         },
-        [placeModalClose]
+        [placeModalClose],
     );
 
     // 🟢 공유 모달 하단 시트: 열릴 때 slideUp 애니메이션
@@ -612,7 +612,7 @@ export default function CourseDetailClient({
         navigator.geolocation.getCurrentPosition(
             (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
             (err) => console.warn("위치 정보 요청 실패:", err.message),
-            geoOptions
+            geoOptions,
         );
     }, [userLocation]);
 
@@ -698,7 +698,7 @@ export default function CourseDetailClient({
                     observer.disconnect();
                 }
             },
-            { threshold: 0.1, rootMargin: "200px" } // 🟢 200px 전에 미리 로드
+            { threshold: 0.1, rootMargin: "200px" }, // 🟢 200px 전에 미리 로드
         );
         observer.observe(mapSectionRef.current);
         return () => observer.disconnect();
@@ -762,7 +762,7 @@ export default function CourseDetailClient({
                 }
             }
         },
-        [sortedCoursePlaces, showFullMapModal]
+        [sortedCoursePlaces, showFullMapModal],
     );
 
     const heroImageUrl = useMemo(() => {
@@ -787,7 +787,7 @@ export default function CourseDetailClient({
 
     const showToast = useCallback(
         (message: string, type: "success" | "error" | "info" = "info") => setToast({ message, type }),
-        []
+        [],
     );
 
     const handleTimelinePlaceClick = (coursePlace: CoursePlace) => {
@@ -821,7 +821,7 @@ export default function CourseDetailClient({
                         createdAt: r.createdAt,
                         content: r.comment,
                         imageUrls: r.imageUrls || [],
-                    }))
+                    })),
                 );
             } else {
                 console.warn("[리뷰 조회] 배열이 아님", typeof data, data);
@@ -893,7 +893,7 @@ export default function CourseDetailClient({
                 } else {
                     // 찜하기 제거: 캐시에서 제거
                     globalFavoritesCache = globalFavoritesCache.filter(
-                        (fav: any) => String(fav.course_id) !== courseId
+                        (fav: any) => String(fav.course_id) !== courseId,
                     );
                 }
                 globalFavoritesPromise = null;
@@ -1220,7 +1220,7 @@ export default function CourseDetailClient({
                                                             {(() => {
                                                                 const status = getPlaceStatus(
                                                                     coursePlace.place.opening_hours ?? null,
-                                                                    coursePlace.place.closed_days ?? []
+                                                                    coursePlace.place.closed_days ?? [],
                                                                 ).status;
                                                                 const statusStyles: Record<string, string> = {
                                                                     영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
@@ -1325,9 +1325,14 @@ export default function CourseDetailClient({
                                                                     type="button"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        if (isAuthenticated)
+                                                                        if (shouldShowPaidTip) {
+                                                                            setSelectedPlace(coursePlace.place);
+                                                                            setShowPlaceModal(true);
+                                                                        } else if (isAuthenticated) {
                                                                             setShowSubscriptionModal(true);
-                                                                        else setShowBridgeModal(true);
+                                                                        } else {
+                                                                            setShowBridgeModal(true);
+                                                                        }
                                                                     }}
                                                                     className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
                                                                 >
@@ -1340,7 +1345,7 @@ export default function CourseDetailClient({
                                                                     <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
                                                                         {
                                                                             getPremiumQuestions(
-                                                                                coursePlace.place?.category
+                                                                                coursePlace.place?.category,
                                                                             ).headline
                                                                         }
                                                                     </p>
@@ -1680,7 +1685,7 @@ export default function CourseDetailClient({
                                     {/* 🟢 예약 버튼 추가 */}
                                     {(() => {
                                         const fullPlace = sortedCoursePlaces.find(
-                                            (c) => c.place.id === modalSelectedPlace.id
+                                            (c) => c.place.id === modalSelectedPlace.id,
                                         )?.place;
                                         return fullPlace?.reservationUrl ? (
                                             <button
@@ -1713,7 +1718,7 @@ export default function CourseDetailClient({
                                             onClick={() => {
                                                 setShowFullMapModal(false);
                                                 const cp = sortedCoursePlaces.find(
-                                                    (c) => c.place.id === modalSelectedPlace.id
+                                                    (c) => c.place.id === modalSelectedPlace.id,
                                                 );
                                                 if (cp) handleTimelinePlaceClick(cp);
                                             }}
@@ -2005,7 +2010,7 @@ export default function CourseDetailClient({
                                 {/* 🟢 팁 섹션: 무료 팁(항상) + 유료 팁(권한 시만, 없으면 CTA) */}
                                 {(() => {
                                     const coursePlace = sortedCoursePlaces.find(
-                                        (cp) => cp.place.id === selectedPlace.id
+                                        (cp) => cp.place.id === selectedPlace.id,
                                     );
                                     const freeTips = parseTipsFromDb(coursePlace?.coaching_tip_free);
                                     const paidTips = parseTipsFromDb(coursePlace?.coaching_tip);
@@ -2033,7 +2038,9 @@ export default function CourseDetailClient({
                                                     <>
                                                         <div className="rounded-xl p-3 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50">
                                                             {(() => {
-                                                                const copy = getPremiumQuestions(selectedPlace?.category);
+                                                                const copy = getPremiumQuestions(
+                                                                    selectedPlace?.category,
+                                                                );
                                                                 return (
                                                                     <>
                                                                         <div className="flex items-center gap-1.5 mb-1">
@@ -2054,7 +2061,9 @@ export default function CourseDetailClient({
                                                                                             className="flex gap-1.5 items-start"
                                                                                         >
                                                                                             <TipCategoryIcon
-                                                                                                category={q.iconCategory}
+                                                                                                category={
+                                                                                                    q.iconCategory
+                                                                                                }
                                                                                                 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
                                                                                             />
                                                                                             <span>{q.text}</span>
