@@ -26,7 +26,16 @@ const TipCategoryIcons: Record<string, React.ReactNode> = {
         </svg>
     ),
     RESTROOM: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 256 256"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="16"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={iconClass}
+        >
             <path d="M64,112V40a8,8,0,0,1,8-8H184a8,8,0,0,1,8,8v72" />
             <line x1="96" y1="64" x2="112" y2="64" />
             <path d="M216,112a88,88,0,0,1-176,0Z" />
@@ -34,7 +43,16 @@ const TipCategoryIcons: Record<string, React.ReactNode> = {
         </svg>
     ),
     WAITING: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" className={iconClass}>
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 256 256"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="16"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={iconClass}
+        >
             <path d="M128,128,67.2,82.4A8,8,0,0,1,64,76V40a8,8,0,0,1,8-8H184a8,8,0,0,1,8,8V75.64A8,8,0,0,1,188.82,82L128,128h0" />
             <path d="M128,128,67.2,173.6A8,8,0,0,0,64,180v36a8,8,0,0,0,8,8H184a8,8,0,0,0,8-8V180.36a8,8,0,0,0-3.18-6.38L128,128h0" />
             <line x1="128" y1="168" x2="128" y2="128" />
@@ -109,7 +127,12 @@ const Icons = {
         </svg>
     ),
     Crown: ({ className }: { className?: string }) => (
-        <svg className={className || "w-3.5 h-3.5 text-amber-600 shrink-0"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+            className={className || "w-3.5 h-3.5 text-amber-600 shrink-0"}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+        >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2 17h20" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 17V8l5-4 5 4v9" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 17l3-6 3 4 3-6 3 4 3-6" />
@@ -149,7 +172,7 @@ export function TipSection({ tips, variant, className = "", compact = false }: T
                     <>
                         <Icons.Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
                         <span className="text-[9px] font-bold tracking-wide text-amber-700 dark:text-amber-300 uppercase">
-                            PREMIUM TIP
+                            🔥 실패 방지 가이드
                         </span>
                     </>
                 )}

@@ -1337,10 +1337,8 @@ export default function CourseDetailClient({
                                                                     className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
                                                                 >
                                                                     <div className="flex items-center gap-1.5 mb-0.5">
-                                                                        <Icons.Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
-                                                                            시크릿 꿀팁
-                                                                        </span>
+                                                                        🚨 이 메뉴 고르면 데이트 분위기 망칠 수
+                                                                        있습니다.
                                                                     </div>
                                                                     <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
                                                                         {
