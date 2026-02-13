@@ -1336,9 +1336,8 @@ export default function CourseDetailClient({
                                                                     }}
                                                                     className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
                                                                 >
-                                                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                                                        🚨 이 메뉴 고르면 데이트 분위기 망칠 수
-                                                                        있습니다.
+                                                                    <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-medium text-gray-800 dark:text-gray-100">
+                                                                        🔥 꼭 알아야 할 실패 방지 꿀팁
                                                                     </div>
                                                                     <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
                                                                         {

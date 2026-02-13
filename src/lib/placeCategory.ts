@@ -10,7 +10,18 @@ const RAW_BY_TYPE: Record<PlaceCategoryType, string[]> = {
     DINING: ["음식", "음식점", "식당", "샌드위치"],
     CAFE: ["카페", "이색카페", "베이커리"],
     PUB: ["주점", "이자카야"],
-    PLAY: ["야외명소", "실내명소", "향수", "전시장", "박물관", "공원", "복합문화공간", "셀프 사진관", "식물원", "공연장"],
+    PLAY: [
+        "야외명소",
+        "실내명소",
+        "향수",
+        "전시장",
+        "박물관",
+        "공원",
+        "복합문화공간",
+        "셀프 사진관",
+        "식물원",
+        "공연장",
+    ],
 };
 
 /**
@@ -50,7 +61,7 @@ export function getPremiumQuestions(category: string | null | undefined): Premiu
     switch (type) {
         case "DINING":
             return {
-                headline: "맛없는 거 먹고 살찌는 게 제일 싫죠?",
+                headline: "이 식당, 제대로 즐기는 방법이 있습니다.",
                 questions: [
                     { iconCategory: "BEST_SPOT", text: "웨이팅 없이 들어가는 '히든 타임' & 예약 꿀팁?" },
                     { iconCategory: "SIGNATURE_MENU", text: '"이건 절대 시키지 마세요" 호불호 갈리는 비추 메뉴?' },
@@ -59,7 +70,7 @@ export function getPremiumQuestions(category: string | null | undefined): Premiu
             };
         case "CAFE":
             return {
-                headline: "자리 없어서 서성거리는 쪽팔림을 방지하세요",
+                headline: "이 카페, 모르고 가면 절반은 놓칩니다.",
                 questions: [
                     { iconCategory: "BEST_SPOT", text: "콘센트 있고 의자 편한 '카공/작업 명당' 위치?" },
                     { iconCategory: "PHOTO_ZONE", text: "역광 피해서 여친 인생샷 건지는 '조명 명당'?" },
@@ -68,7 +79,7 @@ export function getPremiumQuestions(category: string | null | undefined): Premiu
             };
         case "PUB":
             return {
-                headline: "화장실 때문에 썸 깨지는 일을 막아드립니다",
+                headline: "같은 공간에서도 분위기는 완전히 달라집니다",
                 questions: [
                     { iconCategory: "RESTROOM", text: '"여기 가지 마세요" 건물 밖 공용 화장실 피하는 법?' },
                     { iconCategory: "SIGNATURE_MENU", text: "술 못 마시는 상대방도 반하는 '작업주' 추천 리스트?" },
@@ -79,8 +90,8 @@ export function getPremiumQuestions(category: string | null | undefined): Premiu
             return {
                 headline:
                     raw === "야외명소" || raw.includes("야외명소")
-                        ? "무작정 걷다가 여자친구 다리 붓게 하지 마세요"
-                        : "다리 아프고 사진 망치는 데이트는 이제 그만",
+                        ? "이 장소, 동선만 알아도 데이트 만족도가 달라집니다."
+                        : "사진과 분위기를 모두 챙기는 방법이 있습니다.",
                 questions: [
                     { iconCategory: "ATTIRE", text: '"치마 입고 가지 마세요" 후회하는 구간은?' },
                     { iconCategory: "ROUTE", text: "여자친구 다리 안 아픈 '최적의 관람/산책 코스'?" },
@@ -89,7 +100,7 @@ export function getPremiumQuestions(category: string | null | undefined): Premiu
             };
         default:
             return {
-                headline: "아메리카노 한 잔 값으로, 이번 달 데이트 준비 끝내기",
+                headline: "이 장소, 알고 가면 데이트 결과가 달라집니다.",
                 questions: [],
             };
     }
