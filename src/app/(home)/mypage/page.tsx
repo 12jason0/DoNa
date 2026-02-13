@@ -18,7 +18,6 @@ import {
     Favorite,
     UserBadgeItem,
     UserRewardRow,
-    UserCheckinRow,
     CompletedCourse,
     CasefileItem,
 } from "@/types/user";
@@ -39,7 +38,6 @@ const MyPage = () => {
     const [badges, setBadges] = useState<UserBadgeItem[]>([]);
     const [casefiles, setCasefiles] = useState<CasefileItem[]>([]);
     const [rewards, setRewards] = useState<UserRewardRow[]>([]);
-    const [checkins, setCheckins] = useState<UserCheckinRow[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
     // 🟢 개인 추억 (isPublic: false인 리뷰)
     const [personalStories, setPersonalStories] = useState<any[]>([]);
@@ -61,13 +59,13 @@ const MyPage = () => {
                         () => {}
                     );
                 } else if (tab === "activity" && badges.length === 0 && rewards.length === 0) {
-                    Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
+                    Promise.all([fetchBadges(), fetchRewards(), fetchPayments()]).catch(() => {});
                 }
             });
         },
         [completed.length, casefiles.length, favorites.length, savedCourses.length, badges.length, rewards.length]
     );
-    const [activitySubTab, setActivitySubTab] = useState<"badges" | "rewards" | "checkins" | "payments">("badges");
+    const [activitySubTab, setActivitySubTab] = useState<"badges" | "rewards" | "payments">("badges");
     const tabsTrackRef = useRef<HTMLDivElement | null>(null);
     const redirectingRef = useRef(false); // 🟢 리다이렉트 중복 방지
 
@@ -559,18 +557,6 @@ const MyPage = () => {
         } catch {}
     };
 
-    const fetchCheckins = async () => {
-        try {
-            // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
-            const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/checkins", {
-                cache: "no-store",
-            });
-            if (response.status === 401) return; // 401이면 조용히 실패
-            if ((data as any)?.success) setCheckins((data as any).checkins || []);
-        } catch {}
-    };
-
     const fetchPayments = async () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
@@ -620,9 +606,8 @@ const MyPage = () => {
             const url = new URL(window.location.href);
             const tab = url.searchParams.get("tab");
             if (tab === "checkins") {
-                // 🟢 checkins는 activity 탭의 subTab
+                // 🟢 checkins 탭 제거됨 - activity로 리다이렉트
                 initialTab = "activity";
-                setActivitySubTab("checkins");
             } else if (["profile", "footprint", "records", "activity"].includes(tab || "")) {
                 initialTab = tab || "profile";
             }
@@ -699,7 +684,6 @@ const MyPage = () => {
                             fetchCompleted(),
                             fetchCasefiles(),
                             fetchRewards(),
-                            fetchCheckins(),
                             fetchPayments()
                         );
                     } else if (initialTab === "footprint") {
@@ -708,14 +692,13 @@ const MyPage = () => {
                             fetchFavorites(),
                             fetchBadges(),
                             fetchRewards(),
-                            fetchCheckins(),
                             fetchPayments()
                         );
                     } else if (initialTab === "records") {
                         priorityData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
-                        deferredData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                        deferredData.push(fetchBadges(), fetchRewards(), fetchPayments());
                     } else if (initialTab === "activity") {
-                        priorityData.push(fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments());
+                        priorityData.push(fetchBadges(), fetchRewards(), fetchPayments());
                         deferredData.push(fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles());
                     } else {
                         // 기본: 모든 데이터를 지연 로드
@@ -726,7 +709,6 @@ const MyPage = () => {
                             fetchCompleted(),
                             fetchCasefiles(),
                             fetchRewards(),
-                            fetchCheckins(),
                             fetchPayments()
                         );
                     }
@@ -764,13 +746,6 @@ const MyPage = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // 🟢 초기 마운트 시에만 실행
 
-    // Event Listener for Checkin
-    useEffect(() => {
-        const onCheckinUpdated = () => fetchCheckins();
-        window.addEventListener("checkinUpdated", onCheckinUpdated as EventListener);
-        return () => window.removeEventListener("checkinUpdated", onCheckinUpdated as EventListener);
-    }, []);
-
     // 🟢 로그아웃 이벤트 리스너 - 로그아웃 시 모든 데이터 초기화 (리다이렉트는 Header나 authClient가 담당)
     useEffect(() => {
         const handleAuthLogout = () => {
@@ -780,7 +755,6 @@ const MyPage = () => {
             setFavorites([]);
             setBadges([]);
             setRewards([]);
-            setCheckins([]);
             setPayments([]);
             setCompleted([]);
             setCasefiles([]);
@@ -907,9 +881,9 @@ const MyPage = () => {
                 );
             } else if (
                 id === "activity" &&
-                (badges.length === 0 || rewards.length === 0 || checkins.length === 0 || payments.length === 0)
+                (badges.length === 0 || rewards.length === 0 || payments.length === 0)
             ) {
-                Promise.all([fetchBadges(), fetchRewards(), fetchCheckins(), fetchPayments()]).catch(() => {});
+                Promise.all([fetchBadges(), fetchRewards(),  fetchPayments()]).catch(() => {});
             }
         });
         try {
@@ -1295,7 +1269,6 @@ const MyPage = () => {
                         <ActivityTab
                             badges={badges}
                             rewards={rewards}
-                            checkins={checkins}
                             payments={payments}
                             onSelectBadge={setSelectedBadge}
                             initialSubTab={activitySubTab}

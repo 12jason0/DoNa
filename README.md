@@ -279,7 +279,7 @@ vercel --prod
 | birthday        | DateTime? |                  | 생일              |
 | phone           | String?   |                  | 전화번호          |
 
-연관: completedCourses, completedEscapes, bookings, courses, reviews, trees, userFavorites, interactions, userPreference, rewards, userBadges, checkins, UserCollage, waterLogs, userStoryProgress, pushTokens, garden 등
+연관: completedCourses, completedEscapes, bookings, courses, reviews, trees, userFavorites, interactions, userPreference, rewards, userBadges, UserCollage, waterLogs, userStoryProgress, pushTokens, garden 등
 
 ### UserPreference (`user_preferences`)
 
@@ -482,16 +482,6 @@ vercel --prod
 | unit      | RewardUnit     | coin/coupon/water  |
 | createdAt | DateTime       | now()              |
 | placeId   | Int?           | 장소 기반 보상용   |
-
-### UserCheckin (`user_checkins`)
-
-| 컬럼      | 타입           | 설명        |
-| --------- | -------------- | ----------- |
-| id        | Int (PK, auto) |             |
-| userId    | Int            | 사용자      |
-| date      | DateTime       | 체크인 일자 |
-| rewarded  | Boolean        | 보상 여부   |
-| createdAt | DateTime       | now()       |
 
 ### Story (`stories`) / StoryUI (`story_ui`)
 

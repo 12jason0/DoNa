@@ -14,7 +14,6 @@ import LogoutModal from "@/components/LogoutModal";
 import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
-import { fetchWeekStamps } from "@/lib/checkinClient";
 
 // 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시
 const LogoutOverlay = () => (
@@ -39,9 +38,6 @@ const Header = memo(() => {
     const [showKakaoChannelModal, setShowKakaoChannelModal] = useState(false);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
-    const [checkinStreak, setCheckinStreak] = useState<number | null>(null);
-    const [checkinTodayDone, setCheckinTodayDone] = useState(false);
-    const [checkinLoading, setCheckinLoading] = useState(false);
 
     const pathname = usePathname();
     const router = useRouter();
@@ -77,45 +73,6 @@ const Header = memo(() => {
         }
     }, [isAuthenticated, fetchFavoritesSummary]);
 
-    const fetchCheckinSummary = useCallback(async () => {
-        if (!isAuthenticated) {
-            setCheckinStreak(null);
-            setCheckinTodayDone(false);
-            return;
-        }
-        setCheckinLoading(true);
-        try {
-            const result = await fetchWeekStamps();
-            if (result) {
-                setCheckinStreak(typeof result.streak === "number" ? result.streak : 0);
-                setCheckinTodayDone(Boolean(result.todayChecked));
-            } else {
-                setCheckinStreak(null);
-                setCheckinTodayDone(false);
-            }
-        } catch {
-            setCheckinStreak(null);
-            setCheckinTodayDone(false);
-        } finally {
-            setCheckinLoading(false);
-        }
-    }, [isAuthenticated]);
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            fetchCheckinSummary();
-        } else {
-            setCheckinStreak(null);
-            setCheckinTodayDone(false);
-        }
-    }, [isAuthenticated, fetchCheckinSummary]);
-
-    useEffect(() => {
-        const handleCheckinUpdated = () => fetchCheckinSummary();
-        window.addEventListener("checkinUpdated", handleCheckinUpdated);
-        return () => window.removeEventListener("checkinUpdated", handleCheckinUpdated);
-    }, [fetchCheckinSummary]);
-
     useEffect(() => {
         const handleFavoritesChanged = () => fetchFavoritesSummary();
         window.addEventListener("authLogout", handleAuthLogout);
@@ -140,8 +97,6 @@ const Header = memo(() => {
         // 🟢 1. 즉시 오버레이 표시 상태로 변경
         setIsLoggingOut(true);
         setHasFavorites(false);
-        setCheckinStreak(null);
-        setCheckinTodayDone(false);
         setShowLogoutConfirm(false);
 
         try {
@@ -167,14 +122,6 @@ const Header = memo(() => {
         setShowLogoutConfirm(true);
     };
 
-    const openCheckinModal = useCallback(() => {
-        if (pathname === "/") {
-            window.dispatchEvent(new Event("openCheckinModal"));
-        } else {
-            router.push("/?openCheckin=1");
-        }
-    }, [pathname, router]);
-
     return (
         <>
             {isLoggingOut && <LogoutOverlay />}
@@ -196,48 +143,6 @@ const Header = memo(() => {
                         </div>
 
                         <div className="flex items-center gap-0.5 h-full">
-                            {/* 출석 캡슐 뱃지 (검색 버튼 왼쪽) */}
-                            {isAuthenticated && (
-                                <TapFeedback>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            openCheckinModal();
-                                        }}
-                                        className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                        title={checkinTodayDone ? `${checkinStreak ?? 0}일 연속 출석` : "오늘 출석하기"}
-                                    >
-                                        {checkinLoading ? (
-                                            <span className="w-5 h-4 bg-gray-200 dark:bg-gray-600 rounded-full animate-pulse" />
-                                        ) : (
-                                            <>
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    width="16"
-                                                    height="16"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="text-orange-500 dark:text-orange-400 shrink-0"
-                                                >
-                                                    <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
-                                                </svg>
-                                                <span>연속 {checkinStreak ?? 0}일</span>
-                                                {!checkinTodayDone && (
-                                                    <span
-                                                        className="flex h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
-                                                        aria-hidden
-                                                    />
-                                                )}
-                                            </>
-                                        )}
-                                    </button>
-                                </TapFeedback>
-                            )}
                             {/* 검색 버튼 */}
                             <TapFeedback>
                                 <button

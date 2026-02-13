@@ -229,13 +229,6 @@ export async function DELETE(request: NextRequest) {
             // - LoginLog: 통신비밀보호법에 따라 3개월 보관
 
             // [삭제 가능한 데이터] 사용자 활동 데이터 삭제
-            try {
-                await tx.userCheckin.deleteMany({
-                    where: { userId: userId },
-                });
-            } catch (e) {
-                console.error("UserCheckin 삭제 실패 (무시):", e);
-            }
 
             // UserReward 삭제 (보상 기록은 법적 보관 불필요)
             try {

@@ -52,13 +52,6 @@ export interface UserRewardRow {
     createdAt: string;
 }
 
-export interface UserCheckinRow {
-    id: number;
-    date: string;
-    rewarded: boolean;
-    createdAt: string;
-}
-
 export interface CompletedCourse {
     course_id: number;
     title: string;

@@ -2,7 +2,7 @@ export default function DataDeletionPage() {
     const CONTACT_EMAIL = "12jason@donacourse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
+            <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-3xl mx-auto">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">사용자 데이터 삭제</h1>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">계정 탈퇴 또는 개인정보 삭제를 원하실 때의 안내 페이지입니다.</p>
@@ -43,14 +43,14 @@ export default function DataDeletionPage() {
                                 <li><strong>계정 삭제</strong> 버튼을 클릭합니다.</li>
                                 <li>탈퇴 사유 선택 및 확인 후 즉시 탈퇴 처리됩니다.</li>
                                 <li>
-                                    계정, 프로필, 즐겨찾기, 체크인, 미션 기록 등 사용자 연동 데이터가 즉시 삭제됩니다.
+                                    계정, 프로필, 즐겨찾기, 미션 기록 등 사용자 연동 데이터가 즉시 삭제됩니다.
                                 </li>
                             </ol>
                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 mt-4">이메일을 통한 탈퇴 요청</h4>
                             <ol className="list-decimal pl-6 space-y-2 dark:text-white">
                                 <li>요청 접수 후 본인 확인을 진행합니다.</li>
                                 <li>
-                                    확인 완료 시 계정, 프로필, 즐겨찾기, 체크인, 미션 기록 등 사용자 연동 데이터가
+                                    확인 완료 시 계정, 프로필, 즐겨찾기, 미션 기록 등 사용자 연동 데이터가
                                     삭제됩니다.
                                 </li>
                                 <li>처리 완료 후 이메일로 결과를 안내드립니다. (영업일 기준 최대 7일)</li>

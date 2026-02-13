@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
-import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
 import { apiFetch } from "@/lib/authClient";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,7 +8,6 @@ import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import HeroSlider from "@/components/HeroSlider";
 import OnboardingSection from "@/components/OnboardingSection";
-import CompletionModal from "@/components/CompletionModal";
 import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
 import MemoryCTA, { MemoryPreview } from "@/components/MemoryCTA";
@@ -111,19 +109,10 @@ export default function HomeClient({
         setPlatform(isIOS() ? "ios" : "web");
     }, []);
     const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
-    const [showCheckinModal, setShowCheckinModal] = useState(false);
-    const [showRewardModal, setShowRewardModal] = useState(false);
     const [showBenefitConsentModal, setShowBenefitConsentModal] = useState(false);
-    const [weekStamps, setWeekStamps] = useState<boolean[]>([false, false, false, false, false, false, false]);
-    const [isStamping, setIsStamping] = useState(false);
-    const [stampCompleted, setStampCompleted] = useState(false);
-    const [alreadyToday, setAlreadyToday] = useState(false);
-    const [animStamps, setAnimStamps] = useState<boolean[] | null>(null);
-    const [streak, setStreak] = useState<number>(0);
     const [userId, setUserId] = useState<number | null>(null);
     const [userName, setUserName] = useState<string>("");
     const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
-    const [isCheckinLoading, setIsCheckinLoading] = useState<boolean>(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [isLoadingCourses, setIsLoadingCourses] = useState<boolean>(false);
@@ -153,8 +142,6 @@ export default function HomeClient({
         }
     }, [searchParams, router]);
 
-    const hasShownCheckinModalRef = useRef(false);
-
     // 🟢 [Optimization]: 상태 업데이트를 프레임 단위로 분산 처리하여 롱 태스크 방지
     const loadUserData = useCallback(async () => {
         // 🟢 [로그아웃 체크]: 로그인 상태에서만 데이터 로드
@@ -162,18 +149,12 @@ export default function HomeClient({
             setUserId(null);
             setUserName("");
             setUserTier("FREE");
-            setStreak(0);
-            setWeekStamps([false, false, false, false, false, false, false]);
-            setAlreadyToday(false);
-            setIsCheckinLoading(false);
-            setShowCheckinModal(false);
             return;
         }
 
         try {
-            const [profileRes, checkinRes, preferencesRes] = await Promise.allSettled([
+            const [profileRes, preferencesRes] = await Promise.allSettled([
                 apiFetch("/api/users/profile", { cache: "no-store" }), // 🟢 프로필은 최신 상태 유지
-                apiFetch("/api/users/checkins", { cache: "no-store" }),
                 // 🟢 수정: 취향 데이터는 설정을 마친 직후 반영되어야 하므로 캐시를 사용하지 않습니다.
                 apiFetch("/api/users/preferences", { cache: "no-store" }),
             ]);
@@ -221,24 +202,6 @@ export default function HomeClient({
                 });
             }
 
-            if (checkinRes.status === "fulfilled" && checkinRes.value.response.ok && checkinRes.value.data) {
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        const c = checkinRes.value.data as any;
-                        if (c && typeof c.streak === "number") setStreak(c.streak);
-                        if (Array.isArray(c.weekStamps)) {
-                            setWeekStamps(c.weekStamps);
-                        }
-                        if (typeof c.todayChecked === "boolean") {
-                            setAlreadyToday(c.todayChecked);
-                        }
-                        setIsCheckinLoading(false);
-                    });
-                });
-            } else {
-                setIsCheckinLoading(false);
-            }
-
             if (
                 preferencesRes.status === "fulfilled" &&
                 preferencesRes.value.response.ok &&
@@ -281,21 +244,6 @@ export default function HomeClient({
             console.error("User data loading failed:", error);
         }
     }, [isAuthenticated, user]); // 🟢 user 의존성 추가로 세션 변경 시 대응
-
-    const maybeOpenCheckinModal = useCallback(async () => {
-        // 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 열기
-        if (!isAuthenticated) return;
-
-        const result = await fetchWeekStamps();
-        if (!result) return;
-        setWeekStamps(result.stamps);
-        setAlreadyToday(result.todayChecked);
-        if (typeof result.streak === "number") setStreak(result.streak);
-        if (!result.todayChecked && !hasShownCheckinModalRef.current) {
-            setShowCheckinModal(true);
-            hasShownCheckinModalRef.current = true;
-        }
-    }, [isAuthenticated]);
 
     // 🟢 모달이 열릴 때 첫 번째 사진으로 스크롤
     useEffect(() => {
@@ -384,25 +332,13 @@ export default function HomeClient({
     }, [isAuthenticated]);
 
     useEffect(() => {
-        if (isAuthLoading) {
-            setIsCheckinLoading(true);
-            return;
-        }
-
         if (isAuthenticated && user) {
             setUserId(Number(user.id));
-            setIsCheckinLoading(true);
         } else {
             requestAnimationFrame(() => {
                 setUserId(null);
                 setUserName("");
-                setStreak(0);
-                setWeekStamps([false, false, false, false, false, false, false]);
-                setAlreadyToday(false);
-                setIsCheckinLoading(false);
-                setShowCheckinModal(false);
                 setIsOnboardingComplete(false);
-                setIsCheckinLoading(false);
             });
         }
     }, [isAuthenticated, user, isAuthLoading]);
@@ -412,19 +348,6 @@ export default function HomeClient({
         const timer = setTimeout(loadUserData, 200);
         return () => clearTimeout(timer);
     }, [isAuthenticated, userId, loadUserData]);
-
-    useEffect(() => {
-        const handleOpenCheckinModal = () => setShowCheckinModal(true);
-        window.addEventListener("openCheckinModal", handleOpenCheckinModal);
-        return () => window.removeEventListener("openCheckinModal", handleOpenCheckinModal);
-    }, []);
-
-    useEffect(() => {
-        if (searchParams.get("openCheckin") === "1" && isAuthenticated) {
-            setShowCheckinModal(true);
-            router.replace("/", { scroll: false });
-        }
-    }, [searchParams, isAuthenticated, router]);
 
     useEffect(() => {
         const handleAuthLoginSuccess = () => {
@@ -437,7 +360,6 @@ export default function HomeClient({
                             if (session.authenticated && session.user) {
                                 setUserId(Number(session.user.id));
                                 loadUserData();
-                                maybeOpenCheckinModal();
                             }
                         } catch (error) {
                             console.error("로그인 후 인증 확인 실패:", error);
@@ -452,44 +374,7 @@ export default function HomeClient({
         return () => {
             window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
         };
-    }, [loadUserData, maybeOpenCheckinModal]);
-
-    useEffect(() => {
-        if (!isAuthenticated || hasShownCheckinModalRef.current || isAuthLoading) return;
-
-        // 🟢 [Fix]: 스플래시 화면이 끝난 후에 출석 모달 표시
-        const checkSplashAndShowModal = () => {
-            // 스플래시가 이미 표시되었는지 확인
-            const splashShown = sessionStorage.getItem("dona-splash-shown");
-            if (splashShown) {
-                // 스플래시가 이미 끝났으면 즉시 표시
-                requestAnimationFrame(() => {
-                    maybeOpenCheckinModal();
-                });
-            } else {
-                // 스플래시가 아직 표시 중이면 스플래시 종료를 기다림 (최대 7초)
-                const checkInterval = setInterval(() => {
-                    const splashDone = sessionStorage.getItem("dona-splash-shown");
-                    if (splashDone) {
-                        clearInterval(checkInterval);
-                        requestAnimationFrame(() => {
-                            maybeOpenCheckinModal();
-                        });
-                    }
-                }, 100);
-
-                // 7초 후에는 강제로 표시 (스플래시 최대 시간 6초 + 여유 1초)
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    requestAnimationFrame(() => {
-                        maybeOpenCheckinModal();
-                    });
-                }, 7000);
-            }
-        };
-
-        checkSplashAndShowModal();
-    }, [isAuthenticated, isAuthLoading, maybeOpenCheckinModal]);
+    }, [loadUserData]);
 
     // 🟢 개인 추억 데이터 로드
     useEffect(() => {
@@ -544,7 +429,6 @@ export default function HomeClient({
     return (
         <>
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
-            <CompletionModal isOpen={showRewardModal} onClose={() => setShowRewardModal(false)} />
             <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
             {/* 🟢 코스 로딩 중 오버레이 */}
@@ -604,130 +488,6 @@ export default function HomeClient({
                     <OnboardingSection onStart={() => router.push("/onboarding")} />
                 )}
             </main>
-
-            {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 표시 - 아래에서 올라오는 바텀시트 */}
-            {showCheckinModal && isAuthenticated && (
-                <div
-                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
-                    onClick={() => setShowCheckinModal(false)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Escape" && setShowCheckinModal(false)}
-                    aria-label="출석 체크 모달 닫기"
-                >
-                    <div
-                        className="fixed bottom-0 left-0 right-0 z-51 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl p-6 w-full max-w-sm mx-auto text-center"
-                        style={{ animation: "slideUp 0.3s ease-out forwards" }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">출석 체크</h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-1">이번 주 출석 현황</p>
-                        {streak > 0 && (
-                            <p className="flex items-center justify-center gap-1.5 text-sm text-gray-700 dark:text-gray-300 mb-2 font-semibold">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="text-orange-500 dark:text-orange-400 shrink-0"
-                                >
-                                    <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
-                                </svg>
-                                {streak}일 연속 출석 중
-                            </p>
-                        )}
-                        {alreadyToday && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">오늘 이미 출석했습니다</p>
-                        )}
-
-                        <div className="grid grid-cols-7 gap-2 mb-4">
-                            {new Array(7).fill(0).map((_, i) => {
-                                const stamped = (weekStamps[i] || (!!animStamps && !!animStamps[i])) as boolean;
-                                const pulse = !!animStamps && !!animStamps[i];
-                                return (
-                                    <div key={i} className="flex flex-col items-center gap-1">
-                                        <span
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-transform duration-150 ${
-                                                stamped
-                                                    ? "bg-linear-to-br from-lime-400 to-green-500 text-white"
-                                                    : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-                                            } ${pulse ? "scale-110" : ""}`}
-                                        >
-                                            {stamped ? "🌱" : String(i + 1)}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="flex gap-3 justify-center">
-                            {!stampCompleted && !alreadyToday ? (
-                                <>
-                                    <button
-                                        onClick={() => setShowCheckinModal(false)}
-                                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                    >
-                                        나중에
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            if (isStamping) return;
-                                            setIsStamping(true);
-                                            try {
-                                                const data = await postCheckin();
-                                                if (!data.ok) {
-                                                    setIsStamping(false);
-                                                    return;
-                                                }
-                                                if (typeof data.streak === "number") {
-                                                    setStreak(data.streak);
-                                                }
-                                                if (Array.isArray(data.weekStamps)) {
-                                                    setWeekStamps(data.weekStamps);
-                                                }
-                                                setAlreadyToday(true);
-                                                setStampCompleted(true);
-                                                setIsStamping(false);
-                                                window.dispatchEvent(new Event("checkinUpdated"));
-
-                                                // 7일 완료 시 CompletionModal 표시
-                                                if (data.awarded) {
-                                                    setShowRewardModal(true);
-                                                }
-                                            } catch {
-                                                setIsStamping(false);
-                                            }
-                                        }}
-                                        className={`px-4 py-2 rounded-lg text-white font-semibold ${
-                                            isStamping
-                                                ? "bg-gray-400"
-                                                : "bg-gray-800 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
-                                        }`}
-                                    >
-                                        {isStamping ? "도장 찍는 중..." : "출석 체크 하기"}
-                                    </button>
-                                </>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        setShowCheckinModal(false);
-                                        setAnimStamps(null);
-                                        setStampCompleted(false);
-                                    }}
-                                    className="hover:cursor-pointer px-6 py-2 rounded-lg bg-gray-800 dark:bg-gray-600 text-white font-semibold hover:bg-gray-700 dark:hover:bg-gray-500"
-                                >
-                                    확인
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* 🟢 추억 상세 모달*/}
             {showMemoryModal && selectedMemory && (

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { UserBadgeItem, UserRewardRow, UserCheckinRow } from "@/types/user";
+import { UserBadgeItem, UserRewardRow } from "@/types/user";
 
 interface PaymentHistory {
     id: string;
@@ -17,18 +17,13 @@ interface PaymentHistory {
 interface ActivityTabProps {
     badges: UserBadgeItem[];
     rewards: UserRewardRow[];
-    checkins: UserCheckinRow[];
     payments?: PaymentHistory[];
     onSelectBadge: (badge: UserBadgeItem) => void;
-    initialSubTab?: "badges" | "rewards" | "checkins" | "payments";
+    initialSubTab?: "badges" | "rewards" | "payments";
 }
 
-const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, initialSubTab = "badges" }: ActivityTabProps) => {
-    const [subTab, setSubTab] = useState<"badges" | "rewards" | "checkins" | "payments">(initialSubTab);
-    const [currentMonth, setCurrentMonth] = useState<Date>(() => {
-        const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), 1);
-    });
+const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSubTab = "badges" }: ActivityTabProps) => {
+    const [subTab, setSubTab] = useState<"badges" | "rewards" | "payments">(initialSubTab);
 
     // 🟢 initialSubTab prop이 변경되면 subTab 상태도 업데이트
     useEffect(() => {
@@ -38,29 +33,8 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
     const subTabs = [
         { id: "badges" as const, label: "뱃지", count: badges.length },
         { id: "rewards" as const, label: "보상 내역", count: rewards.length },
-        { id: "checkins" as const, label: "출석 기록", count: null }, // 출석 기록은 숫자 표시 안 함
         { id: "payments" as const, label: "구매 내역", count: payments.length },
     ];
-
-    // 달력 관련 로직
-    const getDateKeyKST = (date: Date): string => {
-        const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-        const ms = date.getTime() + KST_OFFSET_MS;
-        const k = new Date(ms);
-        const y = k.getUTCFullYear();
-        const m = String(k.getUTCMonth() + 1).padStart(2, "0");
-        const d = String(k.getUTCDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
-    };
-
-    const monthLabel = (d: Date) => `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, "0")}`;
-
-    const goPrevMonth = () => {
-        setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    };
-    const goNextMonth = () => {
-        setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    };
 
     return (
         <div className="space-y-6">
@@ -188,89 +162,6 @@ const ActivityTab = ({ badges, rewards, checkins, payments = [], onSelectBadge, 
                     ) : (
                         <div className="text-center text-gray-600 dark:text-gray-400 py-10">보상 내역이 없습니다.</div>
                     )}
-                </div>
-            )}
-
-            {/* 출석 기록 탭 */}
-            {subTab === "checkins" && (
-                <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
-                    <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">출석 기록</h3>
-                    </div>
-                    <div className="mb-4 flex items-center justify-between">
-                        <button
-                            onClick={goPrevMonth}
-                            className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                        >
-                            ← 이전
-                        </button>
-                        <div className="font-semibold text-gray-900 dark:text-white">{monthLabel(currentMonth)}</div>
-                        <button
-                            onClick={goNextMonth}
-                            className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                        >
-                            다음 →
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2 text-center text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {["일", "월", "화", "수", "목", "금", "토"].map((w) => (
-                            <div key={w} className="py-1 font-medium">
-                                {w}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-2">
-                        {(() => {
-                            const year = currentMonth.getFullYear();
-                            const month = currentMonth.getMonth();
-                            const firstDay = new Date(year, month, 1);
-                            const firstDow = firstDay.getDay();
-                            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-                            const checkinDaySet = new Set<string>(
-                                checkins.map((c) => {
-                                    const d = new Date(c.date);
-                                    return getDateKeyKST(d);
-                                })
-                            );
-                            const targetMonthKeyPrefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
-
-                            const days = [];
-                            for (let i = 0; i < firstDow; i++) {
-                                days.push({ day: null, key: null, stamped: false });
-                            }
-                            for (let d = 1; d <= daysInMonth; d++) {
-                                const key = `${targetMonthKeyPrefix}${String(d).padStart(2, "0")}`;
-                                const stamped = checkinDaySet.has(key);
-                                days.push({ day: d, key, stamped });
-                            }
-
-                            return days.map((cell, idx) => {
-                                if (cell.day === null) return <div key={`pad-${idx}`} className="h-10 md:h-12" />;
-                                const isToday =
-                                    getDateKeyKST(new Date()) ===
-                                    `${targetMonthKeyPrefix}${String(cell.day).padStart(2, "0")}`;
-                                return (
-                                    <div
-                                        key={cell.key || idx}
-                                        className={`h-10 md:h-12 rounded-lg flex items-center justify-center border ${
-                                            cell.stamped
-                                                ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400"
-                                                : "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"
-                                        } ${isToday ? "ring-2 ring-blue-400 dark:ring-blue-500" : ""}`}
-                                        title={cell.key || ""}
-                                    >
-                                        {cell.stamped ? (
-                                            <span className="text-base md:text-lg">🌱</span>
-                                        ) : (
-                                            <span className="opacity-70">{cell.day}</span>
-                                        )}
-                                    </div>
-                                );
-                            });
-                        })()}
-                    </div>
                 </div>
             )}
 

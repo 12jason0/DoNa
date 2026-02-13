@@ -4,12 +4,10 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
-import { fetchWeekStamps, postCheckin } from "@/lib/checkinClient";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import { getS3StaticUrl } from "@/lib/s3Static";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
-import CompletionModal from "@/components/CompletionModal";
 import TapFeedback from "@/components/TapFeedback";
 import { isIOS } from "@/lib/platform";
 import {
@@ -196,12 +194,6 @@ const AIRecommender = () => {
     const [coupons, setCoupons] = useState(0);
     const [showLogin, setShowLogin] = useState(false);
     const [showPaywall, setShowPaywall] = useState(false);
-    const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
-    const [showCompletionModal, setShowCompletionModal] = useState(false);
-    const [weekStamps, setWeekStamps] = useState<boolean[]>([false, false, false, false, false, false, false]);
-    const [todayIndex, setTodayIndex] = useState<number | null>(null);
-    const [todayChecked, setTodayChecked] = useState(false);
-    const [weekCount, setWeekCount] = useState(0);
     const [loginNavigating, setLoginNavigating] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
 
@@ -408,97 +400,6 @@ const AIRecommender = () => {
             window.removeEventListener("couponCountUpdated", handleCouponCountUpdated as EventListener);
         };
     }, []);
-
-    // 출석 정보 가져오기 (성능 최적화: 로그인 확인 후 지연 로드)
-    useEffect(() => {
-        if (!isLoggedIn || isUserDataLoading) return;
-
-        // 🟢 [Performance]: 사용자 정보 로딩 완료 후 출석 정보 로드 (지연 로드)
-        const timer = setTimeout(() => {
-            const fetchCheckins = async () => {
-                try {
-                    const res = await fetchWeekStamps();
-                    if (!res) return;
-                    // 🟢 [Performance]: 다음 프레임에서 상태 업데이트
-                    requestAnimationFrame(() => {
-                        // 서버에서 받은 weekStamps를 그대로 사용 (7일 완료 후 리셋된 상태도 반영)
-                        setWeekStamps(res.stamps);
-                        setTodayIndex(typeof res.todayIndex === "number" ? res.todayIndex : null);
-                        setTodayChecked(Boolean(res.todayChecked));
-                        // weekCount 업데이트: 7일 완료 후 다음날에는 0 또는 1로 리셋됨
-                        if (typeof res.weekCount === "number") {
-                            setWeekCount(res.weekCount);
-                        }
-                    });
-                } catch (error) {
-                    console.error("출석 정보 조회 오류:", error);
-                }
-            };
-
-            fetchCheckins();
-        }, 200); // 🟢 200ms 지연으로 초기 렌더링 우선
-
-        return () => clearTimeout(timer);
-    }, [isLoggedIn, isUserDataLoading]);
-
-    // 출석 체크
-    const doHomeCheckin = async () => {
-        try {
-            const result = await postCheckin();
-            if (result.ok && result.success) {
-                await fetchUserData();
-
-                // weekStamps 업데이트: 서버에서 받은 값이 있으면 우선 사용 (7일 완료 후 리셋된 상태도 반영)
-                if (Array.isArray(result.weekStamps) && result.weekStamps.length === 7) {
-                    setWeekStamps(result.weekStamps);
-                } else if (typeof result.todayIndex === "number") {
-                    // 서버에서 weekStamps가 없고 todayIndex만 있는 경우, 오늘만 체크된 상태로 업데이트
-                    setWeekStamps((prev) => {
-                        // weekCount가 0 또는 1이면 새로운 주기 시작이므로 이전 상태 무시하고 리셋
-                        if (
-                            typeof result.weekCount === "number" &&
-                            (result.weekCount === 0 || result.weekCount === 1)
-                        ) {
-                            return prev.map((v, i) => i === result.todayIndex);
-                        }
-                        // 기존 주기 중이면 기존 상태 유지하면서 오늘만 체크
-                        return prev.map((v, i) => (i === result.todayIndex ? true : v));
-                    });
-                } else {
-                    // todayIndex도 없으면 로컬 계산으로 폴백
-                    const now = new Date();
-                    const day = now.getDay();
-                    const idx = (day + 6) % 7;
-                    setWeekStamps((prev) => prev.map((v, i) => (i === idx ? true : v)));
-                }
-
-                // todayIndex 업데이트
-                if (typeof result.todayIndex === "number" || result.todayIndex === null) {
-                    setTodayIndex(result.todayIndex ?? null);
-                }
-
-                // weekCount 업데이트: 7일 완료 후 다음날에는 0 또는 1로 리셋될 수 있음
-                if (typeof result.weekCount === "number") {
-                    setWeekCount(result.weekCount);
-                }
-
-                setTodayChecked(true);
-                setAttendanceModalOpen(false);
-
-                // 7일 완료 시 CompletionModal 표시
-                if (result.awarded) {
-                    setShowCompletionModal(true);
-                } else {
-                    alert("출석 체크 완료!");
-                }
-            } else {
-                alert("출석 체크에 실패했습니다.");
-            }
-        } catch (error) {
-            console.error("출석 체크 API 오류:", error);
-            alert("오류가 발생했습니다. 다시 시도해주세요.");
-        }
-    };
 
     // 로그아웃
     const handleLogout = async () => {
@@ -1369,9 +1270,6 @@ const AIRecommender = () => {
                 {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
                 {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
                 {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
-                {showCompletionModal && (
-                    <CompletionModal isOpen={showCompletionModal} onClose={() => setShowCompletionModal(false)} />
-                )}
 
                 {/* 🟢 1단계: 선택 확인 모달 */}
                 {showConfirmModal && pendingCourse && (
@@ -1635,62 +1533,6 @@ const AIRecommender = () => {
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                )}
-
-                {/* 🟢 [로그아웃 체크]: 로그인 상태에서만 출석 모달 표시 */}
-                {attendanceModalOpen && isLoggedIn && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-white dark:bg-[#1a241b] rounded-2xl max-w-sm w-full p-6 text-center">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">출석 체크</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mb-3">
-                                이번 주 진행도:{" "}
-                                <span className="font-semibold text-gray-900 dark:text-white">{weekCount}</span>/7
-                            </p>
-                            <div className="grid grid-cols-7 gap-2 mb-5">
-                                {Array.from({ length: 7 }).map((_, i) => {
-                                    const checked = Boolean(weekStamps[i]);
-                                    const isToday = typeof todayIndex === "number" && todayIndex === i;
-                                    return (
-                                        <div key={i} className="flex flex-col items-center gap-1">
-                                            <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                                                {i + 1}
-                                            </span>
-                                            <span
-                                                className={[
-                                                    "w-9 h-9 rounded-full flex items-center justify-center text-base font-semibold transition-all",
-                                                    checked
-                                                        ? "bg-emerald-500 text-white"
-                                                        : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
-                                                    isToday ? "ring-2 ring-emerald-400" : "",
-                                                ].join(" ")}
-                                            >
-                                                {checked ? "🌱" : ""}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="flex gap-3 justify-center">
-                                <button
-                                    onClick={() => setAttendanceModalOpen(false)}
-                                    className="px-4 py-2 border rounded-lg text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"
-                                >
-                                    나중에
-                                </button>
-                                <button
-                                    onClick={doHomeCheckin}
-                                    disabled={todayChecked}
-                                    className={`px-4 py-2 rounded-lg text-white ${
-                                        todayChecked
-                                            ? "bg-gray-300 cursor-not-allowed"
-                                            : "bg-emerald-600 hover:bg-emerald-700"
-                                    }`}
-                                >
-                                    {todayChecked ? "오늘은 완료됨" : "출석 체크 하기"}
-                                </button>
-                            </div>
                         </div>
                     </div>
                 )}

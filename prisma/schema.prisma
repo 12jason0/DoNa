@@ -72,7 +72,6 @@ model User {
   reviews               Review[]
   savedCourses          SavedCourse[]
   userBadges            UserBadge[]
-  checkins              UserCheckin[]
   UserCollage           UserCollage[]
   userFavorites         UserFavorite[]
   interactions          UserInteraction[]
@@ -607,17 +606,6 @@ model CourseNotice {
   course        Course   @relation(fields: [course_id], references: [id])
 
   @@map("course_notices")
-}
-
-model UserCheckin {
-  id        Int      @id @default(autoincrement())
-  date      DateTime
-  rewarded  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@map("user_checkins")
 }
 
 model UserInteraction {
