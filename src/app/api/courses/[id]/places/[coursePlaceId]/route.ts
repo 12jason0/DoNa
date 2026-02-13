@@ -4,14 +4,21 @@ import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+// 인증: 유저 JWT 또는 관리자(admin_auth) 허용
+function isAuthenticated(request: NextRequest): boolean {
+    const userId = resolveUserId(request);
+    if (userId) return true;
+    const adminAuth = request.cookies.get("admin_auth")?.value === "true";
+    return !!adminAuth;
+}
+
 // 코스의 장소(course_place) 수정
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string; coursePlaceId: string }> }
 ) {
     try {
-        const userId = resolveUserId(request);
-        if (!userId) {
+        if (!isAuthenticated(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
@@ -84,8 +91,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string; coursePlaceId: string }> }
 ) {
     try {
-        const userId = resolveUserId(request);
-        if (!userId) {
+        if (!isAuthenticated(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
