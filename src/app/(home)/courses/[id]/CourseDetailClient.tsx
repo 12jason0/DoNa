@@ -403,6 +403,12 @@ export default function CourseDetailClient({
     const [previewImages, setPreviewImages] = useState<string[]>([]);
     const [previewImageIndex, setPreviewImageIndex] = useState(0);
     const [showFullMapModal, setShowFullMapModal] = useState(false);
+    const [showFullMapModalSlideUp, setShowFullMapModalSlideUp] = useState(false);
+    const [fullMapModalDragY, setFullMapModalDragY] = useState(0);
+    const fullMapModalDragStartY = useRef(0);
+    const fullMapModalDragYRef = useRef(0);
+    const fullMapModalHandleRef = useRef<HTMLElement | null>(null);
+    const fullMapModalPointerIdRef = useRef<number | null>(null);
     const [modalSelectedPlace, setModalSelectedPlace] = useState<MapPlace | null>(null);
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -546,6 +552,71 @@ export default function CourseDetailClient({
         });
         return () => cancelAnimationFrame(t);
     }, [showShareModal]);
+
+    // 🟢 지도 모달 하단 시트: 열릴 때 slideUp 애니메이션 + 드래그 초기화
+    useEffect(() => {
+        if (!showFullMapModal) {
+            setShowFullMapModalSlideUp(false);
+            setFullMapModalDragY(0);
+            fullMapModalDragYRef.current = 0;
+            return;
+        }
+        setFullMapModalDragY(0);
+        fullMapModalDragYRef.current = 0;
+        const t = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setShowFullMapModalSlideUp(true));
+        });
+        return () => cancelAnimationFrame(t);
+    }, [showFullMapModal]);
+
+    const fullMapModalClose = useCallback(() => {
+        setShowFullMapModalSlideUp(false);
+        setFullMapModalDragY(0);
+        fullMapModalDragYRef.current = 0;
+        setTimeout(() => {
+            setShowFullMapModal(false);
+            setModalSelectedPlace(null);
+        }, 300);
+    }, []);
+
+    const handleFullMapModalPointerDown = useCallback(
+        (e: React.PointerEvent) => {
+            const target = e.target as HTMLElement;
+            fullMapModalDragStartY.current = e.clientY;
+            fullMapModalHandleRef.current = target;
+            fullMapModalPointerIdRef.current = e.pointerId;
+            target.setPointerCapture(e.pointerId);
+            const onMove = (ev: PointerEvent) => {
+                const dy = Math.max(0, ev.clientY - fullMapModalDragStartY.current);
+                setFullMapModalDragY(dy);
+                fullMapModalDragYRef.current = dy;
+            };
+            const onUp = () => {
+                const handle = fullMapModalHandleRef.current;
+                const pid = fullMapModalPointerIdRef.current;
+                if (handle && pid !== null) {
+                    try {
+                        handle.releasePointerCapture(pid);
+                    } catch (_) {}
+                }
+                fullMapModalHandleRef.current = null;
+                fullMapModalPointerIdRef.current = null;
+                window.removeEventListener("pointermove", onMove);
+                window.removeEventListener("pointerup", onUp);
+                window.removeEventListener("pointercancel", onUp);
+                if (fullMapModalDragYRef.current > 80) {
+                    fullMapModalClose();
+                } else {
+                    setFullMapModalDragY(0);
+                    fullMapModalDragYRef.current = 0;
+                }
+            };
+            window.addEventListener("pointermove", onMove);
+            window.addEventListener("pointerup", onUp);
+            window.addEventListener("pointercancel", onUp);
+        },
+        [fullMapModalClose],
+    );
 
     // 🟢 찜 추가 하단 시트: 열릴 때 slideUp, 1초 뒤 자동 닫기
     useEffect(() => {
@@ -1448,24 +1519,6 @@ export default function CourseDetailClient({
                         </section>
                     </main>
 
-                    {/* 🔵 [기능 유지] 지도 보기 플로팅 버튼 */}
-                    <TapFeedback>
-                        <button
-                            onClick={() => {
-                                if (!isLoggedIn) {
-                                    setShowLoginModal(true);
-                                    return;
-                                }
-                                setModalSelectedPlace(null);
-                                setShowFullMapModal(true);
-                            }}
-                            className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-white dark:bg-[#1a241b] px-4 py-2.5 text-sm font-bold text-gray-800 dark:text-white shadow-xl border border-gray-100 dark:border-gray-700 transition-all"
-                        >
-                            <Icons.Map className="w-4 h-4 text-emerald-500" />
-                            <span>지도 보기</span>
-                        </button>
-                    </TapFeedback>
-
                     <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
                         <div className="flex gap-4">
                             <TapFeedback>
@@ -1620,32 +1673,63 @@ export default function CourseDetailClient({
                 </div>
             )}
 
+            {/* 🔵 + 버튼 위치에 지도 보기 플로팅 버튼 (클릭 시 코스 경로 모달, 로그인 불필요) */}
+            <div className="fixed bottom-28 right-6 z-50">
+                <TapFeedback>
+                    <button
+                        onClick={() => {
+                            setModalSelectedPlace(null);
+                            setShowFullMapModal(true);
+                        }}
+                        aria-label="지도 보기"
+                        className="flex items-center justify-center w-12 h-12 rounded-full bg-[#99c08e] hover:bg-[#85ad78] dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-lg text-white font-bold text-sm transition-all duration-200 ease-out hover:scale-105 active:scale-95"
+                    >
+                        <Icons.Map className="w-6 h-6 text-white" />
+                    </button>
+                </TapFeedback>
+            </div>
+
             {/* 🔵 [기능 유지] 전체 지도 모달 */}
             {showFullMapModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-6000 flex items-center justify-center p-5 animate-fade-in full-map-modal"
-                    onClick={() => {
-                        setModalSelectedPlace(null);
-                        setShowFullMapModal(false);
-                    }}
+                    className="fixed inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal"
+                    onClick={fullMapModalClose}
                 >
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-lg w-full max-w-md aspect-4/5 overflow-hidden relative naver-map-container"
+                        className="flex flex-col bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-md mx-auto h-[85vh] overflow-hidden relative naver-map-container"
+                        style={{
+                            transform: showFullMapModalSlideUp
+                                ? `translateY(${fullMapModalDragY}px)`
+                                : "translateY(100%)",
+                            transition: fullMapModalDragY === 0 ? "transform 0.3s ease-out" : "none",
+                        }}
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {/* 드래그 핸들바: 위에서 잡고 내리면 닫기 */}
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            aria-label="지도 시트 닫기"
+                            onPointerDown={handleFullMapModalPointerDown}
+                            className="flex items-center justify-center shrink-0 pt-3 pb-2 touch-none cursor-grab active:cursor-grabbing"
+                        >
+                            <span className="w-12 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+                        </div>
                         {/* 🟢 [Fix]: 지도 보기 모달에서도 지도가 제대로 표시되도록 키 추가 */}
-                        <NaverMap
-                            key="full-map-modal"
-                            places={mapPlaces}
-                            userLocation={null}
-                            selectedPlace={null}
-                            onPlaceClick={handleMapPlaceClick}
-                            drawPath={true}
-                            numberedMarkers={true}
-                            className="w-full h-full"
-                            style={{ minHeight: "500px" }}
-                            showControls={false}
-                        />
+                        <div className="flex-1 min-h-0 relative">
+                            <NaverMap
+                                key="full-map-modal"
+                                places={mapPlaces}
+                                userLocation={null}
+                                selectedPlace={null}
+                                onPlaceClick={handleMapPlaceClick}
+                                drawPath={true}
+                                numberedMarkers={true}
+                                className="w-full h-full"
+                                style={{ minHeight: "400px" }}
+                                showControls={false}
+                            />
+                        </div>
                         {modalSelectedPlace ? (
                             <div className="absolute bottom-0 w-full bg-white dark:bg-[#1a241b] p-5 border-t-4 border-emerald-500 rounded-t-lg shadow-2xl z-20">
                                 <div className="flex gap-4 items-center mb-4">
@@ -1713,11 +1797,16 @@ export default function CourseDetailClient({
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {
-                                                setShowFullMapModal(false);
                                                 const cp = sortedCoursePlaces.find(
                                                     (c) => c.place.id === modalSelectedPlace.id,
                                                 );
-                                                if (cp) handleTimelinePlaceClick(cp);
+                                                setShowFullMapModalSlideUp(false);
+                                                setFullMapModalDragY(0);
+                                                setTimeout(() => {
+                                                    setShowFullMapModal(false);
+                                                    setModalSelectedPlace(null);
+                                                    if (cp) handleTimelinePlaceClick(cp);
+                                                }, 300);
                                             }}
                                             className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white font-bold text-xs active:scale-95 transition-all"
                                         >
@@ -1732,19 +1821,7 @@ export default function CourseDetailClient({
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="absolute bottom-6 left-0 right-0 flex justify-center z-10">
-                                <button
-                                    onClick={() => {
-                                        setModalSelectedPlace(null);
-                                        setShowFullMapModal(false);
-                                    }}
-                                    className="bg-white dark:bg-[#1a241b] text-gray-900 dark:text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 font-bold border border-gray-100 dark:border-gray-700"
-                                >
-                                    지도 닫기 <Icons.Close className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             )}
