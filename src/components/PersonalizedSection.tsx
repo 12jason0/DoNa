@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
-// 🚨 경로 주의: constants 폴더 안에 recommendations.ts 파일이 있어야 합니다.
 import { RECOMMENDATION_MESSAGES, UserTagType } from "@/constants/recommendations";
+import { CHIP_DEFINITIONS, type ChipId } from "@/constants/chipRules";
+import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
+import LoginModal from "@/components/LoginModal";
 
 interface Course {
     id: number;
@@ -14,9 +17,11 @@ interface Course {
     tags: any;
     matchScore?: number;
     coursePlaces?: Array<{ place: { imageUrl?: string } }>;
+    chips?: ChipId[];
 }
 
 export default function PersonalizedSection() {
+    const router = useRouter();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("회원");
@@ -24,37 +29,24 @@ export default function PersonalizedSection() {
     const [hasOnboardingData, setHasOnboardingData] = useState(false); // 온보딩 데이터 보유 여부
     const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
 
-    // --- Mouse Drag State ---
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
+    const [showMoreModal, setShowMoreModal] = useState(false);
+    // 🟢 모달 내 오늘/주말 탭 (today=오늘, weekend=주말)
+    const [dayBanner, setDayBanner] = useState<"today" | "weekend">("today");
+    const [weekendCourses, setWeekendCourses] = useState<Course[]>([]);
+    const [weekendLoading, setWeekendLoading] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    // 🟢 모달 드래그로 닫기
+    const dragRef = useRef({ startY: 0, currentY: 0 });
+    const [modalDragY, setModalDragY] = useState(0);
+    // 주말(토·일)엔 dayBanner=weekend 고정. 평일엔 today
+    useEffect(() => {
+        const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+        setDayBanner(kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today");
+    }, []);
 
-    const onMouseDown = (e: React.MouseEvent) => {
-        setIsDragging(true);
-        if (scrollRef.current) {
-            setStartX(e.pageX - scrollRef.current.offsetLeft);
-            setScrollLeft(scrollRef.current.scrollLeft);
-        }
-    };
-
-    const onMouseLeave = () => {
-        setIsDragging(false);
-    };
-
-    const onMouseUp = () => {
-        setIsDragging(false);
-    };
-
-    const onMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        if (scrollRef.current) {
-            const x = e.pageX - scrollRef.current.offsetLeft;
-            const walk = (x - startX) * 2; // scroll-fast
-            scrollRef.current.scrollLeft = scrollLeft - walk;
-        }
-    };
+    useEffect(() => {
+        if (showMoreModal) setModalDragY(0);
+    }, [showMoreModal]);
 
     // 🟢 데이터 가져오기 함수 (성능 최적화: 프로필 API 호출 제거, 캐싱 개선)
     const fetchData = useCallback(async () => {
@@ -78,12 +70,13 @@ export default function PersonalizedSection() {
                 setHasOnboardingData(false);
             }
 
-            // 3. 추천 API 호출 (로그인 상태에 따라 캐싱 정책 분리)
-            // 🟢 추천 알고리즘은 서버에서 userId(쿠키)를 통해 자체적으로 개인화 데이터를 조회합니다
-            // - userPreference: 장기 선호도 (concept, mood, regions)
-            // - userInteraction: 최근 조회/클릭/좋아요 기록
-            // - 이 데이터로 개인화 점수를 계산하여 추천합니다
-            const { data, response } = await apiFetch("/api/recommendations?limit=3", {
+            // 3. 추천 API 호출 - 메인은 오늘 요일로 dayType 자동 분기 (토/일→주말, 월~금→오늘)
+            const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+            const mainDayType = kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today";
+
+            const { data, response } = await apiFetch(
+                `/api/recommendations?limit=3&dayType=${mainDayType}`,
+                {
                 // 🟢 로그인 사용자: 짧은 캐싱 (최근 상호작용 반영을 위해)
                 // 🟢 비로그인 사용자: 긴 캐싱 (인기순 정렬이므로 동일 결과)
                 cache: isUserAuthenticated ? "no-store" : "force-cache", // 🟢 로그인 사용자: no-store로 최신 데이터 가져오기
@@ -100,7 +93,7 @@ export default function PersonalizedSection() {
             const recommendations = (data as any)?.recommendations || [];
             // 🟢 API에서 직접 반환한 hasOnboardingData 사용 (서버에서 정확히 계산된 값)
             const apiHasOnboardingData = (data as any)?.hasOnboardingData === true;
-            
+
             if (recommendations.length > 0) {
                 setCourses(recommendations);
 
@@ -110,7 +103,9 @@ export default function PersonalizedSection() {
                         setHasOnboardingData(true);
                     } else {
                         // 🟢 API에서 반환하지 않은 경우 fallback: matchScore 확인
-                        const hasMatchScore = recommendations.some((c: any) => c.matchScore !== undefined && c.matchScore !== null);
+                        const hasMatchScore = recommendations.some(
+                            (c: any) => c.matchScore !== undefined && c.matchScore !== null,
+                        );
                         if (hasMatchScore) {
                             setHasOnboardingData(true);
                         } else {
@@ -167,10 +162,42 @@ export default function PersonalizedSection() {
         }
     }, []); // 의존성 없음 (setState 함수들은 안정적)
 
-    // 초기 로드
+    const fetchWeekendData = useCallback(async () => {
+        const { fetchSession, apiFetch } = await import("@/lib/authClient");
+        const session = await fetchSession();
+        if (!session.authenticated || !session.user) return;
+        setWeekendLoading(true);
+        try {
+            const { data, response } = await apiFetch("/api/recommendations?limit=3&dayType=weekend", {
+                cache: "no-store",
+                next: { revalidate: 0 },
+            });
+            if (response.ok && data) {
+                const recs = (data as any)?.recommendations || [];
+                setWeekendCourses(Array.isArray(recs) ? recs : []);
+            }
+        } catch {
+            setWeekendCourses([]);
+        } finally {
+            setWeekendLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const isMainWeekend = (() => {
+        const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+        return kst.getDay() === 0 || kst.getDay() === 6;
+    })();
+
+    // 평일일 때만 주말 탭 클릭 시 weekend 데이터 fetch (주말엔 메인=weekend라 별도 호출 불필요)
+    useEffect(() => {
+        if (dayBanner === "weekend" && !isMainWeekend && isLoggedIn && weekendCourses.length === 0 && !weekendLoading) {
+            fetchWeekendData();
+        }
+    }, [dayBanner, isMainWeekend, isLoggedIn, weekendCourses.length, weekendLoading, fetchWeekendData]);
 
     // 🟢 로그인 성공/로그아웃 이벤트 리스너
     useEffect(() => {
@@ -183,10 +210,12 @@ export default function PersonalizedSection() {
 
         const handleLogout = () => {
             setCourses([]);
+            setWeekendCourses([]);
             setUserName("회원");
             setIsLoggedIn(false);
             setCurrentTagType("guest");
-            setLoading(false); // 로그아웃 시에는 로딩 중이 아님
+            setLoading(false);
+            setWeekendLoading(false);
             setHasOnboardingData(false);
         };
 
@@ -228,130 +257,301 @@ export default function PersonalizedSection() {
         : RECOMMENDATION_MESSAGES[currentTagType] || RECOMMENDATION_MESSAGES["default"];
 
     return (
-        <section className="py-8 px-4">
-            {/* 1. 멘트 영역 (여기에 멘트가 나옵니다) */}
-            <div className="mb-6">
+        <section className="py-2 px-6">
+            {/* 1. 헤더: 오늘의 선택 (18px/700) + 설명(비로그인 시) */}
+            <div className="mb-4">
                 {loading && isLoggedIn ? (
-                    // 🟢 로그인 상태에서 로딩 중일 때
-                    <div className="flex items-center gap-3 animate-fade-in">
-                        <div className="relative">
-                            {/* 스피너 */}
-                            <div className="h-8 w-8 rounded-full border-[3px] border-emerald-100"></div>
-                            <div className="absolute top-0 left-0 h-8 w-8 rounded-full border-[3px] border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                        </div>
-                        <div>
-                            <p className="text-sm font-semibold text-emerald-600 tracking-tight">
-                                DoNa가 {userName}님한테 맞는 코스 계산 중입니다...
-                            </p>
-                        </div>
+                    <div className="space-y-2">
+                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-40" />
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-56" />
                     </div>
                 ) : (
                     <>
-                        {/* 1단: Section Label */}
-                        <p className="text-[12px] text-gray-400 dark:text-gray-500 font-medium mb-1 animate-fade-in">
-                            {content.sectionTitle}
-                        </p>
-                        {/* 2단: Personalized Title */}
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-0.5 leading-snug animate-fade-in tracking-tight">
-                            {content.title(userName)}
+                        <h2 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 animate-fade-in">
+                            {isLoggedIn ? "오늘의 선택" : "오늘의 선택"}
                         </h2>
-                        {/* 3단: Subtitle */}
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 animate-fade-in">
-                            {content.subtitle}
-                        </p>
+                        {!isLoggedIn && (
+                            <p className="text-[14px] font-normal text-[#7A8E99] dark:text-gray-500 mt-1 animate-fade-in">
+                                로그인하면 내 취향 기준으로 추천돼요
+                            </p>
+                        )}
+                        {isLoggedIn && content.sectionTitle && (
+                            <p className="text-[12px] text-gray-400 dark:text-gray-500 font-medium mt-1 animate-fade-in">
+                                {content.sectionTitle}
+                            </p>
+                        )}
                     </>
                 )}
             </div>
 
-            {/* 2. 카드 리스트 (가로 스크롤) */}
-            <div
-                ref={scrollRef}
-                onMouseDown={onMouseDown}
-                onMouseLeave={onMouseLeave}
-                onMouseUp={onMouseUp}
-                onMouseMove={onMouseMove}
-                className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4 snap-x cursor-grab active:cursor-grabbing"
-                style={{ scrollBehavior: isDragging ? "auto" : "smooth" }}
-            >
-                {loading
-                    ? [1, 2, 3].map((n) => (
-                          <div key={n} className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse" />
-                      ))
-                    : courses.map((course, idx) => (
-                          <Link
-                              key={course.id}
-                              href={`/courses/${course.id}`}
-                              prefetch={true}
-                              draggable={false}
-                              className="snap-center shrink-0 w-[200px] group relative select-none"
-                          >
-                              <div className="relative aspect-3/4 rounded-xl overflow-hidden border-0 dark:border-0 transition-transform active:scale-95">
-                                  {/* 이미지 */}
-                                  <div className="relative w-full h-full bg-gray-200">
-                                      {(() => {
-                                          // 코스 이미지가 없으면 1번 장소의 이미지 사용
-                                          const courseImage = course.imageUrl?.trim() || "";
-                                          const firstPlaceImage =
-                                              course.coursePlaces?.[0]?.place?.imageUrl?.trim() || "";
-                                          const imageUrl = courseImage || firstPlaceImage;
-                                          return imageUrl ? (
-                                              <Image
-                                                  src={imageUrl}
-                                                  fill
-                                                  alt={course.title}
-                                                  className="object-cover"
-                                                  sizes="200px"
-                                                  priority={idx < 3} // 🟢 첫 3개는 priority
-                                                  // 🟢 LCP 경고 해결: priority가 true일 때도 loading="eager" 명시
-                                                  loading={idx < 3 ? "eager" : "lazy"}
-                                                  quality={70} // 🟢 성능 최적화: quality 조정
-                                                  fetchPriority={idx < 3 ? "high" : "auto"} // 🟢 첫 3개는 high priority
-                                              />
-                                          ) : (
-                                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                                  No Image
-                                              </div>
-                                          );
-                                      })()}
-                                  </div>
-
-                                  {/* 그라데이션 */}
-                                  <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
-
-                                  {/* 뱃지 */}
-                                  {isLoggedIn && hasOnboardingData ? (
-                                      <div className="absolute top-3 left-3">
-                                          <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
-                                              🎯 취향저격{" "}
-                                              {course.matchScore !== undefined && course.matchScore !== null
-                                                  ? Math.round(course.matchScore * 100)
-                                                  : 0}
-                                              %
-                                          </span>
-                                      </div>
-                                  ) : (
-                                      <div className="absolute top-3 left-3">
-                                          <span className="bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-md bg-opacity-90 tracking-tight">
-                                              {content.badge}
-                                          </span>
-                                      </div>
-                                  )}
-
-                                  {/* 텍스트 */}
-                                  <div className="absolute bottom-4 left-4 right-4 text-left">
-                                      {course.region && (
-                                          <span className="text-[10px] text-gray-300 block mb-1">
-                                              {course.region}
-                                          </span>
-                                      )}
-                                      <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 drop-shadow-md tracking-tight">
-                                          {course.title}
-                                      </h3>
-                                  </div>
-                              </div>
-                          </Link>
-                      ))}
+            {/* 2. 카드: 이미지(220px) → 제목 → 칩 → CTA - 이미지 가로 전체 커버 */}
+            <div className="flex flex-col rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)] overflow-hidden w-full bg-white dark:bg-[#1a241b]">
+                <div className="flex flex-col">
+                    {loading ? (
+                        <div className="w-full h-[220px] bg-gray-100 dark:bg-gray-800 rounded-t-2xl animate-pulse shrink-0" />
+                    ) : courses.length > 0 ? (
+                        <>
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => {
+                                    if (!isLoggedIn) {
+                                        setShowLoginModal(true);
+                                        return;
+                                    }
+                                    router.push(`/courses/${courses[0].id}`);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key !== "Enter") return;
+                                    if (!isLoggedIn) {
+                                        setShowLoginModal(true);
+                                        return;
+                                    }
+                                    router.push(`/courses/${courses[0].id}`);
+                                }}
+                                className="block w-full shrink-0 group relative select-none cursor-pointer"
+                            >
+                                <div className="relative w-full h-[220px] rounded-t-2xl overflow-hidden transition-transform active:scale-[0.98]">
+                                    <div className="absolute inset-0 bg-gray-200 dark:bg-gray-800">
+                                        {(() => {
+                                            const c = courses[0];
+                                            const courseImage = c.imageUrl?.trim() || "";
+                                            const firstPlaceImage = c.coursePlaces?.[0]?.place?.imageUrl?.trim() || "";
+                                            const imageUrl = courseImage || firstPlaceImage;
+                                            return imageUrl ? (
+                                                <Image
+                                                    src={imageUrl}
+                                                    fill
+                                                    alt={c.title}
+                                                    className="object-cover object-center"
+                                                    sizes="100vw"
+                                                    priority
+                                                    loading="eager"
+                                                    quality={70}
+                                                    fetchPriority="high"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                                    No Image
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-4 pt-2">
+                                {!isLoggedIn && (
+                                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-1.5 animate-fade-in">
+                                        이런 방식으로 추천돼요
+                                    </p>
+                                )}
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-snug animate-fade-in tracking-tight">
+                                    {courses[0].title}
+                                </h3>
+                                {courses[0].chips && courses[0].chips.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {courses[0].chips.map((chipId) => {
+                                            const def = CHIP_DEFINITIONS[chipId];
+                                            if (!def) return null;
+                                            return (
+                                                <span
+                                                    key={chipId}
+                                                    className="inline-flex px-2.5 py-1 rounded-full text-[13px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                                                >
+                                                    #{def.label}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!isLoggedIn) {
+                                            setShowLoginModal(true);
+                                            return;
+                                        }
+                                        router.push(`/courses/${courses[0].id}`);
+                                    }}
+                                    className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline active:opacity-80 cursor-pointer"
+                                >
+                                    코스 구경하기
+                                    <span className="inline-block">→</span>
+                                </button>
+                            </div>
+                        </>
+                    ) : null}
+                </div>
+                {!loading && courses.length >= 2 && isLoggedIn && (
+                    <div className="flex justify-end mt-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowMoreModal(true)}
+                            className="text-[14px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
+                        >
+                            다른 선택도 함께 볼래요
+                            <span className="inline-block">→</span>
+                        </button>
+                    </div>
+                )}
             </div>
+
+            {/* 다른 코스 모달 (하단 시트, 바닥에 붙임, 드래그로 닫기) */}
+            {showMoreModal && courses.length >= 2 && (
+                <div
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={() => setShowMoreModal(false)}
+                    role="presentation"
+                >
+                    <div
+                        className="bg-white dark:bg-[#1a241b] rounded-t-4xl w-full max-w-md h-[80vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300 transition-transform"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ transform: `translateY(${Math.max(0, modalDragY)}px)` }}
+                    >
+                        <div
+                            className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing touch-manipulation"
+                            onTouchStart={(e) => {
+                                dragRef.current.startY = e.touches[0].clientY;
+                            }}
+                            onTouchMove={(e) => {
+                                const y = e.touches[0].clientY;
+                                const delta = y - dragRef.current.startY;
+                                if (delta > 0) {
+                                    setModalDragY(delta);
+                                }
+                            }}
+                            onTouchEnd={() => {
+                                if (modalDragY > 80) {
+                                    setShowMoreModal(false);
+                                    setModalDragY(0);
+                                } else {
+                                    setModalDragY(0);
+                                }
+                            }}
+                        >
+                            <div className="w-10 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                        </div>
+                        {/* 평일: 오늘+주말 탭 | 주말: 주말만 (오늘 탭 숨김) */}
+                        <div className="flex gap-2 px-4 pb-3">
+                            {!isMainWeekend && (
+                                <button
+                                    type="button"
+                                    onClick={() => setDayBanner("today")}
+                                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                                        dayBanner === "today"
+                                            ? "bg-emerald-600 text-white dark:bg-emerald-500"
+                                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                                    }`}
+                                >
+                                    오늘
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setDayBanner("weekend")}
+                                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                                    dayBanner === "weekend"
+                                        ? "bg-emerald-600 text-white dark:bg-emerald-500"
+                                        : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                                }`}
+                            >
+                                주말
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4 scrollbar-hide">
+                            {(() => {
+                                // 주말: 메인=weekend면 courses, 평일이면 weekendCourses | 오늘: courses(평일만 노출)
+                                const modalData =
+                                    dayBanner === "weekend"
+                                        ? isMainWeekend
+                                            ? courses
+                                            : weekendCourses
+                                        : courses;
+                                const modalLoading =
+                                    dayBanner === "weekend" && !isMainWeekend && weekendLoading;
+                                const hasMainInList =
+                                    (dayBanner === "weekend" && isMainWeekend) ||
+                                    (dayBanner === "today" && !isMainWeekend);
+                                const displayList = hasMainInList ? modalData.slice(1, 3) : modalData.slice(0, 3);
+                                return modalLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                                        <div className="h-8 w-8 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin" />
+                                        <p className="text-sm text-gray-500">
+                                            {dayBanner === "weekend" ? "주말 추천 준비 중..." : "오늘 추천 준비 중..."}
+                                        </p>
+                                    </div>
+                                ) : displayList.length > 0 ? (
+                                    displayList.map((course) => (
+                                        <Link
+                                            key={course.id}
+                                            href={`/courses/${course.id}`}
+                                            onClick={() => setShowMoreModal(false)}
+                                            className="block"
+                                        >
+                                            <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                                {(() => {
+                                                    const img =
+                                                        course.imageUrl?.trim() ||
+                                                        course.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
+                                                        "";
+                                                    return img ? (
+                                                        <Image
+                                                            src={img}
+                                                            fill
+                                                            alt={course.title}
+                                                            className="object-cover"
+                                                            sizes="(max-width: 480px) 100vw, 400px"
+                                                        />
+                                                    ) : (
+                                                        <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                                                            No Image
+                                                        </div>
+                                                    );
+                                                })()}
+                                                <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
+                                                <div className="absolute bottom-3 left-3 right-3 text-white">
+                                                    <h4 className="font-bold line-clamp-2">{course.title}</h4>
+                                                    {course.region && (
+                                                        <span className="text-xs text-gray-300">{course.region}</span>
+                                                    )}
+                                                    {course.chips && course.chips.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                            {course.chips.slice(0, 3).map((chipId) => {
+                                                                const def = CHIP_DEFINITIONS[chipId];
+                                                                return def ? (
+                                                                    <span
+                                                                        key={chipId}
+                                                                        className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm"
+                                                                    >
+                                                                        #{def.label}
+                                                                    </span>
+                                                                ) : null;
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <p className="text-center py-12 text-gray-500 text-sm">
+                                        {dayBanner === "weekend"
+                                            ? "주말 추천을 불러올 수 없어요"
+                                            : "오늘 추천을 불러올 수 없어요"}
+                                    </p>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showLoginModal && (
+                <LoginModal
+                    onClose={() => setShowLoginModal(false)}
+                    next={`/courses/${courses[0]?.id}`}
+                    {...LOGIN_MODAL_PRESETS.courseDetail}
+                />
+            )}
         </section>
     );
 }

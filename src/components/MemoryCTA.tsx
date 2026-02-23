@@ -10,6 +10,7 @@ export interface MemoryPreview {
     title?: string;
     courseTitle?: string;
     excerpt?: string;
+    tags?: string[];
     imageUrl?: string;
     createdAt?: string;
 }
@@ -93,7 +94,11 @@ export default function MemoryCTA({
                     disabled={isLoading}
                     className="shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-white bg-[#7aa06f] hover:bg-[#6b8f62] dark:bg-[#7aa06f] dark:hover:bg-[#6b8f62] transition-colors disabled:opacity-50"
                 >
-                    {isLoading ? "잠시만요..." : content.button}
+                    {isLoading ? (
+                        <span className="inline-block w-16 h-5 bg-white/30 rounded animate-pulse" />
+                    ) : (
+                        content.button
+                    )}
                 </button>
             </section>
         );
@@ -129,7 +134,7 @@ export default function MemoryCTA({
                         className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-2 shrink-0"
                     >
                         {isLoading ? (
-                            <span className="text-xs font-medium">불러오는 중...</span>
+                            <span className="inline-block w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
                         ) : (
                             <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
                         )}
@@ -165,7 +170,7 @@ export default function MemoryCTA({
                                 }}
                             >
                                 {/* 이미지 영역 (3:2 비율: 풍경/데이트 코스에 안정적) */}
-                                <div className="relative w-full aspect-3/2 bg-gray-200 dark:bg-gray-800">
+                                <div className="relative w-full aspect-3/4 bg-gray-200 dark:bg-gray-800">
                                     {memory.imageUrl ? (
                                         <Image
                                             src={memory.imageUrl}
@@ -185,6 +190,23 @@ export default function MemoryCTA({
                                     <p className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-1">
                                         {truncateTitle(memory.courseTitle || memory.title)}
                                     </p>
+                                    {memory.tags && memory.tags.length > 0 && (() => {
+                                        const doNa = memory.tags.find((t) => t === "DoNa");
+                                        const others = memory.tags.filter((t) => t !== "DoNa");
+                                        const displayTags = [...(doNa ? [doNa] : []), ...others.slice(0, 1)];
+                                        return displayTags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                                {displayTags.map((t) => (
+                                                    <span
+                                                        key={t}
+                                                        className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                                    >
+                                                        #{t}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : null;
+                                    })()}
                                     {memory.createdAt && (
                                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                             {formatDate(memory.createdAt)}
@@ -195,18 +217,15 @@ export default function MemoryCTA({
                         ))}
                     </div>
                 </div>
+            ) : isLoading ? (
+                <div className="w-full h-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
             ) : (
                 <button
                     type="button"
                     onClick={onAction}
-                    disabled={isLoading}
-                    className={`w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white transition-all ${
-                        isLoading
-                            ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                            : "bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-lg"
-                    }`}
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-lg transition-all"
                 >
-                    {isLoading ? "불러오는 중..." : content.button}
+                    {content.button}
                 </button>
             )}
         </section>

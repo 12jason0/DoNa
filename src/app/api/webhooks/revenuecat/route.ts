@@ -6,9 +6,8 @@ export const dynamic = "force-dynamic";
 
 // 🟢 [IN-APP PURCHASE]: RevenueCat Product ID → plan.id 매핑
 const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
-    "kr.io.dona.ai_coupon_3": "ticket_light",
-    "kr.io.dona.ai_coupon_5": "ticket_standard",
-    "kr.io.dona.ai_coupon_10": "ticket_pro",
+    "kr.io.dona.course_basic": "ticket_basic",
+    "kr.io.dona.course_premium": "ticket_premium",
     "kr.io.dona.ai_basic_monthly": "sub_basic",
     "kr.io.dona.premium_monthly": "sub_premium",
 };
@@ -16,11 +15,10 @@ const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
 // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 ID 매핑
 const PRODUCT_MAPPING: Record<
     string,
-    { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" }
+    { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" }
 > = {
-    ticket_light: { type: "COUPON", value: 3, name: "AI 추천 쿠폰 3개 (Light)" },
-    ticket_standard: { type: "COUPON", value: 5, name: "AI 추천 쿠폰 5개 (Standard)" },
-    ticket_pro: { type: "COUPON", value: 10, name: "AI 추천 쿠폰 10개 (Pro)" },
+    ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC" },
+    ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM" },
     sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC" },
     sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM" },
 };
@@ -51,8 +49,8 @@ export async function POST(request: NextRequest) {
 
         const eventType = event.type;
         const appUserId = event.app_user_id; // RevenueCat의 사용자 ID
-        const revenueCatProductId = event.product_id; // RevenueCat Product ID (예: kr.io.dona.ai_coupon_10)
-        
+        const revenueCatProductId = event.product_id; // RevenueCat Product ID (예: kr.io.dona.course_basic)
+
         // 🟢 RevenueCat Product ID를 plan.id로 변환
         const planId = REVENUECAT_TO_PLAN_ID[revenueCatProductId] || revenueCatProductId;
 
@@ -114,18 +112,13 @@ export async function POST(request: NextRequest) {
  */
 async function handleInitialPurchase(
     userId: number,
-    productInfo: { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
-    event: any
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    event: any,
 ) {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        if (productInfo.type === "COUPON") {
-            // 쿠폰 지급
-            await tx.user.update({
-                where: { id: userId },
-                data: {
-                    couponCount: { increment: productInfo.value },
-                },
-            });
+        // COURSE_TICKET: 앱에서 revenuecat/confirm 호출 시 CourseUnlock 생성됨. 여기서는 결제 기록만 저장.
+        if (productInfo.type === "COURSE_TICKET") {
+            // 결제 기록만 저장 (열람권 지급은 앱의 confirm API에서 처리)
         } else if (productInfo.type === "SUBSCRIPTION" && productInfo.tier) {
             // 구독 활성화
             const now = new Date();
@@ -169,8 +162,8 @@ async function handleInitialPurchase(
  */
 async function handleRenewal(
     userId: number,
-    productInfo: { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
-    event: any
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    event: any,
 ) {
     if (productInfo.type !== "SUBSCRIPTION" || !productInfo.tier) {
         return; // 구독이 아닌 경우 무시
@@ -218,8 +211,8 @@ async function handleCancellation(userId: number, event: any) {
  */
 async function handleUncancellation(
     userId: number,
-    productInfo: { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
-    event: any
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    event: any,
 ) {
     if (productInfo.type !== "SUBSCRIPTION" || !productInfo.tier) {
         return;
@@ -239,8 +232,8 @@ async function handleUncancellation(
  */
 async function handleRefund(
     userId: number,
-    productInfo: { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
-    event: any
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    event: any,
 ) {
     // 🟢 transaction_id로 결제 기록 찾기
     const transactionId = event.transaction_id || event.original_transaction_id;
@@ -271,21 +264,8 @@ async function handleRefund(
         return;
     }
 
-    const isCoupon = productInfo.type === "COUPON";
-    let retrieveCount = 0;
-
-    if (isCoupon) {
-        retrieveCount = productInfo.value;
-        // 쿠폰을 이미 사용했는지 확인 (경고만 표시, 환불은 진행)
-        if (payment.user.couponCount < retrieveCount) {
-            console.warn("[RevenueCat Webhook] REFUND: 쿠폰을 이미 사용함:", {
-                userId,
-                transactionId,
-                couponCount: payment.user.couponCount,
-                retrieveCount,
-            });
-        }
-    }
+    // COURSE_TICKET(단건 열람권): 환불 시 열람 권한 회수하지 않음 (정책상 환불 불가이나 스토어 환불은 통제 불가)
+    const isTicket = productInfo.type === "COURSE_TICKET";
 
     // 🟢 DB 업데이트 (트랜잭션으로 일관성 보장)
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -295,15 +275,8 @@ async function handleRefund(
             data: { status: "CANCELLED" },
         });
 
-        if (isCoupon) {
-            // 쿠폰 개수 차감 (사용한 만큼만 차감)
-            const actualRetrieveCount = Math.min(retrieveCount, payment.user.couponCount);
-            if (actualRetrieveCount > 0) {
-                await tx.user.update({
-                    where: { id: userId },
-                    data: { couponCount: { decrement: actualRetrieveCount } },
-                });
-            }
+        if (isTicket) {
+            // 단건 열람권: 결제 상태만 CANCELLED. CourseUnlock은 유지 (정책상 환불 불가이나 스토어 환불은 통제 불가)
         } else {
             // 구독 등급 강등 및 만료 처리
             await tx.user.update({
@@ -321,7 +294,6 @@ async function handleRefund(
         userId,
         transactionId,
         productName: productInfo.name,
-        isCoupon,
-        retrieveCount,
+        isTicket,
     });
 }

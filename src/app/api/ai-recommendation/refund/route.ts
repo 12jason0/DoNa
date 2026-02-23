@@ -6,12 +6,8 @@ import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-// 1. 쿠폰 상품 이름과 개수 매핑 (사장님의 플랜과 일치해야 합니다)
-const COUPON_PLAN_MAPPING: Record<string, number> = {
-    "AI 추천 쿠폰 3개 (Light)": 3,
-    "AI 추천 쿠폰 5개 (Standard)": 5,
-    "AI 추천 쿠폰 10개 (Pro)": 10,
-};
+// 🟢 단건 열람권: 환불 불가. 구독만 조건부 환불.
+// (ai_coupon 3/5/10 제거됨 → 상품 4개만: course_basic, course_premium, sub_basic, sub_premium)
 
 /**
  * 슬랙 알림 전송 함수
@@ -61,18 +57,18 @@ export async function POST(request: NextRequest) {
 
         if (!payment) return NextResponse.json({ error: "환불 가능한 내역이 없습니다." }, { status: 404 });
 
-        // 3. 상품 종류 판별
-        const isCoupon = payment.orderName.includes("쿠폰");
-        const isSubscription = payment.orderName.includes("구독") || payment.orderName.includes("멤버십") || payment.orderName.includes("프리미엄");
-        let retrieveCount = 0;
+        // 3. 상품 종류 판별 (단건 열람권 = 환불 불가)
+        const isTicket = payment.orderName.includes("열람권");
+        const isSubscription = payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
 
-        if (isCoupon) {
-            retrieveCount = COUPON_PLAN_MAPPING[payment.orderName] || 0;
-            // 🟢 쿠폰을 한 개라도 사용했으면 환불 불가
-            if (payment.user.couponCount < retrieveCount) {
-                return NextResponse.json({ error: "쿠폰 사용하여 환불이 불가합니다." }, { status: 400 });
-            }
-        } else {
+        if (isTicket) {
+            return NextResponse.json(
+                { error: "단건 열람권은 구매 즉시 콘텐츠가 제공되어 환불이 제한됩니다." },
+                { status: 400 }
+            );
+        }
+
+        if (isSubscription) {
             // 🟢 구독권 환불 검증
             // 1. 구독 결제일로부터 7일 이내인지 확인
             const paymentDate = payment.approvedAt;
@@ -146,6 +142,8 @@ export async function POST(request: NextRequest) {
                     error: `구독 기간 동안 ${totalUsageCount}개의 코스를 사용하여 환불이 불가합니다. (완료: ${completedCoursesCount}, 구매: ${unlockedCoursesCount}, 조회: ${viewedCoursesCount})`,
                 }, { status: 400 });
             }
+        } else {
+            return NextResponse.json({ error: "환불 가능한 상품이 아닙니다. 구독권만 환불이 가능합니다." }, { status: 400 });
         }
 
         // 🟢 [IN-APP PURCHASE]: 인앱결제와 토스페이먼츠 결제 구분
@@ -202,24 +200,14 @@ export async function POST(request: NextRequest) {
         // 🟢 [IN-APP PURCHASE]: 인앱결제는 실제 환불이 앱스토어/플레이스토어에서 처리되므로
         // 여기서는 DB 상태만 업데이트 (실제 환불은 플랫폼에서 처리)
 
-        // 5. DB 업데이트 (트랜잭션으로 일관성 보장)
+        // 5. DB 업데이트 (트랜잭션으로 일관성 보장) - 구독만 여기까지 도달
         const updatedUser = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            // 결제 상태 변경
             await tx.payment.update({
                 where: { id: payment.id },
                 data: { status: "CANCELLED" },
             });
 
-            if (isCoupon) {
-                // 쿠폰 개수 차감 후 최신 값 반환
-                const updated = await tx.user.update({
-                    where: { id: numericUserId },
-                    data: { couponCount: { decrement: retrieveCount } },
-                    select: { couponCount: true },
-                });
-                return updated;
-            } else {
-                // 구독 등급 강등 및 만료 처리
+            // 구독 등급 강등 및 만료 처리
                 await tx.user.update({
                     where: { id: numericUserId },
                     data: {
@@ -228,36 +216,29 @@ export async function POST(request: NextRequest) {
                         isAutoRenewal: false,
                     },
                 });
-                // 구독 환불 시에도 쿠폰 개수 반환
-                const user = await tx.user.findUnique({
+                return await tx.user.findUnique({
                     where: { id: numericUserId },
-                    select: { couponCount: true },
                 });
-                return user;
-            }
         });
 
-        // 6. 슬랙 알림 발송 (둘 다 옴!)
-        const typeEmoji = isCoupon ? "🎟️" : "💰";
+        // 6. 슬랙 알림 발송
         const msg = `
-${typeEmoji} *[두나] ${isCoupon ? "쿠폰" : "멤버십"} 환불 완료*
+💰 *[두나] 멤버십 환불 완료*
 ━━━━━━━━━━━━━━━━━━━━
 👤 *유저:* ${payment.user.email} (${numericUserId})
 📦 *상품:* ${payment.orderName}
 💸 *금액:* ${payment.amount.toLocaleString()}원
 ━━━━━━━━━━━━━━━━━━━━
-✨ ${isCoupon ? `쿠폰 ${retrieveCount}개 회수 완료` : "유저 등급 FREE 변경 완료"}
+✨ 유저 등급 FREE 변경 완료
         `;
         await sendSlackMessage(msg);
 
-        // 🟢 [수정]: 쿠폰 환불 시 최신 쿠폰 개수 반환
         return NextResponse.json({
             success: true,
             message: isInAppPayment 
                 ? "환불 처리가 완료되었습니다. 실제 환불은 앱스토어/플레이스토어에서 처리됩니다." 
                 : "환불 완료",
-            ticketsRemaining: updatedUser?.couponCount ?? 0,
-            isInApp: isInAppPayment, // 🟢 프론트엔드에서 사용자 안내용
+            isInApp: isInAppPayment,
         });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

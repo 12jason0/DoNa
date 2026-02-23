@@ -13,8 +13,16 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        const { searchParams } = new URL(req.url);
+        const source = searchParams.get("source"); // "ai_recommendation" | null(전체)
+
+        const whereClause: { userId: number; source?: string } = { userId };
+        if (source === "ai_recommendation") {
+            whereClause.source = "ai_recommendation";
+        }
+
         const savedCourses = await prisma.savedCourse.findMany({
-            where: { userId: userId },
+            where: whereClause,
             include: {
                 course: {
                     select: {
@@ -71,7 +79,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { courseId } = await req.json();
+        const { courseId, source } = await req.json();
 
         if (!courseId) {
             return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
@@ -79,6 +87,7 @@ export async function POST(req: NextRequest) {
 
         const uId = userId;
         const cId = Number(courseId);
+        const sourceValue = source === "ai_recommendation" ? "ai_recommendation" : "general";
 
         // 🟢 [상업적 로직] 트랜잭션으로 저장과 잠금 해제를 동시에 처리
         const result = await prisma.$transaction(async (tx) => {
@@ -95,10 +104,15 @@ export async function POST(req: NextRequest) {
             let savedCourse = existingSave;
             if (!existingSave) {
                 savedCourse = await tx.savedCourse.create({
-                    data: {
-                        userId: uId,
-                        courseId: cId,
-                    },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma schema source 컬럼 있으나 타입 동기화 지연 시 우회
+                    data: { userId: uId, courseId: cId, source: sourceValue } as any,
+                });
+            } else if (sourceValue === "ai_recommendation") {
+                // 🟢 이미 저장된 코스를 AI 추천에서 다시 선택 시 source를 ai_recommendation으로 갱신
+                savedCourse = await tx.savedCourse.update({
+                    where: { userId_courseId: { userId: uId, courseId: cId } },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma schema source 컬럼 있으나 타입 동기화 지연 시 우회
+                    data: { source: "ai_recommendation" } as any,
                 });
             }
 

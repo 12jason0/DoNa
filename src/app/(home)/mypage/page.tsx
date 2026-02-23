@@ -11,7 +11,7 @@ const ProfileTab = lazy(() => import("@/components/mypage/ProfileTab"));
 const FootprintTab = lazy(() => import("@/components/mypage/FootprintTab"));
 const RecordsTab = lazy(() => import("@/components/mypage/RecordsTab"));
 const ActivityTab = lazy(() => import("@/components/mypage/ActivityTab"));
-const TicketPlans = lazy(() => import("@/components/TicketPlans"));
+import TicketPlans from "@/components/TicketPlans";
 import {
     UserInfo,
     UserPreferences,
@@ -112,8 +112,8 @@ const MyPage = () => {
             const loggingOutTime = typeof window !== "undefined" ? sessionStorage.getItem("auth:loggingOut") : null;
             const now = Date.now();
             
-            // 실시간 업데이트가 필요한 경우(결제/환불/쿠폰 사용 등) 캐시 무시
-            const shouldForceRefresh = (window as any).__forceRefreshUserInfo || (window as any).__couponAwardedRefresh;
+            // 실시간 업데이트가 필요한 경우(결제/환불 등) 캐시 무시
+            const shouldForceRefresh = (window as any).__forceRefreshUserInfo;
             
             // 🟢 [Fix]: 로그인 직후 또는 로그아웃 직후 재로그인 시 캐시를 완전히 무시함
             // 로그아웃 후 재로그인 시에도 이전 사용자 데이터가 표시되지 않도록 확실히 캐시 무시
@@ -160,9 +160,6 @@ const MyPage = () => {
             // 🟢 플래그 초기화
             if ((window as any).__forceRefreshUserInfo) {
                 delete (window as any).__forceRefreshUserInfo;
-            }
-            if ((window as any).__couponAwardedRefresh) {
-                delete (window as any).__couponAwardedRefresh;
             }
 
             // 401 응답인 경우 로그인 페이지로 이동 (authenticatedFetch는 자동으로 logout 호출하므로 apiFetch 사용)
@@ -221,7 +218,7 @@ const MyPage = () => {
             }
 
             // 🟢 authenticatedFetch가 이미 JSON을 파싱해서 반환함
-            // 🟢 [Fix]: API 응답 구조 확인 - raw에 직접 subscriptionTier, couponCount가 있는지 먼저 확인
+            // 🟢 [Fix]: API 응답 구조 확인
             const src: any = raw ?? {};
 
             // HTTP URL을 HTTPS로 변환 (Mixed Content 경고 해결)
@@ -258,14 +255,6 @@ const MyPage = () => {
                 (src as any)?.user?.subscription_expires_at ||
                 null;
 
-            // 🟢 쿠폰 개수 추출 (API 응답의 최상위 레벨과 user 객체 모두 체크)
-            const couponCount =
-                src.couponCount ??
-                src.coupon_count ??
-                (src as any)?.user?.couponCount ??
-                (src as any)?.user?.coupon_count ??
-                0;
-
             // 🟢 기본 프로필 이미지 설정
             const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
             const convertedProfileImage = convertToHttps(profileImageUrl);
@@ -285,9 +274,8 @@ const MyPage = () => {
                 age: typeof src.age === "number" ? src.age : src.age ? Number(src.age) : (src as any)?.user?.age ?? null,
                 ageRange: src.ageRange || src.age_range || (src as any)?.user?.ageRange || (src as any)?.user?.age_range || null,
                 gender: src.gender || (src as any)?.user?.gender || null,
-                subscriptionTier: tier, // 🟢 확정된 등급 삽입
-                subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null, // ISO 문자열로 변환
-                couponCount: typeof couponCount === "number" ? couponCount : couponCount ? Number(couponCount) : 0, // 🟢 쿠폰 개수 추가
+                subscriptionTier: tier,
+                subscriptionExpiresAt: subscriptionExpiresAt ? new Date(subscriptionExpiresAt).toISOString() : null,
             };
 
             setUserInfo(finalUserInfo);
@@ -354,7 +342,6 @@ const MyPage = () => {
                 const hasPreferences =
                     Object.keys(prefs).length > 0 &&
                     ((prefs.concept && Array.isArray(prefs.concept) && prefs.concept.length > 0) ||
-                        prefs.companion ||
                         (prefs.mood && Array.isArray(prefs.mood) && prefs.mood.length > 0) ||
                         (prefs.regions && Array.isArray(prefs.regions) && prefs.regions.length > 0));
 
@@ -391,7 +378,6 @@ const MyPage = () => {
 
                     setUserPreferences({
                         concept: mergeSingleChars(Array.isArray(prefs.concept) ? prefs.concept : []),
-                        companion: prefs.companion || "",
                         mood: mergeSingleChars(Array.isArray(prefs.mood) ? prefs.mood : []),
                         regions: mergeSingleChars(Array.isArray(prefs.regions) ? prefs.regions : []),
                     });
@@ -441,9 +427,8 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch<any>("/api/users/me/courses", {
-                cache: "force-cache", // 🟢 성능 최적화: 캐싱 활용
-                next: { revalidate: 300 }, // 🟢 5분 캐싱
+            const { data, response } = await apiFetch<any>("/api/users/me/courses?source=ai_recommendation", {
+                cache: "no-store", // 🟢 오늘의 데이트 추천 직후 최신 데이터 반영
             });
             if (response.status === 401) return; // 401이면 조용히 실패
             if (data) {
@@ -542,16 +527,10 @@ const MyPage = () => {
         try {
             // 🟢 쿠키 기반 인증: apiFetch 사용 (401 시 자동 로그아웃 방지)
             const { apiFetch } = await import("@/lib/authClient");
-            // 🟢 쿠폰 지급 이벤트로 인한 갱신인 경우 캐시 무시
-            const shouldRefresh = (window as any).__couponAwardedRefresh;
-            const cacheOption = shouldRefresh
-                ? { cache: "no-store" as const }
-                : { cache: "force-cache" as const, next: { revalidate: 300 } };
-            const { data, response } = await apiFetch<any>("/api/users/rewards", cacheOption);
-            // 🟢 플래그 초기화 (데이터 가져온 후)
-            if (shouldRefresh) {
-                delete (window as any).__couponAwardedRefresh;
-            }
+            const { data, response } = await apiFetch<any>("/api/users/rewards", {
+                cache: "force-cache" as const,
+                next: { revalidate: 300 },
+            });
             if (response.status === 401) return; // 401이면 조용히 실패
             if ((data as any)?.success) setRewards((data as any).rewards || []);
         } catch {}
@@ -783,47 +762,13 @@ const MyPage = () => {
         return () => window.removeEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
     }, [fetchUserInfo]);
 
-    // 🟢 쿠폰 지급 이벤트 리스너 (쿠폰 지급 시 즉시 데이터 갱신)
-    useEffect(() => {
-        const handleCouponAwarded = () => {
-            console.log("[마이페이지] 쿠폰 지급 감지 - 사용자 정보 및 보상 내역 갱신");
-            // 🟢 캐시 무시 플래그 설정
-            (window as any).__forceRefreshUserInfo = true;
-            (window as any).__couponAwardedRefresh = true;
-            // 🟢 사용자 정보와 보상 내역을 병렬로 갱신 (캐시 무시)
-            Promise.all([
-                fetchUserInfo(),
-                fetchRewards()
-            ]).catch((err) => {
-                console.error("[마이페이지] 쿠폰 지급 후 데이터 갱신 실패:", err);
-            });
-        };
-        window.addEventListener("couponAwarded", handleCouponAwarded as EventListener);
-        return () => window.removeEventListener("couponAwarded", handleCouponAwarded as EventListener);
-    }, [fetchUserInfo]);
-
-    // 🟢 쿠폰 사용 이벤트 리스너 (쿠폰 사용 시 즉시 데이터 갱신)
-    useEffect(() => {
-        const handleCouponUsed = () => {
-            console.log("[마이페이지] 쿠폰 사용 감지 - 사용자 정보 갱신");
-            // 🟢 캐시 무시 플래그 설정
-            (window as any).__forceRefreshUserInfo = true;
-            // 🟢 쿠폰 사용 시 사용자 정보만 갱신 (쿠폰 개수 변경 반영)
-            fetchUserInfo().catch((err) => {
-                console.error("[마이페이지] 쿠폰 사용 후 데이터 갱신 실패:", err);
-            });
-        };
-        window.addEventListener("couponUsed", handleCouponUsed as EventListener);
-        return () => window.removeEventListener("couponUsed", handleCouponUsed as EventListener);
-    }, [fetchUserInfo]);
-
-    // 🟢 환불 완료 이벤트 리스너 (환불 후 구독/쿠폰 정보 실시간 업데이트)
+    // 🟢 환불 완료 이벤트 리스너 (환불 후 구독/열람권 정보 실시간 업데이트)
     useEffect(() => {
         const handleRefundSuccess = (event: any) => {
             console.log("[마이페이지] 환불 완료 감지 - 사용자 정보 갱신", event.detail);
             // 🟢 캐시 무시 플래그 설정
             (window as any).__forceRefreshUserInfo = true;
-            // 🟢 환불 완료 시 사용자 정보와 구매 내역 모두 갱신 (구독/쿠폰 정보 실시간 반영)
+            // 🟢 환불 완료 시 사용자 정보와 구매 내역 모두 갱신 (구독/열람권 정보 실시간 반영)
             Promise.all([
                 fetchUserInfo(),
                 fetchPayments()
@@ -857,6 +802,15 @@ const MyPage = () => {
         };
         window.addEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
         return () => window.removeEventListener("openTicketPlans", handleOpenTicketPlans as EventListener);
+    }, []);
+
+    // 🟢 오늘의 데이트 추천 자동 저장 후 리스트 갱신
+    useEffect(() => {
+        const handleSavedCoursesChanged = () => {
+            fetchSavedCourses().catch(() => {});
+        };
+        window.addEventListener("savedCoursesChanged", handleSavedCoursesChanged);
+        return () => window.removeEventListener("savedCoursesChanged", handleSavedCoursesChanged);
     }, []);
 
     // ----- Handlers -----
@@ -961,7 +915,6 @@ const MyPage = () => {
                     age: editForm.age ? parseInt(editForm.age) : null,
                     ageRange: editForm.ageRange || null,
                     gender: editForm.gender || null,
-                    couponCount: userInfo?.couponCount ?? 0, // 🟢 쿠폰 개수 유지
                 });
                 setShowEditModal(false);
                 alert("프로필이 성공적으로 수정되었습니다.");
@@ -1713,11 +1666,9 @@ const MyPage = () => {
                 </div>
             )}
 
-            {/* 🟢 TicketPlans 모달 */}
+            {/* 🟢 TicketPlans 모달 - 즉시 로드 (lazy 제거로 열림 속도 개선) */}
             {showSubscriptionModal && (
-                <Suspense fallback={null}>
-                    <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
-                </Suspense>
+                <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
             )}
         </div>
     );

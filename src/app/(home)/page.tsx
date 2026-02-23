@@ -61,42 +61,16 @@ async function fetchCoursesData() {
             },
         };
 
-        const [allRaw, heroRaw, hotRaw, newRaw] = await Promise.all([
-            // 1. 전체 코스 (기본 로드)
-            prisma.course.findMany({
-                where: { isPublic: true },
-                take: 60,
-                orderBy: { id: "desc" },
-                select: courseSelect,
-            }),
-            // 2. Hero 코스 (FREE 등급)
-            prisma.course.findMany({
-                where: { isPublic: true, grade: "FREE" },
-                take: 10,
-                select: courseSelect,
-            }),
-            // 3. 인기별 코스 (조회수 정렬 - DB 레벨에서 처리)
-            prisma.course.findMany({
-                where: { isPublic: true },
-                orderBy: { view_count: "desc" },
-                take: 8,
-                select: courseSelect,
-            }),
-            // 4. 새로운 코스 (생성일 정렬 - DB 레벨에서 처리)
-            prisma.course.findMany({
-                where: { isPublic: true },
-                orderBy: { createdAt: "desc" },
-                take: 8,
-                select: courseSelect,
-            }),
-        ]);
+        const allRaw = await prisma.course.findMany({
+            where: { isPublic: true },
+            take: 60,
+            orderBy: { id: "desc" },
+            select: courseSelect,
+        });
 
         // 🟢 이미지 정책 필터링
         const imagePolicy = "any" as const;
         const allFiltered = filterCoursesByImagePolicy(allRaw as unknown as CourseWithPlaces[], imagePolicy);
-        const heroFiltered = filterCoursesByImagePolicy(heroRaw as unknown as CourseWithPlaces[], imagePolicy);
-        const hotFiltered = filterCoursesByImagePolicy(hotRaw as unknown as CourseWithPlaces[], imagePolicy);
-        const newFiltered = filterCoursesByImagePolicy(newRaw as unknown as CourseWithPlaces[], imagePolicy);
 
         // 🟢 데이터 포맷팅 함수
         const formatCourse = (course: any): Course | null => {
@@ -145,50 +119,16 @@ async function fetchCoursesData() {
         }
         const courses = interleaved.map(formatCourse).filter(Boolean) as Course[];
 
-        // 🟢 Hero 코스 선택 로직 (기존 유지)
-        const formattedHero = heroFiltered.map(formatCourse).filter(Boolean) as Course[];
-        let heroCourses: Course[] = [];
-        if (formattedHero.length > 0) {
-            const threeDayEpoch = Math.floor(Date.now() / 259200000);
-            const startIndex = threeDayEpoch % formattedHero.length;
-            heroCourses = Array.from(
-                { length: Math.min(5, formattedHero.length) },
-                (_, i) => formattedHero[(startIndex + i) % formattedHero.length]
-            );
-        }
-        // Hero 코스가 없으면 메인 코스에서 가져오기
-        if (heroCourses.length === 0 && courses.length > 0) {
-            heroCourses = courses.slice(0, 5);
-        }
-
-        // 🟢 인기별 코스 포맷팅
-        const hotCourses = hotFiltered.map(formatCourse).filter(Boolean) as Course[];
-
-        // 🟢 신규 코스 포맷팅
-        const newCourses = newFiltered.map(formatCourse).filter(Boolean) as Course[];
-
-        return { courses, heroCourses, hotCourses, newCourses };
+        return { courses };
     } catch (error) {
         console.error("[Home Server] 데이터 로드 실패:", error);
-        return {
-            courses: [],
-            heroCourses: [],
-            hotCourses: [],
-            newCourses: [],
-        };
+        return { courses: [] };
     }
 }
 
 export default async function Page() {
     // 🟢 서버에서 데이터를 미리 가져옵니다 (LCP 속도 비약적 상승)
-    const { courses, heroCourses, hotCourses, newCourses } = await fetchCoursesData();
+    const { courses } = await fetchCoursesData();
 
-    return (
-        <HomeClient
-            initialCourses={courses}
-            initialHeroCourses={heroCourses}
-            initialHotCourses={hotCourses}
-            initialNewCourses={newCourses}
-        />
-    );
+    return <HomeClient initialCourses={courses} />;
 }

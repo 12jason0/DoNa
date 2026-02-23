@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Gift, ChevronRight, X, Ticket } from "lucide-react";
+import { Gift, ChevronRight, X } from "lucide-react";
 
 interface NotificationModalProps {
     onClose: () => void;
@@ -48,33 +48,25 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                         <span>신규 회원 한정 혜택</span>
                     </div>
 
-                    {/* 아이콘 섹션: 선물 상자와 티켓 조합 */}
+                    {/* 아이콘 섹션 */}
                     <div className="relative w-16 h-16 mx-auto mb-5">
                         <div className="absolute inset-0 bg-emerald-500 rounded-2xl rotate-12 opacity-10 animate-pulse"></div>
                         <div className="relative w-full h-full bg-linear-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
                             <Gift className="w-8 h-8 text-white" />
-                            {/* 쿠폰 2개 강조 표시 */}
-                            <div className="absolute -top-1 -right-1 bg-gray-900 text-white w-7 h-7 rounded-full border-2 border-white flex items-center justify-center font-black text-xs">
-                                x2
-                            </div>
                         </div>
                     </div>
 
                     {/* 텍스트 섹션 */}
                     <h3 className="text-lg font-black text-gray-900 mb-2 tracking-tighter">
                         지금 가입하면 <br />
-                        <span className="text-emerald-600">쿠폰이 2배! (1+1)</span>
+                        <span className="text-emerald-600">맞춤 데이트 코스</span>를 받아보세요
                     </h3>
 
                     <div className="bg-emerald-50/50 rounded-xl p-3 mb-5 border border-emerald-100/50">
                         <p className="text-gray-600 text-xs leading-relaxed">
-                            <span className="font-bold text-emerald-700">1월 31일까지</span>만 드리는 혜택 📅
+                            오늘의 데이트 추천 하루 1회 무료,
                             <br />
-                            회원가입 즉시 AI 추천 쿠폰 <br />
-                            <span className="font-extrabold text-gray-900 underline decoration-emerald-400 decoration-2 underline-offset-2">
-                                총 2매
-                            </span>
-                            를 바로 지급해드려요!
+                            취향에 딱 맞는 코스를 추천해드려요!
                         </p>
                     </div>
 
@@ -84,7 +76,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                             onClick={handleLoginRedirect}
                             className="group w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-base hover:bg-black transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
                         >
-                            <span>쿠폰 2개 받고 시작하기</span>
+                            <span>시작하기</span>
                             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </button>
 

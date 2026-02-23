@@ -1433,7 +1433,7 @@ function EscapeIntroPageInner() {
     const [selectedSolvedMissionId, setSelectedSolvedMissionId] = useState<number | null>(null);
     const [missionModalOpen, setMissionModalOpen] = useState<boolean>(false);
     const [activeMission, setActiveMission] = useState<any | null>(null);
-    // 2개 완료 시 진행 버튼을 누르면 뜨는 안내 모달 (4개 완료 시 쿠폰 안내)
+    // 2개 완료 시 진행 버튼을 누르면 뜨는 안내 모달
     const [showProceedModal, setShowProceedModal] = useState<boolean>(false);
     // Modal answer/check states
     const [modalAnswer, setModalAnswer] = useState<string>("");
@@ -2924,32 +2924,6 @@ function EscapeIntroPageInner() {
                     return clearedMissions[mid] || solvedMissionIds.includes(mid);
                 }).length;
 
-                // ✅ 장소 미션 4개 모두 완료 시 AI 쿠폰 1개 지급(서버 측 중복 방지 + 로컬 1회 플래그)
-                try {
-                    const total = placeMissionIds.length;
-                    if (total >= 4 && placeClearedCount >= total && Number(selectedPlaceId)) {
-                        let already = false;
-                        try {
-                            const raw = localStorage.getItem(STORAGE_KEY);
-                            const obj = raw ? JSON.parse(raw) : {};
-                            const awarded = Array.isArray(obj.__couponAwardedPlaces) ? obj.__couponAwardedPlaces : [];
-                            already = awarded.includes(Number(selectedPlaceId));
-                            if (!already) {
-                                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-                                const { authenticatedFetch } = await import("@/lib/authClient");
-                                await authenticatedFetch("/api/escape/award-coupon", {
-                                    method: "POST",
-                                    body: JSON.stringify({ placeId: Number(selectedPlaceId) }),
-                                }).catch(() => {});
-                                const next = Array.from(new Set([...(awarded || []), Number(selectedPlaceId)]));
-                                obj.__couponAwardedPlaces = next;
-                                localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-                                setToast("AI 추천 쿠폰 1개가 지급되었습니다.");
-                            }
-                        } catch {}
-                    }
-                } catch {}
-
                 // ✅ 미션이 2개 완료되었을 때 카테고리 완료 처리 (자동 이동 제거)
                 if (placeClearedCount >= 2) {
                     try {
@@ -3018,32 +2992,6 @@ function EscapeIntroPageInner() {
                     if (mid === Number(activeMission?.id)) return true; // 방금 완료한 미션
                     return clearedMissions[mid] || solvedMissionIds.includes(mid);
                 }).length;
-
-                // ✅ 장소 미션 4개 모두 완료 시 AI 쿠폰 1개 지급(서버 측 중복 방지 + 로컬 1회 플래그)
-                try {
-                    const total = placeMissionIds.length;
-                    if (total >= 4 && placeClearedCount >= total && Number(selectedPlaceId)) {
-                        let already = false;
-                        try {
-                            const raw = localStorage.getItem(STORAGE_KEY);
-                            const obj = raw ? JSON.parse(raw) : {};
-                            const awarded = Array.isArray(obj.__couponAwardedPlaces) ? obj.__couponAwardedPlaces : [];
-                            already = awarded.includes(Number(selectedPlaceId));
-                            if (!already) {
-                                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-                                const { authenticatedFetch } = await import("@/lib/authClient");
-                                await authenticatedFetch("/api/escape/award-coupon", {
-                                    method: "POST",
-                                    body: JSON.stringify({ placeId: Number(selectedPlaceId) }),
-                                }).catch(() => {});
-                                const next = Array.from(new Set([...(awarded || []), Number(selectedPlaceId)]));
-                                obj.__couponAwardedPlaces = next;
-                                localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-                                setToast("AI 추천 쿠폰 1개가 지급되었습니다.");
-                            }
-                        } catch {}
-                    }
-                } catch {}
 
                 // ✅ 미션이 2개 완료되었을 때 카테고리 완료 처리 (자동 이동 제거)
                 if (placeClearedCount >= 2) {
@@ -4300,7 +4248,7 @@ function EscapeIntroPageInner() {
                         <div className="bg-white rounded-2xl w-full max-w-md p-6 text-center">
                             <div className="text-lg font-bold text-gray-900 mb-2">조금만 더!</div>
                             <p className="text-gray-700 mb-5">
-                                이 장소의 미션을 4개 모두 완료하면 AI 추천 쿠폰을 드려요. 계속 하시겠어요?
+                                아직 완료하지 않은 미션이 있어요. 계속 하시겠어요?
                             </p>
                             <div className="flex items-center justify-center gap-3">
                                 <button

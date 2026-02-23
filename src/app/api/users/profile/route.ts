@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
                 age: true,
                 ageRange: true,
                 gender: true,
-                couponCount: true,
                 subscriptionTier: true, // 🟢 camelCase 확인
                 subscriptionExpiresAt: true, // 🟢 만료일 조회
                 hasSeenConsentModal: true,
@@ -60,7 +59,6 @@ export async function GET(request: NextRequest) {
             age: user.age,
             ageRange: user.ageRange,
             gender: user.gender,
-            couponCount: user.couponCount ?? 0,
             subscriptionTier: user.subscriptionTier,
             subscription_tier: user.subscriptionTier, // 🟢 snake_case 추가 (DB 대응)
             subscriptionExpiresAt: user.subscriptionExpiresAt ? user.subscriptionExpiresAt.toISOString() : null,

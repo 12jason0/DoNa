@@ -38,7 +38,6 @@ model User {
   updatedAt             DateTime               @updatedAt
   mbti                  String?                @db.VarChar(20)
   age                   Int?
-  couponCount           Int                    @default(0)
   gender                String?                @db.VarChar(10)
   lastActiveAt          DateTime?
   level                 Int                    @default(1)
@@ -57,6 +56,7 @@ model User {
   deletedAt             DateTime?              @map("deleted_at")
   appleRefreshToken     String?                @map("apple_refresh_token")
   isSearchHistoryEnabled Boolean               @default(true) @map("is_search_history_enabled")
+  lastAiRecommendationUsedAt DateTime?         @map("last_ai_recommendation_used_at")
   completedCourses      CompletedCourse[]
   searchHistories       SearchHistory[]
   completedEscapes      CompletedEscape[]
@@ -79,6 +79,8 @@ model User {
   behaviorPatterns      UserBehaviorPattern[]
   rewards               UserReward[]
   userStoryProgress     UserStoryProgress[]
+  unlockIntents         UnlockIntent[]
+  activeCourse          ActiveCourse?
 
   @@index([provider, socialId])
   @@index([deletedAt])
@@ -112,6 +114,19 @@ model SearchHistory {
 
   @@index([userId])
   @@map("search_histories")
+}
+
+model ActiveCourse {
+  id          String    @id @default(cuid())
+  userId      Int       @unique @map("user_id")
+  courseId    Int       @map("course_id")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  remindedAt  DateTime? @map("reminded_at")  // 21시 리마인더 푸시 발송 시각 (중복 발송 방지)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+  @@map("active_courses")
 }
 
 model Course {
@@ -166,6 +181,7 @@ model Course {
   savedUsers           SavedCourse[]
   userFavorites        UserFavorite[]
   interactions         UserInteraction[]
+  activeCourses        ActiveCourse[]
 
   // 🔥 인덱스 추가 (빠른 검색)
   @@index([scene])
@@ -238,6 +254,23 @@ model CourseUnlock {
   @@index([userId])
   @@index([courseId])
   @@map("course_unlocks")
+}
+
+// 🟢 [Unlock Intent]: 코스 열람권 결제 전 서버 발급 의도 ID (URL 변조 방지)
+model UnlockIntent {
+  id          String   @id @default(cuid())
+  userId      Int      @map("user_id")
+  courseId    Int      @map("course_id")
+  courseGrade String   @map("course_grade") @db.VarChar(20)
+  planId      String   @map("plan_id") @db.VarChar(50)
+  status      String   @default("PENDING") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([id])
+  @@index([userId])
+  @@index([status])
+  @@map("unlock_intents")
 }
 
 model NotificationInterest {
@@ -546,6 +579,7 @@ model SavedCourse {
   id       Int      @id @default(autoincrement())
   userId   Int      @map("user_id")
   courseId Int      @map("course_id")
+  source   String?  @db.VarChar(50) @default("general") @map("source") // "ai_recommendation" | "general"
   savedAt  DateTime @default(now()) @map("saved_at")
   course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)

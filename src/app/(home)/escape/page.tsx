@@ -360,7 +360,7 @@ const DetailsModal = ({ story, chapters, isOpen, onClose, onStart }: any) => {
                         <span className="truncate dark:text-gray-400">{mainDisplay}</span>
                     </div>
                     {badgeLabel && (
-                        <span className="ml-2 flex-shrink-0 text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded border border-blue-100 dark:border-blue-800/50">
+                        <span className="ml-2 shrink-0 text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded border border-blue-100 dark:border-blue-800/50">
                             {badgeLabel}
                         </span>
                     )}

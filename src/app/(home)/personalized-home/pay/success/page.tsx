@@ -10,6 +10,7 @@ function PaymentSuccessContent() {
     const router = useRouter();
     const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
     const [errorMessage, setErrorMessage] = useState("");
+    const [successRedirectPath, setSuccessRedirectPath] = useState("/personalized-home");
 
     // 중복 승인 요청 방지를 위한 useRef
     const hasCalledAPI = useRef(false);
@@ -30,6 +31,9 @@ function PaymentSuccessContent() {
             const amount = searchParams.get("amount");
             // 🟢 [Fix]: plan이 URL에 없으면 sessionStorage에서 가져오기 (리다이렉트 시 파라미터 손실 대응)
             const plan = searchParams.get("plan") || (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentPlan') : null);
+            // 🟢 [Unlock Intent]: 코스 열람권 결제 시 intentId, courseId
+            const intentId = searchParams.get("intentId") || (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentIntentId') : null);
+            const courseIdParam = searchParams.get("courseId") || (typeof window !== "undefined" ? sessionStorage.getItem('pendingPaymentCourseId') : null);
 
             // ============================================
             // 2단계: 사용자 인증 정보 확인 (서버 세션 사용)
@@ -50,6 +54,8 @@ function PaymentSuccessContent() {
             if (typeof window !== "undefined") {
                 sessionStorage.removeItem('pendingPaymentPlan');
                 sessionStorage.removeItem('pendingPaymentOrderId');
+                sessionStorage.removeItem('pendingPaymentIntentId');
+                sessionStorage.removeItem('pendingPaymentCourseId');
             }
 
             // ============================================
@@ -82,47 +88,24 @@ function PaymentSuccessContent() {
                 // 백엔드는 이 정보를 바탕으로:
                 // 1) 토스페이먼츠 서버에 최종 승인 요청
                 // 2) 승인 성공 시 DB에 결제 기록 저장
-                // 3) 사용자에게 쿠폰/구독 혜택 지급
+                // 3) 사용자에게 열람권/구독 혜택 지급
+                const confirmBody: Record<string, unknown> = {
+                    paymentKey,
+                    orderId,
+                    amount: Number(amount),
+                    plan,
+                };
+                if (intentId) confirmBody.intentId = intentId;
+
                 const res = await fetch("/api/payments/confirm", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        paymentKey, // 토스가 준 결제 키
-                        orderId, // 우리가 생성한 주문 ID
-                        amount: Number(amount), // 결제 금액
-                        plan, // ✅ 어떤 상품인지 (sub_premium, ticket_light 등)
-                        // 🟢 [Fix]: userId는 서버에서 세션으로 확인하므로 전송하지 않아도 됨
-                        // 하지만 호환성을 위해 남겨둠 (서버에서 무시할 수 있음)
-                    }),
+                    body: JSON.stringify(confirmBody),
                 });
 
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    // 🟢 쿠폰 결제 시 쿠폰 개수 업데이트
-                    if (data.updatedUser?.coupons !== undefined) {
-                        // localStorage의 user 정보 업데이트
-                        const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-                        if (userStr) {
-                            try {
-                                const user = JSON.parse(userStr);
-                                user.couponCount = data.updatedUser.coupons;
-                                localStorage.setItem("user", JSON.stringify(user));
-
-                                // 🟢 쿠폰 개수 업데이트 이벤트 발생 (다른 컴포넌트에서 리스닝)
-                                if (typeof window !== "undefined") {
-                                    window.dispatchEvent(
-                                        new CustomEvent("couponCountUpdated", {
-                                            detail: { couponCount: data.updatedUser.coupons },
-                                        })
-                                    );
-                                }
-                            } catch (e) {
-                                console.error("쿠폰 개수 업데이트 실패:", e);
-                            }
-                        }
-                    }
-
                     // 🟢 결제 완료 이벤트 발생 (마이페이지 구매 내역 갱신용)
                     if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("paymentSuccess"));
@@ -135,10 +118,11 @@ function PaymentSuccessContent() {
                     }
 
                     setStatus("success");
-                    // 🟢 쿠폰 결제 완료 플래그를 URL에 추가하여 데이터 갱신 트리거
-                    const refreshFlag = data.updatedUser?.coupons !== undefined ? "?paymentSuccess=true" : "";
-                    // 성공 시 3초 후 이동
-                    setTimeout(() => router.replace(`/personalized-home${refreshFlag}`), 3000);
+                    // 🟢 코스 열람권 결제 시 해당 코스 페이지로 리다이렉트
+                    const redirectCourseId = data.courseId ?? (courseIdParam ? Number(courseIdParam) : null);
+                    const redirectPath = redirectCourseId ? `/courses/${redirectCourseId}` : "/personalized-home";
+                    setSuccessRedirectPath(redirectPath);
+                    setTimeout(() => router.replace(redirectPath), 3000);
                 } else {
                     setStatus("error");
                     // 더 자세한 에러 메시지 표시
@@ -187,10 +171,12 @@ function PaymentSuccessContent() {
                     <p className="text-gray-600 mb-8 leading-relaxed">
                         상품 결제가 정상적으로 완료되었습니다.
                         <br />
-                        <span className="font-semibold text-emerald-500 text-sm">3초 후 메인으로 자동 이동합니다.</span>
+                        <span className="font-semibold text-emerald-500 text-sm">
+                            {successRedirectPath.startsWith("/courses/") ? "3초 후 코스 페이지로 이동합니다." : "3초 후 메인으로 자동 이동합니다."}
+                        </span>
                     </p>
                     <button
-                        onClick={() => router.replace("/personalized-home")}
+                        onClick={() => router.replace(successRedirectPath)}
                         className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-emerald-200 active:scale-95"
                     >
                         지금 바로 이용하기

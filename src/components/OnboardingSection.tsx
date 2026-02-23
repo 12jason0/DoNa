@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import LoginModal from "./LoginModal";
+import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 
 type Props = {
     onStart: () => void;
@@ -42,7 +43,7 @@ export default function OnboardingSection({ onStart }: Props) {
 
     return (
         <>
-            <section className="pt-4 pb-6 px-4 sm:px-0 w-full max-w-[480px] mx-auto">
+            <section className="pt-4 px-4 sm:px-0 w-full max-w-[480px] mx-auto">
                 <button
                     onClick={handleClick}
                     className="w-full group relative flex items-center justify-between p-5 rounded-xl bg-white dark:bg-[#1a241b] border border-transparent dark:border-transparent transition-all duration-300 active:scale-98"
@@ -51,12 +52,11 @@ export default function OnboardingSection({ onStart }: Props) {
                     <div className="absolute inset-0 bg-[#99c08e]/8 dark:bg-[#99c08e]/12 via-transparent to-transparent rounded-xl pointer-events-none" />
 
                     <div className="relative z-10 flex items-center gap-4">
-                        <div className="relative flex items-center justify-center w-14 h-14 rounded-xl bg-[#7aa06f]/50 dark:bg-[#7aa06f]/55 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+                        <div className="relative flex items-center justify-center w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24"
-                                className="w-8 h-8 relative z-10 text-white dark:text-white"
-                                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2)) drop-shadow(0 0 6px rgba(255,255,255,0.7))" }}
+                                className="w-8 h-8 relative z-10 drop-shadow-sm text-gray-600 dark:text-gray-400"
                             >
                                 <path
                                     fill="currentColor"
@@ -67,11 +67,10 @@ export default function OnboardingSection({ onStart }: Props) {
 
                         <div className="text-left">
                             <h3 className="text-[17px] font-bold leading-tight tracking-tight text-[#99c08e] dark:text-[#99c08e]">
-                                코스 고민은 DoNa에게!
+                                {isLoggedIn ? "코스 고민은 DoNa에게" : "오늘 데이트, 두나에게 맡겨요"}
                             </h3>
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                                AI가 <span className="font-bold text-gray-700 dark:text-gray-300">취향저격 데이트</span>
-                                를 준비해요
+                                {isLoggedIn ? "추천을 더 정확하게 받고 싶다면" : ""}
                             </p>
                         </div>
                     </div>
@@ -90,7 +89,13 @@ export default function OnboardingSection({ onStart }: Props) {
                     </div>
                 </button>
             </section>
-            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+            {showLoginModal && (
+                <LoginModal
+                    onClose={() => setShowLoginModal(false)}
+                    next="/personalized-home"
+                    {...LOGIN_MODAL_PRESETS.recommendation}
+                />
+            )}
         </>
     );
 }

@@ -1,31 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 export default function NavigationLoader() {
     const pathname = usePathname();
     const [isLoading, setIsLoading] = useState(false);
-    const [prevPathname, setPrevPathname] = useState<string | null>(null);
+    const prevPathnameRef = useRef<string | null>(null);
 
+    // 클릭 시에만 로딩 표시 (내부 링크) - touchstart 제거로 스크롤 시 오탐 방지
     useEffect(() => {
-        // 첫 로드가 아닐 때만 로딩 표시
-        if (prevPathname !== null && pathname !== prevPathname) {
-            setIsLoading(true);
-            setPrevPathname(pathname);
+        const handleNavStart = (e: MouseEvent) => {
+            const target = (e.target as HTMLElement).closest("a");
+            if (!target || target.target === "_blank" || target.download || !target.href) return;
+            try {
+                const url = new URL(target.href);
+                if (url.origin !== window.location.origin) return;
+                if (url.pathname === window.location.pathname && !url.hash) return;
+                setIsLoading(true);
+            } catch {
+                // ignore
+            }
+        };
 
-            // 페이지 전환 완료 후 로딩 숨김
-            const timer = setTimeout(() => {
-                setIsLoading(false);
-            }, 500);
+        document.addEventListener("click", handleNavStart, { passive: true });
+        return () => document.removeEventListener("click", handleNavStart);
+    }, []);
 
-            return () => clearTimeout(timer);
-        } else if (prevPathname === null) {
-            // 첫 로드 시에는 prevPathname만 설정
-            setPrevPathname(pathname);
+    // pathname 변경 시 로딩 숨김
+    useEffect(() => {
+        if (prevPathnameRef.current !== null && prevPathnameRef.current !== pathname) {
+            const t = setTimeout(() => setIsLoading(false), 100);
+            return () => clearTimeout(t);
         }
-    }, [pathname, prevPathname]);
+        prevPathnameRef.current = pathname;
+    }, [pathname]);
 
-    // 🟢 로딩 메시지 제거: 항상 null 반환
-    return null;
+    // 🟢 안전 장치: 10초 이상 로딩 시 강제 해제 (네비게이션 멈춤 방지)
+    useEffect(() => {
+        if (!isLoading) return;
+        const t = setTimeout(() => setIsLoading(false), 1000);
+        return () => clearTimeout(t);
+    }, [isLoading]);
 }

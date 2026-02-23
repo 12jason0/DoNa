@@ -112,22 +112,15 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
 
         // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
         const result = await (prisma as any).$transaction(async (tx: any) => {
-            const initialCoupons = 1;
+            const existedBefore = await tx.user.findFirst({
+                where: { socialId: appleUserId, provider: "apple" },
+            });
 
-            // 🟢 [Fix]: email unique constraint 에러 방지 - email이 다른 사용자에게 할당되어 있는지 확인
             let updateData: any = {};
             let createEmail = email;
-            
             if (email) {
-                // 기존 사용자 확인 (socialId + provider로)
-                // 🟢 [Fix]: findFirst에서는 unique_social_provider를 사용할 수 없으므로 각 필드로 검색
-                const existingAppleUser = await tx.user.findFirst({
-                    where: {
-                        socialId: appleUserId,
-                        provider: "apple",
-                    },
-                });
-                
+                const existingAppleUser = existedBefore;
+
                 // email이 다른 사용자에게 할당되어 있는지 확인 (기존 Apple 사용자 제외)
                 const existingUserWithEmail = await tx.user.findFirst({
                     where: {
@@ -176,8 +169,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         username: `user_${appleUserId.substring(0, 6)}`,
                         socialId: appleUserId,
                         provider: "apple",
-                        couponCount: initialCoupons,
-                        profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
+                        profileImageUrl: DEFAULT_PROFILE_IMG,
                     },
                 });
             } catch (upsertError: any) {
@@ -196,7 +188,6 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                             username: `user_${appleUserId.substring(0, 6)}`,
                             socialId: appleUserId,
                             provider: "apple",
-                            couponCount: initialCoupons,
                             profileImageUrl: DEFAULT_PROFILE_IMG,
                         },
                     });
@@ -214,23 +205,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                 upsertedUser.profileImageUrl = DEFAULT_PROFILE_IMG;
             }
 
-            // 🟢 신규 가입인 경우 보상 로그 생성 (기존 유저는 보상 중복 지급 방지)
-            const existingReward = await tx.userReward.findFirst({
-                where: {
-                    userId: upsertedUser.id,
-                    type: "signup",
-                },
-            });
-
-            if (!existingReward) {
-                // 신규 가입이므로 보상 로그 생성
-                await tx.userReward.create({
-                    data: { userId: upsertedUser.id, type: "signup", amount: initialCoupons, unit: "coupon" },
-                });
-                return { user: upsertedUser, isNew: true };
-            }
-
-            return { user: upsertedUser, isNew: false };
+            return { user: upsertedUser, isNew: !existedBefore };
         });
 
         const user = result.user;
@@ -334,22 +309,15 @@ async function handleAppAppleAuthLogic(
 
         // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
         const result = await (prisma as any).$transaction(async (tx: any) => {
-            const initialCoupons = 1;
+            const existedBefore = await tx.user.findFirst({
+                where: { socialId: appleUserId, provider: "apple" },
+            });
 
-            // 🟢 [Fix]: email unique constraint 에러 방지 - email이 다른 사용자에게 할당되어 있는지 확인
             let updateData: any = {};
             let createEmail = email;
-            
             if (email) {
-                // 기존 사용자 확인 (socialId + provider로)
-                // 🟢 [Fix]: findFirst에서는 unique_social_provider를 사용할 수 없으므로 각 필드로 검색
-                const existingAppleUser = await tx.user.findFirst({
-                    where: {
-                        socialId: appleUserId,
-                        provider: "apple",
-                    },
-                });
-                
+                const existingAppleUser = existedBefore;
+
                 // email이 다른 사용자에게 할당되어 있는지 확인 (기존 Apple 사용자 제외)
                 const existingUserWithEmail = await tx.user.findFirst({
                     where: {
@@ -407,8 +375,7 @@ async function handleAppAppleAuthLogic(
                             : `user_${appleUserId.substring(0, 6)}`,
                         socialId: appleUserId,
                         provider: "apple",
-                        couponCount: initialCoupons,
-                        profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 두나 기본 프로필 이미지 설정
+                        profileImageUrl: DEFAULT_PROFILE_IMG,
                     },
                 });
             } catch (upsertError: any) {
@@ -429,7 +396,6 @@ async function handleAppAppleAuthLogic(
                                 : `user_${appleUserId.substring(0, 6)}`,
                             socialId: appleUserId,
                             provider: "apple",
-                            couponCount: initialCoupons,
                             profileImageUrl: DEFAULT_PROFILE_IMG,
                         },
                     });
@@ -447,23 +413,7 @@ async function handleAppAppleAuthLogic(
                 upsertedUser.profileImageUrl = DEFAULT_PROFILE_IMG;
             }
 
-            // 🟢 신규 가입인 경우 보상 로그 생성 (기존 유저는 보상 중복 지급 방지)
-            const existingReward = await tx.userReward.findFirst({
-                where: {
-                    userId: upsertedUser.id,
-                    type: "signup",
-                },
-            });
-
-            if (!existingReward) {
-                // 신규 가입이므로 보상 로그 생성
-                await tx.userReward.create({
-                    data: { userId: upsertedUser.id, type: "signup", amount: initialCoupons, unit: "coupon" },
-                });
-                return { user: upsertedUser, isNew: true };
-            }
-
-            return { user: upsertedUser, isNew: false };
+            return { user: upsertedUser, isNew: !existedBefore };
         });
 
         const user = result.user;

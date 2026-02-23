@@ -151,14 +151,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         const courseGrade = course.grade || "FREE";
-        // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 쿠폰으로 구매한 경우만 접근 허용
+        // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 열람권으로 구매한 경우만 접근 허용
         const hasAccess =
             courseGrade === "FREE" || // 무료 코스
             userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
-            hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
+            hasUnlocked; // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
+        // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 열람권으로 구매한 경우만 팁 표시
         const hasTipAccess = userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단

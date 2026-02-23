@@ -2,13 +2,12 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { VIBE_OPTIONS, VALUE_OPTIONS, CREW_OPTIONS, REGION_GROUPS } from "@/constants/onboardingData";
+import { VIBE_OPTIONS, VALUE_OPTIONS, REGION_GROUPS } from "@/constants/onboardingData";
 import Image from "next/image";
 import { X, ArrowRight } from "lucide-react";
 
 interface UserPreferences {
     concept: string[];
-    companion: string;
     mood: string[];
     regions: string[];
 }
@@ -33,7 +32,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             if (!s1) return 1;
             if (!s2) return 2;
             if (!s3) return 3;
-            return 4;
+            return 3;
         } catch {
             return 1;
         }
@@ -45,19 +44,17 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
     const [preferences, setPreferences] = useState<UserPreferences>({
         concept: [],
-        companion: "",
         mood: [],
         regions: [],
     });
 
     const [analysisKeyword, setAnalysisKeyword] = useState({ vibe: "", type: "" });
-    const totalSteps = 4;
+    const totalSteps = 3;
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isSavingRef = useRef(false);
 
     const [selectedVibeIds, setSelectedVibeIds] = useState<string[]>([]);
     const [selectedValueId, setSelectedValueId] = useState<string | null>(null);
-    const [selectedCrew, setSelectedCrew] = useState<string | null>(null);
     const [isResetting, setIsResetting] = useState(false); // 🟢 reset 중인지 확인하는 플래그
 
     // 🟢 reset=true 파라미터가 있으면 첫 단계로 리셋 (다른 useEffect보다 먼저 실행)
@@ -70,7 +67,6 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 localStorage.removeItem("onboardingStep1");
                 localStorage.removeItem("onboardingStep2");
                 localStorage.removeItem("onboardingStep3");
-                localStorage.removeItem("onboardingStep4");
                 localStorage.removeItem("onboardingComplete");
             } catch (e) {
                 // localStorage 접근 실패 무시
@@ -79,13 +75,11 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             setShowIntro(true);
             setPreferences({
                 concept: [],
-                companion: "",
                 mood: [],
                 regions: [],
             });
             setSelectedVibeIds([]);
             setSelectedValueId(null);
-            setSelectedCrew(null);
             // URL에서 reset 파라미터 제거
             const url = new URL(window.location.href);
             url.searchParams.delete("reset");
@@ -126,7 +120,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
         const computeFirstUnansweredStep = (
             prefs: UserPreferences,
-            flags: { s1: boolean; s2: boolean; s3: boolean; s4: boolean }
+            flags: { s1: boolean; s2: boolean; s3: boolean },
         ) => {
             // 1단계: 분위기/컨셉
             const step1Answered = flags.s1 || prefs.mood.length > 0 || prefs.concept.length > 0;
@@ -136,12 +130,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             const step2Answered = flags.s2;
             if (!step2Answered) return 2;
 
-            // 3단계: 동행자
-            const step3Answered = flags.s3 || (prefs.companion ?? "") !== "";
-            if (!step3Answered) return 3;
-
-            // 4단계: 지역 (선택이지만, 완료 플래그가 없으면 보여줌)
-            return 4;
+            // 3단계: 지역 (선택이지만, 완료 플래그가 없으면 보여줌)
+            return 3;
         };
 
         const init = async () => {
@@ -160,21 +150,17 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 // 1. 서버 데이터 가져오기
                 try {
                     const raw = await authenticatedFetch<{ preferences?: UserPreferences } | UserPreferences>(
-                        "/api/users/preferences"
+                        "/api/users/preferences",
                     );
                     if (raw) {
                         const prefsData = (raw as any)?.preferences ?? raw;
                         const normalized: UserPreferences = {
                             concept: Array.isArray(prefsData?.concept) ? prefsData.concept : [],
-                            companion: typeof prefsData?.companion === "string" ? prefsData.companion : "",
                             mood: Array.isArray(prefsData?.mood) ? prefsData.mood : [],
                             regions: Array.isArray(prefsData?.regions) ? prefsData.regions : [],
                         };
                         serverPrefs = normalized;
                         setPreferences(normalized);
-
-                        // 서버 데이터 기반으로 UI 상태 복구 (선택 표시 등)
-                        if (normalized.companion) setSelectedCrew(normalized.companion);
                         // vibeIds나 valueId는 DB에 정확히 매핑 안 될 수 있어 스킵하거나 로직 추가 필요
                     }
                 } catch {
@@ -185,10 +171,9 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 const s1 = localStorage.getItem("onboardingStep1") === "1";
                 const s2 = localStorage.getItem("onboardingStep2") === "1";
                 const s3 = localStorage.getItem("onboardingStep3") === "1";
-                const s4 = localStorage.getItem("onboardingStep4") === "1";
 
                 // 3. 다음 단계 계산
-                const next = computeFirstUnansweredStep(serverPrefs ?? preferences, { s1, s2, s3, s4 });
+                const next = computeFirstUnansweredStep(serverPrefs ?? preferences, { s1, s2, s3 });
 
                 setCurrentStep(next);
 
@@ -208,7 +193,6 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     useEffect(() => {
         const hasAnyData =
             preferences.concept.length > 0 ||
-            preferences.companion !== "" ||
             preferences.mood.length > 0 ||
             preferences.regions.length > 0;
 
@@ -285,13 +269,6 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         setTimeout(() => nextStep(), 300);
     };
 
-    const handleCrewSelect = (value: string) => {
-        setPreferences((prev) => ({ ...prev, companion: value }));
-        setSelectedCrew(value);
-        localStorage.setItem("onboardingStep3", "1");
-        setTimeout(() => nextStep(), 300);
-    };
-
     const handleRegionSelect = (group: (typeof REGION_GROUPS)[number]) => {
         setPreferences((prev) => {
             // 지역 선택은 다중 선택이 가능하지만, "새로 시작" 느낌을 위해
@@ -318,7 +295,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             }
             return { ...prev, regions: newRegions };
         });
-        localStorage.setItem("onboardingStep4", "1");
+        localStorage.setItem("onboardingStep3", "1");
     };
 
     const nextStep = () => {
@@ -342,14 +319,15 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
             // 완료 플래그 설정 및 임시 플래그 삭제
             localStorage.setItem("onboardingComplete", "1");
-            ["onboardingStep1", "onboardingStep2", "onboardingStep3", "onboardingStep4"].forEach((key) =>
-                localStorage.removeItem(key)
+            ["onboardingStep1", "onboardingStep2", "onboardingStep3"].forEach((key) =>
+                localStorage.removeItem(key),
             );
         }, 1500);
     };
 
     const completeOnboarding = () => {
-        window.location.href = "/";
+        const returnTo = searchParams?.get("returnTo") || "/";
+        window.location.href = returnTo;
     };
 
     // 🔥 [수정] 닫기 동작 개선 - 빠른 뒤로 가기
@@ -421,12 +399,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         <div className="h-4"></div>
                         <button
                             onClick={handleStart}
-                            className="w-full py-5 bg-white text-black rounded-2xl font-bold text-lg hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-between px-6 group"
+                            className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-between px-6 group"
                         >
                             <span>지금 시작하기</span>
                             <ArrowRight
                                 size={20}
-                                className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all"
+                                className="text-emerald-100 group-hover:text-white group-hover:translate-x-1 transition-all"
                             />
                         </button>
                     </div>
@@ -442,7 +420,10 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
                 {/* ...결과 UI 코드... */}
                 <div className="bg-white dark:bg-[#1a241b] w-full max-w-sm rounded-xl border border-gray-100 dark:border-gray-800 p-6 text-center relative overflow-hidden">
-                    <button onClick={completeOnboarding} className="absolute top-4 right-4 text-gray-400 dark:text-gray-500">
+                    <button
+                        onClick={completeOnboarding}
+                        className="absolute top-4 right-4 text-gray-400 dark:text-gray-500"
+                    >
                         <X size={24} />
                     </button>
                     {/* ... (생략된 내용) ... */}
@@ -451,7 +432,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         <p className="text-gray-500 dark:text-gray-400 mb-6">회원님의 취향 DNA가 추출되었습니다.</p>
                         <button
                             onClick={completeOnboarding}
-                            className="w-full py-4 bg-black dark:bg-slate-800 text-white rounded-xl font-bold text-lg hover:scale-[1.02] dark:hover:bg-slate-700 transition-transform"
+                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform"
                         >
                             맞춤 코스 확인하기 ➔
                         </button>
@@ -465,7 +446,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     if (isAnalyzing) {
         return (
             <div className="fixed inset-0 z-50 h-screen bg-black/70 backdrop-blur-md flex flex-col items-center justify-center">
-                <div className="w-16 h-16 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin mb-6"></div>
+                <div className="w-16 h-16 border-4 border-white/20 border-t-emerald-400 rounded-full animate-spin mb-6"></div>
                 <h2 className="text-xl font-bold text-white animate-pulse">취향 데이터 분석 중...</h2>
             </div>
         );
@@ -477,7 +458,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm">
             {/* ... 배경 이미지 및 컨테이너 ... */}
-            <div className="relative z-10 w-full h-full max-w-[480px] bg-white dark:bg-[#1a241b] sm:h-[85vh] sm:rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col bg-linear-to-br from-slate-50 to-blue-50 dark:from-[#0f1710] dark:to-[#1a241b]">
+            <div className="relative z-10 w-full h-full max-w-[480px] bg-white dark:bg-[#1a241b] sm:h-[85vh] sm:rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col bg-linear-to-br from-emerald-50/50 to-white dark:from-[#0f1710] dark:to-[#1a241b]">
                 {/* 닫기 버튼 */}
                 <div className="absolute top-4 right-4 z-50">
                     <button
@@ -537,7 +518,9 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
                                 딱 하나만 고른다면?
                             </h1>
-                            <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">실패 없는 추천을 위해 가치관을 파악합니다.</p>
+                            <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">
+                                실패 없는 추천을 위해 가치관을 파악합니다.
+                            </p>
                             <div className="flex flex-col gap-4">
                                 {VALUE_OPTIONS.map((opt) => (
                                     <button
@@ -563,39 +546,17 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         </div>
                     )}
 
-                    {/* Step 3: 동행자 선택 */}
+                    {/* Step 3: 지역 선택 */}
                     {currentStep === 3 && (
-                        <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                                누구와 함께할 때<br />
-                                가장 '나다운'가요?
-                            </h1>
-                            <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">주로 함께하는 대상을 알려주세요.</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                {CREW_OPTIONS.map((crew) => (
-                                    <button
-                                        key={crew.value}
-                                        onClick={() => handleCrewSelect(crew.value)}
-                                        className={`p-5 rounded-xl border transition-all text-left active:scale-95 bg-white dark:bg-[#0f1710] ${
-                                            selectedCrew === crew.value
-                                                ? "border-[#7aa06f] dark:border-emerald-600 ring-2 ring-[#7aa06f] dark:ring-emerald-600"
-                                                : "border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
-                                        }`}
-                                    >
-                                        <div className="text-lg font-bold text-gray-800 dark:text-white mb-1">{crew.label}</div>
-                                        <div className="text-xs text-gray-400 dark:text-gray-500">{crew.sub}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {currentStep === 4 && (
                         <div className="animate-slideUp flex flex-col h-full px-1">
                             {/* 헤더 섹션: 가이드 텍스트 추가 */}
                             <div className="mb-8 mt-4">
-                                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">자주 출몰하는 지역은?</h1>
-                                <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">최대 3개까지 선택할 수 있어요 📍</p>
+                                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">
+                                    자주 출몰하는 지역은?
+                                </h1>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+                                    최대 3개까지 선택할 수 있어요 📍
+                                </p>
                             </div>
 
                             {/* 지역 선택 그리드: 고정 2열 그리드로 정밀 정렬 */}
@@ -627,7 +588,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                     disabled={preferences.regions.length === 0}
                                     className={`w-full py-4.5 rounded-2xl font-extrabold text-[16px] tracking-tight transition-all shadow-lg ${
                                         preferences.regions.length > 0
-                                            ? "bg-slate-900 dark:bg-slate-800 text-white active:scale-[0.98] hover:bg-slate-800 dark:hover:bg-slate-700"
+                                            ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white active:scale-[0.98]"
                                             : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                     }`}
                                 >

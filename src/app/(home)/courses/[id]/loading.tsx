@@ -1,7 +1,7 @@
 // src/app/(home)/courses/[id]/loading.tsx
 export default function CourseDetailLoading() {
     return (
-        <main className="min-h-screen bg-white/80 dark:bg-[#0f1710]/90 backdrop-blur-sm flex flex-col items-center justify-center fixed inset-0 z-9999">
+        <main className="min-h-screen bg-white/80 dark:bg-[#0f1710]/90 backdrop-blur-sm flex flex-col items-center justify-center fixed inset-0 z-9999 pointer-events-none">
             <div className="flex flex-col items-center gap-6 animate-fadeIn">
                 {/* 1. 브랜드 로고 느낌의 스피너 */}
                 <div className="relative">

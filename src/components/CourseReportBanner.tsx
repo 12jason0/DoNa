@@ -37,7 +37,7 @@ export default function CourseReportBanner() {
                         </h3>
                         {/* 서브 텍스트: 녹색 배경 위에서도 잘 보이도록 조정 */}
                         <p className="text-xs font-medium text-white/90 leading-relaxed">
-                            장소를 제보하고 추첨을 통해 쿠폰를 받아보세요 ✨
+                            장소를 제보하고 추첨을 통해 열람권을 받아보세요 ✨
                         </p>
                     </div>
 

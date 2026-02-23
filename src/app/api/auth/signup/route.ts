@@ -53,8 +53,6 @@ export async function POST(request: NextRequest) {
             computedAge = age;
         }
 
-        const initialCoupons = 1;
-
         // 🟢 기본 프로필 이미지 설정 (로컬 로그인)
         const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
@@ -72,22 +70,11 @@ export async function POST(request: NextRequest) {
                     gender,
                     birthday: birthdayDate,
                     age: computedAge,
-                    couponCount: initialCoupons,
                     profileImageUrl: DEFAULT_PROFILE_IMG, // 🟢 로컬 로그인 시 기본 프로필 이미지 저장
                     isMarketingAgreed: isMarketingAgreed === true,
                     marketingAgreedAt: isMarketingAgreed === true ? new Date() : null,
                 },
                 select: { id: true, email: true, username: true },
-            });
-
-            // 보상 로그 생성
-            await tx.userReward.create({
-                data: {
-                    userId: newUser.id,
-                    type: "signup",
-                    amount: initialCoupons,
-                    unit: "coupon",
-                },
             });
 
             return newUser;

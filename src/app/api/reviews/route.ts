@@ -163,15 +163,15 @@ export async function POST(request: NextRequest) {
         // 🟢 코스 리뷰(공개): 같은 코스에 여러 개 허용. 나만의 추억(비공개)은 별도 로직 유지.
         const existingReview = null;
 
-        // 🟢 나만의 추억(isPublic: false)은 최소 3장 이상의 사진이 필요
+        // 🟢 나만의 추억(isPublic: false)은 최소 1장 이상의 사진이 필요
         // 🟢 공개 리뷰(isPublic: true)는 사진 없이도 저장 가능
         if (!isPublicValue) {
             const imageUrlsArray = Array.isArray(imageUrls) ? imageUrls : [];
-            if (imageUrlsArray.length < 3) {
+            if (imageUrlsArray.length < 1) {
                 return NextResponse.json(
                     {
                         success: false,
-                        message: `나만의 추억을 저장하려면 최소 3장 이상의 사진이 필요합니다. 현재 ${imageUrlsArray.length}장의 사진이 있습니다.`,
+                        message: `나만의 추억을 저장하려면 최소 1장 이상의 사진이 필요합니다. 현재 ${imageUrlsArray.length}장의 사진이 있습니다.`,
                     },
                     { status: 400 }
                 );
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
         // 🟢 AES-256 암호화: 민감 텍스트는 DB 저장 전 암호화 (디지털 금고)
         const encryptedComment = finalComment ? encrypt(finalComment) : finalComment;
 
-            // 🟢 트랜잭션으로 리뷰 저장 + 쿠폰 지급 처리
+            // 🟢 트랜잭션으로 리뷰 저장 + 열람권 지급 처리
         const result = await prisma.$transaction(async (tx) => {
             let review;
             let isNewReview = false;
@@ -252,70 +252,15 @@ export async function POST(request: NextRequest) {
                 });
             isNewReview = true;
 
-            // [단계 3] 새 리뷰 작성 시에만 쿠폰 지급 체크
-            // 🟢 쿠폰 지급은 나만의 추억(isPublic: false) 10개 달성 시에만 지급
-            let couponAwarded = false;
-            let couponAmount = 0;
-            let couponMessage = "";
             let personalMemoryCount: number | undefined = undefined;
 
-            // 🟢 개인 추억(isPublic: false) 개수 확인 (모달 표시용)
-            // 🟢 [수정] 새 리뷰 생성 후에 개수 확인 (10번째 저장 시 정확한 개수 반영)
             if (isPublicValue === false) {
                 personalMemoryCount = await (tx as any).review.count({
-                    where: { 
-                        userId: numericUserId,
-                        isPublic: false
-                    },
+                    where: { userId: numericUserId, isPublic: false },
                 });
             }
 
-            if (isNewReview) {
-
-                // 🟢 개인 추억 10개 달성 시 쿠폰 2개 지급 (중복 지급 방지)
-                if (personalMemoryCount === 10) {
-                    const memoryRewardExists = await tx.userReward.findFirst({
-                        where: {
-                            userId: numericUserId,
-                            type: "personal_memory_milestone" as any, // 🟢 Prisma 클라이언트 재생성 후에도 타입 에러가 있으면 임시로 any 사용
-                            placeId: null, // 🟢 placeId를 명시적으로 null로 체크
-                        },
-                    });
-
-                    if (!memoryRewardExists) {
-                        // 쿠폰 2개 지급
-                        await tx.user.update({
-                            where: { id: numericUserId },
-                            data: { couponCount: { increment: 2 } },
-                        });
-
-                        // 보상 기록 저장
-                        const createdReward = await tx.userReward.create({
-                            data: {
-                                userId: numericUserId,
-                                type: "personal_memory_milestone" as any, // 🟢 Prisma 클라이언트 재생성 후에도 타입 에러가 있으면 임시로 any 사용
-                                amount: 2,
-                                unit: "coupon" as any,
-                                placeId: null, // 🟢 placeId를 명시적으로 null로 설정
-                            },
-                        });
-
-                        // 🟢 디버깅: 보상 저장 확인
-                        console.log("[리뷰 API] 개인 추억 10개 달성 보상 저장 완료:", {
-                            id: createdReward.id,
-                            type: createdReward.type,
-                            amount: createdReward.amount,
-                            userId: createdReward.userId,
-                        });
-
-                        couponAwarded = true;
-                        couponAmount = 2;
-                        couponMessage = `추억 10개 달성! 쿠폰 2개를 지급했습니다! 🎉`;
-                    }
-                }
-            }
-
-            return { review, couponAwarded, couponAmount, couponMessage, isNewReview, personalMemoryCount };
+            return { review, isNewReview, personalMemoryCount };
         });
 
         // 응답 반환 (클라이언트에는 복호화된 comment 전달)
@@ -327,9 +272,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     ...reviewForClient,
-                    couponAwarded: result.couponAwarded,
-                    couponAmount: result.couponAmount || 0,
-                    message: result.couponMessage || undefined,
                     personalMemoryCount: result.personalMemoryCount,
                 },
                 { status: 201 }

@@ -35,9 +35,9 @@ const nextConfig = {
         appIsrStatus: false,
     },
 
-    // 🟢 [추가]: 패키지 임포트 최적화 (Fast Refresh 속도 개선)
+    // 🟢 [추가]: 패키지 임포트 최적화 (Fast Refresh·번들 사이즈 개선)
     experimental: {
-        optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "lodash"],
+        optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "lodash", "recharts"],
         // 🟢 [수정]: Next.js 16 대응 - 'allowedDevOrigins' 대신 'serverActions.allowedOrigins' 사용
         // 🔴 [수정]: 하드코딩된 IP 삭제하고 동적 변수 사용
         serverActions: {
@@ -202,8 +202,12 @@ const nextConfig = {
         minimumCacheTTL: 3600,
         remotePatterns: [
             { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" },
+            { protocol: "https", hostname: "stylemap-seoul.s3.ap-northeast-2.amazonaws.com" }, // 🟢 코스/장소 이미지
             { protocol: "https", hostname: "k.kakaocdn.net" }, // 🟢 카카오 프로필 이미지 CDN 허용
             { protocol: "https", hostname: "images.unsplash.com" }, // 🟢 Unsplash 이미지 허용
+            { protocol: "http", hostname: "localhost", port: "3000", pathname: "/**" },
+            { protocol: "http", hostname: "localhost", port: "3001", pathname: "/**" },
+            { protocol: "https", hostname: "dona.io.kr", pathname: "/**" },
         ],
         qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
         deviceSizes: [640, 750, 828, 1080, 1200],

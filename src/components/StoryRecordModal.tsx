@@ -4,10 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "@/components/ImageFallback";
 import { X } from "lucide-react";
 
-// 🟢 서버 응답 데이터 타입
 interface ReviewResponse {
     success?: boolean;
-    couponAwarded?: boolean;
     message?: string;
     error?: string;
 }
@@ -183,11 +181,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
             })) as ReviewResponse;
 
             if (data && !data.error) {
-                if (data.couponAwarded) {
-                    alert(data.message || "🎁 리뷰 5개 작성을 축하합니다! 쿠폰이 지급되었습니다.");
-                } else {
-                    alert("스토리가 저장되었습니다! 💕");
-                }
+                alert("스토리가 저장되었습니다! 💕");
 
                 window.dispatchEvent(new CustomEvent("reviewSubmitted"));
                 onClose();

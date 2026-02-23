@@ -206,8 +206,8 @@ const getCourse = unstable_cache(
     },
 );
 
-// 🔒 권한 확인 함수 (unstable_cache 제거 - 실시간 DB 조회로 쿠폰 구매 즉시 반영)
-// 매 요청마다 실시간으로 DB를 조회하여 쿠폰 구매 즉시 반영되도록 합니다.
+// 🔒 권한 확인 함수 (unstable_cache 제거 - 실시간 DB 조회로 열람권 구매 즉시 반영)
+// 매 요청마다 실시간으로 DB를 조회하여 열람권 구매 즉시 반영되도록 합니다.
 const getUserPermission = async (
     userIdNum: number,
     courseId: number,
@@ -282,10 +282,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             if (userIdStr) {
                 const userIdNum = Number(userIdStr);
                 if (!isNaN(userIdNum) && userIdNum > 0) {
-                    // 🟢 실시간 권한 확인 (unstable_cache 제거로 쿠폰 구매 즉시 반영)
+                    // 🟢 실시간 권한 확인 (unstable_cache 제거로 열람권 구매 즉시 반영)
                     const permission = await getUserPermission(userIdNum, courseId);
                     userTier = permission.userTier;
-                    hasUnlocked = permission.hasUnlocked; // 쿠폰 구매 여부 확인
+                    hasUnlocked = permission.hasUnlocked; // 열람권 구매 여부 확인
                 }
             }
         } catch (e) {
@@ -297,14 +297,14 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     const courseGrade = (courseData.grade || "FREE").toUpperCase();
     const currentUserTier = userTier.toUpperCase();
 
-    // 🔒 핵심: '쿠폰 구매(hasUnlocked)'를 가장 먼저 체크하여 등급에 상관없이 허용
+    // 🔒 핵심: '열람권 구매(hasUnlocked)'를 가장 먼저 체크하여 등급에 상관없이 허용
     const canAccess =
         courseGrade === "FREE" || // 1. 무료 코스인가?
-        hasUnlocked === true || // 2. 쿠폰으로 구매했는가? (FREE 유저라도 OK) - 최우선 체크
+        hasUnlocked === true || // 2. 열람권으로 구매했는가? (FREE 유저라도 OK) - 최우선 체크
         (currentUserTier === "BASIC" && courseGrade === "BASIC") || // 3. BASIC 유저의 BASIC 코스인가?
         currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
 
-    // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 쿠폰으로 구매한 경우만 팁 표시
+    // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 열람권으로 구매한 경우만 팁 표시
     const hasTipAccess = currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
 
     const isLocked = !canAccess;

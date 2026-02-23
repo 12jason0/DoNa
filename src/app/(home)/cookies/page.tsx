@@ -46,9 +46,9 @@ const CookiesPolicyPage = () => {
             provider: "DoNa",
         },
         {
-            name: "userCoupons",
+            name: "userPreferences",
             type: "기능성",
-            purpose: "AI 추천 쿠폰 수 저장",
+            purpose: "사용자 설정 저장",
             duration: "영구",
             provider: "DoNa",
         },
@@ -70,7 +70,7 @@ const CookiesPolicyPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white">
+            <main className="grow container mx-auto px-4 py-8 bg-white">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">쿠키 정책</h1>
                     <p className="text-gray-600 mb-6">
@@ -240,7 +240,7 @@ const CookiesPolicyPage = () => {
                                         </p>
                                         <ul className="space-y-2">
                                             <li className="text-sm">
-                                                <strong>userCoupons:</strong> AI 추천 쿠폰 관리
+                                                <strong>userPreferences:</strong> 사용자 설정 저장
                                             </li>
                                             <li className="text-sm">
                                                 <strong>hideAiAdUntil:</strong> 광고 표시 설정

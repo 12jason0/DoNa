@@ -8,14 +8,9 @@ export default function RoutePrefetcher() {
     const pathname = usePathname();
 
     useEffect(() => {
-        const priorityRoutes = ["/", "/courses", "/nearby", "/map", "/mypage"];
-        const secondaryRoutes = ["/personalized-home", "/onboarding", "/login", "/about"];
+        const priorityRoutes = ["/", "/courses", "/nearby", "/map", "/mypage", "/personalized-home"];
+        const secondaryRoutes = ["/onboarding", "/login", "/about", "/ticketplan", "/shop", "/escape/intro"];
         let secondaryTimer: ReturnType<typeof setTimeout> | null = null;
-
-        // 🟢 마이페이지는 바로 prefetch (idle 대기 없이) → 클릭 시 빠른 진입
-        try {
-            if (pathname !== "/mypage") router.prefetch("/mypage");
-        } catch {}
 
         const doPrefetch = () => {
             try {
@@ -27,14 +22,15 @@ export default function RoutePrefetcher() {
                         if (r !== pathname) router.prefetch(r);
                     });
                     secondaryTimer = null;
-                }, 150);
+                }, 80);
             } catch {}
         };
 
+        // 🟢 즉시 priority prefetch (idle 대기 단축 → 100ms), 타이밍 최적화
         const hasRic = typeof window !== "undefined" && typeof window.requestIdleCallback === "function";
         const id = hasRic
-            ? (window.requestIdleCallback as (cb: () => void, opts?: { timeout: number }) => number)(doPrefetch, { timeout: 300 })
-            : setTimeout(doPrefetch, 0);
+            ? (window.requestIdleCallback as (cb: () => void, opts?: { timeout: number }) => number)(doPrefetch, { timeout: 150 })
+            : setTimeout(doPrefetch, 50);
 
         return () => {
             if (secondaryTimer != null) clearTimeout(secondaryTimer);

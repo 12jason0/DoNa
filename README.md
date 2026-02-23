@@ -267,7 +267,6 @@ vercel --prod
 | mbti            | String?   |                  | MBTI              |
 | age             | Int?      |                  | 나이              |
 | coinBalance     | Int       | default(0)       | 코인 잔액         |
-| couponCount     | Int       | default(0)       | AI 쿠폰 개수      |
 | gender          | String?   |                  | 성별              |
 | lastActiveAt    | DateTime? |                  | 최근 활동         |
 | level           | Int       | default(1)       | 레벨              |

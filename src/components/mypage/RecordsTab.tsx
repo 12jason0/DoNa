@@ -97,7 +97,7 @@ const RecordsTab = ({
 
     const subTabs = [
         { id: "favorites" as const, label: "보관함", count: favorites.length },
-        { id: "saved" as const, label: "AI 추천", count: savedCourses.length },
+        { id: "saved" as const, label: "오늘의 데이트 추천", count: savedCourses.length },
         { id: "completed" as const, label: "완료 코스", count: completed.length },
         { id: "casefiles" as const, label: "사건 파일", count: casefiles.length },
     ];
@@ -193,7 +193,7 @@ const RecordsTab = ({
                 </div>
             )}
 
-            {/* AI 추천 (Saved) */}
+            {/* 오늘의 데이트 추천 (Saved) */}
             {subTab === "saved" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6 tracking-tight">
@@ -235,13 +235,13 @@ const RecordsTab = ({
                                     <path d="M9 11v2"/>
                                 </svg>
                             </div>
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">아직 AI 추천 코스가 없어요</h4>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">아직 오늘의 데이트 추천 코스가 없어요</h4>
                             <p className="text-gray-600 dark:text-gray-400 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
                             <button
                                 onClick={() => router.push("/personalized-home")}
                                 className="px-6 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer tracking-tight"
                             >
-                                AI 추천 받으러 가기
+                                오늘의 데이트 추천 받으러 가기
                             </button>
                         </div>
                     )}

@@ -153,7 +153,7 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                     <div className="text-right">
                                         <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-sm md:text-base border border-emerald-200 dark:border-emerald-800/50">
                                             <span className="leading-none">+{r.amount}</span>
-                                            <span className="leading-none">쿠폰</span>
+                                            <span className="leading-none">열람권</span>
                                         </div>
                                     </div>
                                 </div>
@@ -184,7 +184,7 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                     {payments.length > 0 ? (
                         <div className="space-y-4">
                             {payments.map((payment) => {
-                                const isCoupon = payment.orderName.includes("쿠폰");
+                                const isTicket = payment.orderName.includes("열람권");
                                 const isSubscription =
                                     payment.orderName.includes("구독") || payment.orderName.includes("멤버십");
                                 const isRefunded = payment.status === "CANCELLED";
@@ -201,9 +201,9 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    {isCoupon ? (
+                                                    {isTicket ? (
                                                         <span className="px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-bold">
-                                                            쿠폰
+                                                            열람권
                                                         </span>
                                                     ) : isSubscription ? (
                                                         <span className="px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold">
@@ -286,7 +286,7 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                 </svg>
                             </div>
                             <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">구매 내역이 없습니다</div>
-                            <div className="text-gray-600 dark:text-gray-400 mb-4">쿠폰이나 구독권을 구매하시면 여기에 표시됩니다.</div>
+                            <div className="text-gray-600 dark:text-gray-400 mb-4">열람권이나 구독권을 구매하시면 여기에 표시됩니다.</div>
                             <Link
                                 href="/refund"
                                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-all"

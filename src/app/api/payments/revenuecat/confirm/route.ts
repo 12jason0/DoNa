@@ -7,20 +7,18 @@ export const dynamic = "force-dynamic";
 
 // 🟢 [IN-APP PURCHASE]: RevenueCat Product ID → plan.id 매핑
 const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
-    "kr.io.dona.ai_coupon_3": "ticket_light",
-    "kr.io.dona.ai_coupon_5": "ticket_standard",
-    "kr.io.dona.ai_coupon_10": "ticket_pro",
+    "kr.io.dona.course_basic": "ticket_basic",
+    "kr.io.dona.course_premium": "ticket_premium",
     "kr.io.dona.ai_basic_monthly": "sub_basic",
     "kr.io.dona.premium_monthly": "sub_premium",
 };
 
 const PRODUCT_MAPPING: Record<
     string,
-    { type: "COUPON" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" }
+    { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" }
 > = {
-    ticket_light: { type: "COUPON", value: 3, name: "AI 추천 쿠폰 3개 (Light)" },
-    ticket_standard: { type: "COUPON", value: 5, name: "AI 추천 쿠폰 5개 (Standard)" },
-    ticket_pro: { type: "COUPON", value: 10, name: "AI 추천 쿠폰 10개 (Pro)" },
+    ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC" },
+    ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM" },
     sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC" },
     sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM" },
 };
@@ -34,11 +32,29 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { planId, planType, transactionId, customerInfo } = body;
+        const { planId, planType, transactionId, customerInfo, intentId, courseId } = body;
 
         const productInfo = PRODUCT_MAPPING[planId];
         if (!productInfo) {
             return NextResponse.json({ error: "Invalid product" }, { status: 400 });
+        }
+
+        // 🟢 COURSE_TICKET은 intentId 필수
+        let unlockCourseId: number | null = null;
+        if (productInfo.type === "COURSE_TICKET") {
+            if (!intentId) {
+                return NextResponse.json({ error: "intentId required for course ticket" }, { status: 400 });
+            }
+            const intent = await (prisma as any).unlockIntent.findUnique({
+                where: { id: intentId },
+            });
+            if (!intent || intent.userId !== userId || intent.status !== "PENDING") {
+                return NextResponse.json({ error: "Invalid or expired intent" }, { status: 400 });
+            }
+            if (intent.planId !== planId) {
+                return NextResponse.json({ error: "Intent plan mismatch" }, { status: 400 });
+            }
+            unlockCourseId = intent.courseId;
         }
 
         // 🟢 중복 처리 방지: orderId 기준으로 확인 (status 무관)
@@ -53,7 +69,7 @@ export async function POST(request: NextRequest) {
             // 이미 처리된 결제 (어떤 상태든 이미 orderId가 존재함)
             const user = await prisma.user.findUnique({ 
                 where: { id: userId }, 
-                select: { couponCount: true, subscriptionTier: true } 
+                select: { subscriptionTier: true } 
             });
             
             // 만약 PAID 상태가 아니면 업데이트 시도 (중요: 이미 존재하므로 지급은 하지 않음)
@@ -67,19 +83,23 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ 
                 success: true, 
                 message: "Already processed",
-                couponCount: user?.couponCount || 0,
                 subscriptionTier: user?.subscriptionTier
             });
         }
 
-        // 🟢 쿠폰/구독 지급
+        // 🟢 코스 열람권/구독 지급
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            if (productInfo.type === "COUPON") {
-                await tx.user.update({
-                    where: { id: userId },
-                    data: {
-                        couponCount: { increment: productInfo.value },
+            if (productInfo.type === "COURSE_TICKET" && unlockCourseId) {
+                await (tx as any).courseUnlock.upsert({
+                    where: {
+                        userId_courseId: { userId, courseId: unlockCourseId },
                     },
+                    update: {},
+                    create: { userId, courseId: unlockCourseId },
+                });
+                await (tx as any).unlockIntent.update({
+                    where: { id: intentId },
+                    data: { status: "COMPLETED" },
                 });
             } else if (productInfo.type === "SUBSCRIPTION" && productInfo.tier) {
                 const now = new Date();
@@ -122,7 +142,6 @@ export async function POST(request: NextRequest) {
             const updatedUser = await tx.user.findUnique({
                 where: { id: userId },
                 select: {
-                    couponCount: true,
                     subscriptionTier: true,
                 },
             });
@@ -130,18 +149,18 @@ export async function POST(request: NextRequest) {
             return updatedUser;
         });
 
-        console.log("[RevenueCat Confirm] 쿠폰/구독 지급 완료:", {
+        console.log("[RevenueCat Confirm] 열람권/구독 지급 완료:", {
             userId,
             planId,
-            couponCount: result?.couponCount,
             subscriptionTier: result?.subscriptionTier,
         });
 
-        return NextResponse.json({
+        const resPayload: Record<string, unknown> = {
             success: true,
-            couponCount: result?.couponCount || 0,
             subscriptionTier: result?.subscriptionTier,
-        });
+        };
+        if (unlockCourseId != null) resPayload.courseId = unlockCourseId;
+        return NextResponse.json(resPayload);
     } catch (error: any) {
         console.error("[RevenueCat Confirm] Error:", error);
         return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });

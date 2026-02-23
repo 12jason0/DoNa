@@ -7,25 +7,13 @@ export const revalidate = 300; // 5분 캐싱
 
 // 기존 사용자 데이터를 새로운 구조로 마이그레이션하는 함수
 function migratePreferences(oldPrefs: any): any {
-    // 이미 새로운 구조인 경우 그대로 반환 (concept, companion, mood, regions)
-    if (oldPrefs.concept || oldPrefs.companion || oldPrefs.mood || oldPrefs.regions) {
-        return oldPrefs;
+    // 이미 새로운 구조인 경우 concept, mood, regions만 유지 (companion 제거)
+    if (oldPrefs.concept || oldPrefs.mood || oldPrefs.regions) {
+        const { companion: _c, ...rest } = oldPrefs;
+        return rest;
     }
 
     const newPrefs: any = {};
-
-    // 이전 구조 (companionType, vibe, budgetRange) → 새로운 구조로 마이그레이션
-    if (oldPrefs.companionType) {
-        // companionType → companion 매핑
-        const companionMap: Record<string, string> = {
-            solo: "혼자",
-            couple: "연인",
-            friends: "친구",
-            family: "가족",
-            blinddate: "소개팅",
-        };
-        newPrefs.companion = companionMap[oldPrefs.companionType] || oldPrefs.companionType;
-    }
 
     // vibe → mood 배열로 변환
     if (oldPrefs.vibe) {
@@ -100,11 +88,17 @@ export async function POST(request: NextRequest) {
         }
 
         // body.preferences 또는 body 자체가 preferences 객체일 수 있음
-        const preferencesData = body.preferences || body;
+        let preferencesData = body.preferences || body;
 
         // preferencesData가 비어있거나 유효하지 않은 경우 처리
         if (!preferencesData || (typeof preferencesData === "object" && Object.keys(preferencesData).length === 0)) {
             return NextResponse.json({ error: "선호도 데이터가 없습니다." }, { status: 400 });
+        }
+
+        // companion 필드 제거 (온보딩에서 제거됨)
+        if (typeof preferencesData === "object" && "companion" in preferencesData) {
+            const { companion: _c, ...rest } = preferencesData;
+            preferencesData = rest;
         }
 
         // ✅ [수정됨] prisma.user_preferences -> prisma.userPreference

@@ -32,6 +32,7 @@ type Course = {
     title: string;
     imageUrl?: string;
     region?: string;
+    grade?: string;
     coursePlaces: CoursePlace[];
 };
 
@@ -55,15 +56,13 @@ function GuidePageInner() {
 
     const [course, setCourse] = useState<Course | null>(null);
     const [loading, setLoading] = useState(true);
-    const [showIntro, setShowIntro] = useState(true); // 🟢 인트로 화면 표시 여부
-    const [currentStep, setCurrentStep] = useState(0);
+    const [showIntro, setShowIntro] = useState(true);
+    // 🟢 3페이지: 인트로 → 0=사진 업로드, 1=태그+텍스트+저장
+    const [pageIndex, setPageIndex] = useState(0);
     const [showCongrats, setShowCongrats] = useState(false);
     const [showReview, setShowReview] = useState(false);
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
-    const [couponAwarded, setCouponAwarded] = useState(false);
-    const [couponMessage, setCouponMessage] = useState<string | null>(null);
-    const [couponAmount, setCouponAmount] = useState(0);
     const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
     const [personalMemoryCount, setPersonalMemoryCount] = useState<number | null>(null);
     const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
@@ -71,7 +70,6 @@ function GuidePageInner() {
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showPhotoCountModal, setShowPhotoCountModal] = useState(false);
-    const [currentPhotoCount, setCurrentPhotoCount] = useState(0);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
     const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
     const [memoryLimitMessage, setMemoryLimitMessage] = useState<string>("");
@@ -101,26 +99,21 @@ function GuidePageInner() {
     // ✅ 토스트(카드) 최소화 상태 관리
     const [isMinimized, setIsMinimized] = useState(false);
 
-    // 🟢 Summone 스타일 스토리 기록 상태
     const [storyRating, setStoryRating] = useState(5);
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    // 🟢 #DoNa 항상 맨 앞에
+    const [selectedTags, setSelectedTags] = useState<string[]>(["DoNa"]);
     const [uploadingImages, setUploadingImages] = useState(false);
     const [tagInput, setTagInput] = useState("");
+    const [descriptionText, setDescriptionText] = useState("");
 
-    // 🟢 각 장소별로 사진과 글, 태그를 저장하는 상태
-    const [stepData, setStepData] = useState<Record<number, { photos: string[]; description: string; tags: string[] }>>(
-        {}
-    );
+    // 🟢 한 번에 업로드 (장소별 X)
+    const [allPhotos, setAllPhotos] = useState<string[]>([]);
     const SUGGESTED_TAGS = ["낭만적인", "감성", "조용한", "인생샷", "숨겨진", "데이트", "사진", "카페", "맛집"];
     const mainImageInputRef = useRef<HTMLInputElement>(null);
-    const galleryImageInputRef = useRef<HTMLInputElement>(null);
 
     // 🟢 GPS 도착 체크 및 자동 이동 기능 제거
 
-    const currentPlace = course?.coursePlaces?.[currentStep]?.place;
-    const movementGuide = course?.coursePlaces?.[currentStep]?.movement_guide;
-    const totalSteps = course?.coursePlaces?.length || 0;
-    const progress = totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
+    const currentPlace = course?.coursePlaces?.[0]?.place;
 
     // ✅ 드래그 및 토글 핸들러 복구
     const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -228,48 +221,12 @@ function GuidePageInner() {
 
     // 🟢 GPS 위치 추적 제거됨
 
-    // 🟢 currentStep 변경 시 해당 step의 태그 불러오기
-    useEffect(() => {
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        setSelectedTags(currentStepData.tags);
-    }, [currentStep, stepData]);
-
     const handleNext = () => {
-        // 🟢 현재 step의 태그 저장
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        setStepData((prev) => ({
-            ...prev,
-            [currentStep]: {
-                ...currentStepData,
-                tags: selectedTags, // 🟢 태그 저장
-            },
-        }));
-
-        // 🟢 GPS 도착 체크 제거: 항상 다음 단계로 이동 가능
-        if (course && currentStep < course.coursePlaces.length - 1) {
-            setCurrentStep((c) => c + 1);
-        } else if (course && currentStep === course.coursePlaces.length - 1) {
-            // 🟢 마지막 장소의 데이터를 저장한 후 완료 페이지로 이동
-            // setStepData는 비동기이므로, 완료 페이지에서 모든 데이터를 사용할 수 있도록
-            // 여기서는 바로 완료 페이지로 이동 (stepData는 이미 위에서 업데이트됨)
-            setCurrentStep((c) => c + 1);
-        }
+        if (pageIndex === 0) setPageIndex(1);
     };
 
     const handlePrev = () => {
-        // 🟢 현재 step의 태그 저장
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        setStepData((prev) => ({
-            ...prev,
-            [currentStep]: {
-                ...currentStepData,
-                tags: selectedTags, // 🟢 태그 저장
-            },
-        }));
-
-        if (currentStep > 0) {
-            setCurrentStep((c) => c - 1);
-        }
+        if (pageIndex === 1) setPageIndex(0);
     };
 
     async function markCompleted() {
@@ -281,105 +238,54 @@ function GuidePageInner() {
             });
 
             if (response.ok && data) {
-                if ((data as any).couponAwarded) {
-                    setCouponAwarded(true);
-                    setCouponMessage((data as any).message || "쿠폰이 지급되었습니다!");
-                } else {
-                    setCouponAwarded(false);
-                    setCouponMessage(null);
-                }
+                // 코스 완료 처리
             }
         } catch {
-            setCouponAwarded(false);
-            setCouponMessage(null);
+            // 무시
         }
     }
 
-    // 🟢 Summone 스타일 함수들
     const toggleTag = (tag: string) => {
-        const newTags = selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [...selectedTags, tag];
-        setSelectedTags(newTags);
-
-        // 🟢 태그 변경 시 stepData에 즉시 저장
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        setStepData((prev) => ({
-            ...prev,
-            [currentStep]: {
-                ...currentStepData,
-                tags: newTags,
-            },
-        }));
+        if (tag === "DoNa") return;
+        const userTags = selectedTags.filter((t) => t !== "DoNa");
+        const newUserTags = userTags.includes(tag) ? userTags.filter((t) => t !== tag) : [...userTags, tag];
+        setSelectedTags(["DoNa", ...newUserTags]);
     };
 
     const removeTag = (tag: string) => {
-        const newTags = selectedTags.filter((t) => t !== tag);
-        setSelectedTags(newTags);
-
-        // 🟢 태그 제거 시 stepData에 즉시 저장
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        setStepData((prev) => ({
-            ...prev,
-            [currentStep]: {
-                ...currentStepData,
-                tags: newTags,
-            },
-        }));
+        if (tag === "DoNa") return;
+        const userTags = selectedTags.filter((t) => t !== "DoNa" && t !== tag);
+        setSelectedTags(["DoNa", ...userTags]);
     };
 
-    // 🟢 태그 직접 입력 함수
     const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter" && tagInput.trim()) {
             e.preventDefault();
-            const newTag = tagInput.trim();
-            if (!selectedTags.includes(newTag) && newTag.length > 0 && newTag.length <= 10) {
-                const newTags = [...selectedTags, newTag];
-                setSelectedTags(newTags);
-                setTagInput("");
-
-                // 🟢 태그 추가 시 stepData에 즉시 저장
-                const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-                setStepData((prev) => ({
-                    ...prev,
-                    [currentStep]: {
-                        ...currentStepData,
-                        tags: newTags,
-                    },
-                }));
-            }
+            addCustomTag();
         }
     };
 
     const addCustomTag = () => {
-        if (tagInput.trim()) {
-            const newTag = tagInput.trim();
-            if (!selectedTags.includes(newTag) && newTag.length > 0 && newTag.length <= 10) {
-                const newTags = [...selectedTags, newTag];
-                setSelectedTags(newTags);
-                setTagInput("");
-
-                // 🟢 태그 추가 시 stepData에 즉시 저장
-                const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-                setStepData((prev) => ({
-                    ...prev,
-                    [currentStep]: {
-                        ...currentStepData,
-                        tags: newTags,
-                    },
-                }));
-            }
-        }
+        if (!tagInput.trim()) return;
+        const newTag = tagInput.trim().replace(/^#/, "");
+        if (!newTag || newTag.length > 10) return;
+        const userTags = selectedTags.filter((t) => t !== "DoNa");
+        if (userTags.includes(newTag)) return;
+        setSelectedTags(["DoNa", ...userTags, newTag]);
+        setTagInput("");
     };
 
-    const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const MAX_PHOTOS = 10;
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        const maxUpload = 3 - currentStepData.photos.length;
-        const filesToUpload = Array.from(files).slice(0, maxUpload);
+        const remaining = MAX_PHOTOS - allPhotos.length;
+        const filesToUpload = Array.from(files).slice(0, remaining);
 
         if (filesToUpload.length === 0) {
-            alert("하나의 장소에 최대 3개까지 사진을 업로드할 수 있습니다.");
+            alert(`최대 ${MAX_PHOTOS}장까지 업로드할 수 있어요.`);
             return;
         }
 
@@ -394,11 +300,7 @@ function GuidePageInner() {
                 courseId: courseId?.toString(),
             });
             if (photoUrls.length > 0) {
-                const newPhotos = [...currentStepData.photos, ...photoUrls];
-                setStepData((prev) => ({
-                    ...prev,
-                    [currentStep]: { ...currentStepData, photos: newPhotos },
-                }));
+                setAllPhotos((prev) => [...prev, ...photoUrls].slice(0, MAX_PHOTOS));
             }
         } catch (err) {
             console.error("이미지 업로드 오류:", err);
@@ -406,57 +308,14 @@ function GuidePageInner() {
         } finally {
             setUploadingImages(false);
         }
-    };
-
-    const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        const maxUpload = 3 - currentStepData.photos.length;
-        const filesToUpload = Array.from(files).slice(0, maxUpload);
-        if (filesToUpload.length === 0) {
-            alert("하나의 장소에 최대 3개까지 사진을 업로드할 수 있습니다.");
-            return;
-        }
-
-        setUploadingImages(true);
-        try {
-            filesToUpload.forEach((file) => {
-                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
-            });
-            const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
-            const photoUrls = await uploadViaPresign(filesToUpload, {
-                type: "memory",
-                courseId: courseId?.toString(),
-            });
-            if (photoUrls.length > 0) {
-                const maxPhotos = 3 - currentStepData.photos.length;
-                const newPhotos = [...currentStepData.photos, ...photoUrls.slice(0, maxPhotos)];
-                setStepData((prev) => ({
-                    ...prev,
-                    [currentStep]: { ...currentStepData, photos: newPhotos },
-                }));
-            }
-        } catch (err) {
-            console.error("이미지 업로드 오류:", err);
-            alert("이미지 업로드에 실패했습니다.");
-        } finally {
-            setUploadingImages(false);
-        }
+        e.target.value = "";
     };
 
     const deletePhoto = (index: number) => {
-        const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-        const newPhotos = currentStepData.photos.filter((_, i) => i !== index);
-        setStepData((prev) => ({
-            ...prev,
-            [currentStep]: { ...currentStepData, photos: newPhotos },
-        }));
-        // 🟢 삭제 후 인덱스 조정
-        if (currentImageIndex >= newPhotos.length && newPhotos.length > 0) {
-            setCurrentImageIndex(newPhotos.length - 1);
-        } else if (newPhotos.length === 0) {
+        setAllPhotos((prev) => prev.filter((_, i) => i !== index));
+        if (currentImageIndex >= allPhotos.length - 1 && allPhotos.length > 1) {
+            setCurrentImageIndex(allPhotos.length - 2);
+        } else if (allPhotos.length === 1) {
             setCurrentImageIndex(0);
         }
     };
@@ -497,7 +356,6 @@ function GuidePageInner() {
         }
     };
 
-    // 🟢 개인 추억 저장 함수 (isPublic: false)
     const handleSubmit = async () => {
         if (!isLoggedIn) {
             setShowLoginModal(true);
@@ -509,51 +367,16 @@ function GuidePageInner() {
             return;
         }
 
+        if (allPhotos.length < 1) {
+            alert("최소 1장 이상의 사진을 추가해주세요.");
+            return;
+        }
+
         try {
-            // 🟢 완료 페이지가 아닐 때만 현재 step의 데이터 저장
-            // 완료 페이지(currentStep === totalSteps)에서는 이미 모든 데이터가 stepData에 저장되어 있음
-            const isCompletePageNow = currentStep === totalSteps;
-            if (!isCompletePageNow && currentStep < totalSteps) {
-                const currentStepData = stepData[currentStep] || { photos: [], description: "", tags: [] };
-                setStepData((prev) => ({
-                    ...prev,
-                    [currentStep]: {
-                        photos: currentStepData.photos,
-                        description: currentStepData.description,
-                        tags: selectedTags,
-                    },
-                }));
-            }
-
-            // 🟢 모든 step의 데이터 합치기 (stepData에서 직접 가져오기)
-            // 완료 페이지에서는 stepData에 모든 장소의 데이터가 이미 저장되어 있음
-            const allPhotos = Object.values(stepData).flatMap((step) => step.photos);
-            const allTags = Array.from(new Set(Object.values(stepData).flatMap((step) => step.tags)));
-
-            // 🟢 placeData 생성: { [stepIndex]: { photos: string[], tags: string[] } }
-            const placeData: Record<string, { photos: string[]; tags: string[] }> = {};
-            Object.entries(stepData).forEach(([stepIndex, data]) => {
-                if (data.photos.length > 0 || data.tags.length > 0) {
-                    placeData[stepIndex] = {
-                        photos: data.photos,
-                        tags: data.tags,
-                    };
-                }
-            });
-
-            // 🟢 stepData가 비어있으면 경고
-            if (Object.keys(stepData).length === 0) {
-                console.warn("[handleSubmit] stepData가 비어있습니다!");
-                alert("저장할 추억 데이터가 없습니다. 각 장소에서 사진이나 태그를 추가해주세요.");
-                return;
-            }
-
-            // 🟢 나만의 추억은 최소 3장 이상의 사진이 필요
-            if (allPhotos.length < 3) {
-                setCurrentPhotoCount(allPhotos.length);
-                setShowPhotoCountModal(true);
-                return;
-            }
+            const allTags = selectedTags;
+            const placeData: Record<string, { photos: string[]; tags: string[] }> = {
+                "0": { photos: allPhotos, tags: allTags },
+            };
 
             const { authenticatedFetch } = await import("@/lib/authClient");
             const data = await authenticatedFetch<any>("/api/reviews", {
@@ -564,7 +387,7 @@ function GuidePageInner() {
                 body: JSON.stringify({
                     courseId: Number(courseId),
                     rating: storyRating,
-                    content: "",
+                    content: descriptionText || "",
                     imageUrls: allPhotos || [],
                     isPublic: false, // 🟢 개인 추억으로 저장
                     tags: allTags, // 🟢 전체 태그 (하위 호환성)
@@ -573,28 +396,6 @@ function GuidePageInner() {
             });
 
             if (data && !(data as any).error) {
-                // 🟢 쿠폰 지급 확인
-                if ((data as any).couponAwarded) {
-                    setCouponAwarded(true);
-                    setCouponAmount((data as any).couponAmount || 0);
-                    setCouponMessage((data as any).message || "쿠폰이 지급되었습니다!");
-
-                    // 🟢 쿠폰 지급 이벤트 발생 (마이페이지 데이터 갱신용)
-                    if (typeof window !== "undefined") {
-                        window.dispatchEvent(
-                            new CustomEvent("couponAwarded", {
-                                detail: {
-                                    amount: (data as any).couponAmount || 0,
-                                    message: (data as any).message || "쿠폰이 지급되었습니다!",
-                                },
-                            })
-                        );
-                    }
-                } else {
-                    setCouponAwarded(false);
-                    setCouponMessage(null);
-                }
-
                 // 🟢 현재 추억 개수 저장
                 if ((data as any).personalMemoryCount !== undefined) {
                     setPersonalMemoryCount((data as any).personalMemoryCount);
@@ -627,26 +428,6 @@ function GuidePageInner() {
         }
     };
 
-    // 🟢 [Fix]: 모든 Hook은 리턴문보다 위에 있어야 합니다.
-
-    // 1. 필요한 변수들을 Hook보다 위에서 계산 (optional chaining 사용)
-    const isLastStep = currentStep === totalSteps - 1;
-    const isCompletePage = currentStep === totalSteps;
-    const currentStepData = useMemo(
-        () => stepData[currentStep] || { photos: [], description: "", tags: [] },
-        [currentStep, stepData]
-    );
-
-    const allPhotos = useMemo(() => {
-        if (!course) return [];
-        return isCompletePage ? Object.values(stepData).flatMap((step) => step.photos) : currentStepData.photos;
-    }, [isCompletePage, stepData, currentStepData.photos, course]);
-
-    // 2. 이미지 슬라이더 관련 Effect들을 리턴문 위로 이동
-    useEffect(() => {
-        setCurrentImageIndex(0);
-    }, [currentStep]);
-
     useEffect(() => {
         if (currentImageIndex >= allPhotos.length && allPhotos.length > 0) {
             setCurrentImageIndex(allPhotos.length - 1);
@@ -660,9 +441,6 @@ function GuidePageInner() {
         return null;
     }
 
-    // --- 이후 렌더링 로직 시작 ---
-    const mainImageUrl = allPhotos[0] || currentPlace?.imageUrl;
-    const galleryPhotos = allPhotos.slice(1);
     const currentDate = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
     const formattedDate = new Date()
         .toLocaleDateString("ko-KR", { year: "numeric", month: "numeric", day: "numeric" })
@@ -692,101 +470,6 @@ function GuidePageInner() {
             setCurrentImageIndex(currentImageIndex - 1);
         }
     };
-
-    // 🟢 완료 페이지: 저장하기와 공유하기만 표시
-    if (isCompletePage) {
-        return (
-            <div className="fixed inset-0 z-100 flex flex-col bg-white dark:bg-[#0f1710] overflow-hidden overscroll-none">
-                {/* Top Bar */}
-                <div className="absolute top-0 left-0 right-0 z-20 px-4 pt-4 pb-2 bg-transparent pointer-events-none">
-                    <div className="flex items-center justify-end mb-2 pointer-events-auto">
-                        <button
-                            onClick={() => router.push(`/courses/${courseId}`)}
-                            className="w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                </div>
-
-                {/* Background */}
-                <div className="flex-1 relative z-0 bg-gray-50 dark:bg-[#0f1710]">
-                    {course?.imageUrl ? (
-                        <div
-                            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                            style={{
-                                backgroundImage: `url(${course.imageUrl})`,
-                                filter: "blur(6px)",
-                                transform: "scale(1.1)",
-                            }}
-                        />
-                    ) : (
-                        <div className="absolute inset-0 bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-[#0f1710] dark:via-[#1a241b] dark:to-[#0f1710]" />
-                    )}
-                </div>
-
-                {/* 완료 페이지 콘텐츠 */}
-                <div className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] px-6 py-8">
-                    <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                            추억이 완성되었어요! 💕
-                        </h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">저장해보세요</p>
-                    </div>
-
-                    {/* 별점 입력 */}
-                    <div className="mb-6">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 text-center">
-                            이 데이트는 어떠셨나요?
-                        </p>
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                    key={star}
-                                    onClick={() => setStoryRating(star)}
-                                    className="text-3xl transition-all hover:scale-110 active:scale-95"
-                                    type="button"
-                                >
-                                    <span
-                                        className={
-                                            storyRating >= star
-                                                ? "text-yellow-400 opacity-100"
-                                                : "text-gray-300 dark:text-gray-600 opacity-30"
-                                        }
-                                    >
-                                        ⭐
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                            {storyRating === 5 && "최고였어요! 💕"}
-                            {storyRating === 4 && "정말 좋았어요! 😊"}
-                            {storyRating === 3 && "보통이었어요 😐"}
-                            {storyRating === 2 && "좀 아쉬웠어요 😕"}
-                            {storyRating === 1 && "별로였어요... 😢"}
-                        </p>
-                    </div>
-
-                    {/* 저장하기 버튼 */}
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handlePrev}
-                            className="px-6 h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
-                        >
-                            ← 뒤로
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            className="flex-1 h-14 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
-                        >
-                            저장하기
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     // 🟢 인트로 화면
     if (showIntro) {
@@ -907,91 +590,163 @@ function GuidePageInner() {
                                 : "우리의 데이트"}
                         </h1>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {(() => {
-                                return currentPlace?.imageUrl ? (
-                                    // 🟢 배경 이미지가 현재 장소 사진일 때: 코스명 · 장소명 (한줄 띄어서)
-                                    <>
-                                        <div>{course?.title || "코스"}</div>
-                                        {currentPlace?.name && (
-                                            <div className="mt-1">
-                                                <span className="mr-2">🎟</span>
-                                                <span>{currentPlace.name}</span>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    // 🟢 배경 이미지가 코스 이미지일 때: 코스명만
-                                    <span>{course?.title || "코스"}</span>
-                                );
-                            })()}
+                            <span>{course?.title || "코스"}</span>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">❤️ {currentDate}</p>
                     </div>
 
                     <div className="px-5 pb-24">
-                        {/* Section 2: 별점 평가 - 마지막 장소에서만 표시 */}
-                        {currentStep === totalSteps - 1 && (
-                            <div className="py-6 text-center border-b border-gray-100 dark:border-gray-800 mb-6">
-                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                    이 데이트는 어떠셨나요?
-                                </p>
-                                <div className="flex justify-center gap-2 mb-2">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <button
-                                            key={star}
-                                            onClick={() => setStoryRating(star)}
-                                            className="text-3xl transition-all hover:scale-110 active:scale-95"
-                                            type="button"
-                                        >
-                                            <span
-                                                className={
-                                                    storyRating >= star
-                                                        ? "text-yellow-400 opacity-100"
-                                                        : "text-gray-300 dark:text-gray-600 opacity-30"
-                                                }
-                                            >
-                                                ⭐
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {storyRating === 5 && "최고였어요! 💕"}
-                                    {storyRating === 4 && "정말 좋았어요! 😊"}
-                                    {storyRating === 3 && "보통이었어요 😐"}
-                                    {storyRating === 2 && "좀 아쉬웠어요 😕"}
-                                    {storyRating === 1 && "별로였어요... 😢"}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Section 4: 태그 - 마지막 step이 아니면 현재 step의 태그만 표시 */}
+                        {/* 페이지 0: 사진 업로드 | 페이지 1: 태그+텍스트+저장 */}
+                        {pageIndex === 0 ? (
+                        /* 🟢 페이지 0: 사진 업로드 */
+                        <>
                         <div className="pb-6">
-                            {(() => {
-                                // 🟢 완료 페이지가 아니면 현재 step의 태그만, 완료 페이지면 모든 태그
-                                const tagsToShow = isCompletePage
-                                    ? Array.from(new Set(Object.values(stepData).flatMap((step) => step.tags)))
-                                    : selectedTags;
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                                📸 우리의 순간들
+                            </label>
 
-                                return tagsToShow.length > 0 ? (
-                                    <div className="mb-3 flex flex-wrap gap-2">
-                                        {tagsToShow.map((tag) => (
-                                            <div
-                                                key={tag}
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium dark:text-gray-200"
-                                            >
-                                                #{tag}
+                            {allPhotos.length === 0 ? (
+                                <label className="flex flex-col items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:border-[#99c08e] dark:hover:border-[#99c08e] hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all">
+                                    <input
+                                        ref={mainImageInputRef}
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handlePhotoUpload}
+                                        style={{ display: "none" }}
+                                    />
+                                    <div className="text-4xl text-gray-400 dark:text-gray-500 mb-2">📷</div>
+                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                        사진을 추가해주세요 (1장 이상)
+                                    </p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                                        최대 10장, 파일당 50MB
+                                    </p>
+                                    {uploadingImages && (
+                                        <div className="mt-2 text-xs text-gray-500">업로드 중...</div>
+                                    )}
+                                </label>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="relative w-full h-64 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                        <Image
+                                            src={allPhotos[currentImageIndex] || allPhotos[0]}
+                                            alt=""
+                                            fill
+                                            className="object-cover"
+                                        />
+                                        <button
+                                            onClick={() => deletePhoto(allPhotos.length > 1 ? currentImageIndex : 0)}
+                                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+                                        >
+                                            ✕
+                                        </button>
+                                        {allPhotos.length < MAX_PHOTOS && (
+                                            <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center cursor-pointer">
+                                                <input
+                                                    ref={mainImageInputRef}
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*"
+                                                    onChange={handlePhotoUpload}
+                                                    style={{ display: "none" }}
+                                                />
+                                                <span className="text-xl">+</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                    {allPhotos.length > 1 && (
+                                        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                                            {allPhotos.map((url, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setCurrentImageIndex(idx)}
+                                                    className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 ${
+                                                        idx === currentImageIndex ? "border-[#99c08e]" : "border-transparent"
+                                                    }`}
+                                                >
+                                                    <Image src={url} alt="" fill className="object-cover" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        </>
+                        ) : (
+                        /* 🟢 페이지 1: 태그 + 텍스트 + 저장 */
+                        <>
+                        {/* 별점 */}
+                        <div className="py-6 text-center border-b border-gray-100 dark:border-gray-800 mb-6">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                이 데이트는 어떠셨나요?
+                            </p>
+                            <div className="flex justify-center gap-2 mb-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        onClick={() => setStoryRating(star)}
+                                        className="text-3xl transition-all hover:scale-110 active:scale-95"
+                                        type="button"
+                                    >
+                                        <span
+                                            className={
+                                                storyRating >= star
+                                                    ? "text-yellow-400 opacity-100"
+                                                    : "text-gray-300 dark:text-gray-600 opacity-30"
+                                            }
+                                        >
+                                            ⭐
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {storyRating === 5 && "최고였어요! 💕"}
+                                {storyRating === 4 && "정말 좋았어요! 😊"}
+                                {storyRating === 3 && "보통이었어요 😐"}
+                                {storyRating === 2 && "좀 아쉬웠어요 😕"}
+                                {storyRating === 1 && "별로였어요... 😢"}
+                            </p>
+                        </div>
+
+                        {/* 텍스트(설명) 입력 */}
+                        <div className="pb-4">
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                ✏️ 메모 (선택)
+                            </label>
+                            <textarea
+                                value={descriptionText}
+                                onChange={(e) => setDescriptionText(e.target.value)}
+                                placeholder="이 데이트에 대해 남기고 싶은 말"
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm resize-none outline-none focus:border-[#99c08e]"
+                            />
+                        </div>
+
+                        {/* 태그 - #DoNa 맨 앞 고정 */}
+                        <div className="pb-6">
+                            {selectedTags.length > 0 && (
+                                <div className="mb-3 flex flex-wrap gap-2">
+                                    {selectedTags.map((tag) => (
+                                        <div
+                                            key={tag}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium dark:text-gray-200"
+                                        >
+                                            #{tag}
+                                            {tag !== "DoNa" && (
                                                 <button
                                                     onClick={() => removeTag(tag)}
                                                     className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm leading-none m-0 p-0"
                                                 >
                                                     ✕
                                                 </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : null;
-                            })()}
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* 🟢 태그 직접 입력 필드 */}
                             <div className="mb-3 flex gap-2">
@@ -1000,7 +755,7 @@ function GuidePageInner() {
                                     value={tagInput}
                                     onChange={(e) => setTagInput(e.target.value)}
                                     onKeyDown={handleTagInputKeyDown}
-                                    placeholder="태그 직접 입력 (Enter)"
+                                    placeholder="태그 직접 입력 (Enter) - #DoNa은 맨 앞에 자동 포함"
                                     maxLength={10}
                                     className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm outline-none focus:border-[#99c08e] focus:ring-2 focus:ring-[#99c08e]/10 transition-colors"
                                 />
@@ -1016,12 +771,7 @@ function GuidePageInner() {
                             {/* 제안 태그 */}
                             <div className="flex flex-wrap gap-2">
                                 {SUGGESTED_TAGS.map((tag) => {
-                                    // 🟢 완료 페이지가 아니면 현재 step의 태그만 체크
-                                    const isSelected = isCompletePage
-                                        ? Array.from(
-                                              new Set(Object.values(stepData).flatMap((step) => step.tags))
-                                          ).includes(tag)
-                                        : selectedTags.includes(tag);
+                                    const isSelected = selectedTags.includes(tag);
 
                                     return (
                                         <button
@@ -1040,139 +790,20 @@ function GuidePageInner() {
                             </div>
                         </div>
 
-                        {/* Section 5: 사진 갤러리 - 추억 회상 */}
-                        <div className="pb-6">
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-3">
-                                📸 우리의 순간들
-                            </label>
-
-                            {/* 메인 이미지 업로드 영역 */}
-                            {allPhotos.length === 0 ? (
-                                <div className="mb-4">
-                                    <label className="flex flex-col items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:border-[#99c08e] dark:hover:border-[#99c08e] hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all">
-                                        <input
-                                            ref={mainImageInputRef}
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={handleMainImageUpload}
-                                            style={{ display: "none" }}
-                                        />
-                                        <div className="text-4xl text-gray-400 dark:text-gray-500 mb-2">📷</div>
-                                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                                            첫 번째 추억 사진을 추가해주세요
-                                        </p>
-                                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                                            최대 3개까지 업로드 가능
-                                        </p>
-                                        {uploadingImages && (
-                                            <div className="mt-2 text-xs text-gray-500">업로드 중...</div>
-                                        )}
-                                    </label>
-                                </div>
-                            ) : (
-                                <div className="mb-4 relative">
-                                    {/* 진행 상태 점들 - 사진 컨테이너 위에 배치 */}
-                                    {allPhotos.length > 1 && (
-                                        <div
-                                            className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 -top-10"
-                                            style={{ top: "calc(env(safe-area-inset-top, 0) + 1rem)" }}
-                                        >
-                                            {allPhotos.map((_, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className={`h-1 rounded-full transition-all ${
-                                                        idx === currentImageIndex ? "bg-white w-8" : "bg-white/40 w-1"
-                                                    }`}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div
-                                        className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800"
-                                        onTouchStart={onTouchStart}
-                                        onTouchMove={onTouchMove}
-                                        onTouchEnd={onTouchEnd}
-                                    >
-                                        <Image
-                                            src={allPhotos[currentImageIndex] || allPhotos[0]}
-                                            alt="Main photo"
-                                            fill
-                                            className="object-cover"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                const photoIndexToDelete = allPhotos.length > 1 ? currentImageIndex : 0;
-                                                deletePhoto(photoIndexToDelete);
-                                            }}
-                                            className="absolute top-2 right-3 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80 transition-colors z-10"
-                                        >
-                                            ✕
-                                        </button>
-                                        {allPhotos.length < 3 && (
-                                            <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-800/90 flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-gray-800 shadow-lg transition-all z-10">
-                                                <input
-                                                    ref={mainImageInputRef}
-                                                    type="file"
-                                                    multiple
-                                                    accept="image/*"
-                                                    onChange={handleMainImageUpload}
-                                                    style={{ display: "none" }}
-                                                />
-                                                <span className="text-xl text-gray-600 dark:text-gray-300">+</span>
-                                            </label>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 추가 사진 갤러리 (2번째 사진부터) */}
-                            {(galleryPhotos.length > 0 || allPhotos.length > 0) && (
-                                <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide -webkit-overflow-scrolling-touch">
-                                    {galleryPhotos.map((url, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800"
-                                        >
-                                            <Image src={url} alt={`Photo ${idx + 2}`} fill className="object-cover" />
-                                            <button
-                                                onClick={() => deletePhoto(idx + 1)}
-                                                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70 transition-colors"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {allPhotos.length < 10 && (
-                                        <label className="w-20 h-20 shrink-0 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center cursor-pointer hover:border-[#99c08e] dark:hover:border-[#99c08e] transition-colors">
-                                            <input
-                                                ref={galleryImageInputRef}
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                onChange={handleGalleryUpload}
-                                                style={{ display: "none" }}
-                                            />
-                                            <span className="text-2xl text-gray-400 dark:text-gray-500">+</span>
-                                        </label>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 🟢 길찾기 버튼 제거됨 */}
+                        </>
+                        )}
                     </div>
                 </div>
 
                 {/* 하단 버튼 */}
                 <div className="shrink-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 flex gap-3">
-                    {currentStep === totalSteps - 1 ? (
+                    {pageIndex === 1 ? (
                         <>
                             <button
                                 onClick={handlePrev}
                                 className="px-6 h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
                             >
-                                ← 이전
+                                ← 뒤로
                             </button>
                             <button
                                 onClick={handleSubmit}
@@ -1182,25 +813,13 @@ function GuidePageInner() {
                             </button>
                         </>
                     ) : (
-                        <>
-                            {currentStep > 0 && (
-                                <button
-                                    onClick={handlePrev}
-                                    className="h-14 px-6 border-2 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-                                >
-                                    ← 이전
-                                </button>
-                            )}
-                            <button
-                                onClick={handleNext}
-                                className={`${
-                                    currentStep > 0 ? "flex-1" : "w-full"
-                                } h-14 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all`}
-                                style={{ backgroundColor: "#99c08e" }}
-                            >
-                                다음
-                            </button>
-                        </>
+                        <button
+                            onClick={handleNext}
+                            className="w-full h-14 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all"
+                            style={{ backgroundColor: "#99c08e" }}
+                        >
+                            다음
+                        </button>
                     )}
                 </div>
             </div>
@@ -1210,24 +829,6 @@ function GuidePageInner() {
                     <div className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
                         <div className="text-6xl mb-4">🏆</div>
                         <h3 className="text-2xl font-black text-slate-950 mb-2">코스 정복 완료!</h3>
-
-                        {couponAwarded && couponMessage && (
-                            <div className="mb-4 p-4 bg-linear-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl">
-                                <div className="flex items-center justify-center gap-2 mb-2">
-                                    <span className="text-2xl">🎁</span>
-                                    <p className="text-sm font-bold text-amber-700">쿠폰 지급 완료!</p>
-                                </div>
-                                <p className="text-xs text-amber-600 font-medium">{couponMessage}</p>
-                            </div>
-                        )}
-
-                        {!couponAwarded && (
-                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                                <p className="text-xs text-blue-600 font-medium">
-                                    💡 코스 5개 완료 시 쿠폰 1개를 받을 수 있어요!
-                                </p>
-                            </div>
-                        )}
 
                         <p className="text-gray-500 mb-8">
                             오늘 데이트는 어떠셨나요?
@@ -1262,7 +863,13 @@ function GuidePageInner() {
                 courseId={Number(courseId)}
                 courseName={course?.title || ""}
             />
-            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showSubscriptionModal && course && (
+                <TicketPlans
+                    courseId={Number(courseId)}
+                    courseGrade={(course.grade || "BASIC").toUpperCase() === "PREMIUM" ? "PREMIUM" : "BASIC"}
+                    onClose={() => setShowSubscriptionModal(false)}
+                />
+            )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
             {/* 🟢 사진 개수 부족 모달 */}
             {showPhotoCountModal && (
@@ -1291,11 +898,11 @@ function GuidePageInner() {
                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
                             나만의 추억을 저장하려면
                             <br />
-                            최소 <span className="font-bold text-amber-600 dark:text-amber-400">3장 이상</span>의 사진이
+                            최소 <span className="font-bold text-amber-600 dark:text-amber-400">1장 이상</span>의 사진이
                             필요합니다.
                             <br />
                             <br />
-                            현재 <span className="font-bold">{currentPhotoCount}장</span>의 사진이 있습니다.
+                            현재 <span className="font-bold">{allPhotos.length}장</span>의 사진이 있습니다.
                         </p>
 
                         {/* 버튼 */}
@@ -1378,28 +985,6 @@ function GuidePageInner() {
                             <br />
                             DoNa의 '{userName} 스토리'에 남았어요.
                         </p>
-
-                        {couponAwarded && couponMessage && (
-                            <div className="mb-4 p-4 bg-linear-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl">
-                                <div className="flex items-center justify-center gap-2 mb-2">
-                                    <span className="text-2xl">🎁</span>
-                                    <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                                        쿠폰 {couponAmount}개 지급 완료!
-                                    </p>
-                                </div>
-                                <p className="text-xs text-amber-600 dark:text-amber-300 font-medium">
-                                    {couponMessage}
-                                </p>
-                            </div>
-                        )}
-
-                        {!couponAwarded && personalMemoryCount !== null && personalMemoryCount < 10 && (
-                            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                    💡 추억 {10 - personalMemoryCount}개를 더 완료하면 쿠폰 2개를 드려요!
-                                </p>
-                            </div>
-                        )}
 
                         <p className="text-gray-600 dark:text-gray-400 mb-8">소중한 추억이 잘 저장되었어요!</p>
                         <button

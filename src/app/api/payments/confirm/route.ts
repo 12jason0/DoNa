@@ -6,20 +6,19 @@ import { resolveUserId } from "@/lib/auth"; // 🔐 [보안] 서버 세션 쿠�
 
 export const dynamic = "force-dynamic";
 
-type PlanKey = "ticket_light" | "ticket_standard" | "ticket_pro" | "sub_basic" | "sub_premium";
+type PlanKey = "ticket_basic" | "ticket_premium" | "sub_basic" | "sub_premium";
 
 interface PlanInfo {
     amount: number;
-    type: "COUPON" | "SUBSCRIPTION";
+    type: "COURSE_TICKET" | "SUBSCRIPTION";
     value: number;
     name: string;
     tier?: "FREE" | "BASIC" | "PREMIUM";
 }
 
 const PLAN_DATA: Record<PlanKey, PlanInfo> = {
-    ticket_light: { amount: 2900, type: "COUPON", value: 3, name: "AI 추천 쿠폰 3개 (Light)" },
-    ticket_standard: { amount: 4500, type: "COUPON", value: 5, name: "AI 추천 쿠폰 5개 (Standard)" },
-    ticket_pro: { amount: 7900, type: "COUPON", value: 10, name: "AI 추천 쿠폰 10개 (Pro)" },
+    ticket_basic: { amount: 990, type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC" },
+    ticket_premium: { amount: 1900, type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM" },
     sub_basic: {
         amount: 4900,
         type: "SUBSCRIPTION",
@@ -39,12 +38,13 @@ const PLAN_DATA: Record<PlanKey, PlanInfo> = {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { paymentKey, orderId, amount, plan, userId } = body as {
+        const { paymentKey, orderId, amount, plan, userId, intentId } = body as {
             paymentKey?: string;
             orderId?: string;
             amount?: number;
             plan?: PlanKey;
             userId?: number | string;
+            intentId?: string;
         };
 
         // 🔐 [보안] 1. 서버 세션 쿠키에서 userId 추출 (클라이언트가 보낸 userId 맹신 금지)
@@ -113,6 +113,16 @@ export async function POST(req: NextRequest) {
 
         const planInfo = PLAN_DATA[plan];
 
+        // 🟢 COURSE_TICKET 결제 시 intentId 필수 (Unlock Intent 검증)
+        if (planInfo.type === "COURSE_TICKET") {
+            if (!intentId || typeof intentId !== "string") {
+                return NextResponse.json(
+                    { success: false, error: "INVALID_REQUEST", message: "intentId가 필요합니다." },
+                    { status: 400 }
+                );
+            }
+        }
+
         // 3. 금액 검증
         if (Number(amount) !== planInfo.amount) {
             return NextResponse.json(
@@ -126,7 +136,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 🟢 [Fix]: 웹 결제 승인(/api/payments/confirm)은 항상 GENERAL 키를 사용하도록 고정합니다.
-        // 프론트엔드(TicketPlans.tsx)에서 구독권/쿠폰 상관없이 NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL을 사용하므로,
+        // 프론트엔드(TicketPlans.tsx)에서 구독권/열람권 상관없이 NEXT_PUBLIC_TOSS_CLIENT_KEY_GENERAL을 사용하므로,
         // 백엔드에서도 동일한 MID의 시크릿 키를 사용해야 합니다.
         // ⚠️ 중요: 프론트엔드에서 사용한 클라이언트 키와 백엔드 시크릿 키의 MID가 일치해야 합니다!
         const secretKey = process.env.TOSS_SECRET_KEY_GENERAL;
@@ -162,6 +172,36 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // 🟢 COURSE_TICKET: Intent 검증 및 CourseUnlock 생성
+        let unlockCourseId: number | null = null;
+        if (planInfo.type === "COURSE_TICKET" && intentId) {
+            const intent = await (prisma as any).unlockIntent.findUnique({
+                where: { id: intentId },
+            });
+            if (!intent || intent.userId !== numericUserId || intent.status !== "PENDING") {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        error: "INVALID_INTENT",
+                        message: "유효하지 않거나 만료된 결제 의도입니다. 다시 시도해주세요.",
+                    },
+                    { status: 400 }
+                );
+            }
+            if (intent.planId !== plan) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        error: "INTENT_MISMATCH",
+                        message: "결제 상품과 의도가 일치하지 않습니다.",
+                    },
+                    { status: 400 }
+                );
+            }
+            // 🟢 courseGrade 검증 제거 → unlock-intent에서 productId 기반 검증 완료됨
+            unlockCourseId = intent.courseId;
+        }
+
         // 👇 tx 타입을 명시하여 빨간 줄 제거
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 결제 기록 생성
@@ -181,15 +221,25 @@ export async function POST(req: NextRequest) {
             // 유저 혜택 지급
             let updatedUser;
 
-            if (planInfo.type === "COUPON") {
-                updatedUser = await tx.user.update({
+            if (planInfo.type === "COURSE_TICKET" && unlockCourseId) {
+                // 🟢 CourseUnlock 생성
+                await (tx as any).courseUnlock.upsert({
+                    where: {
+                        userId_courseId: { userId: numericUserId, courseId: unlockCourseId },
+                    },
+                    update: {},
+                    create: {
+                        userId: numericUserId,
+                        courseId: unlockCourseId,
+                    },
+                });
+                await (tx as any).unlockIntent.update({
+                    where: { id: intentId! },
+                    data: { status: "COMPLETED" },
+                });
+                updatedUser = await tx.user.findUnique({
                     where: { id: numericUserId },
-                    data: {
-                        couponCount: { increment: planInfo.value },
-                    },
-                    select: {
-                        couponCount: true,
-                    },
+                    select: { subscriptionTier: true, subscriptionExpiresAt: true },
                 });
             } else if (planInfo.type === "SUBSCRIPTION") {
                 const currentUser = await tx.user.findUnique({ where: { id: numericUserId } });
@@ -211,7 +261,6 @@ export async function POST(req: NextRequest) {
                         isAutoRenewal: true,
                     },
                     select: {
-                        couponCount: true,
                         subscriptionTier: true,
                         subscriptionExpiresAt: true,
                     },
@@ -221,17 +270,19 @@ export async function POST(req: NextRequest) {
             return { payment: newPayment, user: updatedUser };
         });
 
-        // 🟢 쿠폰 결제 시 최신 쿠폰 개수 반환
-        const responseData = {
+        // 🟢 응답 데이터
+        const responseData: Record<string, unknown> = {
             success: true,
             orderId,
             planName: planInfo.name,
             updatedUser: {
-                coupons: result.user?.couponCount ?? 0,
                 subscriptionTier: (result.user as any)?.subscriptionTier,
                 subscriptionExpiresAt: (result.user as any)?.subscriptionExpiresAt,
             },
         };
+        if (unlockCourseId != null) {
+            responseData.courseId = unlockCourseId;
+        }
 
         return NextResponse.json(responseData);
     } catch (e: any) {

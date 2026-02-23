@@ -64,7 +64,10 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                     createPortal(<ComingSoonModal onClose={() => setShowComingSoon(null)} />, document.body)}
                 {showLoginModal &&
                     typeof document !== "undefined" &&
-                    createPortal(<LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />, document.body)}
+                    createPortal(
+                        <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />,
+                        document.body,
+                    )}
             </>
         );
     }
@@ -117,11 +120,13 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 오늘 뭐하지?
                             </span>
                         </Link>
-                        <Link
-                            href="/personalized-home"
-                            prefetch={true}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onClose();
+                                setShowComingSoon("escape");
+                            }}
                             className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
-                            onClick={onClose}
                         >
                             <span
                                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
@@ -138,12 +143,8 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                     strokeLinejoin="round"
                                     viewBox="0 0 24 24"
                                 >
-                                    <path d="M12 6V2H8" />
-                                    <path d="M15 11v2" />
-                                    <path d="M2 12h2" />
-                                    <path d="M20 12h2" />
-                                    <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
-                                    <path d="M9 11v2" />
+                                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                                    <line x1="4" x2="4" y1="22" y2="15" />
                                 </svg>
                             </span>
                             <span
@@ -152,9 +153,9 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 }`}
                                 style={{ transitionDelay: "60ms" }}
                             >
-                                AI 추천
+                                커플 미션 게임
                             </span>
-                        </Link>
+                        </button>
                         <button
                             type="button"
                             onClick={() => {
@@ -237,7 +238,12 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                             }`}
                                             style={{ transitionDelay: "120ms" }}
                                         >
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg
+                                                className="h-5 w-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
                                                 <path
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"

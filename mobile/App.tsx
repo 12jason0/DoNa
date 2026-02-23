@@ -38,6 +38,8 @@ export default function App() {
     const responseListener = useRef<Notifications.Subscription | null>(null);
     // 🟢 [2026-01-21] 딥링크를 통해 전달받은 경로를 관리하는 상태
     const [initialUri, setInitialUri] = useState<string>(WEB_BASE);
+    // 🟢 [푸시 알림] 알림 클릭 시 WebView 네비게이션 콜백
+    const navigateToRef = useRef<((url: string) => void) | null>(null);
     // 🟢 [안전 장치]: RevenueCat 초기화 완료 여부
     const [isPurchasesReady, setIsPurchasesReady] = useState(false);
 
@@ -60,16 +62,31 @@ export default function App() {
             }
         };
 
-        // 앱 시작 시 딥링크 확인
-        Linking.getInitialURL()
-            .then((url) => {
-                if (url) {
-                    handleDeepLink({ url });
+        // 앱 시작 시 딥링크 + 푸시 알림 클릭(콜드스타트) 확인
+        (async () => {
+            try {
+                const [notifResponse, linkingUrl] = await Promise.all([
+                    Notifications.getLastNotificationResponseAsync(),
+                    Linking.getInitialURL(),
+                ]);
+                // 푸시 알림 클릭으로 앱이 열린 경우 → 해당 URL로 이동
+                const data = notifResponse?.notification?.request?.content?.data as { url?: string; courseId?: string } | undefined;
+                if (data?.url) {
+                    const target = data.url.startsWith("http") ? data.url : `${WEB_BASE}${data.url}`;
+                    setInitialUri(target);
+                    return;
                 }
-            })
-            .catch((error) => {
-                console.error("📍 [App] 초기 딥링크 확인 실패:", error);
-            });
+                if (data?.courseId && !data?.url) {
+                    setInitialUri(`${WEB_BASE}/courses/${data.courseId}/start`);
+                    return;
+                }
+                if (linkingUrl) {
+                    handleDeepLink({ url: linkingUrl });
+                }
+            } catch (error) {
+                console.error("📍 [App] 초기 URL 확인 실패:", error);
+            }
+        })();
 
         // 앱 실행 중 딥링크 수신 리스너 등록
         const subscription = Linking.addEventListener("url", handleDeepLink);
@@ -149,7 +166,13 @@ export default function App() {
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-            console.log("👆 알림 클릭:", response);
+            const data = response?.notification?.request?.content?.data as { url?: string; courseId?: string } | undefined;
+            if (data?.url) {
+                const target = data.url.startsWith("http") ? data.url : `${WEB_BASE}${data.url}`;
+                navigateToRef.current?.(target);
+            } else if (data?.courseId) {
+                navigateToRef.current?.(`${WEB_BASE}/courses/${data.courseId}/start`);
+            }
         });
 
         return () => {
@@ -174,6 +197,9 @@ export default function App() {
                         {/* <WebScreen uri="https://dona.io.kr" /> */}
                         <WebScreen
                             uri={initialUri}
+                            onRegisterNavigate={(fn: ((url: string) => void) | null) => {
+                                navigateToRef.current = fn;
+                            }}
                             onUserLogin={async (userId: string) => {
                                 // 🟢 [RevenueCat 동기화]: 로그인 시 사용자 ID를 RevenueCat에 등록
                                 try {

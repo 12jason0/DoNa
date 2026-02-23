@@ -126,8 +126,6 @@ export async function POST(request: NextRequest) {
             else if (kakaoGender === "female") gender = "F";
         }
 
-        const initialCoupons = 1;
-
         // 🟢 [2026-01-21] 이메일 중복 체크를 포함한 통합 로그인 로직 (계정 통합 지원)
         const result = await (prisma as any).$transaction(async (tx: any) => {
             // 1. 소셜 ID로 먼저 확인
@@ -138,7 +136,6 @@ export async function POST(request: NextRequest) {
                     email: true,
                     username: true,
                     profileImageUrl: true,
-                    couponCount: true,
                     ageRange: true,
                     gender: true,
                 },
@@ -153,7 +150,6 @@ export async function POST(request: NextRequest) {
                         email: true,
                         username: true,
                         profileImageUrl: true,
-                        couponCount: true,
                         ageRange: true,
                         gender: true,
                     },
@@ -186,38 +182,10 @@ export async function POST(request: NextRequest) {
                         email: true,
                         username: true,
                         profileImageUrl: true,
-                        couponCount: true,
                         ageRange: true,
                         gender: true,
                     },
                 });
-
-                // 🟢 신규 가입인 경우 보상 로그 생성 (기존 유저는 보상 중복 지급 방지)
-                const existingReward = await tx.userReward.findFirst({
-                    where: {
-                        userId: updatedUser.id,
-                        type: "signup",
-                    },
-                });
-
-                if (!existingReward) {
-                    // 기존 유저지만 보상이 없으면 생성 (계정 통합 시나리오)
-                    await tx.userReward.create({
-                        data: {
-                            userId: updatedUser.id,
-                            type: "signup",
-                            amount: initialCoupons,
-                            unit: "coupon",
-                        },
-                    });
-                    // 쿠폰 지급
-                    await tx.user.update({
-                        where: { id: updatedUser.id },
-                        data: { couponCount: { increment: initialCoupons } },
-                    });
-                    updatedUser.couponCount = (updatedUser.couponCount || 0) + initialCoupons;
-                    return { user: updatedUser, isNew: true };
-                }
 
                 return { user: updatedUser, isNew: false };
             } else {
@@ -229,41 +197,30 @@ export async function POST(request: NextRequest) {
                         profileImageUrl,
                         socialId,
                         provider: "kakao",
-                        ageRange: ageRange, // 🟢 카카오에서 수신한 실제 데이터 직접 사용
-                        gender: gender, // 🟢 카카오에서 수신한 실제 데이터 직접 사용
-                        couponCount: initialCoupons,
+                        ageRange: ageRange,
+                        gender: gender,
                     },
                     select: {
                         id: true,
                         email: true,
                         username: true,
                         profileImageUrl: true,
-                        couponCount: true,
                         ageRange: true,
                         gender: true,
                     },
                 });
 
-                // 보상 로그 생성
-                await tx.userReward.create({
-                    data: {
-                        userId: newUser.id,
-                        type: "signup",
-                        amount: initialCoupons,
-                        unit: "coupon",
-                    },
-                });
                 return { user: newUser, isNew: true };
             }
         });
 
         const user = result.user;
-        const isNewUser = result.isNew;
+        const isNewUser: boolean = result.isNew ?? false;
 
         const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "365d" });
         // 🟢 [2026-01-21] 응답 payload에 사용자 데이터 추가 (ageRange, gender 포함)
         const message = isNewUser
-            ? "카카오 회원가입이 완료되었습니다. 쿠폰 2개가 지급되었습니다."
+            ? "카카오 회원가입이 완료되었습니다."
             : "카카오 로그인이 완료되었습니다.";
         const res = NextResponse.json({
             success: true,
@@ -274,12 +231,10 @@ export async function POST(request: NextRequest) {
                 name: user.username,
                 nickname: user.username,
                 profileImageUrl: user.profileImageUrl || null,
-                coins: user.couponCount ?? 0,
-                ageRange: user.ageRange || null, // 🟢 클라이언트 전달
-                gender: user.gender || null, // 🟢 클라이언트 전달
+                ageRange: user.ageRange || null,
+                gender: user.gender || null,
             },
             newUser: isNewUser,
-            couponsAwarded: isNewUser ? initialCoupons : 0,
         });
 
         // 🟢 [Fix]: 이전 세션 파편 완전 제거 (로컬/카카오 로그인 통합)

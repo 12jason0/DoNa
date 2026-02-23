@@ -83,11 +83,6 @@ const Signup = () => {
             const data = await response.json();
 
             if (response.ok) {
-                try {
-                    localStorage.setItem("userCoupons", "3");
-                    localStorage.setItem("userCoins", "3");
-                } catch {}
-
                 window.dispatchEvent(new CustomEvent("authLoginSuccess"));
                 const redirectPath = data.next || next || "/";
                 window.location.href = redirectPath;

@@ -5,8 +5,6 @@
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import ComingSoonModal from "@/components/ComingSoonModal";
-import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 
@@ -16,8 +14,6 @@ export default function Footer({ isApp = false }: FooterProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { isAuthenticated } = useAuth();
-    const [showEscapeComingSoon, setShowEscapeComingSoon] = useState(false);
-    const [showLoginModal, setShowLoginModal] = useState(false);
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
 
     // 🟢 AuthContext 기준: 로그인 시에만 알림 상태 조회 (쿠키로 사용자 식별)
@@ -156,25 +152,28 @@ export default function Footer({ isApp = false }: FooterProps) {
                     </Link>
                 </TapFeedback>
 
-                {/* 4. Escape */}
+                {/* 4. 오늘의 데이트 추천 */}
                 <TapFeedback>
-                    <button
-                        onClick={() => {
-                            if (isAuthenticated) {
-                                setShowEscapeComingSoon(true);
-                            } else {
-                                setShowLoginModal(true);
-                            }
-                        }}
-                        aria-label="Escape"
-                        className="p-1.5 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 block"
-                        style={{ color: "#6b7280" }}
+                    <Link
+                        href="/personalized-home"
+                        prefetch={true}
+                        aria-label="오늘의 데이트 추천"
+                        className={`p-1.5 rounded-full transition-colors block ${
+                            isActive("/personalized-home")
+                                ? "bg-emerald-500/15 dark:bg-emerald-500/20"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                        style={{ color: isActive("/personalized-home") ? "#059669" : "#6b7280" }}
                     >
                         <svg {...svgProps}>
-                            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                            <line x1="4" x2="4" y1="22" y2="15" />
+                            <path d="M12 6V2H8" />
+                            <path d="M15 11v2" />
+                            <path d="M2 12h2" />
+                            <path d="M20 12h2" />
+                            <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
+                            <path d="M9 11v2" />
                         </svg>
-                    </button>
+                    </Link>
                 </TapFeedback>
 
                 {/* 5. 마이페이지 */}
@@ -223,10 +222,6 @@ export default function Footer({ isApp = false }: FooterProps) {
                 )}
             </nav>
 
-            {/* ✅ 사건 파일 준비 중 모달 (로그인한 경우) */}
-            {showEscapeComingSoon && <ComingSoonModal onClose={() => setShowEscapeComingSoon(false)} />}
-            {/* ✅ 로그인 모달 (로그인하지 않은 경우) */}
-            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
         </footer>
     );
 }

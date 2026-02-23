@@ -9,15 +9,15 @@ import Link from "next/link";
 function PaymentFailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    
+
     // URL 파라미터에서 정보 추출
     const code = searchParams.get("code");
     const message = searchParams.get("message");
     const orderId = searchParams.get("orderId");
-    
+
     // 메시지 디코딩 (URL 인코딩된 경우)
     const decodedMessage = message ? decodeURIComponent(message) : null;
-    
+
     // 코드에 따른 메시지 결정
     const getTitle = () => {
         if (code === "PAY_PROCESS_CANCELED") {
@@ -25,7 +25,7 @@ function PaymentFailContent() {
         }
         return "결제 실패";
     };
-    
+
     const getDescription = () => {
         if (decodedMessage) {
             return decodedMessage;
@@ -35,23 +35,21 @@ function PaymentFailContent() {
         }
         return "결제가 실패했어요. 다시 시도해 주세요.";
     };
-    
+
     return (
         <div className="w-full max-w-md p-8 rounded-2xl border shadow-sm text-center bg-white">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <XCircle className="w-10 h-10 text-red-500" />
             </div>
-            
+
             <h1 className="text-2xl font-bold mb-2 text-gray-900">{getTitle()}</h1>
             <p className="text-gray-700 mb-2">{getDescription()}</p>
-            
-            {orderId && (
-                <p className="text-xs text-gray-400 mb-6">주문번호: {orderId}</p>
-            )}
-            
+
+            {orderId && <p className="text-xs text-gray-400 mb-6">주문번호: {orderId}</p>}
+
             <div className="flex flex-col gap-3">
-                <Link 
-                    href="/personalized-home" 
+                <Link
+                    href="/"
                     className="w-full px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all active:scale-95"
                 >
                     홈으로 돌아가기

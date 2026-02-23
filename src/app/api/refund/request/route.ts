@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         // 구독권인지 확인
         const isSubscription = payment.orderName.includes("구독") || payment.orderName.includes("멤버십") || payment.orderName.includes("프리미엄");
         if (!isSubscription) {
-            return NextResponse.json({ error: "구독권만 환불 요청이 가능합니다. 쿠폰은 즉시 환불이 가능합니다." }, { status: 400 });
+            return NextResponse.json({ error: "구독권만 환불 요청이 가능합니다. 단건 열람권은 환불이 제한됩니다." }, { status: 400 });
         }
 
         // 🟢 결제일로부터 7일 경과 확인 (7일 지나면 무조건 환불 불가)

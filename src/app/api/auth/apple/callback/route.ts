@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
 
         // 🟢 [Fix]: Race Condition 방지 - upsert로 원자적 처리
         const result = await (prisma as any).$transaction(async (tx: any) => {
-            const initialCoupons = 1;
+            const existedBefore = await tx.user.findFirst({
+                where: { socialId: appleUserId, provider: "apple" },
+            });
 
             const upsertedUser = await tx.user.upsert({
                 where: {
@@ -51,7 +53,6 @@ export async function POST(request: NextRequest) {
                     username: `user_${appleUserId.substring(0, 6)}`,
                     socialId: appleUserId,
                     provider: "apple",
-                    couponCount: initialCoupons,
                     profileImageUrl: DEFAULT_PROFILE_IMG,
                 },
             });
@@ -64,21 +65,7 @@ export async function POST(request: NextRequest) {
                 upsertedUser.profileImageUrl = DEFAULT_PROFILE_IMG;
             }
 
-            const existingReward = await tx.userReward.findFirst({
-                where: {
-                    userId: upsertedUser.id,
-                    type: "signup",
-                },
-            });
-
-            if (!existingReward) {
-                await tx.userReward.create({
-                    data: { userId: upsertedUser.id, type: "signup", amount: initialCoupons, unit: "coupon" },
-                });
-                return { user: upsertedUser, isNew: true };
-            }
-
-            return { user: upsertedUser, isNew: false };
+            return { user: upsertedUser, isNew: !existedBefore };
         });
 
         const user = result.user;

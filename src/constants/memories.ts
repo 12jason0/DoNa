@@ -12,7 +12,7 @@ export const MEMORY_MESSAGES = {
         button: "추억 남기러 가기",
     },
     filled: {
-        title: "우리의 소중한 기록",
+        title: "나만 아는 비밀 기록",
         subtitle: "최근 데이트 경험을 다시 만나고, 이어갈 다음 여정을 시작해보세요.",
         button: "추억 보기",
     },

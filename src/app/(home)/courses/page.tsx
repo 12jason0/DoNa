@@ -6,6 +6,44 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 
+// 🟢 Hero 슬라이더용 코스 (FREE 등급, "지금 많이 선택한 코스")
+async function getHeroCourses() {
+    try {
+        const heroRaw = await prisma.course.findMany({
+            where: { isPublic: true, grade: "FREE" },
+            take: 10,
+            select: {
+                id: true,
+                title: true,
+                region: true,
+                imageUrl: true,
+                concept: true,
+                coursePlaces: {
+                    orderBy: { order_index: "asc" as const },
+                    take: 1,
+                    select: { place: { select: { imageUrl: true } } },
+                },
+            },
+        });
+        const filtered = filterCoursesByImagePolicy(heroRaw as unknown as CourseWithPlaces[], "any");
+        if (filtered.length === 0) return [];
+        const threeDayEpoch = Math.floor(Date.now() / 259200000);
+        const startIndex = threeDayEpoch % filtered.length;
+        return Array.from(
+            { length: Math.min(5, filtered.length) },
+            (_, i) => filtered[(startIndex + i) % filtered.length]
+        ).map((c: any) => ({
+            id: String(c.id),
+            title: c.title || "제목 없음",
+            imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+            location: c.region || "",
+            concept: c.concept || "",
+        }));
+    } catch {
+        return [];
+    }
+}
+
 export const dynamic = "force-dynamic";
 export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐시 시간 증가
 
@@ -153,6 +191,8 @@ const getCachedDefaultCourses = unstable_cache(
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
     const concept = typeof searchParams?.concept === "string" ? searchParams.concept : undefined;
+    const gradeParam = typeof searchParams?.grade === "string" ? searchParams.grade.toUpperCase() : undefined;
+    const grade = ["FREE", "BASIC", "PREMIUM"].includes(gradeParam || "") ? gradeParam : undefined;
 
     // ✅ 서버 사이드 인증 및 잠금 해제 목록 병렬 조회 (성능 향상)
     const cookieStore = await cookies();
@@ -187,11 +227,12 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             console.warn("[CoursesPage] Auth check failed:", e);
         }
     }
-    const isDefaultLoad = !q && !concept;
+    const isDefaultLoad = !q && !concept && !grade;
 
     // 🟢 [Case 1: 검색/필터링 모드] - 캐싱 없이 실시간 검색
     if (!isDefaultLoad) {
         const where: any = { isPublic: true };
+        if (grade) where.grade = grade;
         if (q) {
             where.OR = [
                 { title: { contains: q, mode: "insensitive" } },
@@ -224,12 +265,15 @@ export default async function CoursesPage({
     searchParams: { [key: string]: string | string[] | undefined };
 }) {
     const resolvedParams = await Promise.resolve(searchParams);
-    const initialCourses = await getInitialCourses(resolvedParams);
+    const [initialCourses, initialHeroCourses] = await Promise.all([
+        getInitialCourses(resolvedParams),
+        getHeroCourses(),
+    ]);
 
     return (
         <Suspense fallback={<div className="min-h-screen bg-white" />}>
-            {/* 🟢 initialCourses를 주입하여 클라이언트에서의 첫 로드를 생략하게 함 */}
-            <CoursesClient initialCourses={initialCourses} />
+            {/* 🟢 initialCourses, initialHeroCourses를 주입하여 클라이언트에서의 첫 로드를 생략 */}
+            <CoursesClient initialCourses={initialCourses} initialHeroCourses={initialHeroCourses} />
         </Suspense>
     );
 }

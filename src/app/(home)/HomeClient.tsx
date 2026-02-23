@@ -6,46 +6,18 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
-import HeroSlider from "@/components/HeroSlider";
-import OnboardingSection from "@/components/OnboardingSection";
 import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
 import MemoryCTA, { MemoryPreview } from "@/components/MemoryCTA";
 import LoginModal from "@/components/LoginModal";
+import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import TapFeedback from "@/components/TapFeedback";
 import { X } from "lucide-react";
 
-import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 import { isIOS } from "@/lib/platform";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
-// 🟢 모든 테마 목록 (STATIC_CONCEPTS와 동일하게 22개)
-const ALL_CONCEPTS = [
-    "가성비",
-    "감성데이트",
-    "골목투어",
-    "공연·전시",
-    "맛집탐방",
-    "문화예술",
-    "쇼핑",
-    "술자리",
-    "실내데이트",
-    "야경",
-    "이색데이트",
-    "인생샷",
-    "전통문화",
-    "기타",
-    "체험",
-    "카페투어",
-    "테마파크",
-    "핫플레이스",
-    "힐링",
-    "힙스터",
-];
-
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
-const MemoizedHeroSlider = memo(HeroSlider);
-const MemoizedTabbedConcepts = memo(TabbedConcepts);
 const MemoizedPersonalizedSection = memo(PersonalizedSection);
 
 type Course = {
@@ -68,31 +40,13 @@ type Course = {
     createdAt?: string;
 };
 
-// 🟢 타입 정의 (에러 7006 해결용)
-interface ConceptItem {
-    name: string;
-    count: number;
-    imageUrl?: string;
-}
-
 interface HomeClientProps {
     initialCourses: Course[];
-    initialHeroCourses: Course[];
-    initialHotCourses: Course[];
-    initialNewCourses: Course[];
 }
 
-export default function HomeClient({
-    initialCourses,
-    initialHeroCourses,
-    initialHotCourses,
-    initialNewCourses,
-}: HomeClientProps) {
+export default function HomeClient({ initialCourses }: HomeClientProps) {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [courses, setCourses] = useState<Course[]>(initialCourses);
-    const [heroCourses, setHeroCourses] = useState<Course[]>(initialHeroCourses);
-    const [hotCourses, setHotCourses] = useState<Course[]>(initialHotCourses);
-    const [newCourses, setNewCourses] = useState<Course[]>(initialNewCourses);
     const [allTags, setAllTags] = useState<Array<{ id: number; name: string }>>([]);
     const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
     const [query, setQuery] = useState("");
@@ -128,6 +82,18 @@ export default function HomeClient({
     const [fullMemoryData, setFullMemoryData] = useState<any[]>([]);
     // 🟢 광고 노출: FREE만 광고 표시, BASIC/PREMIUM은 미표시
     const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    // 🟢 오늘 데이트 진행 중 (activeCourse)
+    const [activeCourse, setActiveCourse] = useState<{
+        courseId: number;
+        courseTitle: string;
+        title?: string;
+        imageUrl?: string | null;
+        vibe?: string | null;
+        walkability?: string | null;
+        rating?: number | null;
+        hasMemory: boolean;
+    } | null>(null);
+    const [showMemoryReminderModal, setShowMemoryReminderModal] = useState(false);
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -167,7 +133,7 @@ export default function HomeClient({
                         .toString()
                         .toUpperCase();
                     setUserTier(
-                        (tier === "BASIC" || tier === "PREMIUM" ? tier : "FREE") as "FREE" | "BASIC" | "PREMIUM"
+                        (tier === "BASIC" || tier === "PREMIUM" ? tier : "FREE") as "FREE" | "BASIC" | "PREMIUM",
                     );
 
                     setTimeout(() => {
@@ -220,8 +186,7 @@ export default function HomeClient({
                             prefsData.onboardingComplete === true ||
                             (Array.isArray(prefsData.mood) && prefsData.mood.length > 0) ||
                             (Array.isArray(prefsData.concept) && prefsData.concept.length > 0) ||
-                            (Array.isArray(prefsData.regions) && prefsData.regions.length > 0) ||
-                            (typeof prefsData.companion === "string" && prefsData.companion.trim() !== "");
+                            (Array.isArray(prefsData.regions) && prefsData.regions.length > 0);
 
                         setIsOnboardingComplete(hasServerData || localStorage.getItem("onboardingComplete") === "1");
                     });
@@ -290,7 +255,7 @@ export default function HomeClient({
                 .sort((a, b) => {
                     const getTimestamp = (item: any) =>
                         new Date(
-                            item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0
+                            item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0,
                         ).getTime() || 0;
                     return getTimestamp(b) - getTimestamp(a);
                 });
@@ -306,7 +271,8 @@ export default function HomeClient({
                 id: story.id || null,
                 title: story.title || story.region || story.placeName || "나만의 추억",
                 courseTitle: story.course?.title || story.courseTitle || null,
-                excerpt: story.content || story.description || story.memo || "",
+                excerpt: story.comment || story.content || story.description || story.memo || "",
+                tags: Array.isArray(story.tags) ? story.tags : [],
                 imageUrl:
                     (Array.isArray(story.imageUrls) && story.imageUrls[0]) ||
                     story.imageUrl ||
@@ -329,6 +295,44 @@ export default function HomeClient({
         } finally {
             setMemoriesLoading(false);
         }
+    }, [isAuthenticated]);
+
+    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setActiveCourse(null);
+            return;
+        }
+        (async () => {
+            try {
+                const { data } = await apiFetch<{
+                    courseId: number;
+                    courseTitle: string;
+                    hasMemory: boolean;
+                } | null>("/api/users/active-course", { cache: "no-store" });
+                setActiveCourse(data ?? null);
+
+                // 🟢 21시 이후 + 기록 없음 + 오늘 1회만 모달
+                if (
+                    data &&
+                    !data.hasMemory &&
+                    typeof window !== "undefined"
+                ) {
+                    const kstOffset = 9 * 60 * 60 * 1000;
+                    const now = new Date();
+                    const kstNow = new Date(now.getTime() + kstOffset);
+                    const isAfter9 = kstNow.getUTCHours() >= 21;
+                    const todayKey = `memoryReminderModal_${kstNow.getUTCFullYear()}-${String(kstNow.getUTCMonth() + 1).padStart(2, "0")}-${String(kstNow.getUTCDate()).padStart(2, "0")}`;
+                    const alreadyShown = localStorage.getItem(todayKey) === "1";
+                    if (isAfter9 && !alreadyShown) {
+                        setShowMemoryReminderModal(true);
+                        localStorage.setItem(todayKey, "1");
+                    }
+                }
+            } catch {
+                setActiveCourse(null);
+            }
+        })();
     }, [isAuthenticated]);
 
     useEffect(() => {
@@ -402,8 +406,6 @@ export default function HomeClient({
                 const courseList = Array.isArray((data as any)?.data) ? (data as any).data : [];
                 // 🟢 즉시 상태 업데이트 (requestAnimationFrame 제거로 지연 방지)
                 setCourses(courseList);
-                // 🟢 heroCourses가 비어있을 때만 업데이트 (초기 데이터 보존)
-                setHeroCourses((prev) => (prev.length > 0 ? prev : courseList.slice(0, 5)));
             } catch {
                 // 🟢 에러 시에도 즉시 상태 업데이트
                 setCourses([]);
@@ -414,41 +416,103 @@ export default function HomeClient({
         fetchCourses();
     }, [selectedTagIds, searchNonce, query, initialCourses.length]);
 
-    // 🟢 HeroSlider 아이템 메모이제이션 (리플로우 최소화)
-    const heroSliderItems = useMemo(() => {
-        return heroCourses.map((c) => ({
-            id: String(c.id),
-            title: c.title,
-            imageUrl: c.imageUrl || "",
-            location: c.location || c.region || "",
-            concept: CONCEPTS[c.concept as keyof typeof CONCEPTS] || c.concept,
-            tags: c.tags || [],
-        }));
-    }, [heroCourses, platform]);
-
     return (
         <>
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
             <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
-            {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+            {/* 🟢 21시 이후 기록 유도 모달 */}
+            {showMemoryReminderModal && activeCourse && (
+                <div
+                    className="fixed inset-0 z-6000 bg-black/50 flex items-center justify-center p-4"
+                    onClick={() => setShowMemoryReminderModal(false)}
+                >
+                    <div
+                        className="bg-white dark:bg-[#1a241b] rounded-2xl p-6 max-w-sm w-full shadow-xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <p className="text-center text-gray-900 dark:text-white text-base font-medium mb-2">
+                            오늘 {activeCourse.courseTitle} 데이트 어땠어요?
+                        </p>
+                        <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-6">
+                            한 줄만 남겨볼까요?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowMemoryReminderModal(false)}
+                                className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium"
+                            >
+                                나중에
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowMemoryReminderModal(false);
+                                    router.push(`/courses/${activeCourse.courseId}/start`);
+                                }}
+                                className="flex-1 py-3 rounded-xl bg-[#99c08e] text-white font-bold"
+                            >
+                                이동하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showLoginModal && (
+                <LoginModal
+                    onClose={() => setShowLoginModal(false)}
+                    next="/mypage?tab=footprint&view=memories"
+                    {...LOGIN_MODAL_PRESETS.saveRecord}
+                />
+            )}
             {/* 🟢 코스 로딩 중 오버레이 */}
             {isLoadingCourses && <CourseLoadingOverlay />}
 
             <main className="">
-                {/* 🟢 HeroSlider를 최우선으로 즉시 렌더링 (LCP 최적화) - 메인과 동시에 표시 */}
-                <div className="pt-4">
-                    {/* 🟢 heroCourses가 비어있어도 HeroSlider는 렌더링하여 초기 구조 확보 */}
-                    <MemoizedHeroSlider items={heroSliderItems} userTier={userTier} />
-                </div>
-
-                <MemoizedTabbedConcepts
-                    courses={courses}
-                    hotCourses={hotCourses}
-                    newCourses={newCourses}
-                    onConceptClick={() => setIsLoadingCourses(true)}
-                />
-
+                {/* 🟢 오늘 데이트 진행 중 배너 - 나만의 추억 저장 완료 시 숨김 */}
+                {activeCourse && !activeCourse.hasMemory && (
+                    <div className="mx-4 mt-6 mb-6 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+                        <div className="flex gap-4">
+                            {/* 왼쪽: 이미지 썸네일 */}
+                            <div className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                {activeCourse.imageUrl ? (
+                                    <Image
+                                        src={activeCourse.imageUrl}
+                                        alt=""
+                                        fill
+                                        className="object-cover"
+                                        sizes="80px"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-2xl">📍</div>
+                                )}
+                            </div>
+                            {/* 오른쪽: 텍스트 + 진행 중 | 이어가기 */}
+                            <div className="flex-1 min-w-0 flex flex-col">
+                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    오늘의 데이트
+                                </span>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-white mt-0.5 line-clamp-2 leading-snug">
+                                    {activeCourse.title ?? activeCourse.courseTitle}
+                                </h3>
+                                <div className="mt-3 flex items-center justify-between gap-2">
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">진행 중</span>
+                                    <TapFeedback>
+                                        <button
+                                            onClick={() => router.push(`/courses/${activeCourse.courseId}`)}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-[#7FCC9F] hover:bg-[#6bb88a] text-white text-xs font-bold rounded-2xl transition-colors active:scale-95 shrink-0"
+                                        >
+                                            이어가기
+                                            <span className="text-white">→</span>
+                                        </button>
+                                    </TapFeedback>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* 🟢 개인별 추천 섹션 */}
                 <MemoizedPersonalizedSection />
+
+                {/* 🟢 HeroSlider, TabbedConcepts → /courses 페이지로 이동 */}
 
                 {/* 🟢 나만의 추억 CTA */}
                 <section className="px-4 py-4">
@@ -484,9 +548,6 @@ export default function HomeClient({
                         }}
                     />
                 </section>
-                {(!isAuthenticated || !isOnboardingComplete) && (
-                    <OnboardingSection onStart={() => router.push("/onboarding")} />
-                )}
             </main>
 
             {/* 🟢 추억 상세 모달*/}
@@ -722,258 +783,5 @@ export default function HomeClient({
                 </div>
             )}
         </>
-    );
-}
-
-function TabbedConcepts({
-    courses,
-    hotCourses,
-    newCourses,
-    onConceptClick,
-}: {
-    courses: Course[];
-    hotCourses: Course[];
-    newCourses: Course[];
-    onConceptClick?: () => void;
-}) {
-    const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"concept" | "popular" | "new">("concept");
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    const handleTabChange = useCallback((tab: "concept" | "popular" | "new") => {
-        setActiveTab(tab);
-        setIsExpanded(false);
-    }, []);
-
-    const handleToggleExpand = useCallback(() => {
-        setIsExpanded((prev) => !prev);
-    }, []);
-
-    const activeTabCourses = useMemo(() => {
-        if (activeTab === "popular") return hotCourses.slice(0, 8);
-        if (activeTab === "new") return newCourses.slice(0, 8);
-        return [];
-    }, [activeTab, hotCourses, newCourses]);
-
-    // 🟢 정렬 안정화: ID 기반 정렬로 서버/클라이언트 일치 보장
-    const conceptItems = useMemo<ConceptItem[]>(() => {
-        const counts = courses.reduce<Record<string, { count: number; imageUrl?: string }>>((acc, c) => {
-            const key = c.concept || "기타";
-            if (!acc[key]) acc[key] = { count: 0, imageUrl: c.imageUrl };
-            acc[key].count += 1;
-            return acc;
-        }, {});
-
-        const allItems = ALL_CONCEPTS.map((conceptName) => {
-            const existing = counts[conceptName];
-            return {
-                name: conceptName,
-                count: existing?.count || 0,
-                imageUrl: existing?.imageUrl,
-            };
-        });
-
-        // 🟢 정렬 안정화: 카운트 우선, 그 다음 ID 기반 정렬 (localeCompare 제거)
-        return allItems.sort((a, b) => {
-            if (b.count !== a.count) return b.count - a.count;
-            // ID 기반 정렬: 이름의 해시값을 사용하여 서버/클라이언트 일치 보장
-            const hashA = a.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const hashB = b.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            return hashA - hashB;
-        });
-    }, [courses]);
-
-    return (
-        <section className="py-8 px-5" suppressHydrationWarning>
-            {/* 필터 탭·카테고리: 완벽한 하루와 동일 가로 패딩 (가로 스크롤 영역 -mx-5 px-5) */}
-            <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar -mx-5 px-5">
-                {[
-                    { key: "concept", label: "전체" },
-                    { key: "popular", label: "인기순" },
-                    { key: "new", label: "새로운" },
-                ].map((tab) => (
-                    <TapFeedback key={tab.key}>
-                        <button
-                            onClick={() => handleTabChange(tab.key as any)}
-                            className={`px-4 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
-                                activeTab === tab.key
-                                    ? "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50"
-                                    : "bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border border-transparent"
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    </TapFeedback>
-                ))}
-            </div>
-            <div className="mt-3">
-                {activeTab === "concept" ? (
-                    isExpanded && conceptItems.length > 8 ? (
-                        /* 클릭 시 해당 위치에 가로 스크롤 사라지고 전체 그리드만 표시 (3개씩, 가운데 정렬) */
-                        <div className="grid grid-cols-3 gap-y-5 gap-x-1 justify-items-center max-w-lg mx-auto">
-                            {conceptItems.map((item: ConceptItem) => {
-                                const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
-                                const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
-                                return (
-                                    <TapFeedback key={item.name}>
-                                        <button
-                                            onMouseEnter={() => router.prefetch(targetPath)}
-                                            onClick={() => {
-                                                onConceptClick?.();
-                                                router.prefetch(targetPath);
-                                                router.push(targetPath);
-                                            }}
-                                            className="flex flex-col items-center gap-1.5"
-                                        >
-                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 shrink-0">
-                                                <Image
-                                                    src={CATEGORY_ICONS[name] || item.imageUrl || ""}
-                                                    alt={name}
-                                                    width={48}
-                                                    height={48}
-                                                    className="object-contain p-0.5"
-                                                    quality={70}
-                                                />
-                                            </div>
-                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                                {name}
-                                            </span>
-                                        </button>
-                                    </TapFeedback>
-                                );
-                            })}
-                            <TapFeedback className="col-span-3 block">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        handleToggleExpand();
-                                        requestAnimationFrame(() => {
-                                            const mainEl = document.querySelector("main");
-                                            if (mainEl) {
-                                                mainEl.scrollTo({ top: 0, behavior: "smooth" });
-                                            } else {
-                                                window.scrollTo({ top: 0, behavior: "smooth" });
-                                            }
-                                        });
-                                    }}
-                                    className="mt-3 py-3 text-base font-medium text-gray-500 dark:text-gray-400 text-center w-full block"
-                                >
-                                    접기 ▲
-                                </button>
-                            </TapFeedback>
-                        </div>
-                    ) : (
-                        /* 가로 스크롤: 8개 + 맨 마지막 전체 보기 (아이콘 위, 텍스트 아래, 가운데 정렬) */
-                        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-end -mx-5 px-5 justify-center">
-                            {conceptItems.slice(0, 8).map((item: ConceptItem) => {
-                                const name = CONCEPTS[item.name as keyof typeof CONCEPTS] || item.name;
-                                const targetPath = `/courses?concept=${encodeURIComponent(item.name)}`;
-                                return (
-                                    <TapFeedback key={item.name}>
-                                        <button
-                                            onMouseEnter={() => router.prefetch(targetPath)}
-                                            onClick={() => {
-                                                onConceptClick?.();
-                                                router.prefetch(targetPath);
-                                                router.push(targetPath);
-                                            }}
-                                            className="flex flex-col items-center gap-1.5 shrink-0"
-                                        >
-                                            <div className="w-12 h-12 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 shrink-0">
-                                                <Image
-                                                    src={CATEGORY_ICONS[name] || item.imageUrl || ""}
-                                                    alt={name}
-                                                    width={48}
-                                                    height={48}
-                                                    className="object-contain p-0.5"
-                                                    quality={70}
-                                                    priority={conceptItems.indexOf(item) < 8}
-                                                />
-                                            </div>
-                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                                {name}
-                                            </span>
-                                        </button>
-                                    </TapFeedback>
-                                );
-                            })}
-                            {conceptItems.length > 8 && (
-                                <TapFeedback className="-translate-y-1 shrink-0">
-                                    <button type="button" onClick={handleToggleExpand} className="shrink-0">
-                                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                            전체 보기
-                                        </span>
-                                    </button>
-                                </TapFeedback>
-                            )}
-                        </div>
-                    )
-                ) : (
-                    <div className="flex gap-5 overflow-x-auto no-scrollbar pt-7 pb-7 -mx-5 px-5">
-                        {/* 🟢 인기별/새로운 탭: 데이터가 없을 때 메시지 표시 */}
-                        {activeTabCourses.length === 0 ? (
-                            <div className="w-full py-12 text-center text-gray-400 dark:text-gray-500">
-                                <p className="text-sm font-medium">
-                                    {activeTab === "popular"
-                                        ? "인기 코스가 아직 없습니다"
-                                        : "새로운 코스가 아직 없습니다"}
-                                </p>
-                            </div>
-                        ) : (
-                            activeTabCourses.map((c) => (
-                                <TapFeedback key={c.id}>
-                                    <Link
-                                        href={`/courses/${c.id}`}
-                                        className="flex flex-col items-center gap-2 shrink-0 w-24"
-                                        prefetch={true}
-                                    >
-                                        <div className="relative w-20 h-20 rounded-full p-1 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50">
-                                            <div className="w-full h-full rounded-full overflow-hidden relative">
-                                                <Image
-                                                    src={c.imageUrl || ""}
-                                                    alt={c.title}
-                                                    width={80}
-                                                    height={80}
-                                                    className="object-cover w-full h-full"
-                                                    quality={75}
-                                                    sizes="80px"
-                                                    priority={activeTabCourses.indexOf(c) < 4}
-                                                />
-                                            </div>
-                                            {activeTab === "popular" && (
-                                                <div className="absolute bottom-0 right-0 w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-600 text-sm">
-                                                    🔥
-                                                </div>
-                                            )}
-                                            {activeTab === "new" && (
-                                                <div className="absolute top-0 right-0 min-w-[18px] h-[18px] flex items-center justify-center bg-emerald-500 dark:bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0 rounded-full shadow-md border-2 border-white dark:border-[#1a241b]">
-                                                    N
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="text-center w-full">
-                                            <div className="text-[10px] font-extrabold text-gray-800 dark:text-gray-300 truncate px-1">
-                                                {c.title}
-                                            </div>
-                                            <div
-                                                className={`text-[9px] font-bold mt-0.5 ${
-                                                    activeTab === "popular"
-                                                        ? "text-orange-400 dark:text-orange-400/90"
-                                                        : "text-emerald-600 dark:text-emerald-400"
-                                                }`}
-                                            >
-                                                {activeTab === "popular"
-                                                    ? `${(c.view_count || 0).toLocaleString()} views`
-                                                    : "✨ 신규"}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                </TapFeedback>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-        </section>
     );
 }

@@ -4,10 +4,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from "react"; // 🟢 useDeferredValue 추가
 import CourseCard from "@/components/CourseCard";
 import CourseReportBanner from "@/components/CourseReportBanner";
+import HeroSlider from "@/components/HeroSlider";
 import TapFeedback from "@/components/TapFeedback";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
-import { CONCEPTS } from "@/constants/onboardingData";
-import { isIOS } from "@/lib/platform";
+import { CATEGORY_ICONS } from "@/constants/onboardingData";
+import Image from "@/components/ImageFallback";
+import { LayoutGrid } from "lucide-react";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 import { getPlaceStatus } from "@/lib/placeStatus";
 
@@ -41,17 +43,26 @@ export interface Course {
     grade?: "FREE" | "BASIC" | "PREMIUM";
     isLocked?: boolean;
 }
+type HeroSliderItem = {
+    id: string;
+    imageUrl?: string;
+    location?: string;
+    concept?: string;
+    title?: string;
+    tags?: string[];
+};
+
 interface CoursesClientProps {
     initialCourses: Course[];
+    initialHeroCourses?: HeroSliderItem[];
 }
 
-export default function CoursesClient({ initialCourses }: CoursesClientProps) {
+export default function CoursesClient({ initialCourses, initialHeroCourses = [] }: CoursesClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const conceptParam = searchParams.get("concept");
 
     const [courses, setCourses] = useState<Course[]>(initialCourses);
-    const [sortBy, setSortBy] = useState<"views" | "latest">("views");
     const [activeConcept, setActiveConcept] = useState<string>(conceptParam || "");
     const [isNavigating, setIsNavigating] = useState(false); // 🟢 네비게이션 로딩 상태
 
@@ -64,13 +75,6 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     const [hasMore, setHasMore] = useState(initialCourses.length >= 30);
     const [offset, setOffset] = useState(30);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
-    const [couponCount, setCouponCount] = useState<number | null>(null); // 🟢 쿠폰 개수 상태
-    const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
-
-    // 🟢 iOS 플랫폼 감지
-    useEffect(() => {
-        setPlatform(isIOS() ? "ios" : "web");
-    }, []);
 
     useEffect(() => {
         // 🟢 concept 파라미터 변경 시 로딩 상태 설정
@@ -83,24 +87,6 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
             setTimeout(() => setIsNavigating(false), 100);
         }
     }, [conceptParam, activeConcept, initialCourses.length]);
-
-    // 🟢 사용자 쿠폰 개수 가져오기
-    useEffect(() => {
-        const fetchCouponCount = async () => {
-            try {
-                const { data } = await apiFetch<{ couponCount?: number }>("/api/users/profile", {
-                    cache: "no-store",
-                });
-                if (data && typeof data === "object" && "couponCount" in data && data.couponCount !== undefined) {
-                    setCouponCount(data.couponCount);
-                }
-            } catch (error) {
-                // 로그인하지 않은 경우 무시
-                setCouponCount(null);
-            }
-        };
-        fetchCouponCount();
-    }, []);
 
     // 🟢 [Optimization]: 초기 코스 데이터 설정을 다음 프레임으로 지연
     useEffect(() => {
@@ -185,9 +171,8 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
         };
     }, [loadMoreRef, loadMoreCourses, loadingMore, hasMore]);
 
-    // 🟢 [Optimization 2] 정렬과 필터를 하나의 useMemo로 통합 (중복 루프 제거)
+    // 🟢 필터링 (카테고리 선택 시)
     const visibleCourses = useMemo(() => {
-        // 1. 필터링 (성능 최적화: trim과 toLowerCase를 한 번만 수행)
         let filtered = courses;
         if (deferredConcept && deferredConcept.trim()) {
             const target = deferredConcept.trim().toLowerCase();
@@ -196,31 +181,8 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                 return concept.trim().toLowerCase() === target;
             });
         }
-
-
-        // 2. 정렬 (성능 최적화: Date 생성 최소화)
-        if (sortBy === "views") {
-            return [...filtered].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-        } else {
-            // 🟢 최적화: Date 객체 생성 최소화 및 캐싱
-            const sorted = [...filtered];
-            const dateCache = new Map<string, number>();
-            const getTime = (dateStr: string | Date | undefined): number => {
-                if (!dateStr) return 0;
-                const key = String(dateStr);
-                if (!dateCache.has(key)) {
-                    dateCache.set(key, new Date(dateStr).getTime());
-                }
-                return dateCache.get(key) || 0;
-            };
-            sorted.sort((a: any, b: any) => {
-                const ta = getTime(a.createdAt);
-                const tb = getTime(b.createdAt);
-                return tb !== ta ? tb - ta : Number(b.id) - Number(a.id);
-            });
-            return sorted;
-        }
-    }, [courses, sortBy, deferredConcept, platform]);
+        return [...filtered].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+    }, [courses, deferredConcept]);
 
     const STATIC_CONCEPTS = useMemo(
         () => [
@@ -303,59 +265,13 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
             <div className="bg-white dark:bg-[#1a241b] px-5 pt-[calc(env(safe-area-inset-top,0)+1.5rem)] pb-2 sticky top-[env(safe-area-inset-top,0)] z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
-                <div className="flex justify-between items-end mb-2">
+                <div className="mb-2">
                     <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
                         완벽한 하루
                     </h1>
-                    <div className="flex items-center gap-3 text-sm">
-                        <TapFeedback>
-                            <button
-                                onClick={() => {
-                                    setSortBy("views");
-                                    requestAnimationFrame(() => {
-                                        const mainEl = document.querySelector("main");
-                                        if (mainEl) {
-                                            mainEl.scrollTo({ top: 0, behavior: "smooth" });
-                                        } else {
-                                            window.scrollTo({ top: 0, behavior: "smooth" });
-                                        }
-                                    });
-                                }}
-                                className={`${
-                                    sortBy === "views"
-                                        ? "font-bold text-emerald-600 dark:text-emerald-400"
-                                        : "font-medium text-gray-400 dark:text-gray-500"
-                                } transition-colors`}
-                            >
-                                인기순
-                            </button>
-                        </TapFeedback>
-                        <span className="text-gray-200 dark:text-gray-700 text-xs">|</span>
-                        <TapFeedback>
-                            <button
-                                onClick={() => {
-                                    setSortBy("latest");
-                                    requestAnimationFrame(() => {
-                                        const mainEl = document.querySelector("main");
-                                        if (mainEl) {
-                                            mainEl.scrollTo({ top: 0, behavior: "smooth" });
-                                        } else {
-                                            window.scrollTo({ top: 0, behavior: "smooth" });
-                                        }
-                                    });
-                                }}
-                                className={`${
-                                    sortBy === "latest"
-                                        ? "font-bold text-emerald-600 dark:text-emerald-400"
-                                        : "font-medium text-gray-400 dark:text-gray-500"
-                                } transition-colors`}
-                            >
-                                최신순
-                            </button>
-                        </TapFeedback>
-                    </div>
                 </div>
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5">
+                {/* 🟢 큰 원형 아이콘 + 아래 텍스트 (예전 메인 카테고리 스타일) */}
+                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 mt-4 touch-pan-x">
                     <TapFeedback>
                         <button
                             onClick={() => {
@@ -366,44 +282,109 @@ export default function CoursesClient({ initialCourses }: CoursesClientProps) {
                                 });
                             }}
                             disabled={isNavigating}
-className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
-                                    activeConcept === ""
-                                        ? "bg-emerald-600 text-white border-emerald-600"
-                                        : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-                            } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
+                            className={`flex flex-col items-center gap-1.5 shrink-0 ${
+                                isNavigating ? "opacity-50 cursor-wait" : ""
+                            }`}
                         >
-                            전체
+                            <div
+                                className={`w-12 h-12 rounded-full p-1 flex items-center justify-center shrink-0 border-2 transition-all ${
+                                    activeConcept === ""
+                                        ? "bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 dark:border-emerald-600"
+                                        : "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
+                                }`}
+                            >
+                                <LayoutGrid
+                                    size={22}
+                                    className={
+                                        activeConcept === ""
+                                            ? "text-emerald-600 dark:text-emerald-400"
+                                            : "text-gray-500 dark:text-gray-400"
+                                    }
+                                />
+                            </div>
+                            <span
+                                className={`text-xs font-semibold whitespace-nowrap ${
+                                    activeConcept === "" ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"
+                                }`}
+                            >
+                                전체
+                            </span>
                         </button>
                     </TapFeedback>
-                    {STATIC_CONCEPTS.map((tag) => (
-                        <TapFeedback key={tag}>
-                            <button
-                                onClick={() => {
-                                    requestAnimationFrame(() => {
-                                        setIsNavigating(true);
-                                        const targetPath =
-                                            activeConcept === tag
-                                                ? "/courses"
-                                                : `/courses?concept=${encodeURIComponent(tag)}`;
-                                        router.prefetch(targetPath);
-                                        router.push(targetPath);
-                                    });
-                                }}
-                                disabled={isNavigating}
-                                className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
-                                    activeConcept === tag
-                                        ? "bg-emerald-600 text-white border-emerald-600"
-                                        : "bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-                                } ${isNavigating ? "opacity-50 cursor-wait" : ""}`}
-                            >
-                                {tag}
-                            </button>
-                        </TapFeedback>
-                    ))}
+                    {STATIC_CONCEPTS.map((tag) => {
+                        const iconUrl = CATEGORY_ICONS[tag];
+                        const isSelected = activeConcept === tag;
+                        return (
+                            <TapFeedback key={tag}>
+                                <button
+                                    onClick={() => {
+                                        requestAnimationFrame(() => {
+                                            setIsNavigating(true);
+                                            const targetPath =
+                                                isSelected ? "/courses" : `/courses?concept=${encodeURIComponent(tag)}`;
+                                            router.prefetch(targetPath);
+                                            router.push(targetPath);
+                                        });
+                                    }}
+                                    disabled={isNavigating}
+                                    className={`flex flex-col items-center gap-1.5 shrink-0 ${
+                                        isNavigating ? "opacity-50 cursor-wait" : ""
+                                    }`}
+                                >
+                                    <div
+                                        className={`w-12 h-12 rounded-full p-1 flex items-center justify-center shrink-0 border-2 transition-all overflow-hidden ${
+                                            isSelected
+                                                ? "bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 dark:border-emerald-600"
+                                                : "bg-gray-50 dark:bg-gray-800/60 border-gray-100 dark:border-gray-700"
+                                        }`}
+                                    >
+                                        {iconUrl ? (
+                                            <Image
+                                                src={iconUrl}
+                                                alt={tag}
+                                                width={48}
+                                                height={48}
+                                                className="object-contain p-0.5"
+                                                quality={70}
+                                            />
+                                        ) : (
+                                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 truncate px-1">
+                                                {tag.slice(0, 1)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span
+                                        className={`text-xs font-semibold whitespace-nowrap ${
+                                            isSelected ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"
+                                        }`}
+                                    >
+                                        {tag}
+                                    </span>
+                                </button>
+                            </TapFeedback>
+                        );
+                    })}
                 </div>
             </div>
 
-            <div className="px-5 py-6 flex flex-col gap-6">
+            {/* 🟢 HeroSlider - 지금 많이 선택한 코스 */}
+            {initialHeroCourses.length > 0 && (
+                <section className="pt-4 px-4 pb-6">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 leading-snug tracking-tight px-1">
+                        지금 많이 선택한 코스
+                    </h2>
+                    <HeroSlider items={initialHeroCourses} />
+                </section>
+            )}
+
+            {/* 🟢 구분선 + 코스 리스트 영역 */}
+            <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
+                <div className="px-5 pt-6 pb-2">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
+                        전체 코스
+                    </h2>
+                </div>
+                <div className="px-5 py-4 flex flex-col gap-6">
                 {/* 🟢 [Performance]: 네비게이션 로딩 표시 */}
                 {isNavigating && <CourseLoadingOverlay />}
                 {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
@@ -465,6 +446,7 @@ className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-semibo
                     </div>
                 )}
                 <div ref={loadMoreRef} aria-hidden="true" className="h-1"></div>
+                </div>
             </div>
         </div>
     );

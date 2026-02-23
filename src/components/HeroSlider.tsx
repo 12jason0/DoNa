@@ -9,50 +9,6 @@ const PEEK_RATIO = 0.88; // 88% 카드 너비 → 12% 다음 카드 노출
 const HERO_HEIGHT_VH = 65;
 const CARD_RADIUS = "28px";
 
-/** 3번째·4번째 코스 사이에 노출되는 피드형 광고 (AdSense fluid). */
-const AdSlot = memo(
-    ({
-        style,
-        totalSlots,
-        currentSlotIndex,
-    }: {
-        style?: React.CSSProperties;
-        totalSlots?: number;
-        currentSlotIndex?: number;
-    }) => {
-        const insRef = useRef<HTMLModElement>(null);
-        useEffect(() => {
-            try {
-                if (typeof window !== "undefined" && (window as any).adsbygoogle && insRef.current) {
-                    ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-                }
-            } catch {
-                // ignore
-            }
-        }, []);
-        return (
-            <div
-                className="relative rounded-[28px] overflow-hidden snap-center border border-gray-100 dark:border-transparent flex items-center justify-center bg-gray-100 dark:bg-gray-800 shrink-0"
-                style={style}
-            >
-                {totalSlots != null && totalSlots > 1 && currentSlotIndex != null && (
-                    <SegmentOverlay totalSlots={totalSlots} currentSlotIndex={currentSlotIndex} />
-                )}
-                <ins
-                ref={insRef}
-                className="adsbygoogle"
-                style={{ display: "block" }}
-                data-ad-client="ca-pub-1305222191440436"
-                data-ad-slot="6862339397"
-                data-ad-format="fluid"
-                data-ad-layout-key="+22+s4-1b-27+96"
-            />
-            </div>
-        );
-    }
-);
-AdSlot.displayName = "AdSlot";
-
 export type SliderItem = {
     id: string;
     imageUrl?: string;
@@ -65,8 +21,6 @@ export type SliderItem = {
 
 type HeroSliderProps = {
     items: SliderItem[];
-    /** FREE일 때만 광고 노출, BASIC/PREMIUM은 광고 숨김 */
-    userTier?: "FREE" | "BASIC" | "PREMIUM";
 };
 
 /** 카드 이미지 상단 오버레이: 세그먼트 인디케이터 (반투명 화이트/블랙) */
@@ -168,19 +122,13 @@ const SliderItemComponent = memo(
 );
 SliderItemComponent.displayName = "SliderItem";
 
-type DisplaySlot = SliderItem | { type: "ad" };
+const HERO_SLIDER_MAX = 5; // 최대 5개 코스만 사용
+const REPEAT_COUNT = 10; // 5개 코스가 끊김 없이 계속 반복되도록 여러 번 복제
 
-const AD_INDEX = 3; // 3번째·4번째 코스 사이 (0-based로 3번째 위치)
-
-export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps) {
-    const realLength = items.length;
-    const showAd = userTier === "FREE"; // BASIC, PREMIUM은 광고 미노출
-    const displaySlots = useMemo<DisplaySlot[]>(() => {
-        if (realLength < 2) return items;
-        if (!showAd) return items;
-        return [...items.slice(0, AD_INDEX), { type: "ad" as const }, ...items.slice(AD_INDEX)];
-    }, [items, realLength, showAd]);
-    const totalSlots = displaySlots.length;
+export default function HeroSlider({ items }: HeroSliderProps) {
+    const limitedItems = useMemo(() => items.slice(0, HERO_SLIDER_MAX), [items]);
+    const realLength = limitedItems.length;
+    const totalSlots = realLength;
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentSlotIndex, setCurrentSlotIndex] = useState(0); // 세그먼트 인디케이터용 (0 ~ totalSlots-1)
@@ -197,8 +145,11 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
     const slideStepPx = slideWidthPx + CARD_GAP;
 
     const renderItems = useMemo(
-        () => (totalSlots <= 1 ? displaySlots : [...displaySlots, ...displaySlots, ...displaySlots]),
-        [displaySlots, totalSlots]
+        () =>
+            totalSlots <= 1
+                ? limitedItems
+                : Array.from({ length: REPEAT_COUNT }, () => limitedItems).flat(),
+        [limitedItems, totalSlots]
     );
 
     // 🟢 타이머 정지 함수
@@ -210,6 +161,9 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
     }, []);
 
     // 🟢 슬라이드 이동 함수 (Peek용 step = slideWidth + gap 기준으로 통일, 왔다갔다 방지)
+    const middleSetStart = totalSlots * Math.floor(REPEAT_COUNT / 2);
+    const middleSetEnd = totalSlots * (Math.floor(REPEAT_COUNT / 2) + 1) - 1;
+    const upperBound = totalSlots * (REPEAT_COUNT - 1);
     const moveToNext = useCallback(
         (nextIdx: number) => {
             if (!scrollRef.current || isScrollingRef.current) return;
@@ -219,8 +173,8 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
             const container = scrollRef.current;
 
             let adjustedIdx = nextIdx;
-            if (adjustedIdx >= totalSlots * 2) adjustedIdx = totalSlots;
-            else if (adjustedIdx < totalSlots) adjustedIdx = totalSlots * 2 - 1;
+            if (adjustedIdx >= upperBound) adjustedIdx = middleSetStart;
+            else if (adjustedIdx < totalSlots) adjustedIdx = middleSetEnd;
 
             const targetLeft = adjustedIdx * step;
             container.style.scrollBehavior = "smooth";
@@ -231,12 +185,12 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
                 const finalScrollLeft = container.scrollLeft;
                 const finalIndex = Math.round(finalScrollLeft / step);
 
-                if (finalIndex >= totalSlots * 2) {
+                if (finalIndex >= upperBound) {
                     container.style.scrollBehavior = "auto";
-                    container.scrollLeft = step * totalSlots;
+                    container.scrollLeft = step * middleSetStart;
                 } else if (finalIndex < totalSlots) {
                     container.style.scrollBehavior = "auto";
-                    container.scrollLeft = step * (totalSlots * 2 - 1);
+                    container.scrollLeft = step * middleSetEnd;
                 }
 
                 isScrollingRef.current = false;
@@ -275,7 +229,8 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
         setSlideWidthPx(slideW);
 
         container.style.scrollBehavior = "auto";
-        container.scrollLeft = step * totalSlots;
+        const midStart = totalSlots * Math.floor(REPEAT_COUNT / 2);
+        container.scrollLeft = step * midStart;
         setIsInitialized(true);
 
         const observer = new ResizeObserver((entries) => {
@@ -332,9 +287,7 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
             const index = Math.round(progressIndex);
             const slotIndex = index % totalSlots;
             setCurrentSlotIndex(slotIndex);
-            const courseDotIndex =
-                slotIndex === AD_INDEX ? AD_INDEX - 1 : slotIndex < AD_INDEX ? slotIndex : slotIndex - 1;
-            const actualIndex = ((courseDotIndex % realLength) + realLength) % realLength;
+            const actualIndex = ((slotIndex % realLength) + realLength) % realLength;
             setCurrentIndex(actualIndex);
         });
     }, [totalSlots, realLength]);
@@ -384,25 +337,16 @@ export default function HeroSlider({ items, userTier = "FREE" }: HeroSliderProps
                     WebkitOverflowScrolling: "touch",
                 }}
             >
-                {renderItems.map((slot, idx) =>
-                    slot && typeof slot === "object" && "type" in slot && slot.type === "ad" ? (
-                        <AdSlot
-                            key={`ad-${idx}`}
-                            style={slideStyle}
-                            totalSlots={totalSlots}
-                            currentSlotIndex={currentSlotIndex}
-                        />
-                    ) : (
-                        <SliderItemComponent
-                            key={`${(slot as SliderItem).id}-${idx}`}
-                            item={slot as SliderItem}
-                            idx={idx}
-                            style={slideStyle}
-                            totalSlots={totalSlots}
-                            currentSlotIndex={currentSlotIndex}
-                        />
-                    )
-                )}
+                {renderItems.map((slot, idx) => (
+                    <SliderItemComponent
+                        key={`${(slot as SliderItem).id}-${idx}`}
+                        item={slot as SliderItem}
+                        idx={idx}
+                        style={slideStyle}
+                        totalSlots={totalSlots}
+                        currentSlotIndex={currentSlotIndex}
+                    />
+                ))}
             </div>
         </section>
     );

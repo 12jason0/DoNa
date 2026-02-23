@@ -79,12 +79,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const courseGrade = course.grade || "FREE";
         
-        // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 쿠폰으로 구매한 경우만 접근 허용
+        // 🔒 권한 판정: FREE 코스이거나, PREMIUM 유저이거나, BASIC 유저가 BASIC 코스에 접근하거나, 열람권으로 구매한 경우만 접근 허용
         const hasAccess =
             courseGrade === "FREE" || // 무료 코스
             userTier === "PREMIUM" || // PREMIUM 유저는 모든 코스 접근
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
-            hasUnlocked; // 쿠폰으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
+            hasUnlocked; // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
         if (!hasAccess) {
             return NextResponse.json({ error: "Access denied", isLocked: true }, { status: 403 });
@@ -121,6 +121,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             title: course.title || "",
             region: course.region || null,
             imageUrl: course.imageUrl || null,
+            grade: courseGrade,
             coursePlaces,
         };
 

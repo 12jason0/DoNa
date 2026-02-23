@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
@@ -8,6 +8,9 @@ import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 
 import { getS3StaticUrl } from "@/lib/s3Static";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
+import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
+import OnboardingBottomSheet from "@/components/OnboardingBottomSheet";
+import CourseLockOverlay from "@/components/CourseLockOverlay";
 import TapFeedback from "@/components/TapFeedback";
 import { isIOS } from "@/lib/platform";
 import {
@@ -16,7 +19,6 @@ import {
     Clock,
     Users,
     Star,
-    Ticket,
     CheckCircle,
     MessageCircle,
     RefreshCw,
@@ -28,6 +30,7 @@ import {
     X,
     Navigation,
     Store,
+    Lock,
 } from "lucide-react";
 
 // --- [스타일 추가] 카드 뒤집기 및 애니메이션 효과 ---
@@ -91,16 +94,11 @@ interface Course {
     participants: number;
     highlights: string[];
     score?: number;
+    grade?: "FREE" | "BASIC" | "PREMIUM";
+    imageUrl?: string;
+    coursePlaces?: { place?: { imageUrl?: string } }[];
+    matchReason?: string;
 }
-
-type TrendingCourse = {
-    id: string | number;
-    title: string;
-    imageUrl?: string | null;
-    location?: string | null;
-    duration?: string | null;
-    viewCount?: number;
-};
 
 // 질문 시나리오
 const questionFlow: Question[] = [
@@ -116,21 +114,18 @@ const questionFlow: Question[] = [
     {
         id: "preview",
         type: "ai",
-        text: "총 4개의 간단한 질문을 드려요! 오늘의 목적, 함께하는 사람, 원하는 분위기, 선호 지역을 물어볼 예정이에요. 각 질문은 30초 이내로 답하실 수 있어요 😊",
+        text: "총 4개의 간단한 질문을 드려요! 오늘의 데이트 유형, 함께하는 사람, 원하는 분위기, 선호 지역을 물어볼 예정이에요. 각 질문은 30초 이내로 답하실 수 있어요 😊",
         options: [{ text: "좋아요, 시작할게요!", value: "start", next: "goal" }],
     },
     {
         id: "goal",
         type: "ai",
-        text: "Q1. 오늘의 목적은 무엇인가요? 🎯",
+        text: "Q1. 오늘은 어떤 데이트인가요? 🎯",
         options: [
-            { text: "기념일", value: "기념일", next: "companion_today" },
-            { text: "데이트", value: "데이트", next: "companion_today" },
-            { text: "썸·소개팅", value: "썸·소개팅", next: "companion_today" },
-            { text: "힐링", value: "힐링", next: "companion_today" },
-            { text: "특별한 이벤트", value: "특별한 이벤트", next: "companion_today" },
-            { text: "사진 잘 나오는 코스", value: "사진 잘 나오는 코스", next: "companion_today" },
-            { text: "밤 데이트", value: "밤 데이트", next: "companion_today" },
+            { text: "100일 · 200일", value: "100일", next: "companion_today" },
+            { text: "생일", value: "생일", next: "companion_today" },
+            { text: "연말", value: "연말", next: "companion_today" },
+            { text: "일상 데이트", value: "일상", next: "companion_today" },
         ],
     },
     {
@@ -174,9 +169,9 @@ const questionFlow: Question[] = [
     {
         id: "payment_prompt",
         type: "ai",
-        text: "좋아요! ✨\n\n지금까지 답변을 분석해보니,\n당신에게 딱 맞는 코스를 최대 2가지로 좁힐 수 있을 것 같아요.\n\nAI 맞춤 코스 추천은\n쿠폰 1개로 이용할 수 있어요 💡\n\n지금 바로 카드를 뽑아볼까요?",
+        text: "좋아요! ✨\n\n지금까지 답변을 분석해보니,\n당신에게 딱 맞는 코스를 최대 2가지로 좁힐 수 있을 것 같아요.\n\n오늘의 데이트 추천은\n하루에 1번 무료로 이용할 수 있어요 💡\n\n지금 바로 카드를 뽑아볼까요?",
         options: [
-            { text: "코스 뽑기 (쿠폰 1개) 🎲", value: "yes", next: "complete" },
+            { text: "코스 뽑기 🎲", value: "yes", next: "complete" },
             { text: "나중에 할게요", value: "no", next: "greeting" },
         ],
     },
@@ -191,7 +186,6 @@ const AIRecommender = () => {
     const [userName, setUserName] = useState("");
     const [nickname, setNickname] = useState("");
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
-    const [coupons, setCoupons] = useState(0);
     const [showLogin, setShowLogin] = useState(false);
     const [showPaywall, setShowPaywall] = useState(false);
     const [loginNavigating, setLoginNavigating] = useState(false);
@@ -210,9 +204,10 @@ const AIRecommender = () => {
 
     const [progress, setProgress] = useState(0);
     const [showUpsell, setShowUpsell] = useState(false);
+    const [upsellFor, setUpsellFor] = useState<"BASIC" | "PREMIUM" | null>(null);
+    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    const [hasLongTermPreferences, setHasLongTermPreferences] = useState(false);
     const [netError, setNetError] = useState<string | null>(null);
-    const [isUsingCoupon, setIsUsingCoupon] = useState(false);
-    const [trending, setTrending] = useState<TrendingCourse[]>([]);
     const [isSelecting, setIsSelecting] = useState(false);
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
     const [isUserDataLoading, setIsUserDataLoading] = useState(true); // 🟢 사용자 정보 로딩 상태
@@ -227,7 +222,9 @@ const AIRecommender = () => {
     // 모달 및 선택 데이터 상태
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [pendingCourse, setPendingCourse] = useState<{ id: string; title: string } | null>(null);
+    const [showAlreadyUsedModal, setShowAlreadyUsedModal] = useState(false);
+    const [showOnboardingSheet, setShowOnboardingSheet] = useState(false);
+    const [pendingCourse, setPendingCourse] = useState<{ id: string; title: string; grade?: string } | null>(null);
 
     // 🟢 iOS 플랫폼 감지
     useEffect(() => {
@@ -235,6 +232,7 @@ const AIRecommender = () => {
     }, []);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const recommendationResultsRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -243,6 +241,16 @@ const AIRecommender = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages, isTyping, showChatModal]); // showChatModal 추가
+
+    // 🟢 추천 결과가 뜰 때 "🎁 추천 결과" + 상단 문구가 보이도록 스크롤
+    useEffect(() => {
+        if (showRecommendations && !isAnalyzing && recommendationResultsRef.current) {
+            const timer = setTimeout(() => {
+                recommendationResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [showRecommendations, isAnalyzing]);
 
     // 유저 정보 가져오기 (성능 최적화: 캐싱 추가 및 즉시 표시)
     const fetchUserData = async (forceRefresh = false) => {
@@ -277,7 +285,6 @@ const AIRecommender = () => {
                 setUserName(nick);
                 setNickname(nick);
                 setProfileImageUrl(convertToHttps(profileImage));
-                setCoupons((userData as any).couponCount || 0);
                 localStorage.setItem("user", JSON.stringify(userData));
             } else {
                 // 🟢 response.ok가 false인 경우에도 handleLogout 대신 로그인 상태만 변경 (리다이렉트 방지)
@@ -285,7 +292,6 @@ const AIRecommender = () => {
                 setUserName("");
                 setNickname("");
                 setProfileImageUrl(null);
-                setCoupons(0);
             }
             setIsUserDataLoading(false);
         } catch (error) {
@@ -312,7 +318,6 @@ const AIRecommender = () => {
                     setUserName(nick);
                     setNickname(nick);
                     setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
-                    setCoupons(parsed.couponCount || 0);
                     setIsLoggedIn(true);
                     setIsUserDataLoading(false); // 🟢 캐시가 있으면 즉시 로딩 완료로 표시
                 } catch {}
@@ -340,7 +345,6 @@ const AIRecommender = () => {
                     setUserName("");
                     setNickname("");
                     setProfileImageUrl(null);
-                    setCoupons(0);
                     setIsUserDataLoading(false);
                 }
             } catch (error) {
@@ -370,34 +374,20 @@ const AIRecommender = () => {
             setUserName("");
             setNickname("");
             setProfileImageUrl(null);
-            setCoupons(0);
         };
 
         const handleAuthTokenChange = () => {
             checkLoginStatus();
         };
 
-        // 🟢 쿠폰 개수 업데이트 이벤트 리스너 (결제 완료 후)
-        const handleCouponCountUpdated = (event: CustomEvent) => {
-            const newCouponCount = event.detail?.couponCount;
-            if (typeof newCouponCount === "number") {
-                setCoupons(newCouponCount);
-                console.log(`[쿠폰 개수 업데이트] ${newCouponCount}개로 갱신됨`);
-                // 🟢 이벤트 수신 후 서버에서 최신 데이터 강제로 가져오기
-                fetchUserData(true);
-            }
-        };
-
         window.addEventListener("authLoginSuccess", handleAuthLoginSuccess);
         window.addEventListener("authLogout", handleAuthLogout);
         window.addEventListener("authTokenChange", handleAuthTokenChange);
-        window.addEventListener("couponCountUpdated", handleCouponCountUpdated as EventListener);
 
         return () => {
             window.removeEventListener("authLoginSuccess", handleAuthLoginSuccess);
             window.removeEventListener("authLogout", handleAuthLogout);
             window.removeEventListener("authTokenChange", handleAuthTokenChange);
-            window.removeEventListener("couponCountUpdated", handleCouponCountUpdated as EventListener);
         };
     }, []);
 
@@ -412,7 +402,6 @@ const AIRecommender = () => {
             setUserName("");
             setNickname("");
             setProfileImageUrl(null);
-            setCoupons(0);
             resetConversation();
         } catch (error) {
             console.error("로그아웃 실패:", error);
@@ -421,7 +410,6 @@ const AIRecommender = () => {
             setUserName("");
             setNickname("");
             setProfileImageUrl(null);
-            setCoupons(0);
             resetConversation();
             // 🟢 강제로 홈으로 이동
             try {
@@ -438,6 +426,7 @@ const AIRecommender = () => {
         setShowRecommendations(false);
         setProgress(0);
         setShowUpsell(false);
+        setUpsellFor(null);
         setIsGenerating(false);
         setSelectedCourseId(null);
         setIsAnalyzing(false);
@@ -446,113 +435,38 @@ const AIRecommender = () => {
         setShowChatModal(false); // 모달 닫기
     };
 
-    // 👇 [수정됨] 대화 시작 시 모달 띄우기
-    const startConversation = () => {
+    // 👇 [수정됨] 대화 시작 시 사용 횟수 체크 → 3회차+ 온보딩 미완 시 바텀시트 표시
+    const startConversation = async () => {
         // 비로그인 체크
         if (!isLoggedIn) {
             setShowLogin(true);
             return;
         }
 
-        // 🟢 쿠폰 체크: 웹에서 쿠폰이 0개이면 경고 모달 표시
-        if (platform === "web" && coupons < 1) {
-            const shouldProceed = window.confirm("쿠폰이 부족합니다. 충전 후 나만의 코스를 뽑아보세요!");
-            if (shouldProceed) {
-                setShowPaywall(true);
+        // 🟢 3회차 진입(usageCount >= 2) & 온보딩 미완 → 온보딩 바텀시트
+        try {
+            const data = await authenticatedFetch<{ usageCount?: number; hasOnboardingData?: boolean }>(
+                "/api/ai-recommendation/usage-count",
+                { method: "GET" },
+                false,
+            );
+            const usageCount = data?.usageCount ?? 0;
+            const hasOnboardingData = data?.hasOnboardingData === true;
+            if (usageCount >= 2 && !hasOnboardingData) {
+                setShowOnboardingSheet(true);
+                return;
             }
-            return;
+        } catch {
+            // API 실패 시 기존 대화 모달로 진행
         }
 
         setShowChatModal(true);
-        // 초기화가 필요하면 여기서 resetConversation 로직 일부 수행 가능
         if (messages.length === 0) {
             setMessages([{ type: "ai", text: questionFlow[0].text }]);
         }
         setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 300);
-    };
-
-    // 쿠폰 사용 API
-    const useCoupon = async (): Promise<boolean> => {
-        if (isUsingCoupon) return false;
-
-        setIsUsingCoupon(true);
-
-        try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용 (shouldRedirect: false로 설정하여 로그아웃 방지)
-            const data = await authenticatedFetch<{ ticketsRemaining?: number; success?: boolean; error?: string }>(
-                "/api/ai-recommendation/use-ticket",
-                {
-                    method: "POST",
-                },
-                false // 🟢 401 발생 시 자동 로그아웃 및 리다이렉트 방지
-            );
-
-            if (data && typeof data.ticketsRemaining === "number") {
-                setCoupons(data.ticketsRemaining);
-                
-                // 🟢 쿠폰 사용 이벤트 발생 (마이페이지 실시간 업데이트용)
-                if (typeof window !== "undefined") {
-                    window.dispatchEvent(new CustomEvent("couponUsed", {
-                        detail: { ticketsRemaining: data.ticketsRemaining }
-                    }));
-                }
-                
-                setIsUsingCoupon(false);
-                return true;
-            } else {
-                setIsUsingCoupon(false);
-                // 🟢 ticketsRemaining이 없으면 프로필 API로 최신 값 가져오기
-                if (data && data.success) {
-                    await fetchUserData();
-                    return true;
-                }
-                // 🟢 401 등의 인증 오류인 경우 로그인 모달 표시
-                setShowLogin(true);
-                setNetError("로그인이 필요합니다.");
-                return false;
-            }
-        } catch (error) {
-            console.error("쿠폰 사용 API 오류:", error);
-            setIsUsingCoupon(false);
-            setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-            return false;
-        }
-    };
-
-    // 쿠폰 환불 API
-    const refundCoupon = async (): Promise<void> => {
-        try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const data = await authenticatedFetch<{ ticketsRemaining?: number; success?: boolean }>(
-                "/api/ai-recommendation/refund",
-                {
-                    method: "POST",
-                }
-            );
-
-            if (data) {
-                // 🟢 [수정]: ticketsRemaining이 있으면 사용, 없으면 fetchUserData로 최신 값 가져오기
-                if (typeof data.ticketsRemaining === "number") {
-                    setCoupons(data.ticketsRemaining);
-                } else {
-                    // ticketsRemaining이 없으면 프로필 API로 최신 값 가져오기
-                    await fetchUserData();
-                }
-            } else {
-                setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-            }
-        } catch (error) {
-            console.error("쿠폰 환불 API 오류:", error);
-            // 🟢 에러 발생 시에도 최신 쿠폰 개수 가져오기 시도
-            try {
-                await fetchUserData();
-            } catch (fetchError) {
-                console.error("쿠폰 개수 갱신 실패:", fetchError);
-            }
-            setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-        }
     };
 
     // 답변 처리
@@ -563,15 +477,21 @@ const AIRecommender = () => {
                     setShowLogin(true);
                     return;
                 }
-                // 🟢 iOS/Android: 쿠폰 체크 및 차감 건너뛰기 (무제한 사용)
-                if (platform === "web") {
-                    if (coupons < 1) {
-                        setShowPaywall(true);
-                        return;
-                    }
-                    const couponUsed = await useCoupon();
-                    if (!couponUsed) return;
-                }
+                // 🟢 [주석처리] 일일 제한 확인 (하루 1회만 사용 가능) - 일시 비활성화
+                // try {
+                //     const data = await authenticatedFetch<{ canUse?: boolean; error?: string }>(
+                //         "/api/ai-recommendation/check-daily",
+                //         { method: "POST" },
+                //         false,
+                //     );
+                //     if (!data?.canUse) {
+                //         alert(data?.error || "오늘 이미 사용하셨습니다. 내일 다시 시도해주세요.");
+                //         return;
+                //     }
+                // } catch {
+                //     setNetError("처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+                //     return;
+                // }
 
                 setMessages((prev) => [...prev, { type: "user", text: option.text }]);
 
@@ -637,21 +557,28 @@ const AIRecommender = () => {
     const generateRecommendations = async (answers: Record<string, string>) => {
         let hadNetworkError = false;
         const buildList = (rows: any[]): Course[] =>
-            (rows || []).map((c: any) => ({
-                id: String(c.id),
-                title: c.title,
-                description: c.description || "",
-                duration: c.duration || "",
-                location: c.location || c.region || "",
-                price: c.price || "",
-                tags: [],
-                rating: Number(c.rating) || 0,
-                reviewCount: c.reviewCount || 0,
-                participants: c.participants || 0,
-                highlights: c.highlights || [],
-                // 🟢 matchScore를 score로 매핑 (0.0~1.0 범위, 이미 UX 스케일링 적용됨)
-                score: c.matchScore !== undefined && c.matchScore !== null ? Number(c.matchScore) : 0.5,
-            }));
+            (rows || []).map((c: any) => {
+                const firstPlaceImage = c.coursePlaces?.[0]?.place?.imageUrl;
+                const imageUrl = c.imageUrl?.trim() || firstPlaceImage?.trim() || "";
+                return {
+                    id: String(c.id),
+                    title: c.title,
+                    description: c.description || "",
+                    duration: c.duration || "",
+                    location: c.location || c.region || "",
+                    price: c.price || "",
+                    tags: [],
+                    rating: Number(c.rating) || 0,
+                    reviewCount: c.reviewCount || 0,
+                    participants: c.participants || 0,
+                    highlights: c.highlights || [],
+                    score: c.matchScore !== undefined && c.matchScore !== null ? Number(c.matchScore) : 0.5,
+                    grade: c.grade === "BASIC" || c.grade === "PREMIUM" ? c.grade : "FREE",
+                    imageUrl: imageUrl || undefined,
+                    coursePlaces: c.coursePlaces,
+                    matchReason: typeof c.matchReason === "string" ? c.matchReason : undefined,
+                };
+            });
 
         const fetchCourses = async (query: Record<string, string>) => {
             try {
@@ -673,18 +600,36 @@ const AIRecommender = () => {
             }
         };
 
-        const goal = answers.goal || "";
+        const goalValue = answers.goal || "";
         const companionToday = answers.companion_today || "";
         const moodToday = answers.mood_today || "";
         const regionToday = answers.region_today || "";
+
+        // goal → API용 goal(레일) + goal_detail(가중치)
+        const GOAL_MAP: Record<string, { goal: string; goalDetail: string }> = {
+            기념일: { goal: "ANNIVERSARY", goalDetail: "" },
+            "100일": { goal: "ANNIVERSARY", goalDetail: "100일" },
+            생일: { goal: "ANNIVERSARY", goalDetail: "생일" },
+            연말: { goal: "ANNIVERSARY", goalDetail: "연말" },
+            일상: { goal: "DATE", goalDetail: "" },
+            // 하위 호환
+            데이트: { goal: "DATE", goalDetail: "" },
+            "썸·소개팅": { goal: "DATE", goalDetail: "" },
+            힐링: { goal: goalValue, goalDetail: "" },
+            "특별한 이벤트": { goal: "ANNIVERSARY", goalDetail: "" },
+            "사진 잘 나오는 코스": { goal: "ANNIVERSARY", goalDetail: "" },
+            "밤 데이트": { goal: "DATE", goalDetail: "" },
+        };
+        const { goal, goalDetail } = GOAL_MAP[goalValue] ?? { goal: goalValue, goalDetail: "" };
 
         let list: Course[] = [];
 
         try {
             const token = localStorage.getItem("authToken");
             const params = new URLSearchParams({
-                mode: "ai", // 🟢 BASIC 코스 추천을 위한 mode 파라미터
+                mode: "ai",
                 goal,
+                goal_detail: goalDetail,
                 companion_today: companionToday,
                 mood_today: moodToday,
                 region_today: regionToday,
@@ -699,9 +644,44 @@ const AIRecommender = () => {
 
             if (res.ok && data) {
                 const recommendations = (data as any)?.recommendations;
+                const upsell = (data as any)?.upsellFor;
+                const userTier = (data as any)?.userTier || "FREE";
                 if (recommendations && Array.isArray(recommendations)) {
                     list = buildList(recommendations);
+                    // 🟢 등급에 맞는 추천 코스 자동 저장 (오늘의 데이트 추천 탭용)
+                    const tierMatching = list.filter((c: Course) => (c.grade || "FREE") === userTier);
+                    const doSave = async (course: Course) => {
+                        const opts = {
+                            method: "POST" as const,
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ courseId: course.id, source: "ai_recommendation" }),
+                            cache: "no-store" as RequestCache,
+                        };
+                        const { response } = await apiFetch("/api/users/me/courses", opts);
+                        if (response.ok) {
+                            window.dispatchEvent(new CustomEvent("savedCoursesChanged"));
+                            return true;
+                        }
+                        return false;
+                    };
+                    for (const course of tierMatching) {
+                        try {
+                            let ok = await doSave(course);
+                            if (!ok) {
+                                await new Promise((r) => setTimeout(r, 500));
+                                ok = await doSave(course);
+                            }
+                            if (!ok) console.warn("오늘의 데이트 추천 자동 저장 실패:", course.id);
+                        } catch (e) {
+                            console.error("오늘의 데이트 추천 자동 저장 실패:", course.id, e);
+                        }
+                    }
                 }
+                setUpsellFor(upsell === "BASIC" || upsell === "PREMIUM" ? upsell : null);
+                setUserTier(((data as any)?.userTier || "FREE") as "FREE" | "BASIC" | "PREMIUM");
+                setHasLongTermPreferences((data as any)?.hasLongTermPreferences === true);
+            } else {
+                setUpsellFor(null);
             }
         } catch (error) {
             console.error("추천 API 오류:", error);
@@ -709,6 +689,7 @@ const AIRecommender = () => {
         }
 
         if (list.length === 0) {
+            setUpsellFor(null);
             let fallbackList = await fetchCourses({
                 ...(regionToday ? { region: regionToday } : {}),
             });
@@ -719,7 +700,6 @@ const AIRecommender = () => {
             if (hadNetworkError) {
                 setNetError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
             }
-            await refundCoupon();
         }
 
         setRecommendedCourses(list);
@@ -732,8 +712,8 @@ const AIRecommender = () => {
                     list.length > 0
                         ? `짜잔! 🎉 ${nickname}님을 위한 시크릿 코스를 찾았습니다.\n카드를 터치해서 확인해보세요!`
                         : hadNetworkError
-                        ? `네트워크 오류로 추천을 가져오지 못했어요. 쿠폰은 복구해드렸습니다. 잠시 후 다시 시도해 주세요.`
-                        : `조건에 맞는 코스를 찾지 못했어요. 사용하신 쿠폰은 바로 복구해드렸습니다. 다른 조건으로 다시 시도해볼까요?`,
+                          ? `네트워크 오류로 추천을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.`
+                          : `조건에 맞는 코스를 찾지 못했어요. 다른 조건으로 다시 시도해볼까요?`,
             },
         ]);
     };
@@ -747,6 +727,7 @@ const AIRecommender = () => {
         setShowRecommendations(false);
         setProgress(0);
         setShowUpsell(false);
+        setUpsellFor(null);
         setIsGenerating(false);
         setSelectedCourseId(null);
         setIsAnalyzing(false);
@@ -769,15 +750,17 @@ const AIRecommender = () => {
             return;
         }
 
-        // 🟢 쿠폰으로 구매한 코스인지 확인 (이미 접근 권한이 있는 코스는 쿠폰 사용 불필요)
+        // 🟢 열람권으로 구매한 코스인지 확인 (이미 접근 권한이 있는 코스는 열람권 사용 불필요)
+        let courseDataRes: { isLocked?: boolean; grade?: string } | undefined;
         try {
-            const { data: courseData } = await apiFetch<{ isLocked?: boolean }>(`/api/courses/${courseId}`);
-            // 🟢 코스가 잠금 해제되어 있으면 (쿠폰으로 구매했거나 무료 코스) 바로 저장하고 이동
-            if (courseData && courseData.isLocked === false) {
+            const { data } = await apiFetch<{ isLocked?: boolean; grade?: string } | null>(`/api/courses/${courseId}`);
+            courseDataRes = data ?? undefined;
+            // 🟢 코스가 잠금 해제되어 있으면 (열람권으로 구매했거나 무료 코스) 바로 저장하고 이동
+            if (data && data.isLocked === false) {
                 try {
                     const saveRes = await authenticatedFetch("/api/users/me/courses", {
                         method: "POST",
-                        body: JSON.stringify({ courseId }),
+                        body: JSON.stringify({ courseId, source: "ai_recommendation" }),
                     });
 
                     if (saveRes !== null) {
@@ -801,48 +784,16 @@ const AIRecommender = () => {
             // 에러 발생 시 기존 로직 계속 진행
         }
 
-        // 🟢 코스가 잠겨있고 쿠폰이 없으면 TicketPlans 모달 표시
-        if (coupons < 1) {
-            setIsSelecting(false);
-            setShowConfirmModal(false);
-            setShowPaywall(true);
-            return;
-        }
-
-        try {
-            // 🟢 쿠폰은 이미 "코스 뽑기" 버튼 클릭 시 차감되었으므로 여기서는 차감하지 않음
-            // [Step 1]: 마이페이지 저장 API 호출
-            // 🟢 httpOnly Cookie 기반 인증 (보안 강화 지침 준수)
-            const saveRes = await authenticatedFetch("/api/users/me/courses", {
-                method: "POST",
-                body: JSON.stringify({ courseId }),
-            });
-
-            if (saveRes !== null) {
-                // [Step 3]: 성공 시 상태 업데이트 및 즉시 이동
-                setSelectedCourseId(courseId);
-                setShowConfirmModal(false);
-                setSelectedDetailCourse(null); // 모달이 열려있다면 닫기
-
-                // 🚀 브라우저 히스토리에 남지 않도록 replace 또는 push 사용
-                router.push(`/courses/${courseId}`);
-            } else {
-                // 저장 단계 실패 시 사용자 보호를 위해 쿠폰 환불 처리
-                await refundCoupon();
-                alert("저장 중 오류가 발생하여 쿠폰이 복구되었습니다.");
-            }
-        } catch (error) {
-            console.error("Critical Selection Error:", error);
-            // 🟢 에러 발생 시 쿠폰 환불 시도
-            try {
-                await refundCoupon();
-            } catch (refundError) {
-                console.error("쿠폰 환불 실패:", refundError);
-            }
-            alert("시스템 오류로 인해 처리가 중단되었습니다.");
-        } finally {
-            setIsSelecting(false);
-        }
+        // 🟢 코스가 잠겨있으면 결제 모달 표시 (courseGrade 전달용 pendingCourse 갱신)
+        setIsSelecting(false);
+        setShowConfirmModal(false);
+        setSelectedDetailCourse(null); // 상세 모달 닫기 (결제 모달만 표시)
+        setPendingCourse((prev) => {
+            const grade = courseDataRes?.grade || "BASIC";
+            return prev ? { ...prev, grade } : { id: courseId, title: "", grade };
+        });
+        setShowPaywall(true);
+        return;
     };
 
     // 1. '선택하기' 버튼 클릭 시 실행 (확인 모달만 띄움)
@@ -860,9 +811,13 @@ const AIRecommender = () => {
         setShowConfirmModal(true);
     };
 
-    const handleFlipCard = (courseId: string) => {
+    const handleFlipCard = (courseId: string, course: Course) => {
         if (!revealedCards[courseId]) {
             setRevealedCards((prev) => ({ ...prev, [courseId]: true }));
+            // 잠금 해제된 코스: 카드 뒤집을 때 바로 상세 모달 표시 (상세보기 클릭 생략)
+            const to = { FREE: 0, BASIC: 1, PREMIUM: 2 };
+            const grade = course.grade || "FREE";
+            if ((to[grade] ?? 0) <= (to[userTier] ?? 0)) setSelectedDetailCourse(course);
         }
     };
 
@@ -871,6 +826,42 @@ const AIRecommender = () => {
         const [detail, setDetail] = useState<any>(null);
         const [loading, setLoading] = useState(true);
         const [placesLoading, setPlacesLoading] = useState(true); // 🟢 장소 정보 별도 로딩 상태
+        const [dragY, setDragY] = useState(0);
+        const dragStartYRef = useRef(0);
+        const dragYRef = useRef(0);
+        const pointerIdRef = useRef<number | null>(null);
+
+        useEffect(() => {
+            dragYRef.current = dragY;
+        }, [dragY]);
+
+        const handlePointerDown = useCallback(
+            (e: React.PointerEvent) => {
+                dragStartYRef.current = e.clientY;
+                pointerIdRef.current = e.pointerId;
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                const onMove = (ev: PointerEvent) => {
+                    const dy = Math.max(0, ev.clientY - dragStartYRef.current);
+                    dragYRef.current = dy;
+                    setDragY(dy);
+                };
+                const onUp = () => {
+                    try {
+                        (e.target as HTMLElement).releasePointerCapture(pointerIdRef.current!);
+                    } catch (_) {}
+                    pointerIdRef.current = null;
+                    window.removeEventListener("pointermove", onMove);
+                    window.removeEventListener("pointerup", onUp);
+                    window.removeEventListener("pointercancel", onUp);
+                    if (dragYRef.current > 80) onClose();
+                    setDragY(0);
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", onUp);
+                window.addEventListener("pointercancel", onUp);
+            },
+            [onClose],
+        );
 
         useEffect(() => {
             const fetchCourseDetail = async () => {
@@ -908,10 +899,30 @@ const AIRecommender = () => {
         }, [course.id]);
 
         return (
-            <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-[#1a241b] rounded-4xl w-full max-w-md h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
+            <div
+                className="fixed inset-0 z-70 flex items-end justify-center p-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+                onClick={onClose}
+                role="presentation"
+            >
+                <div
+                    className="bg-white dark:bg-[#1a241b] rounded-t-4xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden cursor-default"
+                    style={
+                        {
+                            animation: "slideUp 0.35s ease-out forwards",
+                            transform: `translateY(${dragY}px)`,
+                        } as React.CSSProperties
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* 드래그 핸들 (드래그하여 내리기) */}
+                    <div
+                        onPointerDown={handlePointerDown}
+                        className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing touch-manipulation"
+                    >
+                        <div className="w-10 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                    </div>
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white dark:bg-[#1a241b] z-10">
+                    <div className="p-4 pt-2 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b] z-10 shrink-0">
                         <div>
                             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tracking-wider uppercase mb-1 block">
                                 Course Detail
@@ -920,18 +931,10 @@ const AIRecommender = () => {
                                 {course.title}
                             </h3>
                         </div>
-                        <TapFeedback>
-                            <button
-                                onClick={onClose}
-                                className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                            </button>
-                        </TapFeedback>
                     </div>
 
                     {/* Content (Scrollable) */}
-                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-[#0f1710]">
+                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-[#0f1710] scrollbar-hide">
                         {/* Summary Card */}
                         <div className="bg-white dark:bg-[#1a241b] p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-6">
                             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -1001,29 +1004,29 @@ const AIRecommender = () => {
                     </div>
 
                     {/* Footer Action */}
-                    <div className="p-4 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800">
-                        <TapFeedback className="block">
+                    <div className="p-4 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 flex justify-end">
+                        <TapFeedback className="block w-[85%] sm:w-[90%]">
                             <button
                                 onClick={() => handleCourseCommit(course.id, course.title)}
                                 disabled={isSelecting || !!selectedCourseId}
-                                className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 ${
-                                selectedCourseId || isSelecting
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-gray-900 text-white hover:bg-gray-800"
-                            }`}
-                        >
-                            {selectedCourseId || isSelecting ? (
-                                isSelecting ? (
-                                    "처리 중..."
+                                className={`w-full py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                    selectedCourseId || isSelecting
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        : "bg-gray-900 text-white hover:bg-gray-800"
+                                }`}
+                            >
+                                {selectedCourseId || isSelecting ? (
+                                    isSelecting ? (
+                                        "처리 중..."
+                                    ) : (
+                                        "이미 선택된 코스입니다"
+                                    )
                                 ) : (
-                                    "이미 선택된 코스입니다"
-                                )
-                            ) : (
-                                <>
-                                    <span>이 코스로 결정하기</span>
-                                    <CheckCircle className="w-5 h-5" />
-                                </>
-                            )}
+                                    <>
+                                        <span>이 코스로 결정하기</span>
+                                        <CheckCircle className="w-4 h-4 shrink-0" />
+                                    </>
+                                )}
                             </button>
                         </TapFeedback>
                     </div>
@@ -1032,9 +1035,12 @@ const AIRecommender = () => {
         );
     };
 
+    const tierOrder = { FREE: 0, BASIC: 1, PREMIUM: 2 };
     const FlipCard = ({ course }: { course: Course }) => {
         const isRevealed = revealedCards[course.id];
         const isSelected = selectedCourseId === course.id;
+        const courseGrade = course.grade || "FREE";
+        const isLocked = (tierOrder[courseGrade] ?? 0) > (tierOrder[userTier] ?? 0);
 
         // 🟢 [Performance]: 카드에 마우스를 올렸을 때 코스 상세 정보 prefetch
         const handleMouseEnter = async () => {
@@ -1084,7 +1090,7 @@ const AIRecommender = () => {
                 className={`group h-[440px] w-full cursor-pointer perspective-1000 transition-all duration-500 relative ${
                     isRevealed ? "z-30" : "z-20"
                 } ${isSelected ? "scale-105" : "hover:-translate-y-2"}`}
-                onClick={() => !isSelected && handleFlipCard(course.id)}
+                onClick={() => !isSelected && handleFlipCard(course.id, course)}
                 onMouseEnter={handleMouseEnter}
             >
                 <div
@@ -1127,51 +1133,127 @@ const AIRecommender = () => {
                         <div className="absolute bottom-0 left-0 w-full h-1.5 bg-linear-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
                     </div>
 
-                    {/* 🟢 [Back]: 보정된 매칭 점수가 적용된 상세 정보 */}
-                    <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-4xl bg-white dark:bg-[#1a241b] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col z-30">
-                        <div className="p-7 flex flex-col h-full z-30">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-black rounded-lg border border-emerald-100 dark:border-emerald-800/50">
-                                    {nickname}님 취향 저격 {displayScore}%
-                                </span>
-                                <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                    {/* 🟢 [Back]: 잠금 해제 = 이전 디자인 / 잠금 = /courses 스타일(이미지+오버레이) */}
+                    <div
+                        className={`absolute w-full h-full backface-hidden rotate-y-180 rounded-4xl bg-white dark:bg-[#1a241b] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col z-30 ${
+                            isLocked ? "cursor-pointer" : ""
+                        }`}
+                        onClick={
+                            isLocked
+                                ? (e) => {
+                                      e.stopPropagation();
+                                      setPendingCourse({
+                                          id: course.id,
+                                          title: course.title,
+                                          grade: courseGrade,
+                                      });
+                                      setShowPaywall(true);
+                                  }
+                                : undefined
+                        }
+                    >
+                        {/* 잠금 코스만: /courses 페이지처럼 이미지 + CourseLockOverlay */}
+                        {isLocked && (
+                            <div className="relative w-full aspect-4/3 shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                {(() => {
+                                    const displayImageUrl =
+                                        course.imageUrl?.trim() ||
+                                        course.coursePlaces?.[0]?.place?.imageUrl?.trim() ||
+                                        "";
+                                    return displayImageUrl ? (
+                                        <Image
+                                            src={displayImageUrl}
+                                            alt={course.title}
+                                            fill
+                                            className="object-cover blur-sm saturate-50"
+                                            sizes="(max-width: 480px) 100vw, 400px"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                            <span className="text-gray-400 dark:text-gray-500 text-sm font-medium">
+                                                DoNa
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                                <CourseLockOverlay grade={courseGrade} nickname={nickname} />
                             </div>
-
-                            <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white leading-tight tracking-tighter">
-                                {course.title}
-                            </h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-[14px] leading-relaxed mb-6 line-clamp-3">
-                                {course.description}
-                            </p>
-
-                            <div className="grid grid-cols-2 gap-3 mb-8">
-                                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-                                    <MapPin className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">
-                                        {course.location}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-                                    <Clock className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                        {course.duration}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="mt-auto flex gap-2.5">
-                                <TapFeedback className="flex-1 min-w-0">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedDetailCourse(course);
-                                        }}
-                                        className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
-                                    >
-                                        상세보기
-                                    </button>
-                                </TapFeedback>
-                            </div>
+                        )}
+                        <div className="p-7 flex flex-col flex-1 min-h-0 overflow-hidden">
+                            {isLocked ? (
+                                <>
+                                    <div className="flex-1 flex flex-col justify-center items-center text-center">
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight tracking-tighter mb-4 line-clamp-2">
+                                            {course.title}
+                                        </h3>
+                                    </div>
+                                    <TapFeedback className="w-full mt-auto">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPendingCourse({
+                                                    id: course.id,
+                                                    title: course.title,
+                                                    grade: courseGrade,
+                                                });
+                                                setShowPaywall(true);
+                                            }}
+                                            className="w-full py-4 bg-emerald-600 dark:bg-emerald-700 text-white rounded-2xl font-bold text-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all"
+                                        >
+                                            {courseGrade === "BASIC"
+                                                ? "✨ 베이직 코스 바로 보기"
+                                                : "✨ 프리미엄 코스 바로 보기"}
+                                        </button>
+                                    </TapFeedback>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-black rounded-lg border border-emerald-100 dark:border-emerald-800/50">
+                                            {nickname}님 취향 저격 {displayScore}%
+                                        </span>
+                                        <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white leading-tight tracking-tighter">
+                                        {course.title}
+                                    </h3>
+                                    <p className="text-gray-500 dark:text-gray-400 text-[14px] leading-relaxed mb-3 line-clamp-3">
+                                        {course.description}
+                                    </p>
+                                    {course.matchReason && (
+                                        <p className="text-emerald-600 dark:text-emerald-400 text-[13px] font-medium mb-4">
+                                            {course.matchReason}
+                                        </p>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-3 mb-8">
+                                        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                                            <MapPin className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">
+                                                {course.location}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                                            <Clock className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                                {course.duration || "-"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-auto flex gap-2.5">
+                                        <TapFeedback className="flex-1 min-w-0">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedDetailCourse(course);
+                                                }}
+                                                className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                                            >
+                                                상세보기
+                                            </button>
+                                        </TapFeedback>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1231,45 +1313,62 @@ const AIRecommender = () => {
         };
     }, []);
 
-    // 트렌딩 코스 (TOP 3) - 성능 최적화: 지연 로딩 및 캐싱
-    useEffect(() => {
-        // 🟢 성능 최적화: 초기 렌더링 후 1초 지연하여 로드
-        const timer = setTimeout(() => {
-            (async () => {
-                try {
-                    const sp = new URLSearchParams();
-                    sp.set("limit", "20");
-                    sp.set("imagePolicy", "any");
-                    // 🟢 성능 최적화: 캐싱 활용
-                    const res = await fetch(`/api/courses?${sp.toString()}`, {
-                        cache: "force-cache",
-                        next: { revalidate: 300 }, // 🟢 5분 캐싱
-                    });
-                    const data = await res.json().catch(() => null);
-                    const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.courses) ? data.courses : [];
-                    const norm: TrendingCourse[] = list.map((c: any) => ({
-                        id: c.id,
-                        title: c.title,
-                        imageUrl: c.imageUrl,
-                        location: c.location,
-                        duration: c.duration,
-                        viewCount: Number(c.viewCount ?? c.view_count ?? 0),
-                    }));
-                    norm.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-                    setTrending(norm.slice(0, 3));
-                } catch {}
-            })();
-        }, 1000); // 🟢 1초 지연
-        return () => clearTimeout(timer);
-    }, []);
-
     return (
-        <div className="min-h-screen bg-linear-to-b from-emerald-50/20 to-white dark:from-gray-900 dark:to-[#0f1710] font-sans ">
+        <div
+            className={`min-h-screen bg-linear-to-b from-emerald-50/20 to-white dark:from-gray-900 dark:to-[#0f1710] font-sans ${!showChatModal ? "overflow-hidden h-screen" : ""}`}
+        >
             <style>{gameStyles}</style>
             <div className="flex flex-col items-center justify-center p-4 ">
-                {showLogin && <LoginModal onClose={() => setShowLogin(false)} next={pathname} />}
+                {showLogin && (
+                    <LoginModal
+                        onClose={() => setShowLogin(false)}
+                        next="/personalized-home"
+                        {...LOGIN_MODAL_PRESETS.recommendation}
+                    />
+                )}
+                {showOnboardingSheet && (
+                    <OnboardingBottomSheet
+                        isOpen={showOnboardingSheet}
+                        onClose={() => setShowOnboardingSheet(false)}
+                        onboardingUrl="/onboarding?returnTo=/personalized-home"
+                    />
+                )}
+                {/* 🟢 오늘의 데이트 추천 일일 사용 완료 모달 */}
+                {showAlreadyUsedModal && (
+                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-[#1a241b] rounded-4xl w-full max-w-sm overflow-hidden shadow-2xl border border-white/20 dark:border-gray-800/50 animate-in zoom-in-95 duration-300">
+                            <div className="p-8 text-center">
+                                <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                                    <CheckCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">
+                                    오늘 사용 완료했어요
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed px-2">
+                                    오늘의 데이트 추천은 하루에 1번만 이용할 수 있어요.
+                                    <br />
+                                    내일 다시 시도해주세요!
+                                </p>
+                            </div>
+                            <div className="border-t border-gray-100 dark:border-gray-800 p-4">
+                                <button
+                                    onClick={() => setShowAlreadyUsedModal(false)}
+                                    className="w-full py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-2xl font-bold hover:bg-gray-800 dark:hover:bg-gray-700 transition-all"
+                                >
+                                    확인
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
-                {showPaywall && <TicketPlans onClose={() => setShowPaywall(false)} />}
+                {showPaywall && pendingCourse && (
+                    <TicketPlans
+                        courseId={Number(pendingCourse.id)}
+                        courseGrade={(pendingCourse.grade || "BASIC").toUpperCase() === "PREMIUM" ? "PREMIUM" : "BASIC"}
+                        onClose={() => setShowPaywall(false)}
+                    />
+                )}
 
                 {/* 🟢 1단계: 선택 확인 모달 */}
                 {showConfirmModal && pendingCourse && (
@@ -1308,7 +1407,7 @@ const AIRecommender = () => {
                                     disabled={isSelecting || !pendingCourse}
                                     className="flex-1 py-5 bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors active:brightness-90 disabled:opacity-50"
                                 >
-                                    {isSelecting ? "처리 중..." : "쿠폰 사용 및 결정"}
+                                    {isSelecting ? "처리 중..." : "저장하기"}
                                 </button>
                             </div>
                         </div>
@@ -1396,27 +1495,7 @@ const AIRecommender = () => {
                             )}
 
                             {/* 채팅 영역 (스크롤 가능) */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50 relative z-20">
-                                {showUpsell && !showRecommendations && platform === "web" && (
-                                    <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border border-amber-100 dark:border-amber-800/50 text-sm text-amber-900 dark:text-amber-200 shadow-sm">
-                                        <div className="font-bold mb-1 flex items-center gap-2">
-                                            <Ticket className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                                            AI 추천 {coupons <= 1 ? "1회 남음" : `${coupons}개 남음`}
-                                        </div>
-                                        <div className="flex justify-between items-center mt-2">
-                                            <span className="text-xs opacity-80 dark:opacity-90">
-                                                더 많은 추천이 필요하신가요?
-                                            </span>
-                                            <button
-                                                onClick={() => setShowPaywall(true)}
-                                                className="px-3 py-1.5 rounded-lg bg-amber-900 text-white text-xs font-bold hover:bg-amber-800 transition-colors"
-                                            >
-                                                충전하기
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-900/50 relative z-20 scrollbar-hide">
                                 {messages.map((message, index) => (
                                     <div
                                         key={index}
@@ -1461,26 +1540,35 @@ const AIRecommender = () => {
 
                                 {/* 결과 표시 영역 (채팅창 내부) */}
                                 {showRecommendations && !isAnalyzing && (
-                                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-20">
+                                    <div
+                                        ref={recommendationResultsRef}
+                                        className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-20"
+                                    >
                                         <div className="flex justify-between items-center mb-4 px-1">
-                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                                🎁 추천 결과
-                                            </h3>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                                    🎁 추천 결과
+                                                </h3>
+                                                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mt-1">
+                                                    {hasLongTermPreferences
+                                                        ? "회원님 취향을 반영했어요"
+                                                        : "오늘 상황 기준 추천이에요"}
+                                                </p>
+                                            </div>
                                         </div>
 
                                         {recommendedCourses.length > 0 ? (
-                                            <div className="grid gap-4 pb-20 relative z-20">
-                                                {recommendedCourses.map((course) => (
-                                                    <FlipCard key={course.id} course={course} />
-                                                ))}
-                                            </div>
+                                            <>
+                                                <div className="grid gap-4 relative z-20">
+                                                    {recommendedCourses.map((course) => (
+                                                        <FlipCard key={course.id} course={course} />
+                                                    ))}
+                                                </div>
+                                                <div className="h-20" />
+                                            </>
                                         ) : (
                                             <div className="py-10 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800">
-                                                <p className="mb-4">
-                                                    조건에 맞는 코스를 찾지 못했어요.
-                                                    <br />
-                                                    쿠폰은 복구되었습니다.
-                                                </p>
+                                                <p className="mb-4">조건에 맞는 코스를 찾지 못했어요.</p>
                                                 <button
                                                     onClick={handleResetAndRecommend}
                                                     className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold"
@@ -1537,14 +1625,14 @@ const AIRecommender = () => {
                     </div>
                 )}
 
-                <div className="w-full max-w-4xl flex flex-col mb-6">
-                    <div className="bg-white/80 dark:bg-[#1a241b] backdrop-blur-md rounded-4xl p-6 shadow-lg border border-white/50 dark:border-gray-800/50 dark:shadow-gray-900/20">
-                        <div className="flex justify-between items-start mb-6">
+                <div className="w-full max-w-4xl flex flex-col mb-4">
+                    <div className="bg-white/80 dark:bg-[#1a241b] backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/50 dark:border-gray-800/50 dark:shadow-gray-900/20">
+                        <div className="flex justify-between items-center">
                             <div>
-                                <p className="text-gray-500 dark:text-gray-300 text-sm mb-1 font-medium">
-                                    오늘도 즐거운 여행 되세요!
+                                <p className="text-gray-500 dark:text-gray-300 text-xs mb-0.5 font-medium">
+                                    오늘 어떤 하루를 보내실 건가요?
                                 </p>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
                                     {isUserDataLoading ? (
                                         <>
                                             <span className="inline-block w-32 h-7 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></span>
@@ -1567,8 +1655,8 @@ const AIRecommender = () => {
                                     )}
                                 </h2>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden relative">
+                            <div className="shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden relative">
                                     {isUserDataLoading ? (
                                         <div className="w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                                     ) : (
@@ -1582,18 +1670,13 @@ const AIRecommender = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 mb-6">
+                        <div className="flex items-center gap-2 mt-2 min-h-[28px]">
                             {isUserDataLoading ? (
                                 <div className="inline-flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                                     <div className="w-3.5 h-3.5 bg-gray-200 rounded animate-pulse"></div>
                                     <div className="w-16 h-3.5 bg-gray-200 rounded animate-pulse"></div>
                                 </div>
-                            ) : isLoggedIn ? (
-                                <div className="inline-flex items-center gap-1.5 bg-gray-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-emerald-800/50 text-xs font-bold text-gray-600 dark:text-emerald-400">
-                                    <Ticket className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                                    <span>쿠폰 {coupons}개</span>
-                                </div>
-                            ) : (
+                            ) : isLoggedIn ? null : (
                                 <TapFeedback>
                                     <button
                                         onClick={() => setShowLogin(true)}
@@ -1608,105 +1691,70 @@ const AIRecommender = () => {
                 </div>
 
                 <div className="w-full max-w-4xl flex flex-col relative min-h-[600px]">
-                    {trending.length > 0 && (
-                        <div className="mb-6">
-                            <div className="flex items-center justify-between px-1 mb-2">
-                                <h3 className="text-sm font-extrabold text-gray-900">요즘 뜨는 코스 TOP 3</h3>
-                                <Link href="/nearby" className="text-xs text-gray-500 hover:text-gray-700">
-                                    더 보기
-                                </Link>
-                            </div>
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1">
-                                {trending.map((t) => (
-                                    <Link
-                                        key={String(t.id)}
-                                        href={`/courses/${t.id}`}
-                                        prefetch={true}
-                                        className="shrink-0 w-[210px] rounded-xl bg-white border border-gray-100 hover:shadow-sm transition-all"
-                                    >
-                                        <div className="relative w-full aspect-4/3 rounded-t-xl overflow-hidden bg-gray-100">
-                                            <Image
-                                                src={t.imageUrl || ""}
-                                                alt={t.title}
-                                                fill
-                                                className="object-cover"
-                                                sizes="210px"
-                                                quality={70}
-                                            />
-                                        </div>
-                                        <div className="p-3">
-                                            <div className="text-[13px] text-gray-500 mb-1 line-clamp-1">
-                                                {(t.location || "").toString()} {t.duration ? `· ${t.duration}` : ""}
-                                            </div>
-                                            <div className="text-sm font-bold text-gray-900 line-clamp-2">
-                                                {t.title}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <main className="flex-1 overflow-y-auto rounded-3xl relative">
+                    <main className="flex-1 overflow-y-auto rounded-3xl relative scrollbar-hide">
                         {/* 👇 [수정됨] 시작 화면 UI: 고급스러운 AI 컨시어지 스타일 */}
-                        <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/80 dark:bg-[#1a241b] backdrop-blur-xl rounded-3xl border border-white/60 dark:border-gray-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-gray-900/30 min-h-[400px]">
+                        <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-white/80 dark:bg-[#1a241b] backdrop-blur-xl rounded-3xl border border-white/60 dark:border-gray-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-gray-900/30 min-h-[320px]">
                             {/* 1. 아이콘 영역 */}
-                            <div className="relative mb-8 group">
-                                <div className="absolute inset-0 bg-emerald-200 rounded-4xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
+                            <div className="relative mb-5 group">
+                                <div className="absolute inset-0 bg-emerald-200 rounded-[3px] blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
 
-                                <div className="relative w-28 h-28 bg-linear-to-br from-white to-emerald-50 rounded-[2.5rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-emerald-600 drop-shadow-sm">
-                                        <path d="M12 6V2H8"/>
-                                        <path d="M15 11v2"/>
-                                        <path d="M2 12h2"/>
-                                        <path d="M20 12h2"/>
-                                        <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>
-                                        <path d="M9 11v2"/>
+                                <div className="relative w-20 h-20 bg-linear-to-br from-white to-emerald-50 rounded-[1.75rem] border border-white/80 shadow-2xl flex items-center justify-center transform transition-transform duration-500 hover:scale-105">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="48"
+                                        height="48"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="w-10 h-10 text-emerald-600 drop-shadow-sm"
+                                    >
+                                        <path d="M12 6V2H8" />
+                                        <path d="M15 11v2" />
+                                        <path d="M2 12h2" />
+                                        <path d="M20 12h2" />
+                                        <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
+                                        <path d="M9 11v2" />
                                     </svg>
 
-                                    <span className="absolute top-6 right-6 flex h-3 w-3">
+                                    <span className="absolute top-4 right-4 flex h-2.5 w-2.5">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                     </span>
                                 </div>
                             </div>
 
                             {/* 2. 타이포그래피 */}
-                            <h2 className="text-[26px] font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight leading-snug">
-                                AI 두나의 <br />
+                            <h2 className="text-[22px] font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight leading-snug">
                                 <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400">
-                                    프라이빗 코스 설계
+                                    오늘의 데이트 코스 설계
                                 </span>
                             </h2>
-                            <p className="text-gray-500 dark:text-gray-300 text-[15px] leading-relaxed mb-10 max-w-[260px] mx-auto">
-                                복잡한 검색은 그만하세요.
-                                <br />
-                                취향 데이터를 분석해{" "}
-                                <span className="font-semibold text-gray-700 dark:text-white">실패 없는 하루</span>
-                                를<br />
-                                지금 바로 계획해 드립니다.
+                            <p className="text-gray-500 dark:text-gray-300 text-[14px] leading-relaxed mb-6 max-w-[260px] mx-auto">
+                                고민은 줄이고, 실패 없는 코스로
                             </p>
 
                             {/* 3. 버튼 */}
                             <TapFeedback className="block w-full max-w-[280px] mx-auto">
                                 <button
                                     onClick={startConversation}
-                                    className="group relative px-8 py-4 w-full bg-gray-900 text-white rounded-2xl font-bold text-[17px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
+                                    className="group relative px-6 py-3 w-full bg-gray-900 text-white rounded-xl font-bold text-[15px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden"
                                 >
-                                <div className="absolute inset-0 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-size-[200%_auto] animate-[gradient_3s_ease_infinite]"></div>
+                                    <div className="absolute inset-0 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 opacity-100 bg-size-[200%_auto] animate-[gradient_3s_ease_infinite]"></div>
 
-                                <div className="relative flex items-center justify-center gap-2">
-                                    <span>내 취향 분석 시작하기</span>
-                                    <ChevronRight className="w-5 h-5 text-white/90 group-hover:translate-x-1 transition-transform" />
-                                </div>
+                                    <div className="relative flex items-center justify-center gap-2">
+                                        <span>오늘의 코스 추천받기</span>
+                                        <ChevronRight className="w-5 h-5 text-white/90 group-hover:translate-x-1 transition-transform" />
+                                    </div>
                                 </button>
                             </TapFeedback>
 
-                            <div className="mt-6 flex items-center gap-1.5 opacity-60">
+                            <div className="mt-4 flex items-center gap-1.5 opacity-60">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
                                 <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium tracking-wide uppercase">
-                                    Powered by DoNa AI Engine
+                                    하루에 한 번 무료로 추천해드려요
                                 </p>
                             </div>
                         </div>

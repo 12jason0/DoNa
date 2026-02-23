@@ -7,13 +7,13 @@ export async function GET() {
             {
                 id: "1",
                 type: "recommendation",
-                title: "새로운 AI 추천 결과",
+                title: "새로운 오늘의 데이트 추천 결과",
                 message:
                     "사용자 1,247명에게 새로운 개인화 추천을 제공했습니다. CTR이 12.3%로 기존 대비 15% 향상되었습니다.",
                 timestamp: "2025-01-15T10:30:00Z",
                 read: false,
                 priority: "high",
-                category: "AI 추천",
+                category: "오늘의 데이트 추천",
                 metadata: {
                     recommendationId: "rec_20250115_001",
                     performance: {

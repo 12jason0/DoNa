@@ -3,10 +3,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "@/components/ImageFallback";
 
-// 🟢 1. 서버 응답 데이터의 타입을 정의합니다.
 interface ReviewResponse {
     success?: boolean;
-    couponAwarded?: boolean;
     message?: string;
     error?: string;
 }
@@ -36,7 +34,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
         else setMounted(false);
     }, [isOpen]);
 
-    // 🟢 2. 후기 제출 함수 (쿠폰 지급 로직 포함)
+    // 🟢 2. 후기 제출 함수 (열람권 지급 로직 포함)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -60,12 +58,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
             // 응답 데이터 기반 처리
             if (data && !data.error) {
-                // 🎁 서버에서 보낸 쿠폰 지급 여부에 따른 알림 처리 (리뷰 5개 마일스톤)
-                if (data.couponAwarded) {
-                    alert(data.message || "🎁 리뷰 5개 작성을 축하합니다! 쿠폰이 지급되었습니다.");
-                } else {
-                    alert("후기가 성공적으로 작성되었습니다!");
-                }
+                alert("후기가 성공적으로 작성되었습니다!");
 
                 handleClose(); // 상태 초기화 및 모달 닫기
                 // 후기 목록 새로고침을 위한 이벤트 발생

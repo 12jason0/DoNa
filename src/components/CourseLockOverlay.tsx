@@ -2,9 +2,13 @@ import React from "react";
 
 interface CourseLockOverlayProps {
     grade?: string;
+    nickname?: string; // personalized-home 등에서 사용 시 "🔒 닉네임님 상황에 가장 잘 맞는 코스"
 }
 
-export default function CourseLockOverlay({ grade = "PREMIUM" }: CourseLockOverlayProps) {
+export default function CourseLockOverlay({ grade = "PREMIUM", nickname }: CourseLockOverlayProps) {
+    const gradeLabel = grade === "BASIC" ? "베이직" : "프리미엄";
+    const labelText = nickname ? `🔒 ${nickname}님 상황에 가장 잘 맞는 코스` : `${grade} 전용`;
+
     // 🟢 z-index를 20으로 설정하여 뱃지(z-[30]) 아래에 위치하도록 보장
     return (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[1px] pointer-events-none">
@@ -19,7 +23,7 @@ export default function CourseLockOverlay({ grade = "PREMIUM" }: CourseLockOverl
                 </svg>
             </div>
             <span className="text-white font-bold text-[13px] bg-black/60 px-3 py-1 rounded-full backdrop-blur-md border border-white/20 tracking-tight">
-                {grade} 전용
+                {labelText}
             </span>
         </div>
     );

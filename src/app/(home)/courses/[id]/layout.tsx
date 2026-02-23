@@ -98,6 +98,7 @@ interface Notice {
     type?: string;
 }
 interface CourseData extends Course {
+    grade?: string;
     highlights?: Highlight[];
     benefits?: Benefit[];
     notices?: Notice[];
@@ -342,9 +343,8 @@ function CourseDetailPage() {
 
     // 🟢 [Fix] handleSaveCourse 내의 2304 에러 해결
     const handleSaveCourse = async () => {
+        const currentSavedState = isSaved;
         try {
-            // 🟢 [Fix]: API 호출 전에 현재 상태 저장 (상태 변경 전)
-            const currentSavedState = isSaved;
             const nextState = !isSaved;
             
             // 🟢 [Fix]: 상태를 먼저 변경하여 UI 즉시 반영
@@ -541,7 +541,13 @@ function CourseDetailPage() {
                 courseName={courseData.title}
             />
             {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
-            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showSubscriptionModal && (
+                <TicketPlans
+                    courseId={parseInt(courseId)}
+                    courseGrade={(courseData?.grade || "FREE").toUpperCase() === "PREMIUM" ? "PREMIUM" : "BASIC"}
+                    onClose={() => setShowSubscriptionModal(false)}
+                />
+            )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
         </>
     );

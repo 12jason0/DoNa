@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
 import { CONCEPTS } from "@/constants/onboardingData";
+import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import CourseLockOverlay from "./CourseLockOverlay";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
@@ -150,23 +151,13 @@ const CourseCard = memo(
             return course.coursePlaces.filter((cp) => cp && cp.place && cp.place.id !== undefined).length;
         }, [course.coursePlaces, course.placesCount]);
 
-        // 잠금 상태 클릭 핸들러 (기존 로직 유지)
-        const handleLockedClick = async (e: React.MouseEvent) => {
+        // 잠금 상태 클릭 핸들러: 바로 TicketPlans 표시 (결제 시점에 세션 검사)
+        const handleLockedClick = (e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
 
-            try {
-                const { fetchSession } = await import("@/lib/authClient");
-                const session = await fetchSession();
-                if (!session.authenticated) {
-                    setShowLoginModal(true);
-                    return;
-                }
-                setShowSubscriptionModal(true);
-            } catch (error) {
-                console.error("로그인 상태 확인 실패:", error);
-                setShowLoginModal(true);
-            }
+            // 로그인 여부는 결제 클릭 시 handlePayment에서 검사
+            setShowSubscriptionModal(true);
         };
 
         return (
@@ -331,13 +322,20 @@ const CourseCard = memo(
                     </div>
                 </div>
 
-                {/* 모달 섹션 (기존 기능 유지) */}
-                {/* 🟢 [iOS/Android]: iOS/Android에서는 결제 모달 표시 안함 */}
-                {showSubscriptionModal && platform === "web" && (
-                    <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
+                {/* 모달 섹션 - 웹·앱 모두 TicketPlans 표시 */}
+                {showSubscriptionModal && (
+                    <TicketPlans
+                        courseId={Number(course.id)}
+                        courseGrade={(course.grade || "BASIC").toUpperCase() === "PREMIUM" ? "PREMIUM" : "BASIC"}
+                        onClose={() => setShowSubscriptionModal(false)}
+                    />
                 )}
                 {showLoginModal && (
-                    <LoginModal onClose={() => setShowLoginModal(false)} next={`/courses/${course.id}`} />
+                    <LoginModal
+                        onClose={() => setShowLoginModal(false)}
+                        next={`/courses/${course.id}`}
+                        {...LOGIN_MODAL_PRESETS.courseDetail}
+                    />
                 )}
             </div>
         );

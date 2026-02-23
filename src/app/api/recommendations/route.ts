@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { getChips, type ChipContext, type DayType } from "@/constants/chipRules";
+import { REGION_GROUPS } from "@/constants/onboardingData";
+import {
+    fetchWeekendForecast,
+    getWeekendWeatherRisk,
+    getWeekendTargetDateStr,
+    getDaysUntilWeekend,
+    getWeekendMode,
+    getIndoorScore,
+    isOutdoorOnly,
+    calculateRegionMatchV2,
+    getUserPreferredGroupIds,
+} from "@/lib/weekendRecommendation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -45,6 +58,8 @@ function extractWeatherStatus(data: any): string | null {
 
 async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | null> {
     if (!KMA_API_KEY) return null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const now = new Date();
     const baseDate = now.toISOString().slice(0, 10).replace(/-/g, "");
     const baseTime = `${now.getHours().toString().padStart(2, "0")}00`;
@@ -52,23 +67,28 @@ async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | nu
         KMA_API_KEY,
     )}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
     try {
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeout);
         if (!response.ok) return null;
         const jsonResponse = await response.json();
         if (jsonResponse?.response?.header?.resultCode !== "00") return null;
         return extractWeatherStatus(jsonResponse);
     } catch (error) {
+        clearTimeout(timeout);
         return null;
     }
 }
 
 async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
     if (!AIRKOREA_API_KEY || !sidoName) return null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
     try {
         const apiUrl = `https://apis.data.go.kr/B552584/ArpltnInforinquireSvc/getCtprvnRltmMesureDnsty?serviceKey=${encodeURIComponent(
             AIRKOREA_API_KEY,
         )}&numOfRows=1&pageNo=1&sidoName=${encodeURIComponent(sidoName)}&ver=1.3&returnType=json`;
-        const response = await fetch(apiUrl, { next: { revalidate: 3600 } });
+        const response = await fetch(apiUrl, { next: { revalidate: 3600 }, signal: controller.signal });
+        clearTimeout(timeout);
         if (!response.ok) return null;
         const jsonResponse = await response.json();
         const items = jsonResponse?.response?.body?.items;
@@ -80,6 +100,7 @@ async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
         if (pm10Value > 75 || pm25Value > 35) return "미세먼지";
         return null;
     } catch (error) {
+        clearTimeout(timeout);
         return null;
     }
 }
@@ -110,13 +131,19 @@ function calculateConceptMatch(courseConcept: string | null, longTermConcepts: s
         if (courseConcepts.some((c) => c.includes(pref) || pref.includes(c))) matchCount++;
     });
 
-    // 오늘의 목적(goal) 기반 매칭
+    // 오늘의 목적(goal) 기반 매칭 (ANNIVERSARY/100일/생일/연말 → 기념일, DATE → 데이트)
+    const goalNorm =
+        goal === "ANNIVERSARY" || goal === "100일" || goal === "생일" || goal === "연말"
+            ? "기념일"
+            : goal === "DATE"
+              ? "데이트"
+              : goal;
     const goalConceptMap: Record<string, string[]> = {
-        기념일: ["프리미엄", "특별한", "로맨틱"],
+        기념일: ["프리미엄", "특별한", "로맨틱", "감성데이트", "인생샷"],
         데이트: ["로맨틱", "감성", "데이트"],
         힐링: ["힐링", "감성", "조용한"],
     };
-    (goalConceptMap[goal] || []).forEach((gc) => {
+    (goalConceptMap[goalNorm] || []).forEach((gc) => {
         if (courseConcepts.some((c) => c.includes(gc) || gc.includes(c))) matchCount++;
     });
 
@@ -167,6 +194,42 @@ function calculateRegionMatch(courseRegion: string | null, longTermRegions: stri
     return 0.5; // 선호 지역 정보가 없으면 중간값
 }
 
+/** goal별 Soft Gate: 기념일인데 힐링/찜질방 등 → 패널티 (오늘 선택이 방향 결정) */
+function goalPenalty(course: any, goal: string): number {
+    const isAnniversary =
+        goal === "ANNIVERSARY" || goal === "기념일" || goal === "100일" || goal === "생일" || goal === "연말";
+    if (!isAnniversary) return 0;
+
+    const concept = String(course.concept ?? "");
+    const title = String(course.title ?? "");
+    const subTitle = String(course.sub_title ?? "");
+    const tagsArr = Array.isArray(course.tags) ? course.tags : [];
+    const text = [concept, title, subTitle, ...tagsArr.map((t: any) => String(t ?? ""))].join(" ");
+
+    const badForAnniversary = ["힐링", "가성비", "찜질방", "편의점", "스파"];
+    if (badForAnniversary.some((k) => text.includes(k))) return -0.3;
+    return 0;
+}
+
+/** goalDetail 보너스: 100일/생일/연말에 맞는 컨셉 가산 (기념일일 때만) */
+function goalDetailBonus(course: any, goal: string, goalDetail: string): number {
+    if (goal !== "ANNIVERSARY") return 0;
+    if (!goalDetail) return 0;
+    const concept = String(course.concept ?? "");
+    const mood = (course.mood ?? []).join(" ");
+
+    if (goalDetail === "100일") {
+        return concept.includes("감성") || concept.includes("로맨틱") || mood.includes("감성") ? 0.08 : 0;
+    }
+    if (goalDetail === "생일") {
+        return concept.includes("프리미엄") || concept.includes("특별") || concept.includes("인생샷") ? 0.08 : 0;
+    }
+    if (goalDetail === "연말") {
+        return concept.includes("야경") || concept.includes("감성") || mood.includes("감성") ? 0.08 : 0;
+    }
+    return 0;
+}
+
 function calculateGoalMatch(
     courseGoal: string | null,
     courseConcept: string | null,
@@ -182,9 +245,15 @@ function calculateGoalMatch(
         if ((companionMap[companionToday] || []).some((ct) => courseGoal.includes(ct))) score += 0.5;
     }
 
-    // goal 태그 매칭
-    const goalTags: Record<string, string[]> = { 기념일: ["기념일", "특별한"], 데이트: ["데이트", "로맨틱"] };
-    const goalKeywords = goalTags[goal] || [];
+    // goal 태그 매칭 (ANNIVERSARY/기념일 계열 → 기념일, DATE/일상 → 데이트)
+    const goalNorm =
+        goal === "ANNIVERSARY" || goal === "100일" || goal === "생일" || goal === "연말"
+            ? "기념일"
+            : goal === "DATE"
+              ? "데이트"
+              : goal;
+    const goalTags: Record<string, string[]> = { 기념일: ["기념일", "특별한", "로맨틱", "감성"], 데이트: ["데이트", "로맨틱"] };
+    const goalKeywords = goalTags[goalNorm] || [];
 
     if (courseGoal && goalKeywords.some((gt) => courseGoal.includes(gt))) {
         score += 0.5;
@@ -251,10 +320,123 @@ function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayC
     // 정보가 전혀 없다면 기본 점수 0.5 부여
     let finalBaseScore = activeWeightTotal > 0 ? weightedScoreSum / activeWeightTotal : 0.5;
 
-    // 7. 날씨 페널티는 정규화된 점수 위에서 최종 가감 (날씨는 선택 사항이 아닌 외부 환경이므로)
+    // 7. 날씨 페널티
     finalBaseScore += calculateWeatherPenalty(course.concept, todayContext.weather_today || "");
 
+    // 8. goal별 Soft Gate: 기념일인데 힐링/찜질방 등 → 패널티
+    finalBaseScore += goalPenalty(course, todayContext.goal || "");
+
     return Math.max(0, Math.min(finalBaseScore, 1.0));
+}
+
+/** 🟢 주말 전용: Region V2 + 주말 날씨 모드 반영 */
+function calculateWeekendRecommendationScore(
+    course: any,
+    longTermPrefs: any,
+    todayContext: any,
+    userPreferredGroupIds: Set<string>,
+    weekendWeatherRisk: { rainLikely: boolean } | null,
+    weekendMode: "safe" | "partial" | "strong" | null,
+): number {
+    const WEIGHTS = { concept: 0.25, mood: 0.25, region: 0.2, goal: 0.3 };
+    let weightedScoreSum = 0;
+    let activeWeightTotal = 0;
+
+    if ((longTermPrefs.concept?.length > 0) || todayContext.goal) {
+        weightedScoreSum +=
+            calculateConceptMatch(course.concept, longTermPrefs.concept || [], todayContext.goal || "") *
+            WEIGHTS.concept;
+        activeWeightTotal += WEIGHTS.concept;
+    }
+    if ((longTermPrefs.mood?.length > 0) || todayContext.mood_today) {
+        weightedScoreSum +=
+            calculateMoodMatch(course.mood || [], longTermPrefs.mood || [], todayContext.mood_today || "") *
+            WEIGHTS.mood;
+        activeWeightTotal += WEIGHTS.mood;
+    }
+    if ((longTermPrefs.regions?.length > 0) || todayContext.region_today || userPreferredGroupIds.size > 0) {
+        const regionScore =
+            userPreferredGroupIds.size > 0
+                ? calculateRegionMatchV2(course.region, userPreferredGroupIds, REGION_GROUPS)
+                : calculateRegionMatch(
+                      course.region,
+                      longTermPrefs.regions || [],
+                      todayContext.region_today || "",
+                  );
+        weightedScoreSum += regionScore * WEIGHTS.region;
+        activeWeightTotal += WEIGHTS.region;
+    }
+    if (todayContext.goal || todayContext.companion_today) {
+        weightedScoreSum +=
+            calculateGoalMatch(
+                course.goal,
+                course.concept,
+                todayContext.goal || "",
+                todayContext.companion_today || "",
+            ) * WEIGHTS.goal;
+        activeWeightTotal += WEIGHTS.goal;
+    }
+
+    let finalBaseScore = activeWeightTotal > 0 ? weightedScoreSum / activeWeightTotal : 0.5;
+
+    const indoorScore = getIndoorScore(course.concept);
+    const outdoorOnly = isOutdoorOnly(course.concept);
+    if (weekendWeatherRisk && weekendMode) {
+        const rainRisk = weekendWeatherRisk.rainLikely || weekendMode === "safe";
+        if (rainRisk) {
+            if (outdoorOnly) finalBaseScore -= 0.35;
+            else if (indoorScore >= 0.8) finalBaseScore += 0.1;
+        } else if (weekendMode === "strong") {
+            if (indoorScore >= 0.8) finalBaseScore += 0.03;
+            if (outdoorOnly) finalBaseScore += 0.08;
+        }
+    }
+
+    finalBaseScore += goalPenalty(course, todayContext.goal || "");
+    return Math.max(0, Math.min(finalBaseScore, 1.0));
+}
+
+/** 매칭 이유 1줄 생성 (온보딩 O: 취향 기반, 온보딩 X: 오늘 상황 기준) */
+function getMatchReason(
+    course: any,
+    longTermPrefs: any,
+    todayContext: { goal?: string; mood_today?: string; region_today?: string },
+    hasLongTermPreferences: boolean,
+): string {
+    if (hasLongTermPreferences) {
+        // 온보딩 O: 취향(concept, mood, region) 중 매칭된 것 하나 선택
+        const userConcepts = longTermPrefs.concept || [];
+        const userMoods = longTermPrefs.mood || [];
+        const userRegions = longTermPrefs.regions || [];
+        const courseConcept = course.concept || "";
+        const courseMoods = Array.isArray(course.mood) ? course.mood : [];
+        const courseRegion = course.region || "";
+
+        if (userConcepts.length > 0 && courseConcept && userConcepts.some((c: string) => courseConcept.includes(c))) {
+            const matched = userConcepts.find((c: string) => courseConcept.includes(c));
+            return `회원님이 좋아하실 ${matched || courseConcept} 분위기예요`;
+        }
+        if (userMoods.length > 0 && courseMoods.some((m: string) => userMoods.includes(m))) {
+            const matched = courseMoods.find((m: string) => userMoods.includes(m));
+            return `회원님 취향 ${matched}를 반영했어요`;
+        }
+        if (userRegions.length > 0 && courseRegion) {
+            const regionGroup = REGION_GROUPS.find((g) => g.dbValues.some((v) => courseRegion.includes(v)));
+            if (regionGroup && userRegions.some((r: string) => (regionGroup.dbValues as readonly string[]).includes(r))) {
+                return `선호 지역 ${regionGroup.label}이에요`;
+            }
+        }
+        // 폴백: 첫 번째 취향 기반
+        if (userConcepts[0]) return `회원님이 좋아하실 ${userConcepts[0]} 분위기예요`;
+        if (userMoods[0]) return `회원님 취향 ${userMoods[0]}를 반영했어요`;
+        if (userRegions[0]) return `선호 지역 근처예요`;
+    }
+    // 온보딩 X: 오늘 상황 기준
+    const { mood_today, region_today } = todayContext;
+    const parts: string[] = [];
+    if (region_today) parts.push(region_today);
+    if (mood_today) parts.push(mood_today + " 분위기");
+        return parts.length > 0 ? `오늘 ${parts.join("에서 ")}에 맞는 추천이에요` : "오늘 상황에 맞는 추천이에요";
 }
 
 // ---------------------------------------------
@@ -268,13 +450,26 @@ export async function GET(req: NextRequest) {
         const mode = searchParams.get("mode");
         const limit = Math.min(Math.max(Number(searchParams.get("limit") || 6), 1), 24);
         const goal = searchParams.get("goal") || "";
+        const goalDetail = searchParams.get("goal_detail") || "";
         const companionToday = searchParams.get("companion_today") || "";
         const moodToday = searchParams.get("mood_today") || "";
         const regionToday = searchParams.get("region_today") || "";
         const strictRegion = searchParams.get("strict") === "true";
+        const dayTypeParam = searchParams.get("dayType") as "today" | "weekend" | null;
 
         let longTermPrefs: any = {};
         let recentBehaviorData: any = { concepts: [], regions: [], moods: [], goals: [] };
+
+        // 🟢 오늘의 데이트 추천: 유저 등급 조회
+        let userTier: "FREE" | "BASIC" | "PREMIUM" = "FREE";
+        if (userId && mode === "ai") {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { subscriptionTier: true },
+            });
+            const t = user?.subscriptionTier?.toUpperCase?.();
+            if (t === "BASIC" || t === "PREMIUM") userTier = t;
+        }
 
         // 🟢 [Fixed]: 개별 처리로 TypeScript 타입 추론 에러(18047, 2339) 해결
         let savedCourseIds: number[] = []; // 🟢 이미 저장한 코스 ID 목록
@@ -290,7 +485,7 @@ export async function GET(req: NextRequest) {
                     .findMany({
                         where: { userId, action: { in: ["view", "like"] } },
                         orderBy: { createdAt: "desc" },
-                        take: 50, // 🔥 10개 → 50개로 확대
+                        take: 50,
                         select: {
                             action: true, // 🔥 행동 유형 추가
                             course: {
@@ -304,7 +499,7 @@ export async function GET(req: NextRequest) {
                         },
                     })
                     .catch(() => []), // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
-                // 🟢 AI 추천 모드일 때만 이미 저장한 코스 목록 조회
+                // 🟢 오늘의 데이트 추천 모드일 때만 이미 저장한 코스 목록 조회
                 mode === "ai"
                     ? prisma.savedCourse
                           .findMany({
@@ -404,8 +599,8 @@ export async function GET(req: NextRequest) {
         } else {
             // 로그인 유저: mode에 따라 구분
             if (mode === "ai") {
-                // 🟢 personalized-home (AI 추천, 쿠폰 사용): BASIC 코스
-                whereConditions.grade = "BASIC";
+                // 🟢 오늘의 데이트 추천: FREE/BASIC/PREMIUM 모두 조회 후 등급별 필터링
+                whereConditions.grade = { in: ["FREE", "BASIC", "PREMIUM"] };
             } else {
                 // 🟢 일반 추천 (PersonalizedSection 등): FREE 코스만
                 whereConditions.grade = "FREE";
@@ -415,10 +610,10 @@ export async function GET(req: NextRequest) {
             whereConditions.region = { contains: regionToday };
         }
 
-        // 🟢 AI 추천 모드일 때 이미 저장한 코스 제외
-        if (mode === "ai" && savedCourseIds.length > 0) {
-            whereConditions.id = { notIn: savedCourseIds };
-        }
+        // 🟢 [주석처리] 이미 저장한 코스 제외 - BASIC+PREMIUM 2개 추천을 위해 제외하지 않음
+        // if (mode === "ai" && savedCourseIds.length > 0) {
+        //     whereConditions.id = { notIn: savedCourseIds };
+        // }
 
         const allCourses = await (prisma as any).course.findMany({
             where: whereConditions,
@@ -454,18 +649,44 @@ export async function GET(req: NextRequest) {
                 is_editor_pick: true,
                 grade: true,
                 coursePlaces: {
-                    take: 1,
-                    select: { place: { select: { id: true, imageUrl: true } } },
+                    take: 10,
+                    select: {
+                        place: {
+                            select: { id: true, imageUrl: true, reservationUrl: true },
+                        },
+                    },
                     orderBy: { order_index: "asc" },
                 },
             },
         });
 
         if (!userId) {
-            const popular = allCourses
-                .sort((a: any, b: any) => (b.view_count || 0) - (a.view_count || 0))
-                .slice(0, limit);
-            return NextResponse.json({ recommendations: popular });
+            const byViews = allCourses.sort((a: any, b: any) => (b.view_count || 0) - (a.view_count || 0));
+            const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+            const dateSeed =
+                kst.getFullYear() * 10000 + (kst.getMonth() + 1) * 100 + kst.getDate();
+            const poolSize = Math.min(10, byViews.length);
+            const todayFirstIdx = poolSize > 0 ? dateSeed % poolSize : 0;
+            const todayFirst = byViews[todayFirstIdx];
+            const rest = byViews.filter((c: any) => c.id !== todayFirst?.id).slice(0, limit - 1);
+            const popular = todayFirst ? [todayFirst, ...rest] : byViews.slice(0, limit);
+            const dayType: DayType = kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today";
+            const guestChipContext: ChipContext = { dayType };
+            const popularWithChips = popular.map((c: any) => ({
+                ...c,
+                id: String(c.id),
+                imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+                chips: getChips(
+                    { region: c.region, concept: c.concept, mood: c.mood, goal: c.goal, coursePlaces: c.coursePlaces },
+                    guestChipContext,
+                    3,
+                ),
+            }));
+            return NextResponse.json({
+                recommendations: popularWithChips,
+                hasOnboardingData: false,
+                upsellFor: mode === "ai" ? ("BASIC" as const) : undefined,
+            });
         }
 
         // 🟢 날씨 정보 조회: regionToday가 없으면 온보딩에서 저장한 첫 번째 지역 사용
@@ -492,23 +713,65 @@ export async function GET(req: NextRequest) {
             weatherToday = [kma, air].filter(Boolean).join("/");
         }
 
+        // 🟢 주말 모드: 단기예보로 토요일 날씨 조회
+        let weekendWeatherRisk: { rainLikely: boolean; confidence: string } | null = null;
+        if (dayTypeParam === "weekend" && userId) {
+            const rawRegion = regionToday || longTermPrefs.regions?.[0] || "";
+            if (rawRegion) {
+                const searchKeyword = regionMapping[rawRegion] || rawRegion;
+                const gridData = await prisma.gridCode.findFirst({
+                    where: { region_name: { contains: searchKeyword } },
+                    select: { nx: true, ny: true },
+                });
+                if (gridData && KMA_API_KEY) {
+                    const fcstItems = await fetchWeekendForecast(gridData.nx, gridData.ny, KMA_API_KEY);
+                    const targetStr = getWeekendTargetDateStr();
+                    weekendWeatherRisk = getWeekendWeatherRisk(fcstItems, targetStr);
+                }
+            }
+            if (!weekendWeatherRisk) {
+                weekendWeatherRisk = { rainLikely: false, confidence: "low" };
+            }
+        }
+
         const todayContext = {
             goal,
+            goal_detail: goalDetail,
             companion_today: companionToday,
             mood_today: moodToday,
             region_today: regionToday,
             weather_today: weatherToday,
         };
 
-        // 🟢 온보딩 완료 여부 확인: 선호도 데이터나 오늘의 컨텍스트가 하나라도 있어야 함
-        const hasOnboardingData =
+        // 🟢 온보딩 완료 여부: 장기 선호도(분위기/가치관/지역)가 있어야 함 (오늘 질문만 있으면 X)
+        const hasLongTermPreferences =
             (longTermPrefs.concept && longTermPrefs.concept.length > 0) ||
             (longTermPrefs.mood && longTermPrefs.mood.length > 0) ||
-            (longTermPrefs.regions && longTermPrefs.regions.length > 0) ||
-            goal ||
-            companionToday ||
-            moodToday ||
-            regionToday;
+            (longTermPrefs.regions && longTermPrefs.regions.length > 0);
+
+        // 🟢 선호도 데이터나 오늘의 컨텍스트가 하나라도 있어야 점수 계산
+        const hasOnboardingData =
+            hasLongTermPreferences || goal || companionToday || moodToday || regionToday;
+
+        // 🟢 주말 모드: 유저 선호 권역 (recentBehavior + longTerm 합쳐서)
+        const userRegionList =
+            dayTypeParam === "weekend"
+                ? [
+                      ...recentBehaviorData.regions,
+                      ...(Array.isArray(longTermPrefs.regions) ? longTermPrefs.regions : []),
+                  ]
+                : [];
+        const userPreferredGroupIds =
+            dayTypeParam === "weekend" && userRegionList.length > 0
+                ? getUserPreferredGroupIds(userRegionList, REGION_GROUPS, 5)
+                : new Set<string>();
+
+        const weekendMode =
+            dayTypeParam === "weekend" ? getWeekendMode(getDaysUntilWeekend()) : null;
+        const treatAsRainRisk =
+            dayTypeParam === "weekend" &&
+            weekendWeatherRisk &&
+            (weekendMode === "safe" || weekendWeatherRisk.rainLikely);
 
         const scoredCourses = allCourses.map((course: any) => {
             // 🟢 온보딩 데이터가 없으면 matchScore를 null로 설정 (취향저격 표시 안 함)
@@ -521,8 +784,30 @@ export async function GET(req: NextRequest) {
                 };
             }
 
-            const baseScore = calculateNewRecommendationScore(course, longTermPrefs, todayContext);
+            if (treatAsRainRisk && isOutdoorOnly(course.concept)) {
+                return {
+                    ...course,
+                    id: String(course.id),
+                    imageUrl: course.imageUrl || course.coursePlaces?.[0]?.place?.imageUrl || "",
+                    matchScore: 0,
+                };
+            }
+
+            const baseScore =
+                dayTypeParam === "weekend" && weekendMode && weekendWeatherRisk
+                    ? calculateWeekendRecommendationScore(
+                          course,
+                          longTermPrefs,
+                          todayContext,
+                          userPreferredGroupIds,
+                          weekendWeatherRisk,
+                          weekendMode,
+                      )
+                    : calculateNewRecommendationScore(course, longTermPrefs, todayContext);
             let bonus = 0;
+
+            // goalDetail 보너스 (100일/생일/연말) - 기념일일 때만 적용
+            bonus += goalDetailBonus(course, todayContext.goal, todayContext.goal_detail || "");
 
             // 에디터 추천 보너스
             if (course.is_editor_pick) bonus += 0.1;
@@ -563,21 +848,118 @@ export async function GET(req: NextRequest) {
             };
         });
 
-        try {
-            await (prisma as any).locationLog.create({ data: { userId, purpose: "DATE_COURSE_RECOMMENDATION" } });
-        } catch (e) {}
+        (prisma as any).locationLog
+            .create({ data: { userId, purpose: "DATE_COURSE_RECOMMENDATION" } })
+            .catch(() => {});
+
+        // 🟢 비/눈일 때 야외·공원 코스는 추천에서 제외 (오늘) | 주말은 treatAsRainRisk 시 야외-only 제외
+        let candidates = scoredCourses;
+        if (dayTypeParam === "weekend" && treatAsRainRisk) {
+            candidates = scoredCourses.filter((c: any) => !isOutdoorOnly(c.concept));
+        } else if (weatherToday.includes("비") || weatherToday.includes("눈")) {
+            candidates = scoredCourses.filter(
+                (c: any) => !c.concept?.includes("야외") && !c.concept?.includes("공원"),
+            );
+        }
+
+        const sorted = candidates.sort((a: any, b: any) => {
+            if (a.matchScore === null && b.matchScore === null) return 0;
+            if (a.matchScore === null) return 1;
+            if (b.matchScore === null) return -1;
+            return b.matchScore - a.matchScore;
+        });
+
+        // 🟢 AI 모드: 이미 저장한 코스 제외 (이전 추천에서 저장한 코스는 다시 추천하지 않음)
+        const excludeIds =
+            mode === "ai" && savedCourseIds.length > 0
+                ? new Set(savedCourseIds.map((id: number) => Number(id)))
+                : new Set<number>();
+        const sortedFiltered =
+            mode === "ai" && excludeIds.size > 0 ? sorted.filter((c: any) => !excludeIds.has(Number(c.id))) : sorted;
+
+        // 🟢 KST 날짜 시드: 같은 날엔 같은 결과. weekend는 dayType 포함해 today와 다른 1등 선택
+        const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+        const dateSeed =
+            kstNow.getFullYear() * 10000 + (kstNow.getMonth() + 1) * 100 + kstNow.getDate();
+        const seedWithDayType =
+            dateSeed * 10 + (dayTypeParam === "weekend" ? 7 : 0);
+
+        // 상위 10개 풀에서 날짜 시드로 1등 고르기 (맞춤형 유지 + 일별 변동)
+        const poolSize = Math.min(10, sorted.length);
+        const todayFirstIdx = poolSize > 0 ? seedWithDayType % poolSize : 0;
+        const todayFirst = sorted[todayFirstIdx];
+        const rest = sorted.filter((c: any) => c.id !== todayFirst?.id).slice(0, limit - 1);
+        const dateRotated = todayFirst ? [todayFirst, ...rest] : sorted.slice(0, limit);
+
+        // 🟢 오늘의 데이트 추천: 등급별 1개씩 + 업셀 안내 (AI 모드: 저장한 코스 제외된 풀에서 선택)
+        let finalRecs: any[] = mode === "ai" ? sortedFiltered.slice(0, limit) : dateRotated;
+        let upsellFor: "BASIC" | "PREMIUM" | null = null;
+
+        if (mode === "ai") {
+            const byGrade = (g: string) => sortedFiltered.filter((c: any) => (c.grade || "FREE") === g);
+            const freeList = byGrade("FREE");
+            const basicList = byGrade("BASIC");
+            const premiumList = byGrade("PREMIUM");
+
+            // 🟢 FREE: FREE 1개 + BASIC 1개 | BASIC: FREE+BASIC 중 가장 맞는 1개 + PREMIUM 1개 | PREMIUM: PREMIUM 1개만
+            if (userTier === "FREE") {
+                const oneFree = freeList[0];
+                const oneBasic = basicList[0];
+                finalRecs = [oneFree, oneBasic].filter(Boolean);
+                upsellFor = "BASIC";
+            } else if (userTier === "BASIC") {
+                const freeOrBasicList = sortedFiltered.filter(
+                    (c: any) => (c.grade || "FREE") === "FREE" || (c.grade || "FREE") === "BASIC",
+                );
+                const oneFreeOrBasic = freeOrBasicList[0]; // 이미 matchScore 순 정렬되어 있어 가장 맞는 것
+                const onePremium = premiumList[0];
+                finalRecs = [oneFreeOrBasic, onePremium].filter(Boolean);
+                upsellFor = "PREMIUM";
+            } else {
+                finalRecs = premiumList.slice(0, 1);
+                upsellFor = null;
+            }
+        }
+
+        // 칩: 코스 × 유저 상태 비교 → 상위 3개
+        const dayType: DayType =
+            (() => {
+                if (dayTypeParam === "weekend" || dayTypeParam === "today") return dayTypeParam;
+                const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+                const d = kst.getDay();
+                return d === 0 || d === 6 ? "weekend" : "today";
+            })();
+        const chipContext: ChipContext = {
+            dayType,
+            companionToday: companionToday || undefined,
+            weatherToday:
+                dayTypeParam === "weekend" && weekendWeatherRisk?.rainLikely
+                    ? "비/눈"
+                    : weatherToday || undefined,
+            userRegions: longTermPrefs.regions,
+        };
+        const recommendationsWithChips = finalRecs.map((c: any) => ({
+            ...c,
+            chips: getChips(
+                {
+                    region: c.region,
+                    concept: c.concept,
+                    mood: c.mood,
+                    goal: c.goal,
+                    coursePlaces: c.coursePlaces,
+                },
+                chipContext,
+                3,
+            ),
+            matchReason: getMatchReason(c, longTermPrefs, todayContext, hasLongTermPreferences),
+        }));
 
         return NextResponse.json({
-            recommendations: scoredCourses
-                .sort((a: any, b: any) => {
-                    // 🟢 matchScore가 null인 경우 처리: null은 맨 뒤로
-                    if (a.matchScore === null && b.matchScore === null) return 0;
-                    if (a.matchScore === null) return 1;
-                    if (b.matchScore === null) return -1;
-                    return b.matchScore - a.matchScore;
-                })
-                .slice(0, limit),
-            hasOnboardingData: hasOnboardingData, // 🟢 온보딩 데이터 여부를 직접 반환
+            recommendations: recommendationsWithChips,
+            hasOnboardingData: hasOnboardingData,
+            hasLongTermPreferences,
+            upsellFor: upsellFor,
+            userTier: userTier,
         });
     } catch (e: any) {
         console.error("Recommendation Error:", e.message);

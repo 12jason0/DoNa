@@ -18,10 +18,9 @@ interface ProfileTabProps {
     onLogout: () => void;
 }
 
-// 🟢 [최종 심플 버전] 미니멀 대시보드 스타일의 구독/쿠폰 섹션
-const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
+// 🟢 구독 섹션 (권한: 구독 등급으로 판단)
+const MembershipSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
     const displayTier = userInfo?.subscriptionTier || "FREE";
-    const couponCount = userInfo?.couponCount ?? 0; // 🟢 props에서 직접 가져오기
 
     // 🟢 [Fix]: 만료일이 있고 아직 유효한지 확인
     const hasValidSubscription =
@@ -83,37 +82,6 @@ const MembershipAndCouponSection = ({ userInfo }: { userInfo: UserInfo | null })
                         }`}
                     >
                         {displayTier === "PREMIUM" ? "사용 중" : "업그레이드"}
-                    </button>
-                </div>
-
-                {/* 2. 쿠폰 섹션 - 항상 표시 */}
-                <div className="bg-white dark:bg-[#1a241b] rounded-2xl border border-gray-100 dark:border-gray-800 p-5 md:p-6 shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-2xl shadow-inner">
-                            🎫
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tighter mb-0.5">
-                                My Coupons
-                            </p>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-black text-gray-900 dark:text-white leading-none">
-                                    {couponCount}
-                                </span>
-                                <span className="text-sm font-bold text-gray-400">장 보유</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={() => {
-                            if (typeof window !== "undefined") {
-                                window.dispatchEvent(new CustomEvent("openTicketPlans"));
-                            }
-                        }}
-                        className="px-4 py-2 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl text-xs font-bold transition-all active:scale-95"
-                    >
-                        쿠폰 구매
                     </button>
                 </div>
             </div>
@@ -457,18 +425,6 @@ const ProfileTab = ({
 
                     {userPreferences ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                            {/* 동반자 */}
-                            {userPreferences.companion && (
-                                <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-emerald-100 dark:hover:border-emerald-800/50 transition-colors group">
-                                    <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                        누구와 함께?
-                                    </h4>
-                                    <span className="inline-block px-3.5 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-lg text-sm shadow-sm">
-                                        {userPreferences.companion}
-                                    </span>
-                                </div>
-                            )}
-
                             {/* 선호 콘셉트 */}
                             {userPreferences.concept && userPreferences.concept.length > 0 && (
                                 <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-emerald-100 dark:hover:border-emerald-800/50 transition-colors group">
@@ -553,7 +509,7 @@ const ProfileTab = ({
                 {/* ======================================================================
           2-1. 내 구독 / 이용권 카드 (Subscription & Tickets)
       ====================================================================== */}
-                <MembershipAndCouponSection userInfo={userInfo} />
+                <MembershipSection userInfo={userInfo} />
 
                 {/* ======================================================================
           3. 계정 관리 카드 (Account Settings)

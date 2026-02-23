@@ -6,6 +6,7 @@ import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
+import { LOGIN_MODAL_PRESETS, type LoginModalPresetKey } from "@/constants/loginModalPresets";
 import BridgeModal, { checkAndClearOpenSubscriptionAfterLogin } from "@/components/BridgeModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
@@ -356,7 +357,10 @@ export default function CourseDetailClient({
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(() => {
         return courseData.isLocked ? true : false;
     });
+    // TIPS: 유료 팁 CTA로 열림 | COURSE: 코스 잠금으로 열림 (모달 카피 분기용)
+    const [subscriptionModalContext, setSubscriptionModalContext] = useState<"TIPS" | "COURSE">("COURSE");
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [loginModalPreset, setLoginModalPreset] = useState<LoginModalPresetKey>("courseDetail");
     const [showBridgeModal, setShowBridgeModal] = useState(false);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
     const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
@@ -377,12 +381,14 @@ export default function CourseDetailClient({
     useEffect(() => {
         if (authLoading || !courseData.isLocked) return;
 
-        // 🟢 비로그인 유저 → 로그인 모달만 표시
+        // 🟢 비로그인 유저 → 로그인 모달만 표시 (상세 보기용)
         if (!isAuthenticated) {
+            setLoginModalPreset("courseDetail");
             setShowLoginModal(true);
             setShowSubscriptionModal(false);
         } else {
-            // 🟢 로그인 유저 → TicketPlans만 표시
+            // 🟢 로그인 유저 → TicketPlans만 표시 (코스 잠금 = COURSE 컨텍스트)
+            setSubscriptionModalContext("COURSE");
             setShowSubscriptionModal(true);
             setShowLoginModal(false);
         }
@@ -392,6 +398,8 @@ export default function CourseDetailClient({
     useEffect(() => {
         if (authLoading || !isAuthenticated) return;
         if (checkAndClearOpenSubscriptionAfterLogin()) {
+            // BridgeModal은 팁 CTA에서만 표시됨 → TIPS 컨텍스트
+            setSubscriptionModalContext("TIPS");
             setShowSubscriptionModal(true);
             setShowLoginModal(false);
             setShowBridgeModal(false);
@@ -399,6 +407,11 @@ export default function CourseDetailClient({
     }, [isAuthenticated, authLoading]);
 
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+    const [activeCourse, setActiveCourse] = useState<{
+        courseId: number;
+        courseTitle: string;
+        hasMemory: boolean;
+    } | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
     const [previewImageIndex, setPreviewImageIndex] = useState(0);
@@ -693,6 +706,24 @@ export default function CourseDetailClient({
     useEffect(() => {
         if (authLoading) return;
         setIsLoggedIn(isAuthenticated);
+    });
+
+    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스
+    useEffect(() => {
+        if (!isAuthenticated || authLoading) return;
+        (async () => {
+            try {
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                const data = await authenticatedFetch<{
+                    courseId: number;
+                    courseTitle: string;
+                    hasMemory: boolean;
+                } | null>("/api/users/active-course");
+                setActiveCourse(data ?? null);
+            } catch {
+                setActiveCourse(null);
+            }
+        })();
 
         // 🟢 [Performance]: favorites 동기화를 requestIdleCallback으로 지연
         const syncFavorites = async () => {
@@ -920,6 +951,7 @@ export default function CourseDetailClient({
 
     const handleSaveCourse = async () => {
         if (!isLoggedIn) {
+            setLoginModalPreset("saveRecord");
             setShowLoginModal(true);
             return;
         }
@@ -1239,7 +1271,7 @@ export default function CourseDetailClient({
                     >
                         <section className="bg-white dark:bg-[#1a241b] rounded-lg p-1 shadow-lg border border-gray-100 dark:border-gray-800"></section>
 
-                        <section className="relative px-4 pb-20">
+                        <section className="relative px-4 pb-20 rounded-2xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
                             <div className="absolute left-[34px] top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200" />
                             <div className="space-y-8">
                                 {sortedCoursePlaces.map((coursePlace: CoursePlace, idx: number) => {
@@ -1327,7 +1359,7 @@ export default function CourseDetailClient({
                                                         <p className="text-xs text-gray-500 truncate mb-2">
                                                             {coursePlace.place.address}
                                                         </p>
-                                                        {/* 🟢 예약 버튼 - 하단 시트로 열기 */}
+                                                        {/* 🟢 예약 버튼 - 하단 시트로 열기 (휴무일이면 "다른 날 예약하기") */}
                                                         {coursePlace.place.reservationUrl && (
                                                             <button
                                                                 type="button"
@@ -1338,8 +1370,12 @@ export default function CourseDetailClient({
                                                                 }}
                                                                 className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
                                                             >
-                                                                <Icons.ExternalLink className="w-3 h-3 shrink-0" />
-                                                                예약하기
+                                                                {getPlaceStatus(
+                                                                    coursePlace.place.opening_hours ?? null,
+                                                                    coursePlace.place.closed_days ?? [],
+                                                                ).status === "휴무"
+                                                                    ? "미리 예약하기"
+                                                                    : "예약하기"}
                                                             </button>
                                                         )}
                                                     </div>
@@ -1400,8 +1436,10 @@ export default function CourseDetailClient({
                                                                             setSelectedPlace(coursePlace.place);
                                                                             setShowPlaceModal(true);
                                                                         } else if (isAuthenticated) {
+                                                                            setSubscriptionModalContext("TIPS");
                                                                             setShowSubscriptionModal(true);
                                                                         } else {
+                                                                            setSubscriptionModalContext("TIPS");
                                                                             setShowBridgeModal(true);
                                                                         }
                                                                     }}
@@ -1431,13 +1469,9 @@ export default function CourseDetailClient({
 
                         <section
                             ref={reviewsSectionRef}
-                            className={
-                                reviews.length > 0
-                                    ? "bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-8 shadow-sm border border-white/40 dark:border-gray-700/40 mb-24"
-                                    : "mb-24"
-                            }
+                            className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/60 p-6 md:p-8 mb-24"
                         >
-                            <div className={`flex justify-between items-center ${reviews.length > 0 ? "mb-8" : ""}`}>
+                            <div className={`flex justify-between items-center ${reviews.length > 0 ? "mb-6" : ""}`}>
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                                     이용후기 <span className="text-emerald-500 ml-1">{reviews.length}</span>
                                 </h2>
@@ -1546,51 +1580,129 @@ export default function CourseDetailClient({
                                 </button>
                             </TapFeedback>
                         </div>
-                        <TapFeedback className="flex-1 min-w-0">
-                            <button
-                                onPointerDown={() => {
-                                    if (!isLoggedIn) return;
-                                    if (memoryCountPromiseRef.current) return;
-                                    memoryCountPromiseRef.current = (async () => {
-                                        const { authenticatedFetch } = await import("@/lib/authClient");
-                                        return authenticatedFetch<{
-                                            count: number;
-                                            limit: number | null;
-                                            tier: string;
-                                        }>("/api/users/me/memory-count");
-                                    })();
-                                }}
-                                onClick={async () => {
-                                    if (!isLoggedIn) {
-                                        setShowLoginModal(true);
-                                        return;
-                                    }
-                                    try {
-                                        const { authenticatedFetch } = await import("@/lib/authClient");
-                                        const promise =
-                                            memoryCountPromiseRef.current ??
-                                            (memoryCountPromiseRef.current = authenticatedFetch<{
-                                                count: number;
-                                                limit: number | null;
-                                                tier: string;
-                                            }>("/api/users/me/memory-count"));
-                                        const data = await promise;
-                                        memoryCountPromiseRef.current = null;
-                                        if (data && data.limit != null && data.count >= data.limit) {
-                                            setShowMemoryLimitModal(true);
-                                            return;
-                                        }
-                                    } catch {
-                                        memoryCountPromiseRef.current = null;
-                                    }
-                                    router.push(`/courses/${courseId}/start`);
-                                    handleMapActivation();
-                                }}
-                                className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center gap-2"
-                            >
-                                나만의 추억
-                            </button>
-                        </TapFeedback>
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            {activeCourse && activeCourse.courseId === Number(courseId) ? (
+                                <>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                        오늘 데이트 진행 중
+                                    </p>
+                                    <TapFeedback className="w-full">
+                                        <button
+                                            onPointerDown={() => {
+                                                if (!isLoggedIn) return;
+                                                if (memoryCountPromiseRef.current) return;
+                                                memoryCountPromiseRef.current = (async () => {
+                                                    const { authenticatedFetch } = await import("@/lib/authClient");
+                                                    return authenticatedFetch<{
+                                                        count: number;
+                                                        limit: number | null;
+                                                        tier: string;
+                                                    }>("/api/users/me/memory-count");
+                                                })();
+                                            }}
+                                            onClick={async () => {
+                                                if (!isLoggedIn) {
+                                                    setLoginModalPreset("saveRecord");
+                                                    setShowLoginModal(true);
+                                                    return;
+                                                }
+                                                try {
+                                                    const { authenticatedFetch } = await import("@/lib/authClient");
+                                                    const promise =
+                                                        memoryCountPromiseRef.current ??
+                                                        (memoryCountPromiseRef.current = authenticatedFetch<{
+                                                            count: number;
+                                                            limit: number | null;
+                                                            tier: string;
+                                                        }>("/api/users/me/memory-count"));
+                                                    const data = await promise;
+                                                    memoryCountPromiseRef.current = null;
+                                                    if (data && data.limit != null && data.count >= data.limit) {
+                                                        setShowMemoryLimitModal(true);
+                                                        return;
+                                                    }
+                                                } catch {
+                                                    memoryCountPromiseRef.current = null;
+                                                }
+                                                router.push(`/courses/${courseId}/start`);
+                                                handleMapActivation();
+                                            }}
+                                            className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center"
+                                        >
+                                            나만의 추억 기록하기
+                                        </button>
+                                    </TapFeedback>
+                                </>
+                            ) : activeCourse && activeCourse.courseId !== Number(courseId) ? (
+                                <>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                        오늘 이미 다른 코스를 시작했어요.
+                                    </p>
+                                    <TapFeedback className="w-full">
+                                        <button
+                                            onClick={async () => {
+                                                if (!isLoggedIn) {
+                                                    setLoginModalPreset("saveRecord");
+                                                    setShowLoginModal(true);
+                                                    return;
+                                                }
+                                                try {
+                                                    const { authenticatedFetch } = await import("@/lib/authClient");
+                                                    await authenticatedFetch("/api/users/active-course", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({ courseId: Number(courseId) }),
+                                                    });
+                                                    setActiveCourse({
+                                                        courseId: Number(courseId),
+                                                        courseTitle: courseData?.title ?? "",
+                                                        hasMemory: false,
+                                                    });
+                                                } catch {
+                                                    setToast({ message: "변경에 실패했어요", type: "error" });
+                                                }
+                                            }}
+                                            className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center"
+                                        >
+                                            이 코스로 변경하기
+                                        </button>
+                                    </TapFeedback>
+                                </>
+                            ) : (
+                                <>
+                                    <TapFeedback className="w-full">
+                                        <button
+                                            onClick={async () => {
+                                                if (!isLoggedIn) {
+                                                    setLoginModalPreset("saveRecord");
+                                                    setShowLoginModal(true);
+                                                    return;
+                                                }
+                                                try {
+                                                    const { authenticatedFetch } = await import("@/lib/authClient");
+                                                    await authenticatedFetch("/api/users/active-course", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({ courseId: Number(courseId) }),
+                                                    });
+                                                    setActiveCourse({
+                                                        courseId: Number(courseId),
+                                                        courseTitle: courseData?.title ?? "",
+                                                        hasMemory: false,
+                                                    });
+                                                    handleMapActivation();
+                                                } catch {
+                                                    setToast({ message: "시작하기에 실패했어요", type: "error" });
+                                                }
+                                            }}
+                                            className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center"
+                                        >
+                                            이 코스로 시작하기
+                                        </button>
+                                    </TapFeedback>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -1763,11 +1875,15 @@ export default function CourseDetailClient({
                                     </button>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    {/* 🟢 예약 버튼 추가 */}
+                                    {/* 🟢 예약 버튼 추가 (휴무일이면 "다른 날 예약하기") */}
                                     {(() => {
                                         const fullPlace = sortedCoursePlaces.find(
                                             (c) => c.place.id === modalSelectedPlace.id,
                                         )?.place;
+                                        const isClosedToday =
+                                            fullPlace &&
+                                            getPlaceStatus(fullPlace.opening_hours ?? null, fullPlace.closed_days ?? [])
+                                                .status === "휴무";
                                         return fullPlace?.reservationUrl ? (
                                             <button
                                                 type="button"
@@ -1778,7 +1894,7 @@ export default function CourseDetailClient({
                                                 className="w-full py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                                             >
                                                 <Icons.ExternalLink className="w-4 h-4" />
-                                                예약하기
+                                                {isClosedToday ? "다른 날 예약하기" : "예약하기"}
                                             </button>
                                         ) : null;
                                     })()}
@@ -1883,6 +1999,9 @@ export default function CourseDetailClient({
             {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
             {showSubscriptionModal && (
                 <TicketPlans
+                    courseId={parseInt(courseId)}
+                    courseGrade={(courseData.grade || "FREE").toUpperCase() === "PREMIUM" ? "PREMIUM" : "BASIC"}
+                    context={subscriptionModalContext}
                     onClose={() => {
                         // 🔒 잠금된 코스에서 모달을 닫으면 즉시 홈으로 이동 (딜레이 없이)
                         if (courseData.isLocked) {
@@ -1898,6 +2017,7 @@ export default function CourseDetailClient({
                     onClose={() => setShowBridgeModal(false)}
                     onProceedToLogin={() => {
                         setShowBridgeModal(false);
+                        setLoginModalPreset("courseDetail");
                         setShowLoginModal(true);
                     }}
                 />
@@ -1914,6 +2034,7 @@ export default function CourseDetailClient({
                     }}
                     // 🔒 잠긴 코스의 경우 next prop을 전달하지 않음 (자동 리다이렉트 방지)
                     next={courseData.isLocked ? undefined : `/courses/${courseId}`}
+                    {...LOGIN_MODAL_PRESETS[loginModalPreset]}
                 />
             )}
             {/* 🟢 찜 추가/취소 하단 시트: 클릭 즉시 아래에서 올라옴, 1초 뒤 자동 사라짐 */}
@@ -2154,8 +2275,13 @@ export default function CourseDetailClient({
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                if (isAuthenticated) setShowSubscriptionModal(true);
-                                                                else setShowBridgeModal(true);
+                                                                if (isAuthenticated) {
+                                                                    setSubscriptionModalContext("TIPS");
+                                                                    setShowSubscriptionModal(true);
+                                                                } else {
+                                                                    setSubscriptionModalContext("TIPS");
+                                                                    setShowBridgeModal(true);
+                                                                }
                                                             }}
                                                             className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                                         >
@@ -2168,7 +2294,7 @@ export default function CourseDetailClient({
                                     );
                                 })()}
                                 <div className="flex flex-col gap-2">
-                                    {/* 🟢 예약하기: 하단 시트로 열기 */}
+                                    {/* 🟢 예약하기: 하단 시트로 열기 (휴무일이면 "다른 날 예약하기") */}
                                     {selectedPlace.reservationUrl && (
                                         <button
                                             type="button"
@@ -2179,7 +2305,12 @@ export default function CourseDetailClient({
                                             className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                         >
                                             <Icons.ExternalLink className="w-4 h-4" />
-                                            예약하기
+                                            {getPlaceStatus(
+                                                selectedPlace.opening_hours ?? null,
+                                                selectedPlace.closed_days ?? [],
+                                            ).status === "휴무"
+                                                ? "다른 날 예약하기"
+                                                : "예약하기"}
                                         </button>
                                     )}
                                     <button

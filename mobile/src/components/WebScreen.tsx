@@ -16,11 +16,12 @@ import { WEB_BASE } from "../config";
 
 type Props = {
     uri: string;
+    onRegisterNavigate?: (navigateTo: ((url: string) => void) | null) => void;
     onUserLogin?: (userId: string) => void;
     onUserLogout?: () => void;
 };
 
-export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }: Props) {
+export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserLogin, onUserLogout }: Props) {
     // 🟢 [2026-01-21] 딥링크 처리: 앱이 딥링크로 열릴 때 URL 처리
     const [deepLinkUrl, setDeepLinkUrl] = useState<string | null>(null);
 
@@ -104,6 +105,17 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
         : initialUri || "https://dona.io.kr";
 
     const webRef = useRef<WebView>(null);
+    useEffect(() => {
+        if (!onRegisterNavigate) return;
+        const navigateTo = (url: string) => {
+            const escaped = url.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+            webRef.current?.injectJavaScript(`window.location.href = "${escaped}";`);
+        };
+        onRegisterNavigate(navigateTo);
+        return () => {
+            onRegisterNavigate(null);
+        };
+    }, [onRegisterNavigate]);
     const [loading, setLoading] = useState(true);
     const [canGoBack, setCanGoBack] = useState(false);
     const [currentUrl, setCurrentUrl] = useState(resolvedUri);
@@ -199,9 +211,8 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
 
     // 🟢 [IN-APP PURCHASE]: RevenueCat Product ID → plan.id 매핑
     const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
-        "kr.io.dona.ai_coupon_3": "ticket_light",
-        "kr.io.dona.ai_coupon_5": "ticket_standard",
-        "kr.io.dona.ai_coupon_10": "ticket_pro",
+        "kr.io.dona.course_basic": "ticket_basic",
+        "kr.io.dona.course_premium": "ticket_premium",
         "kr.io.dona.ai_basic_monthly": "sub_basic",
         "kr.io.dona.premium_monthly": "sub_premium",
     };
@@ -248,10 +259,10 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
             }
         };
 
-        // 웹뷰 로드 후 상품 정보 전달 (약간의 지연을 두어 웹뷰가 완전히 로드될 때까지 대기)
+        // 웹뷰 로드 후 상품 정보 전달 (짧은 지연으로 빠른 표시)
         const timer = setTimeout(() => {
             loadRevenueCatProducts();
-        }, 2000);
+        }, 500);
 
         return () => clearTimeout(timer);
     }, []);
@@ -705,7 +716,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                             }
                             // 🟢 [IN-APP PURCHASE]: RevenueCat 인앱결제 요청 처리
                             else if (data.type === "requestInAppPurchase") {
-                                const { planId, planType } = data;
+                                const { planId, planType, intentId, courseId } = data;
                                 try {
                                     // 🟢 [IN-APP PURCHASE]: RevenueCat SDK로 결제 진행
                                     const offerings = await Purchases.getOfferings();
@@ -717,9 +728,8 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                     // 🟢 상품 ID 매핑: planId를 RevenueCat Product ID로 변환
                                     // plan.id → RevenueCat Product ID 매핑
                                     const PLAN_ID_TO_REVENUECAT: Record<string, string> = {
-                                        "ticket_light": "kr.io.dona.ai_coupon_3",
-                                        "ticket_standard": "kr.io.dona.ai_coupon_5",
-                                        "ticket_pro": "kr.io.dona.ai_coupon_10",
+                                        "ticket_basic": "kr.io.dona.course_basic",
+                                        "ticket_premium": "kr.io.dona.course_premium",
                                         "sub_basic": "kr.io.dona.ai_basic_monthly",
                                         "sub_premium": "kr.io.dona.premium_monthly",
                                     };
@@ -743,7 +753,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                         const firstPackage = offerings.current.availablePackages[0];
                                         const { customerInfo } = await Purchases.purchasePackage(firstPackage);
 
-                                        // 🟢 [샌드박스 대응]: 결제 성공 후 즉시 서버에 쿠폰 지급 요청
+                                        // 🟢 [샌드박스 대응]: 결제 성공 후 즉시 서버에 결제 확인 요청
                                         try {
                                             const userIdStr = await AsyncStorage.getItem("userId");
                                             if (userIdStr) {
@@ -751,34 +761,30 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                     ? `rc_${customerInfo.originalPurchaseDate}` 
                                                     : `rc_${Date.now()}`;
                                                 
+                                                const confirmBody: Record<string, any> = {
+                                                    planId: planId,
+                                                    planType: planType,
+                                                    transactionId: transactionId,
+                                                    customerInfo: customerInfo,
+                                                };
+                                                if (intentId) confirmBody.intentId = intentId;
+                                                if (courseId != null) confirmBody.courseId = courseId;
+                                                
                                                 const response = await fetch(`${WEB_BASE}/api/payments/revenuecat/confirm`, {
                                                     method: 'POST',
                                                     headers: {
                                                         'Content-Type': 'application/json',
                                                     },
                                                     credentials: 'include',
-                                                    body: JSON.stringify({
-                                                        planId: planId,
-                                                        planType: planType,
-                                                        transactionId: transactionId,
-                                                        customerInfo: customerInfo
-                                                    })
+                                                    body: JSON.stringify(confirmBody),
                                                 });
                                                 
                                                 if (response.ok) {
                                                     const data = await response.json();
-                                                    console.log("[RevenueCat] 서버 쿠폰 지급 완료:", data);
+                                                    console.log("[RevenueCat] 서버 결제 확인 완료:", data);
                                                     
-                                                    // 🟢 쿠폰 개수 업데이트 이벤트 발생 (UI 즉시 갱신)
-                                                    if (data.couponCount !== undefined) {
-                                                        webRef.current?.injectJavaScript(`
-                                                            window.dispatchEvent(new CustomEvent('couponCountUpdated', {
-                                                                detail: { couponCount: ${data.couponCount} }
-                                                            }));
-                                                        `);
-                                                    }
-                                                    
-                                                    // 🟢 구독 등급 업데이트 이벤트 발생
+                                                    // 🟢 열람권/구독 정보 업데이트 이벤트 발생 (UI 즉시 갱신)
+                                                        // 🟢 구독 등급 업데이트 이벤트 발생
                                                     if (data.subscriptionTier) {
                                                         webRef.current?.injectJavaScript(`
                                                             window.dispatchEvent(new CustomEvent('subscriptionTierUpdated', {
@@ -794,17 +800,18 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                 }
                                             }
                                         } catch (error) {
-                                            console.error("[RevenueCat] 서버 쿠폰 지급 요청 실패:", error);
+                                            console.error("[RevenueCat] 서버 결제 확인 요청 실패:", error);
                                         }
 
-                                        // 성공 처리
+                                        const purchaseDetail: Record<string, any> = {
+                                            success: true,
+                                            planId,
+                                            customerInfo: customerInfo,
+                                        };
+                                        if (courseId != null) purchaseDetail.courseId = Number(courseId);
                                         webRef.current?.injectJavaScript(`
                                             window.dispatchEvent(new CustomEvent('purchaseResult', {
-                                                detail: {
-                                                    success: true,
-                                                    planId: '${planId}',
-                                                    customerInfo: ${JSON.stringify(customerInfo)}
-                                                }
+                                                detail: ${JSON.stringify(purchaseDetail)}
                                             }));
                                         `);
                                         return;
@@ -813,7 +820,7 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                     // 🟢 결제 진행
                                     const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
 
-                                    // 🟢 [샌드박스 대응]: 결제 성공 후 즉시 서버에 쿠폰 지급 요청
+                                    // 🟢 [샌드박스 대응]: 결제 성공 후 즉시 서버에 결제 확인 요청
                                     try {
                                         const userIdStr = await AsyncStorage.getItem("userId");
                                         if (userIdStr) {
@@ -822,33 +829,29 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                 ? `rc_${customerInfo.originalPurchaseDate}` 
                                                 : `rc_${Date.now()}`;
                                             
+                                            const confirmBodyMain: Record<string, any> = {
+                                                planId: planId,
+                                                planType: planType,
+                                                transactionId: transactionId,
+                                                customerInfo: customerInfo,
+                                            };
+                                            if (intentId) confirmBodyMain.intentId = intentId;
+                                            if (courseId != null) confirmBodyMain.courseId = courseId;
+                                            
                                             const response = await fetch(`${WEB_BASE}/api/payments/revenuecat/confirm`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Content-Type': 'application/json',
                                                 },
                                                 credentials: 'include',
-                                                body: JSON.stringify({
-                                                    planId: planId,
-                                                    planType: planType,
-                                                    transactionId: transactionId,
-                                                    customerInfo: customerInfo
-                                                })
+                                                body: JSON.stringify(confirmBodyMain),
                                             });
                                             
                                             if (response.ok) {
                                                 const data = await response.json();
-                                                console.log("[RevenueCat] 서버 쿠폰 지급 완료:", data);
+                                                console.log("[RevenueCat] 서버 결제 확인 완료:", data);
                                                 
-                                                // 🟢 쿠폰 개수 업데이트 이벤트 발생 (UI 즉시 갱신)
-                                                if (data.couponCount !== undefined) {
-                                                    webRef.current?.injectJavaScript(`
-                                                        window.dispatchEvent(new CustomEvent('couponCountUpdated', {
-                                                            detail: { couponCount: ${data.couponCount} }
-                                                        }));
-                                                    `);
-                                                }
-                                                
+                                                // 🟢 열람권/구독 정보 업데이트 이벤트 발생 (UI 즉시 갱신)
                                                 // 🟢 구독 등급 업데이트 이벤트 발생
                                                 if (data.subscriptionTier) {
                                                     webRef.current?.injectJavaScript(`
@@ -863,22 +866,22 @@ export default function WebScreen({ uri: initialUri, onUserLogin, onUserLogout }
                                                     window.dispatchEvent(new CustomEvent('paymentSuccess'));
                                                 `);
                                             } else {
-                                                console.warn("[RevenueCat] 서버 쿠폰 지급 실패 (webhook으로 처리될 예정)");
+                                                console.warn("[RevenueCat] 서버 지급 실패 (webhook으로 처리될 예정)");
                                             }
                                         }
                                     } catch (error) {
-                                        console.error("[RevenueCat] 서버 쿠폰 지급 요청 실패:", error);
-                                        // 실패해도 webhook으로 처리될 예정이므로 계속 진행
+                                        console.error("[RevenueCat] 서버 지급 요청 실패:", error);
                                     }
 
-                                    // 🟢 결제 성공: WebView로 결과 전달
+                                    const mainPurchaseDetail: Record<string, any> = {
+                                        success: true,
+                                        planId,
+                                        planType,
+                                    };
+                                    if (courseId != null) mainPurchaseDetail.courseId = Number(courseId);
                                     webRef.current?.injectJavaScript(`
                                         window.dispatchEvent(new CustomEvent('purchaseResult', {
-                                            detail: {
-                                                success: true,
-                                                planId: '${planId}',
-                                                planType: '${planType}'
-                                            }
+                                            detail: ${JSON.stringify(mainPurchaseDetail)}
                                         }));
                                     `);
 

@@ -614,7 +614,7 @@ const AboutPage = () => {
                                 prefetch={true}
                                 className="bg-blue-600 dark:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-lg"
                             >
-                                🎯 AI 추천 바로 가기
+                                🎯 오늘의 데이트 추천 바로 가기
                             </Link>
                             <Link
                                 href="/map"

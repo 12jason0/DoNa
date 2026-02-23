@@ -67,11 +67,9 @@ export default function RefundPage() {
         try {
             const { authenticatedFetch } = await import("@/lib/authClient");
             
-            // 🟢 구독권인 경우 환불 요청 API 사용, 쿠폰인 경우 즉시 환불 API 사용
+            // 🟢 구독권만 환불 가능 (단건 열람권은 환불 불가)
             const isSubscriptionRefund = isSubscription(selectedPayment.orderName);
-            const apiEndpoint = isSubscriptionRefund 
-                ? "/api/refund/request" 
-                : "/api/ai-recommendation/refund";
+            const apiEndpoint = "/api/refund/request"; // 구독권만 환불 가능
             
             const data = await authenticatedFetch(apiEndpoint, {
                 method: "POST",
@@ -103,7 +101,7 @@ export default function RefundPage() {
                         }
                     }
                 } else {
-                    // 🟢 쿠폰 즉시 환불 (기존 로직)
+                    // 🟢 (구독권만 노출되므로 도달하지 않음)
                     // 인앱결제 환불 안내
                     if ((data as any).isInApp) {
                         const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -125,13 +123,12 @@ export default function RefundPage() {
                         setSuccess(`${selectedPayment.orderName} 환불이 완료되었습니다.`);
                     }
                     
-                    // 쿠폰 환불 완료 이벤트 발생
+                    // 환불 완료 이벤트 발생
                     if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("refundSuccess", {
                             detail: {
                                 orderName: selectedPayment.orderName,
                                 isSubscription: false,
-                                isCoupon: true,
                             }
                         }));
                     }
@@ -154,13 +151,12 @@ export default function RefundPage() {
         }
     };
 
-    // 환불 가능 내역 찾기 (쿠폰 + 멤버십 통합, 인앱결제 포함)
+    // 환불 가능 내역: 구독권만 (단건 열람권은 환불 불가)
     const refundablePayments = paymentHistory.filter(
         (p) =>
             p.status === "PAID" &&
-            // 🟢 토스페이먼츠: paymentKey 필요, 인앱결제: method가 "IN_APP" (paymentKey 없을 수 있음)
             ((p.paymentKey && (!p.method || p.method !== "IN_APP")) || p.method === "IN_APP") &&
-            (p.orderName.includes("쿠폰") || p.orderName.includes("멤버십") || p.orderName.includes("프리미엄") || p.orderName.includes("구독"))
+            (p.orderName.includes("구독") || p.orderName.includes("멤버십"))
     );
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white">⏳ 로딩 중...</div>;
@@ -181,9 +177,7 @@ export default function RefundPage() {
                             </h3>
                             <p className="text-gray-600 dark:text-gray-300 text-[15px] leading-relaxed mb-8">
                                 지금 환불하시면 <span className="text-green-600 font-bold">두나(DoNa)</span>가 준비한
-                                {selectedPayment.orderName.includes("쿠폰")
-                                    ? " 맞춤형 데이트 코스 추천"
-                                    : " 프리미엄 멤버십의 특별한 혜택"}
+                                {" 프리미엄 멤버십의 특별한 혜택"}
                                 을 더 이상 받으실 수 없어요. 정말 괜찮으신가요?
                             </p>
 
@@ -269,7 +263,7 @@ export default function RefundPage() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-blue-500 dark:text-blue-400 mt-1">•</span>
-                            <span><strong className="text-gray-900 dark:text-white">쿠폰:</strong> 이미 사용한 쿠폰이 있으면 환불이 불가능합니다.</span>
+                            <span><strong className="text-gray-900 dark:text-white">단건 열람권:</strong> 구매 즉시 콘텐츠가 제공되어 환불이 제한됩니다.</span>
                         </li>
                     </ul>
                 </div>
@@ -286,7 +280,7 @@ export default function RefundPage() {
                                 <div>
                                     {/* 뱃지 컬러도 그린 계열로 변경 */}
                                     <span className="inline-block px-3 py-1 bg-green-50 dark:bg-emerald-900/30 text-green-600 dark:text-emerald-400 rounded-full text-[10px] font-bold mb-2 uppercase">
-                                        {p.orderName.includes("쿠폰") ? "Coupon" : "Membership"}
+                                        구독권
                                     </span>
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{p.orderName}</h3>
                                     <p className="text-gray-400 dark:text-gray-500 text-xs mt-1 font-medium">

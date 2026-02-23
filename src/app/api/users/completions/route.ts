@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true, already: true });
         }
 
-        // 🟢 트랜잭션으로 코스 완료 저장 (쿠폰 지급은 리뷰 작성 시 처리)
+        // 🟢 트랜잭션으로 코스 완료 저장 (열람권 지급은 리뷰 작성 시 처리)
         const result = await prisma.$transaction(async (tx) => {
             // 코스 완료 기록 생성
             const created = await tx.completedCourse.create({
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
                 where: { userId: Number(userId) },
             });
 
-            // 🟢 쿠폰 지급은 리뷰 작성 시 처리하므로 여기서는 제거
+            // 🟢 열람권 지급은 리뷰 작성 시 처리하므로 여기서는 제거
             return { created, completedCount };
         });
 
