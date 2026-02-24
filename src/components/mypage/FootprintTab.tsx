@@ -153,6 +153,20 @@ const FootprintTab = ({
         }
     }, [showMemoryModal]);
 
+    // 🟢 앱 네이티브: 추억 상세(사진 보기) 모달 열림/닫힘 시 상태바 검은색 전환
+    useEffect(() => {
+        if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+            (window as any).ReactNativeWebView.postMessage(
+                JSON.stringify({ type: showMemoryModal ? "memoryDetailOpen" : "memoryDetailClose" }),
+            );
+        }
+        return () => {
+            if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "memoryDetailClose" }));
+            }
+        };
+    }, [showMemoryModal]);
+
     // 🟢 드래그 기능을 위한 상태
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchEndX, setTouchEndX] = useState<number | null>(null);
@@ -955,23 +969,32 @@ const FootprintTab = ({
                                                                         {story.course?.title || "개인 추억"}
                                                                     </div>
                                                                     {/* 선택한 태그 (칩 형태, DoNa + 1개만) */}
-                                                                    {story.tags && story.tags.length > 0 && (() => {
-                                                                        const doNa = story.tags.find((t: string) => t === "DoNa");
-                                                                        const others = story.tags.filter((t: string) => t !== "DoNa");
-                                                                        const displayTags = [...(doNa ? [doNa] : []), ...others.slice(0, 1)];
-                                                                        return displayTags.length > 0 ? (
-                                                                            <div className="flex flex-wrap gap-1.5 mb-3">
-                                                                                {displayTags.map((t: string) => (
-                                                                                    <span
-                                                                                        key={t}
-                                                                                        className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
-                                                                                    >
-                                                                                        #{t}
-                                                                                    </span>
-                                                                                ))}
-                                                                            </div>
-                                                                        ) : null;
-                                                                    })()}
+                                                                    {story.tags &&
+                                                                        story.tags.length > 0 &&
+                                                                        (() => {
+                                                                            const doNa = story.tags.find(
+                                                                                (t: string) => t === "DoNa",
+                                                                            );
+                                                                            const others = story.tags.filter(
+                                                                                (t: string) => t !== "DoNa",
+                                                                            );
+                                                                            const displayTags = [
+                                                                                ...(doNa ? [doNa] : []),
+                                                                                ...others.slice(0, 1),
+                                                                            ];
+                                                                            return displayTags.length > 0 ? (
+                                                                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                                                                    {displayTags.map((t: string) => (
+                                                                                        <span
+                                                                                            key={t}
+                                                                                            className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                                                                        >
+                                                                                            #{t}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : null;
+                                                                        })()}
 
                                                                     {/* 별점 */}
                                                                     <div className="flex items-center gap-1">

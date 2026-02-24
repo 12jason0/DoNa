@@ -128,7 +128,9 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     // 🟢 [2026-01-21] 다크모드 상태 관리 - 초기값을 false로 설정 (라이트 모드 기본값)
     // 🟢 [수정]: 초기값을 false로 명시적으로 설정하여 검은색 문제 해결
     const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-    
+    // 🟢 추억 상세(사진 보기) 모달 열림 시 상태바 검은색
+    const [isMemoryDetailOpen, setIsMemoryDetailOpen] = useState(false);
+
     // 🟢 [다크모드 초기화]: 웹뷰 로드 시 초기 다크모드 상태 확인
     useEffect(() => {
         if (webRef.current && initialScript) {
@@ -171,9 +173,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     // 🟢 [2026-01-21] 색상 및 여백 최적화 설정
     // 현재 페이지가 지도(게임) 화면인지 확인 (URL 기준)
     // 🟢 [플랫폼별 여백 처리]: 안드로이드는 가림 방지 여백 유지, iOS는 꽉 차게 0
-    const dynamicPaddingBottom = Platform.OS === "android" 
-        ? insets.bottom  // 안드로이드는 뒤로가기/홈 버튼 영역만큼 띄움
-        : 0;             // iOS는 하단 바 영역까지 배경색이 흐르도록 0으로 설정
+    const dynamicPaddingBottom =
+        Platform.OS === "android"
+            ? insets.bottom // 안드로이드는 뒤로가기/홈 버튼 영역만큼 띄움
+            : 0; // iOS는 하단 바 영역까지 배경색이 흐르도록 0으로 설정
 
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {
@@ -224,7 +227,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                         const productId = pkg.product.identifier;
                         // 🟢 Product ID를 plan.id로 변환 (없으면 원본 사용)
                         const planId = REVENUECAT_TO_PLAN_ID[productId] || productId;
-                        
+
                         return {
                             packageIdentifier: pkg.identifier, // Package identifier (결제용)
                             productIdentifier: productId, // RevenueCat Product ID
@@ -268,10 +271,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
             lines.push("(function(){");
             // Native Bridge 설정
             lines.push(
-                `if (!window.ReactNativeWebView) { window.ReactNativeWebView = { postMessage: function(msg) { window.__nativeBridge?.post('webview', JSON.parse(msg || '{}')); } }; }`
+                `if (!window.ReactNativeWebView) { window.ReactNativeWebView = { postMessage: function(msg) { window.__nativeBridge?.post('webview', JSON.parse(msg || '{}')); } }; }`,
             );
             lines.push(
-                `window.__nativeBridge = { post: function(t,p){ window.ReactNativeWebView.postMessage(JSON.stringify({type:t, payload:p})); } };`
+                `window.__nativeBridge = { post: function(t,p){ window.ReactNativeWebView.postMessage(JSON.stringify({type:t, payload:p})); } };`,
             );
 
             // 🟢 푸시 토큰은 유지하되, 보안 취약점인 'authToken' localStorage 주입은 삭제했습니다.
@@ -279,7 +282,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
 
             // SafeArea 업데이트 로직
             lines.push(
-                `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`
+                `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`,
             );
             // 🟢 [2026-01-21] 다크모드 감지 및 앱에 전달
             lines.push(`
@@ -354,10 +357,14 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
 
     // 🟢 [추가]: 스플래시와 상태바가 동시에 전환되도록 배경색 변수 통일
     // 🟢 [2026-01-21] 다크모드에 따라 웹뷰 내부 색상과 동일하게 설정
-    // 🟢 [색상 통일]: 스플래시 종료 후, 지도 페이지라면 연두색을 배경으로 사용
+    // 🟢 추억 상세(사진 보기) 모달일 때는 검은색
     const containerBackgroundColor = !isSplashDone
         ? SPLASH_COLOR
-        : (isDarkMode ? "#0f1710" : "#ffffff");
+        : isMemoryDetailOpen
+          ? "#000000"
+          : isDarkMode
+            ? "#0f1710"
+            : "#ffffff";
 
     const statusBarBackgroundColor = containerBackgroundColor;
 
@@ -376,8 +383,8 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
             {/* 🟢 [핵심 수정]: 상태바 배경색을 스플래시 색상과 동기화 - 스플래시 종료 시 동시에 흰색으로 전환 */}
             <StatusBar
                 // 🟢 [2026-01-21] 다크모드일 때 light-content(흰글자), 라이트모드일 때 dark-content(검정글자)
-                // 🟢 [수정]: isDarkMode가 false일 때는 dark-content 사용 (기본값)
-                barStyle={isDarkMode ? "light-content" : "dark-content"}
+                // 🟢 추억 상세 모달일 때 검은 배경이므로 light-content(흰글자)
+                barStyle={isMemoryDetailOpen || isDarkMode ? "light-content" : "dark-content"}
                 // 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 translucent를 false로 설정
                 translucent={!isSplashDone ? false : true}
                 // 🟢 스플래시 종료 시 다크모드에 따라 배경색 변경
@@ -408,6 +415,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                         setCurrentUrl(nav.url);
                         if (!nav.loading) {
                             setLoading(false);
+                            // 🟢 페이지 이동 시 추억 상세 모달 상태 초기화
+                            if (!nav.url.includes("mypage") || !nav.url.includes("view=memories")) {
+                                setIsMemoryDetailOpen(false);
+                            }
                         }
                     }}
                     onLoadEnd={() => {
@@ -608,6 +619,12 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                             if (data.type === "setAuthToken") {
                                 await saveAuthToken(String(data.payload || ""));
                             }
+                            // 🟢 추억 상세(사진 보기) 모달 열림/닫힘 → 상태바 검은색 전환
+                            else if (data.type === "memoryDetailOpen") {
+                                setIsMemoryDetailOpen(true);
+                            } else if (data.type === "memoryDetailClose") {
+                                setIsMemoryDetailOpen(false);
+                            }
                             // 🟢 [2026-01-21] 다크모드 변경 감지
                             else if (data.type === "darkModeChange") {
                                 // 🟢 [수정]: 명시적으로 boolean 값으로 설정 및 디버깅 로그 추가
@@ -621,7 +638,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                     console.log(
                                         "[App] 🔴 로그아웃 보호 기간 중 자동 로그인 차단 (유저 ID:",
                                         data.userId,
-                                        ")"
+                                        ")",
                                     );
                                     return;
                                 }
@@ -697,7 +714,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                         Linking.openURL("https://apps.apple.com/kr/app/id362033756").catch(() => {});
                                     } else {
                                         Linking.openURL(
-                                            "https://play.google.com/store/apps/details?id=com.kakao.talk"
+                                            "https://play.google.com/store/apps/details?id=com.kakao.talk",
                                         ).catch(() => {});
                                     }
                                 }
@@ -723,24 +740,25 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                     // 🟢 상품 ID 매핑: planId를 RevenueCat Product ID로 변환
                                     // plan.id → RevenueCat Product ID 매핑
                                     const PLAN_ID_TO_REVENUECAT: Record<string, string> = {
-                                        "ticket_basic": "kr.io.dona.course_basic",
-                                        "ticket_premium": "kr.io.dona.course_premium",
-                                        "sub_basic": "kr.io.dona.ai_basic_monthly",
-                                        "sub_premium": "kr.io.dona.premium_monthly",
+                                        ticket_basic: "kr.io.dona.course_basic",
+                                        ticket_premium: "kr.io.dona.course_premium",
+                                        sub_basic: "kr.io.dona.ai_basic_monthly",
+                                        sub_premium: "kr.io.dona.premium_monthly",
                                     };
-                                    
+
                                     const revenueCatProductId = PLAN_ID_TO_REVENUECAT[planId] || planId;
-                                    
+
                                     // Product ID로 패키지 찾기
                                     const packageToPurchase = offerings.current.availablePackages.find(
-                                        (pkg: any) => pkg.product.identifier === revenueCatProductId || pkg.identifier === planId
+                                        (pkg: any) =>
+                                            pkg.product.identifier === revenueCatProductId || pkg.identifier === planId,
                                     );
 
                                     if (!packageToPurchase) {
                                         // 상품을 찾을 수 없는 경우, 첫 번째 패키지를 사용 (임시)
                                         // TODO: RevenueCat 대시보드에서 정확한 identifier 설정 필요
                                         console.warn(
-                                            `[IN-APP PURCHASE] 상품 ${planId}을 찾을 수 없습니다. 첫 번째 패키지를 사용합니다.`
+                                            `[IN-APP PURCHASE] 상품 ${planId}을 찾을 수 없습니다. 첫 번째 패키지를 사용합니다.`,
                                         );
                                         if (offerings.current.availablePackages.length === 0) {
                                             throw new Error("구매 가능한 상품이 없습니다.");
@@ -752,10 +770,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                         try {
                                             const userIdStr = await AsyncStorage.getItem("userId");
                                             if (userIdStr) {
-                                                const transactionId = customerInfo?.originalPurchaseDate 
-                                                    ? `rc_${customerInfo.originalPurchaseDate}` 
+                                                const transactionId = customerInfo?.originalPurchaseDate
+                                                    ? `rc_${customerInfo.originalPurchaseDate}`
                                                     : `rc_${Date.now()}`;
-                                                
+
                                                 const confirmBody: Record<string, any> = {
                                                     planId: planId,
                                                     planType: planType,
@@ -764,22 +782,25 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                                 };
                                                 if (intentId) confirmBody.intentId = intentId;
                                                 if (courseId != null) confirmBody.courseId = courseId;
-                                                
-                                                const response = await fetch(`${WEB_BASE}/api/payments/revenuecat/confirm`, {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
+
+                                                const response = await fetch(
+                                                    `${WEB_BASE}/api/payments/revenuecat/confirm`,
+                                                    {
+                                                        method: "POST",
+                                                        headers: {
+                                                            "Content-Type": "application/json",
+                                                        },
+                                                        credentials: "include",
+                                                        body: JSON.stringify(confirmBody),
                                                     },
-                                                    credentials: 'include',
-                                                    body: JSON.stringify(confirmBody),
-                                                });
-                                                
+                                                );
+
                                                 if (response.ok) {
                                                     const data = await response.json();
                                                     console.log("[RevenueCat] 서버 결제 확인 완료:", data);
-                                                    
+
                                                     // 🟢 열람권/구독 정보 업데이트 이벤트 발생 (UI 즉시 갱신)
-                                                        // 🟢 구독 등급 업데이트 이벤트 발생
+                                                    // 🟢 구독 등급 업데이트 이벤트 발생
                                                     if (data.subscriptionTier) {
                                                         webRef.current?.injectJavaScript(`
                                                             window.dispatchEvent(new CustomEvent('subscriptionTierUpdated', {
@@ -787,7 +808,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                                             }));
                                                         `);
                                                     }
-                                                    
+
                                                     // 🟢 결제 성공 이벤트 발생
                                                     webRef.current?.injectJavaScript(`
                                                         window.dispatchEvent(new CustomEvent('paymentSuccess'));
@@ -820,10 +841,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                         const userIdStr = await AsyncStorage.getItem("userId");
                                         if (userIdStr) {
                                             // transaction_id 추출 (customerInfo에서)
-                                            const transactionId = customerInfo?.originalPurchaseDate 
-                                                ? `rc_${customerInfo.originalPurchaseDate}` 
+                                            const transactionId = customerInfo?.originalPurchaseDate
+                                                ? `rc_${customerInfo.originalPurchaseDate}`
                                                 : `rc_${Date.now()}`;
-                                            
+
                                             const confirmBodyMain: Record<string, any> = {
                                                 planId: planId,
                                                 planType: planType,
@@ -832,20 +853,23 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                             };
                                             if (intentId) confirmBodyMain.intentId = intentId;
                                             if (courseId != null) confirmBodyMain.courseId = courseId;
-                                            
-                                            const response = await fetch(`${WEB_BASE}/api/payments/revenuecat/confirm`, {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
+
+                                            const response = await fetch(
+                                                `${WEB_BASE}/api/payments/revenuecat/confirm`,
+                                                {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type": "application/json",
+                                                    },
+                                                    credentials: "include",
+                                                    body: JSON.stringify(confirmBodyMain),
                                                 },
-                                                credentials: 'include',
-                                                body: JSON.stringify(confirmBodyMain),
-                                            });
-                                            
+                                            );
+
                                             if (response.ok) {
                                                 const data = await response.json();
                                                 console.log("[RevenueCat] 서버 결제 확인 완료:", data);
-                                                
+
                                                 // 🟢 열람권/구독 정보 업데이트 이벤트 발생 (UI 즉시 갱신)
                                                 // 🟢 구독 등급 업데이트 이벤트 발생
                                                 if (data.subscriptionTier) {
@@ -855,7 +879,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                                         }));
                                                     `);
                                                 }
-                                                
+
                                                 // 🟢 결제 성공 이벤트 발생
                                                 webRef.current?.injectJavaScript(`
                                                     window.dispatchEvent(new CustomEvent('paymentSuccess'));
@@ -921,7 +945,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                             isIPad: isIPad,
                                             userAgent: userAgent.substring(0, 100),
                                         });
-                                        
+
                                         const credential = await AppleAuthentication.signInAsync({
                                             requestedScopes: [
                                                 AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -942,7 +966,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                                         body: JSON.stringify({
                                                             identityToken: ${JSON.stringify(credential.identityToken)},
                                                             authorizationCode: ${JSON.stringify(
-                                                                credential.authorizationCode
+                                                                credential.authorizationCode,
                                                             )},
                                                             fullName: ${JSON.stringify(credential.fullName)},
                                                             email: ${JSON.stringify(credential.email)}
@@ -1004,7 +1028,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                         // 🟢 [Fix]: 상세한 에러 로그 및 실제 에러 메시지 사용자에게 표시
                                         const isIPad = Platform.isPad || false;
                                         const userAgent = navigator?.userAgent || "";
-                                        
+
                                         console.error("Apple 로그인 오류 상세:", {
                                             error: error,
                                             message: error?.message,
@@ -1013,7 +1037,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                             isIPad: isIPad,
                                             userAgent: userAgent.substring(0, 100),
                                         });
-                                        
+
                                         // 🟢 실제 에러 메시지를 사용자에게 표시
                                         let errorMessage = "Apple 로그인에 실패했습니다.";
                                         if (error?.message) {
@@ -1028,13 +1052,14 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                                     errorMessage = "Apple 로그인 응답이 올바르지 않습니다.";
                                                     break;
                                                 case "ERR_NOT_AVAILABLE":
-                                                    errorMessage = "Apple 로그인을 사용할 수 없습니다. 기기에 Apple ID가 로그인되어 있는지 확인하세요.";
+                                                    errorMessage =
+                                                        "Apple 로그인을 사용할 수 없습니다. 기기에 Apple ID가 로그인되어 있는지 확인하세요.";
                                                     break;
                                                 default:
                                                     errorMessage = `Apple 로그인 오류: ${error.code}`;
                                             }
                                         }
-                                        
+
                                         webRef.current?.injectJavaScript(`
                                             window.dispatchEvent(new CustomEvent('appleLoginError', {
                                                 detail: { 

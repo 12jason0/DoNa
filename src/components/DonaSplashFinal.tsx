@@ -4,11 +4,31 @@ import React, { useEffect, useRef, useState } from "react";
 import { getS3StaticUrl } from "@/lib/s3Static";
 
 /** overlayOnly: true면 배경/로고는 그리지 않고 서버 스플래시 위에 애니메이션만 올림 (스플래시 두 번 느낌 방지) */
-export default function DonaSplashFinal({ onDone, overlayOnly = false }: { onDone?: () => void; overlayOnly?: boolean }) {
+export default function DonaSplashFinal({
+    onDone,
+    overlayOnly = false,
+}: {
+    onDone?: () => void;
+    overlayOnly?: boolean;
+}) {
     const [fadeOut, setFadeOut] = useState(false);
     const [step, setStep] = useState(0);
+    // 🟢 뷰포트 변경 시 위로 밀리는 현상 방지: 로고 표시 시점의 중앙 좌표를 픽셀으로 고정
+    const [logoCenter, setLogoCenter] = useState<{ top: number; left: number } | null>(null);
     const onDoneRef = useRef(onDone);
     onDoneRef.current = onDone;
+
+    // 🟢 step 6(로고 등장) 시 뷰포트 중앙을 픽셀로 캡처하여 고정
+    useEffect(() => {
+        if (step !== 6) return;
+        const measure = () => {
+            const vh = typeof window !== "undefined" ? (window.visualViewport?.height ?? window.innerHeight) : 0;
+            const vw = typeof window !== "undefined" ? (window.visualViewport?.width ?? window.innerWidth) : 0;
+            setLogoCenter({ top: vh / 2, left: vw / 2 });
+        };
+        // 뷰포트 안정화 후 측정 (한 번만 고정)
+        requestAnimationFrame(() => requestAnimationFrame(measure));
+    }, [step]);
 
     useEffect(() => {
         // 모바일에서 주소창/당김 새로고침 등으로 인한 레이아웃 이동 방지: 스크롤 락
@@ -121,7 +141,7 @@ export default function DonaSplashFinal({ onDone, overlayOnly = false }: { onDon
                     }}
                 />
             )}
-            
+
             {/* 지도 배경 그리드 */}
             <div
                 style={{
@@ -260,16 +280,17 @@ export default function DonaSplashFinal({ onDone, overlayOnly = false }: { onDon
                     </div>
                 )}
 
-                {/* DoNa 로고 */}
-                {step >= 6 && (
+                {/* DoNa 로고 - 중앙 좌표 픽셀 고정 (뷰포트 변경 시 위로 밀림 방지) */}
+                {step >= 6 && logoCenter && (
                     <div
                         style={{
-                            position: "absolute",
-                            left: "50%",
-                            top: "50%",
+                            position: "fixed",
+                            left: logoCenter.left,
+                            top: logoCenter.top,
                             transform: "translate(-50%, -50%)",
-                            animation: "logoAppear 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+                            animation: "logoAppear 0.6s ease-out forwards",
                             textAlign: "center",
+                            zIndex: 20,
                         }}
                     >
                         <div
@@ -302,9 +323,8 @@ export default function DonaSplashFinal({ onDone, overlayOnly = false }: { onDon
                     100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
                 }
                 @keyframes logoAppear {
-                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-5deg); }
-                    70% { transform: translate(-50%, -50%) scale(1.05) rotate(2deg); }
-                    100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+                    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
                 }
             `}</style>
         </div>
