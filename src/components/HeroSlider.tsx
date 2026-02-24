@@ -24,25 +24,21 @@ type HeroSliderProps = {
 };
 
 /** 카드 이미지 상단 오버레이: 세그먼트 인디케이터 (반투명 화이트/블랙) */
-const SegmentOverlay = memo(
-    ({ totalSlots, currentSlotIndex }: { totalSlots: number; currentSlotIndex: number }) => (
-        <div className="absolute top-0 left-0 right-0 z-10 px-3 pt-3 pointer-events-none">
-            <div className="flex gap-0.5 rounded-full">
-                {Array.from({ length: totalSlots }).map((_, i) => (
-                    <div
-                        key={i}
-                        className={`h-[2px] flex-1 rounded-full transition-all duration-200 ease-out ${
-                            currentSlotIndex === i
-                                ? "bg-white/90 dark:bg-white/80"
-                                : "bg-white/40 dark:bg-black/40"
-                        }`}
-                        aria-hidden
-                    />
-                ))}
-            </div>
+const SegmentOverlay = memo(({ totalSlots, currentSlotIndex }: { totalSlots: number; currentSlotIndex: number }) => (
+    <div className="absolute top-0 left-0 right-0 z-10 px-3 pt-3 pointer-events-none">
+        <div className="flex gap-0.5 rounded-full">
+            {Array.from({ length: totalSlots }).map((_, i) => (
+                <div
+                    key={i}
+                    className={`h-[2px] flex-1 rounded-full transition-all duration-200 ease-out ${
+                        currentSlotIndex === i ? "bg-white/90 dark:bg-white/80" : "bg-white/40 dark:bg-black/40"
+                    }`}
+                    aria-hidden
+                />
+            ))}
         </div>
-    )
-);
+    </div>
+));
 SegmentOverlay.displayName = "SegmentOverlay";
 
 const SliderItemComponent = memo(
@@ -118,12 +114,12 @@ const SliderItemComponent = memo(
                 </div>
             </Link>
         );
-    }
+    },
 );
 SliderItemComponent.displayName = "SliderItem";
 
 const HERO_SLIDER_MAX = 5; // 최대 5개 코스만 사용
-const REPEAT_COUNT = 10; // 5개 코스가 끊김 없이 계속 반복되도록 여러 번 복제
+const REPEAT_COUNT = 15; // 5개 코스가 끊김 없이 계속 반복되도록 여러 번 복제
 
 export default function HeroSlider({ items }: HeroSliderProps) {
     const limitedItems = useMemo(() => items.slice(0, HERO_SLIDER_MAX), [items]);
@@ -145,11 +141,8 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const slideStepPx = slideWidthPx + CARD_GAP;
 
     const renderItems = useMemo(
-        () =>
-            totalSlots <= 1
-                ? limitedItems
-                : Array.from({ length: REPEAT_COUNT }, () => limitedItems).flat(),
-        [limitedItems, totalSlots]
+        () => (totalSlots <= 1 ? limitedItems : Array.from({ length: REPEAT_COUNT }, () => limitedItems).flat()),
+        [limitedItems, totalSlots],
     );
 
     // 🟢 타이머 정지 함수
@@ -197,7 +190,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 container.style.scrollBehavior = "auto";
             }, 500);
         },
-        [totalSlots]
+        [totalSlots],
     );
 
     // 🟢 타이머 시작 함수 (3초) - step은 ref로 읽어서 항상 최신값 사용
@@ -211,7 +204,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 const currentIdx = Math.round(container.scrollLeft / step);
                 moveToNext(currentIdx + 1);
             }
-        }, 3000);
+        }, 3800);
     }, [moveToNext, totalSlots, stopTimer]);
 
     // 초기화 및 리사이즈 감지 (Peek: 카드 너비 = 88%)

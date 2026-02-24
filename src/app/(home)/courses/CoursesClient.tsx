@@ -110,12 +110,15 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             params.set("offset", String(offset));
             if (conceptParam) params.set("concept", conceptParam);
 
-            const { data, response } = await apiFetch<{ data?: Course[]; courses?: Course[] }>(`/api/courses?${params.toString()}`, {
-                cache: "no-store", // 🟢 로드 더보기는 항상 최신 데이터 (캐시로 인한 중복/빈 목록 방지)
-            });
+            const { data, response } = await apiFetch<{ data?: Course[]; courses?: Course[] }>(
+                `/api/courses?${params.toString()}`,
+                {
+                    cache: "no-store", // 🟢 로드 더보기는 항상 최신 데이터 (캐시로 인한 중복/빈 목록 방지)
+                },
+            );
 
             if (response.ok && data) {
-                const raw = Array.isArray(data) ? data : (data as any)?.data ?? (data as any)?.courses ?? [];
+                const raw = Array.isArray(data) ? data : ((data as any)?.data ?? (data as any)?.courses ?? []);
                 const coursesArray = Array.isArray(raw) ? raw : [];
                 // 🟢 API는 view_count 등 snake_case를 반환할 수 있음 → Course 타입에 맞게 정규화
                 const normalized = coursesArray.map((c: any) => ({
@@ -162,7 +165,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                     pending = false;
                 });
             },
-            { root: null, rootMargin: "400px", threshold: 0 }
+            { root: null, rootMargin: "400px", threshold: 0 },
         );
 
         observer.observe(sentinel);
@@ -207,7 +210,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             "힐링",
             "힙스터",
         ],
-        []
+        [],
     );
 
     // 🟢 [Optimization]: 찜 목록 로딩을 200ms 지연하여 초기 렌더링 부하 감소
@@ -259,19 +262,19 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                 }
             } catch {}
         },
-        [favoriteIds, router]
+        [favoriteIds, router],
     );
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
-            <div className="bg-white dark:bg-[#1a241b] px-5 pt-[calc(env(safe-area-inset-top,0)+1.5rem)] pb-2 sticky top-[env(safe-area-inset-top,0)] z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
-                <div className="mb-2">
-                    <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
+            <div className="bg-white dark:bg-[#1a241b] px-5 pt-[calc(env(safe-area-inset-top,0)+1.25rem)] pb-1.5 sticky top-[env(safe-area-inset-top,0)] z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20">
+                <div>
+                    <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
                         완벽한 하루
                     </h1>
                 </div>
                 {/* 🟢 큰 원형 아이콘 + 아래 텍스트 (예전 메인 카테고리 스타일) */}
-                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 mt-4 touch-pan-x">
+                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1.5 -mx-5 px-5 mt-3 touch-pan-x">
                     <TapFeedback>
                         <button
                             onClick={() => {
@@ -282,19 +285,19 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                 });
                             }}
                             disabled={isNavigating}
-                            className={`flex flex-col items-center gap-1.5 shrink-0 ${
+                            className={`flex flex-col items-center gap-1 shrink-0 ${
                                 isNavigating ? "opacity-50 cursor-wait" : ""
                             }`}
                         >
                             <div
-                                className={`w-12 h-12 rounded-full p-1 flex items-center justify-center shrink-0 border-2 transition-all ${
+                                className={`w-10 h-10 rounded-full p-1 flex items-center justify-center shrink-0 border-2 transition-all ${
                                     activeConcept === ""
                                         ? "bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 dark:border-emerald-600"
                                         : "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
                                 }`}
                             >
                                 <LayoutGrid
-                                    size={22}
+                                    size={18}
                                     className={
                                         activeConcept === ""
                                             ? "text-emerald-600 dark:text-emerald-400"
@@ -304,7 +307,9 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                             </div>
                             <span
                                 className={`text-xs font-semibold whitespace-nowrap ${
-                                    activeConcept === "" ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"
+                                    activeConcept === ""
+                                        ? "text-emerald-700 dark:text-emerald-400"
+                                        : "text-gray-600 dark:text-gray-400"
                                 }`}
                             >
                                 전체
@@ -320,19 +325,20 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                     onClick={() => {
                                         requestAnimationFrame(() => {
                                             setIsNavigating(true);
-                                            const targetPath =
-                                                isSelected ? "/courses" : `/courses?concept=${encodeURIComponent(tag)}`;
+                                            const targetPath = isSelected
+                                                ? "/courses"
+                                                : `/courses?concept=${encodeURIComponent(tag)}`;
                                             router.prefetch(targetPath);
                                             router.push(targetPath);
                                         });
                                     }}
                                     disabled={isNavigating}
-                                    className={`flex flex-col items-center gap-1.5 shrink-0 ${
+                                    className={`flex flex-col items-center gap-1 shrink-0 ${
                                         isNavigating ? "opacity-50 cursor-wait" : ""
                                     }`}
                                 >
                                     <div
-                                        className={`w-12 h-12 rounded-full p-1 flex items-center justify-center shrink-0 border-2 transition-all overflow-hidden ${
+                                        className={`w-10 h-10 rounded-full p-1 flex items-center justify-center shrink-0 border-2 transition-all overflow-hidden ${
                                             isSelected
                                                 ? "bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 dark:border-emerald-600"
                                                 : "bg-gray-50 dark:bg-gray-800/60 border-gray-100 dark:border-gray-700"
@@ -342,8 +348,8 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                             <Image
                                                 src={iconUrl}
                                                 alt={tag}
-                                                width={48}
-                                                height={48}
+                                                width={40}
+                                                height={40}
                                                 className="object-contain p-0.5"
                                                 quality={70}
                                             />
@@ -355,7 +361,9 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                     </div>
                                     <span
                                         className={`text-xs font-semibold whitespace-nowrap ${
-                                            isSelected ? "text-emerald-700 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"
+                                            isSelected
+                                                ? "text-emerald-700 dark:text-emerald-400"
+                                                : "text-gray-600 dark:text-gray-400"
                                         }`}
                                     >
                                         {tag}
@@ -385,67 +393,69 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                     </h2>
                 </div>
                 <div className="px-5 py-4 flex flex-col gap-6">
-                {/* 🟢 [Performance]: 네비게이션 로딩 표시 */}
-                {isNavigating && <CourseLoadingOverlay />}
-                {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
-                {visibleCourses.map((course, i) => {
-                    // 🟢 코스 5개마다 제보 유도 배너 삽입
-                    const shouldShowBanner = i > 0 && i % 5 === 0;
-                    return (
-                        <div key={course.id}>
-                            {shouldShowBanner && (
-                                <div className="mb-6">
-                                    <CourseReportBanner />
-                                </div>
-                            )}
-                            <TapFeedback className="block w-full">
-                                <CourseCard
-                                    course={course}
-                                    isPriority={i < 4}
-                                    isFavorite={favoriteIds.has(Number(course.id))}
-                                    onToggleFavorite={toggleFavorite}
-                                    showNewBadge={true}
-                                    hasClosedPlace={(c) =>
-                                        (c.coursePlaces ?? []).some((cp: CoursePlace) =>
-                                            cp.place &&
-                                            getPlaceStatus(
-                                                cp.place.opening_hours || null,
-                                                cp.place.closed_days || []
-                                            ).status === "휴무"
-                                        )
-                                    }
-                                    getClosedPlaceCount={(c) =>
-                                        (c.coursePlaces ?? []).filter((cp: CoursePlace) =>
-                                            cp.place &&
-                                            getPlaceStatus(
-                                                cp.place.opening_hours || null,
-                                                cp.place.closed_days || []
-                                            ).status === "휴무"
-                                        ).length
-                                    }
-                                />
-                            </TapFeedback>
+                    {/* 🟢 [Performance]: 네비게이션 로딩 표시 */}
+                    {isNavigating && <CourseLoadingOverlay />}
+                    {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
+                    {visibleCourses.map((course, i) => {
+                        // 🟢 코스 5개마다 제보 유도 배너 삽입
+                        const shouldShowBanner = i > 0 && i % 5 === 0;
+                        return (
+                            <div key={course.id}>
+                                {shouldShowBanner && (
+                                    <div className="mb-6">
+                                        <CourseReportBanner />
+                                    </div>
+                                )}
+                                <TapFeedback className="block w-full">
+                                    <CourseCard
+                                        course={course}
+                                        isPriority={i < 4}
+                                        isFavorite={favoriteIds.has(Number(course.id))}
+                                        onToggleFavorite={toggleFavorite}
+                                        showNewBadge={true}
+                                        hasClosedPlace={(c) =>
+                                            (c.coursePlaces ?? []).some(
+                                                (cp: CoursePlace) =>
+                                                    cp.place &&
+                                                    getPlaceStatus(
+                                                        cp.place.opening_hours || null,
+                                                        cp.place.closed_days || [],
+                                                    ).status === "휴무",
+                                            )
+                                        }
+                                        getClosedPlaceCount={(c) =>
+                                            (c.coursePlaces ?? []).filter(
+                                                (cp: CoursePlace) =>
+                                                    cp.place &&
+                                                    getPlaceStatus(
+                                                        cp.place.opening_hours || null,
+                                                        cp.place.closed_days || [],
+                                                    ).status === "휴무",
+                                            ).length
+                                        }
+                                    />
+                                </TapFeedback>
+                            </div>
+                        );
+                    })}
+                    {visibleCourses.length === 0 && (
+                        <div className="text-center py-20">
+                            <div className="text-5xl mb-4 grayscale opacity-50">🏝️</div>
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">조건에 맞는 코스가 없어요.</p>
                         </div>
-                    );
-                })}
-                {visibleCourses.length === 0 && (
-                    <div className="text-center py-20">
-                        <div className="text-5xl mb-4 grayscale opacity-50">🏝️</div>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">조건에 맞는 코스가 없어요.</p>
-                    </div>
-                )}
-                {loadingMore && (
-                    <div className="text-center py-8">
-                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">불러오는 중...</p>
-                    </div>
-                )}
-                {!hasMore && visibleCourses.length > 0 && (
-                    <div className="text-center py-8">
-                        <p className="text-gray-400 dark:text-gray-500 text-sm">모든 코스를 불러왔습니다.</p>
-                    </div>
-                )}
-                <div ref={loadMoreRef} aria-hidden="true" className="h-1"></div>
+                    )}
+                    {loadingMore && (
+                        <div className="text-center py-8">
+                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">불러오는 중...</p>
+                        </div>
+                    )}
+                    {!hasMore && visibleCourses.length > 0 && (
+                        <div className="text-center py-8">
+                            <p className="text-gray-400 dark:text-gray-500 text-sm">모든 코스를 불러왔습니다.</p>
+                        </div>
+                    )}
+                    <div ref={loadMoreRef} aria-hidden="true" className="h-1"></div>
                 </div>
             </div>
         </div>

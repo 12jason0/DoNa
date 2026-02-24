@@ -351,7 +351,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 <>
                                     {/* 드로어 닫혀 있을 때: 인라인 버튼 (클릭 시 위치 계산용 ref) */}
                                     {!sideMenuOpen && (
-                                        <div className="fixed bottom-22 right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 lg:bottom-20">
+                                        <div className="fixed bottom-24 right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 lg:bottom-22">
                                             <button
                                                 ref={plusButtonRef}
                                                 type="button"
@@ -385,7 +385,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         typeof document !== "undefined" &&
                                         createPortal(
                                             <div
-                                                className="fixed bottom-20 right-6 z-2010 pointer-events-none flex items-center gap-2.5"
+                                                className="fixed bottom-22 right-6 z-2010 pointer-events-none flex items-center gap-2.5"
                                                 style={{ position: "fixed" }}
                                             >
                                                 {riseDone && (
