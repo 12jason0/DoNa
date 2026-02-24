@@ -173,15 +173,15 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     }, []);
 
     // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
-    const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
+    // 🟢 [Android] 헤더/푸터가 상하단에 붙도록 padding 0 (웹에서 safe-area 처리). iOS는 상단만 insets 유지
+    const dynamicPaddingTop =
+        !isSplashDone ? 0 : Platform.OS === "android" ? 0 : insets.top;
 
-    // 🟢 [2026-01-21] 색상 및 여백 최적화 설정
-    // 현재 페이지가 지도(게임) 화면인지 확인 (URL 기준)
-    // 🟢 [플랫폼별 여백 처리]: 안드로이드는 가림 방지 여백 유지, iOS는 꽉 차게 0
+    // 🟢 [플랫폼별 여백]: Android는 0으로 헤더/푸터 꽉 차게, iOS는 하단 0
     const dynamicPaddingBottom =
         Platform.OS === "android"
-            ? insets.bottom // 안드로이드는 뒤로가기/홈 버튼 영역만큼 띄움
-            : 0; // iOS는 하단 바 영역까지 배경색이 흐르도록 0으로 설정
+            ? 0 // 🟢 Android: 푸터가 하단에 붙도록 0
+            : 0;
 
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {

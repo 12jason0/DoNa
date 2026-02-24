@@ -8,6 +8,7 @@ import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch, fetchSession } from "@/lib/authClient";
+import { isAndroid } from "@/lib/platform";
 
 // --- 타입 정의 ---
 interface Place {
@@ -310,6 +311,11 @@ function MapPageInner() {
     const courseDetailCacheRef = useRef<Record<string, { path: { lat: number; lng: number }[]; list: Place[] }>>({});
 
     const { isAuthenticated } = useAuth();
+
+    const [isAndroidClient, setIsAndroidClient] = useState(false);
+    useEffect(() => {
+        setIsAndroidClient(isAndroid());
+    }, []);
 
     // 🟢 사용자 등급 가져오기 함수
     const fetchUserTier = async () => {
@@ -951,8 +957,12 @@ function MapPageInner() {
 
     return (
         <div className="relative w-full min-h-screen h-full overflow-hidden bg-gray-100 dark:bg-[#0f1710] font-sans touch-none">
-            {/* 상단: 플로팅 UI (지도 움직일 때만 현 지도 검색 노출) */}
-            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-2 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none">
+            {/* 상단: 플로팅 UI (지도 움직일 때만 현 지도 검색 노출). Android 앱에서 상태바와 겹침 방지 */}
+            <div
+                className={`absolute top-0 left-0 right-0 z-30 flex flex-col p-2 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none ${
+                    isAndroidClient ? "pt-[env(safe-area-inset-top,2rem)]" : ""
+                }`}
+            >
                 <div className="flex items-center gap-1.5 pointer-events-auto mb-1.5">
                     <button
                         type="button"
