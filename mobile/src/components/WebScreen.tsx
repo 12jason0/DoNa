@@ -169,12 +169,9 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
     // 🟢 [2026-01-21] 색상 및 여백 최적화 설정
-    const MAP_GREEN = "#7FCC9F"; // 유저님이 알려주신 배경색
     const BRAND_CREAM = "#f5f7f2"; // 기존 기본 배경색
 
     // 현재 페이지가 지도(게임) 화면인지 확인 (URL 기준)
-    const isMapPage = currentUrl.includes("/start") || currentUrl.includes("map");
-
     // 🟢 [플랫폼별 여백 처리]: 안드로이드는 가림 방지 여백 유지, iOS는 꽉 차게 0
     const dynamicPaddingBottom = Platform.OS === "android" 
         ? insets.bottom  // 안드로이드는 뒤로가기/홈 버튼 영역만큼 띄움
@@ -362,7 +359,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     // 🟢 [색상 통일]: 스플래시 종료 후, 지도 페이지라면 연두색을 배경으로 사용
     const containerBackgroundColor = !isSplashDone 
         ? SPLASH_COLOR 
-        : (isDarkMode ? "#0f1710" : (isMapPage ? MAP_GREEN : BRAND_CREAM));
+        : (isDarkMode ? "#0f1710" : BRAND_CREAM);
 
     const statusBarBackgroundColor = containerBackgroundColor;
 
