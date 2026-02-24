@@ -169,8 +169,6 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
     // 🟢 [2026-01-21] 색상 및 여백 최적화 설정
-    const BRAND_CREAM = "#f5f7f2"; // 기존 기본 배경색
-
     // 현재 페이지가 지도(게임) 화면인지 확인 (URL 기준)
     // 🟢 [플랫폼별 여백 처리]: 안드로이드는 가림 방지 여백 유지, iOS는 꽉 차게 0
     const dynamicPaddingBottom = Platform.OS === "android" 
@@ -357,9 +355,9 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     // 🟢 [추가]: 스플래시와 상태바가 동시에 전환되도록 배경색 변수 통일
     // 🟢 [2026-01-21] 다크모드에 따라 웹뷰 내부 색상과 동일하게 설정
     // 🟢 [색상 통일]: 스플래시 종료 후, 지도 페이지라면 연두색을 배경으로 사용
-    const containerBackgroundColor = !isSplashDone 
-        ? SPLASH_COLOR 
-        : (isDarkMode ? "#0f1710" : BRAND_CREAM);
+    const containerBackgroundColor = !isSplashDone
+        ? SPLASH_COLOR
+        : (isDarkMode ? "#0f1710" : "#ffffff");
 
     const statusBarBackgroundColor = containerBackgroundColor;
 
