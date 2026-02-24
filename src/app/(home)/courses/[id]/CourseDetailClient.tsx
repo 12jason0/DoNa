@@ -18,7 +18,7 @@ import { parseTipsFromDb, FREE_TIP_CATEGORIES, PAID_TIP_CATEGORIES } from "@/typ
 import { getPremiumQuestions } from "../../../../lib/placeCategory";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
-import { isIOS, isMobileApp } from "@/lib/platform";
+import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
 let globalFavoritesPromise: Promise<any[] | null> | null = null;
@@ -310,9 +310,9 @@ export default function CourseDetailClient({
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
 
-    // 🟢 iOS 플랫폼 감지
+    // 🟢 플랫폼 감지 (iOS / Android / web)
     useEffect(() => {
-        setPlatform(isIOS() ? "ios" : "web");
+        setPlatform(isIOS() ? "ios" : isAndroid() ? "android" : "web");
     }, []);
 
     // 🟢 성능 최적화: 코스 상세 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
@@ -1553,7 +1553,11 @@ export default function CourseDetailClient({
                         </section>
                     </main>
 
-                    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto">
+                    <div
+                        className={`fixed left-0 right-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto ${
+                            platform === "android" ? "bottom-6" : "bottom-0"
+                        }`}
+                    >
                         <div className="flex gap-4">
                             <TapFeedback>
                                 <button
