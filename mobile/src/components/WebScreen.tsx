@@ -19,9 +19,10 @@ type Props = {
     onRegisterNavigate?: (navigateTo: ((url: string) => void) | null) => void;
     onUserLogin?: (userId: string) => void;
     onUserLogout?: () => void;
+    onMemoryDetailStateChange?: (open: boolean) => void;
 };
 
-export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserLogin, onUserLogout }: Props) {
+export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserLogin, onUserLogout, onMemoryDetailStateChange }: Props) {
     // 🟢 [2026-01-21] 딥링크 처리: 앱이 딥링크로 열릴 때 URL 처리
     const [deepLinkUrl, setDeepLinkUrl] = useState<string | null>(null);
 
@@ -130,6 +131,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
     // 🟢 추억 상세(사진 보기) 모달 열림 시 상태바 검은색
     const [isMemoryDetailOpen, setIsMemoryDetailOpen] = useState(false);
+
+    useEffect(() => {
+        onMemoryDetailStateChange?.(isMemoryDetailOpen);
+    }, [isMemoryDetailOpen, onMemoryDetailStateChange]);
 
     // 🟢 [다크모드 초기화]: 웹뷰 로드 시 초기 다크모드 상태 확인
     useEffect(() => {
@@ -385,18 +390,18 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                 // 🟢 [2026-01-21] 다크모드일 때 light-content(흰글자), 라이트모드일 때 dark-content(검정글자)
                 // 🟢 추억 상세 모달일 때 검은 배경이므로 light-content(흰글자)
                 barStyle={isMemoryDetailOpen || isDarkMode ? "light-content" : "dark-content"}
-                // 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 translucent를 false로 설정
-                translucent={!isSplashDone ? false : true}
+                // 스플래시/추억 상세 모달일 때 translucent false → iOS 상태바 배경이 제대로 검은색으로 표시
+                translucent={!isSplashDone || isMemoryDetailOpen ? false : true}
                 // 🟢 스플래시 종료 시 다크모드에 따라 배경색 변경
                 backgroundColor={statusBarBackgroundColor}
                 hidden={false} // 👈 상태바를 항상 표시
             />
 
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, backgroundColor: containerBackgroundColor }}>
                 <WebView
                     ref={webRef}
                     key={deepLinkUrl || "default"} // 🟢 [2026-01-21] 딥링크 URL 변경 시 WebView 재마운트
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, backgroundColor: containerBackgroundColor }}
                     source={{ uri: resolvedUri }} // 🟢 [수정]: resolvedUri 사용 (딥링크 우선)
                     // 🟢 [추가]: 화이트리스트 설정을 통해 모든 요청 가로채기 활성화
                     originWhitelist={["*"]}

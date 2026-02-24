@@ -34,6 +34,7 @@ Notifications.setNotificationHandler({
 
 export default function App() {
     const [pushToken, setPushToken] = useState<string | null>(null);
+    const [isMemoryDetailOpen, setIsMemoryDetailOpen] = useState(false);
     const notificationListener = useRef<Notifications.Subscription | null>(null);
     const responseListener = useRef<Notifications.Subscription | null>(null);
     // 🟢 [2026-01-21] 딥링크를 통해 전달받은 경로를 관리하는 상태
@@ -186,8 +187,8 @@ export default function App() {
 
     return (
         <SafeAreaProvider>
-            {/* 배경색을 흰색으로 지정하여 상태바 영역이 튀지 않게 합니다. */}
-            <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+            {/* 🟢 추억 상세 모달 시 루트 배경 검은색 → iOS 상태바 영역 하얀색 문제 해결 */}
+            <View style={{ flex: 1, backgroundColor: isMemoryDetailOpen ? "#000000" : "#ffffff" }}>
                 <NavigationContainer theme={navTheme}>
                     {/* 🟢 StatusBar 제거: WebScreen에서 isDarkMode에 따라 동적으로 관리 */}
                     <PushTokenContext.Provider value={pushToken}>
@@ -197,6 +198,7 @@ export default function App() {
                         {/* <WebScreen uri="https://dona.io.kr" /> */}
                         <WebScreen
                             uri={initialUri}
+                            onMemoryDetailStateChange={setIsMemoryDetailOpen}
                             onRegisterNavigate={(fn: ((url: string) => void) | null) => {
                                 navigateToRef.current = fn;
                             }}

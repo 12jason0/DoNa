@@ -1434,8 +1434,11 @@ const FootprintTab = ({
                                 height: "calc(100vh - 120px)", // 상하단 여백 60px씩
                                 marginTop: "60px",
                                 marginBottom: "60px",
+                                overflowY: "hidden",
+                                overscrollBehavior: "none",
                                 WebkitOverflowScrolling: "touch",
                                 scrollBehavior: "smooth",
+                                touchAction: "pan-x",
                             }}
                             onScroll={(e) => {
                                 const container = e.currentTarget;
