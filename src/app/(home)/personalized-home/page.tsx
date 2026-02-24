@@ -12,7 +12,7 @@ import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import OnboardingBottomSheet from "@/components/OnboardingBottomSheet";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
 import TapFeedback from "@/components/TapFeedback";
-import { isIOS } from "@/lib/platform";
+import { isIOS, isAndroid } from "@/lib/platform";
 import {
     Sparkles,
     MapPin,
@@ -1460,8 +1460,12 @@ const AIRecommender = () => {
                 {/* 👇 [추가됨] 대화창 모달 */}
                 {showChatModal && (
                     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                        {/* 모달 컨테이너 */}
-                        <div className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md w-full h-full md:h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
+                        {/* 모달 컨테이너 — Android: safe-area 위·아래 여백 */}
+                        <div
+                            className={`bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md w-full h-full md:h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden ${
+                                isAndroid() ? "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : ""
+                            }`}
+                        >
                             {/* 헤더 */}
                             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-[#1a241b]/80">
                                 <div className="flex items-center gap-3">
