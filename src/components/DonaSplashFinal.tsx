@@ -288,7 +288,7 @@ export default function DonaSplashFinal({
                             left: logoCenter.left,
                             top: logoCenter.top,
                             transform: "translate(-50%, -50%)",
-                            animation: "logoAppear 0.6s ease-out forwards",
+                            animation: "logoAppear 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
                             textAlign: "center",
                             zIndex: 20,
                         }}
@@ -323,8 +323,9 @@ export default function DonaSplashFinal({
                     100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
                 }
                 @keyframes logoAppear {
-                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
-                    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-5deg); }
+                    70% { transform: translate(-50%, -50%) scale(1.05) rotate(2deg); }
+                    100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
                 }
             `}</style>
         </div>
