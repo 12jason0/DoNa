@@ -489,10 +489,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             {!isApp && shouldShowWebAd && (
                                 <div className="w-full flex justify-center rounded-none shrink-0">
                                     <AdSlot
-                                        slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || ""}
-                                        format="auto"
+                                        slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
+                                        format="fluid"
+                                        layoutKey="-hi-7+2w-11-86"
                                         rounded={false}
-                                        className="w-[320px] h-[50px] min-h-[50px] mx-auto rounded-none"
+                                        className="w-full min-h-[80px] mx-auto rounded-none"
                                     />
                                 </div>
                             )}

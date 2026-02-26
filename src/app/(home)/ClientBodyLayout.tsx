@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import LayoutContent from "@/components/LayoutContent";
 import RoutePrefetcher from "@/components/RoutePrefetcher";
@@ -51,7 +51,9 @@ export default function ClientBodyLayout({ children }: { children: React.ReactNo
         <>
             <RoutePrefetcher />
             <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
-            <LayoutContent>{children}</LayoutContent>
+            <Suspense fallback={null}>
+                <LayoutContent>{children}</LayoutContent>
+            </Suspense>
         </>
     );
 }
