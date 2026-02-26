@@ -139,7 +139,7 @@
         }
       ],
       "expo-font",
-      ["react-native-google-mobile-ads", { "androidAppId": "ca-app-pub-1305222191440436~2771523902", "iosAppId": "ca-app-pub-1305222191440436~2771523902" }]
+      ["react-native-google-mobile-ads", { "androidAppId": "ca-app-pub-1305222191440436~8406993965", "iosAppId": "ca-app-pub-1305222191440436~8406993965" }]
     ],
     "extra": {
       "eas": {

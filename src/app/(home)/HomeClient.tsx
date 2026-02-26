@@ -20,6 +20,16 @@ import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
 const MemoizedPersonalizedSection = memo(PersonalizedSection);
 
+// 🟢 [성능] 첫 페인트 후 실행 (LCP 방해 최소화, 계산 정확도 유지)
+function runAfterPaint(fn: () => void) {
+    if (typeof window === "undefined") return;
+    if ("requestIdleCallback" in window) {
+        (window as any).requestIdleCallback(fn, { timeout: 120 });
+    } else {
+        setTimeout(fn, 0);
+    }
+}
+
 type Course = {
     id: string;
     title: string;
@@ -219,6 +229,17 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
         }
     }, [showMemoryModal]);
 
+    // 🟢 앱: 메인 '나만 아는 비밀 기록' 추억 상세(사진) 모달 열림/닫힘 시 네이티브에 전달 → 바닥 광고 숨김/표시
+    useEffect(() => {
+        if (typeof window === "undefined" || !(window as any).ReactNativeWebView) return;
+        (window as any).ReactNativeWebView.postMessage(
+            JSON.stringify({ type: showMemoryModal ? "memoryDetailOpen" : "memoryDetailClose" }),
+        );
+        return () => {
+            (window as any).ReactNativeWebView?.postMessage?.(JSON.stringify({ type: "memoryDetailClose" }));
+        };
+    }, [showMemoryModal]);
+
     // 🟢 개인 추억 데이터 가져오기
     const fetchPersonalMemories = useCallback(async () => {
         if (!isAuthenticated) {
@@ -338,25 +359,23 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
         }
     }, []);
 
-    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스 (메인 이어가기 배너)
+    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스 - 첫 페인트 후 조회 (메인 체감 속도 개선)
+    // 🟢 앱 WebView: 쿠키 지연 시 대비 재시도 항상 등록 (isMobileApp()이 늦게 true여도 재시도 동작)
     useEffect(() => {
         if (!isAuthenticated) {
             setActiveCourse(null);
             return;
         }
-        fetchActiveCourse();
-        // 🟢 앱 WebView: 쿠키/세션 지연 대비 재시도 2회 + 로그인 성공 시 다시 조회
-        if (typeof window !== "undefined" && isMobileApp()) {
-            const t1 = setTimeout(fetchActiveCourse, 1800);
-            const t2 = setTimeout(fetchActiveCourse, 3500);
-            const onLoginSuccess = () => setTimeout(fetchActiveCourse, 300);
-            window.addEventListener("authLoginSuccess", onLoginSuccess);
-            return () => {
-                clearTimeout(t1);
-                clearTimeout(t2);
-                window.removeEventListener("authLoginSuccess", onLoginSuccess);
-            };
-        }
+        runAfterPaint(fetchActiveCourse);
+        const t1 = setTimeout(fetchActiveCourse, 1800);
+        const t2 = setTimeout(fetchActiveCourse, 3500);
+        const onLoginSuccess = () => setTimeout(fetchActiveCourse, 300);
+        window.addEventListener("authLoginSuccess", onLoginSuccess);
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            window.removeEventListener("authLoginSuccess", onLoginSuccess);
+        };
     }, [isAuthenticated, pathname, fetchActiveCourse]);
 
     // 🟢 앱에서 onLoadEnd 후 donaAppReady 오면 진행 중 코스 다시 조회 (이어가기 배너)
@@ -413,9 +432,9 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
         };
     }, [loadUserData]);
 
-    // 🟢 개인 추억 데이터 로드
+    // 🟢 개인 추억 데이터 로드 - 첫 페인트 후 조회 (정확도 동일)
     useEffect(() => {
-        fetchPersonalMemories();
+        runAfterPaint(fetchPersonalMemories);
     }, [fetchPersonalMemories]);
 
     // 🟢 메인 코스 리스트 (테마별용) - 검색/필터 변경 시에만 업데이트

@@ -66,12 +66,16 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         if (appCheck !== isApp) setIsApp(appCheck);
     }, [isApp]);
 
-    // 🟢 [AdMob]: 앱 WebView에 현재 경로+쿼리 전달 (클라이언트 라우팅 시 광고 표시 여부 판단용)
+    // 🟢 [AdMob]: 앱 WebView에 현재 경로+쿼리 전달 (ReactNativeWebView 있으면 전송 - isMobileApp()보다 먼저 설정될 수 있음)
     useEffect(() => {
-        if (typeof window === "undefined" || !isMobileApp() || !(window as any).ReactNativeWebView) return;
+        if (typeof window === "undefined" || !(window as any).ReactNativeWebView) return;
         const search = searchParams?.toString() ?? "";
         const fullPath = (pathname || "/") + (search ? `?${search}` : "");
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "pathChange", path: fullPath }));
+        const t = setTimeout(() => {
+            (window as any).ReactNativeWebView?.postMessage?.(JSON.stringify({ type: "pathChange", path: fullPath }));
+        }, 150);
+        return () => clearTimeout(t);
     }, [pathname, searchParams]);
 
     // riseDone 타이머 언마운트 시 정리

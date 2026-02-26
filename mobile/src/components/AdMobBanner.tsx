@@ -10,8 +10,8 @@ import { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads"
 const AD_UNIT_ID = __DEV__
     ? TestIds.BANNER
     : Platform.OS === "android"
-      ? "ca-app-pub-1305222191440436/1315254814"
-      : "ca-app-pub-1305222191440436/1315254814";
+      ? "ca-app-pub-1305222191440436/1628748456"
+      : "ca-app-pub-1305222191440436/1628748456";
 
 export default function AdMobBanner() {
     const insets = useSafeAreaInsets();

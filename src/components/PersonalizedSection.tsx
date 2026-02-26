@@ -183,8 +183,10 @@ export default function PersonalizedSection() {
         }
     }, []);
 
+    // 🟢 [성능] 첫 페인트 후 추천 API 호출 (LCP 개선, 계산/정확도 동일)
     useEffect(() => {
-        fetchData();
+        const t = setTimeout(fetchData, 0);
+        return () => clearTimeout(t);
     }, [fetchData]);
 
     const isMainWeekend = (() => {
