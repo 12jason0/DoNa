@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image"; // 🟢 img 대신 next/image 사용 (하이드레이션 오류 근본 해결)
@@ -12,12 +12,14 @@ import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isMobileApp } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
+import AdSlot from "@/components/AdSlot";
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
     // ---------------------------------------------------------
     // 1. 모든 Hook은 반드시 최상단에 순서대로 선언 (Rules of Hooks)
     // ---------------------------------------------------------
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const router = useRouter();
     const { isAuthenticated } = useAuth();
     const [isQrOpen, setIsQrOpen] = useState(false);
@@ -43,11 +45,34 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
     const homepageBgUrl = getS3StaticUrl("homepage.png");
 
+    // 🟢 웹 하단 광고: 앱과 동일 조건 (/, /mypage만. personalized-home, courses, nearby, view=memories 제외)
+    const shouldShowWebAd =
+        !pathname.startsWith("/personalized-home") &&
+        !pathname.startsWith("/nearby") &&
+        !pathname.startsWith("/courses") &&
+        (pathname === "/" || (pathname === "/mypage" && searchParams?.get("view") !== "memories"));
+
+    // 🟢 앱 하단 [AdMob] 배너 표시 시 footer·+버튼을 배너 높이만큼 올려서 광고에 가리지 않게
+    const shouldShowAppBanner =
+        isApp &&
+        !pathname.startsWith("/personalized-home") &&
+        !pathname.startsWith("/nearby") &&
+        !pathname.startsWith("/courses") &&
+        (pathname === "/" || (pathname === "/mypage" && searchParams?.get("view") !== "memories"));
+
     // 🟢 앱 환경 재확인
     useEffect(() => {
         const appCheck = isMobileApp();
         if (appCheck !== isApp) setIsApp(appCheck);
     }, [isApp]);
+
+    // 🟢 [AdMob]: 앱 WebView에 현재 경로+쿼리 전달 (클라이언트 라우팅 시 광고 표시 여부 판단용)
+    useEffect(() => {
+        if (typeof window === "undefined" || !isMobileApp() || !(window as any).ReactNativeWebView) return;
+        const search = searchParams?.toString() ?? "";
+        const fullPath = (pathname || "/") + (search ? `?${search}` : "");
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "pathChange", path: fullPath }));
+    }, [pathname, searchParams]);
 
     // riseDone 타이머 언마운트 시 정리
     useEffect(() => {
@@ -198,7 +223,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             >
                 <div
                     className={`h-screen ${
-                        !isApp ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6" : ""
+                        !mounted
+                            ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6"
+                            : !isApp
+                              ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6"
+                              : ""
                     }`}
                 >
                     {/* 🟢 웹 브라우저에서만 히어로 패널 표시 (앱 환경에서는 숨김) */}
@@ -327,8 +356,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                     )}
 
                     <div
-                        className={`relative h-full flex flex-col bg-transparent ${
-                            !isApp ? "lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800" : "w-full"
+                        className={`relative h-full flex flex-col ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
+                            !mounted
+                                ? "lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800"
+                                : !isApp
+                                  ? "lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800"
+                                  : "w-full"
                         } lg:pb-0`}
                     >
                         <div
@@ -344,14 +377,16 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                         <div
                             className={`shrink-0 bg-transparent ${
                                 isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"
-                            } fixed bottom-2 left-0 right-0 z-40 lg:static lg:z-auto`}
+                            } fixed ${!mounted ? "bottom-2" : isApp ? (shouldShowAppBanner ? "bottom-14" : "bottom-0") : shouldShowWebAd ? "bottom-0" : "bottom-2"} left-0 right-0 z-40 lg:static lg:z-auto flex flex-col`}
                         >
                             {/* 버튼만 공중에 떠 있게 만드는 플로팅 구조 (지도 페이지에선 숨김). 웹(lg)에서는 앱 패널 오른쪽에 배치 */}
                             {!isMapPage && (
                                 <>
                                     {/* 드로어 닫혀 있을 때: 인라인 버튼 (클릭 시 위치 계산용 ref) */}
                                     {!sideMenuOpen && (
-                                        <div className="fixed bottom-31 right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 lg:bottom-22">
+                                        <div
+                                            className={`fixed ${!mounted ? "bottom-31" : isApp ? (shouldShowAppBanner ? "bottom-20" : "bottom-16") : shouldShowWebAd ? "bottom-48" : "bottom-24"} right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 ${!isApp && shouldShowWebAd ? "lg:bottom-36" : "lg:bottom-22"}`}
+                                        >
                                             <button
                                                 ref={plusButtonRef}
                                                 type="button"
@@ -385,7 +420,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         typeof document !== "undefined" &&
                                         createPortal(
                                             <div
-                                                className="fixed bottom-22 right-6 z-2010 pointer-events-none flex items-center gap-2.5"
+                                                className={`fixed ${!mounted ? "bottom-22" : isApp ? (shouldShowAppBanner ? "bottom-24" : "bottom-16") : shouldShowWebAd ? "bottom-48" : "bottom-24"} right-6 z-2010 pointer-events-none flex items-center gap-2.5`}
                                                 style={{ position: "fixed" }}
                                             >
                                                 {riseDone && (
@@ -446,6 +481,17 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 </>
                             )}
                             <Footer isApp={isApp} />
+                            {/* 🟢 웹 전용: 푸터와 광고를 한 하단 바로 묶어 바닥에 붙임 (lg에서는 흐름 유지) */}
+                            {!isApp && shouldShowWebAd && (
+                                <div className="w-full flex justify-center rounded-none shrink-0">
+                                    <AdSlot
+                                        slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || ""}
+                                        format="auto"
+                                        rounded={false}
+                                        className="w-[320px] h-[50px] min-h-[50px] mx-auto rounded-none"
+                                    />
+                                </div>
+                            )}
                             <SideMenuDrawer
                                 isOpen={sideMenuOpen}
                                 onClose={() => {

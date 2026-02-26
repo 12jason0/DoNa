@@ -309,10 +309,18 @@ export default function CourseDetailClient({
     const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
+    const [inApp, setInApp] = useState(false);
 
-    // 🟢 플랫폼 감지 (iOS / Android / web)
+    // 🟢 플랫폼 감지 (iOS / Android / web) + 앱 WebView 여부 (하단바·지도버튼 위로 올리기)
     useEffect(() => {
         setPlatform(isIOS() ? "ios" : isAndroid() ? "android" : "web");
+        setInApp(isMobileApp());
+    }, []);
+    // 🟢 앱에서 onLoadEnd 후 donaAppReady 이벤트로 재반영
+    useEffect(() => {
+        const onReady = () => setInApp(isMobileApp());
+        window.addEventListener("donaAppReady", onReady);
+        return () => window.removeEventListener("donaAppReady", onReady);
     }, []);
 
     // 🟢 성능 최적화: 코스 상세 페이지 진입 시 메인 페이지를 미리 로드하여 빠른 전환 보장
@@ -1553,10 +1561,12 @@ export default function CourseDetailClient({
                         </section>
                     </main>
 
+                    {/* 찜하기·공유 하단바: 바닥 고정, 앱에서는 네이티브 뒤로가기/홈 버튼 위로 */}
                     <div
                         className={`fixed left-0 right-0 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto ${
-                            platform === "android" ? "bottom-6" : "bottom-0"
+                            inApp ? "bottom-20" : "bottom-0"
                         }`}
+                        style={inApp ? { paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" } : undefined}
                     >
                         <div className="flex gap-4">
                             <TapFeedback>
@@ -1631,7 +1641,7 @@ export default function CourseDetailClient({
                                                 router.push(`/courses/${courseId}/start`);
                                                 handleMapActivation();
                                             }}
-                                            className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center"
+                                            className="w-full h-10 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center"
                                         >
                                             나만의 추억 기록하기
                                         </button>
@@ -1789,8 +1799,8 @@ export default function CourseDetailClient({
                 </div>
             )}
 
-            {/* 🔵 + 버튼 위치에 지도 보기 플로팅 버튼 (클릭 시 코스 경로 모달, 로그인 불필요) */}
-            <div className="fixed bottom-28 right-6 z-50">
+            {/* 🔵 지도 보기 플로팅 버튼 (앱에서 하단바 위로) */}
+            <div className={`fixed right-6 z-50 ${inApp ? "bottom-44" : "bottom-28"}`}>
                 <TapFeedback>
                     <button
                         onClick={() => {
@@ -1805,10 +1815,10 @@ export default function CourseDetailClient({
                 </TapFeedback>
             </div>
 
-            {/* 🔵 [기능 유지] 전체 지도 모달 */}
+            {/* 🔵 [기능 유지] 전체 지도 모달 - 앱에서는 네이티브 하단 버튼 위로 */}
             {showFullMapModal && (
                 <div
-                    className="fixed inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal"
+                    className={`fixed inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal ${inApp ? "pb-24" : ""}`}
                     onClick={fullMapModalClose}
                 >
                     <div
@@ -1818,6 +1828,7 @@ export default function CourseDetailClient({
                                 ? `translateY(${fullMapModalDragY}px)`
                                 : "translateY(100%)",
                             transition: fullMapModalDragY === 0 ? "transform 0.3s ease-out" : "none",
+                            marginBottom: inApp ? 80 : 0,
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >

@@ -167,6 +167,25 @@ const FootprintTab = ({
         };
     }, [showMemoryModal]);
 
+    // 🟢 앱 네이티브: 발자취 달력 클릭 시 뜨는 추천 코스 모달 / 코스 상세 모달 열림/닫힘 시 광고 숨김
+    const anyModalOpen = showDateCoursesModal || showCourseModal;
+    useEffect(() => {
+        if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+            (window as any).ReactNativeWebView.postMessage(
+                JSON.stringify({
+                    type: anyModalOpen ? "dateCoursesModalOpen" : "dateCoursesModalClose",
+                }),
+            );
+        }
+        return () => {
+            if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+                (window as any).ReactNativeWebView.postMessage(
+                    JSON.stringify({ type: "dateCoursesModalClose" }),
+                );
+            }
+        };
+    }, [anyModalOpen]);
+
     // 🟢 드래그 기능을 위한 상태
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchEndX, setTouchEndX] = useState<number | null>(null);
@@ -744,6 +763,10 @@ const FootprintTab = ({
                                                     requestAnimationFrame(() => {
                                                         setShowDateCoursesModal(true);
                                                     });
+                                                    // 🟢 앱에 즉시 전달해 추천 데이트 모달 열릴 때 광고 숨김
+                                                    if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+                                                        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "dateCoursesModalOpen" }));
+                                                    }
                                                 }
                                             }
                                             // 🟢 [Case 3]: 항목이 없으면 아무 일도 일어나지 않음 (기본 동작)

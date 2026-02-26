@@ -67,6 +67,8 @@ export function isWeb(): boolean {
  */
 export function isMobileApp(): boolean {
     if (typeof window === "undefined") return false;
+    // 🟢 앱 WebView 초기 스크립트에서 주입 (UA보다 우선)
+    if ((window as any).__DoNa_App === true) return true;
 
     const userAgent = window.navigator.userAgent;
     

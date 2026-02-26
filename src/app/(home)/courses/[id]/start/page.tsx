@@ -9,7 +9,7 @@ import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import MemorySavedIcon from "@/components/MemorySavedIcon";
 import { motion, PanInfo } from "framer-motion";
-import { isIOS } from "@/lib/platform";
+import { isIOS, isAndroid, isMobileApp } from "@/lib/platform";
 import Image from "@/components/ImageFallback";
 
 // --- Types ---
@@ -75,15 +75,25 @@ function GuidePageInner() {
     const [memoryLimitMessage, setMemoryLimitMessage] = useState<string>("");
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
+    const [inApp, setInApp] = useState(false);
 
     // 🟢 이미지 슬라이더 상태
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
-    // 🟢 iOS 플랫폼 감지
+    // 🟢 iOS/Android/앱 WebView 감지 (앱에서 하단 여백 적용)
     useEffect(() => {
-        setPlatform(isIOS() ? "ios" : "web");
+        setPlatform(isIOS() ? "ios" : isAndroid() ? "android" : "web");
+        setInApp(isMobileApp());
+    }, []);
+    // 🟢 앱에서 onLoadEnd 후 donaAppReady 이벤트로 재반영
+    useEffect(() => {
+        const onReady = () => setInApp(isMobileApp());
+        if (typeof window !== "undefined") {
+            window.addEventListener("donaAppReady", onReady);
+            return () => window.removeEventListener("donaAppReady", onReady);
+        }
     }, []);
 
     // 🟢 나만의 추억 한도 모달 하단 시트: 열릴 때 slideUp
@@ -503,8 +513,14 @@ function GuidePageInner() {
                     )}
                 </div>
 
-                {/* Center Card - Intro (하단 배치) */}
-                <div className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-center px-6 pb-8">
+                {/* Center Card - Intro (하단 배치, 앱에서 위로 올림) */}
+                <div
+                    className="absolute left-0 right-0 z-30 flex items-end justify-center px-6"
+                    style={{
+                        bottom: inApp ? "calc(env(safe-area-inset-bottom, 0px) + 3.5rem)" : platform === "android" ? "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" : 0,
+                        paddingBottom: inApp || platform === "android" ? 0 : "2rem",
+                    }}
+                >
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -568,10 +584,16 @@ function GuidePageInner() {
                     <div className="absolute inset-0 bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50" />
                 )}
             </div>
-            {/* 3. Bottom Story Card - 다크 모드 지원 - 고정 모달 */}
+            {/* 3. Bottom Story Card - 다크 모드 지원 - 고정 (앱에서 하단바 위로) */}
             <div
-                className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]"
-                style={{ maxHeight: "65vh", minHeight: "50vh", display: "flex", flexDirection: "column" }}
+                className="absolute left-0 right-0 z-30 bg-white dark:bg-[#1a241b] backdrop-blur-lg rounded-t-3xl border border-gray-200 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]"
+                style={{
+                    maxHeight: "65vh",
+                    minHeight: "50vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    bottom: inApp ? "calc(env(safe-area-inset-bottom, 0px) + 3.5rem)" : platform === "android" ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" : 0,
+                }}
             >
                 {/* 🟢 스크롤 가능한 콘텐츠 영역 */}
                 <div
@@ -595,7 +617,12 @@ function GuidePageInner() {
                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">❤️ {currentDate}</p>
                     </div>
 
-                    <div className="px-5 pb-24">
+                    <div
+                        className="px-5"
+                        style={{
+                            paddingBottom: inApp ? "calc(6rem + env(safe-area-inset-bottom, 0px) + 3rem)" : platform === "android" ? "calc(6rem + env(safe-area-inset-bottom, 0px))" : "6rem",
+                        }}
+                    >
                         {/* 페이지 0: 사진 업로드 | 페이지 1: 태그+텍스트+저장 */}
                         {pageIndex === 0 ? (
                         /* 🟢 페이지 0: 사진 업로드 */

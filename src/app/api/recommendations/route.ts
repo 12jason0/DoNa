@@ -606,8 +606,12 @@ export async function GET(req: NextRequest) {
                 whereConditions.grade = "FREE";
             }
         }
+        // 🟢 strict 모드: UI 선택지(예: "홍대 · 연남 · 신촌")를 행정구역명(예: "마포구")으로 매핑해 DB 조회 (그대로 쓰면 0건)
+        let usedStrictRegion = false;
         if (strictRegion && regionToday) {
-            whereConditions.region = { contains: regionToday };
+            const regionForQuery = regionMapping[regionToday] || regionToday;
+            whereConditions.region = { contains: regionForQuery };
+            usedStrictRegion = true;
         }
 
         // 🟢 [주석처리] 이미 저장한 코스 제외 - BASIC+PREMIUM 2개 추천을 위해 제외하지 않음
@@ -615,50 +619,57 @@ export async function GET(req: NextRequest) {
         //     whereConditions.id = { notIn: savedCourseIds };
         // }
 
-        const allCourses = await (prisma as any).course.findMany({
+        const courseSelect = {
+            id: true,
+            title: true,
+            sub_title: true,
+            description: true,
+            imageUrl: true,
+            region: true,
+            concept: true,
+            rating: true,
+            view_count: true,
+            createdAt: true,
+            mood: true,
+            goal: true,
+            scene: true,
+            target_audience: true,
+            budget_level: true,
+            budget_range: true,
+            budget_min: true,
+            budget_max: true,
+            route_difficulty: true,
+            target_description: true,
+            perfect_for: true,
+            tags: true,
+            is_editor_pick: true,
+            grade: true,
+            coursePlaces: {
+                take: 10,
+                select: {
+                    place: {
+                        select: { id: true, imageUrl: true, reservationUrl: true },
+                    },
+                },
+                orderBy: { order_index: "asc" },
+            },
+        };
+
+        let allCourses = await (prisma as any).course.findMany({
             where: whereConditions,
             take: 200,
-            select: {
-                id: true,
-                title: true,
-                sub_title: true,
-                description: true,
-                imageUrl: true,
-                region: true,
-                concept: true,
-                rating: true,
-                view_count: true,
-                createdAt: true,
-
-                // 🔥 JSON에서 컬럼으로 변환된 필드들
-                mood: true,
-                goal: true,
-
-                // 🔥 Context-Aware 신규 필드들
-                scene: true,
-                target_audience: true,
-                budget_level: true,
-                budget_range: true,
-                budget_min: true,
-                budget_max: true,
-                route_difficulty: true,
-                target_description: true,
-                perfect_for: true,
-
-                tags: true, // 기타 정보용 (선택적)
-                is_editor_pick: true,
-                grade: true,
-                coursePlaces: {
-                    take: 10,
-                    select: {
-                        place: {
-                            select: { id: true, imageUrl: true, reservationUrl: true },
-                        },
-                    },
-                    orderBy: { order_index: "asc" },
-                },
-            },
+            select: courseSelect,
         });
+
+        // 🟢 strict 지역 필터 결과 0건이면 지역 조건 제거 후 재조회 (추천 결과는 항상 보이도록)
+        if (usedStrictRegion && allCourses.length === 0) {
+            delete whereConditions.region;
+            allCourses = await (prisma as any).course.findMany({
+                where: whereConditions,
+                take: 200,
+                select: courseSelect,
+            });
+        }
 
         if (!userId) {
             const byViews = allCourses.sort((a: any, b: any) => (b.view_count || 0) - (a.view_count || 0));
@@ -901,7 +912,7 @@ export async function GET(req: NextRequest) {
             const basicList = byGrade("BASIC");
             const premiumList = byGrade("PREMIUM");
 
-            // 🟢 FREE: FREE 1개 + BASIC 1개 | BASIC: FREE+BASIC 중 가장 맞는 1개 + PREMIUM 1개 | PREMIUM: PREMIUM 1개만
+            // 🟢 FREE: FREE 1개 + BASIC 1개 | BASIC: FREE+BASIC 1개 + PREMIUM 1개 | PREMIUM: 전체 코스에서 매칭 1등 1개
             if (userTier === "FREE") {
                 const oneFree = freeList[0];
                 const oneBasic = basicList[0];
@@ -911,12 +922,13 @@ export async function GET(req: NextRequest) {
                 const freeOrBasicList = sortedFiltered.filter(
                     (c: any) => (c.grade || "FREE") === "FREE" || (c.grade || "FREE") === "BASIC",
                 );
-                const oneFreeOrBasic = freeOrBasicList[0]; // 이미 matchScore 순 정렬되어 있어 가장 맞는 것
+                const oneFreeOrBasic = freeOrBasicList[0];
                 const onePremium = premiumList[0];
                 finalRecs = [oneFreeOrBasic, onePremium].filter(Boolean);
                 upsellFor = "PREMIUM";
             } else {
-                finalRecs = premiumList.slice(0, 1);
+                // PREMIUM: 등급 제한 없이 전체 풀에서 매칭 점수 1등 1개 추천
+                finalRecs = sortedFiltered.slice(0, 1);
                 upsellFor = null;
             }
         }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { apiFetch } from "@/lib/authClient";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import PersonalizedSection from "@/components/PersonalizedSection";
@@ -14,7 +14,7 @@ import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import TapFeedback from "@/components/TapFeedback";
 import { X } from "lucide-react";
 
-import { isIOS } from "@/lib/platform";
+import { isIOS, isMobileApp } from "@/lib/platform";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
@@ -97,6 +97,7 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
 
     const router = useRouter();
     const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     // 🟢 [2026-01-21] 딥링크 폴백 처리: courseId 쿼리 파라미터가 있으면 해당 코스 상세 페이지로 리다이렉트
     useEffect(() => {
@@ -297,43 +298,75 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
         }
     }, [isAuthenticated]);
 
-    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스
+    // 🟢 active-course 한 번 조회 후 정규화하여 state 설정
+    const fetchActiveCourse = useCallback(async () => {
+        try {
+            const { data, response } = await apiFetch<{
+                courseId: number;
+                courseTitle: string;
+                hasMemory: boolean;
+                title?: string;
+                imageUrl?: string | null;
+            } | null>("/api/users/active-course", { cache: "no-store" });
+            const raw = data as any;
+            const valid =
+                response.ok &&
+                data &&
+                typeof data === "object" &&
+                Number(raw?.courseId) > 0;
+            const normalized = valid && raw ? { ...raw, courseId: Number(raw.courseId) } : null;
+            setActiveCourse(normalized);
+            if (
+                valid &&
+                normalized &&
+                !normalized.hasMemory &&
+                typeof window !== "undefined"
+            ) {
+                const kstOffset = 9 * 60 * 60 * 1000;
+                const now = new Date();
+                const kstNow = new Date(now.getTime() + kstOffset);
+                const isAfter9 = kstNow.getUTCHours() >= 21;
+                const todayKey = `memoryReminderModal_${kstNow.getUTCFullYear()}-${String(kstNow.getUTCMonth() + 1).padStart(2, "0")}-${String(kstNow.getUTCDate()).padStart(2, "0")}`;
+                const alreadyShown = localStorage.getItem(todayKey) === "1";
+                if (isAfter9 && !alreadyShown) {
+                    setShowMemoryReminderModal(true);
+                    localStorage.setItem(todayKey, "1");
+                }
+            }
+        } catch {
+            setActiveCourse(null);
+        }
+    }, []);
+
+    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스 (메인 이어가기 배너)
     useEffect(() => {
         if (!isAuthenticated) {
             setActiveCourse(null);
             return;
         }
-        (async () => {
-            try {
-                const { data } = await apiFetch<{
-                    courseId: number;
-                    courseTitle: string;
-                    hasMemory: boolean;
-                } | null>("/api/users/active-course", { cache: "no-store" });
-                setActiveCourse(data ?? null);
+        fetchActiveCourse();
+        // 🟢 앱 WebView: 쿠키/세션 지연 대비 재시도 2회 + 로그인 성공 시 다시 조회
+        if (typeof window !== "undefined" && isMobileApp()) {
+            const t1 = setTimeout(fetchActiveCourse, 1800);
+            const t2 = setTimeout(fetchActiveCourse, 3500);
+            const onLoginSuccess = () => setTimeout(fetchActiveCourse, 300);
+            window.addEventListener("authLoginSuccess", onLoginSuccess);
+            return () => {
+                clearTimeout(t1);
+                clearTimeout(t2);
+                window.removeEventListener("authLoginSuccess", onLoginSuccess);
+            };
+        }
+    }, [isAuthenticated, pathname, fetchActiveCourse]);
 
-                // 🟢 21시 이후 + 기록 없음 + 오늘 1회만 모달
-                if (
-                    data &&
-                    !data.hasMemory &&
-                    typeof window !== "undefined"
-                ) {
-                    const kstOffset = 9 * 60 * 60 * 1000;
-                    const now = new Date();
-                    const kstNow = new Date(now.getTime() + kstOffset);
-                    const isAfter9 = kstNow.getUTCHours() >= 21;
-                    const todayKey = `memoryReminderModal_${kstNow.getUTCFullYear()}-${String(kstNow.getUTCMonth() + 1).padStart(2, "0")}-${String(kstNow.getUTCDate()).padStart(2, "0")}`;
-                    const alreadyShown = localStorage.getItem(todayKey) === "1";
-                    if (isAfter9 && !alreadyShown) {
-                        setShowMemoryReminderModal(true);
-                        localStorage.setItem(todayKey, "1");
-                    }
-                }
-            } catch {
-                setActiveCourse(null);
-            }
-        })();
-    }, [isAuthenticated]);
+    // 🟢 앱에서 onLoadEnd 후 donaAppReady 오면 진행 중 코스 다시 조회 (이어가기 배너)
+    useEffect(() => {
+        const onReady = () => {
+            if (isAuthenticated) fetchActiveCourse();
+        };
+        window.addEventListener("donaAppReady", onReady);
+        return () => window.removeEventListener("donaAppReady", onReady);
+    }, [isAuthenticated, fetchActiveCourse]);
 
     useEffect(() => {
         if (isAuthenticated && user) {
@@ -468,7 +501,8 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
 
             <main className="">
                 {/* 🟢 오늘 데이트 진행 중 배너 - 나만의 추억 저장 완료 시 숨김 */}
-                {activeCourse && !activeCourse.hasMemory && (
+                {/* 🟢 나만의 추억 있어도 메인에 이어가기 배너 표시 */}
+                {activeCourse && (
                     <div className="mx-4 mt-6 mb-6 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
                         <div className="flex gap-4">
                             {/* 왼쪽: 이미지 썸네일 */}

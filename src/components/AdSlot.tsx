@@ -1,45 +1,53 @@
 "use client";
 
-import { useRef, useEffect, memo } from "react";
+import { useRef, useEffect, memo, useState } from "react";
 
 /**
  * Google AdSense 광고 슬롯.
- * - fluid: 피드형(인피드) 광고. 컨테이너 높이는 가변으로 두세요.
- * - auto: 일반 디스플레이 광고.
+ * - 로드 실패/노필 시 영역 0으로 접음 (빈 박스 방지).
  */
 type AdSlotProps = {
-    /** AdSense 광고 단위 ID. 비우면 자리만 표시 */
     slotId?: string;
-    /** "fluid" = 피드형(인피드), "auto" = 일반 디스플레이 */
     format?: "fluid" | "auto";
-    /** fluid 형식일 때 필수 (AdSense 대시보드에서 발급) */
     layoutKey?: string;
+    rounded?: boolean;
     className?: string;
 };
 
-const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", className = "" }: AdSlotProps) => {
+const NO_FILL_CHECK_MS = 4500;
+
+const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", rounded = true, className = "" }: AdSlotProps) => {
     const insRef = useRef<HTMLModElement>(null);
+    const [hidden, setHidden] = useState(false);
     const isFluid = format === "fluid" && layoutKey;
+    const roundClass = rounded ? "rounded-xl" : "rounded-none";
 
     useEffect(() => {
+        if (!slotId || typeof window === "undefined" || !(window as any).adsbygoogle) return;
         try {
-            if (
-                typeof window !== "undefined" &&
-                (window as any).adsbygoogle &&
-                insRef.current &&
-                slotId
-            ) {
+            if (insRef.current) {
                 ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
             }
         } catch {
             // ignore
         }
+
+        const t = setTimeout(() => {
+            const el = insRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const hasIframe = el.querySelector("iframe");
+            if (rect.height < 5 || !hasIframe) setHidden(true);
+        }, NO_FILL_CHECK_MS);
+        return () => clearTimeout(t);
     }, [slotId]);
+
+    if (hidden) return <div className="h-0 min-h-0 overflow-hidden" aria-hidden />;
 
     if (!slotId) {
         return (
             <div
-                className={`relative w-full min-h-[80px] rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 ${className}`}
+                className={`relative w-full min-h-[80px] ${roundClass} border border-gray-100 dark:border-gray-800 flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 ${className}`}
             >
                 <span className="text-xs text-gray-400 dark:text-gray-500">
                     광고 영역 (AdSense slot ID 설정 시 표시)
@@ -50,7 +58,7 @@ const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", className =
 
     return (
         <div
-            className={`relative w-full rounded-xl overflow-hidden ${isFluid ? "min-h-[80px]" : "min-h-[120px]"} flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 ${className}`}
+            className={`relative w-full ${roundClass} overflow-hidden ${isFluid ? "min-h-[80px]" : "min-h-[120px]"} flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 ${className}`}
         >
             <ins
                 ref={insRef}

@@ -13,6 +13,30 @@ import * as Application from "expo-application";
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
 import { WEB_BASE } from "../config";
+import AdMobBanner from "./AdMobBanner";
+
+/** 광고 표시: / (메인), /mypage만. personalized-home, nearby, courses, 나만 아는 비밀 앨범(view=memories) 등 제외 */
+function shouldShowAdMob(pathOrUrl: string): boolean {
+    try {
+        const full = pathOrUrl.startsWith("http") ? pathOrUrl : `https://dummy.com${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+        const u = new URL(full);
+        const p = (u.pathname.replace(/\/$/, "") || "/");
+
+        // 🟢 1번: personalized-home (홍대 검색/취향 저격 등) - 광고 숨김
+        if (p.startsWith("/personalized-home")) return false;
+        if (p.startsWith("/nearby")) return false;
+        if (p.startsWith("/courses")) return false;
+
+        if (p === "/") return true;
+        if (p === "/mypage") {
+            if (u.searchParams.get("view") === "memories") return false;
+            return true;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
 
 type Props = {
     uri: string;
@@ -120,6 +144,7 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const [loading, setLoading] = useState(true);
     const [canGoBack, setCanGoBack] = useState(false);
     const [currentUrl, setCurrentUrl] = useState(resolvedUri);
+    const [currentPathForAd, setCurrentPathForAd] = useState<string | null>(null);
     const insets = useSafeAreaInsets();
     const pushToken = useContext(PushTokenContext);
     const [initialScript, setInitialScript] = useState<string | null>(null);
@@ -131,6 +156,8 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
     // 🟢 추억 상세(사진 보기) 모달 열림 시 상태바 검은색
     const [isMemoryDetailOpen, setIsMemoryDetailOpen] = useState(false);
+    // 🟢 발자취 달력 클릭 시 뜨는 추천 코스 모달 열림 시 광고 숨김
+    const [isDateCoursesModalOpen, setIsDateCoursesModalOpen] = useState(false);
 
     useEffect(() => {
         onMemoryDetailStateChange?.(isMemoryDetailOpen);
@@ -142,15 +169,12 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
             // 웹뷰가 로드된 후 초기 다크모드 상태 확인
             const checkInitialDarkMode = `
                 (function() {
-                    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                                  document.documentElement.classList.contains('dark') ||
-                                  document.body.classList.contains('dark') ||
-                                  document.documentElement.getAttribute('data-theme') === 'dark';
+                    var isDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+                                 (document.documentElement && document.documentElement.classList.contains('dark')) ||
+                                 (document.body && document.body.classList.contains('dark')) ||
+                                 (document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
                     if (window.ReactNativeWebView) {
-                        window.ReactNativeWebView.postMessage(JSON.stringify({
-                            type: 'darkModeChange',
-                            isDark: isDark
-                        }));
+                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'darkModeChange', isDark: isDark }));
                     }
                 })();
             `;
@@ -274,6 +298,8 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
         (async () => {
             const lines: string[] = [];
             lines.push("(function(){");
+            // 🟢 웹에서 isMobileApp() 확실히 true 되도록 (UA보다 우선)
+            lines.push("window.__DoNa_App = true;");
             // Native Bridge 설정
             lines.push(
                 `if (!window.ReactNativeWebView) { window.ReactNativeWebView = { postMessage: function(msg) { window.__nativeBridge?.post('webview', JSON.parse(msg || '{}')); } }; }`,
@@ -285,19 +311,18 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
             // 🟢 푸시 토큰은 유지하되, 보안 취약점인 'authToken' localStorage 주입은 삭제했습니다.
             if (pushToken) lines.push(`try{ localStorage.setItem('expoPushToken', '${pushToken}'); }catch(e){}`);
 
-            // SafeArea 업데이트 로직
+            // SafeArea 업데이트 로직 (document.body 있을 때만)
             lines.push(
-                `(function applySafeArea(){ function update(){ try { document.documentElement.style.paddingTop = "0px"; document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`,
+                `(function applySafeArea(){ function update(){ try { if (document.documentElement) document.documentElement.style.paddingTop = "0px"; if (document.body) document.body.style.paddingTop = "0px"; } catch(e){} } update(); setInterval(update, 2000); })();`,
             );
             // 🟢 [2026-01-21] 다크모드 감지 및 앱에 전달
             lines.push(`
                 (function detectDarkMode() {
                     function checkDarkMode() {
-                        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                                      document.documentElement.classList.contains('dark') ||
-                                      document.body.classList.contains('dark') ||
-                                      document.documentElement.getAttribute('data-theme') === 'dark';
-                        
+                        const isDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+                                      (document.documentElement && document.documentElement.classList.contains('dark')) ||
+                                      (document.body && document.body.classList.contains('dark')) ||
+                                      (document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
                         if (window.ReactNativeWebView) {
                             window.ReactNativeWebView.postMessage(JSON.stringify({
                                 type: 'darkModeChange',
@@ -305,27 +330,14 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                             }));
                         }
                     }
-                    
-                    // 초기 체크
-                    checkDarkMode();
-                    
-                    // 미디어 쿼리 변경 감지
+                    if (document.body) checkDarkMode();
+                    else if (document.addEventListener) document.addEventListener('DOMContentLoaded', checkDarkMode);
                     if (window.matchMedia) {
                         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', checkDarkMode);
                     }
-                    
-                    // DOM 변경 감지 (웹에서 다크모드 토글 시)
-                    const observer = new MutationObserver(checkDarkMode);
-                    observer.observe(document.documentElement, {
-                        attributes: true,
-                        attributeFilter: ['class', 'data-theme']
-                    });
-                    observer.observe(document.body, {
-                        attributes: true,
-                        attributeFilter: ['class']
-                    });
-                    
-                    // 주기적으로 체크 (웹에서 동적으로 다크모드 변경 시)
+                    var observer = new MutationObserver(checkDarkMode);
+                    if (document.documentElement) observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+                    if (document.body) observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
                     setInterval(checkDarkMode, 1000);
                 })();
             `);
@@ -418,7 +430,11 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                     onNavigationStateChange={(nav: WebViewNavigation) => {
                         setCanGoBack(nav.canGoBack);
                         setCurrentUrl(nav.url);
-                        if (!nav.loading) {
+                        if (!nav.loading && nav.url) {
+                            try {
+                                const path = (new URL(nav.url).pathname || "/").replace(/\/$/, "") || "/";
+                                setCurrentPathForAd(path + (nav.url.includes("?") ? new URL(nav.url).search : ""));
+                            } catch {}
                             setLoading(false);
                             // 🟢 페이지 이동 시 추억 상세 모달 상태 초기화
                             if (!nav.url.includes("mypage") || !nav.url.includes("view=memories")) {
@@ -427,23 +443,37 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                         }
                     }}
                     onLoadEnd={() => {
+                        // 🟢 [AdMob] 로드/클라이언트 라우팅 후 현재 경로 동기화 (광고 표시 여부 정확히 반영)
+                        const pathSyncScript = `
+                            (function() {
+                                try {
+                                    var path = window.location.pathname || '/';
+                                    var search = window.location.search || '';
+                                    var full = path + search;
+                                    if (window.ReactNativeWebView) {
+                                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pathChange', path: full }));
+                                    }
+                                } catch (e) {}
+                            })();
+                        `;
+                        webRef.current?.injectJavaScript(pathSyncScript);
+                        // 🟢 앱 플래그 + React 재반영 (첫 로드 시 initialScript보다 늦을 수 있음)
+                        webRef.current?.injectJavaScript(
+                            "window.__DoNa_App = true; try { window.dispatchEvent(new CustomEvent('donaAppReady')); } catch(e) {}"
+                        );
                         // 🟢 웹뷰 로드 완료 시 다크모드 상태 즉시 확인 (더 적극적으로)
                         const checkDarkModeScript = `
                             (function() {
                                 function checkDarkMode() {
-                                    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                                                  document.documentElement.classList.contains('dark') ||
-                                                  document.body.classList.contains('dark') ||
-                                                  document.documentElement.getAttribute('data-theme') === 'dark';
+                                    var isDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+                                                 (document.documentElement && document.documentElement.classList.contains('dark')) ||
+                                                 (document.body && document.body.classList.contains('dark')) ||
+                                                 (document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
                                     if (window.ReactNativeWebView) {
-                                        window.ReactNativeWebView.postMessage(JSON.stringify({
-                                            type: 'darkModeChange',
-                                            isDark: isDark
-                                        }));
+                                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'darkModeChange', isDark: isDark }));
                                     }
                                 }
                                 checkDarkMode();
-                                // DOM이 완전히 로드된 후 여러 번 재확인
                                 setTimeout(checkDarkMode, 100);
                                 setTimeout(checkDarkMode, 500);
                             })();
@@ -630,12 +660,21 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                             } else if (data.type === "memoryDetailClose") {
                                 setIsMemoryDetailOpen(false);
                             }
+                            // 🟢 발자취 달력 클릭 시 뜨는 추천 코스 모달 열림/닫힘 → 광고 숨김
+                            else if (data.type === "dateCoursesModalOpen") {
+                                setIsDateCoursesModalOpen(true);
+                            } else if (data.type === "dateCoursesModalClose") {
+                                setIsDateCoursesModalOpen(false);
+                            }
+                            // 🟢 [AdMob]: 웹에서 전달한 경로 (클라이언트 라우팅 시 광고 표시 여부 판단)
+                            else if (data.type === "pathChange" && typeof data.path === "string") {
+                                setCurrentPathForAd(data.path);
+                            }
                             // 🟢 [2026-01-21] 다크모드 변경 감지
                             else if (data.type === "darkModeChange") {
                                 // 🟢 [수정]: 명시적으로 boolean 값으로 설정 및 디버깅 로그 추가
                                 const newIsDark = data.isDark === true;
                                 setIsDarkMode(newIsDark);
-                                console.log("[WebScreen] 다크모드 상태 변경:", newIsDark);
                             }
                             // 🔴 [Fix 2]: 로그인 신호 수신부 - 어떤 로그인 신호도 Cooldown 중엔 차단
                             if ((data.type === "login" || data.type === "loginSuccess") && data.userId) {
@@ -1091,6 +1130,12 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                     </View>
                 )}
             </View>
+            {/* 🟢 [AdMob]: 메인(/)·mypage에서만 표시. personalized-home·courses·추억상세·추천코스모달 제외 */}
+            {isSplashDone &&
+                !isDateCoursesModalOpen &&
+                !isMemoryDetailOpen &&
+                currentPathForAd != null &&
+                shouldShowAdMob(currentPathForAd) && <AdMobBanner />}
         </View>
     );
 }

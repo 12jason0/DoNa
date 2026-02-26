@@ -78,14 +78,14 @@ export default function Footer({ isApp = false }: FooterProps) {
         <footer
             className="w-full flex justify-center px-4 pb-1.5 pt-1"
             style={{
-                paddingBottom: "calc(6px + env(safe-area-inset-bottom))",
+                paddingBottom: isApp ? "0px" : "calc(6px + env(safe-area-inset-bottom))",
             }}
         >
             <nav
                 className={`flex items-center justify-around rounded-full shadow-lg border border-gray-100 dark:border-gray-800 w-full max-w-md py-1.5 px-1.5 ${
                     isApp
                         ? "bg-white dark:bg-[#1a241b]"
-                        : "bg-white/75 dark:bg-[#1a241b]/85"
+                        : "bg-white/50 dark:bg-[#1a241b]/60"
                 }`}
                 style={{
                     backdropFilter: "saturate(180%) blur(12px)",
