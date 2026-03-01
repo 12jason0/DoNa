@@ -1,8 +1,9 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import Image from "next/image"; // 🟢 img 대신 next/image 사용 (하이드레이션 오류 근본 해결)
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -12,7 +13,116 @@ import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isMobileApp } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
+import { useLocale } from "@/context/LocaleContext";
 import AdSlot from "@/components/AdSlot";
+import { AppLayoutProvider } from "@/context/AppLayoutContext";
+
+// 🟢 웹 히어로 패널 플로팅 아이콘 (커피, 클래퍼보드, 하트, 와인)
+const CoffeeIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+        <line x1="6" x2="6" y1="2" y2="4" />
+        <line x1="10" x2="10" y1="2" y2="4" />
+        <line x1="14" x2="14" y1="2" y2="4" />
+    </svg>
+);
+const ClapperboardIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        <path d="M20.2 6 3 11l-.9-2.4L19.3 3z" />
+        <path d="m9.7 7.3 2-5.4" />
+        <path d="m15.6 5 2-5.4" />
+        <path d="M4 11V21h16V11z" />
+    </svg>
+);
+const HeartIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}>
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+);
+const WineIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        <path d="M8 22h8" />
+        <path d="M12 15v7" />
+        <path d="M12 15a7.5 7.5 0 0 0 7.5-7.5V3h-15v4.5A7.5 7.5 0 0 0 12 15z" />
+        <path d="M4.5 8h15" />
+    </svg>
+);
+
+const FLOATING_ICONS: Array<{
+    id: number;
+    Icon: React.ComponentType<{ className?: string }>;
+    wrapperSize: string;
+    iconSize: string;
+    top: string;
+    left?: string;
+    right?: string;
+    color: string;
+}> = [
+    {
+        id: 1,
+        Icon: CoffeeIcon,
+        wrapperSize: "w-16 h-16",
+        iconSize: "w-7 h-7",
+        top: "15%",
+        left: "8%",
+        color: "text-amber-800",
+    },
+    {
+        id: 2,
+        Icon: ClapperboardIcon,
+        wrapperSize: "w-14 h-14",
+        iconSize: "w-6 h-6",
+        top: "65%",
+        left: "45%",
+        color: "text-slate-700",
+    },
+    {
+        id: 3,
+        Icon: HeartIcon,
+        wrapperSize: "w-12 h-12",
+        iconSize: "w-5 h-5",
+        top: "20%",
+        right: "10%",
+        color: "text-rose-500",
+    },
+    {
+        id: 4,
+        Icon: WineIcon,
+        wrapperSize: "w-16 h-16",
+        iconSize: "w-7 h-7",
+        top: "75%",
+        right: "8%",
+        color: "text-red-900",
+    },
+];
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
     // ---------------------------------------------------------
@@ -22,12 +132,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const searchParams = useSearchParams();
     const router = useRouter();
     const { isAuthenticated } = useAuth();
+    const { t } = useLocale();
     const [isQrOpen, setIsQrOpen] = useState(false);
+    const [businessInfoOpen, setBusinessInfoOpen] = useState(false);
     const [sideMenuOpen, setSideMenuOpen] = useState(false);
     const [riseDone, setRiseDone] = useState(false); // 올라오는 애니메이션 끝난 뒤에만 + → 마이페이지 아이콘으로 전환
     const [drawerAnchorBottom, setDrawerAnchorBottom] = useState(0);
     const plusButtonRef = useRef<HTMLButtonElement>(null);
     const riseDoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const modalContainerRef = useRef<HTMLDivElement>(null);
     // 🟢 Hydration 일치: 서버·클라이언트 모두 false로 시작. 스플래시 여부는 useEffect에서 sessionStorage 확인 후 설정
     const [showSplash, setShowSplash] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -201,6 +314,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                         background-position: center;
                     }
                 }
+                .web-landing-bg {
+                    background: linear-gradient(115deg, #FCFAF5 0%, #FCFAF5 42%, #F4D8D1 42%, #F4D8D1 62%, #D0E8E1 62%, #D0E8E1 100%);
+                }
             `}</style>
 
             {/* 🟢 LCP 개선: 메인 콘텐츠는 항상 DOM에 렌더 (히어로 이미지 즉시 로드). 스플래시는 오버레이만 표시 */}
@@ -218,179 +334,261 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             )}
 
             {/* 🟢 메인 콘텐츠 항상 렌더 (스플래시 중에도 DOM에 있어 이미지 로드 → LCP 2.5초 이내 목표) */}
-            <div
-                className="min-h-screen homepage-bg-container"
-                style={{
-                    backgroundColor: showSplash && !contentReady ? "#7FCC9F" : "transparent",
-                    transition: "opacity 0.6s ease-in-out, background-color 1s ease-in-out",
-                }}
-            >
+            <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef }}>
                 <div
-                    className={`h-screen ${
-                        !mounted
-                            ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6"
-                            : !isApp
-                              ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:items-stretch lg:gap-6"
-                              : ""
-                    }`}
+                    className={`min-h-screen homepage-bg-container ${!isApp ? "web-landing-bg" : ""}`}
+                    style={{
+                        backgroundColor: showSplash && !contentReady ? "#7FCC9F" : "transparent",
+                        transition: "opacity 0.6s ease-in-out, background-color 1s ease-in-out",
+                    }}
                 >
-                    {/* 🟢 웹 브라우저에서만 히어로 패널 표시 (앱 환경에서는 숨김) */}
-                    {!isApp && (
-                        <section className="hidden lg:block relative w-[600px] h-full overflow-y-auto no-scrollbar">
-                            <div className="absolute inset-0 bg-linear-to-r from-black/55 via-black/40 to-transparent" />
-                            <div className="relative min-h-full flex flex-col justify-center">
-                                <div className="px-10 max-w-[520px] text-white space-y-6">
-                                    {/* 1. 로고 및 앱 이름 */}
-                                    <div className="inline-block">
-                                        <div className="w-32 h-32 p-4 flex items-center justify-center">
-                                            {/* 🟢 img 대신 Image 사용 + priority 부여로 하이드레이션 에러 완전 봉쇄 */}
-                                            <Image
-                                                src={getS3StaticUrl("logo/donalogo_512.png")}
-                                                alt="DoNa Logo"
-                                                width={128}
-                                                height={128}
-                                                priority
-                                                className="w-full h-full object-contain"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* 2. 메인 슬로건 */}
-                                    <h2 className="text-4xl font-extrabold leading-tight drop-shadow tracking-tight">
-                                        우리의 데이트가 한 편의 이야기가 되다
-                                    </h2>
-
-                                    {/* 3. 부가 설명 */}
-                                    <div className="text-xl font-bold text-white/95">
-                                        특별한 데이트 코스 추천부터 함께 채워나가는 스토리까지.
-                                    </div>
-
-                                    {/* 4. 상세 설명 */}
-                                    <p className="text-white/85 leading-relaxed text-sm">
-                                        더 이상 똑같은 데이트는 그만. 전문가가 추천하는 테마별 코스로 색다른 하루를
-                                        보내거나, 함께하는 모든 순간을 기록하며 세상에 단 하나뿐인 둘만의 이야기를
-                                        완성해보세요.
-                                    </p>
-
-                                    {/* 5. 앱 다운로드 버튼 */}
-                                    <div className="flex items-center gap-4 pt-2">
-                                        <a
-                                            href="https://apps.apple.com/kr/app/dona/id6756777886"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            aria-label="App Store"
-                                        >
-                                            <span className="inline-flex items-center justify-center text-black shadow-md rounded-md">
-                                                <Image
-                                                    src="/images/Download_on_the_App_Store_Badge_KR_RGB_blk_100317.svg"
-                                                    alt="App Store"
-                                                    width={135}
-                                                    height={40}
-                                                    className="h-9 lg:h-11 w-auto object-contain"
-                                                />
-                                            </span>
-                                        </a>
-                                        <a
-                                            href="https://play.google.com/store/apps/details?id=kr.io.dona.dona"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            aria-label="Google Play"
-                                        >
-                                            <span className="inline-flex items-center justify-center text-black shadow-md rounded-md">
-                                                <Image
-                                                    src="/images/GetItOnGooglePlay_Badge_Web_color_Korean.png"
-                                                    alt="Google Play"
-                                                    width={135}
-                                                    height={40}
-                                                    className="h-11 lg:h-[52px] w-auto object-contain"
-                                                />
-                                            </span>
-                                        </a>
-                                        <div
-                                            onClick={() => setIsQrOpen(true)}
-                                            className="ml-2 px-3 py-4 rounded-lg bg-white/15 border border-white/25 text-xs hover:bg-white/25 transition-colors cursor-pointer"
-                                        >
-                                            QR 코드
-                                        </div>
-                                    </div>
-
-                                    {/* 6. 사업자 정보 (토스 심사용 - 데스크탑 히어로 하단 배치) */}
-                                    <div className="mt-12 pt-8 border-t border-white/20 space-y-2 opacity-80">
-                                        <h3 className="text-lg font-bold mb-3 text-white">사업자 정보</h3>
-                                        <div className="grid grid-cols-1 gap-1.5 text-[13px] text-white/90">
-                                            <p>
-                                                <strong>상호:</strong> (주)두나 (DoNa)
-                                            </p>
-                                            <p>
-                                                <strong>대표자명:</strong> 오승용
-                                            </p>
-                                            <p>
-                                                <strong>사업자등록번호:</strong> 166-10-03081
-                                            </p>
-                                            <p>
-                                                <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
-                                            </p>
-                                            <p>
-                                                <strong>고객센터:</strong> 12jason@donacourse.com
-                                            </p>
-                                            <p>
-                                                <strong>유선번호:</strong> 010-2271-9824
-                                            </p>
-                                            <p>
-                                                <strong>주소 : </strong> 충청남도 홍성군 홍북읍 신대로 33
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    )}
-
-                    {isQrOpen && (
-                        <div
-                            className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm"
-                            onClick={() => setIsQrOpen(false)}
-                        >
-                            <div className="absolute inset-0 flex items-center justify-center p-4">
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <AppInstallQR onClose={() => setIsQrOpen(false)} />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div
-                        className={`relative h-full flex flex-col ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
+                        className={`h-screen ${
                             !mounted
-                                ? "lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800"
+                                ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:flex-row lg:items-stretch lg:gap-6"
                                 : !isApp
-                                  ? "lg:w-[500px] lg:border-l border-gray-100 dark:border-gray-800"
-                                  : "w-full"
-                        } lg:pb-0`}
+                                  ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:flex-row lg:items-stretch lg:gap-6"
+                                  : ""
+                        }`}
                     >
-                        <div
-                            className={`shrink-0 bg-white dark:bg-[#0f1710] ${
-                                isEscapeIntroPage || isCourseStart || isMapPage ? "hidden" : "block"
-                            }`}
-                        >
-                            <Header />
-                        </div>
-                        <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710]">
-                            <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>{children}</div>
-                        </main>
-                        <div
-                            className={`shrink-0 bg-transparent ${
-                                isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"
-                            } fixed ${!mounted ? "bottom-2" : isApp ? (shouldShowAppBanner ? "bottom-14" : "bottom-0") : shouldShowWebAd ? "bottom-0" : "bottom-2"} left-0 right-0 z-40 lg:static lg:z-auto flex flex-col`}
-                        >
-                            {/* 버튼만 공중에 떠 있게 만드는 플로팅 구조 (지도 페이지에선 숨김). 웹(lg)에서는 앱 패널 오른쪽에 배치 */}
-                            {!isMapPage && (
-                                <>
-                                    {/* 드로어 닫혀 있을 때: 인라인 버튼 (클릭 시 위치 계산용 ref) */}
-                                    {!sideMenuOpen && (
-                                        <div
-                                            className={`fixed ${!mounted ? "bottom-31" : isApp ? (shouldShowAppBanner ? "bottom-20" : "bottom-16") : shouldShowWebAd ? "bottom-48" : "bottom-24"} right-6 z-50 pointer-events-none flex items-center gap-2.5 lg:absolute lg:right-6 ${!isApp && shouldShowWebAd ? "lg:bottom-36" : "lg:bottom-22"}`}
+                        {/* 🟢 웹 브라우저에서만 히어로 패널 표시 (앱 환경에서는 숨김) - 밝은 그라데이션 랜딩 */}
+                        {!isApp && (
+                            <section className="hidden lg:block relative w-[600px] h-full overflow-y-auto shrink-0 bg-transparent no-scrollbar scrollbar-hide">
+                                {/* 플로팅 아이콘 (Framer Motion) */}
+                                {FLOATING_ICONS.map((item, index) => {
+                                    const IconComponent = item.Icon;
+                                    return (
+                                        <motion.div
+                                            key={item.id}
+                                            className={`absolute z-0 pointer-events-none ${item.wrapperSize}`}
+                                            style={{
+                                                top: item.top,
+                                                left: item.left,
+                                                right: item.right,
+                                            }}
+                                            animate={{ y: [0, -12, 0] }}
+                                            transition={{
+                                                duration: 4 + index * 0.5,
+                                                repeat: Infinity,
+                                                repeatType: "reverse",
+                                                ease: "easeInOut",
+                                            }}
                                         >
+                                            <div
+                                                className={`flex items-center justify-center rounded-full bg-white/70 shadow-lg backdrop-blur-md border border-white/40 w-full h-full ${item.color}`}
+                                            >
+                                                <IconComponent className={item.iconSize} />
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                                <div className="relative z-10 flex flex-col pt-24 pb-12">
+                                    <div className="px-10 max-w-[520px] text-gray-900 space-y-6">
+                                        {/* 1. 로고 및 앱 이름 */}
+                                        <div className="inline-block">
+                                            <div className="w-32 h-32 p-4 flex items-center justify-center">
+                                                <Image
+                                                    src={getS3StaticUrl("logo/donalogo_512.png")}
+                                                    alt="DoNa Logo"
+                                                    width={128}
+                                                    height={128}
+                                                    priority
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* 2. 메인 슬로건 */}
+                                        <h2 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900">
+                                            앱에서 더 많은 코스를 만나보세요!
+                                        </h2>
+
+                                        {/* 3. 부가 설명 */}
+                                        <div className="text-xl font-bold text-gray-800">
+                                            특별한 데이트 코스 추천부터 함께 채워나가는 스토리까지.
+                                        </div>
+
+                                        {/* 4. 앱 다운로드 버튼 */}
+                                        <div className="space-y-5">
+                                            <div className="flex items-center gap-4">
+                                                <a
+                                                    href="https://apps.apple.com/kr/app/dona/id6756777886"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    aria-label="App Store"
+                                                >
+                                                    <span className="inline-flex items-center justify-center text-black shadow-md rounded-md">
+                                                        <Image
+                                                            src="/images/Download_on_the_App_Store_Badge_KR_RGB_blk_100317.svg"
+                                                            alt="App Store"
+                                                            width={135}
+                                                            height={40}
+                                                            className="h-9 lg:h-11 w-auto object-contain"
+                                                        />
+                                                    </span>
+                                                </a>
+                                                <a
+                                                    href="https://play.google.com/store/apps/details?id=kr.io.dona.dona"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    aria-label="Google Play"
+                                                >
+                                                    <span className="inline-flex items-center justify-center bg-transparent rounded-md">
+                                                        <Image
+                                                            src="/images/GetItOnGooglePlay_Badge_Web_color_Korean.png"
+                                                            alt="Google Play"
+                                                            width={200}
+                                                            height={60}
+                                                            className="h-14 lg:h-[72px] w-auto object-contain"
+                                                        />
+                                                    </span>
+                                                </a>
+                                            </div>
+                                            {/* iOS·안드로이드 QR 코드 */}
+                                            <div className="flex items-center gap-5">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <img
+                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent("https://apps.apple.com/kr/app/dona/id6756777886")}`}
+                                                        alt="App Store QR"
+                                                        className="w-[72px] h-[72px] object-contain rounded-lg border border-gray-200 bg-white p-0.5"
+                                                    />
+                                                    <span className="text-[10px] font-medium text-gray-600">iOS</span>
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <img
+                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent("https://play.google.com/store/apps/details?id=kr.io.dona.dona")}`}
+                                                        alt="Google Play QR"
+                                                        className="w-[72px] h-[72px] object-contain rounded-lg border border-gray-200 bg-white p-0.5"
+                                                    />
+                                                    <span className="text-[10px] font-medium text-gray-600">
+                                                        Android
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 5. 사업자 정보 (아코디언 - 아래로 펼쳐짐) */}
+                                        <div className="pt-8 border-t border-gray-200 flex flex-col">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBusinessInfoOpen((o) => !o)}
+                                                className="w-full flex items-center justify-between py-2 text-left hover:opacity-80 transition-opacity"
+                                                aria-expanded={businessInfoOpen}
+                                            >
+                                                <h3 className="text-lg font-bold text-gray-900">사업자 정보</h3>
+                                                <svg
+                                                    className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${businessInfoOpen ? "rotate-180" : ""}`}
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M19 9l-7 7-7-7"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <div
+                                                className={`grid grid-cols-1 gap-1.5 text-[13px] text-gray-600 overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
+                                                    businessInfoOpen
+                                                        ? "max-h-[280px] opacity-100 mt-0"
+                                                        : "max-h-0 opacity-0"
+                                                }`}
+                                            >
+                                                <p>
+                                                    <strong>상호:</strong> (주)두나 (DoNa)
+                                                </p>
+                                                <p>
+                                                    <strong>대표자명:</strong> 오승용
+                                                </p>
+                                                <p>
+                                                    <strong>사업자등록번호:</strong> 166-10-03081
+                                                </p>
+                                                <p>
+                                                    <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
+                                                </p>
+                                                <p>
+                                                    <strong>고객센터:</strong> 12jason@donacourse.com
+                                                </p>
+                                                <p>
+                                                    <strong>유선번호:</strong> 010-2271-9824
+                                                </p>
+                                                <p>
+                                                    <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {isQrOpen && (
+                            <div
+                                className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm"
+                                onClick={() => setIsQrOpen(false)}
+                            >
+                                <div className="absolute inset-0 flex items-center justify-center p-4">
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <AppInstallQR onClose={() => setIsQrOpen(false)} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div
+                            ref={modalContainerRef}
+                            className={`relative h-full flex flex-col overflow-hidden ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
+                                !mounted
+                                    ? "lg:w-[360px] lg:max-h-[85vh] lg:h-[85vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                    : !isApp
+                                      ? "lg:w-[360px] lg:max-h-[85vh] lg:h-[85vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                      : "w-full"
+                            } lg:pb-0`}
+                        >
+                            {/* 웹 전용: 아이폰 스타일 노치 */}
+                            {!isApp && (
+                                <div className="hidden lg:block absolute top-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[280px] px-8 pt-2">
+                                    <div className="w-[110px] h-7 mx-auto rounded-[18px] bg-gray-900 dark:bg-gray-950" />
+                                </div>
+                            )}
+                            <div
+                                className={`shrink-0 bg-white dark:bg-[#0f1710] ${
+                                    isEscapeIntroPage || isCourseStart || isMapPage ? "hidden" : "block"
+                                } ${!isApp ? "lg:pt-10" : ""}`}
+                            >
+                                <Header />
+                            </div>
+                            <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710]">
+                                <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>{children}</div>
+                            </main>
+                            {/* 🟢 Footer + +버튼: 앱에서는 하나의 컨테이너에 묶어 gap으로 간격 보장, 함께 올라갔다 내려감 */}
+                            <div
+                                className={`shrink-0 bg-transparent ${
+                                    isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"
+                                } fixed ${
+                                    !mounted
+                                        ? "bottom-2"
+                                        : isApp
+                                          ? shouldShowAppBanner
+                                              ? ""
+                                              : "bottom-0"
+                                          : shouldShowWebAd
+                                            ? "bottom-0"
+                                            : "bottom-5"
+                                } left-0 right-0 z-40 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
+                                style={
+                                    mounted && isApp && shouldShowAppBanner
+                                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                        : undefined
+                                }
+                            >
+                                {/* +버튼: Footer 위에 flex로 배치 */}
+                                {!isMapPage && !sideMenuOpen && (
+                                    <div className="flex flex-col items-end gap-2.5 pointer-events-none pr-4 z-50 lg:absolute lg:right-4 lg:bottom-24 lg:pr-0">
+                                        <div className="flex flex-col items-end gap-2.5 pointer-events-auto">
                                             <button
                                                 ref={plusButtonRef}
                                                 type="button"
@@ -412,24 +610,43 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                         riseDoneTimeoutRef.current = null;
                                                     }, 400);
                                                 }}
-                                                aria-label="메뉴 열기"
-                                                className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] border-2 border-white/50 dark:border-[#1a241b]/50 flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#7FCC9F] hover:bg-[#6bb88a] text-3xl font-light"
+                                                aria-label={t("nav.openMenu")}
+                                                className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] border-2 border-white/50 dark:border-[#1a241b]/50 flex items-center justify-center transition-all duration-200 ease-out hover:scale-110 active:scale-95 bg-[#7FCC9F] hover:bg-[#6bb88a] text-3xl font-light"
                                             >
                                                 +
                                             </button>
                                         </div>
-                                    )}
-                                    {/* 드로어 열렸을 때: body 포탈로 버튼을 최상단에 렌더 → "마이페이지/로그인"이 흐림 위에 보이게 */}
-                                    {sideMenuOpen &&
-                                        typeof document !== "undefined" &&
-                                        createPortal(
-                                            <div
-                                                className={`fixed ${!mounted ? "bottom-22" : isApp ? (shouldShowAppBanner ? "bottom-24" : "bottom-16") : shouldShowWebAd ? "bottom-48" : "bottom-24"} right-6 z-2010 pointer-events-none flex items-center gap-2.5`}
-                                                style={{ position: "fixed" }}
-                                            >
+                                    </div>
+                                )}
+                                {/* 🟢 로그인/마이페이지 버튼: 사이드 메뉴 열렸을 때 createPortal로 body에 렌더 → 오버레이(z-9999) 위에 표시 */}
+                                {!isMapPage &&
+                                    sideMenuOpen &&
+                                    typeof document !== "undefined" &&
+                                    createPortal(
+                                        <div
+                                            className={`fixed right-4 z-100001 pointer-events-none flex items-center gap-2.5 ${
+                                                !mounted
+                                                    ? "bottom-24"
+                                                    : isApp
+                                                      ? shouldShowAppBanner
+                                                          ? ""
+                                                          : "bottom-20"
+                                                      : shouldShowWebAd
+                                                        ? "bottom-24"
+                                                        : "bottom-24"
+                                            } lg:right-4 lg:bottom-24`}
+                                            style={
+                                                mounted && isApp && shouldShowAppBanner
+                                                    ? {
+                                                          bottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
+                                                      }
+                                                    : undefined
+                                            }
+                                        >
+                                            <div className="flex flex-row items-center gap-2.5 pointer-events-auto">
                                                 {riseDone && (
-                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap drop-shadow-md bg-white/90 dark:bg-black/50 px-2 py-1 rounded-md">
-                                                        {isAuthenticated ? "마이페이지" : "로그인"}
+                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap bg-stone-50 dark:bg-white/10 border border-gray-200/80 dark:border-white/20 px-2 py-1 rounded-md shadow-sm">
+                                                        {isAuthenticated ? t("nav.myPage") : t("nav.login")}
                                                     </span>
                                                 )}
                                                 <button
@@ -446,12 +663,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                         setRiseDone(false);
                                                         router.push(isAuthenticated ? "/mypage" : "/login");
                                                     }}
-                                                    aria-label={isAuthenticated ? "마이페이지로 이동" : "로그인"}
-                                                    className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.25)] border-2 border-white flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#1a3a2e] hover:bg-[#234a3a]"
+                                                    aria-label={isAuthenticated ? t("nav.goToMyPage") : t("nav.login")}
+                                                    className="w-12 h-12 rounded-full text-white shadow-md border border-gray-200/60 flex items-center justify-center transition-all duration-200 ease-out hover:scale-110 active:scale-95 bg-gray-800 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"
                                                 >
                                                     {isAuthenticated ? (
                                                         <svg
-                                                            className="h-6 w-6 text-[#99c08e]"
+                                                            className="h-6 w-6"
                                                             fill="none"
                                                             stroke="currentColor"
                                                             viewBox="0 0 24 24"
@@ -465,7 +682,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                         </svg>
                                                     ) : (
                                                         <svg
-                                                            className="h-6 w-6 text-[#99c08e]"
+                                                            className="h-6 w-6"
                                                             fill="none"
                                                             stroke="currentColor"
                                                             viewBox="0 0 24 24"
@@ -479,24 +696,24 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                         </svg>
                                                     )}
                                                 </button>
-                                            </div>,
-                                            document.body,
-                                        )}
-                                </>
-                            )}
-                            <Footer isApp={isApp} />
-                            {/* 🟢 웹 전용: 푸터와 광고를 한 하단 바로 묶어 바닥에 붙임 (lg에서는 흐름 유지) */}
-                            {!isApp && shouldShowWebAd && (
-                                <div className="w-full flex justify-center rounded-none shrink-0">
-                                    <AdSlot
-                                        slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
-                                        format="fluid"
-                                        layoutKey="-hi-7+2w-11-86"
-                                        rounded={false}
-                                        className="w-full min-h-[80px] mx-auto rounded-none"
-                                    />
-                                </div>
-                            )}
+                                            </div>
+                                        </div>,
+                                        document.body,
+                                    )}
+                                {!isMapPage && <Footer isApp={isApp} plusButton={null} />}
+                                {/* 🟢 웹 전용: 푸터와 광고를 한 하단 바로 묶어 바닥에 붙임 (lg에서는 흐름 유지) */}
+                                {!isApp && shouldShowWebAd && (
+                                    <div className="w-full flex justify-center rounded-none shrink-0">
+                                        <AdSlot
+                                            slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
+                                            format="fluid"
+                                            layoutKey="-hi-7+2w-11-86"
+                                            rounded={false}
+                                            className="w-full min-h-[80px] mx-auto rounded-none"
+                                        />
+                                    </div>
+                                )}
+                            </div>
                             <SideMenuDrawer
                                 isOpen={sideMenuOpen}
                                 onClose={() => {
@@ -508,11 +725,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     setRiseDone(false);
                                 }}
                                 anchorBottom={drawerAnchorBottom}
+                                containInPhone={!isApp}
                             />
                         </div>
                     </div>
                 </div>
-            </div>
+            </AppLayoutProvider>
         </>
     );
 }

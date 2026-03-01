@@ -16,6 +16,9 @@ import { X } from "lucide-react";
 
 import { isIOS, isMobileApp } from "@/lib/platform";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
+import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
+import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
 
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
 const MemoizedPersonalizedSection = memo(PersonalizedSection);
@@ -56,6 +59,7 @@ interface HomeClientProps {
 
 export default function HomeClient({ initialCourses }: HomeClientProps) {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const { t } = useLocale();
     const [courses, setCourses] = useState<Course[]>(initialCourses);
     const [allTags, setAllTags] = useState<Array<{ id: number; name: string }>>([]);
     const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
@@ -483,17 +487,17 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <p className="text-center text-gray-900 dark:text-white text-base font-medium mb-2">
-                            오늘 {activeCourse.courseTitle} 데이트 어땠어요?
+                            {t("home.memoryReminder.title", { course: activeCourse.courseTitle })}
                         </p>
                         <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-6">
-                            한 줄만 남겨볼까요?
+                            {t("home.memoryReminder.subtitle")}
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowMemoryReminderModal(false)}
                                 className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium"
                             >
-                                나중에
+                                {t("home.memoryReminder.later")}
                             </button>
                             <button
                                 onClick={() => {
@@ -502,7 +506,7 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
                                 }}
                                 className="flex-1 py-3 rounded-xl bg-[#99c08e] text-white font-bold"
                             >
-                                이동하기
+                                {t("home.memoryReminder.goTo")}
                             </button>
                         </div>
                     </div>
@@ -541,19 +545,19 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
                             {/* 오른쪽: 텍스트 + 진행 중 | 이어가기 */}
                             <div className="flex-1 min-w-0 flex flex-col">
                                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                    오늘의 데이트
+                                    {t("home.activeCourse.todayDate")}
                                 </span>
                                 <h3 className="text-base font-semibold text-slate-900 dark:text-white mt-0.5 line-clamp-2 leading-snug">
-                                    {activeCourse.title ?? activeCourse.courseTitle}
+                                    <TranslatedCourseTitle title={activeCourse.title ?? activeCourse.courseTitle} />
                                 </h3>
                                 <div className="mt-3 flex items-center justify-between gap-2">
-                                    <span className="text-xs text-slate-400 dark:text-slate-500">진행 중</span>
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">{t("home.activeCourse.inProgress")}</span>
                                     <TapFeedback>
                                         <button
                                             onClick={() => router.push(`/courses/${activeCourse.courseId}`)}
                                             className="flex items-center gap-1 px-3 py-1.5 bg-[#7FCC9F] hover:bg-[#6bb88a] text-white text-xs font-bold rounded-2xl transition-colors active:scale-95 shrink-0"
                                         >
-                                            이어가기
+                                            {t("home.activeCourse.continue")}
                                             <span className="text-white">→</span>
                                         </button>
                                     </TapFeedback>
@@ -786,7 +790,8 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
                         <div className="text-white text-sm font-medium mb-2">
                             {(() => {
                                 const date = new Date(selectedMemory.createdAt);
-                                const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+                                const dayKey = `home.dayOfWeek.${date.getDay()}` as TranslationKeys;
+                                const dayOfWeek = t(dayKey);
                                 return `${date.getFullYear()}년 ${
                                     date.getMonth() + 1
                                 }월 ${date.getDate()}일 (${dayOfWeek})`;

@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Gift, ChevronRight, X } from "lucide-react";
+import { Gift, ChevronRight, X, Sparkles } from "lucide-react";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 interface NotificationModalProps {
     onClose: () => void;
@@ -10,6 +11,8 @@ interface NotificationModalProps {
 
 const NotificationModal = ({ onClose }: NotificationModalProps) => {
     const router = useRouter();
+    const { containInPhone } = useAppLayout();
+    const posClass = containInPhone ? "absolute" : "fixed";
 
     const handleLoginRedirect = () => {
         onClose();
@@ -18,7 +21,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
 
     return (
         <div
-            className="fixed inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+            className={`${posClass} inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
             onClick={onClose}
             role="button"
             tabIndex={0}
@@ -26,7 +29,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
             aria-label="알림 모달 닫기"
         >
             <div
-                className="fixed bottom-0 left-0 right-0 z-2001 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl"
+                className={`${posClass} bottom-0 left-0 right-0 z-2001 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl`}
                 style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -92,27 +95,5 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
         </div>
     );
 };
-
-// 상단 아이콘용 추가 컴포넌트
-const Sparkles = ({ className }: { className?: string }) => (
-    <svg
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    >
-        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-        <path d="M5 3v4" />
-        <path d="M19 17v4" />
-        <path d="M3 5h4" />
-        <path d="M17 19h4" />
-    </svg>
-);
 
 export default NotificationModal;

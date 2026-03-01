@@ -8,12 +8,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { Search, Settings, X } from "lucide-react";
 import NotificationModal from "@/components/NotificationModal";
 import { useTheme } from "@/context/ThemeContext";
+import { useLocale } from "@/context/LocaleContext";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import KakaoChannelModal from "@/components/KakaoChannelModal";
 import LogoutModal from "@/components/LogoutModal";
 import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 // 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시
 const LogoutOverlay = () => (
@@ -29,7 +31,10 @@ const LogoutOverlay = () => (
 // 🟢 React.memo를 사용하여 Header의 자체 상태 변경이 부모 레이아웃 전체에 영향을 주지 않도록 격리
 const Header = memo(() => {
     const { isAuthenticated } = useAuth();
+    const { containInPhone } = useAppLayout();
+    const posClass = containInPhone ? "absolute" : "fixed";
     const { resolvedTheme, setTheme } = useTheme();
+    const { locale, setLocale, t } = useLocale();
     const [hasFavorites, setHasFavorites] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false); // 🟢 새로 추가
@@ -214,7 +219,7 @@ const Header = memo(() => {
             {/* 설정 모달 (다크/라이트 모드) - 아래에서 올라오는 바텀시트 */}
             {showSettingsModal && (
                 <div
-                    className="fixed inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+                    className={`${posClass} inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
                     onClick={() => setShowSettingsModal(false)}
                     role="button"
                     tabIndex={0}
@@ -222,12 +227,12 @@ const Header = memo(() => {
                     aria-label="설정 모달 닫기"
                 >
                     <div
-                        className="fixed bottom-0 left-0 right-0 z-2001 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800"
+                        className={`${posClass} bottom-0 left-0 right-0 z-2001 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800`}
                         style={{ animation: "slideUp 0.3s ease-out forwards" }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">설정</h3>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t("common.settings")}</h3>
                             <button
                                 type="button"
                                 onClick={() => setShowSettingsModal(false)}
@@ -238,7 +243,28 @@ const Header = memo(() => {
                             </button>
                         </div>
                         <div className="p-4 pb-8">
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">테마</p>
+                            {/* 언어 선택: 한국어, English, 日本語, 中文 */}
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">{t("language.label")}</p>
+                            <div className="flex gap-2 mb-6">
+                                {(["ko", "en", "ja", "zh"] as const).map((loc) => (
+                                    <button
+                                        key={loc}
+                                        type="button"
+                                        onClick={() => {
+                                            setLocale(loc);
+                                            setShowSettingsModal(false);
+                                        }}
+                                        className={`flex-1 min-w-0 flex items-center justify-center py-2.5 rounded-xl border-2 transition-colors text-sm font-medium ${
+                                            locale === loc
+                                                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                                                : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                        }`}
+                                    >
+                                        {t(`language.${loc}`)}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">{t("theme.label")}</p>
                             <div className="flex gap-2">
                                 <button
                                     type="button"
@@ -274,7 +300,7 @@ const Header = memo(() => {
                                         <path d="m6.34 17.66-1.41 1.41" />
                                         <path d="m19.07 4.93-1.41 1.41" />
                                     </svg>
-                                    <span className="font-bold text-sm">라이트</span>
+                                    <span className="font-bold text-sm">{t("theme.light")}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -302,7 +328,7 @@ const Header = memo(() => {
                                     >
                                         <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
                                     </svg>
-                                    <span className="font-bold text-sm">다크</span>
+                                    <span className="font-bold text-sm">{t("theme.dark")}</span>
                                 </button>
                             </div>
                         </div>

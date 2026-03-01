@@ -1,0 +1,110 @@
+{
+  "common": {
+    "settings": "Settings",
+    "close": "Close",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "language": {
+    "label": "Language",
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",
+    "zh": "中文"
+  },
+  "home": {
+    "activeCourse": {
+      "todayDate": "Today's Date",
+      "inProgress": "In progress",
+      "continue": "Continue"
+    },
+    "memoryReminder": {
+      "title": "How was your {course} date today?",
+      "subtitle": "Leave a quick note?",
+      "later": "Later",
+      "goTo": "Go"
+    },
+    "memoryFallback": "My Memory",
+    "memoryImageAlt": "Memory image",
+    "dayOfWeek": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  },
+  "memory": {
+    "notLoggedIn": {
+      "title": "Want to record your dates?",
+      "subtitle": "Photos and courses are automatically saved.",
+      "button": "Log in"
+    },
+    "empty": {
+      "title": "Private Memory",
+      "subtitle": "Leave your first memory for better recommendations.",
+      "button": "Add Memory"
+    },
+    "filled": {
+      "title": "Private Memory",
+      "subtitle": "Relive your recent dates and plan your next adventure.",
+      "button": "View Memories"
+    },
+    "viewAll": "View all"
+  },
+  "personalized": {
+    "todayPick": "Today's Pick",
+    "loginHint": "Log in for personalized recommendations",
+    "howRecommended": "How we recommend",
+    "viewCourse": "View Course",
+    "viewMore": "See more options",
+    "today": "Today",
+    "weekend": "Weekend",
+    "loadingToday": "Loading today's picks...",
+    "loadingWeekend": "Loading weekend picks...",
+    "loadFailToday": "Couldn't load today's picks",
+    "loadFailWeekend": "Couldn't load weekend picks"
+  },
+  "recommendation": {
+    "healing": { "title": "Healing Course", "badge": "Quiet Healing" },
+    "photo": { "title": "Photo Spot Course", "badge": "Photo Ready" },
+    "food": { "title": "Foodie Course", "badge": "Best Eats" },
+    "cost": { "title": "Value Course", "badge": "Best Value" },
+    "activity": { "title": "Activity Course", "badge": "Dopamine Rush" },
+    "default": { "title": "Tailored Course", "badge": "AI Match" },
+    "guest": { "title": "Most popular date courses right now", "badge": "Popular" }
+  },
+  "courseConcept": {
+    "healing": "Healing",
+    "photo": "Photo",
+    "food": "Food",
+    "cost": "Value",
+    "activity": "Activity",
+    "emotional": "Emotional",
+    "romantic": "Romantic",
+    "cafe": "Cafe",
+    "nightView": "Night View",
+    "indoor": "Indoor",
+    "outdoor": "Outdoor",
+    "experience": "Experience",
+    "culture": "Culture",
+    "shopping": "Shopping",
+    "default": "Date"
+  },
+  "nav": {
+    "home": "Home",
+    "courses": "Courses",
+    "map": "Map",
+    "todayPick": "Today's Pick",
+    "todayRecommend": "Today's Date Recommendation",
+    "myPage": "My Page",
+    "login": "Log in",
+    "signup": "Sign up",
+    "goToMyPage": "Go to My Page",
+    "whatToDoToday": "What to do today?",
+    "coupleMissionGame": "Couple Mission Game",
+    "donaShop": "DoNa Shop",
+    "openMenu": "Open menu",
+    "main": "Main"
+  }
+}

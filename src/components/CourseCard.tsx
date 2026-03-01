@@ -3,8 +3,10 @@
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
-import { CONCEPTS } from "@/constants/onboardingData";
 import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
+import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
+import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
 import CourseLockOverlay from "./CourseLockOverlay";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
@@ -100,17 +102,15 @@ const CourseCard = memo(
         const [showLoginModal, setShowLoginModal] = useState(false);
         const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
         const router = useRouter();
+        const { t, locale } = useLocale();
+        const translatedTitle = useTranslatedTitle(course.title, locale);
+        const translatedSubTitle = useTranslatedTitle(course.sub_title || "", locale);
+        const displayConcept = translateCourseConcept(course.concept, t as (k: string) => string);
 
         // 🟢 iOS 플랫폼 감지
         useEffect(() => {
             setPlatform(isIOS() ? "ios" : "web");
         }, []);
-
-        // [Optimization] 컨셉 텍스트 연산 결과 메모이제이션
-        const displayConcept = useMemo(() => {
-            const rawConcept = course.concept?.split(",")[0] || "";
-            return CONCEPTS[rawConcept as keyof typeof CONCEPTS] || rawConcept;
-        }, [course.concept]);
 
         // [Optimization] 장소 데이터(예약 가능 여부) 순회 로직 메모이제이션 (개선: 빈 문자열 체크 추가)
         const reservationInfo = useMemo(() => {
@@ -275,11 +275,11 @@ const CourseCard = memo(
                     {/* 1. 제목과 설명 영역 */}
                     <div className="mb-2">
                         <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">
-                            {course.sub_title || course.title}
+                            {(course.sub_title ? translatedSubTitle : translatedTitle) || course.sub_title || course.title}
                         </h3>
                         {course.sub_title && (
                             <p className="text-xs text-gray-600 dark:text-gray-400 font-light mt-1 opacity-90 line-clamp-1">
-                                {course.title}
+                                {translatedTitle || course.title}
                             </p>
                         )}
                     </div>

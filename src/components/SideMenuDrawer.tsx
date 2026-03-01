@@ -8,6 +8,8 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useLocale } from "@/context/LocaleContext";
+import { useAppLayout } from "@/context/AppLayoutContext";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
 import ShopModal from "@/components/ShopModal";
@@ -17,12 +19,21 @@ interface SideMenuDrawerProps {
     onClose: () => void;
     /** 뷰포트 하단으로부터의 거리(px). 드로어 하단을 이 위치에 맞춰 + 버튼 위에서 올라오게 함 */
     anchorBottom?: number;
+    /** 웹에서 폰 목업 내부에만 모달이 표시되도록 함 (absolute 포지셔닝, 포탈 미사용) */
+    containInPhone?: boolean;
 }
 
-export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: SideMenuDrawerProps) {
+export default function SideMenuDrawer({
+    isOpen,
+    onClose,
+    anchorBottom = 0,
+    containInPhone = false,
+}: SideMenuDrawerProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { isAuthenticated } = useAuth();
+    const { t } = useLocale();
+    const { modalContainerRef } = useAppLayout();
     const [showComingSoon, setShowComingSoon] = useState<null | string>(null);
     const [showShopModal, setShowShopModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -72,18 +83,42 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
         );
     }
 
+    const posClass = containInPhone ? "absolute" : "fixed";
     const overlayAndPanel = (
         <>
-            {/* 클릭 시 뒤는 블러 처리 (body 포탈로 헤더 포함 전체 화면 확실히 덮음) */}
+            {/* 클릭 시 뒤 배경 흐림. 클릭하면 닫힘 - Footer 포함 모든 콘텐츠 클릭 방지 */}
             <div
-                className="fixed inset-0 z-1999 bg-white/55 dark:bg-black/45 backdrop-blur-lg transition-opacity duration-200"
-                style={{ top: 0, left: 0, right: 0, bottom: 0 }}
-                onClick={onClose}
+                className={`${posClass} inset-0 z-99999 bg-white/65 backdrop-blur-xl backdrop-saturate-150 transition-opacity duration-200 cursor-pointer`}
+                style={{
+                    width: "100vw",
+                    height: "100dvh",
+                    minWidth: "100vw",
+                    minHeight: "100dvh",
+                    WebkitBackdropFilter: "blur(24px) saturate(150%)",
+                    backdropFilter: "blur(24px) saturate(150%)",
+                    pointerEvents: "auto",
+                    touchAction: "none",
+                }}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose();
+                }}
+                onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.button === 0) onClose();
+                }}
+                onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose();
+                }}
                 aria-hidden="true"
             />
-            {/* 패널은 고정, 글씨만 올라오는 애니메이션 */}
+            {/* 패널: 연한 베이지/화이트 톤, 아이콘별 뮤트 컬러 */}
             <div
-                className="fixed right-0 z-2001 w-[min(300px,80vw)] max-h-[80vh] flex flex-col bg-transparent pointer-events-none"
+                className={`${posClass} right-0 z-100000 w-[min(300px,80vw)] max-h-[80vh] flex flex-col bg-transparent pointer-events-none`}
                 style={{ bottom: anchorBottom }}
                 role="dialog"
                 aria-label="사이드 메뉴"
@@ -93,11 +128,11 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                         <Link
                             href="/nearby"
                             prefetch={true}
-                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-lime-700 hover:bg-lime-50/80 transition-colors dark:text-lime-400 dark:hover:bg-lime-900/20"
                             onClick={onClose}
                         >
                             <span
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lime-100 text-lime-700 transition-all duration-200 ease-out dark:bg-lime-900/40 dark:text-lime-400 ${
                                     animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
                                 }`}
                                 style={{ transitionDelay: "40ms" }}
@@ -117,7 +152,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 }`}
                                 style={{ transitionDelay: "40ms" }}
                             >
-                                오늘 뭐하지?
+                                {t("nav.whatToDoToday")}
                             </span>
                         </Link>
                         <button
@@ -126,10 +161,10 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 onClose();
                                 setShowComingSoon("escape");
                             }}
-                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50/80 transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20"
                         >
                             <span
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 transition-all duration-200 ease-out dark:bg-blue-900/40 dark:text-blue-400 ${
                                     animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
                                 }`}
                                 style={{ transitionDelay: "60ms" }}
@@ -153,7 +188,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 }`}
                                 style={{ transitionDelay: "60ms" }}
                             >
-                                커플 미션 게임
+                                {t("nav.coupleMissionGame")}
                             </span>
                         </button>
                         <button
@@ -162,10 +197,10 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 onClose();
                                 setShowShopModal(true);
                             }}
-                            className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-emerald-600 hover:bg-emerald-50/80 transition-colors dark:text-emerald-400 dark:hover:bg-emerald-900/20"
                         >
                             <span
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 transition-all duration-200 ease-out dark:bg-emerald-900/40 dark:text-emerald-400 ${
                                     animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
                                 }`}
                                 style={{ transitionDelay: "200ms" }}
@@ -185,21 +220,21 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                 }`}
                                 style={{ transitionDelay: "200ms" }}
                             >
-                                두나샵
+                                {t("nav.donaShop")}
                             </span>
                         </button>
-                        <div className="pt-4 mt-4 border-t border-gray-200/80 dark:border-gray-700/80">
+                        <div className="pt-2 mt-1">
                             {isAuthenticated ? (
                                 <Link
                                     href="/mypage"
                                     prefetch={true}
                                     onMouseEnter={() => router.prefetch("/mypage")}
                                     onFocus={() => router.prefetch("/mypage")}
-                                    className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
+                                    className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-800 hover:bg-slate-100/80 transition-colors dark:text-gray-200 dark:hover:bg-slate-800/30"
                                     onClick={onClose}
                                 >
                                     <span
-                                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
+                                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-white transition-all duration-200 ease-out dark:bg-slate-600 ${
                                             animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
                                         }`}
                                         style={{ transitionDelay: "120ms" }}
@@ -219,7 +254,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                         }`}
                                         style={{ transitionDelay: "120ms" }}
                                     >
-                                        마이페이지
+                                        {t("nav.myPage")}
                                     </span>
                                 </Link>
                             ) : (
@@ -230,10 +265,10 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                             onClose();
                                             setShowLoginModal(true);
                                         }}
-                                        className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors"
+                                        className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-gray-800 hover:bg-slate-100/80 transition-colors dark:text-gray-200 dark:hover:bg-slate-800/30"
                                     >
                                         <span
-                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
+                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-white transition-all duration-200 ease-out dark:bg-slate-600 ${
                                                 animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
                                             }`}
                                             style={{ transitionDelay: "120ms" }}
@@ -258,17 +293,17 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                             }`}
                                             style={{ transitionDelay: "120ms" }}
                                         >
-                                            로그인
+                                            {t("nav.login")}
                                         </span>
                                     </button>
                                     <Link
                                         href="/signup"
                                         prefetch={true}
-                                        className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors mt-0.5"
+                                        className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-sky-600 hover:bg-sky-50/80 transition-colors mt-0.5 dark:text-sky-400 dark:hover:bg-sky-900/20"
                                         onClick={onClose}
                                     >
                                         <span
-                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all duration-200 ease-out ${
+                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 transition-all duration-200 ease-out dark:bg-sky-900/40 dark:text-sky-400 ${
                                                 animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
                                             }`}
                                             style={{ transitionDelay: "160ms" }}
@@ -293,7 +328,7 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
                                             }`}
                                             style={{ transitionDelay: "160ms" }}
                                         >
-                                            회원가입
+                                            {t("nav.signup")}
                                         </span>
                                     </Link>
                                 </>
@@ -309,7 +344,11 @@ export default function SideMenuDrawer({ isOpen, onClose, anchorBottom = 0 }: Si
         </>
     );
 
+    if (containInPhone) {
+        return overlayAndPanel;
+    }
     if (typeof document !== "undefined") {
+        // 🟢 항상 body에 포탈 → Footer 등 다른 fixed 요소(z-40)보다 위에 오버레이 표시
         return createPortal(overlayAndPanel, document.body);
     }
     return overlayAndPanel;

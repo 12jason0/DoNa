@@ -1,0 +1,110 @@
+{
+  "common": {
+    "settings": "設定",
+    "close": "閉じる",
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "save": "保存"
+  },
+  "theme": {
+    "label": "テーマ",
+    "light": "ライト",
+    "dark": "ダーク"
+  },
+  "language": {
+    "label": "言語",
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",
+    "zh": "中文"
+  },
+  "home": {
+    "activeCourse": {
+      "todayDate": "今日のデート",
+      "inProgress": "進行中",
+      "continue": "続ける"
+    },
+    "memoryReminder": {
+      "title": "今日の{course}デートはいかがでしたか？",
+      "subtitle": "一言メモを残してみませんか？",
+      "later": "あとで",
+      "goTo": "移動"
+    },
+    "memoryFallback": "私の思い出",
+    "memoryImageAlt": "思い出の画像",
+    "dayOfWeek": ["日", "月", "火", "水", "木", "金", "土"]
+  },
+  "memory": {
+    "notLoggedIn": {
+      "title": "デートを記録したいですか？",
+      "subtitle": "写真とコースが自動でまとまります。",
+      "button": "ログイン"
+    },
+    "empty": {
+      "title": "私だけの秘密の記録",
+      "subtitle": "最初の思い出を残すと、おすすめが早くなります。",
+      "button": "思い出を追加"
+    },
+    "filled": {
+      "title": "私だけの秘密の記録",
+      "subtitle": "最近のデートを振り返り、次の旅を始めましょう。",
+      "button": "思い出を見る"
+    },
+    "viewAll": "すべて見る"
+  },
+  "personalized": {
+    "todayPick": "今日のおすすめ",
+    "loginHint": "ログインで好みに合わせたおすすめを",
+    "howRecommended": "おすすめの仕組み",
+    "viewCourse": "コースを見る",
+    "viewMore": "他の選択肢も見る",
+    "today": "今日",
+    "weekend": "週末",
+    "loadingToday": "今日のおすすめを準備中...",
+    "loadingWeekend": "週末のおすすめを準備中...",
+    "loadFailToday": "今日のおすすめを読み込めませんでした",
+    "loadFailWeekend": "週末のおすすめを読み込めませんでした"
+  },
+  "recommendation": {
+    "healing": { "title": "ヒーリングコース", "badge": "静かなヒーリング" },
+    "photo": { "title": "フォトスポットコース", "badge": "写真映え" },
+    "food": { "title": "本格グルメコース", "badge": "本格派" },
+    "cost": { "title": "コスパコース", "badge": "コスパ最高" },
+    "activity": { "title": "アクティビティコース", "badge": "アドレナリン" },
+    "default": { "title": "好みに合わせたコース", "badge": "AIマッチ" },
+    "guest": { "title": "いま人気のデートコース", "badge": "人気" }
+  },
+  "courseConcept": {
+    "healing": "ヒーリング",
+    "photo": "フォト",
+    "food": "グルメ",
+    "cost": "コスパ",
+    "activity": "アクティビティ",
+    "emotional": "感性",
+    "romantic": "ロマンチック",
+    "cafe": "カフェ",
+    "nightView": "ナイトビュー",
+    "indoor": "室内",
+    "outdoor": "アウトドア",
+    "experience": "体験",
+    "culture": "文化",
+    "shopping": "ショッピング",
+    "default": "デート"
+  },
+  "nav": {
+    "home": "ホーム",
+    "courses": "コース",
+    "map": "マップ",
+    "todayPick": "今日のおすすめ",
+    "todayRecommend": "今日のデートおすすめ",
+    "myPage": "マイページ",
+    "login": "ログイン",
+    "signup": "会員登録",
+    "goToMyPage": "マイページへ",
+    "whatToDoToday": "今日何しよう？",
+    "coupleMissionGame": "カップルミッションゲーム",
+    "donaShop": "ドゥナショップ",
+    "openMenu": "メニューを開く",
+    "main": "メイン"
+  }
+}

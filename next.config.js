@@ -115,6 +115,7 @@ const nextConfig = {
                                 "https://googleadservices.com",
                                 "https://tpc.googlesyndication.com",
                                 "https://*.adtrafficquality.google",
+                                "https://fundingchoicesmessages.google.com",
                                 ...(isDev ? ["http://*.naver.com", "http://*.map.naver.net"] : []),
                             ].join(" ");
 

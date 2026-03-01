@@ -6,6 +6,9 @@ import Link from "next/link";
 import CourseCard from "@/components/CourseCard";
 import Image from "@/components/ImageFallback";
 import { Favorite, CompletedCourse, CasefileItem } from "@/types/user";
+import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
+import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
 
 // 🟢 코스 이미지 로더 컴포넌트 (이미지가 없을 때 백그라운드에서 로드)
 const CourseImageLoader = ({
@@ -82,6 +85,7 @@ const RecordsTab = ({
     userTier = "FREE",
 }: RecordsTabProps) => {
     const router = useRouter();
+    const { t } = useLocale();
     const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "casefiles">("favorites");
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
@@ -320,13 +324,13 @@ const RecordsTab = ({
                                             </div>
                                             {c.concept && (
                                                 <div className="absolute bottom-2 left-2 bg-emerald-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                                                    {c.concept}
+                                                    {translateCourseConcept(c.concept, t as (k: string) => string)}
                                                 </div>
                                             )}
                                         </div>
                                         <div className="p-4 bg-white dark:bg-gray-800/50">
                                             <h4 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">
-                                                {c.title}
+                                                <TranslatedCourseTitle title={c.title} />
                                             </h4>
                                             <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                                                 {c.completedAt && (

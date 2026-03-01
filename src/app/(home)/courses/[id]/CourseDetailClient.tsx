@@ -19,6 +19,8 @@ import { getPremiumQuestions } from "../../../../lib/placeCategory";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
+import { useLocale } from "@/context/LocaleContext";
+import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
 let globalFavoritesPromise: Promise<any[] | null> | null = null;
@@ -294,8 +296,11 @@ export default function CourseDetailClient({
     courseId,
     userTier = "FREE",
 }: CourseDetailClientProps) {
+    const router = useRouter();
+    const { t, locale } = useLocale();
+    const translatedTitle = useTranslatedTitle(courseData?.title, locale);
+    const translatedSubTitle = useTranslatedTitle(courseData?.sub_title || "", locale);
     // 🟢 [Fix]: 로그인 확인 중이거나 데이터가 유실된 경우를 대비한 가드 클로즈(Guard Clause)
-    // 이 로직은 UI를 변경하지 않고 런타임 에러만 원천 봉쇄합니다.
     if (!courseData) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -305,8 +310,6 @@ export default function CourseDetailClient({
             </div>
         );
     }
-
-    const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
     const [inApp, setInApp] = useState(false);
@@ -1082,7 +1085,7 @@ export default function CourseDetailClient({
             // 🟢 카카오톡 공유 4002 오류 해결: 패킷 사이즈 제한(10K) 준수
             // title 최대 200자, description 최대 200자로 제한
             const shareTitle =
-                courseData.title.length > 200 ? courseData.title.substring(0, 197) + "..." : courseData.title;
+                translatedTitle.length > 200 ? translatedTitle.substring(0, 197) + "..." : translatedTitle;
             const shareDescription = courseData.description
                 ? courseData.description.length > 200
                     ? courseData.description.substring(0, 197) + "..."
@@ -1180,7 +1183,7 @@ export default function CourseDetailClient({
                     <header className="relative h-[400px] md:h-[500px] w-full max-w-[900px] mx-auto overflow-hidden">
                         <Image
                             src={heroImageUrl || ""}
-                            alt={courseData.title}
+                            alt={translatedTitle || courseData.title}
                             fill
                             className="object-cover"
                             priority
@@ -1235,13 +1238,13 @@ export default function CourseDetailClient({
                                 )}
                             </div>
 
-                            {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 */}
+                            {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 (locale별 번역) */}
                             <h1 className="text-2xl md:text-3xl font-extrabold mb-2 drop-shadow-lg">
-                                {courseData.title}
+                                {translatedTitle || courseData.title}
                             </h1>
                             {courseData.sub_title && (
                                 <p className="text-sm md:text-base font-normal text-white/90 mb-4 leading-relaxed drop-shadow-md">
-                                    {courseData.sub_title}
+                                    {translatedSubTitle || courseData.sub_title}
                                 </p>
                             )}
 
@@ -1727,7 +1730,7 @@ export default function CourseDetailClient({
                             {heroImageUrl && (
                                 <Image
                                     src={heroImageUrl}
-                                    alt={courseData.title}
+                                    alt={translatedTitle || courseData.title}
                                     fill
                                     className="object-cover blur-md grayscale"
                                     priority
@@ -1778,11 +1781,11 @@ export default function CourseDetailClient({
                                             />
                                         </svg>
                                     </div>
-                                    {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 */}
-                                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{courseData.title}</h1>
+                                    {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 (locale별 번역) */}
+                                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2">{translatedTitle || courseData.title}</h1>
                                     {courseData.sub_title && (
                                         <p className="text-sm text-white/80 mb-3 leading-relaxed">
-                                            {courseData.sub_title}
+                                            {translatedSubTitle || courseData.sub_title}
                                         </p>
                                     )}
                                     {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 안내 텍스트 숨김 */}
@@ -2009,7 +2012,7 @@ export default function CourseDetailClient({
                 isOpen={showReviewModal}
                 onClose={() => setShowReviewModal(false)}
                 courseId={parseInt(courseId)}
-                courseName={courseData.title}
+                courseName={translatedTitle || courseData.title}
             />
             {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
             {showSubscriptionModal && (

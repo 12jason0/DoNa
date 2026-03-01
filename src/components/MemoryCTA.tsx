@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useEffect } from "react";
 import { Lock, ChevronRight } from "lucide-react";
-import { MEMORY_MESSAGES } from "@/constants/memories";
+import { useLocale } from "@/context/LocaleContext";
 
 export interface MemoryPreview {
     id?: string | number;
@@ -34,26 +34,25 @@ export default function MemoryCTA({
     onAction,
     onMemoryClick,
 }: MemoryCTAProps) {
+    const { t, locale } = useLocale();
     const content = !isAuthenticated
-        ? MEMORY_MESSAGES.notLoggedIn
+        ? { title: t("memory.notLoggedIn.title"), subtitle: t("memory.notLoggedIn.subtitle"), button: t("memory.notLoggedIn.button") }
         : hasMemories
-        ? MEMORY_MESSAGES.filled
-        : MEMORY_MESSAGES.empty;
+        ? { title: t("memory.filled.title"), subtitle: t("memory.filled.subtitle"), button: t("memory.filled.button") }
+        : { title: t("memory.empty.title"), subtitle: t("memory.empty.subtitle"), button: t("memory.empty.button") };
 
-    // 제목을 10글자로 제한하는 함수
     const truncateTitle = (title: string | undefined | null): string => {
-        if (!title) return "나만의 추억";
+        if (!title) return t("home.memoryFallback");
         return title.length > 10 ? title.slice(0, 10) + "..." : title;
     };
 
-    // 날짜 포맷팅 함수
+    // 날짜 포맷팅 (로케일 반영)
     const formatDate = (dateString?: string): string => {
         if (!dateString) return "";
         try {
             const date = new Date(dateString);
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            return `${month}월 ${day}일`;
+            const localeMap: Record<string, string> = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN" };
+            return date.toLocaleDateString(localeMap[locale] || locale, { month: "numeric", day: "numeric" });
         } catch {
             return "";
         }
@@ -130,7 +129,7 @@ export default function MemoryCTA({
                         type="button"
                         onClick={onAction}
                         disabled={isLoading}
-                        aria-label="전체보기"
+                        aria-label={t("memory.viewAll")}
                         className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-2 shrink-0"
                     >
                         {isLoading ? (
@@ -174,7 +173,7 @@ export default function MemoryCTA({
                                     {memory.imageUrl ? (
                                         <Image
                                             src={memory.imageUrl}
-                                            alt={memory.courseTitle || memory.title || "추억 이미지"}
+                                            alt={memory.courseTitle || memory.title || t("home.memoryImageAlt")}
                                             fill
                                             className="object-cover object-center"
                                             sizes="180px"

@@ -12,49 +12,46 @@ type AdSlotProps = {
     layoutKey?: string;
     rounded?: boolean;
     className?: string;
+    /** 광고 로드 실패/노필 시 상위에 알림 (앱처럼 광고 영역 제거용) */
+    onHide?: () => void;
 };
 
-const NO_FILL_CHECK_MS = 4500;
+const NO_FILL_CHECK_MS = 2000;
 
-const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", rounded = true, className = "" }: AdSlotProps) => {
+const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", rounded = true, className = "", onHide }: AdSlotProps) => {
     const insRef = useRef<HTMLModElement>(null);
     const [hidden, setHidden] = useState(false);
+    const onHideRef = useRef(onHide);
+    onHideRef.current = onHide;
     const isFluid = format === "fluid" && layoutKey;
     const roundClass = rounded ? "rounded-xl" : "rounded-none";
 
     useEffect(() => {
-        if (!slotId || typeof window === "undefined" || !(window as any).adsbygoogle) return;
+        if (!slotId || typeof window === "undefined") return;
         try {
-            if (insRef.current) {
+            if ((window as any).adsbygoogle && insRef.current) {
                 ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
             }
         } catch {
             // ignore
         }
-
+        // adsbygoogle 유무와 관계없이 2초 후 노필 체크 실행 (스크립트 지연 로드 대응)
         const t = setTimeout(() => {
             const el = insRef.current;
             if (!el) return;
             const rect = el.getBoundingClientRect();
             const hasIframe = el.querySelector("iframe");
-            if (rect.height < 5 || !hasIframe) setHidden(true);
+            if (rect.height < 5 || !hasIframe) {
+                setHidden(true);
+                onHideRef.current?.();
+            }
         }, NO_FILL_CHECK_MS);
         return () => clearTimeout(t);
     }, [slotId]);
 
-    if (hidden) return <div className="h-0 min-h-0 overflow-hidden" aria-hidden />;
+    if (hidden) return null;
 
-    if (!slotId) {
-        return (
-            <div
-                className={`relative w-full min-h-[80px] ${roundClass} border border-gray-100 dark:border-gray-800 flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 ${className}`}
-            >
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                    광고 영역 (AdSense slot ID 설정 시 표시)
-                </span>
-            </div>
-        );
-    }
+    if (!slotId) return null;
 
     return (
         <div

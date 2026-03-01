@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import prisma from "@/lib/db";
 import HomeClient from "./HomeClient";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
@@ -126,9 +127,21 @@ async function fetchCoursesData() {
     }
 }
 
-export default async function Page() {
-    // 🟢 서버에서 데이터를 미리 가져옵니다 (LCP 속도 비약적 상승)
+// 🟢 스플래시 4초 동안 서버에서 코스 조회·계산 → 스트리밍으로 shell 먼저, 데이터는 준비되는 대로 전송
+async function HomeWithCourses() {
     const { courses } = await fetchCoursesData();
-
     return <HomeClient initialCourses={courses} />;
+}
+
+// 🟢 스플래시 오버레이 아래 placeholder (데이터 스트리밍 대기용)
+function HomePlaceholder() {
+    return <div className="min-h-screen" aria-hidden="true" />;
+}
+
+export default function Page() {
+    return (
+        <Suspense fallback={<HomePlaceholder />}>
+            <HomeWithCourses />
+        </Suspense>
+    );
 }

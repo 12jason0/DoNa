@@ -2,18 +2,37 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
+import { useLocale } from "@/context/LocaleContext";
 
-type FooterProps = { isApp?: boolean };
+export type PlusButtonProps = {
+    plusButtonRef: React.RefObject<HTMLButtonElement>;
+    sideMenuOpen: boolean;
+    setSideMenuOpen: (v: boolean) => void;
+    riseDone: boolean;
+    setRiseDone: (v: boolean) => void;
+    riseDoneTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+    setDrawerAnchorBottom: (v: number) => void;
+    mounted: boolean;
+    shouldShowAppBanner: boolean;
+    shouldShowWebAd: boolean;
+};
 
-export default function Footer({ isApp = false }: FooterProps) {
+type FooterProps = {
+    isApp?: boolean;
+    plusButton?: PlusButtonProps | null;
+};
+
+export default function Footer({ isApp = false, plusButton }: FooterProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { isAuthenticated } = useAuth();
+    const { t } = useLocale();
     const [notificationEnabled, setNotificationEnabled] = useState<boolean | null>(null);
 
     // 🟢 AuthContext 기준: 로그인 시에만 알림 상태 조회 (쿠키로 사용자 식별)
@@ -74,18 +93,205 @@ export default function Footer({ isApp = false }: FooterProps) {
         strokeLinejoin: "round" as const,
     };
 
+    const renderPlusButton = () => {
+        if (!plusButton) return null;
+        const {
+            plusButtonRef,
+            sideMenuOpen,
+            setSideMenuOpen,
+            riseDone,
+            setRiseDone,
+            riseDoneTimeoutRef,
+            setDrawerAnchorBottom,
+            mounted,
+            shouldShowAppBanner,
+            shouldShowWebAd,
+        } = plusButton;
+        const isWeb = !isApp;
+        const btnPosClass = isWeb ? "lg:absolute lg:right-4 lg:top-auto" : `lg:fixed lg:right-6 lg:top-auto`;
+        return (
+            <>
+                {!sideMenuOpen && (
+                    <div
+                        className={`absolute right-4 z-10 pointer-events-none flex items-center ${btnPosClass}`}
+                        style={{ bottom: "4rem" }}
+                    >
+                        <button
+                            ref={plusButtonRef}
+                            type="button"
+                            onClick={() => {
+                                if (plusButtonRef.current) {
+                                    const rect = plusButtonRef.current.getBoundingClientRect();
+                                    setDrawerAnchorBottom(
+                                        typeof window !== "undefined" ? window.innerHeight - rect.top : 0,
+                                    );
+                                }
+                                setRiseDone(false);
+                                setSideMenuOpen(true);
+                                if (riseDoneTimeoutRef.current) clearTimeout(riseDoneTimeoutRef.current);
+                                riseDoneTimeoutRef.current = setTimeout(() => {
+                                    setRiseDone(true);
+                                    riseDoneTimeoutRef.current = null;
+                                }, 400);
+                            }}
+                            aria-label={t("nav.openMenu")}
+                            className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] border-2 border-white/50 dark:border-[#1a241b]/50 flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#7FCC9F] hover:bg-[#6bb88a] text-3xl font-light"
+                        >
+                            +
+                        </button>
+                    </div>
+                )}
+                {sideMenuOpen &&
+                    (isWeb ? (
+                        <div
+                            className="absolute right-4 z-2010 pointer-events-none flex items-center gap-2.5"
+                            style={{ bottom: "7rem" }}
+                        >
+                            {riseDone && (
+                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap drop-shadow-md bg-white/90 dark:bg-black/50 px-2 py-1 rounded-md">
+                                    {isAuthenticated ? t("nav.myPage") : t("nav.login")}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onPointerDown={() => {
+                                    if (isAuthenticated) router.prefetch("/mypage");
+                                }}
+                                onClick={() => {
+                                    if (riseDoneTimeoutRef.current) {
+                                        clearTimeout(riseDoneTimeoutRef.current);
+                                        riseDoneTimeoutRef.current = null;
+                                    }
+                                    setSideMenuOpen(false);
+                                    setRiseDone(false);
+                                    router.push(isAuthenticated ? "/mypage" : "/login");
+                                }}
+                                aria-label={isAuthenticated ? t("nav.goToMyPage") : t("nav.login")}
+                                className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.25)] border-2 border-white flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#1a3a2e] hover:bg-[#234a3a]"
+                            >
+                                {isAuthenticated ? (
+                                    <svg
+                                        className="h-6 w-6 text-[#99c08e]"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                        />
+                                    </svg>
+                                ) : (
+                                    <svg
+                                        className="h-6 w-6 text-[#99c08e]"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                                        />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+                    ) : (
+                        typeof document !== "undefined" &&
+                        createPortal(
+                            <div
+                                className={`fixed ${
+                                    !mounted
+                                        ? "bottom-22"
+                                        : isApp
+                                          ? shouldShowAppBanner
+                                              ? ""
+                                              : "bottom-16"
+                                          : shouldShowWebAd
+                                            ? "bottom-48"
+                                            : "bottom-24"
+                                } right-6 z-2010 pointer-events-none flex items-center gap-2.5 transition-[bottom] duration-300 ease-in-out`}
+                                style={
+                                    mounted && isApp && shouldShowAppBanner
+                                        ? { bottom: "calc(180px + env(safe-area-inset-bottom, 0px))" }
+                                        : undefined
+                                }
+                            >
+                                {riseDone && (
+                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap drop-shadow-md bg-white/90 dark:bg-black/50 px-2 py-1 rounded-md">
+                                        {isAuthenticated ? t("nav.myPage") : t("nav.login")}
+                                    </span>
+                                )}
+                                <button
+                                    type="button"
+                                    onPointerDown={() => {
+                                        if (isAuthenticated) router.prefetch("/mypage");
+                                    }}
+                                    onClick={() => {
+                                        if (riseDoneTimeoutRef.current) {
+                                            clearTimeout(riseDoneTimeoutRef.current);
+                                            riseDoneTimeoutRef.current = null;
+                                        }
+                                        setSideMenuOpen(false);
+                                        setRiseDone(false);
+                                        router.push(isAuthenticated ? "/mypage" : "/login");
+                                    }}
+                                    aria-label={isAuthenticated ? t("nav.goToMyPage") : t("nav.login")}
+                                    className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.25)] border-2 border-white flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#1a3a2e] hover:bg-[#234a3a]"
+                                >
+                                    {isAuthenticated ? (
+                                        <svg
+                                            className="h-6 w-6 text-[#99c08e]"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                            />
+                                        </svg>
+                                    ) : (
+                                        <svg
+                                            className="h-6 w-6 text-[#99c08e]"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                                            />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>,
+                            document.body,
+                        )
+                    ))}
+            </>
+        );
+    };
+
     return (
         <footer
-            className="w-full flex justify-center px-4 pb-1.5 pt-1"
+            className="w-full flex justify-center px-4 pb-1.5 pt-1 relative"
             style={{
                 paddingBottom: isApp ? "0px" : "calc(6px + env(safe-area-inset-bottom))",
             }}
         >
+            {renderPlusButton()}
             <nav
                 className={`flex items-center justify-around rounded-full shadow-lg border border-gray-100 dark:border-gray-800 w-full max-w-md py-1.5 px-1.5 ${
-                    isApp
-                        ? "bg-white dark:bg-[#1a241b]"
-                        : "bg-white/50 dark:bg-[#1a241b]/60"
+                    isApp ? "bg-white dark:bg-[#1a241b]" : "bg-white/50 dark:bg-[#1a241b]/60"
                 }`}
                 style={{
                     backdropFilter: "saturate(180%) blur(12px)",
@@ -96,7 +302,7 @@ export default function Footer({ isApp = false }: FooterProps) {
                     <Link
                         href="/"
                         prefetch={true}
-                        aria-label="메인"
+                        aria-label={t("nav.main")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/")
                                 ? "bg-emerald-500/15 dark:bg-emerald-500/20"
@@ -116,7 +322,7 @@ export default function Footer({ isApp = false }: FooterProps) {
                     <Link
                         href="/courses"
                         prefetch={true}
-                        aria-label="코스"
+                        aria-label={t("nav.courses")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/courses")
                                 ? "bg-emerald-500/15 dark:bg-emerald-500/20"
@@ -137,7 +343,7 @@ export default function Footer({ isApp = false }: FooterProps) {
                     <Link
                         href="/map"
                         prefetch={true}
-                        aria-label="맵"
+                        aria-label={t("nav.map")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/map")
                                 ? "bg-emerald-500/15 dark:bg-emerald-500/20"
@@ -157,7 +363,7 @@ export default function Footer({ isApp = false }: FooterProps) {
                     <Link
                         href="/personalized-home"
                         prefetch={true}
-                        aria-label="오늘의 데이트 추천"
+                        aria-label={t("nav.todayRecommend")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/personalized-home")
                                 ? "bg-emerald-500/15 dark:bg-emerald-500/20"
@@ -184,7 +390,7 @@ export default function Footer({ isApp = false }: FooterProps) {
                             prefetch={true}
                             onMouseEnter={() => router.prefetch("/mypage")}
                             onFocus={() => router.prefetch("/mypage")}
-                            aria-label="마이페이지"
+                            aria-label={t("nav.myPage")}
                             className={`p-1.5 rounded-full transition-colors relative block ${
                                 isActive("/mypage")
                                     ? "bg-emerald-500/15 dark:bg-emerald-500/20"
@@ -209,7 +415,7 @@ export default function Footer({ isApp = false }: FooterProps) {
                         <Link
                             href="/login"
                             prefetch={false}
-                            aria-label="마이페이지"
+                            aria-label={t("nav.myPage")}
                             className="p-1.5 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 block"
                             style={{ color: "#6b7280" }}
                         >
@@ -221,7 +427,6 @@ export default function Footer({ isApp = false }: FooterProps) {
                     </TapFeedback>
                 )}
             </nav>
-
         </footer>
     );
 }

@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RECOMMENDATION_MESSAGES, UserTagType } from "@/constants/recommendations";
 import { CHIP_DEFINITIONS, type ChipId } from "@/constants/chipRules";
+import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
 import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import LoginModal from "@/components/LoginModal";
+import { useLocale } from "@/context/LocaleContext";
 
 interface Course {
     id: number;
@@ -22,6 +24,7 @@ interface Course {
 
 export default function PersonalizedSection() {
     const router = useRouter();
+    const { t } = useLocale();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("회원");
@@ -270,11 +273,11 @@ export default function PersonalizedSection() {
                 ) : (
                     <>
                         <h2 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 animate-fade-in">
-                            {isLoggedIn ? "오늘의 선택" : "오늘의 선택"}
+                            {t("personalized.todayPick")}
                         </h2>
                         {!isLoggedIn && (
                             <p className="text-[14px] font-normal text-[#7A8E99] dark:text-gray-500 mt-1 animate-fade-in">
-                                로그인하면 내 취향 기준으로 추천돼요
+                                {t("personalized.loginHint")}
                             </p>
                         )}
                         {isLoggedIn && content.sectionTitle && (
@@ -344,11 +347,11 @@ export default function PersonalizedSection() {
                             <div className="p-4 pt-2">
                                 {!isLoggedIn && (
                                     <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-1.5 animate-fade-in">
-                                        이런 방식으로 추천돼요
+                                        {t("personalized.howRecommended")}
                                     </p>
                                 )}
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-snug animate-fade-in tracking-tight">
-                                    {courses[0].title}
+                                    <TranslatedCourseTitle title={courses[0].title} />
                                 </h3>
                                 {courses[0].chips && courses[0].chips.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mt-2">
@@ -377,7 +380,7 @@ export default function PersonalizedSection() {
                                     }}
                                     className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline active:opacity-80 cursor-pointer"
                                 >
-                                    코스 구경하기
+                                    {t("personalized.viewCourse")}
                                     <span className="inline-block">→</span>
                                 </button>
                             </div>
@@ -391,7 +394,7 @@ export default function PersonalizedSection() {
                             onClick={() => setShowMoreModal(true)}
                             className="text-[14px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
                         >
-                            다른 선택도 함께 볼래요
+                            {t("personalized.viewMore")}
                             <span className="inline-block">→</span>
                         </button>
                     </div>
@@ -445,7 +448,7 @@ export default function PersonalizedSection() {
                                             : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                                     }`}
                                 >
-                                    오늘
+                                    {t("personalized.today")}
                                 </button>
                             )}
                             <button
@@ -455,9 +458,9 @@ export default function PersonalizedSection() {
                                     dayBanner === "weekend"
                                         ? "bg-emerald-600 text-white dark:bg-emerald-500"
                                         : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                                }`}
+                                    }`}
                             >
-                                주말
+                                {t("personalized.weekend")}
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4 scrollbar-hide">
@@ -479,7 +482,7 @@ export default function PersonalizedSection() {
                                     <div className="flex flex-col items-center justify-center py-12 gap-4">
                                         <div className="h-8 w-8 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin" />
                                         <p className="text-sm text-gray-500">
-                                            {dayBanner === "weekend" ? "주말 추천 준비 중..." : "오늘 추천 준비 중..."}
+                                            {dayBanner === "weekend" ? t("personalized.loadingWeekend") : t("personalized.loadingToday")}
                                         </p>
                                     </div>
                                 ) : displayList.length > 0 ? (
@@ -512,7 +515,7 @@ export default function PersonalizedSection() {
                                                 })()}
                                                 <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                                                 <div className="absolute bottom-3 left-3 right-3 text-white">
-                                                    <h4 className="font-bold line-clamp-2">{course.title}</h4>
+                                                    <h4 className="font-bold line-clamp-2"><TranslatedCourseTitle title={course.title} /></h4>
                                                     {course.region && (
                                                         <span className="text-xs text-gray-300">{course.region}</span>
                                                     )}
@@ -538,8 +541,8 @@ export default function PersonalizedSection() {
                                 ) : (
                                     <p className="text-center py-12 text-gray-500 text-sm">
                                         {dayBanner === "weekend"
-                                            ? "주말 추천을 불러올 수 없어요"
-                                            : "오늘 추천을 불러올 수 없어요"}
+                                            ? t("personalized.loadFailWeekend")
+                                            : t("personalized.loadFailToday")}
                                     </p>
                                 );
                             })()}

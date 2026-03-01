@@ -1,0 +1,110 @@
+{
+  "common": {
+    "settings": "设置",
+    "close": "关闭",
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存"
+  },
+  "theme": {
+    "label": "主题",
+    "light": "浅色",
+    "dark": "深色"
+  },
+  "language": {
+    "label": "语言",
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",
+    "zh": "中文"
+  },
+  "home": {
+    "activeCourse": {
+      "todayDate": "今日约会",
+      "inProgress": "进行中",
+      "continue": "继续"
+    },
+    "memoryReminder": {
+      "title": "今天的{course}约会怎么样？",
+      "subtitle": "留个简短记录吧？",
+      "later": "稍后",
+      "goTo": "前往"
+    },
+    "memoryFallback": "我的回忆",
+    "memoryImageAlt": "回忆图片",
+    "dayOfWeek": ["日", "一", "二", "三", "四", "五", "六"]
+  },
+  "memory": {
+    "notLoggedIn": {
+      "title": "想记录约会吗？",
+      "subtitle": "照片和路线会自动保存。",
+      "button": "登录"
+    },
+    "empty": {
+      "title": "私密记录",
+      "subtitle": "留下第一个回忆，获取更好推荐。",
+      "button": "添加回忆"
+    },
+    "filled": {
+      "title": "私密记录",
+      "subtitle": "回顾近期约会，规划下次旅程。",
+      "button": "查看回忆"
+    },
+    "viewAll": "查看全部"
+  },
+  "personalized": {
+    "todayPick": "今日精选",
+    "loginHint": "登录获取个性化推荐",
+    "howRecommended": "推荐方式",
+    "viewCourse": "查看路线",
+    "viewMore": "更多选择",
+    "today": "今天",
+    "weekend": "周末",
+    "loadingToday": "加载今日推荐中...",
+    "loadingWeekend": "加载周末推荐中...",
+    "loadFailToday": "无法加载今日推荐",
+    "loadFailWeekend": "无法加载周末推荐"
+  },
+  "recommendation": {
+    "healing": { "title": "治愈路线", "badge": "安静治愈" },
+    "photo": { "title": "拍照路线", "badge": "出片保证" },
+    "food": { "title": "美食路线", "badge": "地道美食" },
+    "cost": { "title": "性价比路线", "badge": "高性价比" },
+    "activity": { "title": "活动路线", "badge": "活力满满" },
+    "default": { "title": "专属路线", "badge": "AI推荐" },
+    "guest": { "title": "当下最受欢迎的约会路线", "badge": "热门" }
+  },
+  "courseConcept": {
+    "healing": "治愈",
+    "photo": "拍照",
+    "food": "美食",
+    "cost": "性价比",
+    "activity": "活动",
+    "emotional": "感性",
+    "romantic": "浪漫",
+    "cafe": "咖啡",
+    "nightView": "夜景",
+    "indoor": "室内",
+    "outdoor": "户外",
+    "experience": "体验",
+    "culture": "文化",
+    "shopping": "购物",
+    "default": "约会"
+  },
+  "nav": {
+    "home": "首页",
+    "courses": "路线",
+    "map": "地图",
+    "todayPick": "今日精选",
+    "todayRecommend": "今日约会推荐",
+    "myPage": "我的",
+    "login": "登录",
+    "signup": "注册",
+    "goToMyPage": "前往我的",
+    "whatToDoToday": "今天做什么？",
+    "coupleMissionGame": "情侣任务游戏",
+    "donaShop": "DoNa商店",
+    "openMenu": "打开菜单",
+    "main": "首页"
+  }
+}

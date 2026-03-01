@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 interface LogoutModalProps {
     onClose: () => void;
@@ -10,6 +11,8 @@ interface LogoutModalProps {
 }
 
 export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
+    const { containInPhone } = useAppLayout();
+    const posClass = containInPhone ? "absolute" : "fixed";
     const [slideUp, setSlideUp] = useState(false);
 
     useEffect(() => {
@@ -21,12 +24,12 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
         <>
             {/* 배경 딤드 */}
             <div
-                className="fixed inset-0 z-2000 bg-black/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+                className={`${posClass} inset-0 z-2000 bg-black/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
                 onClick={onClose}
                 aria-hidden
             />
             {/* 하단 시트: 아래·양쪽에 붙이고 상단만 둥글게 */}
-            <div className="fixed left-0 right-0 bottom-0 z-2001 w-full">
+            <div className={`${posClass} left-0 right-0 bottom-0 z-2001 w-full`}>
                 <div
                     className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
                     style={{

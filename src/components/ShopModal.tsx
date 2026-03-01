@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 const DRAG_CLOSE_THRESHOLD = 60;
 
@@ -10,6 +11,7 @@ interface ShopModalProps {
 }
 
 export default function ShopModal({ onClose }: ShopModalProps) {
+    const { containInPhone, modalContainerRef } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
     const [dragY, setDragY] = useState(0);
@@ -53,9 +55,12 @@ export default function ShopModal({ onClose }: ShopModalProps) {
 
     if (!mounted) return null;
 
+    const posClass = containInPhone ? "absolute" : "fixed";
+    const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
+
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/40 dark:bg-black/70 flex flex-col justify-end z-9999 animate-in fade-in duration-200"
+            className={`${posClass} inset-0 bg-black/40 dark:bg-black/70 flex flex-col justify-end z-9999 animate-in fade-in duration-200`}
             onClick={onClose}
         >
             <div
@@ -128,6 +133,6 @@ export default function ShopModal({ onClose }: ShopModalProps) {
                 </button>
             </div>
         </div>,
-        document.body
+        portalTarget
     );
 }

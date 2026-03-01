@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 interface KakaoChannelModalProps {
     onClose: () => void;
@@ -9,6 +10,8 @@ interface KakaoChannelModalProps {
 
 export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
     const router = useRouter();
+    const { containInPhone } = useAppLayout();
+    const posClass = containInPhone ? "absolute" : "fixed";
 
     const handleKakaoChannel = () => {
         window.open("https://pf.kakao.com/_uxnZHn/chat", "_blank");
@@ -17,7 +20,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
 
     return (
         <div
-            className="fixed inset-0 z-100 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+            className={`${posClass} inset-0 z-100 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
             onClick={onClose}
             role="button"
             tabIndex={0}
@@ -25,7 +28,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
             aria-label="카카오 채널 모달 닫기"
         >
             <div
-                className="fixed bottom-0 left-0 right-0 z-101 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col"
+                className={`${posClass} bottom-0 left-0 right-0 z-101 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col`}
                 style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >

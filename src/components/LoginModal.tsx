@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { CheckCircle, Sparkles, Ticket } from "lucide-react";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 const DEFAULT_BENEFITS = [
     "고민 해결! 오늘의 데이트 추천 하루 1회 무료",
@@ -23,6 +24,7 @@ interface LoginModalProps {
 
 export default function LoginModal({ onClose, next, title, description, benefits }: LoginModalProps) {
     const router = useRouter();
+    const { containInPhone, modalContainerRef } = useAppLayout();
     const pathname = usePathname();
     const [loginNavigating, setLoginNavigating] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -61,17 +63,18 @@ export default function LoginModal({ onClose, next, title, description, benefits
 
     if (!mounted) return null;
 
+    const posClass = containInPhone ? "absolute" : "fixed";
     const modalContent = (
         <>
             {/* 배경 딤드 */}
             <div
-                className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300"
+                className={`${posClass} inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300`}
                 onClick={onClose}
                 aria-hidden
             />
             {/* 하단 시트: 아래·양쪽에 붙이고 상단만 둥글게 */}
             <div
-                className="fixed left-0 right-0 bottom-0 z-10000 w-full max-h-[90vh]"
+                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full max-h-[90vh]`}
                 style={{ pointerEvents: "auto" }}
             >
                 <div
@@ -186,5 +189,6 @@ export default function LoginModal({ onClose, next, title, description, benefits
         </>
     );
 
-    return createPortal(modalContent, document.body);
+    const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
+    return createPortal(modalContent, portalTarget);
 }

@@ -1,0 +1,110 @@
+{
+  "common": {
+    "settings": "설정",
+    "close": "닫기",
+    "confirm": "확인",
+    "cancel": "취소",
+    "save": "저장"
+  },
+  "theme": {
+    "label": "테마",
+    "light": "라이트",
+    "dark": "다크"
+  },
+  "language": {
+    "label": "언어",
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",
+    "zh": "中文"
+  },
+  "home": {
+    "activeCourse": {
+      "todayDate": "오늘의 데이트",
+      "inProgress": "진행 중",
+      "continue": "이어가기"
+    },
+    "memoryReminder": {
+      "title": "오늘 {course} 데이트 어땠어요?",
+      "subtitle": "한 줄만 남겨볼까요?",
+      "later": "나중에",
+      "goTo": "이동하기"
+    },
+    "memoryFallback": "나만의 추억",
+    "memoryImageAlt": "추억 이미지",
+    "dayOfWeek": ["일", "월", "화", "수", "목", "금", "토"]
+  },
+  "memory": {
+    "notLoggedIn": {
+      "title": "데이트 기록을 남기고 싶다면?",
+      "subtitle": "사진이랑 코스가 자동으로 모여요.",
+      "button": "로그인하기"
+    },
+    "empty": {
+      "title": "나만 아는 비밀 기록",
+      "subtitle": "첫 추억을 남기면 특별한 추천이 빨라져요.",
+      "button": "추억 남기러 가기"
+    },
+    "filled": {
+      "title": "나만 아는 비밀 기록",
+      "subtitle": "최근 데이트 경험을 다시 만나고, 이어갈 다음 여정을 시작해보세요.",
+      "button": "추억 보기"
+    },
+    "viewAll": "전체보기"
+  },
+  "personalized": {
+    "todayPick": "오늘의 선택",
+    "loginHint": "로그인하면 내 취향 기준으로 추천돼요",
+    "howRecommended": "이런 방식으로 추천돼요",
+    "viewCourse": "코스 구경하기",
+    "viewMore": "다른 선택도 함께 볼래요",
+    "today": "오늘",
+    "weekend": "주말",
+    "loadingToday": "오늘 추천 준비 중...",
+    "loadingWeekend": "주말 추천 준비 중...",
+    "loadFailToday": "오늘 추천을 불러올 수 없어요",
+    "loadFailWeekend": "주말 추천을 불러올 수 없어요"
+  },
+  "recommendation": {
+    "healing": { "title": "힐링 코스", "badge": "조용한 힐링" },
+    "photo": { "title": "포토존 코스", "badge": "인생샷 보장" },
+    "food": { "title": "찐맛집 코스", "badge": "찐맛집" },
+    "cost": { "title": "가성비 코스", "badge": "가성비 甲" },
+    "activity": { "title": "액티비티 코스", "badge": "도파민 뿜뿜" },
+    "default": { "title": "취향 저격 코스", "badge": "AI 맞춤" },
+    "guest": { "title": "지금 가장 많이 선택된 데이트 코스", "badge": "인기" }
+  },
+  "courseConcept": {
+    "healing": "힐링",
+    "photo": "포토",
+    "food": "맛집",
+    "cost": "가성비",
+    "activity": "액티비티",
+    "emotional": "감성",
+    "romantic": "로맨틱",
+    "cafe": "카페",
+    "nightView": "야경",
+    "indoor": "실내",
+    "outdoor": "야외",
+    "experience": "체험",
+    "culture": "문화",
+    "shopping": "쇼핑",
+    "default": "데이트"
+  },
+  "nav": {
+    "home": "홈",
+    "courses": "코스",
+    "map": "지도",
+    "todayPick": "오늘의 데이트",
+    "todayRecommend": "오늘의 데이트 추천",
+    "myPage": "마이페이지",
+    "login": "로그인",
+    "signup": "회원가입",
+    "goToMyPage": "마이페이지로 이동",
+    "whatToDoToday": "오늘 뭐하지?",
+    "coupleMissionGame": "커플 미션 게임",
+    "donaShop": "두나샵",
+    "openMenu": "메뉴 열기",
+    "main": "메인"
+  }
+}
