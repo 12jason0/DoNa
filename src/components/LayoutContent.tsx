@@ -11,7 +11,7 @@ import SideMenuDrawer from "@/components/SideMenuDrawer";
 import AppInstallQR from "@/components/AppInstallQR";
 import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
-import { isMobileApp } from "@/lib/platform";
+import { isMobileApp, isAndroid } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
 import { useLocale } from "@/context/LocaleContext";
 import AdSlot from "@/components/AdSlot";
@@ -148,6 +148,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
     // 🟢 앱 환경 감지: 서버/클라이언트 첫 렌더를 같게 해서 hydration mismatch 방지. 실제 값은 useEffect에서 설정
     const [isApp, setIsApp] = useState(false);
+    // 🟢 Android: 하단 네비(뒤로가기/홈)보다 5(20px) 위로 올림
+    const [isAndroidClient, setIsAndroidClient] = useState(false);
 
     // 경로 변수들
     const isEscapeIntroPage = pathname.startsWith("/escape/intro");
@@ -178,6 +180,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         const appCheck = isMobileApp();
         if (appCheck !== isApp) setIsApp(appCheck);
     }, [isApp]);
+
+    // 🟢 Android 클라이언트 감지 (하단 네비 위 여백용)
+    useEffect(() => {
+        setIsAndroidClient(isAndroid());
+    }, []);
 
     // 🟢 [AdMob]: 앱 WebView에 현재 경로+쿼리 전달 (ReactNativeWebView 있으면 전송 - isMobileApp()보다 먼저 설정될 수 있음)
     useEffect(() => {
@@ -574,15 +581,21 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         : isApp
                                           ? shouldShowAppBanner
                                               ? ""
-                                              : "bottom-0"
+                                              : "bottom-5"
                                           : shouldShowWebAd
-                                            ? "bottom-0"
+                                            ? "bottom-5"
                                             : "bottom-5"
                                 } left-0 right-0 z-40 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
                                 style={
                                     mounted && isApp && shouldShowAppBanner
-                                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
-                                        : undefined
+                                        ? {
+                                              bottom: isAndroidClient
+                                                  ? "calc(64px + 20px + env(safe-area-inset-bottom, 0px))"
+                                                  : "calc(64px + env(safe-area-inset-bottom, 0px))",
+                                          }
+                                        : mounted && isApp && isAndroidClient
+                                          ? { bottom: "calc(1.25rem + 20px + env(safe-area-inset-bottom, 0px))" }
+                                          : undefined
                                 }
                             >
                                 {/* +버튼: Footer 위에 flex로 배치 */}
@@ -638,9 +651,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                             style={
                                                 mounted && isApp && shouldShowAppBanner
                                                     ? {
-                                                          bottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
+                                                          bottom: isAndroidClient
+                                                              ? "calc(140px + 20px + env(safe-area-inset-bottom, 0px))"
+                                                              : "calc(140px + env(safe-area-inset-bottom, 0px))",
                                                       }
-                                                    : undefined
+                                                    : mounted && isApp && isAndroidClient
+                                                      ? { bottom: "calc(5rem + 20px + env(safe-area-inset-bottom, 0px))" }
+                                                      : undefined
                                             }
                                         >
                                             <div className="flex flex-row items-center gap-2.5 pointer-events-auto">
