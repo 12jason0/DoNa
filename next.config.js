@@ -165,6 +165,8 @@ const nextConfig = {
                                 "https://ep1.adtrafficquality.google",
                                 "https://*.adtrafficquality.google",
                                 "https://csi.gstatic.com",
+                                "https://fundingchoicesmessages.google.com",
+                                "https://*.fundingchoicesmessages.google.com",
                                 // 🔴 [수정]: 하드코딩된 192.168.219.220을 삭제하고 동적 변수 적용
                                 `http://${localIp}:3000`,
                                 `ws://${localIp}:3000`,
