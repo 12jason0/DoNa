@@ -23,6 +23,7 @@ export default function AdSenseScript() {
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1305222191440436"
             strategy="afterInteractive"
             crossOrigin="anonymous"
+            data-page-level-ads="false"
         />
     );
 }
