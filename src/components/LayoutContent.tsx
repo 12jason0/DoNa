@@ -150,6 +150,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [isApp, setIsApp] = useState(false);
     // 🟢 Android: 하단 네비(뒤로가기/홈)보다 5(20px) 위로 올림
     const [isAndroidClient, setIsAndroidClient] = useState(false);
+    // 🟢 웹 광고 실제 표시 여부: AdSlot onHide(노필) 시 false, 페이지 이동 시 초기화
+    const [webAdVisible, setWebAdVisible] = useState(true);
+    const [isLgOrUp, setIsLgOrUp] = useState(false); // lg 이상에서 광고 하단 위치 스타일 제외
 
     // 경로 변수들
     const isEscapeIntroPage = pathname.startsWith("/escape/intro");
@@ -184,6 +187,20 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     // 🟢 Android 클라이언트 감지 (하단 네비 위 여백용)
     useEffect(() => {
         setIsAndroidClient(isAndroid());
+    }, []);
+
+    // 🟢 웹 광고 표시 페이지로 이동 시 webAdVisible 초기화 (AdSlot 새로 마운트)
+    useEffect(() => {
+        if (shouldShowWebAd) setWebAdVisible(true);
+    }, [shouldShowWebAd]);
+
+    // 🟢 lg(1024px) 이상에서 하단 광고 bottom 스타일 비적용 (lg에서 AdSlot 숨김과 일치)
+    useEffect(() => {
+        const mq = window.matchMedia("(min-width: 1024px)");
+        const handler = () => setIsLgOrUp(mq.matches);
+        handler();
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
     }, []);
 
     // 🟢 [AdMob]: 앱 WebView에 현재 경로+쿼리 전달 (ReactNativeWebView 있으면 전송 - isMobileApp()보다 먼저 설정될 수 있음)
@@ -582,8 +599,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                           ? shouldShowAppBanner
                                               ? ""
                                               : "bottom-5"
-                                          : shouldShowWebAd
-                                            ? "bottom-5"
+                                          : shouldShowWebAd && webAdVisible && !isLgOrUp
+                                            ? ""
                                             : "bottom-5"
                                 } left-0 right-0 z-40 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
                                 style={
@@ -595,7 +612,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                           }
                                         : mounted && isApp && isAndroidClient
                                           ? { bottom: "calc(1.25rem + 20px + env(safe-area-inset-bottom, 0px))" }
-                                          : undefined
+                                          : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
+                                            ? { bottom: "calc(80px + 1.25rem)" }
+                                            : undefined
                                 }
                             >
                                 {/* +버튼: Footer 위에 flex로 배치 */}
@@ -644,8 +663,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                       ? shouldShowAppBanner
                                                           ? ""
                                                           : "bottom-20"
-                                                      : shouldShowWebAd
-                                                        ? "bottom-24"
+                                                      : shouldShowWebAd && webAdVisible && !isLgOrUp
+                                                        ? ""
                                                         : "bottom-24"
                                             } lg:right-4 lg:bottom-24`}
                                             style={
@@ -657,7 +676,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                       }
                                                     : mounted && isApp && isAndroidClient
                                                       ? { bottom: "calc(5rem + 20px + env(safe-area-inset-bottom, 0px))" }
-                                                      : undefined
+                                                      : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
+                                                        ? { bottom: "calc(80px + 1.25rem + 5rem)" }
+                                                        : undefined
                                             }
                                         >
                                             <div className="flex flex-row items-center gap-2.5 pointer-events-auto">
@@ -718,19 +739,20 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         document.body,
                                     )}
                                 {!isMapPage && <Footer isApp={isApp} plusButton={null} />}
-                                {/* 🟢 웹 전용: 푸터와 광고를 한 하단 바로 묶어 바닥에 붙임 (lg에서는 흐름 유지) */}
-                                {!isApp && shouldShowWebAd && (
-                                    <div className="w-full flex justify-center rounded-none shrink-0">
-                                        <AdSlot
-                                            slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
-                                            format="fluid"
-                                            layoutKey="-hi-7+2w-11-86"
-                                            rounded={false}
-                                            className="w-full min-h-[80px] mx-auto rounded-none"
-                                        />
-                                    </div>
-                                )}
                             </div>
+                            {/* 🟢 웹 전용: 광고를 화면 맨 아래 고정, 푸터·+버튼은 광고 위로 분리 (겹침 방지) */}
+                            {!isApp && shouldShowWebAd && (
+                                <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden">
+                                    <AdSlot
+                                        slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
+                                        format="fluid"
+                                        layoutKey="-hi-7+2w-11-86"
+                                        rounded={false}
+                                        className="w-full min-h-[80px] mx-auto rounded-none"
+                                        onHide={() => setWebAdVisible(false)}
+                                    />
+                                </div>
+                            )}
                             <SideMenuDrawer
                                 isOpen={sideMenuOpen}
                                 onClose={() => {
