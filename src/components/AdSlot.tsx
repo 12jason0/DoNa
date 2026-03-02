@@ -16,7 +16,7 @@ type AdSlotProps = {
     onHide?: () => void;
 };
 
-const NO_FILL_CHECK_MS = 2000;
+const NO_FILL_CHECK_MS = 5000; // 5초: AdSense 지연 로드 시 2초로는 조기 숨김 방지
 
 const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", rounded = true, className = "", onHide }: AdSlotProps) => {
     const insRef = useRef<HTMLModElement>(null);
@@ -35,7 +35,7 @@ const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", rounded = t
         } catch {
             // ignore
         }
-        // adsbygoogle 유무와 관계없이 2초 후 노필 체크 실행 (스크립트 지연 로드 대응)
+        // adsbygoogle 유무와 관계없이 5초 후 노필 체크 실행 (스크립트 지연 로드 대응)
         const t = setTimeout(() => {
             const el = insRef.current;
             if (!el) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
@@ -114,28 +114,38 @@ const questionFlow: Question[] = [
     {
         id: "preview",
         type: "ai",
-        text: "총 4개의 간단한 질문을 드려요! 오늘의 데이트 유형, 함께하는 사람, 원하는 분위기, 선호 지역을 물어볼 예정이에요. 각 질문은 30초 이내로 답하실 수 있어요 😊",
+        text: "총 4개의 간단한 질문을 드려요! 오늘 데이트 모드, 함께하는 사람, 분위기, 지역을 물어볼 예정이에요 😊",
         options: [{ text: "좋아요, 시작할게요!", value: "start", next: "goal" }],
     },
     {
         id: "goal",
         type: "ai",
-        text: "Q1. 오늘은 어떤 데이트인가요? 🎯",
+        text: "Q1. 오늘 데이트는? 🎯",
         options: [
-            { text: "100일 · 200일", value: "100일", next: "companion_today" },
+            { text: "기념일이에요 🙂", value: "기념일", next: "goal_detail" },
+            { text: "무난한 날이에요", value: "무난", next: "companion_today" },
+            { text: "감성적인 날이에요", value: "감성", next: "companion_today" },
+            { text: "활동적인 날이에요", value: "활동", next: "companion_today" },
+        ],
+    },
+    {
+        id: "goal_detail",
+        type: "ai",
+        text: "어떤 기념일이에요? 💝",
+        options: [
+            { text: "100일", value: "100일", next: "companion_today" },
             { text: "생일", value: "생일", next: "companion_today" },
             { text: "연말", value: "연말", next: "companion_today" },
-            { text: "일상 데이트", value: "일상", next: "companion_today" },
         ],
     },
     {
         id: "companion_today",
         type: "ai",
-        text: "Q2. 오늘 함께하는 사람은 누구인가요? 👥",
+        text: "Q2. 누구랑 가요? 👥",
         options: [
             { text: "연인", value: "연인", next: "mood_today" },
-            { text: "썸 상대", value: "썸 상대", next: "mood_today" },
-            { text: "소개팅 상대", value: "소개팅 상대", next: "mood_today" },
+            { text: "썸", value: "썸 상대", next: "mood_today" },
+            { text: "소개팅", value: "소개팅 상대", next: "mood_today" },
             { text: "친구", value: "친구", next: "mood_today" },
             { text: "혼자", value: "혼자", next: "mood_today" },
         ],
@@ -143,27 +153,24 @@ const questionFlow: Question[] = [
     {
         id: "mood_today",
         type: "ai",
-        text: "Q3. 오늘 원하는 분위기는 어떤가요? ✨",
+        text: "Q3. 분위기는? ✨",
         options: [
-            { text: "조용한", value: "조용한", next: "region_today" },
-            { text: "감성 가득한", value: "감성 가득한", next: "region_today" },
-            { text: "트렌디한", value: "트렌디한", next: "region_today" },
-            { text: "활동적인", value: "활동적인", next: "region_today" },
-            { text: "프리미엄", value: "프리미엄", next: "region_today" },
-            { text: "사진 잘 나오는", value: "사진 잘 나오는", next: "region_today" },
-            { text: "여유로운", value: "여유로운", next: "region_today" },
+            { text: "조용", value: "조용한", next: "region_today" },
+            { text: "감성", value: "감성 가득한", next: "region_today" },
+            { text: "트렌디", value: "트렌디한", next: "region_today" },
+            { text: "활동적", value: "활동적인", next: "region_today" },
         ],
     },
     {
         id: "region_today",
         type: "ai",
-        text: "Q4. 오늘의 선호 지역은 어디인가요? 📍",
+        text: "Q4. 오늘은 어느 동네에서 놀까요? 📍",
         options: [
-            { text: "성수", value: "성수", next: "payment_prompt" },
-            { text: "홍대/연남", value: "홍대/연남", next: "payment_prompt" },
+            { text: "문래·영등포", value: "문래·영등포", next: "payment_prompt" },
+            { text: "합정·용산", value: "합정·용산", next: "payment_prompt" },
+            { text: "안국·서촌", value: "안국·서촌", next: "payment_prompt" },
             { text: "을지로", value: "을지로", next: "payment_prompt" },
-            { text: "종로/북촌", value: "종로/북촌", next: "payment_prompt" },
-            { text: "용산", value: "용산", next: "payment_prompt" },
+            { text: "여의도", value: "여의도", next: "payment_prompt" },
         ],
     },
     {
@@ -601,26 +608,32 @@ const AIRecommender = () => {
         };
 
         const goalValue = answers.goal || "";
+        const goalDetailFromUser = answers.goal_detail || "";
         const companionToday = answers.companion_today || "";
         const moodToday = answers.mood_today || "";
         const regionToday = answers.region_today || "";
 
-        // goal → API용 goal(레일) + goal_detail(가중치)
-        const GOAL_MAP: Record<string, { goal: string; goalDetail: string }> = {
-            기념일: { goal: "ANNIVERSARY", goalDetail: "" },
-            "100일": { goal: "ANNIVERSARY", goalDetail: "100일" },
-            생일: { goal: "ANNIVERSARY", goalDetail: "생일" },
-            연말: { goal: "ANNIVERSARY", goalDetail: "연말" },
-            일상: { goal: "DATE", goalDetail: "" },
-            // 하위 호환
-            데이트: { goal: "DATE", goalDetail: "" },
-            "썸·소개팅": { goal: "DATE", goalDetail: "" },
-            힐링: { goal: goalValue, goalDetail: "" },
-            "특별한 이벤트": { goal: "ANNIVERSARY", goalDetail: "" },
-            "사진 잘 나오는 코스": { goal: "ANNIVERSARY", goalDetail: "" },
-            "밤 데이트": { goal: "DATE", goalDetail: "" },
-        };
-        const { goal, goalDetail } = GOAL_MAP[goalValue] ?? { goal: goalValue, goalDetail: "" };
+        // goal → API용 goal + goal_detail (기념일 선택 시 2차 질문에서 goal_detail 저장)
+        let goal: string;
+        let goalDetail: string;
+        if (goalValue === "기념일") {
+            goal = "ANNIVERSARY";
+            goalDetail = goalDetailFromUser; // 100일, 생일, 연말
+        } else {
+            const GOAL_MAP: Record<string, { goal: string; goalDetail: string }> = {
+                무난: { goal: "DATE", goalDetail: "" },
+                감성: { goal: "DATE", goalDetail: "" },
+                활동: { goal: "DATE", goalDetail: "" },
+                일상: { goal: "DATE", goalDetail: "" },
+                // 하위 호환
+                "100일": { goal: "ANNIVERSARY", goalDetail: "100일" },
+                생일: { goal: "ANNIVERSARY", goalDetail: "생일" },
+                연말: { goal: "ANNIVERSARY", goalDetail: "연말" },
+            };
+            const mapped = GOAL_MAP[goalValue];
+            goal = mapped?.goal ?? goalValue;
+            goalDetail = mapped?.goalDetail ?? "";
+        }
 
         let list: Course[] = [];
 
@@ -1054,35 +1067,6 @@ const AIRecommender = () => {
             } catch {} // 에러는 무시 (백그라운드 prefetch)
         };
 
-        // 🟢 [Logic]: 매칭률 동적 보정 (60% ~ 98% Scaling)
-        const displayScore = useMemo(() => {
-            // API 점수가 있으면 사용, 없으면 기본값 0.5(50%)를 기준으로 보정
-            // 🟢 score는 이미 0.0~1.0 범위이므로, 1.0을 초과하면 1.0으로 제한
-            let baseScore = course.score && course.score > 0 ? Number(course.score) : 0.5;
-
-            // 🟢 1.0을 초과하는 값은 1.0으로 제한 (100% 초과 방지)
-            if (baseScore > 1.0) {
-                baseScore = 1.0;
-            }
-
-            // 🟢 API에서 이미 UX 스케일링이 적용된 경우를 고려
-            // matchScore가 이미 0.6~0.98 범위일 수 있으므로, 1.0보다 작으면 그대로 사용
-            // 1.0이면 다시 스케일링 적용
-            let scaledScore: number;
-            if (baseScore >= 0.6 && baseScore <= 0.98) {
-                // 이미 스케일링된 값으로 보임
-                scaledScore = baseScore;
-            } else {
-                // UX 보정 공식: 0.6(60%) + (원본점수 * 0.38)
-                // 예: 0.1(10%) -> 63.8%, 1.0(100%) -> 98%
-                scaledScore = 0.6 + baseScore * 0.38;
-            }
-
-            // 🟢 최종적으로 100%를 넘지 않도록 제한
-            const finalScore = Math.min(scaledScore, 1.0);
-            return Math.round(finalScore * 100);
-        }, [course.score]);
-
         if (selectedCourseId && !isSelected) return null;
 
         return (
@@ -1210,7 +1194,7 @@ const AIRecommender = () => {
                                 <>
                                     <div className="flex justify-between items-start mb-4">
                                         <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-black rounded-lg border border-emerald-100 dark:border-emerald-800/50">
-                                            {nickname}님 취향 저격 {displayScore}%
+                                            {nickname}님 취향 저격
                                         </span>
                                         <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                                     </div>
