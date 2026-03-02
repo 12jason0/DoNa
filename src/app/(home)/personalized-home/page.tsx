@@ -224,7 +224,6 @@ const AIRecommender = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false); // 분석 화면 표시 여부
     const [analysisText, setAnalysisText] = useState("취향 분석 중..."); // 분석 멘트
     const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({}); // 카드 뒤집힘 상태
-    const [selectedDetailCourse, setSelectedDetailCourse] = useState<Course | null>(null); // 상세 보기 모달용
 
     // 모달 및 선택 데이터 상태
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -438,7 +437,6 @@ const AIRecommender = () => {
         setSelectedCourseId(null);
         setIsAnalyzing(false);
         setRevealedCards({});
-        setSelectedDetailCourse(null);
         setShowChatModal(false); // 모달 닫기
     };
 
@@ -745,7 +743,6 @@ const AIRecommender = () => {
         setSelectedCourseId(null);
         setIsAnalyzing(false);
         setRevealedCards({});
-        setSelectedDetailCourse(null);
     };
 
     // 🟢 [Logic]: 모든 기능을 하나로 묶은 원스톱 핸들러 (선언적 액션)
@@ -779,7 +776,6 @@ const AIRecommender = () => {
                     if (saveRes !== null) {
                         setSelectedCourseId(courseId);
                         setShowConfirmModal(false);
-                        setSelectedDetailCourse(null);
                         router.push(`/courses/${courseId}`);
                     } else {
                         alert("저장 중 오류가 발생했습니다.");
@@ -800,7 +796,6 @@ const AIRecommender = () => {
         // 🟢 코스가 잠겨있으면 결제 모달 표시 (courseGrade 전달용 pendingCourse 갱신)
         setIsSelecting(false);
         setShowConfirmModal(false);
-        setSelectedDetailCourse(null); // 상세 모달 닫기 (결제 모달만 표시)
         setPendingCourse((prev) => {
             const grade = courseDataRes?.grade || "BASIC";
             return prev ? { ...prev, grade } : { id: courseId, title: "", grade };
@@ -827,225 +822,11 @@ const AIRecommender = () => {
     const handleFlipCard = (courseId: string, course: Course) => {
         if (!revealedCards[courseId]) {
             setRevealedCards((prev) => ({ ...prev, [courseId]: true }));
-            // 잠금 해제된 코스: 카드 뒤집을 때 바로 상세 모달 표시 (상세보기 클릭 생략)
+            // 잠금 해제된 코스: 카드 뒤집을 때 바로 코스 상세 페이지로 이동 (모달 없이)
             const to = { FREE: 0, BASIC: 1, PREMIUM: 2 };
             const grade = course.grade || "FREE";
-            if ((to[grade] ?? 0) <= (to[userTier] ?? 0)) setSelectedDetailCourse(course);
+            if ((to[grade] ?? 0) <= (to[userTier] ?? 0)) router.push(`/courses/${course.id}`);
         }
-    };
-
-    // --- [NEW] 상세 보기 모달 컴포넌트 ---
-    const CourseDetailModal = ({ course, onClose }: { course: Course; onClose: () => void }) => {
-        const [detail, setDetail] = useState<any>(null);
-        const [loading, setLoading] = useState(true);
-        const [placesLoading, setPlacesLoading] = useState(true); // 🟢 장소 정보 별도 로딩 상태
-        const [dragY, setDragY] = useState(0);
-        const dragStartYRef = useRef(0);
-        const dragYRef = useRef(0);
-        const pointerIdRef = useRef<number | null>(null);
-
-        useEffect(() => {
-            dragYRef.current = dragY;
-        }, [dragY]);
-
-        const handlePointerDown = useCallback(
-            (e: React.PointerEvent) => {
-                dragStartYRef.current = e.clientY;
-                pointerIdRef.current = e.pointerId;
-                (e.target as HTMLElement).setPointerCapture(e.pointerId);
-                const onMove = (ev: PointerEvent) => {
-                    const dy = Math.max(0, ev.clientY - dragStartYRef.current);
-                    dragYRef.current = dy;
-                    setDragY(dy);
-                };
-                const onUp = () => {
-                    try {
-                        (e.target as HTMLElement).releasePointerCapture(pointerIdRef.current!);
-                    } catch (_) {}
-                    pointerIdRef.current = null;
-                    window.removeEventListener("pointermove", onMove);
-                    window.removeEventListener("pointerup", onUp);
-                    window.removeEventListener("pointercancel", onUp);
-                    if (dragYRef.current > 80) onClose();
-                    setDragY(0);
-                };
-                window.addEventListener("pointermove", onMove);
-                window.addEventListener("pointerup", onUp);
-                window.addEventListener("pointercancel", onUp);
-            },
-            [onClose],
-        );
-
-        useEffect(() => {
-            const fetchCourseDetail = async () => {
-                try {
-                    setLoading(true);
-                    setPlacesLoading(true);
-
-                    // 🟢 [Optimization]: apiFetch 사용하여 캐싱 활용
-                    const { apiFetch } = await import("@/lib/authClient");
-                    const { data, response: res } = await apiFetch<any>(`/api/courses/${course.id}`, {
-                        cache: "force-cache", // 🟢 캐싱으로 성능 향상
-                        next: { revalidate: 300 }, // 🟢 5분간 캐시 유지
-                    });
-
-                    if (res.ok && data) {
-                        // 🟢 [Performance]: 즉시 표시 (지연 제거)
-                        setDetail(data);
-                        setLoading(false);
-                        setPlacesLoading(false); // 🟢 장소 정보도 즉시 표시
-                    } else {
-                        // 🟢 에러 응답 처리
-                        console.error("코스 상세 조회 실패:", res.status);
-                        setDetail(null); // 에러 시 detail을 null로 설정
-                        setLoading(false);
-                        setPlacesLoading(false);
-                    }
-                } catch (error) {
-                    console.error("코스 상세 조회 실패:", error);
-                    setDetail(null); // 에러 시 detail을 null로 설정
-                    setLoading(false);
-                    setPlacesLoading(false);
-                }
-            };
-            fetchCourseDetail();
-        }, [course.id]);
-
-        return (
-            <div
-                className="fixed inset-0 z-70 flex items-end justify-center p-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
-                onClick={onClose}
-                role="presentation"
-            >
-                <div
-                    className="bg-white dark:bg-[#1a241b] rounded-t-4xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden cursor-default"
-                    style={
-                        {
-                            animation: "slideUp 0.35s ease-out forwards",
-                            transform: `translateY(${dragY}px)`,
-                        } as React.CSSProperties
-                    }
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* 드래그 핸들 (드래그하여 내리기) */}
-                    <div
-                        onPointerDown={handlePointerDown}
-                        className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing touch-manipulation"
-                    >
-                        <div className="w-10 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                    </div>
-                    {/* Header */}
-                    <div className="p-4 pt-2 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b] z-10 shrink-0">
-                        <div>
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tracking-wider uppercase mb-1 block">
-                                Course Detail
-                            </span>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                                {course.title}
-                            </h3>
-                        </div>
-                    </div>
-
-                    {/* Content (Scrollable) */}
-                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 dark:bg-[#0f1710] scrollbar-hide">
-                        {/* Summary Card */}
-                        <div className="bg-white dark:bg-[#1a241b] p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 mb-6">
-                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                                {course.description}
-                            </p>
-                            <div className="flex gap-3 mt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                <div className="flex items-center">
-                                    <MapPin className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
-                                    {course.location}
-                                </div>
-                                <div className="flex items-center">
-                                    <Clock className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
-                                    {course.duration}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Timeline */}
-                        <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-emerald-200 before:to-gray-200 dark:before:from-emerald-800/50 dark:before:to-gray-700">
-                            {loading ? (
-                                <div className="flex items-center justify-center py-10">
-                                    <div className="w-8 h-8 border-4 border-emerald-200 dark:border-emerald-900 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin"></div>
-                                </div>
-                            ) : placesLoading ? (
-                                // 🟢 [Optimization]: 장소 정보 로딩 중 스켈레톤 UI
-                                Array.from({ length: detail?.coursePlaces?.length || 3 }).map((_, index) => (
-                                    <div key={`skeleton-${index}`} className="relative flex items-start">
-                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse z-10"></div>
-                                        <div className="ml-14 flex-1 bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-                                            <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
-                                            <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
-                                            <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : detail?.coursePlaces?.length > 0 ? (
-                                detail.coursePlaces.map((cp: any, index: number) => (
-                                    <div key={cp.id} className="relative flex items-start group">
-                                        <div className="absolute left-0 w-10 h-10 rounded-full bg-white dark:bg-[#1a241b] border-4 border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shadow-sm z-10 group-hover:border-emerald-200 dark:group-hover:border-emerald-700 transition-colors">
-                                            {index === 0 ? (
-                                                <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                            ) : index === detail.coursePlaces.length - 1 ? (
-                                                <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                            ) : (
-                                                <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                            )}
-                                        </div>
-                                        <div className="ml-14 flex-1 bg-white dark:bg-[#1a241b] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md transition-all">
-                                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1 block">
-                                                {cp.place?.category || `${index + 1}번째 장소`}
-                                            </span>
-                                            <h4 className="text-base font-bold text-gray-900 dark:text-white mb-1">
-                                                {cp.place?.name || "장소 정보 없음"}
-                                            </h4>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                                                {cp.description || cp.place?.description || ""}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm">
-                                    상세 장소 정보가 없습니다.
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Footer Action */}
-                    <div className="p-4 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                        <TapFeedback className="block w-[85%] sm:w-[90%]">
-                            <button
-                                onClick={() => handleCourseCommit(course.id, course.title)}
-                                disabled={isSelecting || !!selectedCourseId}
-                                className={`w-full py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${
-                                    selectedCourseId || isSelecting
-                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        : "bg-gray-900 text-white hover:bg-gray-800"
-                                }`}
-                            >
-                                {selectedCourseId || isSelecting ? (
-                                    isSelecting ? (
-                                        "처리 중..."
-                                    ) : (
-                                        "이미 선택된 코스입니다"
-                                    )
-                                ) : (
-                                    <>
-                                        <span>이 코스로 결정하기</span>
-                                        <CheckCircle className="w-4 h-4 shrink-0" />
-                                    </>
-                                )}
-                            </button>
-                        </TapFeedback>
-                    </div>
-                </div>
-            </div>
-        );
     };
 
     const tierOrder = { FREE: 0, BASIC: 1, PREMIUM: 2 };
@@ -1228,7 +1009,7 @@ const AIRecommender = () => {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setSelectedDetailCourse(course);
+                                                    router.push(`/courses/${course.id}`);
                                                 }}
                                                 className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
                                             >
@@ -1434,11 +1215,6 @@ const AIRecommender = () => {
                             </div>
                         </div>
                     </div>
-                )}
-
-                {/* 👇 [추가됨] 상세 정보 모달 */}
-                {selectedDetailCourse && (
-                    <CourseDetailModal course={selectedDetailCourse} onClose={() => setSelectedDetailCourse(null)} />
                 )}
 
                 {/* 👇 [추가됨] 대화창 모달 */}

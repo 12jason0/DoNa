@@ -72,9 +72,9 @@ export default function LoginModal({ onClose, next, title, description, benefits
                 onClick={onClose}
                 aria-hidden
             />
-            {/* 하단 시트: 아래·양쪽에 붙이고 상단만 둥글게 */}
+            {/* 하단 시트: 아래·양쪽에 붙이고 상단만 둥글게. 웹 폰 목업 내에서는 컨테이너 기준 85% */}
             <div
-                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full max-h-[90vh]`}
+                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
                 style={{ pointerEvents: "auto" }}
             >
                 <div

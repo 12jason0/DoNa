@@ -277,7 +277,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             <div
                 className={`bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 ${
                     isAndroidClient
-                        ? "pt-5 top-0"
+                        ? "pt-１ top-0"
                         : "pt-[calc(env(safe-area-inset-top,0)+1.25rem)] top-[env(safe-area-inset-top,0)]"
                 }`}
             >

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Lock } from "lucide-react";
 import { BASIC_MONTHLY_PRICE } from "@/constants/subscription";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 const AUTH_OPEN_SUBSCRIPTION_KEY = "auth:openSubscriptionAfterLogin";
 
@@ -29,6 +30,7 @@ interface BridgeModalProps {
 }
 
 export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalProps) {
+    const { containInPhone, modalContainerRef } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
 
@@ -57,15 +59,18 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
 
     const priceFormatted = BASIC_MONTHLY_PRICE.toLocaleString("ko-KR");
 
+    const posClass = containInPhone ? "absolute" : "fixed";
+    const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
+
     const modalContent = (
         <>
             <div
-                className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300"
+                className={`${posClass} inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300`}
                 onClick={onClose}
                 aria-hidden
             />
             <div
-                className="fixed left-0 right-0 bottom-0 z-10000 w-full max-h-[90vh]"
+                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
                 style={{ pointerEvents: "auto" }}
             >
                 <div
@@ -116,5 +121,5 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
         </>
     );
 
-    return createPortal(modalContent, document.body);
+    return createPortal(modalContent, portalTarget);
 }

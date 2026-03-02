@@ -63,21 +63,30 @@ export default function SideMenuDrawer({
         }
     }, [isOpen]);
 
-    // 🟢 드로어가 닫혀 있어도 모달(두나샵, Escape, 로그인)은 body 포탈로 렌더해 바로 표시
+    // 🟢 드로어가 닫혀 있어도 모달(두나샵, Escape, 로그인) 표시. 웹에서는 폰 내부로 포탈. SSR 시 document 미존재 방지
+    const modalPortalTarget =
+        containInPhone && modalContainerRef?.current
+            ? modalContainerRef.current
+            : typeof document !== "undefined"
+              ? document.body
+              : null;
     if (!isOpen) {
         return (
             <>
                 {showShopModal &&
                     typeof document !== "undefined" &&
-                    createPortal(<ShopModal onClose={() => setShowShopModal(false)} />, document.body)}
+                    modalPortalTarget &&
+                    createPortal(<ShopModal onClose={() => setShowShopModal(false)} />, modalPortalTarget)}
                 {showComingSoon &&
                     typeof document !== "undefined" &&
-                    createPortal(<ComingSoonModal onClose={() => setShowComingSoon(null)} />, document.body)}
+                    modalPortalTarget &&
+                    createPortal(<ComingSoonModal onClose={() => setShowComingSoon(null)} />, modalPortalTarget)}
                 {showLoginModal &&
                     typeof document !== "undefined" &&
+                    modalPortalTarget &&
                     createPortal(
                         <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />,
-                        document.body,
+                        modalPortalTarget,
                     )}
             </>
         );
@@ -90,10 +99,14 @@ export default function SideMenuDrawer({
             <div
                 className={`${posClass} inset-0 z-99999 bg-white/65 backdrop-blur-xl backdrop-saturate-150 transition-opacity duration-200 cursor-pointer`}
                 style={{
-                    width: "100vw",
-                    height: "100dvh",
-                    minWidth: "100vw",
-                    minHeight: "100dvh",
+                    ...(containInPhone
+                        ? { width: "100%", height: "100%", minWidth: "100%", minHeight: "100%" }
+                        : {
+                              width: "100vw",
+                              height: "100dvh",
+                              minWidth: "100vw",
+                              minHeight: "100dvh",
+                          }),
                     WebkitBackdropFilter: "blur(24px) saturate(150%)",
                     backdropFilter: "blur(24px) saturate(150%)",
                     pointerEvents: "auto",
@@ -116,9 +129,9 @@ export default function SideMenuDrawer({
                 }}
                 aria-hidden="true"
             />
-            {/* 패널: 연한 베이지/화이트 톤, 아이콘별 뮤트 컬러 */}
+            {/* 패널: 연한 베이지/화이트 톤, 아이콘별 뮤트 컬러. 웹 폰 내부에서는 컨테이너 기준 */}
             <div
-                className={`${posClass} right-0 z-100000 w-[min(300px,80vw)] max-h-[80vh] flex flex-col bg-transparent pointer-events-none`}
+                className={`${posClass} right-0 z-100000 w-[min(300px,80vw)] flex flex-col bg-transparent pointer-events-none ${containInPhone ? "max-h-[80%]" : "max-h-[80vh]"}`}
                 style={{ bottom: anchorBottom }}
                 role="dialog"
                 aria-label="사이드 메뉴"
@@ -344,12 +357,10 @@ export default function SideMenuDrawer({
         </>
     );
 
-    if (containInPhone) {
-        return overlayAndPanel;
-    }
     if (typeof document !== "undefined") {
-        // 🟢 항상 body에 포탈 → Footer 등 다른 fixed 요소(z-40)보다 위에 오버레이 표시
-        return createPortal(overlayAndPanel, document.body);
+        // 웹(containInPhone): 폰 내부로 포탈. 앱: body로 포탈
+        const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
+        return createPortal(overlayAndPanel, portalTarget);
     }
     return overlayAndPanel;
 }

@@ -28,7 +28,7 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
             aria-label="카카오 채널 모달 닫기"
         >
             <div
-                className={`${posClass} bottom-0 left-0 right-0 z-101 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col`}
+                className={`${posClass} bottom-0 left-0 right-0 z-101 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
                 style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >

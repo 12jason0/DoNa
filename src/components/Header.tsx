@@ -227,7 +227,7 @@ const Header = memo(() => {
                     aria-label="설정 모달 닫기"
                 >
                     <div
-                        className={`${posClass} bottom-0 left-0 right-0 z-2001 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800`}
+                        className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800 ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
                         style={{ animation: "slideUp 0.3s ease-out forwards" }}
                         onClick={(e) => e.stopPropagation()}
                     >

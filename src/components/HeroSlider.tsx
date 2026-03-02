@@ -6,7 +6,7 @@ import Link from "next/link";
 
 const CARD_GAP = 12;
 const PEEK_RATIO = 0.88; // 88% 카드 너비 → 12% 다음 카드 노출
-const HERO_HEIGHT_VH = 65;
+const HERO_HEIGHT_VH = 50;
 const CARD_RADIUS = "28px";
 
 export type SliderItem = {

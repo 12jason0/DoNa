@@ -572,10 +572,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                       : "w-full"
                             } lg:pb-0`}
                         >
-                            {/* 웹 전용: 아이폰 스타일 노치 */}
+                            {/* 웹 전용: 폰 상단 원형 노치 + 세이프 영역 (화면이 노치 아래에서만 표시) */}
                             {!isApp && (
                                 <div className="hidden lg:block absolute top-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[280px] px-8 pt-2">
-                                    <div className="w-[110px] h-7 mx-auto rounded-[18px] bg-gray-900 dark:bg-gray-950" />
+                                    <div className="w-5 h-5 mx-auto rounded-full bg-gray-900 dark:bg-gray-950" />
                                 </div>
                             )}
                             <div
@@ -585,7 +585,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             >
                                 <Header />
                             </div>
-                            <main className="flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710]">
+                            <main
+                                className={`flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710] ${
+                                    !isApp && (isEscapeIntroPage || isCourseStart || isMapPage) ? "lg:pt-12" : ""
+                                }`}
+                            >
                                 <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>{children}</div>
                             </main>
                             {/* 🟢 Footer + +버튼: 앱에서는 하나의 컨테이너에 묶어 gap으로 간격 보장, 함께 올라갔다 내려감 */}
@@ -625,13 +629,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 ref={plusButtonRef}
                                                 type="button"
                                                 onClick={() => {
-                                                    if (plusButtonRef.current) {
+                                                    if (plusButtonRef.current && typeof window !== "undefined") {
                                                         const rect = plusButtonRef.current.getBoundingClientRect();
-                                                        setDrawerAnchorBottom(
-                                                            typeof window !== "undefined"
-                                                                ? window.innerHeight - rect.top
-                                                                : 0,
-                                                        );
+                                                        // 웹 폰 목업: 폰 컨테이너 기준 bottom (메뉴가 +버튼 바로 위에 오도록)
+                                                        const anchor =
+                                                            !isApp && modalContainerRef?.current
+                                                                ? modalContainerRef.current.getBoundingClientRect()
+                                                                      .bottom - rect.top
+                                                                : window.innerHeight - rect.top;
+                                                        setDrawerAnchorBottom(anchor);
                                                     }
                                                     setRiseDone(false);
                                                     setSideMenuOpen(true);
@@ -656,7 +662,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     typeof document !== "undefined" &&
                                     createPortal(
                                         <div
-                                            className={`fixed right-4 z-100001 pointer-events-none flex items-center gap-2.5 ${
+                                            className={`${!isApp ? "absolute" : "fixed"} right-4 z-100001 pointer-events-none flex items-center gap-2.5 ${
                                                 !mounted
                                                     ? "bottom-24"
                                                     : isApp
@@ -675,15 +681,21 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                               : "calc(140px + env(safe-area-inset-bottom, 0px))",
                                                       }
                                                     : mounted && isApp && isAndroidClient
-                                                      ? { bottom: "calc(5rem + 20px + env(safe-area-inset-bottom, 0px))" }
-                                                      : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
+                                                      ? {
+                                                            bottom: "calc(5rem + 20px + env(safe-area-inset-bottom, 0px))",
+                                                        }
+                                                      : mounted &&
+                                                          !isApp &&
+                                                          shouldShowWebAd &&
+                                                          webAdVisible &&
+                                                          !isLgOrUp
                                                         ? { bottom: "calc(80px + 1.25rem + 5rem)" }
                                                         : undefined
                                             }
                                         >
                                             <div className="flex flex-row items-center gap-2.5 pointer-events-auto">
                                                 {riseDone && (
-                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap bg-stone-50 dark:bg-white/10 border border-gray-200/80 dark:border-white/20 px-2 py-1 rounded-md shadow-sm">
+                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
                                                         {isAuthenticated ? t("nav.myPage") : t("nav.login")}
                                                     </span>
                                                 )}
@@ -736,7 +748,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 </button>
                                             </div>
                                         </div>,
-                                        document.body,
+                                        !isApp && modalContainerRef?.current
+                                            ? modalContainerRef.current
+                                            : document.body,
                                     )}
                                 {!isMapPage && <Footer isApp={isApp} plusButton={null} />}
                             </div>
