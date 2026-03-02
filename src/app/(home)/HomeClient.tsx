@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { apiFetch } from "@/lib/authClient";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
@@ -14,8 +13,7 @@ import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import TapFeedback from "@/components/TapFeedback";
 import { X } from "lucide-react";
 
-import { isIOS, isMobileApp } from "@/lib/platform";
-import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
+import { isIOS } from "@/lib/platform";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
 import { useLocale } from "@/context/LocaleContext";
 import type { TranslationKeys } from "@/types/i18n";
@@ -33,38 +31,9 @@ function runAfterPaint(fn: () => void) {
     }
 }
 
-type Course = {
-    id: string;
-    title: string;
-    description: string;
-    duration: string;
-    location: string;
-    price: string;
-    imageUrl: string;
-    concept: string;
-    rating: number;
-    region?: string;
-    reviewCount: number;
-    participants: number;
-    view_count: number;
-    viewCount?: number;
-    tags?: string[];
-    grade?: "FREE" | "BASIC" | "PREMIUM";
-    createdAt?: string;
-};
-
-interface HomeClientProps {
-    initialCourses: Course[];
-}
-
-export default function HomeClient({ initialCourses }: HomeClientProps) {
+export default function HomeClient() {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { t } = useLocale();
-    const [courses, setCourses] = useState<Course[]>(initialCourses);
-    const [allTags, setAllTags] = useState<Array<{ id: number; name: string }>>([]);
-    const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-    const [query, setQuery] = useState("");
-    const [searchNonce, setSearchNonce] = useState(0);
     const [showWelcome, setShowWelcome] = useState(false);
     const [loginProvider, setLoginProvider] = useState<"apple" | "kakao" | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -83,7 +52,6 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
     const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [isLoadingCourses, setIsLoadingCourses] = useState<boolean>(false);
     const [hasMemories, setHasMemories] = useState(false);
     const [latestMemory, setLatestMemory] = useState<MemoryPreview | null>(null);
     const [memories, setMemories] = useState<MemoryPreview[]>([]);
@@ -441,37 +409,6 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
         runAfterPaint(fetchPersonalMemories);
     }, [fetchPersonalMemories]);
 
-    // 🟢 메인 코스 리스트 (테마별용) - 검색/필터 변경 시에만 업데이트
-    useEffect(() => {
-        // 🟢 [Optimization] 초기 데이터가 존재하고 사용자의 추가 액션(검색, 태그 선택)이 없다면 API 호출 차단
-        if (initialCourses.length > 0 && !query.trim() && selectedTagIds.length === 0) {
-            return;
-        }
-
-        const fetchCourses = async () => {
-            setIsLoadingCourses(true);
-            try {
-                const params = new URLSearchParams({ limit: "30", imagePolicy: "any" });
-                if (query.trim()) params.set("q", query.trim());
-                if (selectedTagIds.length > 0) params.set("tagIds", selectedTagIds.join(","));
-
-                const { data } = await apiFetch(`/api/courses?${params.toString()}`, {
-                    cache: "force-cache",
-                    next: { revalidate: 180 },
-                });
-                const courseList = Array.isArray((data as any)?.data) ? (data as any).data : [];
-                // 🟢 즉시 상태 업데이트 (requestAnimationFrame 제거로 지연 방지)
-                setCourses(courseList);
-            } catch {
-                // 🟢 에러 시에도 즉시 상태 업데이트
-                setCourses([]);
-            } finally {
-                setIsLoadingCourses(false);
-            }
-        };
-        fetchCourses();
-    }, [selectedTagIds, searchNonce, query, initialCourses.length]);
-
     return (
         <>
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
@@ -519,8 +456,6 @@ export default function HomeClient({ initialCourses }: HomeClientProps) {
                     {...LOGIN_MODAL_PRESETS.saveRecord}
                 />
             )}
-            {/* 🟢 코스 로딩 중 오버레이 */}
-            {isLoadingCourses && <CourseLoadingOverlay />}
 
             <main className="">
                 {/* 🟢 오늘 데이트 진행 중 배너 - 나만의 추억 저장 완료 시 숨김 */}
