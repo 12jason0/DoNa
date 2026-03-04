@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image"; // 🟢 img 대신 next/image 사용 (하이드레이션 오류 근본 해결)
 import Header from "@/components/Header";
@@ -15,6 +15,7 @@ import { isMobileApp, isAndroid } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
 import { useLocale } from "@/context/LocaleContext";
 import AdSlot from "@/components/AdSlot";
+import SearchModal from "@/components/SearchModal";
 import { AppLayoutProvider } from "@/context/AppLayoutContext";
 
 // 🟢 웹 히어로 패널 플로팅 아이콘 (커피, 클래퍼보드, 하트, 와인)
@@ -145,6 +146,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [showSplash, setShowSplash] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [contentReady, setContentReady] = useState(false);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
     // 🟢 앱 환경 감지: 서버/클라이언트 첫 렌더를 같게 해서 hydration mismatch 방지. 실제 값은 useEffect에서 설정
     const [isApp, setIsApp] = useState(false);
@@ -152,7 +154,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [isAndroidClient, setIsAndroidClient] = useState(false);
     // 🟢 웹 광고 실제 표시 여부: AdSlot onHide(노필) 시 false, 페이지 이동 시 초기화
     const [webAdVisible, setWebAdVisible] = useState(true);
-    const [isLgOrUp, setIsLgOrUp] = useState(false); // lg 이상에서 광고 하단 위치 스타일 제외
+    const [isLgOrUp, setIsLgOrUp] = useState(false);
+    const [hasCheckedViewport, setHasCheckedViewport] = useState(false);
 
     // 경로 변수들
     const isEscapeIntroPage = pathname.startsWith("/escape/intro");
@@ -160,6 +163,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const isCourseStart = pathname ? /^\/courses\/[^/]+\/start$/.test(pathname) : false;
     const isCourseDetail = pathname ? /^\/courses\/[^/]+$/.test(pathname) : false; // 🟢 코스 상세 페이지
     const isMapPage = pathname === "/map" || pathname.startsWith("/map/");
+    const isOnboardingPage = pathname === "/onboarding";
     const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
     const homepageBgUrl = getS3StaticUrl("homepage.png");
 
@@ -180,6 +184,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
     // 🟢 앱 환경 재확인
     useEffect(() => {
+        const handleOpenSearch = () => setIsSearchModalOpen(true);
+        window.addEventListener("openSearchModal", handleOpenSearch);
+        return () => window.removeEventListener("openSearchModal", handleOpenSearch);
+    }, []);
+
+    useEffect(() => {
         const appCheck = isMobileApp();
         if (appCheck !== isApp) setIsApp(appCheck);
     }, [isApp]);
@@ -194,10 +204,16 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         if (shouldShowWebAd) setWebAdVisible(true);
     }, [shouldShowWebAd]);
 
-    // 🟢 lg(1024px) 이상에서 하단 광고 bottom 스타일 비적용 (lg에서 AdSlot 숨김과 일치)
+    // 🟢 onHide 참조 고정 → AdSlot useEffect가 매 렌더마다 리셋되지 않아 노필 타이머 정상 동작
+    const handleAdHide = useCallback(() => setWebAdVisible(false), []);
+
+    // 🟢 lg(1024px) 이상에서 하단 광고 bottom 스타일 비적용. hasCheckedViewport로 첫 프레임에 데스크톱에서 AdSlot 마운트 방지 (availableWidth=0 에러 방지)
     useEffect(() => {
         const mq = window.matchMedia("(min-width: 1024px)");
-        const handler = () => setIsLgOrUp(mq.matches);
+        const handler = () => {
+            setIsLgOrUp(mq.matches);
+            setHasCheckedViewport(true);
+        };
         handler();
         mq.addEventListener("change", handler);
         return () => mq.removeEventListener("change", handler);
@@ -359,6 +375,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
             {/* 🟢 메인 콘텐츠 항상 렌더 (스플래시 중에도 DOM에 있어 이미지 로드 → LCP 2.5초 이내 목표) */}
             <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef }}>
+                <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
                 <div
                     className={`min-h-screen homepage-bg-container ${!isApp ? "web-landing-bg" : ""}`}
                     style={{
@@ -424,12 +441,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
                                         {/* 2. 메인 슬로건 */}
                                         <h2 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900">
-                                            앱에서 더 많은 코스를 만나보세요!
+                                            오늘 데이트, 고민 없이 바로 시작하세요
                                         </h2>
 
                                         {/* 3. 부가 설명 */}
                                         <div className="text-xl font-bold text-gray-800">
-                                            특별한 데이트 코스 추천부터 함께 채워나가는 스토리까지.
+                                            실패 없는 데이트 코스를 지금 무료로 확인해보세요.
                                         </div>
 
                                         {/* 4. 앱 다운로드 버튼 */}
@@ -566,9 +583,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             ref={modalContainerRef}
                             className={`relative h-full flex flex-col overflow-hidden ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
                                 !mounted
-                                    ? "lg:w-[360px] lg:max-h-[85vh] lg:h-[85vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                    ? "lg:w-[400px] lg:max-h-[90vh] lg:h-[90vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
                                     : !isApp
-                                      ? "lg:w-[360px] lg:max-h-[85vh] lg:h-[85vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                      ? "lg:w-[400px] lg:max-h-[90vh] lg:h-[90vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
                                       : "w-full"
                             } lg:pb-0`}
                         >
@@ -586,19 +603,19 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 <Header />
                             </div>
                             <main
-                                className={`flex-1 overflow-y-auto overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710] ${
-                                    !isApp && (isEscapeIntroPage || isCourseStart || isMapPage) ? "lg:pt-12" : ""
-                                }`}
+                                className={`flex-1 overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710] ${
+                                    !isApp && isMapPage ? "overflow-hidden" : "overflow-y-auto"
+                                } ${!isApp && (isEscapeIntroPage || isCourseStart || isMapPage) ? "lg:pt-12" : ""}`}
                             >
                                 <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>{children}</div>
                             </main>
-                            {/* 🟢 Footer + +버튼: 앱에서는 하나의 컨테이너에 묶어 gap으로 간격 보장, 함께 올라갔다 내려감 */}
+                            {/* 🟢 Footer + +버튼: Hydration 방지 — !mounted 시에도 mounted(웹)와 동일한 bottom 사용 */}
                             <div
                                 className={`shrink-0 bg-transparent ${
-                                    isEscapeId || isCourseStart || isCourseDetail ? "hidden" : "block"
+                                    isEscapeId || isCourseStart || isCourseDetail || isOnboardingPage ? "hidden" : "block"
                                 } fixed ${
                                     !mounted
-                                        ? "bottom-2"
+                                        ? "bottom-5"
                                         : isApp
                                           ? shouldShowAppBanner
                                               ? ""
@@ -606,16 +623,16 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                           : shouldShowWebAd && webAdVisible && !isLgOrUp
                                             ? ""
                                             : "bottom-5"
-                                } left-0 right-0 z-40 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
+                                } left-0 right-0 z-50 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
                                 style={
                                     mounted && isApp && shouldShowAppBanner
                                         ? {
                                               bottom: isAndroidClient
-                                                  ? "calc(64px + 20px + env(safe-area-inset-bottom, 0px))"
+                                                  ? "0"
                                                   : "calc(64px + env(safe-area-inset-bottom, 0px))",
                                           }
                                         : mounted && isApp && isAndroidClient
-                                          ? { bottom: "calc(1.25rem + 20px + env(safe-area-inset-bottom, 0px))" }
+                                          ? { bottom: "0" }
                                           : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
                                             ? { bottom: "calc(80px + 1.25rem)" }
                                             : undefined
@@ -677,13 +694,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 mounted && isApp && shouldShowAppBanner
                                                     ? {
                                                           bottom: isAndroidClient
-                                                              ? "calc(140px + 20px + env(safe-area-inset-bottom, 0px))"
+                                                              ? "64px"
                                                               : "calc(140px + env(safe-area-inset-bottom, 0px))",
                                                       }
                                                     : mounted && isApp && isAndroidClient
-                                                      ? {
-                                                            bottom: "calc(5rem + 20px + env(safe-area-inset-bottom, 0px))",
-                                                        }
+                                                      ? { bottom: "64px" }
                                                       : mounted &&
                                                           !isApp &&
                                                           shouldShowWebAd &&
@@ -695,7 +710,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         >
                                             <div className="flex flex-row items-center gap-2.5 pointer-events-auto">
                                                 {riseDone && (
-                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap ">
                                                         {isAuthenticated ? t("nav.myPage") : t("nav.login")}
                                                     </span>
                                                 )}
@@ -754,16 +769,16 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     )}
                                 {!isMapPage && <Footer isApp={isApp} plusButton={null} />}
                             </div>
-                            {/* 🟢 웹 전용: 광고를 화면 맨 아래 고정, 푸터·+버튼은 광고 위로 분리 (겹침 방지) */}
-                            {!isApp && shouldShowWebAd && (
-                                <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden">
+                            {/* 🟢 웹 전용: 광고를 화면 맨 아래 고정, 푸터·+버튼은 광고 위로 분리. 노필 시 영역 제거·footer 내려감 */}
+                            {!isApp && shouldShowWebAd && webAdVisible && hasCheckedViewport && !isLgOrUp && (
+                                <div className="fixed bottom-0 left-0 right-0 z-30">
                                     <AdSlot
                                         slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
                                         format="fluid"
                                         layoutKey="-hi-7+2w-11-86"
                                         rounded={false}
                                         className="w-full min-h-[80px] mx-auto rounded-none"
-                                        onHide={() => setWebAdVisible(false)}
+                                        onHide={handleAdHide}
                                     />
                                 </div>
                             )}

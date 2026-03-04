@@ -120,6 +120,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             is_editor_pick,
             grade,
             isPublic,
+            isSelectionType,
             tags,
         } = body || {};
 
@@ -139,6 +140,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             ...(is_editor_pick !== undefined ? { is_editor_pick } : {}),
             ...(grade !== undefined ? { grade } : {}),
             ...(isPublic !== undefined ? { isPublic } : {}),
+            ...(isSelectionType !== undefined ? { isSelectionType } : {}),
             ...(tags !== undefined ? { tags } : {}),
         };
 

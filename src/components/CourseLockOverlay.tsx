@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface CourseLockOverlayProps {
     grade?: string;
@@ -6,8 +9,11 @@ interface CourseLockOverlayProps {
 }
 
 export default function CourseLockOverlay({ grade = "PREMIUM", nickname }: CourseLockOverlayProps) {
-    const gradeLabel = grade === "BASIC" ? "베이직" : "프리미엄";
-    const labelText = nickname ? `🔒 ${nickname}님 상황에 가장 잘 맞는 코스` : `${grade} 전용`;
+    const { t } = useLocale();
+    const gradeLabel = grade === "BASIC" ? t("courseLockOverlay.basic") : t("courseLockOverlay.premium");
+    const labelText = nickname
+        ? t("courseLockOverlay.nicknameLabel", { nickname })
+        : t("courseLockOverlay.gradeOnly", { grade: gradeLabel });
 
     // 🟢 z-index를 20으로 설정하여 뱃지(z-[30]) 아래에 위치하도록 보장
     return (

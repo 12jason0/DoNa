@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/authClient";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -9,13 +10,13 @@ import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
 import MemoryCTA, { MemoryPreview } from "@/components/MemoryCTA";
 import LoginModal from "@/components/LoginModal";
-import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import TapFeedback from "@/components/TapFeedback";
 import { X } from "lucide-react";
 
 import { isIOS } from "@/lib/platform";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
 import { useLocale } from "@/context/LocaleContext";
+import { useAppLayout } from "@/context/AppLayoutContext";
 import type { TranslationKeys } from "@/types/i18n";
 
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
@@ -34,6 +35,7 @@ function runAfterPaint(fn: () => void) {
 export default function HomeClient() {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { t } = useLocale();
+    const { containInPhone, modalContainerRef } = useAppLayout();
     const [showWelcome, setShowWelcome] = useState(false);
     const [loginProvider, setLoginProvider] = useState<"apple" | "kakao" | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -61,6 +63,8 @@ export default function HomeClient() {
     const [showMemoryModal, setShowMemoryModal] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const memoryScrollRef = useRef<HTMLDivElement>(null);
+    const memoryDragRef = useRef<{ isDragging: boolean; startX: number; lastX: number } | null>(null);
+    const memoryJustDraggedRef = useRef(false);
     const [fullMemoryData, setFullMemoryData] = useState<any[]>([]);
     // 🟢 광고 노출: FREE만 광고 표시, BASIC/PREMIUM은 미표시
     const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
@@ -111,7 +115,7 @@ export default function HomeClient() {
             if (profileRes.status === "fulfilled" && profileRes.value.response.ok && profileRes.value.data) {
                 requestAnimationFrame(() => {
                     const p = profileRes.value.data as any;
-                    setUserName(p?.user?.nickname ?? p?.nickname ?? "두나");
+                    setUserName(p?.user?.nickname ?? p?.nickname ?? t("commonFallback.dona"));
                     const tier = (p?.subscriptionTier ?? p?.subscription_tier ?? p?.user?.subscriptionTier ?? "FREE")
                         .toString()
                         .toUpperCase();
@@ -193,12 +197,69 @@ export default function HomeClient() {
         }
     }, [isAuthenticated, user]); // 🟢 user 의존성 추가로 세션 변경 시 대응
 
-    // 🟢 모달이 열릴 때 첫 번째 사진으로 스크롤
+    // 🟢 모달이 열릴 때 첫 번째 사진으로 스크롤, 닫힐 때 드래그 상태 초기화
     useEffect(() => {
         if (showMemoryModal && memoryScrollRef.current) {
             setCurrentImageIndex(0);
             memoryScrollRef.current.scrollLeft = 0;
+        } else {
+            memoryDragRef.current = null;
         }
+    }, [showMemoryModal]);
+
+    // 🟢 웹: 클릭 후 드래그 방향에 따라 한 장씩 넘기기 (오른쪽 드래그=이전, 왼쪽 드래그=다음)
+    const handleMemoryGalleryMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.button !== 0) return; // 왼쪽 버튼만
+        e.preventDefault();
+        memoryDragRef.current = {
+            isDragging: true,
+            startX: e.clientX,
+            lastX: e.clientX,
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!showMemoryModal) return;
+        const handleMove = (e: MouseEvent) => {
+            const d = memoryDragRef.current;
+            if (!d?.isDragging) return;
+            d.lastX = e.clientX;
+        };
+        const handleUp = () => {
+            const el = memoryScrollRef.current;
+            const d = memoryDragRef.current;
+            memoryDragRef.current = null;
+            if (!el || !d?.isDragging) return;
+            memoryJustDraggedRef.current = true;
+            const itemWidth = el.clientWidth;
+            const totalItems = Math.round(el.scrollWidth / itemWidth);
+            const currentIndex = Math.round(el.scrollLeft / itemWidth);
+            const delta = d.startX - d.lastX;
+            const threshold = 20;
+            let targetIndex = currentIndex;
+            // 드래그 왼쪽 = 다음, 드래그 오른쪽 = 이전
+            if (delta > threshold) targetIndex = currentIndex + 1;
+            else if (delta < -threshold) targetIndex = currentIndex - 1;
+            targetIndex = Math.max(0, Math.min(totalItems - 1, targetIndex));
+            const targetLeft = targetIndex * itemWidth;
+            const startLeft = el.scrollLeft;
+            const duration = 280;
+            const startTime = performance.now();
+            const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+            const animate = (now: number) => {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                el.scrollLeft = startLeft + (targetLeft - startLeft) * easeOutCubic(progress);
+                if (progress < 1) requestAnimationFrame(animate);
+            };
+            requestAnimationFrame(animate);
+        };
+        document.addEventListener("mousemove", handleMove, true);
+        document.addEventListener("mouseup", handleUp, true);
+        return () => {
+            document.removeEventListener("mousemove", handleMove, true);
+            document.removeEventListener("mouseup", handleUp, true);
+        };
     }, [showMemoryModal]);
 
     // 🟢 앱: 메인 '나만 아는 비밀 기록' 추억 상세(사진) 모달 열림/닫힘 시 네이티브에 전달 → 바닥 광고 숨김/표시
@@ -263,7 +324,7 @@ export default function HomeClient() {
 
             const memoriesList = privateStories.map((story: any) => ({
                 id: story.id || null,
-                title: story.title || story.region || story.placeName || "나만의 추억",
+                title: story.title || story.region || story.placeName || t("home.memoryFallback"),
                 courseTitle: story.course?.title || story.courseTitle || null,
                 excerpt: story.comment || story.content || story.description || story.memo || "",
                 tags: Array.isArray(story.tags) ? story.tags : [],
@@ -289,7 +350,7 @@ export default function HomeClient() {
         } finally {
             setMemoriesLoading(false);
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, t]);
 
     // 🟢 active-course 한 번 조회 후 정규화하여 state 설정
     const fetchActiveCourse = useCallback(async () => {
@@ -453,7 +514,7 @@ export default function HomeClient() {
                 <LoginModal
                     onClose={() => setShowLoginModal(false)}
                     next="/mypage?tab=footprint&view=memories"
-                    {...LOGIN_MODAL_PRESETS.saveRecord}
+                    preset="saveRecord"
                 />
             )}
 
@@ -542,11 +603,22 @@ export default function HomeClient() {
                 </section>
             </main>
 
-            {/* 🟢 추억 상세 모달*/}
-            {showMemoryModal && selectedMemory && (
-                <div
-                    className="fixed inset-0 z-5000 bg-black dark:bg-black flex flex-col animate-in fade-in duration-300"
-                    onClick={() => setShowMemoryModal(false)}
+            {/* 🟢 추억 상세 모달: 웹에서는 폰 내부로 포탈하여 폰 안에서 표시 */}
+            {showMemoryModal &&
+                selectedMemory &&
+                typeof document !== "undefined" &&
+                (() => {
+                    const posClass = containInPhone ? "absolute" : "fixed";
+                    const portalTarget =
+                        containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
+                    const modalContent = (
+                        <div
+                            className={`${posClass} inset-0 z-5000 bg-black dark:bg-black flex flex-col animate-in fade-in duration-300`}
+                            onClick={() => {
+                                if (memoryJustDraggedRef.current) {
+                                    memoryJustDraggedRef.current = false;
+                                }
+                            }}
                     style={{
                         paddingTop: "env(safe-area-inset-top, 0)",
                         paddingBottom: "env(safe-area-inset-bottom, 0)",
@@ -616,7 +688,7 @@ export default function HomeClient() {
                     {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 0 ? (
                         <div
                             ref={memoryScrollRef}
-                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none cursor-grab"
                             style={{
                                 height: "calc(100vh - 120px)",
                                 marginTop: "60px",
@@ -624,6 +696,7 @@ export default function HomeClient() {
                                 WebkitOverflowScrolling: "touch",
                                 scrollBehavior: "smooth",
                             }}
+                            onMouseDown={handleMemoryGalleryMouseDown}
                             onScroll={(e) => {
                                 const container = e.currentTarget;
                                 const scrollLeft = container.scrollLeft;
@@ -658,7 +731,7 @@ export default function HomeClient() {
                                                       <div className="absolute inset-0 bg-black">
                                                           <Image
                                                               src={imageUrl}
-                                                              alt={`추억 사진 ${currentIdx + 1}`}
+                                                              alt={t("home.memoryPhotoAlt", { n: currentIdx + 1 })}
                                                               fill
                                                               className="object-cover"
                                                               sizes="100vw"
@@ -679,7 +752,7 @@ export default function HomeClient() {
                                           <div className="absolute inset-0 bg-black">
                                               <Image
                                                   src={imageUrl}
-                                                  alt={`추억 사진 ${idx + 1}`}
+                                                  alt={t("home.memoryPhotoAlt", { n: idx + 1 })}
                                                   fill
                                                   className="object-cover"
                                                   sizes="100vw"
@@ -774,7 +847,9 @@ export default function HomeClient() {
                         })()}
                     </div>
                 </div>
-            )}
+                    );
+                    return createPortal(modalContent, portalTarget);
+                })()}
         </>
     );
 }

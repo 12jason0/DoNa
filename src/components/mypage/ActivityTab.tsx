@@ -3,6 +3,8 @@
 import React, { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useLocale } from "@/context/LocaleContext";
+import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 import { UserBadgeItem, UserRewardRow } from "@/types/user";
 
 interface PaymentHistory {
@@ -23,6 +25,7 @@ interface ActivityTabProps {
 }
 
 const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSubTab = "badges" }: ActivityTabProps) => {
+    const { t } = useLocale();
     const [subTab, setSubTab] = useState<"badges" | "rewards" | "payments">(initialSubTab);
 
     // 🟢 initialSubTab prop이 변경되면 subTab 상태도 업데이트
@@ -31,15 +34,15 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
     }, [initialSubTab]);
 
     const subTabs = [
-        { id: "badges" as const, label: "뱃지", count: badges.length },
-        { id: "rewards" as const, label: "보상 내역", count: rewards.length },
-        { id: "payments" as const, label: "구매 내역", count: payments.length },
+        { id: "badges" as const, label: t("mypage.activityTab.badges"), count: badges.length },
+        { id: "rewards" as const, label: t("mypage.activityTab.rewards"), count: rewards.length },
+        { id: "payments" as const, label: t("mypage.activityTab.payments"), count: payments.length },
     ];
 
     return (
         <div className="space-y-6">
             {/* 서브 탭 네비게이션 */}
-            <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto no-scrollbar">
+            <HorizontalScrollContainer scrollMode="drag" className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto no-scrollbar">
                 <div className="flex space-x-2 min-w-max">
                     {subTabs.map((tab) => (
                         <button
@@ -56,13 +59,13 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                         </button>
                     ))}
                 </div>
-            </div>
+            </HorizontalScrollContainer>
 
             {/* 뱃지 탭 */}
             {subTab === "badges" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">내 뱃지</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t("mypage.activityTab.myBadges")}</h3>
                     </div>
                     {badges.length > 0 ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6">
@@ -114,8 +117,8 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                     <path d="M12 18v-2h-.5"/>
                                 </svg>
                             </div>
-                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">아직 획득한 뱃지가 없어요</div>
-                            <div className="text-gray-600 dark:text-gray-400">스토리를 완료하고 배지를 모아보세요!</div>
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("mypage.activityTab.noBadgesYet")}</div>
+                            <div className="text-gray-600 dark:text-gray-400">{t("mypage.activityTab.collectBadgesHint")}</div>
                         </div>
                     )}
                 </div>
@@ -125,7 +128,7 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
             {subTab === "rewards" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">보상 지급 내역</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t("mypage.activityTab.rewardsTitle")}</h3>
                     </div>
                     {rewards.length > 0 ? (
                         <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -135,14 +138,14 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                         <div className="font-semibold">
                                             {(() => {
                                                 const type = String(r.type || "").toLowerCase();
-                                                if (type === "checkin") return "7일 연속 출석 완료";
-                                                if (type === "escape_place_clear") return "미션 장소 클리어 보상";
-                                                if (type === "signup") return "회원가입 보상";
-                                                if (type === "ad_watch") return "광고 시청 보상";
-                                                if (type === "purchase") return "구매 보상";
-                                                if (type === "event") return "이벤트 보상";
-                                                if (type === "personal_memory_milestone") return "개인 추억 10개 달성";
-                                                if (type === "course_completion_milestone") return "코스 리뷰 작성 보상";
+                                                if (type === "checkin") return t("mypage.activityTab.reward7dayCheckin");
+                                                if (type === "escape_place_clear") return t("mypage.activityTab.rewardMissionClear");
+                                                if (type === "signup") return t("mypage.activityTab.rewardSignup");
+                                                if (type === "ad_watch") return t("mypage.activityTab.rewardAdWatch");
+                                                if (type === "purchase") return t("mypage.activityTab.rewardPurchase");
+                                                if (type === "event") return t("mypage.activityTab.rewardEvent");
+                                                if (type === "personal_memory_milestone") return t("mypage.activityTab.rewardMemory10");
+                                                if (type === "course_completion_milestone") return t("mypage.activityTab.rewardReview");
                                                 return r.type;
                                             })()}
                                         </div>
@@ -153,14 +156,14 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                     <div className="text-right">
                                         <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-sm md:text-base border border-emerald-200 dark:border-emerald-800/50">
                                             <span className="leading-none">+{r.amount}</span>
-                                            <span className="leading-none">열람권</span>
+                                            <span className="leading-none">{t("mypage.activityTab.ticket")}</span>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center text-gray-600 dark:text-gray-400 py-10">보상 내역이 없습니다.</div>
+                        <div className="text-center text-gray-600 dark:text-gray-400 py-10">{t("mypage.activityTab.noRewards")}</div>
                     )}
                 </div>
             )}
@@ -169,13 +172,13 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
             {subTab === "payments" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">구매 내역</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t("mypage.activityTab.paymentsTitle")}</h3>
                         {/* 🟢 환불 페이지 링크 추가 */}
                         <Link
                             href="/refund"
                             className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-500 flex items-center gap-1"
                         >
-                            환불 관리
+                            {t("mypage.activityTab.refundManage")}
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                             </svg>
@@ -203,21 +206,21 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                                 <div className="flex items-center gap-2 mb-2">
                                                     {isTicket ? (
                                                         <span className="px-2.5 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-bold">
-                                                            열람권
+                                                            {t("mypage.activityTab.ticket")}
                                                         </span>
                                                     ) : isSubscription ? (
                                                         <span className="px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold">
-                                                            구독권
+                                                            {t("mypage.activityTab.subscription")}
                                                         </span>
                                                     ) : null}
                                                     {isRefunded && (
                                                         <span className="px-2.5 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium">
-                                                            환불 완료
+                                                            {t("mypage.activityTab.refundDone")}
                                                         </span>
                                                     )}
                                                     {payment.status === "PAID" && (
                                                         <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
-                                                            결제 완료
+                                                            {t("mypage.activityTab.paymentDone")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -235,7 +238,7 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                                 </p>
                                                 {payment.method && (
                                                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                                        결제 수단: {payment.method === "CARD" ? "카드" : payment.method}
+                                                        {t("mypage.activityTab.paymentMethod")}: {payment.method === "CARD" ? t("mypage.activityTab.card") : payment.method}
                                                     </p>
                                                 )}
                                             </div>

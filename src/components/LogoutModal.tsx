@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
 
 interface LogoutModalProps {
     onClose: () => void;
@@ -11,6 +12,7 @@ interface LogoutModalProps {
 }
 
 export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const { containInPhone } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
     const [slideUp, setSlideUp] = useState(false);
@@ -37,6 +39,12 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                     }}
                 >
                     <div className="p-6 pt-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                        {!isLocaleReady ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                            </div>
+                        ) : (
+                        <>
                         <div className="text-center mb-6 tracking-tight">
                             <div className="flex justify-center mb-4">
                                 <svg
@@ -54,8 +62,8 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                                     />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">잠깐만요!</h3>
-                            <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight">정말 로그아웃 하시겠어요?</p>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{t("logoutModal.title")}</h3>
+                            <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight">{t("logoutModal.subtitle")}</p>
                         </div>
 
                         <div className="flex gap-3">
@@ -63,15 +71,17 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                                 onClick={onClose}
                                 className="flex-1 px-4 py-3.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-[15px] hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors tracking-tight"
                             >
-                                머물기
+                                {t("logoutModal.stay")}
                             </button>
                             <button
                                 onClick={onConfirm}
                                 className="flex-1 px-4 py-3.5 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-bold text-[15px] hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors tracking-tight"
                             >
-                                로그아웃
+                                {t("logoutModal.logout")}
                             </button>
                         </div>
+                        </>
+                        )}
                     </div>
                 </div>
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Lock, ChevronRight } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 
@@ -73,6 +73,34 @@ export default function MemoryCTA({
         return () => el.removeEventListener("wheel", handleWheel);
     }, [hasMemories, memories.length]);
 
+    // 마우스 클릭 후 드래그로 카드 넘기기
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartRef = useRef({ x: 0, scrollLeft: 0 });
+    const didDragRef = useRef(false);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollRef.current) return;
+        setIsDragging(true);
+        didDragRef.current = false;
+        dragStartRef.current = { x: e.clientX, scrollLeft: scrollRef.current.scrollLeft };
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !scrollRef.current) return;
+        const dx = e.clientX - dragStartRef.current.x;
+        if (Math.abs(dx) > 5) didDragRef.current = true;
+        scrollRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+    const handleMouseLeave = () => setIsDragging(false);
+
+    const handleCardClick = (memory: (typeof memories)[0]) => {
+        if (didDragRef.current) return; // 드래그로 넘긴 경우 클릭 무시
+        if (onMemoryClick) onMemoryClick(memory);
+        else onAction();
+    };
+
     // 비로그인: 슬림 알림바 (좌: 2줄 텍스트 / 우: 작은 pill 버튼)
     if (!isAuthenticated) {
         return (
@@ -105,9 +133,14 @@ export default function MemoryCTA({
 
     return (
         <section className="w-full bg-white/80 dark:bg-[#111b15] rounded-3xl border border-gray-100 dark:border-gray-800 shadow-lg p-6 flex flex-col gap-5">
-            {/* 헤더 영역: 한 줄 정렬 */}
+            {/* 헤더 영역: 한 줄 정렬, 클릭 시 이동 */}
             <div className="flex justify-between items-center mb-1">
-                <div className="flex-1">
+                <button
+                    type="button"
+                    onClick={onAction}
+                    disabled={isLoading}
+                    className="flex-1 text-left min-w-0 cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
+                >
                     <div className="flex items-center gap-2">
                         {hasMemories && (
                             <Lock
@@ -123,7 +156,7 @@ export default function MemoryCTA({
                     {!hasMemories && content.subtitle && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{content.subtitle}</p>
                     )}
-                </div>
+                </button>
                 {hasMemories && (
                     <button
                         type="button"
@@ -145,24 +178,23 @@ export default function MemoryCTA({
             {hasMemories && memories.length > 0 ? (
                 <div
                     ref={scrollRef}
-                    className="overflow-x-auto no-scrollbar -mx-2 px-2"
+                    className="overflow-x-auto no-scrollbar -mx-2 px-2 select-none"
                     style={{
                         WebkitOverflowScrolling: "touch",
                         scrollSnapType: "x mandatory",
                         touchAction: "pan-x",
+                        cursor: isDragging ? "grabbing" : "grab",
                     }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
                 >
                     <div className="flex gap-5 pb-2" style={{ width: "max-content", minWidth: "100%" }}>
                         {memories.map((memory, index) => (
                             <div
                                 key={memory.id || index}
-                                onClick={() => {
-                                    if (onMemoryClick) {
-                                        onMemoryClick(memory);
-                                    } else {
-                                        onAction();
-                                    }
-                                }}
+                                onClick={() => handleCardClick(memory)}
                                 className="shrink-0 w-[180px] bg-white dark:bg-[#0e1b16] border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98]"
                                 style={{
                                     scrollSnapAlign: "start",

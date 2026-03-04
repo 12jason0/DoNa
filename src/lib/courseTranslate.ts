@@ -9,8 +9,21 @@ type TranslateFn = (key: string, params?: Record<string, string | number>) => st
 
 /** DB concept → courseConcept 번역 키 매핑 (긴 키워드 먼저) */
 const CONCEPT_MAP: Array<{ keyword: string; key: string }> = [
-    { keyword: "맛집탐방", key: "food" },
-    { keyword: "인생샷", key: "photo" },
+    { keyword: "맛집탐방", key: "foodTour" },
+    { keyword: "인생샷", key: "photoSpot" },
+    { keyword: "감성데이트", key: "emotionalDate" },
+    { keyword: "실내데이트", key: "indoorDate" },
+    { keyword: "골목투어", key: "alley" },
+    { keyword: "공연·전시", key: "exhibition" },
+    { keyword: "문화예술", key: "art" },
+    { keyword: "술자리", key: "drinking" },
+    { keyword: "이색데이트", key: "unique" },
+    { keyword: "전통문화", key: "tradition" },
+    { keyword: "기타", key: "etc" },
+    { keyword: "카페투어", key: "cafeTour" },
+    { keyword: "테마파크", key: "themePark" },
+    { keyword: "핫플레이스", key: "hotPlace" },
+    { keyword: "힙스터", key: "hipster" },
     { keyword: "가성비", key: "cost" },
     { keyword: "액티비티", key: "activity" },
     { keyword: "로맨틱", key: "romantic" },
@@ -28,6 +41,14 @@ const CONCEPT_MAP: Array<{ keyword: string; key: string }> = [
     { keyword: "감성", key: "emotional" },
     { keyword: "데이트", key: "default" },
     { keyword: "카페", key: "cafe" },
+    { keyword: "전시관람", key: "exhibition" },
+    { keyword: "주점", key: "bar" },
+    { keyword: "핫플", key: "hotPlace" },
+    { keyword: "신상", key: "newArrival" },
+    { keyword: "기념일", key: "anniversary" },
+    { keyword: "친구", key: "friends" },
+    { keyword: "혼자", key: "solo" },
+    { keyword: "비오는날", key: "rainy" },
 ];
 
 /**

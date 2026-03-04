@@ -2608,9 +2608,7 @@ function EscapeIntroPageInner() {
             if (resCollage.status === 403) {
                 const data = await resCollage.json().catch(() => ({}));
                 if (data?.error === "ALBUM_LIMIT_REACHED") {
-                    setAlbumLimitMessage(
-                        data?.message || "추억 앨범 한도에 도달했어요. 업그레이드 후 더 많이 저장할 수 있어요."
-                    );
+                    setAlbumLimitMessage(data?.message ?? "");
                     setShowAlbumLimitModal(true);
                     return null;
                 }

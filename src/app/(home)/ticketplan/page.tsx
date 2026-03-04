@@ -11,5 +11,5 @@ export default function TicketPlanPage() {
         router.push("/");
     };
 
-    return <TicketPlans onClose={handleClose} isModal={false} />;
+    return <TicketPlans context="UPGRADE" onClose={handleClose} isModal={false} />;
 }

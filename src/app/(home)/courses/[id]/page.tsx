@@ -65,6 +65,7 @@ const getCourse = unstable_cache(
                         rating: true,
                         isPopular: true,
                         grade: true,
+                        isSelectionType: true,
                         createdAt: true,
                         updatedAt: true,
                         // 🔥 태그 데이터 추가
@@ -87,6 +88,8 @@ const getCourse = unstable_cache(
                                 course_id: true,
                                 place_id: true,
                                 order_index: true,
+                                segment: true,
+                                order_in_segment: true,
                                 estimated_duration: true,
                                 recommended_time: true,
                                 coaching_tip: true,
@@ -154,6 +157,7 @@ const getCourse = unstable_cache(
                 rating: Number(course.rating),
                 isPopular: course.isPopular,
                 grade: course.grade || "FREE",
+                isSelectionType: !!course.isSelectionType,
                 recommended_start_time: courseDetail?.recommended_start_time || "오후 2시",
                 season: courseDetail?.season || "사계절",
                 courseType: courseDetail?.course_type || "데이트",
@@ -172,6 +176,8 @@ const getCourse = unstable_cache(
                 },
                 coursePlaces: coursePlaces.map((cp: any) => ({
                     ...cp,
+                    segment: cp.segment ?? null,
+                    order_in_segment: cp.order_in_segment ?? null,
                     place: cp.place
                         ? {
                               ...cp.place,

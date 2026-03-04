@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import LoginModal from "./LoginModal";
-import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 
 type Props = {
     onStart: () => void;
@@ -93,7 +92,7 @@ export default function OnboardingSection({ onStart }: Props) {
                 <LoginModal
                     onClose={() => setShowLoginModal(false)}
                     next="/personalized-home"
-                    {...LOGIN_MODAL_PRESETS.recommendation}
+                    preset="recommendation"
                 />
             )}
         </>

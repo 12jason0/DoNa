@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface PasswordCheckModalProps {
     onClose: () => void;
@@ -9,6 +10,7 @@ interface PasswordCheckModalProps {
 }
 
 export default function PasswordCheckModal({ onClose, onConfirm, error }: PasswordCheckModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const [password, setPassword] = useState("");
 
     return (
@@ -16,9 +18,15 @@ export default function PasswordCheckModal({ onClose, onConfirm, error }: Passwo
         <div className="fixed inset-0 z-2000 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
             {/* 모달 박스 */}
             <div className="w-full max-w-[340px] bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-scaleIn">
+                {!isLocaleReady ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                    </div>
+                ) : (
+                <>
                 {/* 상단 헤더 (제목 + 닫기 버튼) */}
                 <div className="relative p-5 pb-0 text-center">
-                    <h3 className="text-lg font-bold text-gray-900">현재 비밀번호 확인</h3>
+                    <h3 className="text-lg font-bold text-gray-900">{t("passwordCheckModal.title")}</h3>
                     <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -40,12 +48,12 @@ export default function PasswordCheckModal({ onClose, onConfirm, error }: Passwo
                             {error}
                         </div>
                     )}
-                    <label className="block text-sm font-medium text-gray-500 mb-1.5 ml-1">현재 비밀번호</label>
+                    <label className="block text-sm font-medium text-gray-500 mb-1.5 ml-1">{t("passwordCheckModal.label")}</label>
                     <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="비밀번호를 입력해주세요"
+                        placeholder={t("passwordCheckModal.placeholder")}
                         className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                         autoFocus
                     />
@@ -57,7 +65,7 @@ export default function PasswordCheckModal({ onClose, onConfirm, error }: Passwo
                         onClick={onClose}
                         className="flex-1 py-3.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition-colors"
                     >
-                        취소
+                        {t("passwordCheckModal.cancel")}
                     </button>
                     <button
                         onClick={() => onConfirm(password)}
@@ -68,9 +76,11 @@ export default function PasswordCheckModal({ onClose, onConfirm, error }: Passwo
                                 : "bg-gray-300 cursor-not-allowed"
                         }`}
                     >
-                        다음
+                        {t("passwordCheckModal.next")}
                     </button>
                 </div>
+                </>
+                )}
             </div>
         </div>
     );

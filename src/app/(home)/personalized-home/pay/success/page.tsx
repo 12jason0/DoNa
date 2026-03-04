@@ -118,11 +118,12 @@ function PaymentSuccessContent() {
                     }
 
                     setStatus("success");
-                    // 🟢 코스 열람권 결제 시 해당 코스 페이지로 리다이렉트
+                    // 🟢 코스 열람권 결제 시 해당 코스 페이지로 즉시 리다이렉트 (FREE 유저 즉시 진입)
                     const redirectCourseId = data.courseId ?? (courseIdParam ? Number(courseIdParam) : null);
                     const redirectPath = redirectCourseId ? `/courses/${redirectCourseId}` : "/personalized-home";
                     setSuccessRedirectPath(redirectPath);
-                    setTimeout(() => router.replace(redirectPath), 3000);
+                    const delay = redirectCourseId ? 800 : 3000;
+                    setTimeout(() => router.replace(redirectPath), delay);
                 } else {
                     setStatus("error");
                     // 더 자세한 에러 메시지 표시
@@ -172,7 +173,9 @@ function PaymentSuccessContent() {
                         상품 결제가 정상적으로 완료되었습니다.
                         <br />
                         <span className="font-semibold text-emerald-500 text-sm">
-                            {successRedirectPath.startsWith("/courses/") ? "3초 후 코스 페이지로 이동합니다." : "3초 후 메인으로 자동 이동합니다."}
+                            {successRedirectPath.startsWith("/courses/")
+                                ? "곧 코스 페이지로 이동합니다."
+                                : "3초 후 메인으로 자동 이동합니다."}
                         </span>
                     </p>
                     <button

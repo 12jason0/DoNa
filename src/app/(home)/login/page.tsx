@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Header from "@/components/Header";
+import { useLocale } from "@/context/LocaleContext";
 import { fetchSession } from "@/lib/authClient";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import dynamic from "next/dynamic";
@@ -14,6 +14,7 @@ const AppleLoginButton = dynamic(() => import("@/components/AppleLoginButton"), 
 const Login = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { t, isLocaleReady } = useLocale();
     // next 파라미터가 없으면 메인 페이지(/)로 이동
     const nextParam = searchParams.get("next");
     const next = nextParam ? getSafeRedirectPath(nextParam, "/") : "/";
@@ -130,12 +131,12 @@ const Login = () => {
                 window.location.href = redirectPath;
                 return; // 🟢 [Fix]: 성공 시 바로 리턴하여 finally 블록의 setLoading(false) 실행 방지
             } else {
-                setError(data.error || "로그인에 실패했습니다.");
+                setError(data.error || t("authPage.login.errorLoginFailed"));
                 setLoading(false); // 🟢 [Fix]: 실패 시에만 loading 상태 해제
             }
         } catch (error) {
             console.error("로그인 오류:", error);
-            setError("로그인 중 오류가 발생했습니다.");
+            setError(t("authPage.login.errorGeneric"));
             setLoading(false); // 🟢 [Fix]: 에러 시에만 loading 상태 해제
         }
     };
@@ -178,7 +179,7 @@ const Login = () => {
             const redirectUri = `${window.location.origin}/api/auth/kakao/callback`; // 현재 도메인 기반으로 동적 설정
 
             if (!kakaoClientId) {
-                setError("카카오 클라이언트 ID가 설정되지 않았습니다.");
+                setError(t("authPage.login.errorKakaoClientId"));
                 setLoading(false);
                 return;
             }
@@ -218,7 +219,7 @@ const Login = () => {
 
                         const data = await response.json();
 
-                        if (!response.ok) throw new Error(data.error || "로그인 처리 실패");
+                        if (!response.ok) throw new Error(data.error || t("authPage.login.errorLoginProcess"));
 
                         // 🟢 [Fix]: 세션 캐시 강제 갱신 플래그 및 트리거 저장 (로컬/카카오 로그인 통합)
                         if (typeof window !== "undefined") {
@@ -249,7 +250,7 @@ const Login = () => {
                         cleanup();
                     }
                 } else if (type === "KAKAO_AUTH_ERROR") {
-                    setError(`인증 실패: ${authError}`);
+                    setError(t("authPage.login.errorAuthFailed", { error: authError ?? "" }));
                     cleanup();
                 }
             };
@@ -284,7 +285,7 @@ const Login = () => {
             );
 
             if (!popup) {
-                setError("팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.");
+                setError(t("authPage.login.errorPopupBlocked"));
                 cleanup();
                 return;
             }
@@ -296,7 +297,7 @@ const Login = () => {
                     // 팝업이 닫히고 나서 1초만 더 기다려보고, 그 때도 수신이 안 됐으면 에러 처리
                     setTimeout(() => {
                         if (!authReceived.current) {
-                            setError("카카오 로그인이 취소되었거나 인증에 실패했습니다.");
+                            setError(t("authPage.login.errorKakaoCanceled"));
                             cleanup();
                         }
                     }, 1000);
@@ -312,14 +313,20 @@ const Login = () => {
         <div className="min-h-screen bg-linear-to-br from-green-50 via-(--brand-cream) to-white dark:from-[#0f1710] dark:via-[#0f1710] dark:to-[#0f1710]">
             <main className="max-w-sm mx-auto px-4 py-8 pb-28 overflow-y-auto">
                 <div className="w-full bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 flex flex-col">
+                    {!isLocaleReady ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                        </div>
+                    ) : (
+                    <>
                     <div className="text-center mb-6">
                         <div className="mx-auto mb-2 w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                             <span className="text-2xl">🌿</span>
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 font-brand tracking-tight">
-                            로그인
+                            {t("authPage.login.title")}
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm">DoNa에 오신 것을 환영합니다</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">{t("authPage.login.welcome")}</p>
                     </div>
                     <div ref={scrollAreaRef}>
                         {message && (
@@ -340,7 +347,7 @@ const Login = () => {
                                     htmlFor="email"
                                     className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2"
                                 >
-                                    이메일
+                                    {t("authPage.login.email")}
                                 </label>
                                 <input
                                     type="email"
@@ -351,7 +358,7 @@ const Login = () => {
                                     required
                                     autoComplete="username"
                                     className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] dark:text-white focus:bg-white dark:focus:bg-[#0f1710] focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 focus:border-emerald-500 dark:focus:border-emerald-600"
-                                    placeholder="이메일을 입력하세요"
+                                    placeholder={t("authPage.login.emailPlaceholder")}
                                 />
                             </div>
 
@@ -360,7 +367,7 @@ const Login = () => {
                                     htmlFor="password"
                                     className="block text-sm font-medium text-gray-800 dark:text-gray-300 mb-2"
                                 >
-                                    비밀번호
+                                    {t("authPage.login.password")}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -372,7 +379,7 @@ const Login = () => {
                                         required
                                         autoComplete="current-password"
                                         className="w-full px-4 py-3 pr-12 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] dark:text-white focus:bg-white dark:focus:bg-[#0f1710] focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 focus:border-emerald-500 dark:focus:border-emerald-600"
-                                        placeholder="비밀번호를 입력하세요"
+                                        placeholder={t("authPage.login.passwordPlaceholder")}
                                         disabled={loading}
                                     />
                                     <button
@@ -380,7 +387,7 @@ const Login = () => {
                                         onClick={() => setShowPassword(!showPassword)}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition-colors"
                                         disabled={loading}
-                                        aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                                        aria-label={showPassword ? t("authPage.login.passwordHide") : t("authPage.login.passwordShow")}
                                     >
                                         {showPassword ? (
                                             <svg
@@ -426,18 +433,18 @@ const Login = () => {
                                 disabled={loading}
                                 className="w-full text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-600 tracking-tight"
                             >
-                                {loading ? "로그인 중..." : "로그인"}
+                                {loading ? t("authPage.login.submitting") : t("authPage.login.submit")}
                             </button>
                         </form>
 
                         <div className="mt-6 text-center">
                             <p className="text-gray-600 dark:text-gray-400">
-                                계정이 없으신가요?{" "}
+                                {t("authPage.login.noAccount")}{" "}
                                 <Link
                                     href={`/signup?next=${encodeURIComponent(next)}`}
                                     className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-500 font-medium"
                                 >
-                                    회원가입
+                                    {t("authPage.login.signup")}
                                 </Link>
                             </p>
                         </div>
@@ -449,7 +456,7 @@ const Login = () => {
                                 </div>
                                 <div className="relative flex justify-center text-sm">
                                     <span className="px-2 bg-white dark:bg-[#1a241b] text-gray-500 dark:text-gray-400">
-                                        또는
+                                        {t("authPage.login.or")}
                                     </span>
                                 </div>
                             </div>
@@ -465,7 +472,7 @@ const Login = () => {
                                 <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 3c5.799 0 10.5 3.402 10.5 7.5 0 4.098-4.701 7.5-10.5 7.5-.955 0-1.886-.1-2.777-.282L3.234 21l1.781-3.13C3.69 16.56 1.5 14.165 1.5 10.5 1.5 6.402 6.201 3 12 3z" />
                                 </svg>
-                                {loading ? "카카오톡 인증 중..." : "카카오톡으로 로그인"}
+                                {loading ? t("authPage.login.kakaoSubmitting") : t("authPage.login.kakaoSubmit")}
                             </button>
 
                             {/* Apple 로그인 버튼 (웹 및 모바일 앱 모두 지원) */}
@@ -491,7 +498,7 @@ const Login = () => {
                                         const data = await response.json();
 
                                         if (!response.ok) {
-                                            throw new Error(data.error || "Apple 로그인 처리 실패");
+                                            throw new Error(data.error || t("authPage.login.errorLoginProcess"));
                                         }
 
                                         // 🟢 쿠키 기반 인증: localStorage 제거 (쿠키는 서버에서 이미 설정됨)
@@ -511,30 +518,28 @@ const Login = () => {
                                         // 🟢 [Fix]: 성공 시 바로 리턴하여 finally 블록의 setLoading(false) 실행 방지
                                         return;
                                     } catch (err: any) {
-                                        setError(err.message || "Apple 로그인에 실패했습니다.");
+                                        setError(err.message || t("authPage.login.errorAppleFailed"));
                                         setLoading(false); // 🟢 [Fix]: 에러 시에만 loading 상태 해제
                                     }
                                 }}
                                 onError={(error: any) => {
-                                    // 🟢 [Fix]: 팝업이 열리기 전의 에러는 무시
                                     // ERR_REQUEST_CANCELED는 사용자가 취소한 경우이므로 에러 표시 안 함
                                     if (error.code === "ERR_REQUEST_CANCELED") {
                                         return;
                                     }
-                                    // 팝업 차단 메시지는 표시
-                                    if (error.message && error.message.includes("팝업이 차단")) {
+                                    // AppleLoginButton에서 이미 번역된 메시지 전달 (팝업 차단, 로그인 실패 등)
+                                    if (error?.message) {
                                         setError(error.message);
-                                        return;
-                                    }
-                                    // 실제 로그인 실패 에러만 표시 (팝업에서 온 에러)
-                                    if (error.message && !error.message.includes("팝업이 차단")) {
-                                        setError("Apple 로그인에 실패했습니다.");
+                                    } else {
+                                        setError(t("authPage.login.errorAppleFailed"));
                                     }
                                 }}
                                 disabled={loading}
                             />
                         </div>
                     </div>
+                    </>
+                    )}
                 </div>
             </main>
         </div>

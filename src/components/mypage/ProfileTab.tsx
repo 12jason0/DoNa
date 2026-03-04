@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { UserInfo, UserPreferences } from "@/types/user";
 import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
+import { useLocale } from "@/context/LocaleContext";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isIOS, isMobileApp, isAndroid } from "@/lib/platform";
 import DeleteUsersModal from "./DeleteUsersModal";
@@ -20,7 +21,8 @@ interface ProfileTabProps {
 
 // 🟢 구독 섹션 (권한: 구독 등급으로 판단)
 const MembershipSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
-    const displayTier = userInfo?.subscriptionTier || "FREE";
+    const { t } = useLocale();
+    const displayTier = (userInfo?.subscriptionTier || "FREE").toString().toUpperCase() as "FREE" | "BASIC" | "PREMIUM";
 
     // 🟢 [Fix]: 만료일이 있고 아직 유효한지 확인
     const hasValidSubscription =
@@ -34,7 +36,7 @@ const MembershipSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
             <div className="flex items-center gap-2 mb-6">
                 <div className="w-1.5 h-5 bg-[#7FCC9F] rounded-full" />
                 <h3 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-                    내 구독 · 이용권
+                    {t("mypage.profileTab.subscriptionTitle")}
                 </h3>
             </div>
 
@@ -51,10 +53,10 @@ const MembershipSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
                             </p>
                             <h4 className="text-base font-bold text-gray-900 dark:text-white">
                                 {displayTier === "PREMIUM"
-                                    ? "프리미엄 멤버십"
+                                    ? t("mypage.profileTab.membershipPremium")
                                     : displayTier === "BASIC"
-                                    ? "베이직 멤버십"
-                                    : "일반 회원"}
+                                    ? t("mypage.profileTab.membershipBasic")
+                                    : t("mypage.profileTab.membershipFree")}
                             </h4>
                             {userInfo?.subscriptionExpiresAt && displayTier !== "FREE" && hasValidSubscription && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
@@ -81,7 +83,7 @@ const MembershipSection = ({ userInfo }: { userInfo: UserInfo | null }) => {
                                 : "bg-emerald-500 hover:bg-emerald-600 text-white"
                         }`}
                     >
-                        {displayTier === "PREMIUM" ? "사용 중" : "업그레이드"}
+                        {displayTier === "PREMIUM" ? t("mypage.profileTab.inUse") : t("mypage.profileTab.upgrade")}
                     </button>
                 </div>
             </div>
@@ -97,6 +99,7 @@ const ProfileTab = ({
     onOpenPwModal,
     onLogout,
 }: ProfileTabProps) => {
+    const { t } = useLocale();
     // 기본 프로필 이미지
     const DEFAULT_PROFILE_IMG = getS3StaticUrl("profileLogo.png");
 
@@ -267,7 +270,7 @@ const ProfileTab = ({
 
             if (pushData !== null) {
                 setNotificationStatus("success");
-                setNotificationMessage(newSubscribedState ? "알림이 활성화되었습니다!" : " 알림이 비활성화되었습니다.");
+                setNotificationMessage(newSubscribedState ? t("mypage.profileTab.notificationOnSuccess") : t("mypage.profileTab.notificationOffSuccess"));
 
                 // 🟢 알림을 끌 때 BenefitConsentModal 숨김 설정 제거 (다음 홈페이지 접속 시 모달 표시)
                 if (!newSubscribedState && typeof window !== "undefined") {
@@ -298,7 +301,7 @@ const ProfileTab = ({
                 );
             }
             setNotificationStatus("error");
-            setNotificationMessage(error.message || "알림 설정 변경 중 오류가 발생했습니다.");
+            setNotificationMessage(error.message || t("mypage.profileTab.notificationError"));
             // 3초 후 에러 메시지 제거
             setTimeout(() => {
                 setNotificationMessage("");
@@ -309,7 +312,7 @@ const ProfileTab = ({
 
     return (
         <React.Fragment>
-            <div className="space-y-6 max-w-4xl mx-auto pb-10">
+            <div className="space-y-6 max-w-4xl mx-auto pb-28 lg:pb-32">
                 {/* ======================================================================
           1. 기본 정보 카드 (Profile Card)
       ====================================================================== */}
@@ -320,7 +323,7 @@ const ProfileTab = ({
                     <div className="flex items-center justify-between mb-6 relative z-10">
                         <div className="flex items-center gap-2.5">
                             <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                내 정보
+                                {t("mypage.tabProfile")}
                             </h3>
                             <span
                                 className={`shrink-0 px-3 py-1.5 text-xs md:text-sm font-bold rounded-full whitespace-nowrap border ${
@@ -331,14 +334,14 @@ const ProfileTab = ({
                                         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
                                 }`}
                             >
-                                {displayTier === "PREMIUM" ? "프리미엄" : displayTier === "BASIC" ? "베이직" : "무료"}
+                                {displayTier === "PREMIUM" ? t("mypage.profileTab.tierPremium") : displayTier === "BASIC" ? t("mypage.profileTab.tierBasic") : t("mypage.profileTab.tierFree")}
                             </span>
                         </div>
                         <button
                             onClick={onEditProfile}
                             className="px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-all flex items-center gap-1.5 tracking-tight"
                         >
-                            <span>수정</span>
+                            <span>{t("mypage.profileTab.edit")}</span>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -359,7 +362,7 @@ const ProfileTab = ({
                                         src={userInfo.profileImage || DEFAULT_PROFILE_IMG}
                                         loading="eager" // 🟢 프로필 이미지는 우선 로드 (활성 탭이므로)
                                         priority // 🟢 프로필 이미지는 priority 적용
-                                        alt={userInfo.name || "프로필"}
+                                        alt={userInfo.name || t("mypage.profileTab.profileAlt")}
                                         fill
                                         className="object-cover"
                                         sizes="(max-width: 768px) 64px, (max-width: 1200px) 128px, 256px"
@@ -390,7 +393,7 @@ const ProfileTab = ({
                                         </span>
                                     )}
                                     <span className="bg-gray-5 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-3 py-1.5 rounded-lg">
-                                        가입일 {userInfo.joinDate}
+                                        {t("mypage.profileTab.joinDate")} {userInfo.joinDate}
                                     </span>
                                 </div>
                             </div>
@@ -413,13 +416,13 @@ const ProfileTab = ({
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2 tracking-tight">
-                            나의 여행 취향
+                            {t("mypage.profileTab.myTravelPreferences")}
                         </h3>
                         <button
                             onClick={onEditPreferences}
                             className="px-5 py-2.5 text-sm font-bold text-white bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-all tracking-tight"
                         >
-                            취향 수정하기
+                            {t("mypage.profileTab.editPreferences")}
                         </button>
                     </div>
 
@@ -516,7 +519,7 @@ const ProfileTab = ({
       ====================================================================== */}
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <h3 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white mb-6 flex items-center gap-2 tracking-tight">
-                        계정 관리
+                        {t("mypage.profileTab.accountManagement")}
                     </h3>
 
                     <div className="flex flex-col space-y-3">
@@ -530,8 +533,8 @@ const ProfileTab = ({
                                     🔒
                                 </div>
                                 <span className="font-bold text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
-                                    비밀번호 변경
-                                </span>
+                                    {t("mypage.profileTab.changePassword")}
+                                    </span>
                             </div>
                             <span className="text-gray-300 dark:text-gray-600 group-hover:text-emerald-400 dark:group-hover:text-emerald-500 group-hover:translate-x-1 transition-transform">
                                 →
@@ -605,7 +608,7 @@ const ProfileTab = ({
                                                     : "text-gray-400 dark:text-gray-500"
                                             }`}
                                         >
-                                            알림 설정
+                                            {t("mypage.profileTab.notificationSettings")}
                                         </span>
                                         <span
                                             className={`text-xs font-medium transition-colors duration-300 ${
@@ -615,14 +618,14 @@ const ProfileTab = ({
                                             }`}
                                         >
                                             {!isMobileApp
-                                                ? "앱에서만 설정 가능"
+                                                ? t("mypage.profileTab.notificationAppOnlyDesc")
                                                 : notificationEnabled === null
-                                                ? "설정 불러오는 중..."
+                                                ? t("mypage.profileTab.notificationLoading")
                                                 : notificationStatus === "loading"
-                                                ? "처리 중..."
+                                                ? t("mypage.profileTab.notificationProcessing")
                                                 : notificationEnabled === true
-                                                ? "푸시 알림을 받는 중"
-                                                : "알림이 꺼져 있어요"}
+                                                ? t("mypage.profileTab.notificationOn")
+                                                : t("mypage.profileTab.notificationOff")}
                                         </span>
                                     </div>
                                 </div>
@@ -646,8 +649,8 @@ const ProfileTab = ({
                                         }`}
                                         role="switch"
                                         aria-checked={notificationEnabled}
-                                        aria-label="알림 설정"
-                                        title={!isMobileApp ? "앱에서만 설정 가능합니다" : ""}
+                                        aria-label={t("mypage.profileTab.notificationSettings")}
+                                        title={!isMobileApp ? t("mypage.profileTab.notificationAppOnlyTitle") : ""}
                                     >
                                         <span
                                             className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white dark:bg-gray-300 shadow-md ring-0 transition-all duration-300 ease-in-out flex items-center justify-center ${
@@ -695,8 +698,8 @@ const ProfileTab = ({
 
                                 {/* 2. 텍스트: 딱 한 줄로 끝내기 */}
                                 <span className="flex flex-col font-bold text-gray-800 dark:text-gray-200 text-[16px] group-hover:text-gray-900 dark:group-hover:text-white">
-                                    히든 맛집 제보하고{" "}
-                                    <span className="text-yellow-600 dark:text-yellow-500">커피 받기 ☕️</span>
+                                    {t("mypage.profileTab.kakaoCta")}{" "}
+                                    <span className="text-yellow-600 dark:text-yellow-500">{t("mypage.profileTab.kakaoCtaHighlight")}</span>
                                 </span>
                             </div>
 
@@ -741,8 +744,8 @@ const ProfileTab = ({
                                     </svg>
                                 </div>
                                 <span className="font-bold text-red-500 dark:text-red-400 group-hover:text-red-600 dark:group-hover:text-red-300">
-                                    로그아웃
-                                </span>
+                                    {t("mypage.profileTab.logout")}
+                                    </span>
                             </div>
                             <span className="text-red-200 dark:text-red-800 group-hover:text-red-400 dark:group-hover:text-red-500 group-hover:translate-x-1 transition-transform">
                                 →
@@ -777,7 +780,7 @@ const ProfileTab = ({
                                     </svg>
                                 </div>
                                 <span className="font-bold text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
-                                    계정 탈퇴
+                                    {t("mypage.profileTab.withdrawAccount")}
                                 </span>
                             </div>
                             <span className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500 group-hover:translate-x-1 transition-transform">
@@ -798,12 +801,10 @@ const ProfileTab = ({
                                         </div>
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                                        앱에서 설정해주세요
+                                        {t("profileAppRequiredModal.title")}
                                     </h3>
-                                    <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight leading-relaxed">
-                                        알림 설정은 모바일 앱에서만
-                                        <br />
-                                        가능합니다.
+                                    <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight leading-relaxed whitespace-pre-line">
+                                        {t("profileAppRequiredModal.desc")}
                                     </p>
                                 </div>
 
@@ -812,7 +813,7 @@ const ProfileTab = ({
                                         onClick={() => setShowAppRequiredModal(false)}
                                         className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                     >
-                                        닫기
+                                        {t("profileAppRequiredModal.close")}
                                     </button>
                                 </div>
                             </div>
@@ -841,7 +842,7 @@ const ProfileTab = ({
 
                                 if (data === null) {
                                     // 인증 실패
-                                    alert("로그인이 필요합니다.");
+                                    alert(t("courses.loginRequired"));
                                     return;
                                 }
 
@@ -857,21 +858,21 @@ const ProfileTab = ({
                                 }
 
                                 // 메인 페이지로 리디렉션
-                                alert("계정이 성공적으로 삭제되었습니다.");
+                                alert(t("profile.deleteSuccess"));
                                 window.location.href = "/";
                             } catch (error: any) {
                                 // 구독 중인 경우 특별 처리
                                 if (error.message && error.message.includes("구독")) {
                                     alert(error.message);
                                 } else {
-                                    alert("계정 삭제 중 오류가 발생했습니다.");
+                                    alert(t("profile.deleteError"));
                                 }
                             }
                         }}
                     />
                     {/* 사업자 정보 */}
                     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">사업자 정보</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("mypage.profileTab.businessInfo")}</h4>
                         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 leading-relaxed mb-4">
                             <p className="font-semibold text-gray-600 dark:text-gray-400">(주)두나 (DoNa)</p>
                             <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
@@ -887,28 +888,28 @@ const ProfileTab = ({
                                 prefetch={true}
                                 className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                             >
-                                서비스 소개
+                                {t("mypage.profileTab.footerServiceIntro")}
                             </Link>
                             <Link
                                 href="/help"
                                 prefetch={true}
                                 className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                             >
-                                이용 안내
+                                {t("mypage.profileTab.footerUsage")}
                             </Link>
                             <Link
                                 href="/privacy"
                                 prefetch={true}
                                 className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                             >
-                                개인정보처리방침
+                                {t("mypage.profileTab.footerPrivacy")}
                             </Link>
                             <Link
                                 href="/terms"
                                 prefetch={true}
                                 className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                             >
-                                이용약관
+                                {t("mypage.profileTab.footerTerms")}
                             </Link>
                         </div>
                     </div>

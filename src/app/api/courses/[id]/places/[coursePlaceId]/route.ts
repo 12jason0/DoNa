@@ -31,7 +31,7 @@ export async function PATCH(
         }
 
         const body = await request.json();
-        const { order_index, estimated_duration, recommended_time, coaching_tip, coaching_tip_free } = body || {};
+        const { order_index, segment, order_in_segment, estimated_duration, recommended_time, coaching_tip, coaching_tip_free } = body || {};
 
         // course_place가 해당 course에 속하는지 확인
         const existing = await (prisma as any).coursePlace.findFirst({
@@ -50,6 +50,8 @@ export async function PATCH(
             where: { id: course_place_id },
             data: {
                 ...(order_index !== undefined ? { order_index: Number(order_index) } : {}),
+                ...(segment !== undefined ? { segment: segment && String(segment).trim() ? String(segment).trim() : null } : {}),
+                ...(order_in_segment !== undefined ? { order_in_segment: order_in_segment === null || order_in_segment === "" ? null : Number(order_in_segment) } : {}),
                 ...(estimated_duration !== undefined
                     ? { estimated_duration: typeof estimated_duration === "number" ? estimated_duration : null }
                     : {}),

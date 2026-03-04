@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Gift, ChevronRight, X, Sparkles } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
 
 interface NotificationModalProps {
     onClose: () => void;
@@ -11,6 +12,7 @@ interface NotificationModalProps {
 
 const NotificationModal = ({ onClose }: NotificationModalProps) => {
     const router = useRouter();
+    const { t, isLocaleReady } = useLocale();
     const { containInPhone } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
 
@@ -26,7 +28,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === "Escape" && onClose()}
-            aria-label="알림 모달 닫기"
+            aria-label={t("notificationModal.closeModal")}
         >
             <div
                 className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
@@ -38,17 +40,23 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                     <button
                         onClick={onClose}
                         className="p-1.5 bg-gray-50 dark:bg-gray-800 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        aria-label="닫기"
+                        aria-label={t("common.close")}
                     >
                         <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     </button>
                 </div>
 
                 <div className="p-5 pt-2 text-center pb-6">
+                    {!isLocaleReady ? (
+                        <div className="flex items-center justify-center py-16">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                        </div>
+                    ) : (
+                    <>
                     {/* 프로모션 배지 */}
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full mb-4">
                         <Sparkles className="w-2.5 h-2.5" />
-                        <span>신규 회원 한정 혜택</span>
+                        <span>{t("notificationModal.badge")}</span>
                     </div>
 
                     {/* 아이콘 섹션 */}
@@ -61,15 +69,14 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
 
                     {/* 텍스트 섹션 */}
                     <h3 className="text-lg font-black text-gray-900 mb-2 tracking-tighter">
-                        지금 가입하면 <br />
-                        <span className="text-emerald-600">맞춤 데이트 코스</span>를 받아보세요
+                        {t("notificationModal.titleLine1")} <br />
+                        <span className="text-emerald-600">{t("notificationModal.titleHighlight")}</span>
+                        {t("notificationModal.titleLine2")}
                     </h3>
 
                     <div className="bg-emerald-50/50 rounded-xl p-3 mb-5 border border-emerald-100/50">
-                        <p className="text-gray-600 text-xs leading-relaxed">
-                            오늘의 데이트 추천 하루 1회 무료,
-                            <br />
-                            취향에 딱 맞는 코스를 추천해드려요!
+                        <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
+                            {t("notificationModal.desc")}
                         </p>
                     </div>
 
@@ -79,7 +86,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                             onClick={handleLoginRedirect}
                             className="group w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-base hover:bg-black transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
                         >
-                            <span>시작하기</span>
+                            <span>{t("notificationModal.cta")}</span>
                             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </button>
 
@@ -87,9 +94,11 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                             onClick={onClose}
                             className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 transition-colors"
                         >
-                            다음에 할게요
+                            {t("notificationModal.later")}
                         </button>
                     </div>
+                    </>
+                    )}
                 </div>
             </div>
         </div>

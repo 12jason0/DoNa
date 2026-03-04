@@ -7,9 +7,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { RECOMMENDATION_MESSAGES, UserTagType } from "@/constants/recommendations";
 import { CHIP_DEFINITIONS, type ChipId } from "@/constants/chipRules";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
-import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import LoginModal from "@/components/LoginModal";
 import { useLocale } from "@/context/LocaleContext";
+import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 
 interface Course {
     id: number;
@@ -27,7 +27,7 @@ export default function PersonalizedSection() {
     const { t } = useLocale();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
-    const [userName, setUserName] = useState("회원");
+    const [userName, setUserName] = useState(() => "");
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // 🟢 null = 아직 확인 중
     const [hasOnboardingData, setHasOnboardingData] = useState(false); // 온보딩 데이터 보유 여부
     const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
@@ -66,10 +66,10 @@ export default function PersonalizedSection() {
                 setIsLoggedIn(true);
                 // 🟢 세션에서 이름 추출 (프로필 API 호출 없이)
                 const sessionName = (session.user.name || session.user.nickname || "").trim();
-                setUserName(sessionName || "회원");
+                setUserName(sessionName || t("commonFallback.member"));
             } else {
                 setIsLoggedIn(false);
-                setUserName("회원");
+                setUserName(t("commonFallback.member"));
                 setHasOnboardingData(false);
             }
 
@@ -216,7 +216,7 @@ export default function PersonalizedSection() {
         const handleLogout = () => {
             setCourses([]);
             setWeekendCourses([]);
-            setUserName("회원");
+            setUserName(t("commonFallback.member"));
             setIsLoggedIn(false);
             setCurrentTagType("guest");
             setLoading(false);
@@ -246,11 +246,11 @@ export default function PersonalizedSection() {
                     <div className="h-6 bg-gray-200 rounded animate-pulse w-64 mb-2" />
                     <div className="h-4 bg-gray-200 rounded animate-pulse w-48" />
                 </div>
-                <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4">
+                <HorizontalScrollContainer className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4">
                     {[1, 2, 3].map((n) => (
                         <div key={n} className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse" />
                     ))}
-                </div>
+                </HorizontalScrollContainer>
             </section>
         );
     }
@@ -554,7 +554,7 @@ export default function PersonalizedSection() {
                 <LoginModal
                     onClose={() => setShowLoginModal(false)}
                     next={`/courses/${courses[0]?.id}`}
-                    {...LOGIN_MODAL_PRESETS.courseDetail}
+                    preset="courseDetail"
                 />
             )}
         </section>

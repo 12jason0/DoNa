@@ -543,7 +543,13 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             {isActuallyLoading && <CourseLoadingOverlay />}
             <section className="max-w-[500px] lg:max-w-[500px] mx-auto min-h-screen bg-white dark:bg-[#0f1710] border-x border-gray-100 dark:border-gray-800 flex flex-col">
                 {/* --- Header & Search Section --- */}
-                <div className="sticky top-[env(safe-area-inset-top,0)] z-40 bg-white dark:bg-[#0f1710] px-5 pt-[calc(env(safe-area-inset-top,0)+1rem)] pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0">
+                <div
+                    className={`sticky z-40 bg-white dark:bg-[#0f1710] px-5 pb-2 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] shrink-0 ${
+                        platform === "android"
+                            ? "top-0 pt-4"
+                            : "top-[env(safe-area-inset-top,0)] pt-[calc(env(safe-area-inset-top,0)+1rem)]"
+                    }`}
+                >
                     <div className="relative mb-3">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                             <svg

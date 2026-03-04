@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { SearchX, Sparkles } from "lucide-react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface NoSearchResultProps {
     keyword: string;
@@ -7,6 +10,8 @@ interface NoSearchResultProps {
 }
 
 export default function NoSearchResult({ keyword, onReset }: NoSearchResultProps) {
+    const { t } = useLocale();
+
     return (
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
             {/* 1. 아이콘 */}
@@ -16,13 +21,13 @@ export default function NoSearchResult({ keyword, onReset }: NoSearchResultProps
 
             {/* 2. 텍스트 */}
             <h3 className="text-lg font-bold text-gray-900 mb-2">
-                <span className="text-emerald-600">'{keyword}'</span> 검색 결과가 없어요
+                {t("noSearchResult.noResults", { keyword })}
             </h3>
 
             <p className="text-gray-500 text-sm mb-6 leading-relaxed max-w-xs mx-auto">
-                아직 등록되지 않은 테마나 지역인 것 같아요.
+                {t("noSearchResult.desc")}
                 <br />
-                빠른 시일 내에 멋진 코스로 채워둘게요! 🏃‍♂️
+                {t("noSearchResult.desc2")}
             </p>
 
             {/* 3. 버튼 */}
@@ -32,7 +37,7 @@ export default function NoSearchResult({ keyword, onReset }: NoSearchResultProps
                     href="/courses?sort=popular"
                     className="flex-1 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5"
                 >
-                    🔥 인기 코스
+                    🔥 {t("noSearchResult.popularCourses")}
                 </Link>
 
                 {/* ✅ [핵심 수정] onReset 함수가 있으면 '버튼'으로 작동하여 필터를 초기화함 */}
@@ -41,7 +46,7 @@ export default function NoSearchResult({ keyword, onReset }: NoSearchResultProps
                         onClick={onReset}
                         className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-all flex items-center justify-center gap-1.5"
                     >
-                        <Sparkles size={14} /> 전체 보기
+                        <Sparkles size={14} /> {t("noSearchResult.viewAll")}
                     </button>
                 ) : (
                     // onReset이 없는 경우(다른 페이지에서 쓸 때)를 대비해 Link 유지
@@ -49,7 +54,7 @@ export default function NoSearchResult({ keyword, onReset }: NoSearchResultProps
                         href="/courses"
                         className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-all flex items-center justify-center gap-1.5"
                     >
-                        <Sparkles size={14} /> 전체 보기
+                        <Sparkles size={14} /> {t("noSearchResult.viewAll")}
                     </Link>
                 )}
             </div>

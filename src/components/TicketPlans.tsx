@@ -5,55 +5,39 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X, Check, Sparkles, ChevronRight, ArrowLeft } from "lucide-react";
 import { isMobileApp } from "@/lib/platform";
+import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
 import Link from "next/link";
 
 const PLANS = [
     {
         id: "sub_basic",
         type: "sub",
-        name: "베이직 멤버십",
         price: 4900,
         originalPrice: 9900,
-        desc: "평생 할인 혜택이 적용되는 얼리버드 찬스!",
         badge: "EARLY BIRD",
-        features: [
-            "BASIC 등급 코스 활성화",
-            "나만의 추억 최대 10개 저장",
-            "FREE/BASIC 데이트 팁",
-            "광고 없이 쾌적한 이용",
-        ],
+        featuresCount: 4,
         tier: "BASIC",
     },
     {
         id: "sub_premium",
         type: "sub",
-        name: "프리미엄 멤버십",
         price: 9900,
-        desc: "베이직 혜택 + 남들 모르는 시크릿 스팟 공개",
         badge: "VIP",
-        features: [
-            "모든 코스 및 시크릿 스팟",
-            "나만의 추억 무제한 저장",
-            "모든 전문 데이트 팁 활성화",
-            "광고 없이 쾌적한 이용",
-            "베이직 모든 혜택 포함",
-        ],
+        featuresCount: 5,
         tier: "PREMIUM",
     },
     {
         id: "ticket_basic",
         type: "ticket",
-        name: "BASIC 코스 열람권",
         price: 990,
-        desc: "BASIC 등급 코스 1개 열람",
         tier: "BASIC",
     },
     {
         id: "ticket_premium",
         type: "ticket",
-        name: "PREMIUM 코스 열람권",
         price: 1900,
-        desc: "PREMIUM 등급 코스 1개 열람",
         tier: "PREMIUM",
     },
 ];
@@ -65,12 +49,14 @@ export interface TicketPlansProps {
     courseId?: number;
     /** 코스 등급: BASIC이면 ticket_premium 비활성화, PREMIUM이면 ticket_basic 비활성화 */
     courseGrade?: "BASIC" | "PREMIUM";
-    /** TIPS: 유료 팁 잠금 해제로 열림 | COURSE: 코스 열람으로 열림 → 카피(제목/옵션/버튼) 분기 */
-    context?: "TIPS" | "COURSE";
+    /** TIPS: 유료 팁 잠금 해제로 열림 | COURSE: 코스 열람으로 열림 | UPGRADE: 등급 업그레이드(구독권만, 티켓 숨김) */
+    context?: "TIPS" | "COURSE" | "UPGRADE";
 }
 
 const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context = "COURSE" }: TicketPlansProps) => {
     const router = useRouter();
+    const { t } = useLocale();
+    const { containInPhone, modalContainerRef } = useAppLayout();
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
 
@@ -82,6 +68,8 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
     // 🟢 클릭 시 바로 표시: 모달은 항상 클라이언트 클릭 후에만 렌더되므로 window 체크로 즉시 표시
     const [modalMounted, setModalMounted] = useState(() => typeof window !== "undefined");
     const [modalSlideUp, setModalSlideUp] = useState(false);
+    // 🟢 모바일 300ms 고스트 클릭 방지: 배경 클릭 활성화 지연 (모달 열린 직후 탭의 지연 클릭이 배경에 전달되는 현상 방지)
+    const [backdropReady, setBackdropReady] = useState(false);
     // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 정보
     const [revenueCatProducts, setRevenueCatProducts] = useState<Record<string, any>>({});
     // 🟢 [결제 속도]: 웹에서 토스 SDK·인스턴스 미리 로드
@@ -132,8 +120,8 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             const tier = (data?.user?.subscriptionTier || "FREE") as "FREE" | "BASIC" | "PREMIUM";
             setCurrentTier(tier);
 
-            // 🟢 선택한 멤버십이 이미 보유 등급이어서 구매 불가일 때만 첫 번째 티켓으로 전환
-            // (업그레이드 가능한 멤버십·열람권 선택은 그대로 유지)
+            // 🟢 선택한 멤버십이 이미 보유 등급이어서 구매 불가일 때 전환
+            // UPGRADE 컨텍스트: 구독권만 → 다음 구독 플랜으로. 그 외: 첫 번째 티켓으로
             const sid = selectedPlanIdRef.current;
             const sel = PLANS.find((p) => p.id === sid);
             const selectedSubIsDisabled =
@@ -142,14 +130,18 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 ((tier === "BASIC" && sel.tier === "BASIC") ||
                     (tier === "PREMIUM" && (sel.tier === "BASIC" || sel.tier === "PREMIUM")));
             if (selectedSubIsDisabled) {
-                const firstTicket = PLANS.find((p) => p.type === "ticket");
-                if (firstTicket) setSelectedPlanId(firstTicket.id);
+                if (context === "UPGRADE") {
+                    setSelectedPlanId(tier === "BASIC" ? "sub_premium" : "sub_basic");
+                } else {
+                    const firstTicket = PLANS.find((p) => p.type === "ticket");
+                    if (firstTicket) setSelectedPlanId(firstTicket.id);
+                }
             }
         } catch (error) {
             console.error("사용자 등급 조회 실패:", error);
             setCurrentTier("FREE");
         }
-    }, []);
+    }, [context]);
 
     // 🟢 컴포넌트 마운트 시 사용자 등급 확인
     useEffect(() => {
@@ -160,26 +152,49 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
     useEffect(() => {
         if (!isModal) return;
         document.body.style.overflow = "hidden";
+        setBackdropReady(false);
         const t = requestAnimationFrame(() => setModalSlideUp(true));
+        const timer = setTimeout(() => setBackdropReady(true), 400);
         return () => {
             document.body.style.overflow = "";
             cancelAnimationFrame(t);
+            clearTimeout(timer);
         };
     }, [isModal]);
 
-    // 🟢 [코스 컨텍스트] courseGrade에 맞는 티켓만 선택 가능, 기본 선택
+    // 🟢 [UPGRADE 컨텍스트] 등급 업그레이드: 구독권만 표시, FREE→sub_basic, BASIC→sub_premium
     useEffect(() => {
+        if (context === "UPGRADE") {
+            setSelectedPlanId(currentTier === "BASIC" ? "sub_premium" : "sub_basic");
+            return;
+        }
+        // 🟢 [코스 컨텍스트] courseGrade + currentTier에 맞는 기본 선택
+        // BASIC 유저는 ticket_basic( FREE 전용) 불가 → sub_premium 또는 ticket_premium만
         if (courseId != null && courseGrade) {
-            if (courseGrade === "BASIC") {
-                setSelectedPlanId("ticket_basic");
-            } else if (courseGrade === "PREMIUM") {
-                setSelectedPlanId("ticket_premium");
+            if (currentTier === "BASIC") {
+                if (courseGrade === "BASIC") {
+                    setSelectedPlanId("sub_premium");
+                } else {
+                    setSelectedPlanId("ticket_premium");
+                }
+            } else {
+                if (courseGrade === "BASIC") {
+                    setSelectedPlanId("ticket_basic");
+                } else {
+                    setSelectedPlanId("ticket_premium");
+                }
             }
         } else {
-            // 코스 컨텍스트 없으면 구독만 표시, 티켓 선택 시 sub_basic으로
             setSelectedPlanId((prev) => (prev === "ticket_basic" || prev === "ticket_premium" ? "sub_basic" : prev));
         }
-    }, [courseId, courseGrade]);
+    }, [context, courseId, courseGrade, currentTier]);
+
+    // 🟢 BASIC 등급 유저가 등급 업그레이드로 진입 시: sub_basic(비활성) 대신 sub_premium만 선택 가능하도록 기본값 설정
+    useEffect(() => {
+        if (currentTier === "BASIC" && selectedPlanId === "sub_basic") {
+            setSelectedPlanId("sub_premium");
+        }
+    }, [currentTier]);
 
     // 🟢 결제 성공 이벤트 감지하여 사용자 등급 자동 업데이트
     useEffect(() => {
@@ -248,7 +263,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             setLoading(false);
 
             if (success) {
-                alert("결제가 완료되었습니다!");
+                alert(t("ticketPlans.alerts.paymentComplete"));
                 onClose();
                 window.dispatchEvent(new CustomEvent("purchaseSuccess"));
                 // 🟢 코스 열람권 결제 시 해당 코스 페이지로 이동
@@ -256,8 +271,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     router.replace(`/courses/${resultCourseId}`);
                 }
             } else {
-                // 결제 실패
-                const errorMessage = error || "결제 처리 중 오류가 발생했습니다.";
+                const errorMessage = error || t("ticketPlans.alerts.paymentError");
                 alert(errorMessage);
             }
         };
@@ -267,23 +281,24 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
         return () => {
             window.removeEventListener("purchaseResult", handlePurchaseResult as EventListener);
         };
-    }, [onClose]);
+    }, [onClose, t]);
 
     // 🟢 RevenueCat 상품 정보로 PLANS 업데이트
     const updatedPlans = PLANS.map((plan) => {
         const revenueCatProduct = revenueCatProducts[plan.id];
+        const translatedName = t(`ticketPlans.plans.${plan.id}.name` as TranslationKeys);
+        const translatedDesc = t(`ticketPlans.plans.${plan.id}.desc` as TranslationKeys);
+        const basePlan = { ...plan, name: translatedName, desc: translatedDesc };
         if (revenueCatProduct && isMobileNative) {
-            // 가격을 숫자로 변환 (예: "₩7,900" -> 7900)
             const priceMatch = revenueCatProduct.priceString?.match(/[\d,]+/);
             const price = priceMatch ? parseInt(priceMatch[0].replace(/,/g, ""), 10) : plan.price;
-
             return {
-                ...plan,
-                name: revenueCatProduct.title || plan.name,
+                ...basePlan,
+                name: revenueCatProduct.title || translatedName,
                 price: price || plan.price,
             };
         }
-        return plan;
+        return basePlan;
     });
 
     const selectedPlan = updatedPlans.find((p) => p.id === selectedPlanId);
@@ -298,7 +313,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 (currentTier === "BASIC" && selectedPlan.tier === "BASIC") ||
                 (currentTier === "PREMIUM" && (selectedPlan.tier === "BASIC" || selectedPlan.tier === "PREMIUM"))
             ) {
-                alert("이미 이용 중인 멤버십입니다.");
+                alert(t("ticketPlans.alerts.alreadySubscribed"));
                 return;
             }
         }
@@ -315,7 +330,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             ]);
 
             if (!session.authenticated || !session.user) {
-                alert("로그인이 필요합니다.");
+                alert(t("ticketPlans.alerts.loginRequired"));
                 setLoading(false);
                 return;
             }
@@ -345,7 +360,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 if (intentRes?.intentId) {
                     intentId = intentRes.intentId;
                 } else {
-                    alert("결제 준비에 실패했습니다. 다시 시도해주세요.");
+                    alert(t("ticketPlans.alerts.paymentFailed"));
                     setLoading(false);
                     return;
                 }
@@ -417,36 +432,42 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             }
 
             // 🟢 모바일 앱이지만 ReactNativeWebView가 없는 경우 (예외 처리)
-            alert("결제를 진행할 수 없습니다. 앱을 최신 버전으로 업데이트해주세요.");
+            alert(t("ticketPlans.alerts.appUpdateRequired"));
             setLoading(false);
         } catch (error: any) {
             console.error("[인앱결제 에러]:", error);
-            const errorMessage = error?.message || "결제 처리 중 오류가 발생했습니다.";
+            const errorMessage = error?.message || t("ticketPlans.alerts.paymentError");
             alert(errorMessage);
             setLoading(false);
         }
     };
 
-    // 🟢 모달: Portal로 body에 렌더 (코스 카드 내부에서도 뷰포트 전체 커버)
+    // 🟢 모달: Portal로 body 또는 폰 컨테이너에 렌더 (웹 폰 목업에서는 폰 안으로)
     if (isModal) {
         if (!modalMounted || typeof window === "undefined") return null;
 
+        const posClass = containInPhone ? "absolute" : "fixed";
         const modalContent = (
             <>
-                {/* 배경: 맨 위, 흐림 처리, 전체 커버 */}
+                {/* 배경: 맨 위, 흐림 처리, 전체 커버 - 400ms 후에만 클릭 활성화 (모바일 고스트 클릭 방지) */}
                 <div
-                    className="fixed inset-0 z-9999 bg-black/70 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+                    className={`${posClass} inset-0 z-9999 bg-black/70 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300`}
                     onClick={onClose}
+                    style={{ pointerEvents: backdropReady ? "auto" : "none" }}
                     aria-hidden
                 />
-                {/* 하단 시트: 바닥에 붙여 위로 슬라이드 */}
+                {/* 하단 시트: 바닥에 붙여 위로 슬라이드, 폰 내부에서는 양쪽 끝에 붙임 */}
                 <div
-                    className="fixed left-0 right-0 bottom-0 z-10000 flex justify-center p-0 sm:p-5 sm:items-center"
+                    className={`${posClass} left-0 right-0 bottom-0 z-10000 flex ${containInPhone ? "p-0" : "justify-center p-0 sm:p-5 sm:items-center"}`}
                     style={{ pointerEvents: "auto" }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div
-                        className="bg-white dark:bg-[#1a241b] w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[80vh] rounded-t-3xl sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl transition-transform duration-200 ease-out"
+                        className={`bg-white dark:bg-[#1a241b] w-full flex flex-col overflow-hidden shadow-2xl transition-transform duration-200 ease-out ${
+                            containInPhone
+                                ? "h-[70vh] max-h-[70vh] rounded-t-3xl"
+                                : "max-w-md h-[90vh] sm:h-auto sm:max-h-[80vh] rounded-t-3xl sm:rounded-2xl"
+                        }`}
                         style={{
                             transform: modalSlideUp ? "translateY(0)" : "translateY(100%)",
                         }}
@@ -457,21 +478,21 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                 {context === "TIPS" && courseId != null ? (
                                     <>
                                         <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
-                                            실행 팁 열기
+                                            {t("ticketPlans.tipsTitle")}
                                         </h2>
                                         <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 font-medium">
-                                            커피 한 잔 값으로 시크릿 공략집을 열어요
+                                            {t("ticketPlans.tipsSubtitle")}
                                         </p>
                                     </>
                                 ) : (
                                     <>
                                         <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
-                                            두나 멤버십으로
+                                            {t("ticketPlans.mainTitle")}
                                             <br />
-                                            <span className="text-emerald-500 dark:text-emerald-400">데이트 고민 끝! ✨</span>
+                                            <span className="text-emerald-500 dark:text-emerald-400">{t("ticketPlans.mainHighlight")}</span>
                                         </h2>
                                         <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 font-medium">
-                                            합리적인 가격으로 즐기는 스마트한 데이트
+                                            {t("ticketPlans.mainSubtitle")}
                                         </p>
                                     </>
                                 )}
@@ -489,7 +510,8 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             </>
         );
 
-        return createPortal(modalContent, document.body);
+        const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
+        return createPortal(modalContent, portalTarget);
     }
 
     // 🟢 페이지 형태 렌더링
@@ -502,18 +524,18 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     className="text-gray-400 dark:text-gray-500 flex items-center gap-1 mb-6 hover:text-gray-900 dark:hover:text-gray-200 transition-all font-medium"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    홈으로
+                    {t("ticketPlans.backToHome")}
                 </Link>
 
                 {/* 상단 헤더 */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">
-                        두나 멤버십으로
+                        {t("ticketPlans.mainTitle")}
                         <br />
-                        <span className="text-emerald-500 dark:text-emerald-400">데이트 고민 끝! ✨</span>
+                        <span className="text-emerald-500 dark:text-emerald-400">{t("ticketPlans.mainHighlight")}</span>
                     </h1>
                     <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">
-                        합리적인 가격으로 즐기는 스마트한 데이트
+                        {t("ticketPlans.mainSubtitle")}
                     </p>
                 </div>
                 {renderContent()}
@@ -529,7 +551,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     {/* 구독 플랜 */}
                     <div className="space-y-4 pt-2">
                         <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
-                            Monthly Membership
+                            {t("ticketPlans.monthlyMembership")}
                         </h4>
                         {updatedPlans
                             .filter((p) => p.type === "sub")
@@ -562,7 +584,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                         )}
                                         {isDisabled && (
                                             <span className="absolute -top-3 left-5 px-3 py-1 rounded-full text-[10px] font-black text-white bg-emerald-500">
-                                                현재 이용 중
+                                                {t("ticketPlans.currentPlan")}
                                             </span>
                                         )}
                                         <div className="flex justify-between items-start">
@@ -588,7 +610,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                             : "text-gray-500 dark:text-gray-400"
                                                     }`}
                                                 >
-                                                    {isDisabled ? "이미 이용 중인 멤버십입니다" : plan.desc}
+                                                    {isDisabled ? t("ticketPlans.alreadySubscribed") : plan.desc}
                                                 </p>
                                                 <div className="mt-3 flex items-baseline gap-1.5">
                                                     <span
@@ -607,7 +629,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                     )}
                                                     {!isDisabled && (
                                                         <span className="text-xs font-bold text-gray-400 dark:text-gray-500">
-                                                            / 월
+                                                            {t("ticketPlans.perMonth")}
                                                         </span>
                                                     )}
                                                 </div>
@@ -619,25 +641,26 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                         : "bg-white/50 dark:bg-[#0f1710]/50 border-emerald-100/50 dark:border-emerald-900/30"
                                                 }`}
                                             >
-                                                {plan.features?.map((f, i) => (
-                                                    <li
-                                                        key={i}
-                                                        className={`text-[10px] flex items-center gap-1.5 font-semibold ${
-                                                            isDisabled
-                                                                ? "text-gray-400 dark:text-gray-600"
-                                                                : "text-gray-500 dark:text-gray-400"
-                                                        }`}
-                                                    >
-                                                        <Check
-                                                            className={`w-3 h-3 ${
+                                                {plan.featuresCount != null &&
+                                                    Array.from({ length: plan.featuresCount }, (_, i) => (
+                                                        <li
+                                                            key={i}
+                                                            className={`text-[10px] flex items-center gap-1.5 font-semibold ${
                                                                 isDisabled
-                                                                    ? "text-gray-300 dark:text-gray-700"
-                                                                    : "text-emerald-400 dark:text-emerald-500"
+                                                                    ? "text-gray-400 dark:text-gray-600"
+                                                                    : "text-gray-500 dark:text-gray-400"
                                                             }`}
-                                                        />{" "}
-                                                        {f}
-                                                    </li>
-                                                ))}
+                                                        >
+                                                            <Check
+                                                                className={`w-3 h-3 ${
+                                                                    isDisabled
+                                                                        ? "text-gray-300 dark:text-gray-700"
+                                                                        : "text-emerald-400 dark:text-emerald-500"
+                                                                }`}
+                                                            />{" "}
+                                                            {t(`ticketPlans.plans.${plan.id}.feature${i}` as TranslationKeys)}
+                                                        </li>
+                                                    ))}
                                             </ul>
                                         </div>
                                     </div>
@@ -645,28 +668,31 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                             })}
                     </div>
 
-                    {/* 티켓 플랜 (코스 컨텍스트 있을 때만 표시) */}
-                    {courseId != null && courseGrade && (
+                    {/* 티켓 플랜 (코스 컨텍스트 있을 때만 표시, UPGRADE는 구독권만) */}
+                    {courseId != null && courseGrade && context !== "UPGRADE" && (
                         <div className="space-y-4">
                             <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
-                                {context === "TIPS" ? "실행 가이드" : "코스 열람권"}
+                                {context === "TIPS" ? t("ticketPlans.executionGuide") : t("ticketPlans.courseTicket")}
                             </h4>
                             <div className="grid grid-cols-1 gap-3">
                                 {updatedPlans
                                     .filter((p) => p.type === "ticket")
                                     .map((plan) => {
-                                        // 🟢 코스 컨텍스트: BASIC 코스면 ticket_premium 비활성화, PREMIUM 코스면 ticket_basic 비활성화
+                                        // 🟢 코스 컨텍스트: BASIC 코스→ticket_premium 비활성, PREMIUM 코스→ticket_basic 비활성
+                                        // 🟢 BASIC 유저는 ticket_basic 비활성 (FREE 전용, 이미 BASIC 보유)
                                         const isTicketDisabled =
                                             courseGrade === "BASIC" && plan.id === "ticket_premium"
                                                 ? true
                                                 : courseGrade === "PREMIUM" && plan.id === "ticket_basic"
                                                   ? true
-                                                  : false;
+                                                  : currentTier === "BASIC" && plan.id === "ticket_basic"
+                                                    ? true
+                                                    : false;
                                         return (
                                             <div
                                                 key={plan.id}
                                                 onClick={() => !isTicketDisabled && setSelectedPlanId(plan.id)}
-                                                className={`p-4 rounded-xl border-2 transition-all flex justify-between items-center ${
+                                                className={`relative p-4 rounded-xl border-2 transition-all flex justify-between items-center ${
                                                     isTicketDisabled
                                                         ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 opacity-50 cursor-not-allowed"
                                                         : selectedPlanId === plan.id
@@ -674,6 +700,11 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                           : "border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-[#0f1710] cursor-pointer"
                                                 }`}
                                             >
+                                                {isTicketDisabled && currentTier === "BASIC" && plan.id === "ticket_basic" && (
+                                                    <span className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500">
+                                                        {t("ticketPlans.alreadyAvailable")}
+                                                    </span>
+                                                )}
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className={`w-2 h-2 rounded-full ${
@@ -688,7 +719,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                         className={`font-bold text-sm ${isTicketDisabled ? "text-gray-400 dark:text-gray-500" : "dark:text-white"}`}
                                                     >
                                                         {context === "TIPS" && plan.id === "ticket_basic"
-                                                            ? "실행 팁 + 코스 전체 열기"
+                                                            ? t("ticketPlans.tipsPlusCourse")
                                                             : plan.name}
                                                     </span>
                                                 </div>
@@ -708,7 +739,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4 pb-4">
                         <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center space-y-2">
                             <p className="font-bold text-gray-500 dark:text-gray-400 underline underline-offset-4 mb-1">
-                                법적 필수 안내
+                                {t("ticketPlans.legalNotice")}
                             </p>
                             <div className="flex justify-center gap-3 flex-wrap text-[11px]">
                                 <a
@@ -717,7 +748,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                     rel="noreferrer"
                                     className="text-emerald-500 dark:text-emerald-300 hover:underline hover:text-emerald-600"
                                 >
-                                    개인정보 처리방침
+                                    {t("ticketPlans.privacyPolicy")}
                                 </a>
                                 <a
                                     href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
@@ -725,24 +756,20 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                     rel="noreferrer"
                                     className="text-emerald-500 dark:text-emerald-300 hover:underline hover:text-emerald-600"
                                 >
-                                    이용 약관 (EULA)
+                                    {t("ticketPlans.eula")}
                                 </a>
                             </div>
                             <p className="dark:text-gray-400 text-[10.5px] leading-relaxed">
-                                구독은 현재 기간 종료 최소 24시간 전에 해지하지 않으면 자동으로 갱신됩니다. 구매 확인 시
-                                iTunes 계정으로 결제가 청구됩니다. 구독 관리 및 자동 갱신 해지는 구매 후 App Store 계정
-                                설정에서 할 수 있습니다.
+                                {t("ticketPlans.subscriptionRenewal")}
                             </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl text-[9px] text-gray-400 dark:text-gray-500 leading-relaxed text-center">
-                            <p className="font-bold text-gray-500 dark:text-gray-400 mb-1">두나(DoNa) 사업자 정보</p>
-                            <p className="dark:text-gray-400">대표: 오승용 | 사업자등록번호: 166-10-03081</p>
-                            <p className="dark:text-gray-400">주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                            <p className="dark:text-gray-400">
-                                통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacourse.com
-                            </p>
+                            <p className="font-bold text-gray-500 dark:text-gray-400 mb-1">{t("ticketPlans.businessInfo")}</p>
+                            <p className="dark:text-gray-400">{t("ticketPlans.businessDetails")}</p>
+                            <p className="dark:text-gray-400">{t("ticketPlans.businessAddress")}</p>
+                            <p className="dark:text-gray-400">{t("ticketPlans.businessContact")}</p>
                             <p className="mt-1 text-emerald-500 dark:text-emerald-400 font-bold font-sans">
-                                고객센터: 010-2271-9824
+                                {t("ticketPlans.customerCenter")}
                             </p>
                         </div>
                     </div>
@@ -759,8 +786,8 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     {selectedPlan?.type === "ticket" && (
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center mb-3">
                             {context === "TIPS" && selectedPlan?.id === "ticket_basic"
-                                ? "결제 후 코스 전체 + 실행 팁이 열려요"
-                                : "단건 열람권은 구매 즉시 콘텐츠가 제공되어 환불이 제한됩니다."}
+                                ? t("ticketPlans.ticketTip1")
+                                : t("ticketPlans.ticketTip2")}
                         </p>
                     )}
                     <button
@@ -769,13 +796,15 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                         className="w-full py-3.5 rounded-xl bg-gray-900 dark:bg-gray-800 text-white font-bold text-sm hover:bg-black dark:hover:bg-gray-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
                     >
                         {loading ? (
-                            "결제창을 불러오고 있어요..."
+                            t("ticketPlans.loadingPayment")
                         ) : (
                             <>
                                 <span>
                                     {context === "TIPS" && selectedPlan?.id === "ticket_basic"
-                                        ? `실행 팁 열기 · ${selectedPlan?.price?.toLocaleString() ?? 990}원`
-                                        : `${selectedPlan?.name} 시작하기`}
+                                        ? t("ticketPlans.openTips", {
+                                              price: (selectedPlan?.price ?? 990).toLocaleString(),
+                                          })
+                                        : t("ticketPlans.startPlan", { name: selectedPlan?.name ?? "" })}
                                 </span>
                                 <ChevronRight className="w-4 h-4 text-emerald-400 dark:text-emerald-500" />
                             </>

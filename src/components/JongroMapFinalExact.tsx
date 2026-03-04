@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { useLocale } from "@/context/LocaleContext";
 
 type FlowLike = {
     intro?: Array<{ ids?: number[] }>;
@@ -47,28 +48,20 @@ const nl2br = (text: string) => {
             </span>
         ));
 };
-// 화자 표기 포맷: 'Unknown' 등 비표준 값을 한국어로 정제
-const formatSpeakerName = (name?: string | null) => {
-    const s = String(name ?? "").trim();
-    if (!s || /^unknown$/i.test(s)) return "익명";
-    return s;
-};
-
 const getPlaceThemeKey = (p: any): string => {
     return String(p?.theme ?? p?.category ?? p?.type ?? "")
         .trim()
         .toLowerCase();
 };
 
-const THEME_LABEL_KO: Record<string, string> = {
-    footsteps: "발자취",
-    history: "역사",
-    time: "시간",
-    location: "장소",
-};
-
 export default function JongroMapFinalExact({ data }: Props) {
     const searchParams = useSearchParams();
+    const { t } = useLocale();
+    const formatSpeakerName = (name?: string | null) => {
+        const s = String(name ?? "").trim();
+        if (!s || /^unknown$/i.test(s)) return t("jongroMap.anonymous");
+        return s;
+    };
     const storyId = Number(searchParams.get("id")) || 0;
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
@@ -301,7 +294,7 @@ export default function JongroMapFinalExact({ data }: Props) {
             processNextLine(0, stories, missionsFromApi);
         } catch (e) {
             console.error(e);
-            alert("데이터를 불러오는데 실패했습니다.");
+            alert(t("jongroMap.alertLoadFailed"));
             setIsPlayingStory(false);
         }
     };
@@ -625,12 +618,22 @@ export default function JongroMapFinalExact({ data }: Props) {
             return rawPlaces.map((place, idx) => {
                 const assignedPos = (place as any)?.position ?? defaultPositions[idx % defaultPositions.length];
                 const themeKey = getPlaceThemeKey(place);
+                const themeLabelKey =
+                    themeKey === "footsteps"
+                        ? "jongroMap.footsteps"
+                        : themeKey === "history"
+                          ? "jongroMap.history"
+                          : themeKey === "time"
+                            ? "jongroMap.time"
+                            : themeKey === "location"
+                              ? "jongroMap.location"
+                              : null;
                 const labelKo =
-                    THEME_LABEL_KO[themeKey] ||
+                    (themeLabelKey ? t(themeLabelKey as "jongroMap.footsteps") : null) ||
                     (place as any)?.label ||
                     (place as any)?.category ||
                     (place as any)?.theme ||
-                    "미션";
+                    t("jongroMap.mission");
                 return {
                     id: String((place as any)?.id ?? idx),
                     name: (place as any)?.name,
@@ -644,7 +647,7 @@ export default function JongroMapFinalExact({ data }: Props) {
             });
         }
         return [];
-    }, [rawPlaces]);
+    }, [rawPlaces, t]);
 
     const displayTitle = tokens?.title || "1919 DM";
     const displaySubtitle = tokens?.subtitle || "익선동 리얼타임 미스터리";
@@ -745,7 +748,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                     <div className="map-overlay-content-exact">
                         <button
                             className="map-top-left-back-exact"
-                            aria-label="뒤로"
+                            aria-label={t("jongroMap.back")}
                             onClick={() => {
                                 setSelectedCategory(null);
                                 setSelectedPlace(null);
@@ -800,18 +803,15 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                 className="text-[#c8aa64] font-bold tracking-widest"
                                                 style={{ fontFamily: "'Eulyoo1945', serif" }}
                                             >
-                                                안내
+                                                {t("jongroClearedModal.title")}
                                             </span>
                                         </div>
                                         <div className="px-6 py-6 text-center">
                                             <p className="text-[#eaddcf] font-serif text-lg">
-                                                <span className="font-bold text-[#c8aa64]">
-                                                    {clearedModalPlaceName}
-                                                </span>
-                                                의 미션은 이미 완료되었습니다.
+                                                {t("jongroClearedModal.message", { place: clearedModalPlaceName })}
                                             </p>
                                             <p className="text-[#8b8070] mt-2 text-sm">
-                                                다른 랜턴을 선택해 진행해 주세요.
+                                                {t("jongroClearedModal.hint")}
                                             </p>
                                         </div>
                                         <div className="px-6 pb-6">
@@ -820,7 +820,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                 className="w-full py-3 rounded-lg bg-linear-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] font-extrabold tracking-widest border border-[#f5e6d3]/20 active:scale-95"
                                                 style={{ fontFamily: "'Eulyoo1945', serif" }}
                                             >
-                                                확인
+                                                {t("jongroClearedModal.confirm")}
                                             </button>
                                         </div>
                                     </div>
@@ -855,7 +855,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                     }}
                                                     title={p.name || "place"}
                                                 >
-                                                    미션 하러 가기
+                                                    {t("jongroClearedModal.goToMission")}
                                                 </button>
                                             ))}
                                         </div>
@@ -885,7 +885,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                 <div className="p-6 flex flex-col items-center text-center relative">
                                                     <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-black to-transparent pointer-events-none" />
                                                     <h3 className="text-2xl font-serif font-bold text-[#2a2620] mb-2 relative inline-block z-10">
-                                                        {(selectedPlace as any).name || "장소명 없음"}
+                                                        {(selectedPlace as any).name || t("jongroClearedModal.noPlaceName")}
                                                         <span className="absolute -bottom-1 left-0 w-full h-[2px] bg-[#c8aa64]/50"></span>
                                                     </h3>
                                                     <div className="mb-5">
@@ -1087,7 +1087,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                                         e.target.files
                                                                                     );
                                                                                     if (f.length > 2) {
-                                                                                        alert("최대 2장입니다.");
+                                                                                        alert(t("jongroMap.alertMaxPhotos"));
                                                                                         return;
                                                                                     }
                                                                                     setPhotoFiles(f as File[]);

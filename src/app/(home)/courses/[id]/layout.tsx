@@ -12,6 +12,7 @@ import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { useLocale } from "@/context/LocaleContext";
 
 // 🟢 [Optimization] 중복 API 호출 방지용 전역 변수 (Airtight Singleton Pattern)
 // 레이아웃과 상세 페이지가 동시에 즐겨찾기를 조회해도 서버에는 1번만 요청합니다.
@@ -193,6 +194,7 @@ const MapFallbackUI = ({ places }: { places: CoursePlace[] }) => (
 function CourseDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { t } = useLocale();
 
     if (!params || !params.id) {
         return (
@@ -273,7 +275,7 @@ function CourseDetailPage() {
                     data.map((r: any) => ({
                         id: r.id,
                         rating: r.rating,
-                        userName: r.user?.nickname || "익명",
+                        userName: r.user?.nickname || t("courses.anonymous"),
                         createdAt: r.createdAt,
                         content: r.comment,
                     }))
@@ -284,7 +286,7 @@ function CourseDetailPage() {
         } finally {
             setReviewsLoading(false);
         }
-    }, [courseId]);
+    }, [courseId, t]);
 
     // 🟢 사용자 등급 가져오기 함수
     const fetchUserTierData = async () => {

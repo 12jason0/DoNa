@@ -1,7 +1,25 @@
+"use client";
+
+import { memo, useMemo } from "react";
+import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
+
 /**
  * 페이지 전환 시 공통 로딩 UI (loading.tsx에서 사용)
  */
-export default function PageLoadingSpinner({ message = "두나가 코스를 찾고 있어요..." }: { message?: string }) {
+function PageLoadingSpinner({
+    messageKey,
+    message,
+}: {
+    messageKey?: Extract<TranslationKeys, `loading.${string}`>;
+    message?: string;
+}) {
+    const { t } = useLocale();
+    const displayMessage = useMemo(
+        () => (messageKey ? t(messageKey) : message ?? t("loading.findingCourses")),
+        [messageKey, message, t],
+    );
+
     return (
         <main className="min-h-screen bg-white/80 dark:bg-[#0f1710]/90 backdrop-blur-sm flex flex-col items-center justify-center fixed inset-0 z-9999 pointer-events-none">
             <div className="flex flex-col items-center gap-6 animate-fadeIn">
@@ -12,9 +30,11 @@ export default function PageLoadingSpinner({ message = "두나가 코스를 찾�
                 </div>
                 <div className="text-center space-y-1">
                     <h3 className="text-emerald-900 dark:text-emerald-400 font-extrabold text-lg tracking-tight">DoNa</h3>
-                    <p className="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-medium tracking-wide animate-pulse">{message}</p>
+                    <p className="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-medium tracking-wide animate-pulse">{displayMessage}</p>
                 </div>
             </div>
         </main>
     );
 }
+
+export default memo(PageLoadingSpinner);

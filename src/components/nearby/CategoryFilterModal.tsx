@@ -2,24 +2,25 @@
 "use client";
 
 import React from "react";
+import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
 
-const TAG_CATEGORIES = {
-    MANDATORY: {
-        label: "활동",
-        tags: ["맛집탐방", "카페투어", "주점", "액티비티", "전시관람"] as string[],
-    },
-    VIBE: {
-        label: "분위기",
-        tags: ["힙스터", "감성", "로맨틱", "인생샷", "핫플", "신상"] as string[],
-    },
-    CONTEXT: {
-        label: "상황",
-        tags: ["데이트", "기념일", "가성비", "친구", "혼자"] as string[],
-    },
-    CONDITION: {
-        label: "조건",
-        tags: ["실내", "야외", "야경", "비오는날"] as string[],
-    },
+const LABEL_KEYS: Record<
+    string,
+    "categoryFilterModal.activity" | "categoryFilterModal.vibe" | "categoryFilterModal.context" | "categoryFilterModal.condition"
+> = {
+    MANDATORY: "categoryFilterModal.activity",
+    VIBE: "categoryFilterModal.vibe",
+    CONTEXT: "categoryFilterModal.context",
+    CONDITION: "categoryFilterModal.condition",
+};
+
+// tags: DB/course_tags와 매칭용 한국어 키. 표시는 translateCourseConcept으로 번역됨
+const TAG_CATEGORIES: Record<string, { tags: string[] }> = {
+    MANDATORY: { tags: ["맛집탐방", "카페투어", "주점", "액티비티", "전시관람"] },
+    VIBE: { tags: ["힙스터", "감성", "로맨틱", "인생샷", "핫플", "신상"] },
+    CONTEXT: { tags: ["데이트", "기념일", "가성비", "친구", "혼자"] },
+    CONDITION: { tags: ["실내", "야외", "야경", "비오는날"] },
 };
 
 interface CategoryFilterModalProps {
@@ -41,11 +42,12 @@ export default function CategoryFilterModal({
     onApply,
     onReset,
 }: CategoryFilterModalProps) {
+    const { t, isLocaleReady } = useLocale();
     if (!isOpen) return null;
 
     return (
         <div
-            className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-5 animate-in fade-in duration-200"
+            className="fixed inset-0 z-9999 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-5 animate-in fade-in duration-200"
             onClick={onClose}
             role="presentation"
         >
@@ -53,9 +55,15 @@ export default function CategoryFilterModal({
                 className="bg-white dark:bg-[#1a241b] w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl border border-gray-100 dark:border-gray-800 relative flex flex-col max-h-[85vh] animate-slide-up"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="pt-3 pb-4 px-6 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+                {!isLocaleReady ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                    </div>
+                ) : (
+                <>
+                <div className="pt-3 pb-4 px-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
                     <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4" />
-                    <h3 className="text-[19px] font-bold text-gray-900 dark:text-white">필터 설정</h3>
+                    <h3 className="text-[19px] font-bold text-gray-900 dark:text-white">{t("categoryFilterModal.title")}</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
                     {/* course_tags 테이블의 태그를 카테고리별로 표시 */}
@@ -70,8 +78,7 @@ export default function CategoryFilterModal({
                         return (
                             <div key={key}>
                                 <div className="text-[15px] font-bold mb-3 text-gray-900 dark:text-white">
-                                    {category.label}{" "}
-                                    <span className="text-[12px] font-normal text-gray-500 dark:text-gray-400">({key})</span>
+                                    {t(LABEL_KEYS[key] ?? "categoryFilterModal.activity")}
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {displayTags.map((tag) => {
@@ -88,7 +95,7 @@ export default function CategoryFilterModal({
                                                         : "bg-white dark:bg-[#0f1710] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
                                                 }`}
                                             >
-                                                {tagName}
+                                                {translateCourseConcept(tagName, t as (k: string) => string)}
                                             </button>
                                         );
                                     })}
@@ -103,16 +110,18 @@ export default function CategoryFilterModal({
                             onClick={onReset}
                             className="flex-1 py-4 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-bold"
                         >
-                            초기화
+                            {t("categoryFilterModal.reset")}
                         </button>
                         <button
                             onClick={onApply}
                             className="flex-[2.5] py-4 rounded-lg bg-slate-900 dark:bg-slate-800 text-white font-bold"
                         >
-                            적용하기
+                            {t("categoryFilterModal.apply")}
                         </button>
                     </div>
                 </div>
+                </>
+                )}
             </div>
         </div>
     );

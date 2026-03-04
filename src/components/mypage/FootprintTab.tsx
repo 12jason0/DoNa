@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from "
 import Image from "@/components/ImageFallback";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
+import { useLocale } from "@/context/LocaleContext";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import { CasefileItem, CompletedCourse } from "@/types/user";
 // 🟢 [Fix]: 누락된 아이콘 컴포넌트 임포트 추가
 import { CheckCircle, Sparkles, MapPin, Zap, ChevronRight } from "lucide-react";
@@ -73,6 +75,49 @@ const CourseImageLoader = ({
     return <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📍</div>;
 };
 
+/** 🟢 가로/세로 극단 비율이면 object-cover, 보통 비율(0.5~2)이면 object-contain */
+const ASPECT_RATIO_MIN = 0.5;
+const ASPECT_RATIO_MAX = 2;
+
+const AspectAwareMemoryImage = memo(
+    ({
+        src,
+        alt,
+        className = "",
+        ...rest
+    }: {
+        src: string;
+        alt: string;
+        className?: string;
+        [key: string]: unknown;
+    }) => {
+        const [objectFit, setObjectFit] = useState<"cover" | "contain">("cover");
+
+        const handleLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+            const img = e.currentTarget;
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
+            if (!h || !w) return;
+            const ratio = w / h;
+            const fit = ratio >= ASPECT_RATIO_MIN && ratio <= ASPECT_RATIO_MAX ? "contain" : "cover";
+            setObjectFit(fit);
+        }, []);
+
+        const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
+        return (
+            <Image
+                src={src}
+                alt={alt}
+                fill
+                className={`${fitClass} ${className}`.trim()}
+                onLoad={handleLoad}
+                {...rest}
+            />
+        );
+    },
+);
+AspectAwareMemoryImage.displayName = "AspectAwareMemoryImage";
+
 interface FootprintTabProps {
     casefiles: CasefileItem[];
     completed: CompletedCourse[];
@@ -85,9 +130,11 @@ const FootprintTab = ({
     casefiles,
     completed,
     aiRecommendations = [],
-    userName = "회원",
+    userName: userNameProp = "회원",
     personalStories = [],
 }: FootprintTabProps) => {
+    const { t } = useLocale();
+    const userName = userNameProp === "회원" ? t("mypage.footprintTab.defaultUser") : userNameProp;
     const router = useRouter();
     const searchParams = useSearchParams();
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -114,6 +161,7 @@ const FootprintTab = ({
     const [showMemoryModal, setShowMemoryModal] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const memoryScrollRef = useRef<HTMLDivElement>(null);
+    const memoryDragHandlers = useDragScroll(memoryScrollRef, showMemoryModal);
 
     // 🟢 URL 파라미터에서 추억 ID를 읽어서 자동으로 모달 열기
     useEffect(() => {
@@ -179,9 +227,7 @@ const FootprintTab = ({
         }
         return () => {
             if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
-                (window as any).ReactNativeWebView.postMessage(
-                    JSON.stringify({ type: "dateCoursesModalClose" }),
-                );
+                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "dateCoursesModalClose" }));
             }
         };
     }, [anyModalOpen]);
@@ -191,6 +237,7 @@ const FootprintTab = ({
     const [touchEndX, setTouchEndX] = useState<number | null>(null);
     // 🟢 가로 스크롤 컨테이너 ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const dateCoursesDragHandlers = useDragScroll(scrollContainerRef, showDateCoursesModal);
 
     // 🟢 날짜별로 완료 항목 그룹화 (개인 추억 제외)
     const itemsByDate = useMemo(() => {
@@ -274,12 +321,37 @@ const FootprintTab = ({
         }
     }, [completed, aiRecommendations, personalStories, activeView]);
 
-    // 🟢 상수 배열을 컴포넌트 외부로 이동하여 재생성 방지
     const monthNames = useMemo(
-        () => ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
-        [],
+        () =>
+            [
+                t("mypage.footprintTab.month1"),
+                t("mypage.footprintTab.month2"),
+                t("mypage.footprintTab.month3"),
+                t("mypage.footprintTab.month4"),
+                t("mypage.footprintTab.month5"),
+                t("mypage.footprintTab.month6"),
+                t("mypage.footprintTab.month7"),
+                t("mypage.footprintTab.month8"),
+                t("mypage.footprintTab.month9"),
+                t("mypage.footprintTab.month10"),
+                t("mypage.footprintTab.month11"),
+                t("mypage.footprintTab.month12"),
+            ],
+        [t],
     );
-    const dayNames = useMemo(() => ["일", "월", "화", "수", "목", "금", "토"], []);
+    const dayNames = useMemo(
+        () =>
+            [
+                t("mypage.footprintTab.day0"),
+                t("mypage.footprintTab.day1"),
+                t("mypage.footprintTab.day2"),
+                t("mypage.footprintTab.day3"),
+                t("mypage.footprintTab.day4"),
+                t("mypage.footprintTab.day5"),
+                t("mypage.footprintTab.day6"),
+            ],
+        [t],
+    );
 
     const prevMonth = useCallback(() => {
         setCurrentMonth((prev) => {
@@ -527,7 +599,7 @@ const FootprintTab = ({
                 {/* 헤더 */}
                 <div className="pt-5 pl-5 pr-5 border-gray-50 dark:border-gray-800 bg-white dark:bg-[#1a241b] relative z-10">
                     <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">내 발자취</h4>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{t("mypage.footprintTab.myFootprint")}</h4>
                         {/* 🟢 서브 탭 (달력, 추억) - 오른쪽 정렬 */}
                         <div className="flex items-center gap-2">
                             <button
@@ -538,7 +610,7 @@ const FootprintTab = ({
                                         : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                 }`}
                             >
-                                달력
+                                {t("mypage.footprintTab.calendar")}
                             </button>
                             <button
                                 onClick={() => setActiveView("memories")}
@@ -548,19 +620,19 @@ const FootprintTab = ({
                                         : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                 }`}
                             >
-                                추억
+                                {t("mypage.footprintTab.memories")}
                             </button>
                         </div>
                     </div>
                     <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"></div>
                     {activeView === "calendar" && (
                         <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium">
-                            AI 추천으로 확인한 오늘의 데이트 코스가 자동으로 기록돼요
+                            {t("mypage.footprintTab.footprintCalendarHint")}
                         </p>
                     )}
                     {activeView === "memories" && (
                         <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium">
-                            나만의 소중한 추억들을 확인해보세요
+                            {t("mypage.footprintTab.footprintMemoriesHint")}
                         </p>
                     )}
                 </div>
@@ -654,7 +726,7 @@ const FootprintTab = ({
                                         d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
                                     />
                                 </svg>
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">완료 코스</span>
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("mypage.footprintTab.completedCourses")}</span>
                                 <span className="text-sm font-bold text-gray-900 dark:text-white ml-1">
                                     {completed.length}
                                 </span>
@@ -680,7 +752,7 @@ const FootprintTab = ({
                                     <path d="M9 11v2" />
                                 </svg>
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    추천 데이트
+                                    {t("mypage.footprintTab.recommendedDate")}
                                 </span>
                                 <span className="text-sm font-bold text-gray-900 dark:text-white ml-1">
                                     {aiRecommendations.length}
@@ -764,8 +836,13 @@ const FootprintTab = ({
                                                         setShowDateCoursesModal(true);
                                                     });
                                                     // 🟢 앱에 즉시 전달해 추천 데이트 모달 열릴 때 광고 숨김
-                                                    if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
-                                                        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "dateCoursesModalOpen" }));
+                                                    if (
+                                                        typeof window !== "undefined" &&
+                                                        (window as any).ReactNativeWebView
+                                                    ) {
+                                                        (window as any).ReactNativeWebView.postMessage(
+                                                            JSON.stringify({ type: "dateCoursesModalOpen" }),
+                                                        );
                                                     }
                                                 }
                                             }
@@ -902,10 +979,10 @@ const FootprintTab = ({
                                     </svg>
                                 </div>
                                 <p className="text-base text-gray-500 dark:text-gray-400 font-medium">
-                                    저장된 개인 추억이 없습니다.
+                                    {t("mypage.footprintTab.noPersonalMemories")}
                                 </p>
                                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                                    코스를 완료하고 추억을 남겨보세요!
+                                    {t("mypage.footprintTab.leaveMemoryHint")}
                                 </p>
                             </div>
                         ) : (
@@ -936,8 +1013,8 @@ const FootprintTab = ({
                                                 {monthKey}
                                             </h5>
 
-                                            {/* 추억 카드 리스트 - 개선된 UI */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* 추억 카드 리스트 - 1열 레이아웃 */}
+                                            <div className="grid grid-cols-1 gap-4">
                                                 {stories
                                                     .sort(
                                                         (a, b) =>
@@ -946,9 +1023,7 @@ const FootprintTab = ({
                                                     )
                                                     .map((story) => {
                                                         const date = new Date(story.createdAt);
-                                                        const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][
-                                                            date.getDay()
-                                                        ];
+                                                        const dayOfWeek = dayNames[date.getDay()];
 
                                                         return (
                                                             <div
@@ -962,14 +1037,13 @@ const FootprintTab = ({
                                                                 }}
                                                                 className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 group"
                                                             >
-                                                                {/* 이미지 영역 */}
+                                                                {/* 이미지 영역 - 비율에 따라 cover/contain 분기 */}
                                                                 {story.imageUrls?.[0] ? (
                                                                     <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-700">
-                                                                        <Image
+                                                                        <AspectAwareMemoryImage
                                                                             src={story.imageUrls[0]}
-                                                                            alt="개인 추억"
-                                                                            fill
-                                                                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                                            alt={t("mypage.footprintTab.personalMemory")}
+                                                                            className="group-hover:scale-105 transition-transform duration-300"
                                                                             sizes="(max-width: 768px) 100vw, 50vw"
                                                                         />
                                                                     </div>
@@ -989,7 +1063,7 @@ const FootprintTab = ({
 
                                                                     {/* 코스명 (메인) */}
                                                                     <div className="text-base font-bold mb-1 line-clamp-2 text-gray-900 dark:text-white">
-                                                                        {story.course?.title || "개인 추억"}
+                                                                        {story.course?.title || t("mypage.footprintTab.personalMemory")}
                                                                     </div>
                                                                     {/* 선택한 태그 (칩 형태, DoNa + 1개만) */}
                                                                     {story.tags &&
@@ -1084,7 +1158,8 @@ const FootprintTab = ({
                             {/* 1개: 중앙 고정 | 2개+: 가로 스크롤 + 오른쪽에 다른 코스 peek */}
                             <div
                                 ref={scrollContainerRef}
-                                className={`w-full flex-1 flex scrollbar-hide items-center min-h-0 ${isMulti ? "overflow-x-auto snap-x snap-mandatory" : "overflow-visible justify-center"}`}
+                                className={`w-full flex-1 flex scrollbar-hide items-center min-h-0 ${isMulti ? "overflow-x-auto snap-x snap-mandatory cursor-grab active:cursor-grabbing" : "overflow-visible justify-center"}`}
+                                {...(isMulti ? dateCoursesDragHandlers : {})}
                                 style={
                                     isMulti
                                         ? {
@@ -1170,17 +1245,17 @@ const FootprintTab = ({
                                                 <div className="p-6 bg-white dark:bg-[#1a241b] min-h-[220px] flex flex-col">
                                                     <div className="mb-4">
                                                         <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-[0.2em] uppercase mb-1 block">
-                                                            Private Archiving
+                                                            {t("mypage.footprintTab.privateArchiving")}
                                                         </span>
                                                         <h4 className="text-xl font-black text-gray-900 dark:text-white leading-tight tracking-tighter line-clamp-2">
-                                                            {course?.title || item.title || "코스"}
+                                                            {course?.title || item.title || t("mypage.footprintTab.course")}
                                                         </h4>
                                                     </div>
 
                                                     <p className="text-gray-500 dark:text-gray-400 text-[13px] leading-snug mb-5 line-clamp-3 font-medium">
                                                         {course?.description ||
                                                             item.description ||
-                                                            "저장된 코스 상세 내역입니다."}
+                                                            t("mypage.footprintTab.savedCourseDesc")}
                                                     </p>
 
                                                     <div className="grid grid-cols-2 gap-3 mb-6">
@@ -1188,22 +1263,22 @@ const FootprintTab = ({
                                                             <div className="flex items-center gap-1.5 mb-0.5">
                                                                 <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                                                 <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase">
-                                                                    Region
+                                                                    {t("mypage.footprintTab.region")}
                                                                 </span>
                                                             </div>
                                                             <span className="text-xs font-black text-gray-800 dark:text-gray-200">
-                                                                {course?.region || item.region || "서울"}
+                                                                {course?.region || item.region || t("mypage.footprintTab.regionSeoul")}
                                                             </span>
                                                         </div>
                                                         <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-100/50 dark:border-gray-700">
                                                             <div className="flex items-center gap-1.5 mb-0.5">
                                                                 <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                                                 <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase">
-                                                                    Concept
+                                                                    {t("mypage.footprintTab.concept")}
                                                                 </span>
                                                             </div>
                                                             <span className="text-xs font-black text-gray-800 dark:text-gray-200">
-                                                                {course?.concept || item.concept || "데이트"}
+                                                                {course?.concept || item.concept || t("mypage.footprintTab.conceptDate")}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -1217,13 +1292,13 @@ const FootprintTab = ({
                                                                 console.error(
                                                                     "[FootprintTab] 가로 스크롤 모달: 코스 ID가 없어 이동할 수 없습니다.",
                                                                 );
-                                                                alert("코스 정보를 불러올 수 없습니다.");
+                                                                alert(t("mypage.footprintTab.alertLoadFailed"));
                                                             }
                                                         }}
                                                         disabled={!courseId}
                                                         className="w-full py-3 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-sm hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
-                                                        <span>코스 다시보기</span>
+                                                        <span>{t("mypage.footprintTab.viewCourse")}</span>
                                                         <ChevronRight className="w-3.5 h-3.5 opacity-50" />
                                                     </button>
                                                 </div>
@@ -1236,7 +1311,7 @@ const FootprintTab = ({
                             {/* 안내 텍스트: 2개 이상일 때만 표시 */}
                             {isMulti && (
                                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 dark:text-white/50 text-xs font-bold animate-pulse z-10 pointer-events-none">
-                                    옆으로 밀어서 더보기 →
+                                    {t("mypage.footprintTab.swipeMore")}
                                 </div>
                             )}
                         </div>
@@ -1256,7 +1331,7 @@ const FootprintTab = ({
                             <div className="flex flex-col items-center justify-center py-16">
                                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 dark:border-emerald-500 mb-3"></div>
                                 <p className="text-gray-400 dark:text-gray-500 text-xs font-bold tracking-tighter">
-                                    아카이브 로드 중...
+                                    {t("mypage.footprintTab.archiveLoading")}
                                 </p>
                             </div>
                         ) : courseDetail ? (
@@ -1304,7 +1379,7 @@ const FootprintTab = ({
                                 <div className="p-6 bg-white dark:bg-[#1a241b]">
                                     <div className="mb-4">
                                         <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-[0.2em] uppercase mb-1 block">
-                                            Private Archiving
+                                            {t("mypage.footprintTab.privateArchiving")}
                                         </span>
                                         <h4 className="text-xl font-black text-gray-900 dark:text-white leading-tight tracking-tighter">
                                             {courseDetail.title}
@@ -1312,7 +1387,7 @@ const FootprintTab = ({
                                     </div>
 
                                     <p className="text-gray-500 dark:text-gray-400 text-[13px] leading-snug mb-5 line-clamp-3 font-medium">
-                                        {courseDetail.description || "저장된 코스 상세 내역입니다."}
+                                        {courseDetail.description || t("mypage.footprintTab.savedCourseDesc")}
                                     </p>
 
                                     {/* 정보 그리드: 간격 축소 */}
@@ -1321,22 +1396,22 @@ const FootprintTab = ({
                                             <div className="flex items-center gap-1.5 mb-0.5">
                                                 <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                                 <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase">
-                                                    Region
+                                                    {t("mypage.footprintTab.region")}
                                                 </span>
                                             </div>
                                             <span className="text-xs font-black text-gray-800 dark:text-gray-200">
-                                                {courseDetail.region || "서울"}
+                                                {courseDetail.region || t("mypage.footprintTab.regionSeoul")}
                                             </span>
                                         </div>
                                         <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-100/50 dark:border-gray-700">
                                             <div className="flex items-center gap-1.5 mb-0.5">
                                                 <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                                 <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase">
-                                                    Concept
+                                                    {t("mypage.footprintTab.concept")}
                                                 </span>
                                             </div>
                                             <span className="text-xs font-black text-gray-800 dark:text-gray-200">
-                                                {courseDetail.concept || "데이트"}
+                                                {courseDetail.concept || t("mypage.footprintTab.conceptDate")}
                                             </span>
                                         </div>
                                     </div>
@@ -1349,13 +1424,13 @@ const FootprintTab = ({
                                                 router.push(`/courses/${courseDetail.id}`);
                                             } else {
                                                 console.error("[FootprintTab] 코스 ID가 없어 이동할 수 없습니다.");
-                                                alert("코스 정보를 불러올 수 없습니다.");
+                                                alert(t("mypage.footprintTab.alertLoadFailed"));
                                             }
                                         }}
                                         disabled={!courseDetail?.id}
                                         className="w-full py-3 bg-gray-900 dark:bg-gray-800 text-white rounded-xl font-black text-sm hover:bg-black dark:hover:bg-gray-700 transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <span>코스 다시보기</span>
+                                        <span>코스 보러가기</span>
                                         <ChevronRight className="w-3.5 h-3.5 opacity-50" />
                                     </button>
                                 </div>
@@ -1452,7 +1527,8 @@ const FootprintTab = ({
                     {selectedMemory.imageUrls && selectedMemory.imageUrls.length > 0 ? (
                         <div
                             ref={memoryScrollRef}
-                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide cursor-grab active:cursor-grabbing"
+                            {...memoryDragHandlers}
                             style={{
                                 height: "calc(100vh - 120px)", // 상하단 여백 60px씩
                                 marginTop: "60px",
@@ -1495,15 +1571,13 @@ const FootprintTab = ({
                                                       className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
                                                       style={{ height: "calc(100vh - 120px)" }}
                                                   >
-                                                      {/* 사진 - 가로 꽉 채우기 */}
+                                                      {/* 사진 - 비율에 따라 cover/contain 분기 */}
                                                       <div className="absolute inset-0 bg-black">
-                                                          <Image
+                                                          <AspectAwareMemoryImage
                                                               src={imageUrl}
-                                                              alt={`추억 사진 ${currentIdx + 1}`}
-                                                              fill
-                                                              className="object-cover"
+                                                              alt={t("mypage.footprintTab.memoryPhotoAlt", { index: String(currentIdx + 1) })}
                                                               sizes="100vw"
-                                                              priority={currentIdx < 2}
+                                                              {...(currentIdx < 2 ? { priority: true } : {})}
                                                           />
                                                       </div>
                                                   </div>
@@ -1518,15 +1592,13 @@ const FootprintTab = ({
                                           className="shrink-0 w-full h-full snap-center flex items-center justify-center relative"
                                           style={{ height: "calc(100vh - 120px)" }}
                                       >
-                                          {/* 사진 - 가로 꽉 채우기 */}
+                                          {/* 사진 - 비율에 따라 cover/contain 분기 */}
                                           <div className="absolute inset-0 bg-black">
-                                              <Image
+                                              <AspectAwareMemoryImage
                                                   src={imageUrl}
-                                                  alt={`추억 사진 ${idx + 1}`}
-                                                  fill
-                                                  className="object-cover"
+                                                  alt={t("mypage.footprintTab.memoryPhotoAlt", { index: String(idx + 1) })}
                                                   sizes="100vw"
-                                                  priority={idx < 2}
+                                                  {...(idx < 2 ? { priority: true } : {})}
                                               />
                                           </div>
                                       </div>
@@ -1568,7 +1640,7 @@ const FootprintTab = ({
                         <div className="text-white text-sm font-medium mb-2">
                             {(() => {
                                 const date = new Date(selectedMemory.createdAt);
-                                const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+                                const dayOfWeek = dayNames[date.getDay()];
                                 return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
                             })()}
                         </div>

@@ -8,6 +8,7 @@ import Image from "@/components/ImageFallback";
 import { Favorite, CompletedCourse, CasefileItem } from "@/types/user";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
 import { useLocale } from "@/context/LocaleContext";
+import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 import { translateCourseConcept } from "@/lib/courseTranslate";
 
 // 🟢 코스 이미지 로더 컴포넌트 (이미지가 없을 때 백그라운드에서 로드)
@@ -100,16 +101,16 @@ const RecordsTab = ({
     }, []);
 
     const subTabs = [
-        { id: "favorites" as const, label: "보관함", count: favorites.length },
-        { id: "saved" as const, label: "오늘의 데이트 추천", count: savedCourses.length },
-        { id: "completed" as const, label: "완료 코스", count: completed.length },
-        { id: "casefiles" as const, label: "사건 파일", count: casefiles.length },
+        { id: "favorites" as const, label: t("mypage.recordsTab.favorites"), count: favorites.length },
+        { id: "saved" as const, label: t("mypage.recordsTab.todayRecommend"), count: savedCourses.length },
+        { id: "completed" as const, label: t("mypage.recordsTab.completedCourses"), count: completed.length },
+        { id: "casefiles" as const, label: t("mypage.recordsTab.casefiles"), count: casefiles.length },
     ];
 
     return (
         <div className="space-y-6">
             {/* 서브 탭 네비게이션 */}
-            <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto no-scrollbar">
+            <HorizontalScrollContainer scrollMode="drag" className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto no-scrollbar">
                 <div className="flex space-x-2 min-w-max">
                     {subTabs.map((tab) => (
                         <button
@@ -125,13 +126,13 @@ const RecordsTab = ({
                         </button>
                     ))}
                 </div>
-            </div>
+            </HorizontalScrollContainer>
 
             {/* 보관함 (Favorites) */}
             {subTab === "favorites" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6 tracking-tight">
-                        내 여행 보관함
+                        {t("mypage.recordsTab.myArchive")}
                     </h3>
                     {favorites.length > 0 ? (
                         <div className="space-y-6">
@@ -181,8 +182,8 @@ const RecordsTab = ({
                                     <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>
                                 </svg>
                             </div>
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">찜한 코스가 없어요</h4>
-                            <p className="text-gray-600 dark:text-gray-400 mb-4">마음에 드는 코스를 찜해보세요!</p>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t("mypage.recordsTab.noFavorites")}</h4>
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">{t("mypage.recordsTab.favoritesHint")}</p>
                             <button
                                 onClick={() => {
                                     router.prefetch("/courses"); // 🟢 성능 최적화: prefetch 추가
@@ -190,7 +191,7 @@ const RecordsTab = ({
                                 }}
                                 className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors cursor-pointer"
                             >
-                                코스 둘러보기
+                                {t("mypage.recordsTab.browseCourses")}
                             </button>
                         </div>
                     )}
@@ -201,7 +202,7 @@ const RecordsTab = ({
             {subTab === "saved" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6 tracking-tight">
-                        AI가 추천해준 나만의 코스
+                        {t("mypage.recordsTab.aiRecommendedCourses")}
                     </h3>
                     {savedCourses.length > 0 ? (
                         <div className="space-y-6">
@@ -245,7 +246,7 @@ const RecordsTab = ({
                                 onClick={() => router.push("/personalized-home")}
                                 className="px-6 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer tracking-tight"
                             >
-                                오늘의 데이트 추천 받으러 가기
+                                {t("mypage.recordsTab.getRecommendation")}
                             </button>
                         </div>
                     )}
@@ -256,7 +257,7 @@ const RecordsTab = ({
             {subTab === "completed" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">완료한 코스</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t("mypage.recordsTab.completedCoursesTitle")}</h3>
                     </div>
                     {completed.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -350,13 +351,13 @@ const RecordsTab = ({
                                     <path d="m9 10 2 2 4-4"/>
                                 </svg>
                             </div>
-                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">아직 완료한 코스가 없어요</div>
-                            <div className="text-gray-600 dark:text-gray-400 mb-4">코스를 완료하면 여기에서 확인할 수 있어요</div>
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("mypage.recordsTab.noCompletedYet")}</div>
+                            <div className="text-gray-600 dark:text-gray-400 mb-4">{t("mypage.recordsTab.completedHint")}</div>
                             <button
                                 onClick={() => router.push("/courses")}
                                 className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors cursor-pointer"
                             >
-                                코스 둘러보기
+                                {t("mypage.recordsTab.browseCourses")}
                             </button>
                         </div>
                     )}
@@ -367,7 +368,7 @@ const RecordsTab = ({
             {subTab === "casefiles" && (
                 <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-100 dark:border-gray-800 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">완료한 사건 파일</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t("mypage.recordsTab.completedCasefiles")}</h3>
                     </div>
                     {casefiles.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -416,9 +417,9 @@ const RecordsTab = ({
                                 </svg>
                             </div>
                             <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                                아직 완료한 사건 파일이 없어요
+                                {t("mypage.recordsTab.noCompletedCasefiles")}
                             </div>
-                            <div className="text-gray-600 dark:text-gray-400">Escape 스토리를 완료하면 여기에서 볼 수 있어요</div>
+                            <div className="text-gray-600 dark:text-gray-400">{t("mypage.recordsTab.completedCasefilesHint")}</div>
                         </div>
                     )}
                 </div>

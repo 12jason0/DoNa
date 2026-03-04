@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
 
 const DRAG_CLOSE_THRESHOLD = 60;
 
@@ -11,6 +12,7 @@ interface ShopModalProps {
 }
 
 export default function ShopModal({ onClose }: ShopModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const { containInPhone, modalContainerRef } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
@@ -80,7 +82,7 @@ export default function ShopModal({ onClose }: ShopModalProps) {
                 <div
                     role="button"
                     tabIndex={0}
-                    aria-label="아래로 당겨 닫기"
+                    aria-label={t("shopModal.dragToClose")}
                     className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-5 touch-none cursor-grab active:cursor-grabbing"
                     onTouchStart={(e) => onDragStart(getClientY(e))}
                     onTouchMove={(e) => onDragMove(getClientY(e))}
@@ -101,6 +103,12 @@ export default function ShopModal({ onClose }: ShopModalProps) {
                     }}
                 />
 
+                {!isLocaleReady ? (
+                    <div className="flex items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                    </div>
+                ) : (
+                <>
                 <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
                     <svg
                         className="w-7 h-7 text-[#7aa06f] dark:text-emerald-400"
@@ -117,11 +125,9 @@ export default function ShopModal({ onClose }: ShopModalProps) {
                     </svg>
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">두나샵</h3>
-                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep">
-                    더 완벽한 키트를 위해 준비 중이에요.
-                    <br />
-                    조금만 기다려주세요 🎁
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{t("shopModal.title")}</h3>
+                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep whitespace-pre-line">
+                    {t("shopModal.desc")}
                 </p>
 
                 <button
@@ -129,8 +135,10 @@ export default function ShopModal({ onClose }: ShopModalProps) {
                     className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight"
                     style={{ backgroundColor: "#7aa06f" }}
                 >
-                    확인
+                    {t("shopModal.confirm")}
                 </button>
+                </>
+                )}
             </div>
         </div>,
         portalTarget

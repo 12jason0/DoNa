@@ -8,7 +8,7 @@ import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch, fetchSession } from "@/lib/authClient";
-import { isAndroid } from "@/lib/platform";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 
 // --- 타입 정의 ---
 interface Place {
@@ -305,6 +305,8 @@ function MapPageInner() {
     const [courseRoutePath, setCourseRoutePath] = useState<{ lat: number; lng: number }[]>([]);
     /** 선택한 코스에 포함된 장소만 표시 (코스 클릭 시 장소 검색 결과 대신) */
     const [coursePlacesList, setCoursePlacesList] = useState<Place[]>([]);
+    /** 결제 모달 진입 시 클릭한 코스 (열람권 표시·결제 후 해당 코스로 이동용) */
+    const [courseForPayment, setCourseForPayment] = useState<{ id: string; grade: "BASIC" | "PREMIUM" } | null>(null);
     /** 코스 클릭 후 장소 목록 로딩 중 (캐시 없을 때만 true) */
     const [coursePlacesLoading, setCoursePlacesLoading] = useState(false);
     /** 코스별 장소·경로 캐시 (같은 코스 재클릭 시 즉시 표시) */
@@ -347,6 +349,7 @@ function MapPageInner() {
         return () => window.removeEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
     }, [isAuthenticated]);
     const dragStartY = useRef<number>(0);
+    const panelDragDidDragRef = useRef(false); // 드래그 시 클릭(순환) 방지용
     const fetchAbortRef = useRef<AbortController | null>(null);
 
     const showToast = (msg: string) => {
@@ -376,6 +379,7 @@ function MapPageInner() {
             router.push(`/courses/${cleanId}`);
             return;
         }
+        setCourseForPayment({ id: cleanId, grade: courseGrade as "BASIC" | "PREMIUM" });
         setShowSubscriptionModal(true);
     };
 
@@ -425,7 +429,7 @@ function MapPageInner() {
             if (courseDetailCacheRef.current[courseId]) return;
             fetchCourseDetailToCache(courseId, cleanId).catch(() => {});
         },
-        [fetchCourseDetailToCache]
+        [fetchCourseDetailToCache],
     );
 
     /** 코스 탭에서 코스 클릭 시 지도에 루트 표시 + 장소 목록 (캐시 있으면 즉시 표시) */
@@ -461,7 +465,7 @@ function MapPageInner() {
                 setCoursePlacesLoading(false);
             }
         },
-        [fetchCourseDetailToCache]
+        [fetchCourseDetailToCache],
     );
 
     /** 코스 탭 → 장소 탭 전환 시 선택 코스·리스트·로딩 초기화 */
@@ -523,13 +527,12 @@ function MapPageInner() {
                 () => {
                     window.open(searchOnlyUrl, "_blank", "noopener,noreferrer");
                 },
-                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
             );
         };
 
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        if (isMobile) {
+        // 웹 브라우저: nmap 스킴 미지원 → 바로 웹 지도 열기. 앱 WebView에서만 nmap 시도
+        if (isMobileApp()) {
             const startTime = Date.now();
             window.location.href = appUrl;
             setTimeout(() => {
@@ -592,7 +595,7 @@ function MapPageInner() {
         async (
             location: { lat: number; lng: number },
             keyword?: string,
-            bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number }
+            bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number },
         ) => {
             try {
                 try {
@@ -637,12 +640,12 @@ function MapPageInner() {
                 }
 
                 const placesUrl = `/api/places/search-kakao?lat=${centerLat}&lng=${centerLng}&keyword=${encodeURIComponent(
-                    effectiveKeyword
+                    effectiveKeyword,
                 )}&radius=${Math.round(radius)}`;
                 promises.push(
                     fetch(placesUrl, { signal: aborter.signal })
                         .then((res) => res.json())
-                        .catch(() => ({ success: false, places: [], relatedCourses: [] })) // 카카오 API 실패해도 계속 진행
+                        .catch(() => ({ success: false, places: [], relatedCourses: [] })), // 카카오 API 실패해도 계속 진행
                 );
 
                 const [myData, kakaoData] = await Promise.all(promises);
@@ -719,7 +722,7 @@ function MapPageInner() {
                 }
             }
         },
-        [prefetchCourseDetail]
+        [prefetchCourseDetail],
     );
 
     const moveToCurrentLocation = useCallback(async () => {
@@ -794,7 +797,7 @@ function MapPageInner() {
                 enableHighAccuracy: false, // 실내에서는 false가 더 잘 잡힘
                 timeout: 15000, // 타임아웃을 15초로 늘려 대기 시간 확보
                 maximumAge: 0, // 항상 최신 위치를 가져오도록 캐시 끔
-            }
+            },
         );
     }, [fetchAllData, center]);
 
@@ -926,17 +929,46 @@ function MapPageInner() {
         const endY = e.changedTouches[0].clientY;
         const diff = endY - dragStartY.current;
         if (diff > 50) {
+            panelDragDidDragRef.current = true;
             if (panelState === "expanded") setPanelState("default");
             else if (panelState === "default") setPanelState("minimized");
         } else if (diff < -50) {
+            panelDragDidDragRef.current = true;
             if (panelState === "minimized") setPanelState("default");
             else if (panelState === "default") setPanelState("expanded");
         }
     };
 
+    // 마우스 드래그: 앱처럼 위로 끌면 올라가고 아래로 끌면 내려감 (터치와 동일한 동작)
+    const handlePanelMouseDownWithListeners = useCallback((e: React.MouseEvent) => {
+        dragStartY.current = e.clientY;
+        panelDragDidDragRef.current = false;
+        const onMouseUp = (upEvent: MouseEvent) => {
+            const diff = upEvent.clientY - dragStartY.current;
+            if (diff > 50) {
+                panelDragDidDragRef.current = true;
+                setPanelState((prev) => {
+                    if (prev === "expanded") return "default";
+                    if (prev === "default") return "minimized";
+                    return prev;
+                });
+            } else if (diff < -50) {
+                panelDragDidDragRef.current = true;
+                setPanelState((prev) => {
+                    if (prev === "minimized") return "default";
+                    if (prev === "default") return "expanded";
+                    return prev;
+                });
+            }
+            dragStartY.current = 0;
+            window.removeEventListener("mouseup", onMouseUp);
+        };
+        window.addEventListener("mouseup", onMouseUp);
+    }, []);
+
     const getPanelHeightClass = () => {
         if (panelState === "expanded") return "h-[85vh]";
-        if (panelState === "minimized") return "h-[120px]";
+        if (panelState === "minimized") return "h-[100px]"; // 드래그 핸들+제목이 보이도록 최소 높이
         return "h-[40vh]"; // 50vh -> 40vh로 줄여서 지도가 더 많이 보이도록
     };
 
@@ -1117,8 +1149,8 @@ function MapPageInner() {
                                 ? coursePlacesList
                                 : []
                             : selectedPlace
-                            ? [selectedPlace]
-                            : places
+                              ? [selectedPlace]
+                              : places
                         )
                             .sort((a, b) => (a.source === "kakao" && b.source === "db" ? -1 : 1))
                             .map((place) => {
@@ -1131,7 +1163,7 @@ function MapPageInner() {
                                         icon={createReactNaverMapIcon(
                                             place.category || place.name,
                                             isSelected,
-                                            place.source as any
+                                            place.source as any,
                                         )}
                                         onClick={() => handlePlaceClick(place)}
                                         zIndex={isSelected ? 1000 : place.source === "db" ? 500 : 100}
@@ -1178,8 +1210,8 @@ function MapPageInner() {
                             panelState === "expanded"
                                 ? "calc(85vh + 16px)"
                                 : panelState === "minimized"
-                                ? "calc(120px + 16px)"
-                                : "calc(40vh + 16px)",
+                                  ? "calc(160px + 16px)"
+                                  : "calc(40vh + 16px)",
                         transition: "bottom 0.3s ease-out",
                     }}
                 >
@@ -1198,12 +1230,17 @@ function MapPageInner() {
                 className={`z-40 absolute inset-x-0 bottom-0 bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
                 <div
-                    className="w-full flex justify-center pt-3 pb-1 cursor-pointer touch-none active:bg-gray-50 dark:active:bg-gray-800 transition-colors rounded-t-3xl"
-                    onClick={() =>
+                    className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none select-none active:bg-gray-50 dark:active:bg-gray-800 transition-colors rounded-t-3xl"
+                    onClick={() => {
+                        if (panelDragDidDragRef.current) {
+                            panelDragDidDragRef.current = false;
+                            return;
+                        }
                         setPanelState((prev) =>
-                            prev === "expanded" ? "default" : prev === "default" ? "minimized" : "default"
-                        )
-                    }
+                            prev === "expanded" ? "default" : prev === "default" ? "minimized" : "default",
+                        );
+                    }}
+                    onMouseDown={handlePanelMouseDownWithListeners}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                 >
@@ -1283,8 +1320,8 @@ function MapPageInner() {
                                     {activeTab === "places"
                                         ? `지도에 ${places.length}개의 장소가 있어요`
                                         : selectedCourseForRoute
-                                        ? selectedCourseForRoute.description || "코스에 포함된 장소예요"
-                                        : "엄선된 코스를 확인해보세요"}
+                                          ? selectedCourseForRoute.description || "코스에 포함된 장소예요"
+                                          : "엄선된 코스를 확인해보세요"}
                                 </p>
                             </TapFeedback>
                         </div>
@@ -1424,8 +1461,8 @@ function MapPageInner() {
                                 (activeTab === "places"
                                     ? places
                                     : selectedCourseForRoute
-                                    ? coursePlacesList
-                                    : courses
+                                      ? coursePlacesList
+                                      : courses
                                 ).map((item: any) => {
                                     const isCourse = "title" in item && typeof item.title === "string";
                                     return (
@@ -1501,7 +1538,16 @@ function MapPageInner() {
                 </div>
             </div>
             {/* 🟢 [IN-APP PURCHASE]: 모바일 앱에서만 표시 (TicketPlans 컴포넌트 내부에서도 체크) */}
-            {showSubscriptionModal && <TicketPlans onClose={() => setShowSubscriptionModal(false)} />}
+            {showSubscriptionModal && (
+                <TicketPlans
+                    courseId={courseForPayment ? parseInt(courseForPayment.id) : undefined}
+                    courseGrade={courseForPayment?.grade}
+                    onClose={() => {
+                        setShowSubscriptionModal(false);
+                        setCourseForPayment(null);
+                    }}
+                />
+            )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={`/map`} />}
         </div>
     );

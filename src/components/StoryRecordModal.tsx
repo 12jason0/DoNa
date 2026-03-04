@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "@/components/ImageFallback";
 import { X } from "lucide-react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface ReviewResponse {
     success?: boolean;
@@ -17,9 +18,10 @@ interface StoryRecordModalProps {
     courseName?: string;
 }
 
-const SUGGESTED_TAGS = ["낭만적인", "감성", "조용한", "인생샷", "숨겨진", "데이트", "사진", "카페", "맛집"];
+const TAG_KEYS = ["tag0", "tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8"] as const;
 
 export default function StoryRecordModal({ isOpen, onClose, courseId, courseName }: StoryRecordModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const [rating, setRating] = useState(5);
     const [description, setDescription] = useState("");
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -43,13 +45,13 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
     }, [isOpen]);
 
     // 태그 토글
-    const toggleTag = (tag: string) => {
-        setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    const toggleTag = (key: string) => {
+        setSelectedTags((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
     };
 
     // 태그 제거
-    const removeTag = (tag: string) => {
-        setSelectedTags((prev) => prev.filter((t) => t !== tag));
+    const removeTag = (key: string) => {
+        setSelectedTags((prev) => prev.filter((k) => k !== key));
     };
 
     // 메인 이미지 업로드
@@ -59,7 +61,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
 
         const file = files[0];
         if (file.size > 50 * 1024 * 1024) {
-            setError("이미지 크기는 50MB 이하여야 합니다.");
+            setError(t("storyRecordModal.errorImageSize"));
             return;
         }
 
@@ -77,7 +79,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
             }
         } catch (err) {
             console.error("이미지 업로드 오류:", err);
-            setError("이미지 업로드에 실패했습니다.");
+            setError(t("storyRecordModal.errorUpload"));
         } finally {
             setUploadingImages(false);
         }
@@ -90,7 +92,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
 
         const filesToUpload = Array.from(files).slice(0, 10 - photos.length);
         if (filesToUpload.length === 0) {
-            setError("최대 10개까지 사진을 업로드할 수 있습니다.");
+            setError(t("storyRecordModal.errorMaxPhotos"));
             return;
         }
 
@@ -99,7 +101,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
 
         try {
             filesToUpload.forEach((file) => {
-                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
+                if (file.size > 50 * 1024 * 1024) throw new Error(t("storyRecordModal.errorFileSize", { name: file.name }));
             });
             const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
             const urls = await uploadViaPresign(filesToUpload, {
@@ -111,7 +113,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
             }
         } catch (err) {
             console.error("이미지 업로드 오류:", err);
-            setError("이미지 업로드에 실패했습니다.");
+            setError(t("storyRecordModal.errorUpload"));
         } finally {
             setUploadingImages(false);
         }
@@ -145,7 +147,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                 }
             }
 
-            const shareText = `${courseName || "데이트"} 후기\n${description || "오늘 정말 좋은 하루였어요! 💕"}`;
+            const shareText = `${courseName || t("storyRecordModal.tag5")} ${t("storyRecordModal.shareReviewLabel")}\n${description || t("storyRecordModal.shareDefault")}`;
 
             Kakao.Share.sendDefault({
                 objectType: "text",
@@ -157,7 +159,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
             });
         } catch (err) {
             console.error("카카오톡 공유 실패:", err);
-            alert("카카오톡 공유에 실패했습니다.");
+            alert(t("storyRecordModal.alertKakaoFail"));
         }
     };
 
@@ -181,16 +183,16 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
             })) as ReviewResponse;
 
             if (data && !data.error) {
-                alert("스토리가 저장되었습니다! 💕");
+                alert(t("storyRecordModal.alertSaved"));
 
                 window.dispatchEvent(new CustomEvent("reviewSubmitted"));
                 onClose();
             } else {
-                setError(data?.error || data?.message || "저장에 실패했습니다.");
+                setError(data?.error || data?.message || t("storyRecordModal.errorSave"));
             }
         } catch (err) {
             console.error("스토리 저장 오류:", err);
-            setError("스토리 저장 중 오류가 발생했습니다.");
+            setError(t("storyRecordModal.errorSaveGeneric"));
         } finally {
             setIsSubmitting(false);
         }
@@ -218,6 +220,12 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
 
                 {/* 🟢 Section 1: 이미지 헤더 제거됨 - 모달에서는 사진 표시하지 않음 */}
 
+                {!isLocaleReady ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="animate-spin rounded-full h-10 w-10 border-2 border-emerald-600 border-t-transparent" />
+                    </div>
+                ) : (
+                <>
                 {/* Section 2: 평가 */}
                 <div className="px-5 py-6 text-center bg-white">
                     <div className="flex justify-center gap-2 mb-3">
@@ -234,11 +242,11 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                         ))}
                     </div>
                     <p className="text-sm text-gray-600 font-medium">
-                        {rating === 5 && "최고였어요! 💕"}
-                        {rating === 4 && "정말 좋았어요! 😊"}
-                        {rating === 3 && "보통이었어요 😐"}
-                        {rating === 2 && "좀 아쉬웠어요 😕"}
-                        {rating === 1 && "별로였어요... 😢"}
+                        {rating === 5 && t("storyRecordModal.rating5")}
+                        {rating === 4 && t("storyRecordModal.rating4")}
+                        {rating === 3 && t("storyRecordModal.rating3")}
+                        {rating === 2 && t("storyRecordModal.rating2")}
+                        {rating === 1 && t("storyRecordModal.rating1")}
                     </p>
                 </div>
 
@@ -247,10 +255,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                     <textarea
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder={`오늘의 느낌을 한두 문장으로 적어보세요
-
-예: 정말 좋은 하루였어! 
-    다음엔 여기 또 와야겠어 💕`}
+                        placeholder={t("storyRecordModal.placeholder")}
                         maxLength={200}
                         className="w-full min-h-[100px] p-4 border border-gray-200 rounded-xl text-sm font-normal resize-y outline-none transition-colors focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/10"
                     />
@@ -264,14 +269,14 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                     {/* 선택된 태그 */}
                     {selectedTags.length > 0 && (
                         <div className="mb-3 flex flex-wrap gap-2">
-                            {selectedTags.map((tag) => (
+                            {selectedTags.map((key) => (
                                 <div
-                                    key={tag}
+                                    key={key}
                                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium"
                                 >
-                                    #{tag}
+                                    #{t(`storyRecordModal.${key}` as "storyRecordModal.tag0")}
                                     <button
-                                        onClick={() => removeTag(tag)}
+                                        onClick={() => removeTag(key)}
                                         className="text-gray-400 hover:text-gray-600 text-sm leading-none"
                                     >
                                         ✕
@@ -283,17 +288,17 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
 
                     {/* 제안 태그 */}
                     <div className="flex flex-wrap gap-2">
-                        {SUGGESTED_TAGS.map((tag) => (
+                        {TAG_KEYS.map((key) => (
                             <button
-                                key={tag}
-                                onClick={() => toggleTag(tag)}
+                                key={key}
+                                onClick={() => toggleTag(key)}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                                    selectedTags.includes(tag)
+                                    selectedTags.includes(key)
                                         ? "bg-[#667eea] text-white border border-[#667eea]"
                                         : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
                                 }`}
                             >
-                                #{tag}
+                                #{t(`storyRecordModal.${key}` as "storyRecordModal.tag0")}
                             </button>
                         ))}
                     </div>
@@ -345,15 +350,17 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                         disabled={isSubmitting}
                         className="flex-1 h-12 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isSubmitting ? "저장 중..." : "저장하기"}
+                        {isSubmitting ? t("storyRecordModal.saving") : t("storyRecordModal.save")}
                     </button>
                     <button
                         onClick={handleKakaoShare}
                         className="flex-1 h-12 bg-[#FEE500] text-gray-900 rounded-xl font-bold hover:bg-[#FDD835] active:scale-[0.98] transition-all"
                     >
-                        카톡 공유
+                        {t("storyRecordModal.kakaoShare")}
                     </button>
                 </div>
+                </>
+                )}
             </div>
         </div>
     );

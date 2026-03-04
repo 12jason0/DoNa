@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useLocale } from "@/context/LocaleContext";
+import { useHorizontalWheelScroll } from "@/hooks/useHorizontalWheelScroll";
 
 const CARD_GAP = 12;
 const PEEK_RATIO = 0.88; // 88% 카드 너비 → 12% 다음 카드 노출
@@ -48,12 +50,14 @@ const SliderItemComponent = memo(
         style,
         totalSlots,
         currentSlotIndex,
+        displayTitle,
     }: {
         item: SliderItem;
         idx: number;
         style?: React.CSSProperties;
         totalSlots: number;
         currentSlotIndex: number;
+        displayTitle?: string;
     }) => {
         const hasPriority = idx === 0;
         return (
@@ -83,7 +87,7 @@ const SliderItemComponent = memo(
                     )}
                     <div className="absolute inset-0 bg-linear-to-b from-black/5 via-transparent to-black/80" />
                 </div>
-                <div className="absolute bottom-0 left-0 w-full p-6 text-white z-10">
+                <div className="absolute bottom-0 left-0 w-full p-6 text-white z-0">
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                         {item.location && (
                             <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold">
@@ -109,7 +113,7 @@ const SliderItemComponent = memo(
                         className="text-xl font-extrabold mb-1 line-clamp-2"
                         style={{ letterSpacing: "-0.02em", lineHeight: 1.5 }}
                     >
-                        {item.title || `${item.location || "이곳"}의 매력`}
+                        {displayTitle ?? item.title}
                     </h4>
                 </div>
             </Link>
@@ -122,6 +126,7 @@ const HERO_SLIDER_MAX = 5; // 최대 5개 코스만 사용
 const REPEAT_COUNT = 15; // 5개 코스가 끊김 없이 계속 반복되도록 여러 번 복제
 
 export default function HeroSlider({ items }: HeroSliderProps) {
+    const { t } = useLocale();
     const limitedItems = useMemo(() => items.slice(0, HERO_SLIDER_MAX), [items]);
     const realLength = limitedItems.length;
     const totalSlots = realLength;
@@ -130,6 +135,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     const [currentSlotIndex, setCurrentSlotIndex] = useState(0); // 세그먼트 인디케이터용 (0 ~ totalSlots-1)
     const [slideWidthPx, setSlideWidthPx] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
+    useHorizontalWheelScroll(scrollRef);
     const containerWidthRef = useRef<number>(0);
     const slideStepRef = useRef<number>(0); // Peek용 실제 스텝(슬라이드 너비 + gap) - moveToNext/보정에서 사용
     const isScrollingRef = useRef(false);
@@ -330,16 +336,25 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                     WebkitOverflowScrolling: "touch",
                 }}
             >
-                {renderItems.map((slot, idx) => (
-                    <SliderItemComponent
-                        key={`${(slot as SliderItem).id}-${idx}`}
-                        item={slot as SliderItem}
-                        idx={idx}
-                        style={slideStyle}
-                        totalSlots={totalSlots}
-                        currentSlotIndex={currentSlotIndex}
-                    />
-                ))}
+                {renderItems.map((slot, idx) => {
+                    const it = slot as SliderItem;
+                    const displayTitle =
+                        it.title ||
+                        t("commonFallback.placeCharm", {
+                            place: it.location || t("commonFallback.placeHere"),
+                        });
+                    return (
+                        <SliderItemComponent
+                            key={`${it.id}-${idx}`}
+                            item={it}
+                            idx={idx}
+                            style={slideStyle}
+                            totalSlots={totalSlots}
+                            currentSlotIndex={currentSlotIndex}
+                            displayTitle={displayTitle}
+                        />
+                    );
+                })}
             </div>
         </section>
     );

@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
             is_editor_pick,
             grade,
             isPublic,
+            isSelectionType,
             tags,
         } = body || {};
 
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
                 is_editor_pick: is_editor_pick || false,
                 grade: grade || "FREE",
                 isPublic: isPublic ?? true,
+                isSelectionType: isSelectionType ?? false,
 
                 // 🔥 새 컬럼에 저장
                 mood: moodValue,

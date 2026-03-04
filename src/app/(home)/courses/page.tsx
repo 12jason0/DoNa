@@ -32,9 +32,9 @@ async function getHeroCourses() {
         return Array.from(
             { length: Math.min(5, filtered.length) },
             (_, i) => filtered[(startIndex + i) % filtered.length]
-        ).map((c: any) => ({
+        )        .map((c: any) => ({
             id: String(c.id),
-            title: c.title || "제목 없음",
+            title: c.title || "",
             imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
             location: c.region || "",
             concept: c.concept || "",
@@ -112,7 +112,7 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
 
             return {
                 id: String(course.id),
-                title: course.title || "제목 없음",
+                title: course.title || "",
                 description: course.description || "",
                 duration: course.duration || "",
                 location: course.region || "",

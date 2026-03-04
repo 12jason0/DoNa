@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Image from "@/components/ImageFallback";
+import { useLocale } from "@/context/LocaleContext";
 
 interface ReviewResponse {
     success?: boolean;
@@ -19,6 +20,7 @@ interface ReviewModalProps {
 }
 
 export default function ReviewModal({ isOpen, onClose, courseId, placeId, courseName, placeName }: ReviewModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const [rating, setRating] = useState(5);
     const [content, setContent] = useState("");
     const [images, setImages] = useState<string[]>([]);
@@ -58,18 +60,18 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
             // 응답 데이터 기반 처리
             if (data && !data.error) {
-                alert("후기가 성공적으로 작성되었습니다!");
+                alert(t("reviewModal.alertSuccess"));
 
                 handleClose(); // 상태 초기화 및 모달 닫기
                 // 후기 목록 새로고침을 위한 이벤트 발생
                 window.dispatchEvent(new CustomEvent("reviewSubmitted"));
             } else {
                 // 서버 에러 메시지 표시
-                setError(data?.error || data?.message || "후기 작성에 실패했습니다.");
+                setError(data?.error || data?.message || t("reviewModal.errorSubmit"));
             }
         } catch (err) {
             console.error("후기 작성 오류:", err);
-            setError("후기 작성 중 오류가 발생했습니다.");
+            setError(t("reviewModal.errorSubmitGeneric"));
         } finally {
             setIsSubmitting(false);
         }
@@ -82,7 +84,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
         const filesToUpload = Array.from(files).slice(0, 5 - images.length);
         if (filesToUpload.length === 0) {
-            setError("최대 5개까지 사진을 업로드할 수 있습니다.");
+            setError(t("reviewModal.errorMaxPhotos"));
             return;
         }
 
@@ -91,8 +93,8 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
         try {
             filesToUpload.forEach((file) => {
-                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
-                if (!file.type.startsWith("image/")) throw new Error(`${file.name}은(는) 이미지 파일이 아닙니다.`);
+                if (file.size > 50 * 1024 * 1024) throw new Error(t("reviewModal.errorFileSize", { name: file.name }));
+                if (!file.type.startsWith("image/")) throw new Error(t("reviewModal.errorFileType", { name: file.name }));
             });
 
             const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
@@ -105,7 +107,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
             }
         } catch (error: any) {
             console.error("이미지 업로드 오류:", error);
-            setError(error.message || "이미지 업로드 중 오류가 발생했습니다.");
+            setError(error.message || t("reviewModal.errorUpload"));
         } finally {
             setUploadingImages(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -149,9 +151,15 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     <div className="w-10 h-1 rounded-full bg-zinc-600" />
                 </div>
                 <div className="px-5 pb-8 pt-2 min-w-0">
+                    {!isLocaleReady ? (
+                        <div className="flex items-center justify-center py-16">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                        </div>
+                    ) : (
+                    <>
                     {/* 헤더 */}
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-white tracking-tight">후기 작성하기</h2>
+                        <h2 className="text-xl font-bold text-white tracking-tight">{t("reviewModal.title")}</h2>
                         <button
                             onClick={handleClose}
                             disabled={isSubmitting}
@@ -170,9 +178,9 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
                     {/* 대상 정보 */}
                     <div className="mb-4 p-3 bg-zinc-800 rounded-xl">
-                        <p className="text-xs text-zinc-400 mb-1">후기 대상</p>
+                        <p className="text-xs text-zinc-400 mb-1">{t("reviewModal.targetLabel")}</p>
                         <p className="font-medium text-white wrap-break-word">
-                            {courseName || placeName || "알 수 없는 대상"}
+                            {courseName || placeName || t("reviewModal.unknownTarget")}
                         </p>
                     </div>
 
@@ -185,7 +193,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* 평점 */}
                         <div>
-                            <label className="block text-sm font-medium text-zinc-400 mb-2">평점 *</label>
+                            <label className="block text-sm font-medium text-zinc-400 mb-2">{t("reviewModal.ratingLabel")}</label>
                             <div className="flex items-center space-x-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
@@ -206,7 +214,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                         {/* 후기 내용 */}
                         <div>
                             <label htmlFor="content" className="block text-sm font-medium text-zinc-400 mb-2">
-                                후기 내용 *
+                                {t("reviewModal.contentLabel")}
                             </label>
                             <textarea
                                 id="content"
@@ -217,7 +225,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                 maxLength={500}
                                 rows={4}
                                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-xl text-white placeholder-zinc-500 focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500 resize-none"
-                                placeholder="이 곳에 대한 솔직한 후기를 작성해주세요. (최소 10자)"
+                                placeholder={t("reviewModal.contentPlaceholder")}
                             />
                             <div className="mt-1 text-right">
                                 <span className={`text-xs ${content.length >= 10 ? "text-zinc-500" : "text-red-400"}`}>
@@ -228,7 +236,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
                         {/* 사진 업로드 */}
                         <div>
-                            <label className="block text-sm font-medium text-zinc-400 mb-2">사진 추가 (선택)</label>
+                            <label className="block text-sm font-medium text-zinc-400 mb-2">{t("reviewModal.photoLabel")}</label>
                             <div className="space-y-3">
                                 {images.length > 0 && (
                                     <div className="grid grid-cols-3 gap-2">
@@ -239,7 +247,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                             >
                                                 <Image
                                                     src={url}
-                                                    alt={`후기 사진 ${index + 1}`}
+                                                    alt={t("reviewModal.photoAlt", { n: index + 1 })}
                                                     fill
                                                     className="object-cover"
                                                 />
@@ -261,7 +269,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                         disabled={uploadingImages}
                                         className="w-full py-3 border-2 border-dashed border-zinc-600 rounded-xl hover:border-zinc-500 flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-300 disabled:opacity-50"
                                     >
-                                        {uploadingImages ? "업로드 중..." : `사진 추가 (${images.length}/5)`}
+                                        {uploadingImages ? t("reviewModal.photoUploading") : t("reviewModal.photoAdd", { n: images.length })}
                                     </button>
                                 )}
                                 <input
@@ -283,17 +291,19 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                 disabled={isSubmitting}
                                 className="flex-1 py-2.5 border border-zinc-600 rounded-xl text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
                             >
-                                취소
+                                {t("reviewModal.cancel")}
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || content.trim().length < 10}
                                 className="flex-1 py-2.5 bg-white text-zinc-900 rounded-xl text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isSubmitting ? "작성 중..." : "후기 작성"}
+                                {isSubmitting ? t("reviewModal.submitting") : t("reviewModal.submit")}
                             </button>
                         </div>
                     </form>
+                    </>
+                    )}
                 </div>
             </div>
         </div>

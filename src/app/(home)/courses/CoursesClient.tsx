@@ -8,6 +8,8 @@ import HeroSlider from "@/components/HeroSlider";
 import TapFeedback from "@/components/TapFeedback";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CATEGORY_ICONS } from "@/constants/onboardingData";
+import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
 import Image from "@/components/ImageFallback";
 import { LayoutGrid } from "lucide-react";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
@@ -61,6 +63,7 @@ interface CoursesClientProps {
 export default function CoursesClient({ initialCourses, initialHeroCourses = [] }: CoursesClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { t } = useLocale();
     const conceptParam = searchParams.get("concept");
 
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -76,6 +79,46 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
     const [hasMore, setHasMore] = useState(initialCourses.length >= 30);
     const [offset, setOffset] = useState(30);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+    // 카테고리 마우스 드래그 스크롤
+    const categoryScrollRef = useRef<HTMLDivElement | null>(null);
+    const [categoryIsDragging, setCategoryIsDragging] = useState(false);
+    const categoryDragRef = useRef({ x: 0, scrollLeft: 0 });
+    const categoryDidDragRef = useRef(false);
+
+    const handleCategoryMouseDown = useCallback((e: React.MouseEvent) => {
+        if (!categoryScrollRef.current) return;
+        setCategoryIsDragging(true);
+        categoryDidDragRef.current = false;
+        categoryDragRef.current = {
+            x: e.clientX,
+            scrollLeft: categoryScrollRef.current.scrollLeft,
+        };
+    }, []);
+
+    const handleCategoryMouseMove = useCallback(
+        (e: MouseEvent) => {
+            if (!categoryIsDragging || !categoryScrollRef.current) return;
+            const dx = e.clientX - categoryDragRef.current.x;
+            if (Math.abs(dx) > 5) categoryDidDragRef.current = true;
+            categoryScrollRef.current.scrollLeft = categoryDragRef.current.scrollLeft - dx;
+        },
+        [categoryIsDragging],
+    );
+
+    const handleCategoryMouseUp = useCallback(() => {
+        setCategoryIsDragging(false);
+    }, []);
+
+    useEffect(() => {
+        if (!categoryIsDragging) return;
+        window.addEventListener("mousemove", handleCategoryMouseMove);
+        window.addEventListener("mouseup", handleCategoryMouseUp);
+        return () => {
+            window.removeEventListener("mousemove", handleCategoryMouseMove);
+            window.removeEventListener("mouseup", handleCategoryMouseUp);
+        };
+    }, [categoryIsDragging, handleCategoryMouseMove, handleCategoryMouseUp]);
 
     useEffect(() => {
         // 🟢 concept 파라미터 변경 시 로딩 상태 설정
@@ -214,6 +257,12 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
         [],
     );
 
+    // 🟢 [Performance]: 카테고리 라벨 번역을 locale당 1회만 계산 (매 렌더마다 20회 호출 제거)
+    const translatedConcepts = useMemo(() => {
+        const fn = (k: string) => t(k as any);
+        return new Map(STATIC_CONCEPTS.map((tag) => [tag, translateCourseConcept(tag, fn)]));
+    }, [t, STATIC_CONCEPTS]);
+
     // 🟢 [Optimization]: 찜 목록 로딩을 200ms 지연하여 초기 렌더링 부하 감소
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -249,7 +298,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                         body: JSON.stringify({ courseId: idNum }),
                     });
                     if (success !== null) setFavoriteIds((prev) => new Set(prev).add(idNum));
-                    else if (confirm("로그인이 필요합니다.")) router.push("/login");
+                    else if (confirm(t("courses.loginRequired"))) router.push("/login");
                 } else {
                     const success = await authenticatedFetch(`/api/users/favorites?courseId=${idNum}`, {
                         method: "DELETE",
@@ -263,7 +312,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                 }
             } catch {}
         },
-        [favoriteIds, router],
+        [favoriteIds, router, t],
     );
 
     // 🟢 Android 앱에서만 헤더~완벽한 하루 사이 불필요한 여백 제거 (safe-area 중복 방지)
@@ -283,14 +332,22 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             >
                 <div>
                     <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
-                        완벽한 하루
+                        {t("courses.pageTitle")}
                     </h1>
                 </div>
                 {/* 🟢 큰 원형 아이콘 + 아래 텍스트 (예전 메인 카테고리 스타일) */}
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1.5 -mx-5 px-5 mt-3 touch-pan-x">
+                <div
+                    ref={categoryScrollRef}
+                    className={`flex gap-3 overflow-x-auto no-scrollbar pb-1.5 -mx-5 px-5 mt-3 touch-pan-x select-none ${
+                        categoryIsDragging ? "cursor-grabbing" : "cursor-grab"
+                    }`}
+                    style={{ WebkitOverflowScrolling: "touch" }}
+                    onMouseDown={handleCategoryMouseDown}
+                >
                     <TapFeedback>
                         <button
                             onClick={() => {
+                                if (categoryDidDragRef.current) return;
                                 requestAnimationFrame(() => {
                                     setIsNavigating(true);
                                     router.prefetch("/courses");
@@ -325,7 +382,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                         : "text-gray-600 dark:text-gray-400"
                                 }`}
                             >
-                                전체
+                                {t("courses.all")}
                             </span>
                         </button>
                     </TapFeedback>
@@ -336,6 +393,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                             <TapFeedback key={tag}>
                                 <button
                                     onClick={() => {
+                                        if (categoryDidDragRef.current) return;
                                         requestAnimationFrame(() => {
                                             setIsNavigating(true);
                                             const targetPath = isSelected
@@ -360,7 +418,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                         {iconUrl ? (
                                             <Image
                                                 src={iconUrl}
-                                                alt={tag}
+                                                alt={translatedConcepts.get(tag) ?? tag}
                                                 width={40}
                                                 height={40}
                                                 className="object-contain p-0.5"
@@ -379,7 +437,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                                 : "text-gray-600 dark:text-gray-400"
                                         }`}
                                     >
-                                        {tag}
+                                        {translatedConcepts.get(tag) ?? tag}
                                     </span>
                                 </button>
                             </TapFeedback>
@@ -392,7 +450,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             {initialHeroCourses.length > 0 && (
                 <section className="pt-4 px-4 pb-6">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 leading-snug tracking-tight px-1">
-                        지금 많이 선택한 코스
+                        {t("courses.heroTitle")}
                     </h2>
                     <HeroSlider items={initialHeroCourses} />
                 </section>
@@ -402,7 +460,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
                 <div className="px-5 pt-6 pb-2">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
-                        전체 코스
+                        {t("courses.allCourses")}
                     </h2>
                 </div>
                 <div className="px-5 py-4 flex flex-col gap-6">
@@ -454,18 +512,18 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                     {visibleCourses.length === 0 && (
                         <div className="text-center py-20">
                             <div className="text-5xl mb-4 grayscale opacity-50">🏝️</div>
-                            <p className="text-gray-500 dark:text-gray-400 font-medium">조건에 맞는 코스가 없어요.</p>
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">{t("courses.noResults")}</p>
                         </div>
                     )}
                     {loadingMore && (
                         <div className="text-center py-8">
                             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">불러오는 중...</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">{t("courses.loadingMore")}</p>
                         </div>
                     )}
                     {!hasMore && visibleCourses.length > 0 && (
                         <div className="text-center py-8">
-                            <p className="text-gray-400 dark:text-gray-500 text-sm">모든 코스를 불러왔습니다.</p>
+                            <p className="text-gray-400 dark:text-gray-500 text-sm">{t("courses.allLoaded")}</p>
                         </div>
                     )}
                     <div ref={loadMoreRef} aria-hidden="true" className="h-1"></div>

@@ -141,7 +141,7 @@ export default function SideMenuDrawer({
                         <Link
                             href="/nearby"
                             prefetch={true}
-                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-lime-700 hover:bg-lime-50/80 transition-colors dark:text-lime-400 dark:hover:bg-lime-900/20"
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-lime-800 hover:bg-lime-50/80 transition-colors dark:text-lime-200 dark:hover:bg-lime-900/20"
                             onClick={onClose}
                         >
                             <span
@@ -174,7 +174,7 @@ export default function SideMenuDrawer({
                                 onClose();
                                 setShowComingSoon("escape");
                             }}
-                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50/80 transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20"
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-50/80 transition-colors dark:text-blue-200 dark:hover:bg-blue-900/20"
                         >
                             <span
                                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 transition-all duration-200 ease-out dark:bg-blue-900/40 dark:text-blue-400 ${
@@ -210,7 +210,7 @@ export default function SideMenuDrawer({
                                 onClose();
                                 setShowShopModal(true);
                             }}
-                            className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-emerald-600 hover:bg-emerald-50/80 transition-colors dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-emerald-600 hover:bg-emerald-50/80 transition-colors dark:text-emerald-300 dark:hover:bg-emerald-900/20"
                         >
                             <span
                                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 transition-all duration-200 ease-out dark:bg-emerald-900/40 dark:text-emerald-400 ${
@@ -243,7 +243,7 @@ export default function SideMenuDrawer({
                                     prefetch={true}
                                     onMouseEnter={() => router.prefetch("/mypage")}
                                     onFocus={() => router.prefetch("/mypage")}
-                                    className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-800 hover:bg-slate-100/80 transition-colors dark:text-gray-200 dark:hover:bg-slate-800/30"
+                                    className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-gray-800 hover:bg-slate-100/80 transition-colors dark:text-gray-100 dark:hover:bg-slate-800/30"
                                     onClick={onClose}
                                 >
                                     <span
@@ -278,7 +278,7 @@ export default function SideMenuDrawer({
                                             onClose();
                                             setShowLoginModal(true);
                                         }}
-                                        className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-gray-800 hover:bg-slate-100/80 transition-colors dark:text-gray-200 dark:hover:bg-slate-800/30"
+                                        className="flex flex-row-reverse items-center justify-end gap-2.5 w-fit ml-auto px-3 py-2.5 rounded-lg text-sm font-medium text-gray-800 hover:bg-slate-100/80 transition-colors dark:text-gray-100 dark:hover:bg-slate-800/30"
                                     >
                                         <span
                                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-white transition-all duration-200 ease-out dark:bg-slate-600 ${
@@ -312,7 +312,7 @@ export default function SideMenuDrawer({
                                     <Link
                                         href="/signup"
                                         prefetch={true}
-                                        className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-sky-600 hover:bg-sky-50/80 transition-colors mt-0.5 dark:text-sky-400 dark:hover:bg-sky-900/20"
+                                        className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-sky-600 hover:bg-sky-50/80 transition-colors mt-0.5 dark:text-sky-300 dark:hover:bg-sky-900/20"
                                         onClick={onClose}
                                     >
                                         <span

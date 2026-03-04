@@ -1,7 +1,6 @@
 // src/app/(home)/layout.tsx
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Providers } from "@/components/Providers";
 import ClientBodyLayout from "./ClientBodyLayout";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
 
@@ -150,10 +149,8 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
                 }}
             />
 
-            {/* Providers 및 내부 레이아웃 */}
-            <Providers>
-                <ClientBodyLayout>{children}</ClientBodyLayout>
-            </Providers>
+            {/* 루트 layout의 Providers 사용 (LocaleProvider 중복 제거 → 번역 일관성) */}
+            <ClientBodyLayout>{children}</ClientBodyLayout>
         </div>
     );
 }

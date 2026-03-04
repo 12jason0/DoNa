@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface DeleteUsersModalProps {
     isOpen: boolean;
@@ -10,14 +11,7 @@ interface DeleteUsersModalProps {
     subscriptionExpiresAt?: string | null;
 }
 
-const WITHDRAWAL_REASONS = [
-    "기능이 불편해요",
-    "원하는 콘텐츠가 없어요",
-    "다른 앱을 사용하게 되었어요",
-    "사용 빈도가 낮아요",
-    "개인정보 보호가 걱정돼요",
-    "기타",
-];
+const REASON_KEYS = ["reason0", "reason1", "reason2", "reason3", "reason4", "reason5"] as const;
 
 export default function DeleteUsersModal({
     isOpen,
@@ -26,6 +20,7 @@ export default function DeleteUsersModal({
     subscriptionTier,
     subscriptionExpiresAt,
 }: DeleteUsersModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const [isLoading, setIsLoading] = useState(false);
     const [showReasonStep, setShowReasonStep] = useState(false);
     const [selectedReason, setSelectedReason] = useState<string>("");
@@ -37,7 +32,7 @@ export default function DeleteUsersModal({
     const handleConfirm = async () => {
         try {
             if (showReasonStep && !isAgreed) {
-                alert("안내사항을 확인하고 동의해주세요.");
+                alert(t("deleteUsersModal.alertAgree"));
                 return;
             }
 
@@ -50,11 +45,7 @@ export default function DeleteUsersModal({
                 new Date(subscriptionExpiresAt) > new Date();
 
             if (hasActiveSubscription) {
-                if (
-                    !window.confirm(
-                        "현재 유료 구독 중입니다. 탈퇴 시 환불이 어려울 수 있습니다. 정말 탈퇴하시겠습니까?"
-                    )
-                ) {
+                if (!window.confirm(t("deleteUsersModal.confirmSubscription"))) {
                     setIsLoading(false);
                     return;
                 }
@@ -66,11 +57,11 @@ export default function DeleteUsersModal({
                 return;
             }
 
-            const withdrawalReason = selectedReason === "기타" ? customReason : selectedReason;
+            const withdrawalReason = selectedReason === "reason5" ? customReason : t(`deleteUsersModal.${selectedReason}` as "deleteUsersModal.reason0");
             await onConfirm(withdrawalReason);
         } catch (error: any) {
             console.error("탈퇴 처리 오류:", error);
-            alert(error.message || "탈퇴 처리 중 오류가 발생했습니다.");
+            alert(error.message || t("deleteUsersModal.alertError"));
         } finally {
             setIsLoading(false);
         }
@@ -88,12 +79,18 @@ export default function DeleteUsersModal({
 
                 {/* [수정] overflow-y-auto를 적용한 스크롤 영역 */}
                 <div className="p-6 sm:p-8 overflow-y-auto flex-1 custom-scrollbar">
+                    {!isLocaleReady ? (
+                        <div className="flex items-center justify-center py-16">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                        </div>
+                    ) : (
+                    <>
                     <div className="text-center mb-6">
                         <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                             <span className="text-3xl">🍃</span>
                         </div>
                         <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-tight">
-                            정말 두나를 떠나시나요?
+                            {t("deleteUsersModal.title")}
                         </h3>
                     </div>
 
@@ -102,25 +99,25 @@ export default function DeleteUsersModal({
                         <div className="flex items-start gap-3">
                             <span className="text-lg">⚠️</span>
                             <div>
-                                <p className="text-sm font-bold text-gray-800">모든 기록 삭제 및 복구 불가</p>
+                                <p className="text-sm font-bold text-gray-800">{t("deleteUsersModal.warn1Title")}</p>
                                 <p className="text-xs text-gray-500 leading-relaxed">
-                                    프로필 정보, 찜한 코스, 작성한 리뷰 등 모든 데이터가 즉시 파기됩니다.
+                                    {t("deleteUsersModal.warn1Desc")}
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <span className="text-lg">⚖️</span>
                             <div>
-                                <p className="text-sm font-bold text-gray-800">법적 데이터 보관 안내</p>
+                                <p className="text-sm font-bold text-gray-800">{t("deleteUsersModal.warn2Title")}</p>
                                 <p className="text-xs text-gray-500 leading-relaxed">
-                                    관계 법령에 따라 일부 데이터는 법정 보관 기간 동안 보관됩니다.
+                                    {t("deleteUsersModal.warn2Desc")}
                                 </p>
                                 <ul className="text-xs text-gray-500 leading-relaxed mt-1 ml-2 list-disc list-inside">
-                                    <li>결제 기록: 전자상거래법에 따라 5년 보관</li>
-                                    <li>로그인 기록: 통신비밀보호법에 따라 3개월 보관</li>
+                                    <li>{t("deleteUsersModal.warn2Li1")}</li>
+                                    <li>{t("deleteUsersModal.warn2Li2")}</li>
                                 </ul>
                                 <p className="text-xs text-gray-500 leading-relaxed mt-1">
-                                    보관 기간 경과 후 자동으로 파기됩니다.
+                                    {t("deleteUsersModal.warn2Footer")}
                                 </p>
                             </div>
                         </div>
@@ -129,28 +126,28 @@ export default function DeleteUsersModal({
                     {/* 2단계: 사유 선택 및 동의 */}
                     {showReasonStep && (
                         <div className="bg-blue-50 rounded-2xl p-5 mb-2 text-left border border-blue-100 animate-in slide-in-from-bottom-2">
-                            <p className="text-sm font-bold text-blue-800 mb-3">떠나시는 이유가 궁금해요 💭</p>
+                            <p className="text-sm font-bold text-blue-800 mb-3">{t("deleteUsersModal.reasonTitle")}</p>
                             <div className="space-y-2 mb-4">
-                                {WITHDRAWAL_REASONS.map((r) => (
-                                    <label key={r} className="flex items-center gap-2 cursor-pointer p-1">
+                                {REASON_KEYS.map((key) => (
+                                    <label key={key} className="flex items-center gap-2 cursor-pointer p-1">
                                         <input
                                             type="radio"
                                             name="reason"
-                                            value={r}
-                                            checked={selectedReason === r}
+                                            value={key}
+                                            checked={selectedReason === key}
                                             onChange={(e) => setSelectedReason(e.target.value)}
                                             className="w-4 h-4 accent-[#00C73C]"
                                         />
-                                        <span className="text-xs text-gray-700">{r}</span>
+                                        <span className="text-xs text-gray-700">{t(`deleteUsersModal.${key}` as const)}</span>
                                     </label>
                                 ))}
                             </div>
 
-                            {selectedReason === "기타" && (
+                            {selectedReason === "reason5" && (
                                 <textarea
                                     value={customReason}
                                     onChange={(e) => setCustomReason(e.target.value)}
-                                    placeholder="이유를 자유롭게 적어주세요..."
+                                    placeholder={t("deleteUsersModal.reasonOtherPlaceholder")}
                                     className="w-full p-3 text-xs text-black border bg-white border-blue-200 rounded-xl resize-none mb-4 focus:ring-1 focus:ring-blue-400 outline-none"
                                     rows={3}
                                 />
@@ -164,14 +161,17 @@ export default function DeleteUsersModal({
                                     className="mt-1 accent-[#00C73C]"
                                 />
                                 <span className="text-xs text-gray-600 font-medium leading-tight">
-                                    안내사항을 확인하였으며, 데이터 파기 및 소셜 연동 해제에 동의합니다.
+                                    {t("deleteUsersModal.agreeLabel")}
                                 </span>
                             </label>
                         </div>
                     )}
+                    </>
+                    )}
                 </div>
 
                 {/* 버튼 영역 (하단 고정) */}
+                {isLocaleReady && (
                 <div className="p-6 pt-2 bg-white flex flex-col gap-3 shrink-0">
                     <button
                         onClick={onClose}
@@ -179,7 +179,7 @@ export default function DeleteUsersModal({
                         style={{ backgroundColor: donaGreen }}
                         className="w-full py-4 rounded-2xl text-white font-bold text-lg shadow-lg hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
                     >
-                        아니요, 더 써볼래요!
+                        {t("deleteUsersModal.stay")}
                     </button>
                     <button
                         onClick={handleConfirm}
@@ -188,12 +188,13 @@ export default function DeleteUsersModal({
                             ${showReasonStep ? "text-red-500" : "text-gray-400 hover:text-red-500"}`}
                     >
                         {isLoading
-                            ? "처리 중..."
+                            ? t("deleteUsersModal.submitting")
                             : showReasonStep
-                            ? "계정 영구 삭제하기"
-                            : "모든 혜택 포기하고 탈퇴하기"}
+                            ? t("deleteUsersModal.deleteAccount")
+                            : t("deleteUsersModal.withdraw")}
                     </button>
                 </div>
+                )}
             </div>
         </div>
     );

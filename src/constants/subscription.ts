@@ -34,3 +34,21 @@ export function getMemoryLimit(tier: string): number {
     const key = tier in MEMORY_LIMIT_BY_TIER ? (tier as MemoryLimitTierKey) : "FREE";
     return MEMORY_LIMIT_BY_TIER[key];
 }
+
+/**
+ * 등급별 AI 추천 1일 한도
+ * FREE: 1회, BASIC: 5회, PREMIUM: 무제한
+ */
+export const RECOMMENDATION_DAILY_LIMIT_BY_TIER = {
+    FREE: 1,
+    BASIC: 5,
+    PREMIUM: Number.POSITIVE_INFINITY,
+} as const;
+
+export type RecommendationLimitTierKey = keyof typeof RECOMMENDATION_DAILY_LIMIT_BY_TIER;
+
+export function getRecommendationDailyLimit(tier: string): number {
+    const key =
+        tier in RECOMMENDATION_DAILY_LIMIT_BY_TIER ? (tier as RecommendationLimitTierKey) : "FREE";
+    return RECOMMENDATION_DAILY_LIMIT_BY_TIER[key];
+}

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
 
 const DRAG_CLOSE_THRESHOLD = 60;
 
@@ -11,6 +12,7 @@ interface ComingSoonModalProps {
 }
 
 export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const { containInPhone, modalContainerRef } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
@@ -92,7 +94,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
             const session = await fetchSession();
 
             if (!session.authenticated) {
-                alert("로그인이 필요합니다.");
+                alert(t("comingSoonModal.alertLoginRequired"));
                 setIsSubmitting(false);
                 return;
             }
@@ -109,15 +111,15 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
 
             if (response.ok) {
                 setHasNotification(true);
-                alert("오픈 알림이 신청되었습니다! 🔔");
+                alert(t("comingSoonModal.alertSuccess"));
                 onClose();
             } else {
-                const errorMsg = data?.error || "알림 신청에 실패했습니다.";
+                const errorMsg = data?.error || t("comingSoonModal.alertFail");
                 alert(errorMsg);
             }
         } catch (error) {
             console.error("알림 신청 실패:", error);
-            alert("알림 신청 중 오류가 발생했습니다.");
+            alert(t("comingSoonModal.alertError"));
         } finally {
             setIsSubmitting(false);
         }
@@ -150,7 +152,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                 <div
                     role="button"
                     tabIndex={0}
-                    aria-label="아래로 당겨 닫기"
+                    aria-label={t("comingSoonModal.dragToClose")}
                     className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-5 touch-none cursor-grab active:cursor-grabbing"
                     onTouchStart={(e) => {
                         onDragStart(getClientY(e));
@@ -176,6 +178,12 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                         }
                     }}
                 />
+                {!isLocaleReady ? (
+                <div className="flex items-center justify-center py-16">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                </div>
+            ) : (
+                <>
                 {/* 아이콘 영역: 룰렛 -> 잠금(Lock) 아이콘으로 변경 */}
                 <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
                     <svg
@@ -195,11 +203,9 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                 </div>
 
                 {/* 텍스트 영역 */}
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">오픈 준비 중이에요</h3>
-                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep">
-                    새로운 실외 방탈출 코스를
-                    <br />
-                    열심히 만들고 있어요.
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{t("comingSoonModal.title")}</h3>
+                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep whitespace-pre-line">
+                    {t("comingSoonModal.desc")}
                 </p>
 
                 {/* 버튼 영역: 알림 받기(강조) + 닫기(보조) */}
@@ -221,7 +227,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                             >
                                 <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                             </svg>
-                            {isSubmitting ? "처리 중..." : "오픈 알림 받기"}
+                            {isSubmitting ? t("comingSoonModal.submitting") : t("comingSoonModal.cta")}
                         </button>
                     )}
 
@@ -240,7 +246,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                                     clipRule="evenodd"
                                 />
                             </svg>
-                            알림 신청 완료
+                            {t("comingSoonModal.completed")}
                         </div>
                     )}
 
@@ -248,9 +254,11 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                         onClick={onClose}
                         className="w-full py-2 text-xs text-gray-400 dark:text-gray-500 font-medium hover:text-gray-600 dark:hover:text-gray-400 transition-colors underline decoration-gray-200 dark:decoration-gray-700 underline-offset-4 cursor-pointer"
                     >
-                        닫기
+                        {t("common.close")}
                     </button>
                 </div>
+                </>
+            )}
             </div>
         </div>,
         portalTarget

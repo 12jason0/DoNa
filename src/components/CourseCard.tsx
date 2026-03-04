@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
-import { LOGIN_MODAL_PRESETS } from "@/constants/loginModalPresets";
 import { useLocale } from "@/context/LocaleContext";
 import { translateCourseConcept } from "@/lib/courseTranslate";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
@@ -12,6 +11,7 @@ import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/platform";
+import { useAuth } from "@/context/AuthContext";
 
 // --- Interfaces (기존과 동일) ---
 interface PlaceClosedDay {
@@ -102,6 +102,7 @@ const CourseCard = memo(
         const [showLoginModal, setShowLoginModal] = useState(false);
         const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
         const router = useRouter();
+        const { isAuthenticated } = useAuth();
         const { t, locale } = useLocale();
         const translatedTitle = useTranslatedTitle(course.title, locale);
         const translatedSubTitle = useTranslatedTitle(course.sub_title || "", locale);
@@ -151,13 +152,16 @@ const CourseCard = memo(
             return course.coursePlaces.filter((cp) => cp && cp.place && cp.place.id !== undefined).length;
         }, [course.coursePlaces, course.placesCount]);
 
-        // 잠금 상태 클릭 핸들러: 바로 TicketPlans 표시 (결제 시점에 세션 검사)
+        // 잠금 상태 클릭 핸들러: 미로그인 → 로그인 모달, 로그인 → TicketPlans
         const handleLockedClick = (e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
 
-            // 로그인 여부는 결제 클릭 시 handlePayment에서 검사
-            setShowSubscriptionModal(true);
+            if (!isAuthenticated) {
+                setShowLoginModal(true);
+            } else {
+                setShowSubscriptionModal(true);
+            }
         };
 
         return (
@@ -186,7 +190,7 @@ const CourseCard = memo(
                     {course.imageUrl ? (
                         <Image
                             src={course.imageUrl}
-                            alt={course.title}
+                            alt={course.title || t("courses.noTitle")}
                             fill
                             className={`object-cover transition-transform duration-700 group-hover:scale-105 ${
                                 course.isLocked ? "blur-[2px] grayscale-[0.5]" : ""
@@ -210,7 +214,7 @@ const CourseCard = memo(
                         <div className="absolute bottom-3 right-3 z-10">
                             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm border border-red-100">
                                 <span className="text-[12px] font-bold text-red-600 leading-none">
-                                    {getClosedPlaceCount(course)}곳 휴무
+                                    {t("courseCard.placesClosed", { n: getClosedPlaceCount(course) })}
                                 </span>
                             </div>
                         </div>
@@ -223,7 +227,7 @@ const CourseCard = memo(
                                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" />
                                 </svg>
-                                실시간 예약
+                                {t("courseCard.realtimeReservation")}
                             </span>
                         )}
 
@@ -275,11 +279,11 @@ const CourseCard = memo(
                     {/* 1. 제목과 설명 영역 */}
                     <div className="mb-2">
                         <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">
-                            {(course.sub_title ? translatedSubTitle : translatedTitle) || course.sub_title || course.title}
+                            {(course.sub_title ? translatedSubTitle : translatedTitle) || course.sub_title || course.title || t("courses.noTitle")}
                         </h3>
                         {course.sub_title && (
                             <p className="text-xs text-gray-600 dark:text-gray-400 font-light mt-1 opacity-90 line-clamp-1">
-                                {translatedTitle || course.title}
+                                {translatedTitle || course.title || t("courses.noTitle")}
                             </p>
                         )}
                     </div>
@@ -334,7 +338,7 @@ const CourseCard = memo(
                     <LoginModal
                         onClose={() => setShowLoginModal(false)}
                         next={`/courses/${course.id}`}
-                        {...LOGIN_MODAL_PRESETS.courseDetail}
+                        preset="courseDetail"
                     />
                 )}
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface BenefitConsentModalProps {
     isOpen: boolean;
@@ -8,6 +9,7 @@ interface BenefitConsentModalProps {
 }
 
 export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentModalProps) {
+    const { t, isLocaleReady } = useLocale();
     const [selected, setSelected] = useState<string[]>(["COURSE", "NEW_ESCAPE"]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,7 +45,7 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
 
     const handleConfirm = async () => {
         if (selected.length === 0) {
-            alert("받으실 혜택을 하나 이상 선택해주세요!");
+            alert(t("benefitConsentModal.alertSelectOne"));
             return;
         }
 
@@ -89,12 +91,16 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
     return (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-6 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white dark:bg-[#1a241b] rounded-[2.5rem] p-8 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 duration-300">
+                {!isLocaleReady ? (
+                    <div className="flex items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                    </div>
+                ) : (
+                <>
                 <div className="text-center mb-6">
                     <span className="text-4xl">💌</span>
-                    <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mt-4 leading-tight tracking-tight">
-                        두나의 특별한 혜택,
-                        <br />
-                        어떤 소식을 드릴까요?
+                    <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mt-4 leading-tight tracking-tight whitespace-pre-line">
+                        {t("benefitConsentModal.title")}
                     </h2>
                 </div>
 
@@ -111,9 +117,9 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                         <div className="flex items-center gap-3">
                             <span className="text-xl">📍</span>
                             <div className="text-left">
-                                <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">새로운 데이트 코스</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">{t("benefitConsentModal.topicCourse")}</p>
                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                    취향 저격 코스가 올라오면 알림
+                                    {t("benefitConsentModal.topicCourseDesc")}
                                 </p>
                             </div>
                         </div>
@@ -136,9 +142,9 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                         <div className="flex items-center gap-3">
                             <span className="text-xl">🔑</span>
                             <div className="text-left">
-                                <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">신규 Escape 오픈</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">{t("benefitConsentModal.topicEscape")}</p>
                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                    새로운 실외 방탈출 오픈 즉시 알림
+                                    {t("benefitConsentModal.topicEscapeDesc")}
                                 </p>
                             </div>
                         </div>
@@ -156,22 +162,22 @@ export default function BenefitConsentModal({ isOpen, onClose }: BenefitConsentM
                         disabled={isSubmitting || selected.length === 0}
                         className="w-full py-4 bg-gray-900 dark:bg-slate-800 text-white rounded-2xl font-bold text-[16px] shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black dark:hover:bg-slate-700"
                     >
-                        {isSubmitting ? "처리 중..." : "선택한 혜택 소식 받기"}
+                        {isSubmitting ? t("benefitConsentModal.submitting") : t("benefitConsentModal.cta")}
                     </button>
                     <button
                         onClick={handleLater}
                         disabled={isSubmitting}
                         className="w-full text-gray-400 dark:text-gray-500 text-[13px] font-medium py-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors disabled:opacity-50"
                     >
-                        24시간 뒤에 보기
+                        {t("benefitConsentModal.later")}
                     </button>
                 </div>
 
-                <p className="mt-6 text-[10px] text-gray-300 dark:text-gray-500 text-center leading-tight">
-                    *혜택 선택 시 서비스 소식 수신을 위한
-                    <br />
-                    전체 푸시 알림 설정이 함께 활성화됩니다.
+                <p className="mt-6 text-[10px] text-gray-300 dark:text-gray-500 text-center leading-tight whitespace-pre-line">
+                    {t("benefitConsentModal.footer")}
                 </p>
+                </>
+                )}
             </div>
         </div>
     );

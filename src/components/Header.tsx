@@ -17,13 +17,11 @@ import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
 
-// 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시
-const LogoutOverlay = () => (
+// 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시 (t는 부모에서 주입)
+const LogoutOverlay = ({ message }: { message: string }) => (
     <div className="fixed inset-0 z-9999 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center">
         <div className="bg-white dark:bg-[#1a241b] rounded-xl border border-gray-200 dark:border-gray-800 px-6 py-4 shadow-xl">
-            <p className="text-gray-700 dark:text-gray-300 font-medium tracking-tight">
-                dona가 안전하게 로그아웃 하고 있습니다
-            </p>
+            <p className="text-gray-700 dark:text-gray-300 font-medium tracking-tight">{message}</p>
         </div>
     </div>
 );
@@ -34,7 +32,7 @@ const Header = memo(() => {
     const { containInPhone } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
     const { resolvedTheme, setTheme } = useTheme();
-    const { locale, setLocale, t } = useLocale();
+    const { locale, setLocaleSafe, isLocaleLoading, t } = useLocale();
     const [hasFavorites, setHasFavorites] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false); // 🟢 새로 추가
@@ -129,7 +127,7 @@ const Header = memo(() => {
 
     return (
         <>
-            {isLoggingOut && <LogoutOverlay />}
+            {isLoggingOut && <LogoutOverlay message={t("header.loggingOut")} />}
 
             <header
                 className="relative z-50 bg-white dark:bg-[#1a241b]"
@@ -153,18 +151,20 @@ const Header = memo(() => {
                                 <button
                                     onClick={() => window.dispatchEvent(new Event("openSearchModal"))}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                    aria-label={t("header.search")}
                                 >
                                     <Search className="w-5 h-5" />
                                 </button>
                             </TapFeedback>
 
-                            {/* 알림 버튼 (레드도트 포함) */}
+                            {/* 알림 버튼 (종/알람) */}
                             <TapFeedback>
                                 <button
                                     onClick={() => {
                                         isAuthenticated ? setShowKakaoChannelModal(true) : setShowNotiModal(true);
                                     }}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
+                                    aria-label={t("header.notification")}
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -196,8 +196,8 @@ const Header = memo(() => {
                                     type="button"
                                     onClick={() => setShowSettingsModal(true)}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                    aria-label="설정"
-                                    title="설정"
+                                    aria-label={t("common.settings")}
+                                    title={t("common.settings")}
                                 >
                                     <Settings className="w-5 h-5" />
                                 </button>
@@ -224,10 +224,10 @@ const Header = memo(() => {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === "Escape" && setShowSettingsModal(false)}
-                    aria-label="설정 모달 닫기"
+                    aria-label={t("header.closeSettingsModal")}
                 >
                     <div
-                        className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800 ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
+                        className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto scrollbar-hide rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800 ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
                         style={{ animation: "slideUp 0.3s ease-out forwards" }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -237,7 +237,7 @@ const Header = memo(() => {
                                 type="button"
                                 onClick={() => setShowSettingsModal(false)}
                                 className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                aria-label="닫기"
+                                aria-label={t("common.close")}
                             >
                                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                             </button>
@@ -250,11 +250,12 @@ const Header = memo(() => {
                                     <button
                                         key={loc}
                                         type="button"
+                                        disabled={isLocaleLoading}
                                         onClick={() => {
-                                            setLocale(loc);
+                                            setLocaleSafe(loc);
                                             setShowSettingsModal(false);
                                         }}
-                                        className={`flex-1 min-w-0 flex items-center justify-center py-2.5 rounded-xl border-2 transition-colors text-sm font-medium ${
+                                        className={`flex-1 min-w-0 flex items-center justify-center py-2.5 rounded-xl border-2 transition-colors text-sm font-medium disabled:opacity-60 disabled:pointer-events-none ${
                                             locale === loc
                                                 ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
                                                 : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"

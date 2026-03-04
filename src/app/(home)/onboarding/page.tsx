@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { VIBE_OPTIONS, VALUE_OPTIONS, REGION_GROUPS } from "@/constants/onboardingData";
 import Image from "next/image";
 import { X, ArrowRight } from "lucide-react";
+import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
 
 interface UserPreferences {
     concept: string[];
@@ -18,6 +20,7 @@ interface AIOnboardingProps {
 }
 
 const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
+    const { t } = useLocale();
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -387,21 +390,19 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             AI DONA
                         </div>
                         <h1 className="text-4xl font-light text-white leading-[1.15] tracking-tight">
-                            어디로 떠날지
+                            {t("onboarding.titleLine1")}
                             <br />
-                            <span className="font-bold">고민하지 마세요.</span>
+                            <span className="font-bold">{t("onboarding.titleLine2")}</span>
                         </h1>
-                        <p className="text-white/70 text-base font-light leading-relaxed max-w-[80%]">
-                            당신의 취향을 분석해
-                            <br />
-                            가장 완벽한 주말을 설계해 드립니다.
+                        <p className="text-white/70 text-base font-light leading-relaxed max-w-[80%] whitespace-pre-line">
+                            {t("onboarding.subtitle")}
                         </p>
                         <div className="h-4"></div>
                         <button
                             onClick={handleStart}
                             className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-between px-6 group"
                         >
-                            <span>지금 시작하기</span>
+                            <span>{t("onboarding.startButton")}</span>
                             <ArrowRight
                                 size={20}
                                 className="text-emerald-100 group-hover:text-white group-hover:translate-x-1 transition-all"
@@ -428,13 +429,13 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     </button>
                     {/* ... (생략된 내용) ... */}
                     <div className="mt-8">
-                        <h2 className="text-gray-900 dark:text-white text-2xl font-bold mb-2">분석 완료!</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mb-6">회원님의 취향 DNA가 추출되었습니다.</p>
+                        <h2 className="text-gray-900 dark:text-white text-2xl font-bold mb-2">{t("onboarding.analysisDone")}</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mb-6">{t("onboarding.dnaExtracted")}</p>
                         <button
                             onClick={completeOnboarding}
                             className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform"
                         >
-                            맞춤 코스 확인하기 ➔
+                            {t("onboarding.viewCourses")}
                         </button>
                     </div>
                 </div>
@@ -447,7 +448,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         return (
             <div className="fixed inset-0 z-50 h-screen bg-black/70 backdrop-blur-md flex flex-col items-center justify-center">
                 <div className="w-16 h-16 border-4 border-white/20 border-t-emerald-400 rounded-full animate-spin mb-6"></div>
-                <h2 className="text-xl font-bold text-white animate-pulse">취향 데이터 분석 중...</h2>
+                <h2 className="text-xl font-bold text-white animate-pulse">{t("onboarding.analyzing")}</h2>
             </div>
         );
     }
@@ -485,9 +486,9 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         /* Step 1 UI */
                         <div className="animate-slideUp flex flex-col h-full overflow-y-auto scrollbar-hide">
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-4 leading-tight shrink-0 tracking-tight">
-                                당신이 꿈꾸는
+                                {t("onboarding.step1Title")}
                                 <br />
-                                '완벽한 주말'의 모습은?
+                                {t("onboarding.step1Question")}
                             </h1>
                             <div className="grid grid-cols-2 gap-3 pb-6">
                                 {VIBE_OPTIONS.map((opt) => (
@@ -498,14 +499,14 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                     >
                                         <Image
                                             src={opt.img}
-                                            alt={opt.title}
+                                            alt={t(`onboarding.vibe.${opt.id}` as TranslationKeys)}
                                             fill
                                             sizes="(max-width: 768px) 50vw, 400px"
                                             className="object-cover"
                                             priority
                                         />
-                                        <span className="absolute bottom-4 left-4 text-white font-bold text-sm drop-shadow">
-                                            {opt.title}
+                                        <span className="absolute bottom-4 left-4 text-white font-bold text-sm drop-shadow whitespace-pre-line">
+                                            {t(`onboarding.vibe.${opt.id}` as TranslationKeys)}
                                         </span>
                                     </button>
                                 ))}
@@ -516,10 +517,10 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     {currentStep === 2 && (
                         <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                                딱 하나만 고른다면?
+                                {t("onboarding.step2Title")}
                             </h1>
                             <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">
-                                실패 없는 추천을 위해 가치관을 파악합니다.
+                                {t("onboarding.step2Desc")}
                             </p>
                             <div className="flex flex-col gap-4">
                                 {VALUE_OPTIONS.map((opt) => (
@@ -537,7 +538,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                         </span>
                                         <div>
                                             <h3 className="font-bold text-gray-800 dark:text-white text-lg whitespace-pre-wrap leading-snug tracking-tight">
-                                                {opt.title}
+                                                {t(`onboarding.value.${opt.id}` as TranslationKeys)}
                                             </h3>
                                         </div>
                                     </button>
@@ -552,10 +553,10 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             {/* 헤더 섹션: 가이드 텍스트 추가 */}
                             <div className="mb-8 mt-4">
                                 <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">
-                                    자주 출몰하는 지역은?
+                                    {t("onboarding.step3Title")}
                                 </h1>
                                 <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                                    최대 3개까지 선택할 수 있어요 📍
+                                    {t("onboarding.step3Desc")}
                                 </p>
                             </div>
 
@@ -574,7 +575,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                             }`}
                                         >
                                             <span className={`${isSelected ? "scale-105" : ""} transition-transform`}>
-                                                {group.label}
+                                                {t(`onboarding.region.${group.id}` as TranslationKeys)}
                                             </span>
                                         </button>
                                     );
@@ -592,7 +593,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                             : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                     }`}
                                 >
-                                    분석 시작하기 ✨
+                                    {t("onboarding.analyzeButton")}
                                 </button>
                             </div>
                         </div>
@@ -606,7 +607,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             onClick={prevStep}
                             className="text-gray-400 dark:text-gray-500 text-sm flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-400"
                         >
-                            ← 이전 단계
+                            {t("onboarding.prevStep")}
                         </button>
                     </div>
                 )}

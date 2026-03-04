@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getChips, type ChipContext, type DayType } from "@/constants/chipRules";
 import { REGION_GROUPS } from "@/constants/onboardingData";
+import { getRecommendationDailyLimit } from "@/constants/subscription";
 import {
     fetchWeekendForecast,
     getWeekendWeatherRisk,
@@ -402,15 +403,17 @@ function calculateWeekendRecommendationScore(
     return Math.max(0, Math.min(finalBaseScore, 1.0));
 }
 
-/** 매칭 이유 1줄 생성 (온보딩 O: 취향 기반, 온보딩 X: 오늘 상황 기준) */
+/** 매칭 이유 라벨 생성 (설명 없이 근거 키워드만) — 칩 UI용 */
 function getMatchReason(
     course: any,
     longTermPrefs: any,
-    todayContext: { goal?: string; mood_today?: string; region_today?: string },
+    todayContext: { goal?: string; goal_detail?: string; mood_today?: string; region_today?: string },
     hasLongTermPreferences: boolean,
 ): string {
+    const isAnniversary =
+        todayContext.goal === "ANNIVERSARY" || ["100일", "생일", "연말"].includes(todayContext.goal_detail || "");
+
     if (hasLongTermPreferences) {
-        // 온보딩 O: 취향(concept, mood, region) 중 매칭된 것 하나 선택
         const userConcepts = longTermPrefs.concept || [];
         const userMoods = longTermPrefs.mood || [];
         const userRegions = longTermPrefs.regions || [];
@@ -420,29 +423,28 @@ function getMatchReason(
 
         if (userConcepts.length > 0 && courseConcept && userConcepts.some((c: string) => courseConcept.includes(c))) {
             const matched = userConcepts.find((c: string) => courseConcept.includes(c));
-            return `회원님이 좋아하실 ${matched || courseConcept} 분위기예요`;
+            return `취향: ${matched || courseConcept}`;
         }
         if (userMoods.length > 0 && courseMoods.some((m: string) => userMoods.includes(m))) {
             const matched = courseMoods.find((m: string) => userMoods.includes(m));
-            return `회원님 취향 ${matched}를 반영했어요`;
+            return `무드: ${matched}`;
         }
         if (userRegions.length > 0 && courseRegion) {
             const regionGroup = REGION_GROUPS.find((g) => g.dbValues.some((v) => courseRegion.includes(v)));
             if (regionGroup && userRegions.some((r: string) => (regionGroup.dbValues as readonly string[]).includes(r))) {
-                return `선호 지역 ${regionGroup.label}이에요`;
+                return `지역: ${regionGroup.label}`;
             }
         }
-        // 폴백: 첫 번째 취향 기반
-        if (userConcepts[0]) return `회원님이 좋아하실 ${userConcepts[0]} 분위기예요`;
-        if (userMoods[0]) return `회원님 취향 ${userMoods[0]}를 반영했어요`;
-        if (userRegions[0]) return `선호 지역 근처예요`;
+        if (userConcepts[0]) return `취향: ${userConcepts[0]}`;
+        if (userMoods[0]) return `무드: ${userMoods[0]}`;
+        if (userRegions[0]) return `지역: ${courseRegion || "근처"}`;
     }
-    // 온보딩 X: 오늘 상황 기준
-    const { mood_today, region_today } = todayContext;
-    const parts: string[] = [];
-    if (region_today) parts.push(region_today);
-    if (mood_today) parts.push(mood_today + " 분위기");
-        return parts.length > 0 ? `오늘 ${parts.join("에서 ")}에 맞는 추천이에요` : "오늘 상황에 맞는 추천이에요";
+    const { mood_today, region_today, goal_detail } = todayContext;
+    const prefix = isAnniversary ? (goal_detail || "기준") : "오늘";
+    if (region_today && mood_today) return `${prefix}: ${region_today} · ${mood_today}`;
+    if (region_today) return `${prefix}: ${region_today}`;
+    if (mood_today) return `${prefix}: ${mood_today}`;
+    return isAnniversary ? `${goal_detail || "기준"} 기준` : "오늘 기준";
 }
 
 // ---------------------------------------------
@@ -475,6 +477,34 @@ export async function GET(req: NextRequest) {
             });
             const t = user?.subscriptionTier?.toUpperCase?.();
             if (t === "BASIC" || t === "PREMIUM") userTier = t;
+
+            // 🟢 등급별 1일 추천 한도 체크 (FREE 1회, BASIC 5회, PREMIUM 무제한)
+            const limit = getRecommendationDailyLimit(userTier);
+            if (limit < Number.POSITIVE_INFINITY) {
+                const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+                const y = kst.getFullYear();
+                const m = kst.getMonth();
+                const d = kst.getDate();
+                const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0, 0) - 9 * 3600 * 1000);
+                const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - 9 * 3600 * 1000);
+                const usedToday = await (prisma as any).aiRecommendationUsage.count({
+                    where: {
+                        userId,
+                        usedAt: { gte: startUtc, lte: endUtc },
+                    },
+                });
+                if (usedToday >= limit) {
+                    return NextResponse.json(
+                        {
+                            error: "오늘 사용 횟수를 초과했습니다. 내일 다시 시도해주세요.",
+                            tier: userTier,
+                            limit,
+                            used: usedToday,
+                        },
+                        { status: 429 },
+                    );
+                }
+            }
         }
 
         // 🟢 [Fixed]: 개별 처리로 TypeScript 타입 추론 에러(18047, 2339) 해결
@@ -653,8 +683,16 @@ export async function GET(req: NextRequest) {
             coursePlaces: {
                 take: 10,
                 select: {
+                    order_index: true,
                     place: {
-                        select: { id: true, imageUrl: true, reservationUrl: true },
+                        select: {
+                            id: true,
+                            name: true,
+                            imageUrl: true,
+                            reservationUrl: true,
+                            category: true,
+                            address: true,
+                        },
                     },
                 },
                 orderBy: { order_index: "asc" },
@@ -971,6 +1009,15 @@ export async function GET(req: NextRequest) {
             ),
             matchReason: getMatchReason(c, longTermPrefs, todayContext, hasLongTermPreferences),
         }));
+
+        // 🟢 AI 추천 사용 로그 기록 (등급별 한도용)
+        if (userId && mode === "ai") {
+            (prisma as any)
+                .aiRecommendationUsage.create({
+                    data: { userId },
+                })
+                .catch((err: unknown) => console.error("AiRecommendationUsage create 실패:", err));
+        }
 
         return NextResponse.json({
             recommendations: recommendationsWithChips,

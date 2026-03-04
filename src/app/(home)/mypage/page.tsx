@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/context/LocaleContext";
 import LogoutModal from "@/components/LogoutModal";
 import PasswordCheckModal from "@/components/passwordChackModal";
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -12,6 +13,7 @@ const FootprintTab = lazy(() => import("@/components/mypage/FootprintTab"));
 const RecordsTab = lazy(() => import("@/components/mypage/RecordsTab"));
 const ActivityTab = lazy(() => import("@/components/mypage/ActivityTab"));
 import TicketPlans from "@/components/TicketPlans";
+import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 import {
     UserInfo,
     UserPreferences,
@@ -30,6 +32,7 @@ declare global {
 
 const MyPage = () => {
     const router = useRouter();
+    const { t, isLocaleReady } = useLocale();
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
     const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -917,12 +920,12 @@ const MyPage = () => {
                     gender: editForm.gender || null,
                 });
                 setShowEditModal(false);
-                alert("프로필이 성공적으로 수정되었습니다.");
+                alert(t("mypage.profileEditSuccess"));
             } else {
-                setEditError((data as any)?.error || "프로필 수정에 실패했습니다.");
+                setEditError((data as any)?.error || t("mypage.profileEditFailed"));
             }
         } catch (error) {
-            setEditError("프로필 수정 중 오류가 발생했습니다.");
+            setEditError(t("mypage.profileEditError"));
         } finally {
             setEditLoading(false);
         }
@@ -1014,30 +1017,30 @@ const MyPage = () => {
             // 🟢 [2025-12-28] URL 끝의 슬래시 제거하여 카카오 콘솔 등록값과 정확히 일치시킴
             const link = typeof location !== "undefined" ? location.href.replace(/\/$/, "") : "";
             const imageUrl = badge.image_url || "";
-            const bragText = `${userInfo?.name || "저"}는 '${badge.name}' 배지를 획득했어요! DoNa에서 함께 도전해요 ✨`;
+            const bragText = t("mypage.badgeBragText", { name: userInfo?.name || t("commonFallback.me"), badge: badge.name });
             if (Kakao && Kakao.Share) {
                 Kakao.Share.sendDefault({
                     objectType: "feed",
                     content: {
-                        title: "배지 자랑하기",
+                        title: t("mypage.badgeShare"),
                         description: bragText,
                         imageUrl,
                         link: { webUrl: link, mobileWebUrl: link },
                     },
-                    buttons: [{ title: "자세히 보기", link: { webUrl: link, mobileWebUrl: link } }],
+                    buttons: [{ title: t("mypage.badgeViewMore"), link: { webUrl: link, mobileWebUrl: link } }],
                 });
                 return;
             }
             // Fallback: Web Share API or Clipboard
             const shareText = `${bragText} ${link}`;
             if (navigator.share) {
-                await navigator.share({ title: "배지 자랑하기", text: shareText, url: link });
+                await navigator.share({ title: t("mypage.badgeShare"), text: shareText, url: link });
             } else {
                 await navigator.clipboard.writeText(shareText);
-                alert("링크가 클립보드에 복사되었습니다.");
+                alert(t("mypage.linkCopied"));
             }
         } catch {
-            alert("공유하기에 실패했습니다.");
+            alert(t("mypage.shareFailed"));
         }
     };
 
@@ -1054,8 +1057,8 @@ const MyPage = () => {
                                 <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
                             </svg>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">로딩 중...</h1>
-                        <p className="text-gray-600 dark:text-gray-400">마이페이지 정보를 불러오고 있습니다</p>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t("mypage.loading")}</h1>
+                        <p className="text-gray-600 dark:text-gray-400">{t("mypage.loadingDesc")}</p>
                     </div>
                 </main>
             </div>
@@ -1067,23 +1070,24 @@ const MyPage = () => {
             <main className="max-w-4xl mx-auto px-4 py-6 md:py-8 pt-10 ">
                 <div className="text-center mb-6 md:mb-8">
                     <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2 tracking-tight">
-                        마이페이지
+                        {t("mypage.pageTitle")}
                     </h1>
                     <p className="text-sm md:text-[17px] text-gray-600 dark:text-gray-400">
-                        내 정보와 활동을 관리해보세요
+                        {t("mypage.pageSubtitle")}
                     </p>
                 </div>
 
                 <div className="flex justify-center mb-6 md:mb-8">
-                    <div
-                        className="bg-white dark:bg-[#1a241b] rounded-lg border border-gray-100 dark:border-gray-800 p-2 w-full max-w-2xl"
+                    <HorizontalScrollContainer
                         ref={tabsTrackRef}
+                        scrollMode="drag"
+                        className="bg-white dark:bg-[#1a241b] rounded-lg border border-gray-100 dark:border-gray-800 p-2 w-full max-w-2xl overflow-x-auto scrollbar-hide"
                     >
-                        <div className="flex space-x-2 w-full">
+                        <div className="flex space-x-2 min-w-max">
                             {[
                                 { 
                                     id: "profile", 
-                                    label: "내 정보", 
+                                    label: t("mypage.tabProfile"), 
                                     icon: (
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -1092,7 +1096,7 @@ const MyPage = () => {
                                 },
                                 { 
                                     id: "footprint", 
-                                    label: "발자취", 
+                                    label: t("mypage.tabFootprint"), 
                                     icon: (
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                                             <path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/>
@@ -1104,7 +1108,7 @@ const MyPage = () => {
                                 },
                                 { 
                                     id: "records", 
-                                    label: "여행 기록", 
+                                    label: t("mypage.tabRecords"), 
                                     icon: (
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                                             <path d="M16 14v2.2l1.6 1"/>
@@ -1113,7 +1117,7 @@ const MyPage = () => {
                                         </svg>
                                     )
                                 },
-                                { id: "activity", label: "활동 내역", icon: (
+                                { id: "activity", label: t("mypage.tabActivity"), icon: (
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                                         <path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/>
                                         <path d="M11 12 5.12 2.2"/>
@@ -1128,7 +1132,7 @@ const MyPage = () => {
                                     key={tab.id}
                                     onClick={(e) => handleSelectTab(tab.id, e)}
                                     aria-selected={activeTab === tab.id}
-                                    className={`flex-1 px-2 md:px-3 py-2.5 md:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm md:text-base flex flex-col items-center gap-1 whitespace-nowrap ${
+                                    className={`shrink-0 px-4 md:px-5 py-2.5 md:py-3 rounded-lg font-medium transition-all cursor-pointer text-sm md:text-base flex flex-col items-center gap-1 whitespace-nowrap ${
                                         activeTab === tab.id
                                             ? "bg-blue-600 dark:bg-blue-700 text-white shadow-lg"
                                             : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -1143,90 +1147,114 @@ const MyPage = () => {
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </HorizontalScrollContainer>
                 </div>
 
-                {/* 🟢 성능 최적화: Suspense로 동적 로딩된 컴포넌트 처리 */}
+                {/* 🟢 성능 최적화: Suspense로 동적 로딩된 컴포넌트 처리. locale 메시지 준비 전에는 스피너만 표시해 zh/ko 섞임 방지 */}
                 {activeTab === "profile" && (
-                    <Suspense
-                        fallback={
-                            <div className="flex items-center justify-center py-20">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                            </div>
-                        }
-                    >
-                        <ProfileTab
-                            // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
-                            key={userInfo?.subscriptionTier || "loading"}
-                            userInfo={userInfo}
-                            userPreferences={userPreferences}
-                            onEditProfile={handleEditClick}
-                            onEditPreferences={() => router.push("/onboarding?reset=true")}
-                            onOpenPwModal={() => {
-                                setPwModalOpen(true);
-                                setPwStep("verify");
-                                setPwState({ current: "", next: "", confirm: "" });
-                                setPwError("");
-                            }}
-                            onLogout={handleLogoutClick}
-                        />
-                    </Suspense>
+                    !isLocaleReady ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                        </div>
+                    ) : (
+                        <Suspense
+                            fallback={
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                </div>
+                            }
+                        >
+                            <ProfileTab
+                                // 🟢 key를 추가하여 userInfo가 바뀔 때마다 ProfileTab을 새로 그리게 합니다.
+                                key={userInfo?.subscriptionTier || "loading"}
+                                userInfo={userInfo}
+                                userPreferences={userPreferences}
+                                onEditProfile={handleEditClick}
+                                onEditPreferences={() => router.push("/onboarding?reset=true")}
+                                onOpenPwModal={() => {
+                                    setPwModalOpen(true);
+                                    setPwStep("verify");
+                                    setPwState({ current: "", next: "", confirm: "" });
+                                    setPwError("");
+                                }}
+                                onLogout={handleLogoutClick}
+                            />
+                        </Suspense>
+                    )
                 )}
 
                 {activeTab === "footprint" && (
-                    <Suspense
-                        fallback={
-                            <div className="flex items-center justify-center py-20">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                            </div>
-                        }
-                    >
-                        <FootprintTab
-                            casefiles={casefiles}
-                            completed={completed}
-                            aiRecommendations={savedCourses}
-                            userName={userInfo?.name || ""}
-                            personalStories={personalStories}
-                        />
-                    </Suspense>
+                    !isLocaleReady ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                        </div>
+                    ) : (
+                        <Suspense
+                            fallback={
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                </div>
+                            }
+                        >
+                            <FootprintTab
+                                casefiles={casefiles}
+                                completed={completed}
+                                aiRecommendations={savedCourses}
+                                userName={userInfo?.name || ""}
+                                personalStories={personalStories}
+                            />
+                        </Suspense>
+                    )
                 )}
 
                 {activeTab === "records" && (
-                    <Suspense
-                        fallback={
-                            <div className="flex items-center justify-center py-20">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                            </div>
-                        }
-                    >
-                        <RecordsTab
-                            favorites={favorites}
-                            savedCourses={savedCourses}
-                            completed={completed}
-                            casefiles={casefiles}
-                            onRemoveFavorite={removeFavorite}
-                            onOpenCaseModal={openCaseModal}
-                            userTier={userInfo?.subscriptionTier}
-                        />
-                    </Suspense>
+                    !isLocaleReady ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                        </div>
+                    ) : (
+                        <Suspense
+                            fallback={
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                </div>
+                            }
+                        >
+                            <RecordsTab
+                                favorites={favorites}
+                                savedCourses={savedCourses}
+                                completed={completed}
+                                casefiles={casefiles}
+                                onRemoveFavorite={removeFavorite}
+                                onOpenCaseModal={openCaseModal}
+                                userTier={userInfo?.subscriptionTier}
+                            />
+                        </Suspense>
+                    )
                 )}
 
                 {activeTab === "activity" && (
-                    <Suspense
-                        fallback={
-                            <div className="flex items-center justify-center py-20">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                            </div>
-                        }
-                    >
-                        <ActivityTab
-                            badges={badges}
-                            rewards={rewards}
-                            payments={payments}
-                            onSelectBadge={setSelectedBadge}
-                            initialSubTab={activitySubTab}
-                        />
-                    </Suspense>
+                    !isLocaleReady ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                        </div>
+                    ) : (
+                        <Suspense
+                            fallback={
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                </div>
+                            }
+                        >
+                            <ActivityTab
+                                badges={badges}
+                                rewards={rewards}
+                                payments={payments}
+                                onSelectBadge={setSelectedBadge}
+                                initialSubTab={activitySubTab}
+                            />
+                        </Suspense>
+                    )
                 )}
             </main>
 
@@ -1240,7 +1268,7 @@ const MyPage = () => {
                         onClick={() => setFullImageUrl(null)}
                         className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-white/90 dark:bg-[#1a241b]/90 text-gray-900 dark:text-white hover:bg-white dark:hover:bg-[#1a241b] shadow"
                     >
-                        닫기
+                        {t("mypage.close")}
                     </button>
                     <img
                         src={fullImageUrl}
@@ -1266,12 +1294,12 @@ const MyPage = () => {
                                 }}
                                 className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                             >
-                                닫기
+                                {t("mypage.close")}
                             </button>
                         </div>
                         <div className="p-4 overflow-y-auto">
                             {casePhotoLoading ? (
-                                <div className="py-16 text-center text-gray-600 dark:text-gray-400">불러오는 중...</div>
+                                <div className="py-16 text-center text-gray-600 dark:text-gray-400">{t("mypage.caseModalLoading")}</div>
                             ) : casePhotoUrls.length > 0 ? (
                                 <div className="grid grid-cols-1 gap-3 md:gap-4">
                                     {casePhotoUrls.slice(0, 1).map((u, i) => (
@@ -1288,14 +1316,14 @@ const MyPage = () => {
                                                 />
                                             </div>
                                             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                                클릭하면 전체 화면으로 확대됩니다
+                                                {t("mypage.caseModalExpandHint")}
                                             </div>
                                         </button>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="py-16 text-center text-gray-600 dark:text-gray-400">
-                                    업로드된 사진이 없습니다.
+                                    {t("mypage.noCasePhotos")}
                                 </div>
                             )}
                         </div>
@@ -1326,13 +1354,13 @@ const MyPage = () => {
                                 }
                             );
                             if (!result || !result.ok) {
-                                throw new Error(result?.error || "현재 비밀번호가 올바르지 않습니다.");
+                                throw new Error(result?.error || t("mypage.pwWrongCurrent"));
                             }
                             // 현재 비밀번호 저장하고 다음 단계로
                             setPwState((s) => ({ ...s, current: password }));
                             setPwStep("change");
                         } catch (err: any) {
-                            setPwError(err.message || "오류가 발생했습니다.");
+                            setPwError(err.message || t("mypage.pwErrorGeneric"));
                         } finally {
                             setPwLoading(false);
                         }
@@ -1343,7 +1371,7 @@ const MyPage = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white dark:bg-[#1a241b] rounded-2xl shadow-xl p-6 w-[90vw] max-w-md mx-4">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">새 비밀번호 설정</h3>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{t("mypage.pwChangeTitle")}</h3>
                             <button
                                 className="hover:cursor-pointer text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                                 onClick={() => {
@@ -1371,9 +1399,9 @@ const MyPage = () => {
                                     const { authenticatedFetch } = await import("@/lib/authClient");
 
                                     if (pwState.next.length < 6)
-                                        throw new Error("새 비밀번호는 최소 6자 이상이어야 합니다.");
+                                        throw new Error(t("mypage.pwMinLength"));
                                     if (pwState.next !== pwState.confirm)
-                                        throw new Error("새 비밀번호가 일치하지 않습니다.");
+                                        throw new Error(t("mypage.pwMismatch"));
 
                                     const data = await authenticatedFetch("/api/users/password", {
                                         method: "PUT",
@@ -1383,15 +1411,15 @@ const MyPage = () => {
                                         }),
                                     });
                                     if (!data || !(data as any)?.success)
-                                        throw new Error((data as any)?.error || "변경 실패");
+                                        throw new Error((data as any)?.error || t("mypage.pwChangeFailed"));
 
                                     setPwModalOpen(false);
                                     setPwState({ current: "", next: "", confirm: "" });
                                     setPwStep("verify");
-                                    alert("비밀번호가 변경되었습니다. 다시 로그인해 주세요.");
+                                    alert(t("mypage.pwChangeSuccess"));
                                     handleLogout();
                                 } catch (err: any) {
-                                    setPwError(err.message || "오류가 발생했습니다.");
+                                    setPwError(err.message || t("mypage.pwErrorGeneric"));
                                 } finally {
                                     setPwLoading(false);
                                 }
@@ -1399,8 +1427,8 @@ const MyPage = () => {
                             className="space-y-4"
                         >
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    새 비밀번호
+                                <label                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {t("mypage.pwChangeLabel")}
                                 </label>
                                 <input
                                     type="password"
@@ -1408,12 +1436,12 @@ const MyPage = () => {
                                     onChange={(e) => setPwState((s) => ({ ...s, next: e.target.value }))}
                                     required
                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                                    placeholder="새 비밀번호 (6자 이상)"
+                                    placeholder={t("mypage.pwPlaceholder")}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    새 비밀번호 확인
+                                <label                                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {t("mypage.pwChangeLabelConfirm")}
                                 </label>
                                 <input
                                     type="password"
@@ -1421,7 +1449,7 @@ const MyPage = () => {
                                     onChange={(e) => setPwState((s) => ({ ...s, confirm: e.target.value }))}
                                     required
                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                                    placeholder="새 비밀번호 확인"
+                                    placeholder={t("mypage.pwPlaceholderConfirm")}
                                 />
                             </div>
                             <div className="flex gap-2">
@@ -1435,14 +1463,14 @@ const MyPage = () => {
                                     }}
                                     className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-[#1a241b] rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                                 >
-                                    취소
+                                    {t("mypage.cancel")}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={pwLoading}
                                     className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-lg disabled:opacity-50 tracking-tight font-bold hover:bg-slate-800 transition-colors"
                                 >
-                                    {pwLoading ? "처리 중..." : "변경하기"}
+                                    {pwLoading ? t("mypage.pwChangeProcessing") : t("mypage.pwChangeButton")}
                                 </button>
                             </div>
                         </form>
@@ -1452,7 +1480,7 @@ const MyPage = () => {
 
             {/* 모달: 프로필 수정 */}
             {showEditModal && (
-                <div className="fixed inset-0 backdrop-blur-sm flex items-end justify-center z-50">
+                <div className="fixed inset-0 backdrop-blur-sm flex items-end justify-center z-9999">
                     <div 
                         className="bg-white dark:bg-[#1a241b] rounded-t-3xl border-t border-gray-100 dark:border-gray-800 p-8 w-full max-w-md mx-4 mb-0 scrollbar-hide" 
                         style={{ 
@@ -1463,7 +1491,7 @@ const MyPage = () => {
                     >
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-                                프로필 수정
+                                {t("mypage.profileEdit")}
                             </h3>
                             <button
                                 onClick={() => setShowEditModal(false)}
@@ -1480,7 +1508,7 @@ const MyPage = () => {
                             )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    닉네임
+                                    {t("mypage.nickname")}
                                 </label>
                                 <input
                                     type="text"
@@ -1493,7 +1521,7 @@ const MyPage = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    이메일
+                                    {t("mypage.email")}
                                 </label>
                                 <input
                                     type="email"
@@ -1514,7 +1542,7 @@ const MyPage = () => {
                                     onChange={handleEditChange}
                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
-                                    <option value="">MBTI를 선택하세요</option>
+                                    <option value="">{t("mypage.mbtiSelect")}</option>
                                     {[
                                         "INTJ",
                                         "INTP",
@@ -1541,7 +1569,7 @@ const MyPage = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    나이
+                                    {t("mypage.age")}
                                 </label>
                                 <input
                                     type="number"
@@ -1555,7 +1583,7 @@ const MyPage = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    연령대 <span className="text-red-500">*</span>
+                                    {t("mypage.ageRange")} <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     name="ageRange"
@@ -1564,17 +1592,17 @@ const MyPage = () => {
                                     required
                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
-                                    <option value="">선택</option>
-                                    <option value="10대">10대</option>
-                                    <option value="20대">20대</option>
-                                    <option value="30대">30대</option>
-                                    <option value="40대">40대</option>
-                                    <option value="50대 이상">50대 이상</option>
+                                    <option value="">{t("mypage.selectAgeRange")}</option>
+                                    <option value="10대">{t("mypage.age10s")}</option>
+                                    <option value="20대">{t("mypage.age20s")}</option>
+                                    <option value="30대">{t("mypage.age30s")}</option>
+                                    <option value="40대">{t("mypage.age40s")}</option>
+                                    <option value="50대 이상">{t("mypage.age50s")}</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    성별 <span className="text-red-500">*</span>
+                                    {t("mypage.gender")} <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     name="gender"
@@ -1583,9 +1611,9 @@ const MyPage = () => {
                                     required
                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
-                                    <option value="">선택</option>
-                                    <option value="M">남성</option>
-                                    <option value="F">여성</option>
+                                    <option value="">{t("mypage.selectAgeRange")}</option>
+                                    <option value="M">{t("mypage.genderMale")}</option>
+                                    <option value="F">{t("mypage.genderFemale")}</option>
                                 </select>
                             </div>
                             <div className="flex space-x-3">
@@ -1594,14 +1622,14 @@ const MyPage = () => {
                                     onClick={() => setShowEditModal(false)}
                                     className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-[#1a241b] rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                                 >
-                                    취소
+                                    {t("mypage.cancel")}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={editLoading}
                                     className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-lg disabled:opacity-50 tracking-tight font-bold hover:bg-slate-800 transition-colors"
                                 >
-                                    {editLoading ? "수정 중..." : "수정하기"}
+                                    {editLoading ? t("mypage.submitting") : t("mypage.submit")}
                                 </button>
                             </div>
                         </form>
@@ -1645,20 +1673,20 @@ const MyPage = () => {
                                 </div>
                             )}
                             <div className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-                                획득일: {new Date(selectedBadge.awarded_at).toLocaleDateString()}
+                                {t("mypage.badgeAcquiredDate")}: {new Date(selectedBadge.awarded_at).toLocaleDateString()}
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a241b] hover:bg-gray-50 dark:hover:bg-gray-800 text-black dark:text-white"
                                     onClick={() => shareBadgeToKakao(selectedBadge)}
                                 >
-                                    자랑하기
+                                    {t("mypage.badgeBrag")}
                                 </button>
                                 <button
                                     className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
                                     onClick={() => setSelectedBadge(null)}
                                 >
-                                    닫기
+                                    {t("mypage.close")}
                                 </button>
                             </div>
                         </div>
@@ -1668,7 +1696,7 @@ const MyPage = () => {
 
             {/* 🟢 TicketPlans 모달 - 즉시 로드 (lazy 제거로 열림 속도 개선) */}
             {showSubscriptionModal && (
-                <TicketPlans onClose={() => setShowSubscriptionModal(false)} />
+                <TicketPlans context="UPGRADE" onClose={() => setShowSubscriptionModal(false)} />
             )}
         </div>
     );

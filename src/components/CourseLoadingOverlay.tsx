@@ -1,27 +1,25 @@
-// src/components/CourseLoadingOverlay.tsx
+"use client";
+
+import { useLocale } from "@/context/LocaleContext";
+
 export default function CourseLoadingOverlay() {
+    const { t } = useLocale();
     return (
         <div className="min-h-screen bg-white/80 dark:bg-[#0f1710]/90 backdrop-blur-sm flex flex-col items-center justify-center fixed inset-0 z-9999">
             <div className="flex flex-col items-center gap-6 animate-fadeIn">
-                {/* 1. 브랜드 로고 느낌의 스피너 */}
                 <div className="relative">
-                    {/* 바깥쪽 링 */}
                     <div className="h-16 w-16 rounded-full border-[6px] border-emerald-100 dark:border-emerald-900/30"></div>
-                    {/* 빙글빙글 도는 링 */}
                     <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-[6px] border-t-emerald-500 dark:border-t-emerald-400 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                    {/* 중앙 아이콘 (선택 사항 - 하트나 핀) */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-2xl animate-pulse">
                         📍
                     </div>
                 </div>
-
-                {/* 2. 감성 멘트 (랜덤으로 보여줘도 좋지만, 일단 하나로 통일) */}
                 <div className="text-center space-y-1">
                     <h3 className="text-emerald-900 dark:text-emerald-400 font-extrabold text-lg tracking-tight">
                         DoNa
                     </h3>
                     <p className="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-medium tracking-wide animate-pulse">
-                        설레는 데이트를 준비하고 있어요...
+                        {t("loading.courseDetail")}
                     </p>
                 </div>
             </div>

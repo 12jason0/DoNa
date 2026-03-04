@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Lock } from "lucide-react";
 import { BASIC_MONTHLY_PRICE } from "@/constants/subscription";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
 
 const AUTH_OPEN_SUBSCRIPTION_KEY = "auth:openSubscriptionAfterLogin";
 
@@ -30,6 +31,7 @@ interface BridgeModalProps {
 }
 
 export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalProps) {
+    const { t, locale, isLocaleReady } = useLocale();
     const { containInPhone, modalContainerRef } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
@@ -57,7 +59,7 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
 
     if (!mounted) return null;
 
-    const priceFormatted = BASIC_MONTHLY_PRICE.toLocaleString("ko-KR");
+    const priceFormatted = BASIC_MONTHLY_PRICE.toLocaleString(locale === "ko" ? "ko-KR" : locale === "ja" ? "ja-JP" : "en-US");
 
     const posClass = containInPhone ? "absolute" : "fixed";
     const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
@@ -83,24 +85,31 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                     <div className="p-6 sm:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] relative">
                         <button
                             onClick={onClose}
-                            aria-label="닫기"
+                            aria-label={t("bridgeModal.close")}
                             className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center justify-center z-20"
                         >
                             ×
                         </button>
 
+                        {!isLocaleReady ? (
+                            <div className="flex items-center justify-center py-16">
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
+                            </div>
+                        ) : (
+                        <>
                         <div className="text-center mb-6">
                             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
                                 <Lock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
                             </div>
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                                멤버십 전용 시크릿 정보입니다
+                                {t("bridgeModal.title")}
                             </h2>
-                            <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                                지금 가입하고{" "}
-                                <strong className="text-gray-900 dark:text-white">월 {priceFormatted}원</strong>으로
-                                <br />
-                                서울 코스 핫플 공략집 무제한 보기
+                            <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                                {t("bridgeModal.desc")}{" "}
+                                <strong className="text-gray-900 dark:text-white">
+                                    {t("bridgeModal.priceUnit", { price: priceFormatted })}
+                                </strong>
+                                {t("bridgeModal.desc2")}
                             </p>
                         </div>
 
@@ -109,12 +118,14 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                             className="w-full py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                         >
                             <Lock className="w-4 h-4" />
-                            3초 만에 로그인하고 잠금 해제
+                            {t("bridgeModal.cta")}
                         </button>
 
                         <p className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
-                            첫 달은 언제든 해지 가능해요
+                            {t("bridgeModal.cancelHint")}
                         </p>
+                        </>
+                        )}
                     </div>
                 </div>
             </div>

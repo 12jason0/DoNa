@@ -81,6 +81,9 @@ model User {
   userStoryProgress     UserStoryProgress[]
   unlockIntents         UnlockIntent[]
   activeCourse          ActiveCourse?
+  aiRecommendationUsages       AiRecommendationUsage[]
+  recommendationFeedbacks      RecommendationFeedback[]
+  userCourseSelections   UserCourseSelection[]
 
   @@index([provider, socialId])
   @@index([deletedAt])
@@ -117,13 +120,15 @@ model SearchHistory {
 }
 
 model ActiveCourse {
-  id          String    @id @default(cuid())
-  userId      Int       @unique @map("user_id")
-  courseId    Int       @map("course_id")
-  startedAt   DateTime  @default(now()) @map("started_at")
-  remindedAt  DateTime? @map("reminded_at")  // 21시 리마인더 푸시 발송 시각 (중복 발송 방지)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id                    String                @id @default(cuid())
+  userId                Int                   @unique @map("user_id")
+  courseId              Int?                  @map("course_id")  // 고정 코스일 때
+  userCourseSelectionId String?               @unique @map("user_course_selection_id")  // 선택형일 때 (이대로 시작 클릭 시)
+  startedAt             DateTime              @default(now()) @map("started_at")
+  remindedAt            DateTime?             @map("reminded_at")  // 21시 리마인더 푸시 발송 시각 (중복 발송 방지)
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course                Course?               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userCourseSelection   UserCourseSelection?  @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
 
   @@index([userId, startedAt])
   @@map("active_courses")
@@ -167,6 +172,7 @@ model Course {
   is_editor_pick       Boolean             @default(false)
   grade                CourseGrade         @default(FREE)
   isPublic             Boolean             @default(true)
+  isSelectionType      Boolean             @default(false) @map("is_selection_type")  // true: 브런치/저녁 등 유저 선택형
   completedCourses     CompletedCourse[]
   benefits             Benefit[]
   bookings             Booking[]
@@ -182,6 +188,8 @@ model Course {
   userFavorites        UserFavorite[]
   interactions         UserInteraction[]
   activeCourses        ActiveCourse[]
+  recommendationFeedbacks RecommendationFeedback[]
+  userCourseSelections UserCourseSelection[]
 
   // 🔥 인덱스 추가 (빠른 검색)
   @@index([scene])
@@ -230,6 +238,8 @@ model CoursePlace {
   course_id          Int
   place_id           Int
   order_index        Int
+  segment            String?  @db.VarChar(50)  // "brunch" | "dinner" | null (선택형 코스일 때)
+  order_in_segment   Int?     @map("order_in_segment")  // 세그먼트 내 순서 (기본 선택 = 0)
   estimated_duration Int?
   recommended_time   String?  @db.VarChar(100)
   created_at         DateTime @default(now())
@@ -240,6 +250,25 @@ model CoursePlace {
   place              Place    @relation(fields: [place_id], references: [id])
 
   @@map("course_places")
+}
+
+// 유저가 "이대로 시작" 클릭 시 생성되는 선택 조합 (브런치 A + 저녁 B 등)
+model UserCourseSelection {
+  id                 String            @id @default(cuid())
+  userId             Int               @map("user_id")
+  templateCourseId   Int               @map("template_course_id")
+  selectedPlaceIds   Int[]             @map("selected_place_ids")  // [placeId1, placeId2, ...] 선택한 장소 순서
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateCourse     Course            @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
+  activeCourse       ActiveCourse?
+  savedCourses       SavedCourse[]
+  completedCourses   CompletedCourse[]
+
+  @@index([userId])
+  @@index([templateCourseId])
+  @@map("user_course_selections")
 }
 
 model CourseUnlock {
@@ -518,13 +547,18 @@ model Badge {
 }
 
 model CompletedCourse {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  courseId    Int
-  completedAt DateTime @default(now())
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     Int                   @id @default(autoincrement())
+  userId                 Int                   // 기존 컬럼 (camelCase 유지)
+  courseId               Int?                  // 고정 코스 완료 시 (nullable로 변경)
+  userCourseSelectionId  String?               @map("user_course_selection_id")  // 선택형 완료 시
+  completedAt            DateTime              @default(now())
+  course                 Course?               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userCourseSelection    UserCourseSelection?  @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([courseId])
+  @@index([userCourseSelectionId])
   @@map("CompletedCourses")
 }
 
@@ -576,16 +610,19 @@ model UserFavorite {
 }
 
 model SavedCourse {
-  id       Int      @id @default(autoincrement())
-  userId   Int      @map("user_id")
-  courseId Int      @map("course_id")
-  source   String?  @db.VarChar(50) @default("general") @map("source") // "ai_recommendation" | "general"
-  savedAt  DateTime @default(now()) @map("saved_at")
-  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     Int                   @id @default(autoincrement())
+  userId                 Int                   @map("user_id")
+  courseId               Int?                  @map("course_id")  // 고정 코스 저장 시
+  userCourseSelectionId  String?               @map("user_course_selection_id")  // 유저 선택 조합 저장 시
+  source                 String?               @db.VarChar(50) @default("general") @map("source") // "ai_recommendation" | "general"
+  savedAt                DateTime              @default(now()) @map("saved_at")
+  course                 Course?               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userCourseSelection    UserCourseSelection?  @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, courseId])
   @@index([userId])
+  @@index([courseId])
+  @@index([userCourseSelectionId])
   @@map("saved_courses")
 }
 
@@ -785,4 +822,37 @@ enum CourseGrade {
   FREE
   BASIC
   PREMIUM
+}
+
+// 🟢 AI 추천 1일 사용 횟수 추적 (등급별 한도: FREE 1회, BASIC 5회, PREMIUM 무제한)
+model AiRecommendationUsage {
+  id     Int      @id @default(autoincrement())
+  userId Int      @map("user_id")
+  usedAt DateTime @default(now()) @map("used_at")
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@map("ai_recommendation_usages")
+}
+
+// 🟢 추천 피드백 (유저가 선택한 코스에 대한 만족도)
+model RecommendationFeedback {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  courseId     Int      @map("course_id")
+  rating       String   @db.VarChar(20)   // "GOOD" | "OK" | "BAD"
+  context      String   @db.VarChar(50)   // "AI_RECOMMENDATION"
+  matchScore   Float?   @map("match_score")
+  matchReason  String?  @map("match_reason") @db.VarChar(500)
+  todayContext Json?    @map("today_context")
+  dayKey       String   @map("day_key") @db.VarChar(10)   // "2026-03-03" (유니크용)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, context, dayKey], name: "unique_user_course_context_day")
+  @@index([userId])
+  @@index([courseId])
+  @@map("recommendation_feedbacks")
 }
