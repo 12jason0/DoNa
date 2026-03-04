@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Gift, ChevronRight, X, Sparkles } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
 
 interface NotificationModalProps {
     onClose: () => void;
@@ -33,12 +32,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
         >
             <div
                 className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
-                style={{
-                    animation: "slideUp 0.3s ease-out forwards",
-                    ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
-                        : {}),
-                }}
+                style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 상단 닫기 버튼 */}

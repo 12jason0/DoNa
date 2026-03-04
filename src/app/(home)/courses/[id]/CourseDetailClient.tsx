@@ -1568,7 +1568,9 @@ export default function CourseDetailClient({
                                                 return (
                                                     <div key={`seg-${seg}`} className="mb-6">
                                                         <h3 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white mb-3">
-                                                            <span className="text-lg">{SEGMENT_ICONS[seg] ?? "📍"}</span>
+                                                            <span className="text-lg">
+                                                                {SEGMENT_ICONS[seg] ?? "📍"}
+                                                            </span>
                                                             {SEGMENT_LABELS[seg] ?? seg}
                                                         </h3>
                                                         <div className="grid grid-cols-2 gap-3 ml-0">
@@ -1609,14 +1611,24 @@ export default function CourseDetailClient({
                                                                                 <div className="flex justify-end">
                                                                                     {isSelected ? (
                                                                                         <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                                            <svg
+                                                                                                className="w-3 h-3"
+                                                                                                fill="currentColor"
+                                                                                                viewBox="0 0 20 20"
+                                                                                            >
+                                                                                                <path
+                                                                                                    fillRule="evenodd"
+                                                                                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                                                                    clipRule="evenodd"
+                                                                                                />
                                                                                             </svg>
                                                                                             바꾸기
                                                                                         </span>
                                                                                     ) : (
                                                                                         <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-                                                                                            {status === "영업중" ? "Open" : status}
+                                                                                            {status === "영업중"
+                                                                                                ? "Open"
+                                                                                                : status}
                                                                                         </span>
                                                                                     )}
                                                                                 </div>
@@ -1624,7 +1636,9 @@ export default function CourseDetailClient({
                                                                                     {cp.place.name}
                                                                                 </h4>
                                                                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                                                                    {(cp as CoursePlace).recommended_time || cp.place.address}
+                                                                                    {(cp as CoursePlace)
+                                                                                        .recommended_time ||
+                                                                                        cp.place.address}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
@@ -1637,8 +1651,18 @@ export default function CourseDetailClient({
                                                                             }}
                                                                             className="w-full py-2 px-2 rounded-b-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 border-t border-gray-100 dark:border-gray-700"
                                                                         >
-                                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                                                            <svg
+                                                                                className="w-3.5 h-3.5"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                viewBox="0 0 24 24"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                                                                />
                                                                             </svg>
                                                                             추천 보기
                                                                         </button>
@@ -1674,8 +1698,7 @@ export default function CourseDetailClient({
                                                         {sec.label}
                                                     </h3>
                                                     {sec.places.map((coursePlace: CoursePlace, idx: number) => {
-                                                        const isSelected =
-                                                            selectedPlace?.id === coursePlace.place.id;
+                                                        const isSelected = selectedPlace?.id === coursePlace.place.id;
                                                         return (
                                                             <div key={coursePlace.id} className="relative">
                                                                 <div
@@ -1691,212 +1714,234 @@ export default function CourseDetailClient({
                                                                 >
                                                                     <div className="flex gap-4">
                                                                         <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                                                                    {coursePlace.place.imageUrl && (
-                                                                        <Image
-                                                                            src={coursePlace.place.imageUrl}
-                                                                            alt=""
-                                                                            fill
-                                                                            className="object-cover"
-                                                                            loading="lazy"
-                                                                            quality={60}
-                                                                            sizes="96px"
-                                                                            placeholder="blur"
-                                                                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                                                                            // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">
-                                                                            {coursePlace.place.category}
-                                                                        </span>
-                                                                        {(() => {
-                                                                            const status = getPlaceStatus(
-                                                                                coursePlace.place.opening_hours ?? null,
-                                                                                coursePlace.place.closed_days ?? [],
-                                                                            ).status;
-                                                                            const statusStyles: Record<string, string> =
-                                                                                {
-                                                                                    영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
-                                                                                    "곧 마감":
-                                                                                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                    "곧 브레이크":
-                                                                                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                    "브레이크 중":
-                                                                                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                    "오픈 준비중":
-                                                                                        "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-                                                                                    휴무: "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
-                                                                                    영업종료:
-                                                                                        "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
-                                                                                    "정보 없음":
-                                                                                        "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-                                                                                };
-                                                                            const statusKeyMap: Record<string, string> =
-                                                                                {
-                                                                                    영업중: "courseDetail.placeStatusOpen",
-                                                                                    "곧 마감":
-                                                                                        "courseDetail.placeStatusClosingSoon",
-                                                                                    "곧 브레이크":
-                                                                                        "courseDetail.placeStatusBreakSoon",
-                                                                                    "브레이크 중":
-                                                                                        "courseDetail.placeStatusOnBreak",
-                                                                                    "오픈 준비중":
-                                                                                        "courseDetail.placeStatusOpeningSoon",
-                                                                                    휴무: "courseDetail.placeStatusClosed",
-                                                                                    영업종료:
-                                                                                        "courseDetail.placeStatusClosedToday",
-                                                                                    "정보 없음":
-                                                                                        "courseDetail.placeStatusNoInfo",
-                                                                                };
-                                                                            return (
-                                                                                <span
-                                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
-                                                                                        statusStyles[status] ??
-                                                                                        statusStyles["정보 없음"]
-                                                                                    }`}
-                                                                                >
-                                                                                    {t(
-                                                                                        (statusKeyMap[status] ??
-                                                                                            "courseDetail.placeStatusNoInfo") as "courseDetail.placeStatusOpen",
-                                                                                    )}
+                                                                            {coursePlace.place.imageUrl && (
+                                                                                <Image
+                                                                                    src={coursePlace.place.imageUrl}
+                                                                                    alt=""
+                                                                                    fill
+                                                                                    className="object-cover"
+                                                                                    loading="lazy"
+                                                                                    quality={60}
+                                                                                    sizes="96px"
+                                                                                    placeholder="blur"
+                                                                                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                                                                    // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                                                                    {coursePlace.place.category}
                                                                                 </span>
-                                                                            );
-                                                                        })()}
+                                                                                {(() => {
+                                                                                    const status = getPlaceStatus(
+                                                                                        coursePlace.place
+                                                                                            .opening_hours ?? null,
+                                                                                        coursePlace.place.closed_days ??
+                                                                                            [],
+                                                                                    ).status;
+                                                                                    const statusStyles: Record<
+                                                                                        string,
+                                                                                        string
+                                                                                    > = {
+                                                                                        영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+                                                                                        "곧 마감":
+                                                                                            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                                        "곧 브레이크":
+                                                                                            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                                        "브레이크 중":
+                                                                                            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                                        "오픈 준비중":
+                                                                                            "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+                                                                                        휴무: "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
+                                                                                        영업종료:
+                                                                                            "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
+                                                                                        "정보 없음":
+                                                                                            "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
+                                                                                    };
+                                                                                    const statusKeyMap: Record<
+                                                                                        string,
+                                                                                        string
+                                                                                    > = {
+                                                                                        영업중: "courseDetail.placeStatusOpen",
+                                                                                        "곧 마감":
+                                                                                            "courseDetail.placeStatusClosingSoon",
+                                                                                        "곧 브레이크":
+                                                                                            "courseDetail.placeStatusBreakSoon",
+                                                                                        "브레이크 중":
+                                                                                            "courseDetail.placeStatusOnBreak",
+                                                                                        "오픈 준비중":
+                                                                                            "courseDetail.placeStatusOpeningSoon",
+                                                                                        휴무: "courseDetail.placeStatusClosed",
+                                                                                        영업종료:
+                                                                                            "courseDetail.placeStatusClosedToday",
+                                                                                        "정보 없음":
+                                                                                            "courseDetail.placeStatusNoInfo",
+                                                                                    };
+                                                                                    return (
+                                                                                        <span
+                                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
+                                                                                                statusStyles[status] ??
+                                                                                                statusStyles[
+                                                                                                    "정보 없음"
+                                                                                                ]
+                                                                                            }`}
+                                                                                        >
+                                                                                            {t(
+                                                                                                (statusKeyMap[status] ??
+                                                                                                    "courseDetail.placeStatusNoInfo") as "courseDetail.placeStatusOpen",
+                                                                                            )}
+                                                                                        </span>
+                                                                                    );
+                                                                                })()}
+                                                                            </div>
+                                                                            <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate mb-0.5">
+                                                                                {coursePlace.place.name}
+                                                                            </h4>
+                                                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">
+                                                                                {coursePlace.recommended_time ||
+                                                                                    coursePlace.place.address}
+                                                                            </p>
+                                                                            {/* 🟢 예약 버튼 - 하단 시트로 열기 (휴무일이면 "다른 날 예약하기") */}
+                                                                            {coursePlace.place.reservationUrl && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setWebSheetUrl(
+                                                                                            coursePlace.place
+                                                                                                .reservationUrl!,
+                                                                                        );
+                                                                                        setShowWebSheet(true);
+                                                                                    }}
+                                                                                    className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
+                                                                                >
+                                                                                    {getPlaceStatus(
+                                                                                        coursePlace.place
+                                                                                            .opening_hours ?? null,
+                                                                                        coursePlace.place.closed_days ??
+                                                                                            [],
+                                                                                    ).status === "휴무"
+                                                                                        ? t("courses.reserveInAdvance")
+                                                                                        : t("courses.reserve")}
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate mb-0.5">
-                                                                        {coursePlace.place.name}
-                                                                    </h4>
-                                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">
-                                                                        {coursePlace.recommended_time ||
-                                                                            coursePlace.place.address}
-                                                                    </p>
-                                                                    {/* 🟢 예약 버튼 - 하단 시트로 열기 (휴무일이면 "다른 날 예약하기") */}
-                                                                    {coursePlace.place.reservationUrl && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setWebSheetUrl(
-                                                                                    coursePlace.place.reservationUrl!,
-                                                                                );
-                                                                                setShowWebSheet(true);
-                                                                            }}
-                                                                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
-                                                                        >
-                                                                            {getPlaceStatus(
-                                                                                coursePlace.place.opening_hours ?? null,
-                                                                                coursePlace.place.closed_days ?? [],
-                                                                            ).status === "휴무"
-                                                                                ? t("courses.reserveInAdvance")
-                                                                                : t("courses.reserve")}
-                                                                        </button>
-                                                                    )}
+                                                                    {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
+                                                                    {(() => {
+                                                                        const courseGrade = (
+                                                                            courseData.grade || "FREE"
+                                                                        ).toUpperCase();
+                                                                        const currentUserTier = (
+                                                                            userTier || "FREE"
+                                                                        ).toUpperCase();
+                                                                        const shouldShowPaidTip = !(
+                                                                            (courseGrade === "FREE" &&
+                                                                                currentUserTier === "FREE") ||
+                                                                            courseData.isLocked
+                                                                        );
+
+                                                                        const freeTips = parseTipsFromDb(
+                                                                            coursePlace.coaching_tip_free,
+                                                                        );
+                                                                        const paidTips = parseTipsFromDb(
+                                                                            coursePlace.coaching_tip,
+                                                                        );
+                                                                        const hasFreeTip = freeTips.length > 0;
+                                                                        const hasPaidTip =
+                                                                            coursePlace.hasPaidTip ??
+                                                                            paidTips.length > 0;
+
+                                                                        if (!hasFreeTip && !hasPaidTip) return null;
+
+                                                                        const getCategoryLabel = (cat: string) =>
+                                                                            FREE_TIP_CATEGORIES.find(
+                                                                                (c) => c.value === cat,
+                                                                            )?.label ??
+                                                                            PAID_TIP_CATEGORIES.find(
+                                                                                (c) => c.value === cat,
+                                                                            )?.label ??
+                                                                            t("courseDetail.etc");
+
+                                                                        const freeCategories = [
+                                                                            ...new Set(freeTips.map((t) => t.category)),
+                                                                        ];
+                                                                        const paidCategories = [
+                                                                            ...new Set(paidTips.map((t) => t.category)),
+                                                                        ];
+
+                                                                        return (
+                                                                            <div className="mt-2 flex flex-col gap-1.5">
+                                                                                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                                                                                    ✨ {t("courseDetail.freeTips")}
+                                                                                </span>
+                                                                                <div className="flex flex-wrap gap-1.5">
+                                                                                    {freeCategories.map((cat) => (
+                                                                                        <span
+                                                                                            key={`free-${cat}`}
+                                                                                            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
+                                                                                        >
+                                                                                            <TipCategoryIcon
+                                                                                                category={cat}
+                                                                                                className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
+                                                                                            />
+                                                                                            {getCategoryLabel(cat)}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                                {hasPaidTip && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            if (shouldShowPaidTip) {
+                                                                                                setSelectedPlace(
+                                                                                                    coursePlace.place,
+                                                                                                );
+                                                                                                setShowPlaceModal(true);
+                                                                                            } else if (
+                                                                                                isAuthenticated
+                                                                                            ) {
+                                                                                                setSubscriptionModalContext(
+                                                                                                    "TIPS",
+                                                                                                );
+                                                                                                setShowSubscriptionModal(
+                                                                                                    true,
+                                                                                                );
+                                                                                            } else {
+                                                                                                setSubscriptionModalContext(
+                                                                                                    "TIPS",
+                                                                                                );
+                                                                                                setShowBridgeModal(
+                                                                                                    true,
+                                                                                                );
+                                                                                            }
+                                                                                        }}
+                                                                                        className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
+                                                                                    >
+                                                                                        <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-medium text-gray-800 dark:text-gray-100">
+                                                                                            🔥 꼭 알아야 할 실패 방지
+                                                                                            꿀팁
+                                                                                        </div>
+                                                                                        <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
+                                                                                            {
+                                                                                                getPremiumQuestions(
+                                                                                                    coursePlace.place
+                                                                                                        ?.category,
+                                                                                                ).headline
+                                                                                            }
+                                                                                        </p>
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             </div>
-                                                            {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
-                                                            {(() => {
-                                                                const courseGrade = (
-                                                                    courseData.grade || "FREE"
-                                                                ).toUpperCase();
-                                                                const currentUserTier = (
-                                                                    userTier || "FREE"
-                                                                ).toUpperCase();
-                                                                const shouldShowPaidTip = !(
-                                                                    (courseGrade === "FREE" &&
-                                                                        currentUserTier === "FREE") ||
-                                                                    courseData.isLocked
-                                                                );
-
-                                                                const freeTips = parseTipsFromDb(
-                                                                    coursePlace.coaching_tip_free,
-                                                                );
-                                                                const paidTips = parseTipsFromDb(
-                                                                    coursePlace.coaching_tip,
-                                                                );
-                                                                const hasFreeTip = freeTips.length > 0;
-                                                                const hasPaidTip =
-                                                                    coursePlace.hasPaidTip ?? paidTips.length > 0;
-
-                                                                if (!hasFreeTip && !hasPaidTip) return null;
-
-                                                                const getCategoryLabel = (cat: string) =>
-                                                                    FREE_TIP_CATEGORIES.find((c) => c.value === cat)
-                                                                        ?.label ??
-                                                                    PAID_TIP_CATEGORIES.find((c) => c.value === cat)
-                                                                        ?.label ??
-                                                                    t("courseDetail.etc");
-
-                                                                const freeCategories = [
-                                                                    ...new Set(freeTips.map((t) => t.category)),
-                                                                ];
-                                                                const paidCategories = [
-                                                                    ...new Set(paidTips.map((t) => t.category)),
-                                                                ];
-
-                                                                return (
-                                                                    <div className="mt-2 flex flex-col gap-1.5">
-                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                                                                            ✨ {t("courseDetail.freeTips")}
-                                                                        </span>
-                                                                        <div className="flex flex-wrap gap-1.5">
-                                                                            {freeCategories.map((cat) => (
-                                                                                <span
-                                                                                    key={`free-${cat}`}
-                                                                                    className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
-                                                                                >
-                                                                                    <TipCategoryIcon
-                                                                                        category={cat}
-                                                                                        className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
-                                                                                    />
-                                                                                    {getCategoryLabel(cat)}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                        {hasPaidTip && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    if (shouldShowPaidTip) {
-                                                                                        setSelectedPlace(
-                                                                                            coursePlace.place,
-                                                                                        );
-                                                                                        setShowPlaceModal(true);
-                                                                                    } else if (isAuthenticated) {
-                                                                                        setSubscriptionModalContext(
-                                                                                            "TIPS",
-                                                                                        );
-                                                                                        setShowSubscriptionModal(true);
-                                                                                    } else {
-                                                                                        setSubscriptionModalContext(
-                                                                                            "TIPS",
-                                                                                        );
-                                                                                        setShowBridgeModal(true);
-                                                                                    }
-                                                                                }}
-                                                                                className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
-                                                                            >
-                                                                                <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-medium text-gray-800 dark:text-gray-100">
-                                                                                    🔥 꼭 알아야 할 실패 방지 꿀팁
-                                                                                </div>
-                                                                                <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
-                                                                                    {
-                                                                                        getPremiumQuestions(
-                                                                                            coursePlace.place?.category,
-                                                                                        ).headline
-                                                                                    }
-                                                                                </p>
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                        );
+                                                    })}
                                                 </div>
                                             ))}
                                         </>
@@ -1994,9 +2039,7 @@ export default function CourseDetailClient({
                     {/* 찜하기·공유 하단바: bottom-0. Android만 네비 바(64px) 위로 */}
                     <div
                         className={`${
-                            containInPhone
-                                ? "sticky bottom-0 left-0 right-0"
-                                : "fixed left-0 right-0 bottom-0"
+                            containInPhone ? "sticky bottom-0 left-0 right-0" : "fixed left-0 right-0 bottom-0"
                         } bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto`}
                         style={
                             inApp && !containInPhone
@@ -2279,18 +2322,13 @@ export default function CourseDetailClient({
                 </TapFeedback>
             </div>
 
-            {/* 🔵 [기능 유지] 전체 지도 모달 - 앱에서는 네이티브 하단 버튼 위로. Android는 네비 바(64px) 위로 */}
+            {/* 🔵 전체 지도 모달 - bottom-0 (iOS 잘 됨). Android도 시트는 bottom-0, 내부 pb로 네비 가림 방지 */}
             {showFullMapModal &&
                 (() => {
                     const posClass = containInPhone && !inApp ? "absolute" : "fixed";
                     const modalContent = (
                         <div
-                            className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal ${inApp && !(typeof window !== "undefined" && isAndroid()) ? "pb-24" : ""}`}
-                            style={
-                                inApp && typeof window !== "undefined" && isAndroid()
-                                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
-                                    : undefined
-                            }
+                            className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal`}
                             onClick={fullMapModalClose}
                         >
                             <div
@@ -2300,7 +2338,6 @@ export default function CourseDetailClient({
                                         ? `translateY(${fullMapModalDragY}px)`
                                         : "translateY(100%)",
                                     transition: fullMapModalDragY === 0 ? "transform 0.3s ease-out" : "none",
-                                    marginBottom: inApp ? 80 : 0,
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -2446,11 +2483,6 @@ export default function CourseDetailClient({
                     const modalContent = (
                         <div
                             className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-9999 flex flex-col justify-end animate-fade-in`}
-                            style={
-                                inApp && typeof window !== "undefined" && isAndroid()
-                                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
-                                    : undefined
-                            }
                             onClick={() => {
                                 setShareModalSlideUp(false);
                                 setTimeout(() => setShowShareModal(false), 300);

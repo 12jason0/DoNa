@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Search, X, TrendingUp, History } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 
 type SearchHistoryItem = { id: string; keyword: string; createdAt: string };
@@ -164,9 +163,6 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 style={{
                     top: containInPhone ? "4.5rem" : "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                     ...(containInPhone ? { width: "100%", height: "calc(100% - 4.5rem)" } : {}),
-                    ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
-                        : {}),
                     animation: "slideUp 0.3s ease-out forwards",
                 }}
                 onClick={(e) => e.stopPropagation()}
