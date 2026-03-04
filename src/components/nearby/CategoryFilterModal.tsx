@@ -49,6 +49,11 @@ export default function CategoryFilterModal({
     return (
         <div
             className="fixed inset-0 z-9999 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-5 animate-in fade-in duration-200"
+            style={
+                typeof window !== "undefined" && isMobileApp() && isAndroid()
+                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                    : undefined
+            }
             onClick={onClose}
             role="presentation"
         >

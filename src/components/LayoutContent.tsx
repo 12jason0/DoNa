@@ -386,9 +386,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                     <div
                         className={`h-screen ${
                             !mounted
-                                ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:flex-row lg:items-stretch lg:gap-6"
+                                ? !isApp
+                                    ? "md:flex md:justify-center md:items-center lg:max-w-[1180px] lg:mx-auto lg:flex-row lg:gap-6 lg:items-stretch lg:justify-start"
+                                    : "lg:max-w-[1180px] lg:mx-auto lg:flex lg:flex-row lg:items-stretch lg:gap-6"
                                 : !isApp
-                                  ? "lg:max-w-[1180px] lg:mx-auto lg:flex lg:flex-row lg:items-stretch lg:gap-6"
+                                  ? "md:flex md:justify-center md:items-center lg:max-w-[1180px] lg:mx-auto lg:flex-row lg:gap-6 lg:items-stretch lg:justify-start"
                                   : ""
                         }`}
                     >
@@ -583,29 +585,31 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             ref={modalContainerRef}
                             className={`relative h-full flex flex-col overflow-hidden ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
                                 !mounted
-                                    ? "lg:w-[400px] lg:max-h-[90vh] lg:h-[90vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                    ? !isApp
+                                        ? "md:w-[400px] md:max-h-[90vh] md:h-[90vh] md:rounded-[3rem] md:border-[9px] md:border-gray-300 dark:md:border-gray-700 md:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                        : "lg:w-[400px] lg:max-h-[90vh] lg:h-[90vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
                                     : !isApp
-                                      ? "lg:w-[400px] lg:max-h-[90vh] lg:h-[90vh] lg:rounded-[3rem] lg:border-[9px] lg:border-gray-300 dark:lg:border-gray-700 lg:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
+                                      ? "md:w-[400px] md:max-h-[90vh] md:h-[90vh] md:rounded-[3rem] md:border-[9px] md:border-gray-300 dark:md:border-gray-700 md:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
                                       : "w-full"
                             } lg:pb-0`}
                         >
-                            {/* 웹 전용: 폰 상단 원형 노치 + 세이프 영역 (화면이 노치 아래에서만 표시) */}
+                            {/* 웹 전용: 폰 상단 원형 노치 (md 이상에서 폰 프레임과 함께 표시) */}
                             {!isApp && (
-                                <div className="hidden lg:block absolute top-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[280px] px-8 pt-2">
+                                <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[280px] px-8 pt-2">
                                     <div className="w-5 h-5 mx-auto rounded-full bg-gray-900 dark:bg-gray-950" />
                                 </div>
                             )}
                             <div
                                 className={`shrink-0 bg-white dark:bg-[#0f1710] ${
                                     isEscapeIntroPage || isCourseStart || isMapPage ? "hidden" : "block"
-                                } ${!isApp ? "lg:pt-10" : ""}`}
+                                } ${!isApp ? "md:pt-10" : ""}`}
                             >
                                 <Header />
                             </div>
                             <main
                                 className={`flex-1 overscroll-contain no-scrollbar scrollbar-hide bg-white dark:bg-[#0f1710] ${
                                     !isApp && isMapPage ? "overflow-hidden" : "overflow-y-auto"
-                                } ${!isApp && (isEscapeIntroPage || isCourseStart || isMapPage) ? "lg:pt-12" : ""}`}
+                                } ${!isApp && (isEscapeIntroPage || isCourseStart || isMapPage) ? "md:pt-12" : ""}`}
                             >
                                 <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>{children}</div>
                             </main>

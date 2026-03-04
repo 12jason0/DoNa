@@ -140,15 +140,15 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                 aria-hidden
                 onClick={handleClose}
             />
-            {/* 바텀시트: 아래에 붙이고 아래에서 위로 올라옴 */}
+            {/* 바텀시트: 라이트/다크 모드 구분 */}
             <div
-                className={`relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-t-2xl bg-zinc-900 shadow-2xl transition-transform duration-300 ease-out ${
+                className={`relative w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white dark:bg-zinc-900 shadow-2xl transition-transform duration-300 ease-out ${
                     mounted ? "translate-y-0" : "translate-y-full"
                 }`}
             >
                 {/* 드래그 핸들 */}
-                <div className="sticky top-0 z-10 flex justify-center pt-3 pb-1 bg-zinc-900">
-                    <div className="w-10 h-1 rounded-full bg-zinc-600" />
+                <div className="sticky top-0 z-10 flex justify-center pt-3 pb-1 bg-white dark:bg-zinc-900">
+                    <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-zinc-600" />
                 </div>
                 <div className="px-5 pb-8 pt-2 min-w-0">
                     {!isLocaleReady ? (
@@ -159,11 +159,11 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     <>
                     {/* 헤더 */}
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-white tracking-tight">{t("reviewModal.title")}</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{t("reviewModal.title")}</h2>
                         <button
                             onClick={handleClose}
                             disabled={isSubmitting}
-                            className="p-1 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800"
+                            className="p-1 text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
@@ -177,23 +177,23 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                     </div>
 
                     {/* 대상 정보 */}
-                    <div className="mb-4 p-3 bg-zinc-800 rounded-xl">
-                        <p className="text-xs text-zinc-400 mb-1">{t("reviewModal.targetLabel")}</p>
-                        <p className="font-medium text-white wrap-break-word">
+                    <div className="mb-4 p-3 bg-gray-100 dark:bg-zinc-800 rounded-xl">
+                        <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">{t("reviewModal.targetLabel")}</p>
+                        <p className="font-medium text-gray-900 dark:text-white wrap-break-word">
                             {courseName || placeName || t("reviewModal.unknownTarget")}
                         </p>
                     </div>
 
                     {error && (
-                        <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-xl">
-                            <p className="text-red-400 text-sm">{error}</p>
+                        <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl">
+                            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* 평점 */}
                         <div>
-                            <label className="block text-sm font-medium text-zinc-400 mb-2">{t("reviewModal.ratingLabel")}</label>
+                            <label className="block text-sm font-medium text-gray-600 dark:text-zinc-400 mb-2">{t("reviewModal.ratingLabel")}</label>
                             <div className="flex items-center space-x-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
@@ -201,19 +201,19 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                         type="button"
                                         onClick={() => setRating(star)}
                                         className={`text-2xl transition-colors ${
-                                            star <= rating ? "text-yellow-400" : "text-zinc-600"
+                                            star <= rating ? "text-yellow-500 dark:text-yellow-400" : "text-gray-300 dark:text-zinc-600"
                                         }`}
                                     >
                                         ★
                                     </button>
                                 ))}
-                                <span className="ml-2 text-sm text-zinc-500">{rating}/5</span>
+                                <span className="ml-2 text-sm text-gray-500 dark:text-zinc-500">{rating}/5</span>
                             </div>
                         </div>
 
                         {/* 후기 내용 */}
                         <div>
-                            <label htmlFor="content" className="block text-sm font-medium text-zinc-400 mb-2">
+                            <label htmlFor="content" className="block text-sm font-medium text-gray-600 dark:text-zinc-400 mb-2">
                                 {t("reviewModal.contentLabel")}
                             </label>
                             <textarea
@@ -224,11 +224,11 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                 minLength={10}
                                 maxLength={500}
                                 rows={4}
-                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-xl text-white placeholder-zinc-500 focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500 resize-none"
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-emerald-500 dark:focus:ring-zinc-500 focus:border-emerald-500 dark:focus:border-zinc-500 resize-none"
                                 placeholder={t("reviewModal.contentPlaceholder")}
                             />
                             <div className="mt-1 text-right">
-                                <span className={`text-xs ${content.length >= 10 ? "text-zinc-500" : "text-red-400"}`}>
+                                <span className={`text-xs ${content.length >= 10 ? "text-gray-500 dark:text-zinc-500" : "text-red-500 dark:text-red-400"}`}>
                                     {content.length}/500
                                 </span>
                             </div>
@@ -236,14 +236,14 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
 
                         {/* 사진 업로드 */}
                         <div>
-                            <label className="block text-sm font-medium text-zinc-400 mb-2">{t("reviewModal.photoLabel")}</label>
+                            <label className="block text-sm font-medium text-gray-600 dark:text-zinc-400 mb-2">{t("reviewModal.photoLabel")}</label>
                             <div className="space-y-3">
                                 {images.length > 0 && (
                                     <div className="grid grid-cols-3 gap-2">
                                         {images.map((url, index) => (
                                             <div
                                                 key={index}
-                                                className="relative aspect-square rounded-xl overflow-hidden border border-zinc-700"
+                                                className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-700"
                                             >
                                                 <Image
                                                     src={url}
@@ -267,7 +267,7 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploadingImages}
-                                        className="w-full py-3 border-2 border-dashed border-zinc-600 rounded-xl hover:border-zinc-500 flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-300 disabled:opacity-50"
+                                        className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl hover:border-gray-400 dark:hover:border-zinc-500 flex items-center justify-center gap-2 text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 disabled:opacity-50"
                                     >
                                         {uploadingImages ? t("reviewModal.photoUploading") : t("reviewModal.photoAdd", { n: images.length })}
                                     </button>
@@ -289,14 +289,14 @@ export default function ReviewModal({ isOpen, onClose, courseId, placeId, course
                                 type="button"
                                 onClick={handleClose}
                                 disabled={isSubmitting}
-                                className="flex-1 py-2.5 border border-zinc-600 rounded-xl text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                                className="flex-1 py-2.5 border border-gray-300 dark:border-zinc-600 rounded-xl text-sm font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50"
                             >
                                 {t("reviewModal.cancel")}
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || content.trim().length < 10}
-                                className="flex-1 py-2.5 bg-white text-zinc-900 rounded-xl text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 py-2.5 bg-emerald-600 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-medium hover:bg-emerald-700 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isSubmitting ? t("reviewModal.submitting") : t("reviewModal.submit")}
                             </button>

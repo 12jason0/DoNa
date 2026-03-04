@@ -31,8 +31,15 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                 onClick={onClose}
                 aria-hidden
             />
-            {/* 하단 시트: bottom-0. Android는 내부 pb로 네비 가림 방지 */}
-            <div className={`${posClass} left-0 right-0 bottom-0 z-2001 w-full`}>
+            {/* 하단 시트: Android만 시트 하단을 네비 바로 위(64px)로 */}
+            <div
+                className={`${posClass} left-0 right-0 bottom-0 z-2001 w-full`}
+                style={
+                    typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
+                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                        : undefined
+                }
+            >
                 <div
                     className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
                     style={{

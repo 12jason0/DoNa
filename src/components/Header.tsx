@@ -16,6 +16,7 @@ import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 
 // 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시 (t는 부모에서 주입)
 const LogoutOverlay = ({ message }: { message: string }) => (
@@ -216,10 +217,15 @@ const Header = memo(() => {
             )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
 
-            {/* 설정 모달 (다크/라이트 모드) - 아래에서 올라오는 바텀시트 */}
+            {/* 설정 모달 (다크/라이트 모드) - 아래에서 올라오는 바텀시트. Android는 네비 바로 위 */}
             {showSettingsModal && (
                 <div
                     className={`${posClass} inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
+                    style={
+                        typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
+                            ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                            : undefined
+                    }
                     onClick={() => setShowSettingsModal(false)}
                     role="button"
                     tabIndex={0}
