@@ -1991,7 +1991,7 @@ export default function CourseDetailClient({
                         </section>
                     </main>
 
-                    {/* 찜하기·공유 하단바: 웹에서는 폰 안으로, 앱에서는 바닥 고정 */}
+                    {/* 찜하기·공유 하단바: 웹에서는 폰 안으로, 앱에서는 바닥 고정. Android는 네비 바(64px) 위로 */}
                     <div
                         className={`${
                             containInPhone
@@ -2000,7 +2000,12 @@ export default function CourseDetailClient({
                         } bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto`}
                         style={
                             inApp && !containInPhone
-                                ? { paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" }
+                                ? {
+                                      paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)",
+                                      ...(typeof window !== "undefined" && isAndroid()
+                                          ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                          : {}),
+                                  }
                                 : undefined
                         }
                     >
