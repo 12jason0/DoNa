@@ -628,11 +628,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     mounted && isApp && shouldShowAppBanner
                                         ? {
                                               bottom: isAndroidClient
-                                                  ? "0"
+                                                  ? "calc(64px + 1.25rem + env(safe-area-inset-bottom, 0px))"
                                                   : "calc(64px + env(safe-area-inset-bottom, 0px))",
                                           }
                                         : mounted && isApp && isAndroidClient
-                                          ? { bottom: "0" }
+                                          ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                                           : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
                                             ? { bottom: "calc(80px + 1.25rem)" }
                                             : undefined
@@ -694,11 +694,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 mounted && isApp && shouldShowAppBanner
                                                     ? {
                                                           bottom: isAndroidClient
-                                                              ? "64px"
+                                                              ? "calc(64px + 1.25rem + env(safe-area-inset-bottom, 0px))"
                                                               : "calc(140px + env(safe-area-inset-bottom, 0px))",
                                                       }
                                                     : mounted && isApp && isAndroidClient
-                                                      ? { bottom: "64px" }
+                                                      ? { bottom: "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))" }
                                                       : mounted &&
                                                           !isApp &&
                                                           shouldShowWebAd &&
