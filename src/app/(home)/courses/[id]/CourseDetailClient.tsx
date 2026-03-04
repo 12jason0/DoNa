@@ -1991,12 +1991,12 @@ export default function CourseDetailClient({
                         </section>
                     </main>
 
-                    {/* 찜하기·공유 하단바: 웹에서는 폰 안으로, 앱에서는 바닥 고정. Android는 네비 바(64px) 위로 */}
+                    {/* 찜하기·공유 하단바: bottom-0. Android만 네비 바(64px) 위로 */}
                     <div
                         className={`${
                             containInPhone
                                 ? "sticky bottom-0 left-0 right-0"
-                                : `fixed left-0 right-0 ${inApp ? "bottom-20" : "bottom-0"}`
+                                : "fixed left-0 right-0 bottom-0"
                         } bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 z-40 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto`}
                         style={
                             inApp && !containInPhone
@@ -2279,13 +2279,18 @@ export default function CourseDetailClient({
                 </TapFeedback>
             </div>
 
-            {/* 🔵 [기능 유지] 전체 지도 모달 - 앱에서는 네이티브 하단 버튼 위로, 웹 폰 목업에서는 폰 안으로 */}
+            {/* 🔵 [기능 유지] 전체 지도 모달 - 앱에서는 네이티브 하단 버튼 위로. Android는 네비 바(64px) 위로 */}
             {showFullMapModal &&
                 (() => {
                     const posClass = containInPhone && !inApp ? "absolute" : "fixed";
                     const modalContent = (
                         <div
-                            className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal ${inApp ? "pb-24" : ""}`}
+                            className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal ${inApp && !(typeof window !== "undefined" && isAndroid()) ? "pb-24" : ""}`}
+                            style={
+                                inApp && typeof window !== "undefined" && isAndroid()
+                                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                    : undefined
+                            }
                             onClick={fullMapModalClose}
                         >
                             <div
@@ -2441,13 +2446,22 @@ export default function CourseDetailClient({
                     const modalContent = (
                         <div
                             className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-9999 flex flex-col justify-end animate-fade-in`}
+                            style={
+                                inApp && typeof window !== "undefined" && isAndroid()
+                                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                    : undefined
+                            }
                             onClick={() => {
                                 setShareModalSlideUp(false);
                                 setTimeout(() => setShowShareModal(false), 300);
                             }}
                         >
                             <div
-                                className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl transition-transform duration-300 ease-out"
+                                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 shadow-2xl transition-transform duration-300 ease-out ${
+                                    inApp && typeof window !== "undefined" && isAndroid()
+                                        ? "pb-[calc(1.5rem+64px+env(safe-area-inset-bottom))]"
+                                        : "pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+                                }`}
                                 style={{
                                     transform: shareModalSlideUp ? "translateY(0)" : "translateY(100%)",
                                 }}

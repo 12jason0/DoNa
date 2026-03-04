@@ -64,6 +64,11 @@ export default function ShopModal({ onClose }: ShopModalProps) {
     return createPortal(
         <div
             className={`${posClass} inset-0 bg-black/40 dark:bg-black/70 flex flex-col justify-end z-9999 animate-in fade-in duration-200`}
+            style={
+                typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
+                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                    : undefined
+            }
             onClick={onClose}
         >
             <div
