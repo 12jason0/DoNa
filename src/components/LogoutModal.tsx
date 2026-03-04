@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from "react";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 
 interface LogoutModalProps {
     onClose: () => void;
@@ -38,7 +39,13 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                         transform: slideUp ? "translateY(0)" : "translateY(100%)",
                     }}
                 >
-                    <div className="p-6 pt-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                    <div
+                        className={`p-6 pt-5 ${
+                            typeof window !== "undefined" && isMobileApp() && isAndroid()
+                                ? "pb-[calc(1rem+64px+env(safe-area-inset-bottom))]"
+                                : "pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                        }`}
+                    >
                         {!isLocaleReady ? (
                             <div className="flex items-center justify-center py-12">
                                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />

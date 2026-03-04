@@ -6,6 +6,7 @@ import { Lock } from "lucide-react";
 import { BASIC_MONTHLY_PRICE } from "@/constants/subscription";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 
 const AUTH_OPEN_SUBSCRIPTION_KEY = "auth:openSubscriptionAfterLogin";
 
@@ -82,7 +83,13 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="p-6 sm:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] relative">
+                    <div
+                        className={`p-6 sm:p-8 relative ${
+                            typeof window !== "undefined" && isMobileApp() && isAndroid()
+                                ? "pb-[calc(1rem+64px+env(safe-area-inset-bottom))]"
+                                : "pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                        }`}
+                    >
                         <button
                             onClick={onClose}
                             aria-label={t("bridgeModal.close")}

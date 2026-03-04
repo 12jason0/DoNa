@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { CheckCircle, Sparkles, Ticket } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 import type { LoginModalPresetKey } from "@/constants/loginModalPresets";
 
 interface LoginModalProps {
@@ -98,7 +99,13 @@ export default function LoginModal({ onClose, next, preset, title, description, 
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="p-6 sm:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] relative">
+                    <div
+                        className={`p-6 sm:p-8 relative ${
+                            typeof window !== "undefined" && isMobileApp() && isAndroid()
+                                ? "pb-[calc(1rem+64px+env(safe-area-inset-bottom))]"
+                                : "pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                        }`}
+                    >
                         {/* 닫기 버튼 */}
                         <button
                             onClick={onClose}

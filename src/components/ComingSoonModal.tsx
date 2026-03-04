@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 
 const DRAG_CLOSE_THRESHOLD = 60;
 
@@ -136,9 +137,11 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
             onClick={onClose}
         >
             <div
-                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center ${
-                    !isDragging ? "transition-transform duration-300 ease-out" : ""
-                }`}
+                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center ${
+                    typeof window !== "undefined" && isMobileApp() && isAndroid()
+                        ? "pb-[calc(1.5rem+64px+env(safe-area-inset-bottom))]"
+                        : "pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+                } ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
                 style={{
                     transform: slideUp
                         ? dragY > 0

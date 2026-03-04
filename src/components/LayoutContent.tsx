@@ -617,23 +617,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     !mounted
                                         ? "bottom-5"
                                         : isApp
-                                          ? shouldShowAppBanner
-                                              ? ""
-                                              : "bottom-5"
+                                          ? "bottom-5"
                                           : shouldShowWebAd && webAdVisible && !isLgOrUp
                                             ? ""
                                             : "bottom-5"
                                 } left-0 right-0 z-50 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
                                 style={
-                                    mounted && isApp && shouldShowAppBanner
-                                        ? {
-                                              bottom: isAndroidClient
-                                                  ? "calc(64px + 1.25rem + env(safe-area-inset-bottom, 0px))"
-                                                  : "calc(64px + env(safe-area-inset-bottom, 0px))",
-                                          }
-                                        : mounted && isApp && isAndroidClient
-                                          ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                          : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
+                                    mounted && isApp
+                                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
+                                        : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
                                             ? { bottom: "calc(80px + 1.25rem)" }
                                             : undefined
                                 }
@@ -683,23 +675,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 !mounted
                                                     ? "bottom-24"
                                                     : isApp
-                                                      ? shouldShowAppBanner
-                                                          ? ""
-                                                          : "bottom-20"
+                                                      ? "bottom-20"
                                                       : shouldShowWebAd && webAdVisible && !isLgOrUp
                                                         ? ""
                                                         : "bottom-24"
                                             } lg:right-4 lg:bottom-24`}
                                             style={
-                                                mounted && isApp && shouldShowAppBanner
-                                                    ? {
-                                                          bottom: isAndroidClient
-                                                              ? "calc(64px + 1.25rem + env(safe-area-inset-bottom, 0px))"
-                                                              : "calc(140px + env(safe-area-inset-bottom, 0px))",
-                                                      }
-                                                    : mounted && isApp && isAndroidClient
-                                                      ? { bottom: "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                                      : mounted &&
+                                                mounted && isApp
+                                                    ? { bottom: "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))" }
+                                                    : mounted &&
                                                           !isApp &&
                                                           shouldShowWebAd &&
                                                           webAdVisible &&

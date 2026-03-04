@@ -4,6 +4,7 @@
 import React from "react";
 import { useLocale } from "@/context/LocaleContext";
 import { translateCourseConcept } from "@/lib/courseTranslate";
+import { isAndroid, isMobileApp } from "@/lib/platform";
 
 const LABEL_KEYS: Record<
     string,
@@ -104,7 +105,13 @@ export default function CategoryFilterModal({
                         );
                     })}
                 </div>
-                <div className="p-5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
+                <div
+                    className={`p-5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b] ${
+                        typeof window !== "undefined" && isMobileApp() && isAndroid()
+                            ? "pb-[calc(1.25rem+64px+env(safe-area-inset-bottom))]"
+                            : ""
+                    }`}
+                >
                     <div className="flex gap-3">
                         <button
                             onClick={onReset}
