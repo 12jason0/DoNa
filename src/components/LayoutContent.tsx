@@ -11,7 +11,7 @@ import SideMenuDrawer from "@/components/SideMenuDrawer";
 import AppInstallQR from "@/components/AppInstallQR";
 import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
-import { isMobileApp } from "@/lib/platform";
+import { isMobileApp, isAndroid } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
 import { useLocale } from "@/context/LocaleContext";
 // import AdSlot from "@/components/AdSlot"; // 🟢 AdMob/AdSense 비활성화
@@ -197,6 +197,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         if (appCheck !== isApp) setIsApp(appCheck);
     }, [isApp]);
 
+    // 🟢 Android 앱 WebView 감지 — 모달을 footer와 같은 bottom에서 시작하도록 context에 전달
+    useEffect(() => {
+        if (typeof window !== "undefined" && isMobileApp() && isAndroid()) {
+            setIsAndroidClient(true);
+        }
+    }, []);
+
     // 🟢 웹 광고 표시 페이지로 이동 시 webAdVisible 초기화 (AdMob/AdSense 비활성화)
     // useEffect(() => {
     //     if (shouldShowWebAd) setWebAdVisible(true);
@@ -372,7 +379,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             )}
 
             {/* 🟢 메인 콘텐츠 항상 렌더 (스플래시 중에도 DOM에 있어 이미지 로드 → LCP 2.5초 이내 목표) */}
-            <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef }}>
+            <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef, isAndroidApp: isAndroidClient }}>
                 <SearchModal
                     isOpen={isSearchModalOpen}
                     onClose={() => {

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 
 const DRAG_CLOSE_THRESHOLD = 60;
@@ -13,7 +13,7 @@ interface ComingSoonModalProps {
 
 export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
     const { t, isLocaleReady } = useLocale();
-    const { containInPhone, modalContainerRef } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
     const [dragY, setDragY] = useState(0);
@@ -136,12 +136,16 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
             onClick={onClose}
         >
             <div
-                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
-                style={{
-                    transform: slideUp ? (dragY > 0 ? `translateY(${dragY}px)` : "translateY(0)") : "translateY(100%)",
-                }}
-                onClick={(e) => e.stopPropagation()}
+                className={`${posClass} left-0 right-0 w-full flex justify-center ${!isAndroidApp ? "bottom-0" : ""}`}
+                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
             >
+                <div
+                    className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
+                    style={{
+                        transform: slideUp ? (dragY > 0 ? `translateY(${dragY}px)` : "translateY(0)") : "translateY(100%)",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
                 {/* 하단 시트 그랩버: 아래로 스와이프 시 모달 닫힘 */}
                 <div
                     role="button"
@@ -255,6 +259,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
                         </div>
                     </>
                 )}
+                </div>
             </div>
         </div>,
         portalTarget,

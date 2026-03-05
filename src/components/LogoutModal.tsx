@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 
 interface LogoutModalProps {
@@ -13,7 +13,7 @@ interface LogoutModalProps {
 
 export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
     const { t, isLocaleReady } = useLocale();
-    const { containInPhone } = useAppLayout();
+    const { containInPhone, isAndroidApp } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
     const [slideUp, setSlideUp] = useState(false);
 
@@ -28,7 +28,11 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
             onClick={onClose}
             aria-hidden
         >
-            <div className={`${posClass} left-0 right-0 bottom-0 z-2001 w-full pointer-events-auto`} onClick={(e) => e.stopPropagation()}>
+            <div
+                className={`${posClass} left-0 right-0 z-2001 w-full pointer-events-auto ${!isAndroidApp ? "bottom-0" : ""}`}
+                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div
                     className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
                     style={{

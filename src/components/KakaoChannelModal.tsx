@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 
 interface KakaoChannelModalProps {
@@ -9,7 +9,7 @@ interface KakaoChannelModalProps {
 }
 
 export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
-    const { containInPhone } = useAppLayout();
+    const { containInPhone, isAndroidApp } = useAppLayout();
     const { t, isLocaleReady } = useLocale();
     const posClass = containInPhone ? "absolute" : "fixed";
 
@@ -28,8 +28,11 @@ export default function KakaoChannelModal({ onClose }: KakaoChannelModalProps) {
             aria-label={t("kakaoChannel.closeModal")}
         >
             <div
-                className={`${posClass} bottom-0 left-0 right-0 z-101 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
-                style={{ animation: "slideUp 0.3s ease-out forwards" }}
+                className={`${posClass} left-0 right-0 z-101 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl flex flex-col ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
+                style={{
+                    animation: "slideUp 0.3s ease-out forwards",
+                    ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {!isLocaleReady ? (

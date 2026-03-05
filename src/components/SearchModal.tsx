@@ -4,9 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Search, X, TrendingUp, History } from "lucide-react";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
 import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 import { CATEGORY_ICONS, CONCEPTS } from "@/constants/onboardingData";
 
@@ -26,7 +25,7 @@ interface SearchModalProps {
 }
 
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
-    const { containInPhone, modalContainerRef } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
     const { t, isLocaleReady } = useLocale();
     const [query, setQuery] = useState("");
     const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
@@ -152,7 +151,6 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     if (!isOpen) return null;
 
     const posClass = containInPhone ? "absolute" : "fixed";
-    const isAndroidApp = typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid();
     const modalContent = (
         <div
             className={`${posClass} inset-0 z-9999 bg-black/50 dark:bg-black/60 flex items-start justify-center`}
@@ -164,10 +162,11 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             aria-label={t("header.closeSearchModal")}
         >
             <div
-                className={`${posClass} left-0 right-0 bottom-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden pb-10`}
+                className={`${posClass} left-0 right-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden pb-10 ${!isAndroidApp ? "bottom-0" : ""}`}
                 style={{
                     top: containInPhone ? "4.5rem" : "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                     ...(containInPhone ? { width: "100%", height: "calc(100% - 4.5rem)" } : {}),
+                    ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
                     animation: "slideUp 0.3s ease-out forwards",
                 }}
                 onClick={(e) => e.stopPropagation()}

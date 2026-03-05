@@ -6,7 +6,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { CheckCircle, Sparkles, Ticket } from "lucide-react";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 import { isMobileApp } from "@/lib/platform";
 import type { LoginModalPresetKey } from "@/constants/loginModalPresets";
@@ -24,7 +24,7 @@ interface LoginModalProps {
 export default function LoginModal({ onClose, next, preset, title, description, benefits }: LoginModalProps) {
     const router = useRouter();
     const { t, isLocaleReady } = useLocale();
-    const { containInPhone, modalContainerRef } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
     const defaultBenefits = useMemo(
         () => [t("loginModal.benefit0"), t("loginModal.benefit1"), t("loginModal.benefit2")],
         [t, isLocaleReady],
@@ -86,7 +86,8 @@ export default function LoginModal({ onClose, next, preset, title, description, 
             aria-hidden
         >
             <div
-                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full pointer-events-auto ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                className={`${posClass} left-0 right-0 z-10000 w-full pointer-events-auto ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div

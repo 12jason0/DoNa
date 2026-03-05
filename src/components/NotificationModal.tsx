@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Gift, ChevronRight, X, Sparkles } from "lucide-react";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 
 interface NotificationModalProps {
@@ -13,7 +13,7 @@ interface NotificationModalProps {
 const NotificationModal = ({ onClose }: NotificationModalProps) => {
     const router = useRouter();
     const { t, isLocaleReady } = useLocale();
-    const { containInPhone } = useAppLayout();
+    const { containInPhone, isAndroidApp } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
 
     const handleLoginRedirect = () => {
@@ -31,8 +31,11 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
             aria-label={t("notificationModal.closeModal")}
         >
             <div
-                className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
-                style={{ animation: "slideUp 0.3s ease-out forwards" }}
+                className={`${posClass} left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
+                style={{
+                    animation: "slideUp 0.3s ease-out forwards",
+                    ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 상단 닫기 버튼 */}

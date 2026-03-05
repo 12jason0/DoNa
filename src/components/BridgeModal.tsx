@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Lock } from "lucide-react";
 import { BASIC_MONTHLY_PRICE } from "@/constants/subscription";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 
@@ -33,7 +33,7 @@ interface BridgeModalProps {
 
 export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalProps) {
     const { t, locale, isLocaleReady } = useLocale();
-    const { containInPhone, modalContainerRef } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
 
@@ -76,7 +76,8 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
             aria-hidden
         >
             <div
-                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full pointer-events-auto ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                className={`${posClass} left-0 right-0 z-10000 w-full pointer-events-auto ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div

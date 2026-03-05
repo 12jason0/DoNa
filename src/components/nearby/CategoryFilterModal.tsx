@@ -3,6 +3,7 @@
 
 import React from "react";
 import { useLocale } from "@/context/LocaleContext";
+import { useAppLayout } from "@/context/AppLayoutContext";
 import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 import { translateCourseConcept } from "@/lib/courseTranslate";
 
@@ -47,6 +48,7 @@ export default function CategoryFilterModal({
     onReset,
 }: CategoryFilterModalProps) {
     const { t, isLocaleReady } = useLocale();
+    const { isAndroidApp } = useAppLayout();
     useNativeModalNotify(isOpen);
 
     if (!isOpen) return null;
@@ -58,9 +60,12 @@ export default function CategoryFilterModal({
             role="presentation"
         >
             <div
-                className="bg-white dark:bg-[#1a241b] w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl border border-gray-100 dark:border-gray-800 relative flex flex-col max-h-[85vh] animate-slide-up"
-                onClick={(e) => e.stopPropagation()}
+                className={`w-full flex justify-center sm:items-end ${isAndroidApp ? "mb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:mb-0" : ""}`}
             >
+                <div
+                    className="bg-white dark:bg-[#1a241b] w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl border border-gray-100 dark:border-gray-800 relative flex flex-col max-h-[85vh] animate-slide-up"
+                    onClick={(e) => e.stopPropagation()}
+                >
                 {!isLocaleReady ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
@@ -132,6 +137,7 @@ export default function CategoryFilterModal({
                         </div>
                     </>
                 )}
+                </div>
             </div>
         </div>
     );

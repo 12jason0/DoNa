@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X, Check, Sparkles, ChevronRight, ArrowLeft } from "lucide-react";
 import { isMobileApp } from "@/lib/platform";
-import { useAppLayout } from "@/context/AppLayoutContext";
+import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
 import type { TranslationKeys } from "@/types/i18n";
 import Link from "next/link";
@@ -56,7 +56,7 @@ export interface TicketPlansProps {
 const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context = "COURSE" }: TicketPlansProps) => {
     const router = useRouter();
     const { t } = useLocale();
-    const { containInPhone, modalContainerRef } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
 
@@ -456,10 +456,13 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     style={{ pointerEvents: backdropReady ? "auto" : "none" }}
                     aria-hidden
                 />
-                {/* 하단 시트: 바닥에 붙여 위로 슬라이드, 폰 내부에서는 양쪽 끝에 붙임 */}
+                {/* 하단 시트: 바닥에 붙여 위로 슬라이드, 폰 내부에서는 양쪽 끝에 붙임. Android 앱은 footer와 같은 위치에서 시작 */}
                 <div
-                    className={`${posClass} left-0 right-0 bottom-0 z-10000 flex ${containInPhone ? "p-0" : "justify-center p-0 sm:p-5 sm:items-center"}`}
-                    style={{ pointerEvents: "auto" }}
+                    className={`${posClass} left-0 right-0 z-10000 flex ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "p-0" : "justify-center p-0 sm:p-5 sm:items-center"}`}
+                    style={{
+                        pointerEvents: "auto",
+                        ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div
