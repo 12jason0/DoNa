@@ -1995,7 +1995,7 @@ export default function CourseDetailClient({
                                 ? {
                                       paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)",
                                       ...(typeof window !== "undefined" && isAndroid()
-                                          ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                          ? { bottom: "env(safe-area-inset-bottom, 0px)" }
                                           : {}),
                                   }
                                 : undefined
@@ -2260,7 +2260,7 @@ export default function CourseDetailClient({
                         className={`right-6 z-50 ${containInPhone && !inApp ? "absolute" : "fixed"} ${inApp ? "bottom-44" : "bottom-28"}`}
                         style={
                             inApp && !containInPhone && typeof window !== "undefined" && isAndroid()
-                                ? { bottom: "calc(64px + 5rem + env(safe-area-inset-bottom, 0px))" }
+                                ? { bottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }
                                 : undefined
                         }
                     >
@@ -2286,7 +2286,7 @@ export default function CourseDetailClient({
                                     className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal`}
                                     style={
                                         inApp && typeof window !== "undefined" && isAndroid()
-                                            ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                            ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" }
                                             : undefined
                                     }
                                     onClick={fullMapModalClose}
@@ -2447,7 +2447,7 @@ export default function CourseDetailClient({
                             className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-9999 flex flex-col justify-end animate-fade-in`}
                             style={
                                 inApp && typeof window !== "undefined" && isAndroid()
-                                    ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                                    ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" }
                                     : undefined
                             }
                             onClick={() => {
