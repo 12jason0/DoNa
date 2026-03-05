@@ -11,10 +11,10 @@ import SideMenuDrawer from "@/components/SideMenuDrawer";
 import AppInstallQR from "@/components/AppInstallQR";
 import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
-import { isMobileApp, isAndroid } from "@/lib/platform";
+import { isMobileApp } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
 import { useLocale } from "@/context/LocaleContext";
-import AdSlot from "@/components/AdSlot";
+// import AdSlot from "@/components/AdSlot"; // 🟢 AdMob/AdSense 비활성화
 import SearchModal from "@/components/SearchModal";
 import { AppLayoutProvider } from "@/context/AppLayoutContext";
 
@@ -152,8 +152,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [isApp, setIsApp] = useState(false);
     // 🟢 Android: 하단 네비(뒤로가기/홈)보다 5(20px) 위로 올림
     const [isAndroidClient, setIsAndroidClient] = useState(false);
-    // 🟢 웹 광고 실제 표시 여부: AdSlot onHide(노필) 시 false, 페이지 이동 시 초기화
-    const [webAdVisible, setWebAdVisible] = useState(true);
+    // 🟢 웹 광고 실제 표시 여부 (AdMob/AdSense 비활성화로 false)
+    const [webAdVisible, setWebAdVisible] = useState(false);
     const [isLgOrUp, setIsLgOrUp] = useState(false);
     const [hasCheckedViewport, setHasCheckedViewport] = useState(false);
 
@@ -182,9 +182,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         !pathname.startsWith("/courses") &&
         (pathname === "/" || (pathname === "/mypage" && searchParams?.get("view") !== "memories"));
 
-    // 🟢 앱 환경 재확인
+    // 🟢 앱 환경 재확인. 검색 모달 열기 (AdMob 비활성화로 notifyNativeModalOpen 주석)
     useEffect(() => {
-        const handleOpenSearch = () => setIsSearchModalOpen(true);
+        const handleOpenSearch = () => {
+            // notifyNativeModalOpen(); // 🟢 AdMob 비활성화
+            setIsSearchModalOpen(true);
+        };
         window.addEventListener("openSearchModal", handleOpenSearch);
         return () => window.removeEventListener("openSearchModal", handleOpenSearch);
     }, []);
@@ -194,18 +197,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         if (appCheck !== isApp) setIsApp(appCheck);
     }, [isApp]);
 
-    // 🟢 Android 클라이언트 감지 (하단 네비 위 여백용)
-    useEffect(() => {
-        setIsAndroidClient(isAndroid());
-    }, []);
+    // 🟢 웹 광고 표시 페이지로 이동 시 webAdVisible 초기화 (AdMob/AdSense 비활성화)
+    // useEffect(() => {
+    //     if (shouldShowWebAd) setWebAdVisible(true);
+    // }, [shouldShowWebAd]);
 
-    // 🟢 웹 광고 표시 페이지로 이동 시 webAdVisible 초기화 (AdSlot 새로 마운트)
-    useEffect(() => {
-        if (shouldShowWebAd) setWebAdVisible(true);
-    }, [shouldShowWebAd]);
-
-    // 🟢 onHide 참조 고정 → AdSlot useEffect가 매 렌더마다 리셋되지 않아 노필 타이머 정상 동작
-    const handleAdHide = useCallback(() => setWebAdVisible(false), []);
+    // 🟢 AdMob/AdSense 비활성화
+    // const handleAdHide = useCallback(() => setWebAdVisible(false), []);
 
     // 🟢 lg(1024px) 이상에서 하단 광고 bottom 스타일 비적용. hasCheckedViewport로 첫 프레임에 데스크톱에서 AdSlot 마운트 방지 (availableWidth=0 에러 방지)
     useEffect(() => {
@@ -219,17 +217,17 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         return () => mq.removeEventListener("change", handler);
     }, []);
 
-    // 🟢 [AdMob]: 앱 WebView에 현재 경로+쿼리 전달 (ReactNativeWebView 있으면 전송 - isMobileApp()보다 먼저 설정될 수 있음)
-    useEffect(() => {
-        if (typeof window === "undefined" || !(window as any).ReactNativeWebView) return;
-        const search = searchParams?.toString() ?? "";
-        const fullPath = (pathname || "/") + (search ? `?${search}` : "");
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "pathChange", path: fullPath }));
-        const t = setTimeout(() => {
-            (window as any).ReactNativeWebView?.postMessage?.(JSON.stringify({ type: "pathChange", path: fullPath }));
-        }, 150);
-        return () => clearTimeout(t);
-    }, [pathname, searchParams]);
+    // 🟢 [AdMob 비활성화]: 앱 WebView 경로 전달 주석
+    // useEffect(() => {
+    //     if (typeof window === "undefined" || !(window as any).ReactNativeWebView) return;
+    //     const search = searchParams?.toString() ?? "";
+    //     const fullPath = (pathname || "/") + (search ? `?${search}` : "");
+    //     (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: "pathChange", path: fullPath }));
+    //     const t = setTimeout(() => {
+    //         (window as any).ReactNativeWebView?.postMessage?.(JSON.stringify({ type: "pathChange", path: fullPath }));
+    //     }, 150);
+    //     return () => clearTimeout(t);
+    // }, [pathname, searchParams]);
 
     // riseDone 타이머 언마운트 시 정리
     useEffect(() => {
@@ -375,7 +373,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
             {/* 🟢 메인 콘텐츠 항상 렌더 (스플래시 중에도 DOM에 있어 이미지 로드 → LCP 2.5초 이내 목표) */}
             <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef }}>
-                <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
+                <SearchModal
+                    isOpen={isSearchModalOpen}
+                    onClose={() => {
+                        // notifyNativeModalClose(); // 🟢 AdMob 비활성화
+                        setIsSearchModalOpen(false);
+                    }}
+                />
                 <div
                     className={`min-h-screen homepage-bg-container ${!isApp ? "web-landing-bg" : ""}`}
                     style={{
@@ -617,7 +621,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             {/* 🟢 Footer + +버튼: Hydration 방지 — !mounted 시에도 mounted(웹)와 동일한 bottom 사용 */}
                             <div
                                 className={`shrink-0 bg-transparent ${
-                                    isEscapeId || isCourseStart || isCourseDetail || isOnboardingPage ? "hidden" : "block"
+                                    isEscapeId || isCourseStart || isCourseDetail || isOnboardingPage
+                                        ? "hidden"
+                                        : "block"
                                 } fixed ${
                                     !mounted
                                         ? "bottom-5"
@@ -631,8 +637,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     mounted && isApp
                                         ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                                         : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
-                                            ? { bottom: "calc(80px + 1.25rem)" }
-                                            : undefined
+                                          ? { bottom: "calc(80px + 1.25rem)" }
+                                          : undefined
                                 }
                             >
                                 {/* +버튼: Footer 위에 flex로 배치 */}
@@ -687,14 +693,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                             } lg:right-4 lg:bottom-24`}
                                             style={
                                                 mounted && isApp
-                                                    ? { bottom: "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                                    : mounted &&
-                                                          !isApp &&
-                                                          shouldShowWebAd &&
-                                                          webAdVisible &&
-                                                          !isLgOrUp
-                                                        ? { bottom: "calc(80px + 1.25rem + 5rem)" }
-                                                        : undefined
+                                                    ? {
+                                                          bottom: "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))",
+                                                      }
+                                                    : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
+                                                      ? { bottom: "calc(80px + 1.25rem + 5rem)" }
+                                                      : undefined
                                             }
                                         >
                                             <div className="flex flex-row items-center gap-2.5 pointer-events-auto">
@@ -758,9 +762,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                     )}
                                 {!isMapPage && <Footer isApp={isApp} plusButton={null} />}
                             </div>
-                            {/* 🟢 웹 전용: 광고를 화면 맨 아래 고정, 푸터·+버튼은 광고 위로 분리. 노필 시 영역 제거·footer 내려감 */}
-                            {!isApp && shouldShowWebAd && webAdVisible && hasCheckedViewport && !isLgOrUp && (
-                                <div className="fixed bottom-0 left-0 right-0 z-30">
+                            {/* 🟢 AdMob/AdSense 비활성화: 웹 하단 광고 주석 */}
+                            {/* {!isApp && shouldShowWebAd && webAdVisible && hasCheckedViewport && !isLgOrUp && (
+                                <div className="fixed bottom-0 left-0 right-0 z-0">
                                     <AdSlot
                                         slotId={process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT_ID || "3129678170"}
                                         format="fluid"
@@ -770,7 +774,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         onHide={handleAdHide}
                                     />
                                 </div>
-                            )}
+                            )} */}
                             <SideMenuDrawer
                                 isOpen={sideMenuOpen}
                                 onClose={() => {

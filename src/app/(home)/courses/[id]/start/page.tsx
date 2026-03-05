@@ -432,7 +432,7 @@ function GuidePageInner() {
             // 🟢 나만의 추억 한도 초과 시 업그레이드 모달 표시
             if (message.includes("업그레이드") || message.includes("한도") || message.includes("MEMORY_LIMIT")) {
                 setMemoryLimitMessage(
-                    message || "나만의 추억 저장 한도에 도달했어요. 더 저장하려면 구독을 업그레이드해 주세요."
+                    message || "나만의 추억 저장 한도에 도달했어요. 더 저장하려면 구독을 업그레이드해 주세요.",
                 );
                 setShowMemoryLimitModal(true);
             } else {
@@ -520,7 +520,11 @@ function GuidePageInner() {
                 <div
                     className="absolute left-0 right-0 z-30 flex items-end justify-center px-6"
                     style={{
-                        bottom: inApp ? "calc(env(safe-area-inset-bottom, 0px) + 3.5rem)" : platform === "android" ? "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" : 0,
+                        bottom: inApp
+                            ? "calc(env(safe-area-inset-bottom, 0px) + 3.5rem)"
+                            : platform === "android"
+                              ? "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)"
+                              : 0,
                         paddingBottom: inApp || platform === "android" ? 0 : "2rem",
                     }}
                 >
@@ -534,10 +538,10 @@ function GuidePageInner() {
                             {userName && course?.region
                                 ? `${userName}의 ${course.region} 데이트`
                                 : userName
-                                ? `${userName}의 ${course?.region || ""} 데이트`
-                                : course?.region
-                                ? `${course.region} 데이트`
-                                : "데이트"}
+                                  ? `${userName}의 ${course?.region || ""} 데이트`
+                                  : course?.region
+                                    ? `${course.region} 데이트`
+                                    : "데이트"}
                         </h1>
                         <p className="text-lg text-gray-600 dark:text-gray-300 mt-2">❤️ {formattedDate}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">화면을 터치하여 시작하기</p>
@@ -595,7 +599,11 @@ function GuidePageInner() {
                     minHeight: "50vh",
                     display: "flex",
                     flexDirection: "column",
-                    bottom: inApp ? "calc(env(safe-area-inset-bottom, 0px) + 3.5rem)" : platform === "android" ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" : 0,
+                    bottom: inApp
+                        ? "calc(env(safe-area-inset-bottom, 0px) + 3.5rem)"
+                        : platform === "android"
+                          ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
+                          : 0,
                 }}
             >
                 {/* 🟢 스크롤 가능한 콘텐츠 영역 */}
@@ -609,10 +617,10 @@ function GuidePageInner() {
                             {userName && course?.region
                                 ? `${userName}의 ${course.region} 데이트`
                                 : userName
-                                ? `${userName}의 데이트`
-                                : course?.region
-                                ? `${course.region} 데이트`
-                                : "우리의 데이트"}
+                                  ? `${userName}의 데이트`
+                                  : course?.region
+                                    ? `${course.region} 데이트`
+                                    : "우리의 데이트"}
                         </h1>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <span>{course?.title || "코스"}</span>
@@ -623,204 +631,211 @@ function GuidePageInner() {
                     <div
                         className="px-5"
                         style={{
-                            paddingBottom: inApp ? "calc(6rem + env(safe-area-inset-bottom, 0px) + 3rem)" : platform === "android" ? "calc(6rem + env(safe-area-inset-bottom, 0px))" : "6rem",
+                            paddingBottom: inApp
+                                ? "calc(6rem + env(safe-area-inset-bottom, 0px) + 3rem)"
+                                : platform === "android"
+                                  ? "calc(6rem + env(safe-area-inset-bottom, 0px))"
+                                  : "6rem",
                         }}
                     >
                         {/* 페이지 0: 사진 업로드 | 페이지 1: 태그+텍스트+저장 */}
                         {pageIndex === 0 ? (
-                        /* 🟢 페이지 0: 사진 업로드 */
-                        <>
-                        <div className="pb-6">
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-3">
-                                📸 우리의 순간들
-                            </label>
+                            /* 🟢 페이지 0: 사진 업로드 */
+                            <>
+                                <div className="pb-6">
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                                        📸 우리의 순간들
+                                    </label>
 
-                            {allPhotos.length === 0 ? (
-                                <label className="flex flex-col items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:border-[#99c08e] dark:hover:border-[#99c08e] hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all">
-                                    <input
-                                        ref={mainImageInputRef}
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={handlePhotoUpload}
-                                        style={{ display: "none" }}
-                                    />
-                                    <div className="text-4xl text-gray-400 dark:text-gray-500 mb-2">📷</div>
-                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                                        사진을 추가해주세요 (1장 이상)
-                                    </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                                        최대 10장, 파일당 50MB
-                                    </p>
-                                    {uploadingImages && (
-                                        <div className="mt-2 text-xs text-gray-500">업로드 중...</div>
-                                    )}
-                                </label>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="relative w-full h-64 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                        <Image
-                                            src={allPhotos[currentImageIndex] || allPhotos[0]}
-                                            alt=""
-                                            fill
-                                            className="object-cover"
-                                        />
-                                        <button
-                                            onClick={() => deletePhoto(allPhotos.length > 1 ? currentImageIndex : 0)}
-                                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
-                                        >
-                                            ✕
-                                        </button>
-                                        {allPhotos.length < MAX_PHOTOS && (
-                                            <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center cursor-pointer">
-                                                <input
-                                                    ref={mainImageInputRef}
-                                                    type="file"
-                                                    multiple
-                                                    accept="image/*"
-                                                    onChange={handlePhotoUpload}
-                                                    style={{ display: "none" }}
+                                    {allPhotos.length === 0 ? (
+                                        <label className="flex flex-col items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:border-[#99c08e] dark:hover:border-[#99c08e] hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all">
+                                            <input
+                                                ref={mainImageInputRef}
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                onChange={handlePhotoUpload}
+                                                style={{ display: "none" }}
+                                            />
+                                            <div className="text-4xl text-gray-400 dark:text-gray-500 mb-2">📷</div>
+                                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                                사진을 추가해주세요 (1장 이상)
+                                            </p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                                                최대 10장, 파일당 50MB
+                                            </p>
+                                            {uploadingImages && (
+                                                <div className="mt-2 text-xs text-gray-500">업로드 중...</div>
+                                            )}
+                                        </label>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="relative w-full h-64 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                                <Image
+                                                    src={allPhotos[currentImageIndex] || allPhotos[0]}
+                                                    alt=""
+                                                    fill
+                                                    className="object-cover"
                                                 />
-                                                <span className="text-xl">+</span>
-                                            </label>
-                                        )}
-                                    </div>
-                                    {allPhotos.length > 1 && (
-                                        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                                            {allPhotos.map((url, idx) => (
                                                 <button
-                                                    key={idx}
-                                                    onClick={() => setCurrentImageIndex(idx)}
-                                                    className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 ${
-                                                        idx === currentImageIndex ? "border-[#99c08e]" : "border-transparent"
-                                                    }`}
-                                                >
-                                                    <Image src={url} alt="" fill className="object-cover" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        </>
-                        ) : (
-                        /* 🟢 페이지 1: 태그 + 텍스트 + 저장 */
-                        <>
-                        {/* 별점 */}
-                        <div className="py-6 text-center border-b border-gray-100 dark:border-gray-800 mb-6">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                이 데이트는 어떠셨나요?
-                            </p>
-                            <div className="flex justify-center gap-2 mb-2">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <button
-                                        key={star}
-                                        onClick={() => setStoryRating(star)}
-                                        className="text-3xl transition-all hover:scale-110 active:scale-95"
-                                        type="button"
-                                    >
-                                        <span
-                                            className={
-                                                storyRating >= star
-                                                    ? "text-yellow-400 opacity-100"
-                                                    : "text-gray-300 dark:text-gray-600 opacity-30"
-                                            }
-                                        >
-                                            ⭐
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {storyRating === 5 && "최고였어요! 💕"}
-                                {storyRating === 4 && "정말 좋았어요! 😊"}
-                                {storyRating === 3 && "보통이었어요 😐"}
-                                {storyRating === 2 && "좀 아쉬웠어요 😕"}
-                                {storyRating === 1 && "별로였어요... 😢"}
-                            </p>
-                        </div>
-
-                        {/* 텍스트(설명) 입력 */}
-                        <div className="pb-4">
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                ✏️ 메모 (선택)
-                            </label>
-                            <textarea
-                                value={descriptionText}
-                                onChange={(e) => setDescriptionText(e.target.value)}
-                                placeholder="이 데이트에 대해 남기고 싶은 말"
-                                rows={3}
-                                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm resize-none outline-none focus:border-[#99c08e]"
-                            />
-                        </div>
-
-                        {/* 태그 - #DoNa 맨 앞 고정 */}
-                        <div className="pb-6">
-                            {selectedTags.length > 0 && (
-                                <div className="mb-3 flex flex-wrap gap-2">
-                                    {selectedTags.map((tag) => (
-                                        <div
-                                            key={tag}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium dark:text-gray-200"
-                                        >
-                                            #{tag}
-                                            {tag !== "DoNa" && (
-                                                <button
-                                                    onClick={() => removeTag(tag)}
-                                                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm leading-none m-0 p-0"
+                                                    onClick={() =>
+                                                        deletePhoto(allPhotos.length > 1 ? currentImageIndex : 0)
+                                                    }
+                                                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
                                                 >
                                                     ✕
                                                 </button>
+                                                {allPhotos.length < MAX_PHOTOS && (
+                                                    <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center cursor-pointer">
+                                                        <input
+                                                            ref={mainImageInputRef}
+                                                            type="file"
+                                                            multiple
+                                                            accept="image/*"
+                                                            onChange={handlePhotoUpload}
+                                                            style={{ display: "none" }}
+                                                        />
+                                                        <span className="text-xl">+</span>
+                                                    </label>
+                                                )}
+                                            </div>
+                                            {allPhotos.length > 1 && (
+                                                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                                                    {allPhotos.map((url, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={() => setCurrentImageIndex(idx)}
+                                                            className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 ${
+                                                                idx === currentImageIndex
+                                                                    ? "border-[#99c08e]"
+                                                                    : "border-transparent"
+                                                            }`}
+                                                        >
+                                                            <Image src={url} alt="" fill className="object-cover" />
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
-                            )}
+                            </>
+                        ) : (
+                            /* 🟢 페이지 1: 태그 + 텍스트 + 저장 */
+                            <>
+                                {/* 별점 */}
+                                <div className="py-6 text-center border-b border-gray-100 dark:border-gray-800 mb-6">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                        이 데이트는 어떠셨나요?
+                                    </p>
+                                    <div className="flex justify-center gap-2 mb-2">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                                key={star}
+                                                onClick={() => setStoryRating(star)}
+                                                className="text-3xl transition-all hover:scale-110 active:scale-95"
+                                                type="button"
+                                            >
+                                                <span
+                                                    className={
+                                                        storyRating >= star
+                                                            ? "text-yellow-400 opacity-100"
+                                                            : "text-gray-300 dark:text-gray-600 opacity-30"
+                                                    }
+                                                >
+                                                    ⭐
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {storyRating === 5 && "최고였어요! 💕"}
+                                        {storyRating === 4 && "정말 좋았어요! 😊"}
+                                        {storyRating === 3 && "보통이었어요 😐"}
+                                        {storyRating === 2 && "좀 아쉬웠어요 😕"}
+                                        {storyRating === 1 && "별로였어요... 😢"}
+                                    </p>
+                                </div>
 
-                            {/* 🟢 태그 직접 입력 필드 */}
-                            <div className="mb-3 flex gap-2">
-                                <input
-                                    type="text"
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={handleTagInputKeyDown}
-                                    placeholder="태그 직접 입력 (Enter) - #DoNa은 맨 앞에 자동 포함"
-                                    maxLength={10}
-                                    className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm outline-none focus:border-[#99c08e] focus:ring-2 focus:ring-[#99c08e]/10 transition-colors"
-                                />
-                                <button
-                                    onClick={addCustomTag}
-                                    disabled={!tagInput.trim()}
-                                    className="px-4 py-2 bg-[#99c08e] text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap flex items-center justify-center"
-                                >
-                                    추가
-                                </button>
-                            </div>
+                                {/* 텍스트(설명) 입력 */}
+                                <div className="pb-4">
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                        ✏️ 메모 (선택)
+                                    </label>
+                                    <textarea
+                                        value={descriptionText}
+                                        onChange={(e) => setDescriptionText(e.target.value)}
+                                        placeholder="이 데이트에 대해 남기고 싶은 말"
+                                        rows={3}
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm resize-none outline-none focus:border-[#99c08e]"
+                                    />
+                                </div>
 
-                            {/* 제안 태그 */}
-                            <div className="flex flex-wrap gap-2">
-                                {SUGGESTED_TAGS.map((tag) => {
-                                    const isSelected = selectedTags.includes(tag);
+                                {/* 태그 - #DoNa 맨 앞 고정 */}
+                                <div className="pb-6">
+                                    {selectedTags.length > 0 && (
+                                        <div className="mb-3 flex flex-wrap gap-2">
+                                            {selectedTags.map((tag) => (
+                                                <div
+                                                    key={tag}
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium dark:text-gray-200"
+                                                >
+                                                    #{tag}
+                                                    {tag !== "DoNa" && (
+                                                        <button
+                                                            onClick={() => removeTag(tag)}
+                                                            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm leading-none m-0 p-0"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
-                                    return (
+                                    {/* 🟢 태그 직접 입력 필드 */}
+                                    <div className="mb-3 flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={handleTagInputKeyDown}
+                                            placeholder="태그 직접 입력 (Enter) - #DoNa은 맨 앞에 자동 포함"
+                                            maxLength={10}
+                                            className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm outline-none focus:border-[#99c08e] focus:ring-2 focus:ring-[#99c08e]/10 transition-colors"
+                                        />
                                         <button
-                                            key={tag}
-                                            onClick={() => toggleTag(tag)}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                                                isSelected
-                                                    ? "bg-[#99c08e] text-white border border-[#99c08e]"
-                                                    : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                                            }`}
+                                            onClick={addCustomTag}
+                                            disabled={!tagInput.trim()}
+                                            className="px-4 py-2 bg-[#99c08e] text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap flex items-center justify-center"
                                         >
-                                            #{tag}
+                                            추가
                                         </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                                    </div>
 
-                        </>
+                                    {/* 제안 태그 */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {SUGGESTED_TAGS.map((tag) => {
+                                            const isSelected = selectedTags.includes(tag);
+
+                                            return (
+                                                <button
+                                                    key={tag}
+                                                    onClick={() => toggleTag(tag)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                                                        isSelected
+                                                            ? "bg-[#99c08e] text-white border border-[#99c08e]"
+                                                            : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                                    }`}
+                                                >
+                                                    #{tag}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>

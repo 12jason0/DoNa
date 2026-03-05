@@ -1530,17 +1530,43 @@ export default function CourseDetailClient({
                                                     const coursePlace = step.coursePlace;
                                                     const isSelected = selectedPlace?.id === coursePlace.place.id;
                                                     const sectionLabel = isFirst ? "시작" : isLast ? "마무리" : "코스";
-                                                    const circleBg = isFirst ? "bg-emerald-500" : isLast ? "bg-violet-500" : "bg-gray-400";
+                                                    const circleBg = isFirst
+                                                        ? "bg-emerald-500"
+                                                        : isLast
+                                                          ? "bg-violet-500"
+                                                          : "bg-gray-400";
                                                     return (
-                                                        <div key={`fixed-${coursePlace.id}`} className="mb-6 flex gap-4">
-                                                            <div className={`shrink-0 w-10 h-10 rounded-full ${circleBg} flex items-center justify-center text-white font-bold text-sm`}>
-                                                                {isFirst ? "1" : isLast ? (
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-                                                                ) : "📍"}
+                                                        <div
+                                                            key={`fixed-${coursePlace.id}`}
+                                                            className="mb-6 flex gap-4"
+                                                        >
+                                                            <div
+                                                                className={`shrink-0 w-10 h-10 rounded-full ${circleBg} flex items-center justify-center text-white font-bold text-sm`}
+                                                            >
+                                                                {isFirst ? (
+                                                                    "1"
+                                                                ) : isLast ? (
+                                                                    <svg
+                                                                        className="w-5 h-5"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                                                        />
+                                                                    </svg>
+                                                                ) : (
+                                                                    "📍"
+                                                                )}
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
-                                                                    {isFirst && "1 "}{sectionLabel}
+                                                                    {isFirst && "1 "}
+                                                                    {sectionLabel}
                                                                 </h3>
                                                                 <div
                                                                     onClick={() => {
@@ -1548,19 +1574,34 @@ export default function CourseDetailClient({
                                                                         setShowPlaceModal(true);
                                                                     }}
                                                                     className={`relative bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-4 transition-all duration-300 border cursor-pointer ${
-                                                                        isSelected ? "shadow-sm border-emerald-500 border-2" : "border-gray-200 dark:border-gray-700 hover:border-emerald-300"
+                                                                        isSelected
+                                                                            ? "shadow-sm border-emerald-500 border-2"
+                                                                            : "border-gray-200 dark:border-gray-700 hover:border-emerald-300"
                                                                     }`}
                                                                 >
                                                                     <div className="flex gap-4">
                                                                         <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                                                                             {coursePlace.place.imageUrl && (
-                                                                                <Image src={coursePlace.place.imageUrl} alt="" fill className="object-cover" loading="lazy" sizes="96px" />
+                                                                                <Image
+                                                                                    src={coursePlace.place.imageUrl}
+                                                                                    alt=""
+                                                                                    fill
+                                                                                    className="object-cover"
+                                                                                    loading="lazy"
+                                                                                    sizes="96px"
+                                                                                />
                                                                             )}
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <span className="text-[10px] font-bold text-gray-400 uppercase">{coursePlace.place.category}</span>
-                                                                            <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate mt-1">{coursePlace.place.name}</h3>
-                                                                            <p className="text-xs text-gray-500 truncate">{coursePlace.place.address}</p>
+                                                                            <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                                                                {coursePlace.place.category}
+                                                                            </span>
+                                                                            <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate mt-1">
+                                                                                {coursePlace.place.name}
+                                                                            </h3>
+                                                                            <p className="text-xs text-gray-500 truncate">
+                                                                                {coursePlace.place.address}
+                                                                            </p>
                                                                             <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
                                                                                 <Icons.Bulb className="w-3.5 h-3.5" />
                                                                                 확정됨
@@ -1577,43 +1618,106 @@ export default function CourseDetailClient({
                                                 return (
                                                     <div key={`seg-${seg}`} className="mb-6 flex gap-4">
                                                         <div className="shrink-0 w-10 h-10 rounded-full bg-rose-500 flex items-center justify-center text-white">
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                                            <svg
+                                                                className="w-5 h-5"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                                                                />
+                                                            </svg>
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">{SEGMENT_LABELS[seg] ?? seg} 선택</h3>
-                                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">오늘의 추천 중 하나를 선택하세요</p>
+                                                            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">
+                                                                {SEGMENT_LABELS[seg] ?? seg} 선택
+                                                            </h3>
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                                                오늘의 추천 중 하나를 선택하세요
+                                                            </p>
                                                             <div className="grid grid-cols-2 gap-3">
                                                                 {options.map((cp) => {
                                                                     const isSelected = selectedPlaceId === cp.place_id;
                                                                     return (
                                                                         <div
                                                                             key={cp.id}
-                                                                            onClick={() => setSelectedBySegment((prev) => ({ ...prev, [seg]: cp.place_id }))}
+                                                                            onClick={() =>
+                                                                                setSelectedBySegment((prev) => ({
+                                                                                    ...prev,
+                                                                                    [seg]: cp.place_id,
+                                                                                }))
+                                                                            }
                                                                             className={`relative rounded-xl border overflow-hidden bg-white dark:bg-[#1a241b] cursor-pointer transition-all ${
-                                                                                isSelected ? "ring-2 ring-emerald-500 border-emerald-400 dark:border-emerald-600" : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+                                                                                isSelected
+                                                                                    ? "ring-2 ring-emerald-500 border-emerald-400 dark:border-emerald-600"
+                                                                                    : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700"
                                                                             }`}
                                                                         >
                                                                             {isSelected && (
                                                                                 <div className="absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
-                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                                                    <svg
+                                                                                        className="w-3 h-3"
+                                                                                        fill="currentColor"
+                                                                                        viewBox="0 0 20 20"
+                                                                                    >
+                                                                                        <path
+                                                                                            fillRule="evenodd"
+                                                                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                                                            clipRule="evenodd"
+                                                                                        />
+                                                                                    </svg>
                                                                                     선택됨
                                                                                 </div>
                                                                             )}
                                                                             <div className="relative flex">
                                                                                 <div className="relative w-20 h-20 shrink-0 bg-gray-100 dark:bg-gray-800">
-                                                                                    {cp.place.imageUrl && <Image src={cp.place.imageUrl} alt="" fill className="object-cover" sizes="80px" />}
+                                                                                    {cp.place.imageUrl && (
+                                                                                        <Image
+                                                                                            src={cp.place.imageUrl}
+                                                                                            alt=""
+                                                                                            fill
+                                                                                            className="object-cover"
+                                                                                            sizes="80px"
+                                                                                        />
+                                                                                    )}
                                                                                 </div>
                                                                                 <div className="flex-1 min-w-0 p-2 flex flex-col justify-start">
-                                                                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate leading-tight">{cp.place.name}</h4>
-                                                                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">{(cp as CoursePlace).recommended_time || cp.place.address}</p>
+                                                                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate leading-tight">
+                                                                                        {cp.place.name}
+                                                                                    </h4>
+                                                                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                                                        {(cp as CoursePlace)
+                                                                                            .recommended_time ||
+                                                                                            cp.place.address}
+                                                                                    </p>
                                                                                 </div>
                                                                             </div>
                                                                             <button
                                                                                 type="button"
-                                                                                onClick={(e) => { e.stopPropagation(); setSelectedPlace(cp.place); setShowPlaceModal(true); }}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setSelectedPlace(cp.place);
+                                                                                    setShowPlaceModal(true);
+                                                                                }}
                                                                                 className="w-full py-2 px-2 rounded-b-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 border-t border-gray-100 dark:border-gray-700"
                                                                             >
-                                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                                                                <svg
+                                                                                    className="w-3.5 h-3.5"
+                                                                                    fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    viewBox="0 0 24 24"
+                                                                                >
+                                                                                    <path
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        strokeWidth={2}
+                                                                                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                                                                    />
+                                                                                </svg>
                                                                                 추천 보기
                                                                             </button>
                                                                         </div>
@@ -1992,12 +2096,7 @@ export default function CourseDetailClient({
                         className="fixed left-0 right-0 bottom-0 z-40 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto"
                         style={
                             inApp && !containInPhone
-                                ? {
-                                      paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)",
-                                      ...(typeof window !== "undefined" && isAndroid()
-                                          ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                          : {}),
-                                  }
+                                ? { paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" }
                                 : undefined
                         }
                     >
@@ -2258,11 +2357,6 @@ export default function CourseDetailClient({
                 <>
                     <div
                         className={`right-6 z-50 ${containInPhone && !inApp ? "absolute" : "fixed"} ${inApp ? "bottom-44" : "bottom-28"}`}
-                        style={
-                            inApp && !containInPhone && typeof window !== "undefined" && isAndroid()
-                                ? { bottom: "calc(80px + 1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                : undefined
-                        }
                     >
                         <TapFeedback>
                             <button
@@ -2284,11 +2378,6 @@ export default function CourseDetailClient({
                             const modalContent = (
                                 <div
                                     className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal`}
-                                    style={
-                                        inApp && typeof window !== "undefined" && isAndroid()
-                                            ? { paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                            : undefined
-                                    }
                                     onClick={fullMapModalClose}
                                 >
                                     <div
@@ -2445,22 +2534,13 @@ export default function CourseDetailClient({
                     const modalContent = (
                         <div
                             className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-9999 flex flex-col justify-end animate-fade-in`}
-                            style={
-                                inApp && typeof window !== "undefined" && isAndroid()
-                                    ? { paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                                    : undefined
-                            }
                             onClick={() => {
                                 setShareModalSlideUp(false);
                                 setTimeout(() => setShowShareModal(false), 300);
                             }}
                         >
                             <div
-                                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 shadow-2xl transition-transform duration-300 ease-out ${
-                                    inApp && typeof window !== "undefined" && isAndroid()
-                                        ? "pb-[calc(1.5rem+64px+env(safe-area-inset-bottom))]"
-                                        : "pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
-                                }`}
+                                className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 shadow-2xl transition-transform duration-300 ease-out pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
                                 style={{
                                     transform: shareModalSlideUp ? "translateY(0)" : "translateY(100%)",
                                 }}
@@ -2853,17 +2933,25 @@ export default function CourseDetailClient({
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                            시크릿 꿀팁
-                                        </h3>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">시크릿 꿀팁</h3>
                                         <button
                                             type="button"
                                             onClick={() => setShowPaidTipModal(false)}
                                             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
                                             aria-label={t("common.close")}
                                         >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            <svg
+                                                className="w-5 h-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                />
                                             </svg>
                                         </button>
                                     </div>
@@ -2889,8 +2977,14 @@ export default function CourseDetailClient({
                                                                 {copy.questions.length > 0 && (
                                                                     <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
                                                                         {copy.questions.map((q, i) => (
-                                                                            <li key={i} className="flex gap-2 items-start">
-                                                                                <TipCategoryIcon category={q.iconCategory} className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                                                            <li
+                                                                                key={i}
+                                                                                className="flex gap-2 items-start"
+                                                                            >
+                                                                                <TipCategoryIcon
+                                                                                    category={q.iconCategory}
+                                                                                    className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
+                                                                                />
                                                                                 <span>{q.text}</span>
                                                                             </li>
                                                                         ))}
@@ -2919,7 +3013,9 @@ export default function CourseDetailClient({
                                                 </button>
                                             </>
                                         ) : (
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">이 장소에는 유료 팁이 없습니다.</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                이 장소에는 유료 팁이 없습니다.
+                                            </p>
                                         )}
                                     </div>
                                 </div>

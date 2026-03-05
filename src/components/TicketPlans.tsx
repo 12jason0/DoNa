@@ -489,7 +489,9 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                         <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
                                             {t("ticketPlans.mainTitle")}
                                             <br />
-                                            <span className="text-emerald-500 dark:text-emerald-400">{t("ticketPlans.mainHighlight")}</span>
+                                            <span className="text-emerald-500 dark:text-emerald-400">
+                                                {t("ticketPlans.mainHighlight")}
+                                            </span>
                                         </h2>
                                         <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 font-medium">
                                             {t("ticketPlans.mainSubtitle")}
@@ -658,7 +660,9 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                                         : "text-emerald-400 dark:text-emerald-500"
                                                                 }`}
                                                             />{" "}
-                                                            {t(`ticketPlans.plans.${plan.id}.feature${i}` as TranslationKeys)}
+                                                            {t(
+                                                                `ticketPlans.plans.${plan.id}.feature${i}` as TranslationKeys,
+                                                            )}
                                                         </li>
                                                     ))}
                                             </ul>
@@ -700,11 +704,13 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                                                           : "border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-[#0f1710] cursor-pointer"
                                                 }`}
                                             >
-                                                {isTicketDisabled && currentTier === "BASIC" && plan.id === "ticket_basic" && (
-                                                    <span className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500">
-                                                        {t("ticketPlans.alreadyAvailable")}
-                                                    </span>
-                                                )}
+                                                {isTicketDisabled &&
+                                                    currentTier === "BASIC" &&
+                                                    plan.id === "ticket_basic" && (
+                                                        <span className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500">
+                                                            {t("ticketPlans.alreadyAvailable")}
+                                                        </span>
+                                                    )}
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className={`w-2 h-2 rounded-full ${
@@ -764,7 +770,9 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                             </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl text-[9px] text-gray-400 dark:text-gray-500 leading-relaxed text-center">
-                            <p className="font-bold text-gray-500 dark:text-gray-400 mb-1">{t("ticketPlans.businessInfo")}</p>
+                            <p className="font-bold text-gray-500 dark:text-gray-400 mb-1">
+                                {t("ticketPlans.businessInfo")}
+                            </p>
                             <p className="dark:text-gray-400">{t("ticketPlans.businessDetails")}</p>
                             <p className="dark:text-gray-400">{t("ticketPlans.businessAddress")}</p>
                             <p className="dark:text-gray-400">{t("ticketPlans.businessContact")}</p>

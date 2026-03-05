@@ -5,7 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Script from "next/script";
 import ClientStyleManager from "@/components/ClientStyleManager";
-import AdSenseScript from "@/components/AdSenseScript";
+// import AdSenseScript from "@/components/AdSenseScript"; // 🟢 AdMob/AdSense 비활성화
 import KakaoScript from "@/components/KakaoScript";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -93,8 +93,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 {/* 🟢 [Kakao SDK]: 공유·간편 로그인용 - Client Component에서 onLoad로 초기화 */}
                 <KakaoScript />
 
-                {/* Google AdSense: 웹에서만 로드. 앱(WebView)에서는 미로드 → 스플래시·adtrafficquality 동시 노출 방지 */}
-                <AdSenseScript />
+                {/* Google AdSense 비활성화 */}
+                {/* <AdSenseScript /> */}
 
                 {/* Vercel Speed Insights: 성능 메트릭 수집 */}
                 <SpeedInsights />

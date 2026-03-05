@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Gift, ChevronRight, X, Sparkles } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
 
 interface NotificationModalProps {
     onClose: () => void;
@@ -33,12 +32,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
         >
             <div
                 className={`${posClass} bottom-0 left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
-                style={{
-                    animation: "slideUp 0.3s ease-out forwards",
-                    ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                        : {}),
-                }}
+                style={{ animation: "slideUp 0.3s ease-out forwards" }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 상단 닫기 버튼 */}
@@ -58,52 +52,52 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                             <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
                         </div>
                     ) : (
-                    <>
-                    {/* 프로모션 배지 */}
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full mb-4">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        <span>{t("notificationModal.badge")}</span>
-                    </div>
+                        <>
+                            {/* 프로모션 배지 */}
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full mb-4">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                <span>{t("notificationModal.badge")}</span>
+                            </div>
 
-                    {/* 아이콘 섹션 */}
-                    <div className="relative w-16 h-16 mx-auto mb-5">
-                        <div className="absolute inset-0 bg-emerald-500 rounded-2xl rotate-12 opacity-10 animate-pulse"></div>
-                        <div className="relative w-full h-full bg-linear-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
-                            <Gift className="w-8 h-8 text-white" />
-                        </div>
-                    </div>
+                            {/* 아이콘 섹션 */}
+                            <div className="relative w-16 h-16 mx-auto mb-5">
+                                <div className="absolute inset-0 bg-emerald-500 rounded-2xl rotate-12 opacity-10 animate-pulse"></div>
+                                <div className="relative w-full h-full bg-linear-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
+                                    <Gift className="w-8 h-8 text-white" />
+                                </div>
+                            </div>
 
-                    {/* 텍스트 섹션 */}
-                    <h3 className="text-lg font-black text-gray-900 mb-2 tracking-tighter">
-                        {t("notificationModal.titleLine1")} <br />
-                        <span className="text-emerald-600">{t("notificationModal.titleHighlight")}</span>
-                        {t("notificationModal.titleLine2")}
-                    </h3>
+                            {/* 텍스트 섹션 */}
+                            <h3 className="text-lg font-black text-gray-900 mb-2 tracking-tighter">
+                                {t("notificationModal.titleLine1")} <br />
+                                <span className="text-emerald-600">{t("notificationModal.titleHighlight")}</span>
+                                {t("notificationModal.titleLine2")}
+                            </h3>
 
-                    <div className="bg-emerald-50/50 rounded-xl p-3 mb-5 border border-emerald-100/50">
-                        <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
-                            {t("notificationModal.desc")}
-                        </p>
-                    </div>
+                            <div className="bg-emerald-50/50 rounded-xl p-3 mb-5 border border-emerald-100/50">
+                                <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
+                                    {t("notificationModal.desc")}
+                                </p>
+                            </div>
 
-                    {/* 액션 버튼 */}
-                    <div className="space-y-2">
-                        <button
-                            onClick={handleLoginRedirect}
-                            className="group w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-base hover:bg-black transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
-                        >
-                            <span>{t("notificationModal.cta")}</span>
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
+                            {/* 액션 버튼 */}
+                            <div className="space-y-2">
+                                <button
+                                    onClick={handleLoginRedirect}
+                                    className="group w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-base hover:bg-black transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
+                                >
+                                    <span>{t("notificationModal.cta")}</span>
+                                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </button>
 
-                        <button
-                            onClick={onClose}
-                            className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 transition-colors"
-                        >
-                            {t("notificationModal.later")}
-                        </button>
-                    </div>
-                    </>
+                                <button
+                                    onClick={onClose}
+                                    className="w-full py-2 text-gray-400 font-bold text-xs hover:text-gray-600 transition-colors"
+                                >
+                                    {t("notificationModal.later")}
+                                </button>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

@@ -6,7 +6,7 @@ import { Lock } from "lucide-react";
 import { BASIC_MONTHLY_PRICE } from "@/constants/subscription";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
+import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 
 const AUTH_OPEN_SUBSCRIPTION_KEY = "auth:openSubscriptionAfterLogin";
 
@@ -52,6 +52,8 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
         return () => cancelAnimationFrame(t);
     }, [mounted]);
 
+    useNativeModalNotify(true);
+
     const handleProceed = () => {
         setOpenSubscriptionAfterLogin();
         onClose();
@@ -60,26 +62,22 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
 
     if (!mounted) return null;
 
-    const priceFormatted = BASIC_MONTHLY_PRICE.toLocaleString(locale === "ko" ? "ko-KR" : locale === "ja" ? "ja-JP" : "en-US");
+    const priceFormatted = BASIC_MONTHLY_PRICE.toLocaleString(
+        locale === "ko" ? "ko-KR" : locale === "ja" ? "ja-JP" : "en-US",
+    );
 
     const posClass = containInPhone ? "absolute" : "fixed";
     const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
 
     const modalContent = (
-        <>
+        <div
+            className={`${posClass} inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300 flex items-end justify-center`}
+            onClick={onClose}
+            aria-hidden
+        >
             <div
-                className={`${posClass} inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300`}
-                onClick={onClose}
-                aria-hidden
-            />
-            <div
-                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
-                style={{
-                    pointerEvents: "auto",
-                    ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                        : {}),
-                }}
+                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full pointer-events-auto ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                onClick={(e) => e.stopPropagation()}
             >
                 <div
                     className="bg-white dark:bg-[#1a241b] rounded-t-[32px] border-t border-gray-100 dark:border-gray-800 w-full max-h-full overflow-y-auto shadow-[0_20px_50px_rgba(0,0,0,0.2)] scrollbar-hide transition-transform duration-300 ease-out"
@@ -88,13 +86,7 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div
-                        className={`p-6 sm:p-8 relative ${
-                            typeof window !== "undefined" && isMobileApp() && isAndroid()
-                                ? "pb-[calc(1rem+64px+env(safe-area-inset-bottom))]"
-                                : "pb-[calc(1rem+env(safe-area-inset-bottom))]"
-                        }`}
-                    >
+                    <div className="p-6 sm:p-8 relative pb-[calc(1rem+env(safe-area-inset-bottom))]">
                         <button
                             onClick={onClose}
                             aria-label={t("bridgeModal.close")}
@@ -108,40 +100,40 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
                             </div>
                         ) : (
-                        <>
-                        <div className="text-center mb-6">
-                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
-                                <Lock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                            </div>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                                {t("bridgeModal.title")}
-                            </h2>
-                            <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
-                                {t("bridgeModal.desc")}{" "}
-                                <strong className="text-gray-900 dark:text-white">
-                                    {t("bridgeModal.priceUnit", { price: priceFormatted })}
-                                </strong>
-                                {t("bridgeModal.desc2")}
-                            </p>
-                        </div>
+                            <>
+                                <div className="text-center mb-6">
+                                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                                        <Lock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                                    </div>
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                        {t("bridgeModal.title")}
+                                    </h2>
+                                    <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                                        {t("bridgeModal.desc")}{" "}
+                                        <strong className="text-gray-900 dark:text-white">
+                                            {t("bridgeModal.priceUnit", { price: priceFormatted })}
+                                        </strong>
+                                        {t("bridgeModal.desc2")}
+                                    </p>
+                                </div>
 
-                        <button
-                            onClick={handleProceed}
-                            className="w-full py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                        >
-                            <Lock className="w-4 h-4" />
-                            {t("bridgeModal.cta")}
-                        </button>
+                                <button
+                                    onClick={handleProceed}
+                                    className="w-full py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                >
+                                    <Lock className="w-4 h-4" />
+                                    {t("bridgeModal.cta")}
+                                </button>
 
-                        <p className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
-                            {t("bridgeModal.cancelHint")}
-                        </p>
-                        </>
+                                <p className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
+                                    {t("bridgeModal.cancelHint")}
+                                </p>
+                            </>
                         )}
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 
     return createPortal(modalContent, portalTarget);

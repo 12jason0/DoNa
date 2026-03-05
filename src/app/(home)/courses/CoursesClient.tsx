@@ -14,7 +14,6 @@ import Image from "@/components/ImageFallback";
 import { LayoutGrid } from "lucide-react";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 import { getPlaceStatus } from "@/lib/placeStatus";
-import { isAndroid } from "@/lib/platform";
 
 // --- Type Definitions (기존과 100% 동일) ---
 type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
@@ -315,20 +314,10 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
         [favoriteIds, router, t],
     );
 
-    // 🟢 Android 앱에서만 헤더~완벽한 하루 사이 불필요한 여백 제거 (safe-area 중복 방지)
-    const [isAndroidClient, setIsAndroidClient] = useState(false);
-    useEffect(() => {
-        setIsAndroidClient(isAndroid());
-    }, []);
-
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
             <div
-                className={`bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 ${
-                    isAndroidClient
-                        ? "pt-１ top-0"
-                        : "pt-[calc(env(safe-area-inset-top,0)+1.25rem)] top-[env(safe-area-inset-top,0)]"
-                }`}
+                className="bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 pt-[calc(env(safe-area-inset-top,0)+1.25rem)] top-[env(safe-area-inset-top,0)]"
             >
                 <div>
                     <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">

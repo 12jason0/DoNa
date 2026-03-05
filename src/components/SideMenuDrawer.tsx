@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 import ComingSoonModal from "@/components/ComingSoonModal";
 import LoginModal from "@/components/LoginModal";
 import ShopModal from "@/components/ShopModal";
@@ -38,6 +39,8 @@ export default function SideMenuDrawer({
     const [showShopModal, setShowShopModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [animateUp, setAnimateUp] = useState(false);
+
+    useNativeModalNotify(isOpen);
 
     useEffect(() => {
         if (!isOpen) return;

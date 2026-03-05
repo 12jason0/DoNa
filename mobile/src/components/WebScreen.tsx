@@ -158,6 +158,8 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const [isMemoryDetailOpen, setIsMemoryDetailOpen] = useState(false);
     // 🟢 발자취 달력 클릭 시 뜨는 추천 코스 모달 열림 시 광고 숨김
     const [isDateCoursesModalOpen, setIsDateCoursesModalOpen] = useState(false);
+    // 🟢 웹 모달(검색·설정·로그인 등) 열림 시 광고 숨김 (모달이 광고 위에 표시되도록)
+    const [isWebModalOpen, setIsWebModalOpen] = useState(false);
 
     useEffect(() => {
         onMemoryDetailStateChange?.(isMemoryDetailOpen);
@@ -197,15 +199,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     }, []);
 
     // 🟢 [수정]: 스플래시 중에는 상태바 영역까지 스플래시 색상으로 채우기 위해 paddingTop을 0으로 설정
-    // 🟢 [Android] 헤더/푸터가 상하단에 붙도록 padding 0 (웹에서 safe-area 처리). iOS는 상단만 insets 유지
-    const dynamicPaddingTop =
-        !isSplashDone ? 0 : Platform.OS === "android" ? 0 : insets.top;
+    // 🟢 iOS/Android 동일: 상단 safe-area insets 유지
+    const dynamicPaddingTop = !isSplashDone ? 0 : insets.top;
 
-    // 🟢 [플랫폼별 여백]: Android는 0으로 헤더/푸터 꽉 차게, iOS는 하단 0
-    const dynamicPaddingBottom =
-        Platform.OS === "android"
-            ? 0 // 🟢 Android: 푸터가 하단에 붙도록 0
-            : 0;
+    const dynamicPaddingBottom = 0;
 
     const openExternalBrowser = async (url: string) => {
         if (!url.startsWith("http")) {
@@ -665,6 +662,10 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                                 setIsDateCoursesModalOpen(true);
                             } else if (data.type === "dateCoursesModalClose") {
                                 setIsDateCoursesModalOpen(false);
+                            }
+                            // 🟢 [AdMob]: 웹 모달 열림 시 광고 숨김 (모달이 광고 위에 표시되도록)
+                            else if (data.type === "modalState" && typeof data.isOpen === "boolean") {
+                                setIsWebModalOpen(data.isOpen);
                             }
                             // 🟢 [AdMob]: 웹에서 전달한 경로 (클라이언트 라우팅 시 광고 표시 여부 판단)
                             else if (data.type === "pathChange" && typeof data.path === "string") {
@@ -1130,10 +1131,11 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                     </View>
                 )}
             </View>
-            {/* 🟢 [AdMob]: 메인(/)·mypage에서만 표시. personalized-home·courses·추억상세·추천코스모달 제외 */}
+            {/* 🟢 [AdMob]: 메인(/)·mypage에서만 표시. 모달·추억상세·추천코스모달 열림 시 숨김 */}
             {isSplashDone &&
                 !isDateCoursesModalOpen &&
                 !isMemoryDetailOpen &&
+                !isWebModalOpen &&
                 currentPathForAd != null &&
                 shouldShowAdMob(currentPathForAd) && <AdMobBanner />}
         </View>

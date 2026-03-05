@@ -4,8 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
-
 const DRAG_CLOSE_THRESHOLD = 60;
 
 interface ShopModalProps {
@@ -64,25 +62,12 @@ export default function ShopModal({ onClose }: ShopModalProps) {
     return createPortal(
         <div
             className={`${posClass} inset-0 bg-black/40 dark:bg-black/70 flex flex-col justify-end z-9999 animate-in fade-in duration-200`}
-            style={
-                typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                    ? { paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                    : undefined
-            }
             onClick={onClose}
         >
             <div
-                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center ${
-                    typeof window !== "undefined" && isMobileApp() && isAndroid()
-                        ? "pb-[calc(1.5rem+64px+env(safe-area-inset-bottom))]"
-                        : "pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
-                } ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
+                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
                 style={{
-                    transform: slideUp
-                        ? dragY > 0
-                            ? `translateY(${dragY}px)`
-                            : "translateY(0)"
-                        : "translateY(100%)",
+                    transform: slideUp ? (dragY > 0 ? `translateY(${dragY}px)` : "translateY(0)") : "translateY(100%)",
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -116,39 +101,41 @@ export default function ShopModal({ onClose }: ShopModalProps) {
                         <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent" />
                     </div>
                 ) : (
-                <>
-                <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                    <svg
-                        className="w-7 h-7 text-[#7aa06f] dark:text-emerald-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.8}
-                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                        />
-                    </svg>
-                </div>
+                    <>
+                        <div className="w-16 h-16 mx-auto mb-5 bg-[#7aa06f]/10 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                            <svg
+                                className="w-7 h-7 text-[#7aa06f] dark:text-emerald-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.8}
+                                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                                />
+                            </svg>
+                        </div>
 
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{t("shopModal.title")}</h3>
-                <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep whitespace-pre-line">
-                    {t("shopModal.desc")}
-                </p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                            {t("shopModal.title")}
+                        </h3>
+                        <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-6 break-keep whitespace-pre-line">
+                            {t("shopModal.desc")}
+                        </p>
 
-                <button
-                    onClick={onClose}
-                    className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight"
-                    style={{ backgroundColor: "#7aa06f" }}
-                >
-                    {t("shopModal.confirm")}
-                </button>
-                </>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold hover:brightness-95 active:scale-[0.96] transition-all flex items-center justify-center gap-2 tracking-tight"
+                            style={{ backgroundColor: "#7aa06f" }}
+                        >
+                            {t("shopModal.confirm")}
+                        </button>
+                    </>
                 )}
             </div>
         </div>,
-        portalTarget
+        portalTarget,
     );
 }

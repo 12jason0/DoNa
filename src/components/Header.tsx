@@ -16,7 +16,7 @@ import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
+import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 
 // 🟢 [로그아웃 오버레이] - 스플래시 없이 메시지만 표시 (t는 부모에서 주입)
 const LogoutOverlay = ({ message }: { message: string }) => (
@@ -45,6 +45,15 @@ const Header = memo(() => {
 
     const pathname = usePathname();
     const router = useRouter();
+
+    useNativeModalNotify(
+        showSettingsModal ||
+            showLogoutConfirm ||
+            !!showComingSoon ||
+            showNotiModal ||
+            showKakaoChannelModal ||
+            showLoginModal,
+    );
 
     // 🟢 [찜 목록 요약 가져오기] - 불필요한 상태 업데이트 방지 로직 추가
     const fetchFavoritesSummary = useCallback(async () => {
@@ -221,11 +230,6 @@ const Header = memo(() => {
             {showSettingsModal && (
                 <div
                     className={`${posClass} inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
-                    style={
-                        typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                            ? { paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }
-                            : undefined
-                    }
                     onClick={() => setShowSettingsModal(false)}
                     role="button"
                     tabIndex={0}
@@ -250,7 +254,9 @@ const Header = memo(() => {
                         </div>
                         <div className="p-4 pb-8">
                             {/* 언어 선택: 한국어, English, 日本語, 中文 */}
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">{t("language.label")}</p>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                                {t("language.label")}
+                            </p>
                             <div className="flex gap-2 mb-6">
                                 {(["ko", "en", "ja", "zh"] as const).map((loc) => (
                                     <button
@@ -271,7 +277,9 @@ const Header = memo(() => {
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">{t("theme.label")}</p>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                                {t("theme.label")}
+                            </p>
                             <div className="flex gap-2">
                                 <button
                                     type="button"

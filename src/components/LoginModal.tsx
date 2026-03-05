@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { CheckCircle, Sparkles, Ticket } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useLocale } from "@/context/LocaleContext";
-import { isAndroid, isMobileApp } from "@/lib/platform";
+import { isMobileApp } from "@/lib/platform";
 import type { LoginModalPresetKey } from "@/constants/loginModalPresets";
 
 interface LoginModalProps {
@@ -27,7 +27,7 @@ export default function LoginModal({ onClose, next, preset, title, description, 
     const { containInPhone, modalContainerRef } = useAppLayout();
     const defaultBenefits = useMemo(
         () => [t("loginModal.benefit0"), t("loginModal.benefit1"), t("loginModal.benefit2")],
-        [t, isLocaleReady]
+        [t, isLocaleReady],
     );
     const presetBenefits = useMemo(
         () =>
@@ -38,7 +38,7 @@ export default function LoginModal({ onClose, next, preset, title, description, 
                       t(`loginModal.presets.${preset}.benefit2` as const),
                   ]
                 : null,
-        [t, preset, isLocaleReady]
+        [t, preset, isLocaleReady],
     );
     const pathname = usePathname();
     const [loginNavigating, setLoginNavigating] = useState(false);
@@ -80,22 +80,14 @@ export default function LoginModal({ onClose, next, preset, title, description, 
 
     const posClass = containInPhone ? "absolute" : "fixed";
     const modalContent = (
-        <>
-            {/* 배경 딤드 */}
+        <div
+            className={`${posClass} inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300 flex items-end justify-center`}
+            onClick={onClose}
+            aria-hidden
+        >
             <div
-                className={`${posClass} inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md z-9999 animate-in fade-in duration-300`}
-                onClick={onClose}
-                aria-hidden
-            />
-            {/* 하단 시트: Android만 시트 하단을 네비 바로 위(64px)로 */}
-            <div
-                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
-                style={{
-                    pointerEvents: "auto",
-                    ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
-                        : {}),
-                }}
+                className={`${posClass} left-0 right-0 bottom-0 z-10000 w-full pointer-events-auto ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                onClick={(e) => e.stopPropagation()}
             >
                 <div
                     className="bg-white dark:bg-[#1a241b] rounded-t-[32px] border-t border-gray-100 dark:border-gray-800 w-full max-h-full overflow-y-auto shadow-[0_20px_50px_rgba(0,0,0,0.2)] scrollbar-hide transition-transform duration-300 ease-out"
@@ -104,13 +96,7 @@ export default function LoginModal({ onClose, next, preset, title, description, 
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div
-                        className={`p-6 sm:p-8 relative ${
-                            typeof window !== "undefined" && isMobileApp() && isAndroid()
-                                ? "pb-[calc(1rem+64px+env(safe-area-inset-bottom))]"
-                                : "pb-[calc(1rem+env(safe-area-inset-bottom))]"
-                        }`}
-                    >
+                    <div className="p-6 sm:p-8 relative pb-[calc(1rem+env(safe-area-inset-bottom))]">
                         {/* 닫기 버튼 */}
                         <button
                             onClick={onClose}
@@ -226,7 +212,7 @@ export default function LoginModal({ onClose, next, preset, title, description, 
                     scrollbar-width: none;
                 }
             `}</style>
-        </>
+        </div>
     );
 
     const portalTarget = containInPhone && modalContainerRef?.current ? modalContainerRef.current : document.body;
