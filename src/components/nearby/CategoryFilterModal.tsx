@@ -51,7 +51,7 @@ export default function CategoryFilterModal({
             className="fixed inset-0 z-9999 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-5 animate-in fade-in duration-200"
             style={
                 typeof window !== "undefined" && isMobileApp() && isAndroid()
-                    ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" }
+                    ? { paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                     : undefined
             }
             onClick={onClose}

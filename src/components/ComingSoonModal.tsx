@@ -136,7 +136,7 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
             className={`${posClass} inset-0 bg-black/40 dark:bg-black/70 flex flex-col justify-end z-9999 animate-in fade-in duration-200`}
             style={
                 typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                    ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" }
+                    ? { paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                     : undefined
             }
             onClick={onClose}

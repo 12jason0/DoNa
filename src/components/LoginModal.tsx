@@ -93,7 +93,7 @@ export default function LoginModal({ onClose, next, preset, title, description, 
                 style={{
                     pointerEvents: "auto",
                     ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "env(safe-area-inset-bottom, 0px)" }
+                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                         : {}),
                 }}
             >

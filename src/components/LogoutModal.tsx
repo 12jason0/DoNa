@@ -36,7 +36,7 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                 className={`${posClass} left-0 right-0 bottom-0 z-2001 w-full`}
                 style={
                     typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "env(safe-area-inset-bottom, 0px)" }
+                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                         : undefined
                 }
             >

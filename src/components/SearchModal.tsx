@@ -165,7 +165,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     top: containInPhone ? "4.5rem" : "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                     ...(containInPhone ? { width: "100%", height: "calc(100% - 4.5rem)" } : {}),
                     ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "env(safe-area-inset-bottom, 0px)" }
+                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
                         : {}),
                     animation: "slideUp 0.3s ease-out forwards",
                 }}
