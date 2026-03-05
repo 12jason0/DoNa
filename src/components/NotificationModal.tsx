@@ -36,7 +36,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
                 style={{
                     animation: "slideUp 0.3s ease-out forwards",
                     ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                        ? { bottom: "env(safe-area-inset-bottom, 0px)" }
                         : {}),
                 }}
                 onClick={(e) => e.stopPropagation()}

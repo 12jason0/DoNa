@@ -583,7 +583,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
                         <div
                             ref={modalContainerRef}
-                            className={`relative h-full flex flex-col overflow-hidden ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
+                            className={`relative h-full flex flex-col overflow-hidden isolate ${!isApp ? "bg-white dark:bg-[#0f1710]" : "bg-transparent"} ${
                                 !mounted
                                     ? !isApp
                                         ? "md:w-[400px] md:max-h-[90vh] md:h-[90vh] md:rounded-[3rem] md:border-[9px] md:border-gray-300 dark:md:border-gray-700 md:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
@@ -592,6 +592,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                       ? "md:w-[400px] md:max-h-[90vh] md:h-[90vh] md:rounded-[3rem] md:border-[9px] md:border-gray-300 dark:md:border-gray-700 md:shadow-[0_30px_90px_rgba(0,0,0,0.2)] lg:ml-12 lg:mt-8"
                                       : "w-full"
                             } lg:pb-0`}
+                            style={!isApp ? { transform: "translateZ(0)" } : undefined}
                         >
                             {/* 웹 전용: 폰 상단 원형 노치 (md 이상에서 폰 프레임과 함께 표시) */}
                             {!isApp && (

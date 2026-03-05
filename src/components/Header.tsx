@@ -223,7 +223,7 @@ const Header = memo(() => {
                     className={`${posClass} inset-0 z-2000 flex items-end justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200`}
                     style={
                         typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                            ? { paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                            ? { paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }
                             : undefined
                     }
                     onClick={() => setShowSettingsModal(false)}

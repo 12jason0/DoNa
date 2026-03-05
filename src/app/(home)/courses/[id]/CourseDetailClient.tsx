@@ -1987,7 +1987,7 @@ export default function CourseDetailClient({
                         </section>
                     </main>
 
-                    {/* 찜하기·공유 하단바: 항상 화면 하단 고정 (fixed). 스크롤해도 바닥에 붙어 있음 */}
+                    {/* 찜하기·공유 하단바: 폰 프레임에 transform 있으면 fixed가 폰 안에만 적용됨 */}
                     <div
                         className="fixed left-0 right-0 bottom-0 z-40 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto"
                         style={

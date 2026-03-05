@@ -77,7 +77,7 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                 style={{
                     pointerEvents: "auto",
                     ...(typeof window !== "undefined" && !containInPhone && isMobileApp() && isAndroid()
-                        ? { bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }
+                        ? { bottom: "env(safe-area-inset-bottom, 0px)" }
                         : {}),
                 }}
             >
