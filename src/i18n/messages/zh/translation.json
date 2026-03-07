@@ -37,7 +37,7 @@
       "later": "稍后",
       "goTo": "前往"
     },
-    "memoryFallback": "我的回忆",
+    "memoryFallback": "今日瞬间",
     "memoryImageAlt": "回忆图片",
     "memoryPhotoAlt": "回忆照片 {n}",
     "dayOfWeek": ["日", "一", "二", "三", "四", "五", "六"]
@@ -49,12 +49,12 @@
       "button": "登录"
     },
     "empty": {
-      "title": "私密记录",
+      "title": "今日约会相册",
       "subtitle": "留下第一个回忆，获取更好推荐。",
       "button": "添加回忆"
     },
     "filled": {
-      "title": "私密记录",
+      "title": "今日约会相册",
       "subtitle": "回顾近期约会，规划下次旅程。",
       "button": "查看回忆"
     },
@@ -319,7 +319,7 @@
     "modalClose": "关闭弹窗",
     "favoriteAdded": "收藏的课程可在个人中心查看",
     "favoriteRemoved": "已取消收藏",
-    "memoryLimitReached": "已达到回忆存储上限",
+    "memoryLimitReached": "今日瞬间存储已达上限",
     "upgradeToSaveMore": "升级订阅以保存更多。",
     "subscriptionUpgrade": "升级订阅",
     "noDescription": "暂无详细说明。",
@@ -336,7 +336,15 @@
     "shareModalTitle": "分享",
     "dateInProgress": "今日约会进行中",
     "shareKakao": "通过 KakaoTalk 分享",
-    "copyLink": "复制链接"
+    "copyLink": "复制链接",
+    "memoryRecordCta": "记录今日瞬间",
+    "walkingMinutes": "步行约{minutes}分钟",
+    "selectPlace": "选择"
+  },
+  "sharePreview": {
+    "downloadModalTitle": "不想毁了约会？",
+    "downloadModalDesc": "在应用内获取实时路线和详细小贴士。",
+    "downloadApp": "下载应用"
   },
   "search": {
     "placeholder": "搜索地区、主题、热门地点",
@@ -444,8 +452,8 @@
       },
       "saveRecord": {
         "title": "记录此课程需登录",
-        "description": "保存的课程\n会收入您的专辑",
-        "benefit0": "保存的课程会自动收入专辑",
+        "description": "保存的课程\n会收入今日瞬间",
+        "benefit0": "保存的课程会自动收入今日瞬间",
         "benefit1": "照片与课程记录统一管理",
         "benefit2": "随时方便回顾"
       }
@@ -749,7 +757,7 @@
       "calendar": "日历",
       "memories": "回忆",
       "footprintCalendarHint": "AI推荐的约会路线会自动记录",
-      "footprintMemoriesHint": "查看您的珍贵回忆",
+      "footprintMemoriesHint": "查看您的今日瞬间",
       "completedCourses": "已完成",
       "todayDate": "今日约会",
       "recommendedDate": "推荐",
@@ -824,7 +832,7 @@
         "name": "基础会员",
         "desc": "早鸟价永久折扣！",
         "feature0": "BASIC等级路线",
-        "feature1": "最多保存10个回忆",
+        "feature1": "最多保存10个今日瞬间",
         "feature2": "FREE/BASIC约会技巧",
         "feature3": "无广告体验"
       },
@@ -832,7 +840,7 @@
         "name": "高级会员",
         "desc": "基础福利+独家秘密地点",
         "feature0": "全部路线及秘密地点",
-        "feature1": "无限回忆存储",
+        "feature1": "今日瞬间无限存储",
         "feature2": "全部专业约会技巧",
         "feature3": "无广告体验",
         "feature4": "含全部基础福利"

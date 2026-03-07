@@ -9,6 +9,10 @@ export interface Place {
     description?: string;
     iconUrl?: string; // 커스텀 마커 아이콘 (고대 룬 등)
     orderIndex?: number; // 타임라인 순서를 지도에 표시
+    /** 선택형 코스: 확정(녹색) vs 선택된 후보(녹색) vs 미선택 후보(흐린 회색) */
+    markerVariant?: "confirmed" | "candidate-selected" | "candidate";
+    /** 후보 선택 시 setSelectedBySegment용 세그먼트 키 */
+    segmentKey?: string;
 }
 
 export interface UserLocation {
@@ -44,6 +48,10 @@ export interface MapProps {
     pathCoordinates?: number[][];
     // 경로를 그릴 장소들 (places와 다를 수 있음, 예: 코스 장소만 경로로 연결)
     pathPlaces?: Place[];
+    // 선택 모드: 미선택 후보까지 점선 경로 [{from, to}, ...] (직선, API 미호출)
+    dottedPathSegments?: { from: Place; to: Place }[];
+    // true면 경로 직선만 사용 (API 미호출, 즉시 렌더)
+    pathStraightOnly?: boolean;
     // 지도 경계(bounds) 변경 시 콜백
     onBoundsChanged?: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void;
     // 지도 준비 완료 시 콜백 (map ref 접근용)

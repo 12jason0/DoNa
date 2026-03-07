@@ -23,6 +23,7 @@ import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
 import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
+import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
 let globalFavoritesPromise: Promise<any[] | null> | null = null;
@@ -284,6 +285,19 @@ const SEGMENT_ICONS: Record<string, string> = {
     bar: "🍸",
     date: "💑",
 };
+
+/** 직선 거리 기반 도보 소요시간 추정 (분). ~80m/min, 경로 보정 1.4배 */
+function getWalkingMinutes(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000; // 지구 반경(m)
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distM = R * c;
+    return Math.max(1, Math.round((distM * 1.4) / 80));
+}
 
 // 🟢 [Fix] 이름 충돌 해결: Toast -> ToastPopup
 const ToastPopup = ({
@@ -618,19 +632,6 @@ export default function CourseDetailClient({
         return () => cancelAnimationFrame(t);
     }, [showShareModal]);
 
-    // 🟢 지도 모달: 장소 선택 모드로 들어가면 자동 닫기
-    const showMapButtonAndModal = !courseData?.isSelectionType || !!(mySelection && !showSelectionUI);
-    useEffect(() => {
-        if (!showMapButtonAndModal && showFullMapModal) {
-            setShowFullMapModalSlideUp(false);
-            setFullMapModalDragY(0);
-            fullMapModalDragYRef.current = 0;
-            setTimeout(() => {
-                setShowFullMapModal(false);
-                setModalSelectedPlace(null);
-            }, 300);
-        }
-    }, [showMapButtonAndModal, showFullMapModal]);
 
     // 🟢 지도 모달 하단 시트: 열릴 때 slideUp 애니메이션 + 드래그 초기화
     useEffect(() => {
@@ -1010,8 +1011,12 @@ export default function CourseDetailClient({
         return sections;
     }, [displayCoursePlaces]);
 
+    // DB order_index: 1-based(1,2,3) → 0-based 변환. resolved는 이미 0-based(0,1,2)
     const mapPlaces = useMemo(() => {
-        return displayCoursePlaces.map((cp) => ({
+        const list = displayCoursePlaces;
+        const minOrder = list.length > 0 ? Math.min(...list.map((cp) => cp.order_index ?? 0)) : 0;
+        const toZeroBased = minOrder >= 1; // 1-based면 -1, 0-based면 그대로
+        return list.map((cp) => ({
             id: cp.place.id,
             name: cp.place.name,
             latitude: cp.place.latitude,
@@ -1019,9 +1024,158 @@ export default function CourseDetailClient({
             address: cp.place.address,
             imageUrl: cp.place.imageUrl,
             description: cp.place.description,
-            orderIndex: cp.order_index,
+            orderIndex: toZeroBased ? Math.max(0, (cp.order_index ?? 1) - 1) : (cp.order_index ?? 0),
         }));
     }, [displayCoursePlaces]);
+
+    // 선택형 코스 선택 모드: 고정(녹색) + 선택된 후보(녹색) + 미선택 후보(흐린 회색), 같은 스텝은 동일 번호
+    const selectionMapPlaces = useMemo(() => {
+        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0) return [];
+        const result: (MapPlace & {
+            markerVariant?: "confirmed" | "candidate-selected" | "candidate";
+            segmentKey?: string;
+        })[] = [];
+        let orderIdx = 0;
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                const p = step.coursePlace.place;
+                result.push({
+                    id: p.id,
+                    name: p.name,
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    address: p.address,
+                    imageUrl: p.imageUrl,
+                    description: p.description,
+                    orderIndex: orderIdx++,
+                    markerVariant: "confirmed",
+                });
+            } else {
+                const selectedId = selectedBySegment[step.segment];
+                const stepOrder = orderIdx++;
+                for (const cp of step.options) {
+                    result.push({
+                        id: cp.place.id,
+                        name: cp.place.name,
+                        latitude: cp.place.latitude,
+                        longitude: cp.place.longitude,
+                        address: cp.place.address,
+                        imageUrl: cp.place.imageUrl,
+                        description: cp.place.description,
+                        orderIndex: stepOrder,
+                        markerVariant: Number(cp.place_id) === Number(selectedId) ? "candidate-selected" : "candidate",
+                        segmentKey: step.segment,
+                    });
+                }
+            }
+        }
+        return result;
+    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
+
+    // 선택 모드: 메인 경로(실선) = 고정 + 선택된 후보 순서
+    const selectionPathPlaces = useMemo(() => {
+        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0) return [];
+        const path: MapPlace[] = [];
+        let orderIdx = 0;
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                const p = step.coursePlace.place;
+                path.push({
+                    id: p.id,
+                    name: p.name,
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    address: p.address,
+                    imageUrl: p.imageUrl,
+                    description: p.description,
+                    orderIndex: orderIdx++,
+                });
+            } else {
+                const selectedId = selectedBySegment[step.segment];
+                const selected = step.options.find((o) => Number(o.place_id) === Number(selectedId));
+                if (selected) {
+                    path.push({
+                        id: selected.place.id,
+                        name: selected.place.name,
+                        latitude: selected.place.latitude,
+                        longitude: selected.place.longitude,
+                        address: selected.place.address,
+                        imageUrl: selected.place.imageUrl,
+                        description: selected.place.description,
+                        orderIndex: orderIdx++,
+                    });
+                }
+            }
+        }
+        return path;
+    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
+
+    // 선택 모드: 미선택 후보 점선용 [{from: 이전스텝, to: 미선택후보}]
+    const selectionDottedSegments = useMemo(() => {
+        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0) return [];
+        const segments: { from: MapPlace; to: MapPlace }[] = [];
+        let prevPlace: MapPlace | null = null;
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                prevPlace = {
+                    id: step.coursePlace.place.id,
+                    name: step.coursePlace.place.name,
+                    latitude: step.coursePlace.place.latitude,
+                    longitude: step.coursePlace.place.longitude,
+                    address: step.coursePlace.place.address,
+                    imageUrl: step.coursePlace.place.imageUrl,
+                    description: step.coursePlace.place.description,
+                };
+            } else {
+                const selectedId = selectedBySegment[step.segment];
+                const fromPlace = prevPlace;
+                for (const cp of step.options) {
+                    if (Number(cp.place_id) !== Number(selectedId) && fromPlace) {
+                        segments.push({
+                            from: fromPlace,
+                            to: {
+                                id: cp.place.id,
+                                name: cp.place.name,
+                                latitude: cp.place.latitude,
+                                longitude: cp.place.longitude,
+                                address: cp.place.address,
+                                imageUrl: cp.place.imageUrl,
+                                description: cp.place.description,
+                            },
+                        });
+                    }
+                    if (Number(cp.place_id) === Number(selectedId)) {
+                        prevPlace = {
+                            id: cp.place.id,
+                            name: cp.place.name,
+                            latitude: cp.place.latitude,
+                            longitude: cp.place.longitude,
+                            address: cp.place.address,
+                            imageUrl: cp.place.imageUrl,
+                            description: cp.place.description,
+                        };
+                    }
+                }
+            }
+        }
+        return segments;
+    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
+
+    const showMapButtonAndModal =
+        !!courseData &&
+        (sortedCoursePlaces.length > 0 || (courseData.isSelectionType && selectionOrderedSteps.length > 0));
+
+    useEffect(() => {
+        if (!showMapButtonAndModal && showFullMapModal) {
+            setShowFullMapModalSlideUp(false);
+            setFullMapModalDragY(0);
+            fullMapModalDragYRef.current = 0;
+            setTimeout(() => {
+                setShowFullMapModal(false);
+                setModalSelectedPlace(null);
+            }, 300);
+        }
+    }, [showMapButtonAndModal, showFullMapModal]);
 
     useEffect(() => {
         if (displayCoursePlaces.length > 0 && !selectedPlace) {
@@ -1052,15 +1206,12 @@ export default function CourseDetailClient({
 
     const handleMapPlaceClick = useCallback(
         (mapPlace: MapPlace) => {
-            const fullPlace = displayCoursePlaces.find((cp) => cp.place.id === mapPlace.id)?.place;
-            if (fullPlace) {
-                // 모달이 열려있으면 모달용 상태 업데이트, 아니면 일반 상태 업데이트
-                if (showFullMapModal) {
-                    setModalSelectedPlace(mapPlace);
-                } else {
-                    setSelectedPlace(fullPlace);
-                }
+            if (showFullMapModal) {
+                setModalSelectedPlace(mapPlace);
+                return;
             }
+            const fullPlace = displayCoursePlaces.find((cp) => cp.place.id === mapPlace.id)?.place;
+            if (fullPlace) setSelectedPlace(fullPlace);
         },
         [displayCoursePlaces, showFullMapModal],
     );
@@ -1291,29 +1442,45 @@ export default function CourseDetailClient({
         return Kakao || null;
     };
 
+    const getShareUrl = async (): Promise<string> => {
+        const baseUrl =
+            typeof window !== "undefined" && window.location.origin.includes("dona.io.kr")
+                ? "https://dona.io.kr"
+                : typeof window !== "undefined"
+                  ? window.location.origin.replace(/\/$/, "")
+                  : "https://dona.io.kr";
+
+        const selectedPlaceIds = courseData.isSelectionType
+            ? mySelection
+                ? mySelection.selectedPlaceIds
+                : selectionOrderedSteps
+                      .map((step) =>
+                          step.type === "fixed"
+                              ? step.coursePlace.place_id
+                              : selectedBySegment[step.segment],
+                      )
+                      .filter((id): id is number => id != null && id > 0)
+            : displayCoursePlaces.map((cp) => cp.place_id);
+
+        const res = await fetch("/api/share/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                templateCourseId: Number(courseId),
+                selectedPlaceIds,
+            }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const shareId = data?.shareId;
+        if (shareId) return `${baseUrl}/share/course/${shareId}`;
+        return `${baseUrl}/courses/${courseId}`;
+    };
+
     const handleKakaoShare = async () => {
-        // 🟢 [2025-12-28] 통합: 접속 환경에 따라 baseUrl을 자동으로 결정 (로컬 IP 또는 운영 도메인)
-        let baseUrl = "https://dona.io.kr"; // 기본값을 운영 도메인으로 설정
-
-        if (typeof window !== "undefined") {
-            const origin = window.location.origin.replace(/\/$/, "");
-            // dona.io.kr로 접속 중이면 해당 도메인 사용
-            if (origin.includes("dona.io.kr")) {
-                baseUrl = "https://dona.io.kr";
-            } else if (origin.includes("192.168.") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
-                // 로컬 개발 환경: 실제 접속 주소 사용
-                baseUrl = origin;
-            }
-        }
-
-        // 🟢 [2025-12-28] baseUrl 끝의 슬래시 제거 후 URL 생성
-        // 🟢 [테스트용]: 운영 도메인으로 하드코딩 (카카오 콘솔 테스트용)
-        const cleanCourseUrl = "https://dona.io.kr/courses/" + courseId;
-
-        // 🟢 [2025-12-28] 디버깅: 전달되는 URL 확인 (카카오 콘솔 등록값과 비교용)
-        console.log("[카카오 공유] 테스트용 주소로 공유 시도:", cleanCourseUrl);
-
         try {
+            const cleanShareUrl = await getShareUrl();
+            console.log("[카카오 공유] 공유 주소:", cleanShareUrl);
+
             const Kakao = await ensureKakaoSdk();
             if (!Kakao) {
                 throw new Error("Kakao SDK 로드 실패");
@@ -1329,24 +1496,20 @@ export default function CourseDetailClient({
                     : courseData.description
                 : t("courseDetail.shareDesc");
 
-            // 🟢 [2025-12-28] 이미지 URL: 절대 경로로 변환 (카카오 공유는 절대 경로만 허용)
-            // 🟢 [테스트용]: 운영 도메인 사용 (카카오 서버가 접근 가능하도록)
-            const testBaseUrl = "https://dona.io.kr";
             let shareImageUrl = heroImageUrl || courseData.imageUrl;
             if (shareImageUrl) {
                 // 이미 절대 경로인 경우 그대로 사용
                 if (!shareImageUrl.startsWith("http")) {
                     // 상대 경로인 경우 운영 도메인과 결합
                     shareImageUrl = shareImageUrl.startsWith("/")
-                        ? `${testBaseUrl}${shareImageUrl}`
-                        : `${testBaseUrl}/${shareImageUrl}`;
+                        ? `https://dona.io.kr${shareImageUrl}`
+                        : `https://dona.io.kr/${shareImageUrl}`;
                 }
             } else {
                 // 기본 로고 사용 (절대 경로)
                 shareImageUrl = getS3StaticUrl("logo/donalogo_512.png");
             }
 
-            // 🟢 [2025-12-28] 통합: 앱/웹 모두 템플릿 번호 없이 '기본 공유' 방식 사용
             Kakao.Share.sendDefault({
                 objectType: "feed",
                 content: {
@@ -1354,16 +1517,16 @@ export default function CourseDetailClient({
                     description: shareDescription,
                     imageUrl: shareImageUrl,
                     link: {
-                        mobileWebUrl: cleanCourseUrl,
-                        webUrl: cleanCourseUrl,
+                        mobileWebUrl: cleanShareUrl,
+                        webUrl: cleanShareUrl,
                     },
                 },
                 buttons: [
                     {
                         title: t("courseDetail.shareTitle"),
                         link: {
-                            mobileWebUrl: cleanCourseUrl,
-                            webUrl: cleanCourseUrl,
+                            mobileWebUrl: cleanShareUrl,
+                            webUrl: cleanShareUrl,
                         },
                     },
                 ],
@@ -1372,17 +1535,11 @@ export default function CourseDetailClient({
             setShowShareModal(false);
         } catch (error: any) {
             console.error("[카카오 공유] 실패:", error);
-            // 🟢 [2025-12-28] 에러 상세 정보 로깅
-            if (error?.message) {
-                console.error("[카카오 공유] 에러 메시지:", error.message);
-            }
-            if (error?.code) {
-                console.error("[카카오 공유] 에러 코드:", error.code);
-            }
-
-            // 실패 시 클립보드 복사 Fallback 유지
+            if (error?.message) console.error("[카카오 공유] 에러 메시지:", error.message);
+            if (error?.code) console.error("[카카오 공유] 에러 코드:", error.code);
             try {
-                await navigator.clipboard.writeText(cleanCourseUrl);
+                const fallbackUrl = await getShareUrl();
+                await navigator.clipboard.writeText(fallbackUrl);
                 showToast(t("courseDetail.linkCopied"), "success");
             } catch {
                 showToast(t("courseDetail.shareFailed"), "error");
@@ -1392,12 +1549,8 @@ export default function CourseDetailClient({
 
     const handleCopyLink = async () => {
         try {
-            // 🟢 코스 페이지 URL을 명시적으로 생성 (공유된 링크가 해당 코스 페이지로 이동하도록)
-            const courseUrl =
-                typeof window !== "undefined"
-                    ? `${window.location.origin}/courses/${courseId}`
-                    : `https://dona.app/courses/${courseId}`;
-            await navigator.clipboard.writeText(courseUrl);
+            const shareUrl = await getShareUrl();
+            await navigator.clipboard.writeText(shareUrl);
             setShowShareModal(false);
             showToast(t("courseDetail.linkCopySuccess"), "success");
         } catch {
@@ -1509,32 +1662,53 @@ export default function CourseDetailClient({
                             WebkitOverflowScrolling: "touch", // iOS 부드러운 스크롤 보장
                         }}
                     >
-                        <section className="relative px-4 pb-20 rounded-2xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                            {/* 선택형 선택 UI: 세로 타임라인(원 중앙에 맞춤) */}
+                        <section className="relative pt-5 px-4 pb-20 rounded-2xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                            {/* 선택형 선택 UI: 세로 타임라인(원 뒤에 표시) */}
                             {courseData.isSelectionType &&
                                 selectionOrderedSteps.length > 0 &&
                                 (!mySelection || showSelectionUI) && (
-                                    <div className="absolute left-5 top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200 dark:border-gray-700" />
+                                    <div className="absolute left-5 top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200 dark:border-gray-700 z-0" />
                                 )}
                             <div className="space-y-8">
                                 {/* 선택형 코스: 첫 방문 또는 "다시 고르기" 시 고정 장소 + 세그먼트 선택 UI (order_index 순) */}
                                 {courseData.isSelectionType &&
                                     selectionOrderedSteps.length > 0 &&
                                     (!mySelection || showSelectionUI) && (
-                                        <div className="space-y-6">
+                                        <div className="space-y-6 relative z-10">
                                             {selectionOrderedSteps.map((step, stepIdx) => {
-                                                const totalSteps = selectionOrderedSteps.length;
-                                                const isFirst = stepIdx === 0;
-                                                const isLast = stepIdx === totalSteps - 1;
+                                                const getPrevResolvedPlace = (): { lat: number; lng: number } | null => {
+                                                    for (let i = stepIdx - 1; i >= 0; i--) {
+                                                        const s = selectionOrderedSteps[i];
+                                                        if (s.type === "fixed")
+                                                            return s.coursePlace.place.latitude != null && s.coursePlace.place.longitude != null
+                                                                ? { lat: s.coursePlace.place.latitude, lng: s.coursePlace.place.longitude }
+                                                                : null;
+                                                        if (s.type === "segment") {
+                                                            const opt = s.options.find(
+                                                                (o) => Number(o.place_id) === Number(selectedBySegment[s.segment]),
+                                                            );
+                                                            if (opt?.place.latitude != null && opt.place.longitude != null)
+                                                                return { lat: opt.place.latitude, lng: opt.place.longitude };
+                                                        }
+                                                    }
+                                                    return null;
+                                                };
+                                                const prev = getPrevResolvedPlace();
                                                 if (step.type === "fixed") {
                                                     const coursePlace = step.coursePlace;
                                                     const isSelected = selectedPlace?.id === coursePlace.place.id;
-                                                    const sectionLabel = isFirst ? "시작" : isLast ? "마무리" : "코스";
-                                                    const circleBg = isFirst
-                                                        ? "bg-emerald-500"
-                                                        : isLast
-                                                          ? "bg-violet-500"
-                                                          : "bg-gray-400";
+                                                    const circleBg = "bg-emerald-500";
+                                                    const walkingMin =
+                                                        prev &&
+                                                        coursePlace.place.latitude != null &&
+                                                        coursePlace.place.longitude != null
+                                                            ? getWalkingMinutes(
+                                                                  prev.lat,
+                                                                  prev.lng,
+                                                                  coursePlace.place.latitude,
+                                                                  coursePlace.place.longitude,
+                                                              )
+                                                            : null;
                                                     return (
                                                         <div
                                                             key={`fixed-${coursePlace.id}`}
@@ -1543,40 +1717,25 @@ export default function CourseDetailClient({
                                                             <div
                                                                 className={`shrink-0 w-10 h-10 rounded-full ${circleBg} flex items-center justify-center text-white font-bold text-sm`}
                                                             >
-                                                                {isFirst ? (
-                                                                    "1"
-                                                                ) : isLast ? (
-                                                                    <svg
-                                                                        className="w-5 h-5"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        viewBox="0 0 24 24"
-                                                                    >
-                                                                        <path
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            strokeWidth={2}
-                                                                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                                                                        />
-                                                                    </svg>
-                                                                ) : (
-                                                                    "📍"
-                                                                )}
+                                                                {stepIdx + 1}
                                                             </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
-                                                                    {isFirst && "1 "}
-                                                                    {sectionLabel}
-                                                                </h3>
+                                                            <div className="flex-1 min-w-0 pt-1">
+                                                                {walkingMin != null && (
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0">
+                                                                            {t("courseDetail.walkingMinutes", { minutes: walkingMin })}
+                                                                        </span>
+                                                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                    </div>
+                                                                )}
                                                                 <div
                                                                     onClick={() => {
                                                                         setSelectedPlace(coursePlace.place);
                                                                         setShowPlaceModal(true);
                                                                     }}
-                                                                    className={`relative bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-4 transition-all duration-300 border cursor-pointer ${
-                                                                        isSelected
-                                                                            ? "shadow-sm border-emerald-500 border-2"
-                                                                            : "border-gray-200 dark:border-gray-700 hover:border-emerald-300"
+                                                                    className={`relative bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-4 transition-all duration-300 cursor-pointer ${
+                                                                        isSelected ? "shadow-sm" : ""
                                                                     }`}
                                                                 >
                                                                     <div className="flex gap-4">
@@ -1615,31 +1774,42 @@ export default function CourseDetailClient({
                                                 }
                                                 const { segment: seg, options } = step;
                                                 const selectedPlaceId = selectedBySegment[seg];
+                                                const selectedOpt = options.find((o) => Number(o.place_id) === Number(selectedPlaceId));
+                                                const walkingMinSeg =
+                                                    prev &&
+                                                    selectedOpt?.place.latitude != null &&
+                                                    selectedOpt.place.longitude != null
+                                                        ? getWalkingMinutes(
+                                                              prev.lat,
+                                                              prev.lng,
+                                                              selectedOpt.place.latitude,
+                                                              selectedOpt.place.longitude,
+                                                          )
+                                                        : null;
                                                 return (
                                                     <div key={`seg-${seg}`} className="mb-6 flex gap-4">
-                                                        <div className="shrink-0 w-10 h-10 rounded-full bg-rose-500 flex items-center justify-center text-white">
-                                                            <svg
-                                                                className="w-5 h-5"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                viewBox="0 0 24 24"
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={2}
-                                                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                                                                />
-                                                            </svg>
+                                                        <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                                                            {stepIdx + 1}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">
-                                                                {SEGMENT_LABELS[seg] ?? seg} 선택
-                                                            </h3>
+                                                            {walkingMinSeg != null && (
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0">
+                                                                        {t("courseDetail.walkingMinutes", {
+                                                                            minutes: walkingMinSeg,
+                                                                        })}
+                                                                    </span>
+                                                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                </div>
+                                                            )}
                                                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                                                                 오늘의 추천 중 하나를 선택하세요
                                                             </p>
-                                                            <div className="grid grid-cols-2 gap-3">
+                                                            <HorizontalScrollContainer
+                                                                scrollMode="drag"
+                                                                className="flex gap-3 overflow-x-auto pt-2 pb-2 -mx-4 px-4 scroll-smooth snap-x snap-mandatory scrollbar-hide select-none"
+                                                            >
                                                                 {options.map((cp) => {
                                                                     const isSelected = selectedPlaceId === cp.place_id;
                                                                     return (
@@ -1651,28 +1821,12 @@ export default function CourseDetailClient({
                                                                                     [seg]: cp.place_id,
                                                                                 }))
                                                                             }
-                                                                            className={`relative rounded-xl border overflow-hidden bg-white dark:bg-[#1a241b] cursor-pointer transition-all ${
+                                                                            className={`shrink-0 min-w-[200px] w-[200px] snap-center relative rounded-xl border overflow-hidden bg-white dark:bg-[#1a241b] cursor-pointer transition-all ${
                                                                                 isSelected
                                                                                     ? "ring-2 ring-emerald-500 border-emerald-400 dark:border-emerald-600"
-                                                                                    : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+                                                                                    : "border border-gray-300 dark:border-gray-600"
                                                                             }`}
                                                                         >
-                                                                            {isSelected && (
-                                                                                <div className="absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
-                                                                                    <svg
-                                                                                        className="w-3 h-3"
-                                                                                        fill="currentColor"
-                                                                                        viewBox="0 0 20 20"
-                                                                                    >
-                                                                                        <path
-                                                                                            fillRule="evenodd"
-                                                                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                                                            clipRule="evenodd"
-                                                                                        />
-                                                                                    </svg>
-                                                                                    선택됨
-                                                                                </div>
-                                                                            )}
                                                                             <div className="relative flex">
                                                                                 <div className="relative w-20 h-20 shrink-0 bg-gray-100 dark:bg-gray-800">
                                                                                     {cp.place.imageUrl && (
@@ -1686,7 +1840,7 @@ export default function CourseDetailClient({
                                                                                     )}
                                                                                 </div>
                                                                                 <div className="flex-1 min-w-0 p-2 flex flex-col justify-start">
-                                                                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate leading-tight">
+                                                                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-2 leading-tight">
                                                                                         {cp.place.name}
                                                                                     </h4>
                                                                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
@@ -1718,12 +1872,12 @@ export default function CourseDetailClient({
                                                                                         d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                                                                                     />
                                                                                 </svg>
-                                                                                추천 보기
+                                                                                정보
                                                                             </button>
                                                                         </div>
                                                                     );
                                                                 })}
-                                                            </div>
+                                                            </HorizontalScrollContainer>
                                                         </div>
                                                     </div>
                                                 );
@@ -1748,14 +1902,39 @@ export default function CourseDetailClient({
                                             )}
                                             {displaySections.map((sec, secIdx) => (
                                                 <div key={`${sec.segmentKey}-${secIdx}`} className="mb-8">
-                                                    <h3 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white mb-3">
-                                                        <span className="text-lg">{sec.icon}</span>
-                                                        {sec.label}
-                                                    </h3>
+                                                    <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm mb-3">
+                                                        {secIdx + 1}
+                                                    </div>
                                                     {sec.places.map((coursePlace: CoursePlace, idx: number) => {
                                                         const isSelected = selectedPlace?.id === coursePlace.place.id;
+                                                        const prevPlace: CoursePlace | undefined =
+                                                            idx > 0
+                                                                ? sec.places[idx - 1]
+                                                                : secIdx > 0
+                                                                  ? displaySections[secIdx - 1].places[
+                                                                        displaySections[secIdx - 1].places.length - 1
+                                                                    ]
+                                                                  : undefined;
+                                                        const walkingMin =
+                                                            prevPlace && prevPlace.place.latitude != null && prevPlace.place.longitude != null
+                                                                ? getWalkingMinutes(
+                                                                      prevPlace.place.latitude,
+                                                                      prevPlace.place.longitude,
+                                                                      coursePlace.place.latitude ?? 0,
+                                                                      coursePlace.place.longitude ?? 0,
+                                                                  )
+                                                                : null;
                                                         return (
                                                             <div key={coursePlace.id} className="relative">
+                                                                {walkingMin != null && (
+                                                                    <div className="flex items-center gap-2 mt-2 mb-1 ml-0">
+                                                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0">
+                                                                            {t("courseDetail.walkingMinutes", { minutes: walkingMin })}
+                                                                        </span>
+                                                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                    </div>
+                                                                )}
                                                                 <div
                                                                     onClick={() => {
                                                                         setSelectedPlace(coursePlace.place);
@@ -2189,7 +2368,7 @@ export default function CourseDetailClient({
                                             }}
                                             className="w-full h-10 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center"
                                         >
-                                            나만의 추억 기록하기
+                                            {t("courseDetail.memoryRecordCta")}
                                         </button>
                                     </TapFeedback>
                                 </>
@@ -2403,12 +2582,35 @@ export default function CourseDetailClient({
                                         {/* 🟢 [Fix]: 지도 보기 모달에서도 지도가 제대로 표시되도록 키 추가 */}
                                         <div className="flex-1 min-h-0 relative">
                                             <NaverMap
-                                                key="full-map-modal"
-                                                places={mapPlaces}
+                                                key={`full-map-modal-${(!mySelection || showSelectionUI) ? "select" : "path"}`}
+                                                places={
+                                                    courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                        ? selectionMapPlaces
+                                                        : mapPlaces
+                                                }
+                                                pathPlaces={
+                                                    courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                        ? selectionPathPlaces.length > 0
+                                                            ? selectionPathPlaces
+                                                            : undefined
+                                                        : mapPlaces.length > 0
+                                                          ? mapPlaces
+                                                          : undefined
+                                                }
+                                                dottedPathSegments={
+                                                    courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                        ? selectionDottedSegments
+                                                        : undefined
+                                                }
                                                 userLocation={null}
                                                 selectedPlace={null}
                                                 onPlaceClick={handleMapPlaceClick}
-                                                drawPath={true}
+                                                drawPath={
+                                                    (courseData?.isSelectionType && (!mySelection || showSelectionUI) &&
+                                                        selectionPathPlaces.length > 0) ||
+                                                    ((mySelection || !courseData?.isSelectionType) && displayCoursePlaces.length > 0)
+                                                }
+                                                pathStraightOnly={false}
                                                 numberedMarkers={true}
                                                 className="w-full h-full"
                                                 style={{ minHeight: "400px" }}
@@ -2488,6 +2690,21 @@ export default function CourseDetailClient({
                                                         네이버 지도
                                                     </button>
                                                     <div className="flex gap-2">
+                                                        {(modalSelectedPlace as { segmentKey?: string })?.segmentKey ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const seg = (modalSelectedPlace as { segmentKey?: string }).segmentKey!;
+                                                                    setSelectedBySegment((prev) => ({
+                                                                        ...prev,
+                                                                        [seg]: modalSelectedPlace.id,
+                                                                    }));
+                                                                    setModalSelectedPlace(null);
+                                                                }}
+                                                                className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all"
+                                                            >
+                                                                {t("courseDetail.selectPlace")}
+                                                            </button>
+                                                        ) : null}
                                                         <button
                                                             onClick={() => {
                                                                 const cp = sortedCoursePlaces.find(

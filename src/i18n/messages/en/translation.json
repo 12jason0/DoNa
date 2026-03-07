@@ -37,7 +37,7 @@
       "later": "Later",
       "goTo": "Go"
     },
-    "memoryFallback": "My Memory",
+    "memoryFallback": "Today's Moments",
     "memoryImageAlt": "Memory image",
     "memoryPhotoAlt": "Memory photo {n}",
     "dayOfWeek": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -49,12 +49,12 @@
       "button": "Log in"
     },
     "empty": {
-      "title": "Private Memory",
+      "title": "Today's Date Album",
       "subtitle": "Leave your first memory for better recommendations.",
       "button": "Add Memory"
     },
     "filled": {
-      "title": "Private Memory",
+      "title": "Today's Date Album",
       "subtitle": "Relive your recent dates and plan your next adventure.",
       "button": "View Memories"
     },
@@ -319,7 +319,7 @@
     "modalClose": "Close modal",
     "favoriteAdded": "Favorite courses can be viewed in My Page",
     "favoriteRemoved": "Removed from favorites",
-    "memoryLimitReached": "You've reached your memory storage limit",
+    "memoryLimitReached": "You've reached your Today's Moments storage limit",
     "upgradeToSaveMore": "Upgrade your subscription to save more.",
     "subscriptionUpgrade": "Upgrade subscription",
     "noDescription": "No detailed description.",
@@ -336,7 +336,15 @@
     "shareModalTitle": "Share",
     "dateInProgress": "Today's date in progress",
     "shareKakao": "Share via KakaoTalk",
-    "copyLink": "Copy link"
+    "copyLink": "Copy link",
+    "memoryRecordCta": "Record Today's Moments",
+    "walkingMinutes": "Walk ~{minutes} min",
+    "selectPlace": "Select"
+  },
+  "sharePreview": {
+    "downloadModalTitle": "Don't want to ruin your date?",
+    "downloadModalDesc": "Get real-time directions and detailed tips in the app.",
+    "downloadApp": "Download App"
   },
   "search": {
     "placeholder": "Search area, theme, hot spots",
@@ -444,8 +452,8 @@
       },
       "saveRecord": {
         "title": "Log in to record this course",
-        "description": "Saved courses\ngo to your album",
-        "benefit0": "Saved courses go to your album automatically",
+        "description": "Saved courses\ngo to Today's Moments",
+        "benefit0": "Saved courses go to Today's Moments automatically",
         "benefit1": "Manage photos & course records in one place",
         "benefit2": "Easy to look back anytime"
       }
@@ -749,7 +757,7 @@
       "calendar": "Calendar",
       "memories": "Memories",
       "footprintCalendarHint": "AI-recommended date courses are auto-saved",
-      "footprintMemoriesHint": "View your saved memories",
+      "footprintMemoriesHint": "View your Today's Moments",
       "completedCourses": "Completed",
       "todayDate": "Today's date",
       "recommendedDate": "Recommended",
@@ -824,7 +832,7 @@
         "name": "Basic Membership",
         "desc": "Early bird lifetime discount!",
         "feature0": "BASIC tier courses",
-        "feature1": "Up to 10 memories",
+        "feature1": "Up to 10 Today's Moments",
         "feature2": "FREE/BASIC date tips",
         "feature3": "Ad-free experience"
       },
@@ -832,7 +840,7 @@
         "name": "Premium Membership",
         "desc": "Basic benefits + secret spots",
         "feature0": "All courses & secret spots",
-        "feature1": "Unlimited memories",
+        "feature1": "Unlimited Today's Moments",
         "feature2": "All premium date tips",
         "feature3": "Ad-free experience",
         "feature4": "All Basic benefits included"

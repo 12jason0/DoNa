@@ -189,7 +189,8 @@ model Course {
   interactions         UserInteraction[]
   activeCourses        ActiveCourse[]
   recommendationFeedbacks RecommendationFeedback[]
-  userCourseSelections UserCourseSelection[]
+  userCourseSelections   UserCourseSelection[]
+  sharedCourses          SharedCourse[]
 
   // 🔥 인덱스 추가 (빠른 검색)
   @@index([scene])
@@ -822,6 +823,21 @@ enum CourseGrade {
   FREE
   BASIC
   PREMIUM
+}
+
+// 🟢 공유 전용 미리보기: shareId로 공유 링크 관리
+model SharedCourse {
+  id                 String   @id @default(cuid())
+  templateCourseId   Int      @map("template_course_id")
+  sharedByUserId     Int?     @map("shared_by_user_id")
+  selectedPlaceIds   Int[]    @map("selected_place_ids") @default([]) // 완성 코스: 선택된 place_id 배열, 같이 고르기: []
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  templateCourse     Course   @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
+
+  @@index([id])
+  @@index([templateCourseId])
+  @@map("shared_courses")
 }
 
 // 🟢 AI 추천 1일 사용 횟수 추적 (등급별 한도: FREE 1회, BASIC 5회, PREMIUM 무제한)

@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json(
                     {
                         success: false,
-                        message: `나만의 추억을 저장하려면 최소 1장 이상의 사진이 필요합니다. 현재 ${imageUrlsArray.length}장의 사진이 있습니다.`,
+                        message: `오늘의 순간을 저장하려면 최소 1장 이상의 사진이 필요합니다. 현재 ${imageUrlsArray.length}장의 사진이 있습니다.`,
                     },
                     { status: 400 }
                 );
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
                 if (currentCount >= limit) {
                     const tierLabel = tier === "FREE" ? "FREE" : tier === "BASIC" ? "BASIC" : "PREMIUM";
                     const message =
-                        `나만의 추억은 ${tierLabel} 등급에서 ${limit}개까지 저장할 수 있어요. 더 저장하려면 구독을 업그레이드해 주세요.`;
+                        `오늘의 순간은 ${tierLabel} 등급에서 ${limit}개까지 저장할 수 있어요. 더 저장하려면 구독을 업그레이드해 주세요.`;
                     return NextResponse.json(
                         { success: false, error: message, code: "MEMORY_LIMIT_REACHED", tier: tierLabel, limit },
                         { status: 403 }
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
                         });
                         if (countInTx >= limitInTx) {
                             const tierLabel = tierInTx === "FREE" ? "FREE" : tierInTx === "BASIC" ? "BASIC" : "PREMIUM";
-                            const msg = `나만의 추억은 ${tierLabel} 등급에서 ${limitInTx}개까지 저장할 수 있어요. 더 저장하려면 구독을 업그레이드해 주세요.`;
+                            const msg = `오늘의 순간은 ${tierLabel} 등급에서 ${limitInTx}개까지 저장할 수 있어요. 더 저장하려면 구독을 업그레이드해 주세요.`;
                             const err = new Error(msg) as Error & { code?: string };
                             (err as any).code = "MEMORY_LIMIT_REACHED";
                             throw err;

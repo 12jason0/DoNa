@@ -22,6 +22,8 @@ export default function NaverMapComponent({
     showPlaceOverlay = true,
     pathCoordinates,
     pathPlaces,
+    dottedPathSegments,
+    pathStraightOnly,
     onBoundsChanged,
     onMapReady,
     currentStep,
@@ -30,6 +32,7 @@ export default function NaverMapComponent({
     const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const polylineRef = useRef<any>(null);
+    const dottedPolylinesRef = useRef<any[]>([]);
     const [mapReady, setMapReady] = useState(false);
     const [currentHeading, setCurrentHeading] = useState<number | null>(null);
 
@@ -292,23 +295,27 @@ export default function NaverMapComponent({
             for (let i = 0; i < pts.length - 1; i++) {
                 const start = pts[i];
                 const end = pts[i + 1];
-                const d = distanceMeters(start, end);
                 const sC = getCoords(start);
                 const eC = getCoords(end);
 
-                if (d < 200 || d > 500) {
+                if (pathStraightOnly) {
                     totalPath.push(new maps.LatLng(sC.lat, sC.lng), new maps.LatLng(eC.lat, eC.lng));
                 } else {
-                    try {
-                        const res = await fetch(
-                            `/api/directions?coords=${sC.lng},${sC.lat};${eC.lng},${eC.lat}&mode=driving`
-                        );
-                        const data = await res.json();
-                        if (data.coordinates) {
-                            totalPath.push(...data.coordinates.map(([lng, lat]: any) => new maps.LatLng(lat, lng)));
+                    const d = distanceMeters(start, end);
+                    if (d < 150) {
+                        totalPath.push(new maps.LatLng(sC.lat, sC.lng), new maps.LatLng(eC.lat, eC.lng));
+                    } else {
+                        try {
+                            const res = await fetch(
+                                `/api/directions?coords=${sC.lng},${sC.lat};${eC.lng},${eC.lat}&mode=driving`
+                            );
+                            const data = await res.json();
+                            if (data.coordinates) {
+                                totalPath.push(...data.coordinates.map(([lng, lat]: any) => new maps.LatLng(lat, lng)));
+                            }
+                        } catch {
+                            /* ignore */
                         }
-                    } catch {
-                        /* ignore */
                     }
                 }
             }
@@ -328,7 +335,42 @@ export default function NaverMapComponent({
             // 3단계: 에러 발생 시 앱이 죽지 않도록 로그만 남김
             console.warn("경로 렌더링 실패:", error);
         });
-    }, [places, pathPlaces, userLocation, drawPath, mapReady]);
+    }, [places, pathPlaces, userLocation, drawPath, mapReady, pathStraightOnly]);
+
+    // 🟢 선택 모드: 미선택 후보 점선 경로 (직선, API 미호출 → 즉시 렌더)
+    useEffect(() => {
+        const segments = dottedPathSegments ?? [];
+        if (!mapRef.current || !mapReady || segments.length === 0) {
+            dottedPolylinesRef.current.forEach((p) => p?.setMap(null));
+            dottedPolylinesRef.current = [];
+            return;
+        }
+        const maps = (window as any)?.naver?.maps;
+        if (!maps?.LatLng || typeof maps.Polyline !== "function") return;
+
+        const valid = segments.filter((s) => isValidLatLng(s.from) && isValidLatLng(s.to));
+        const newPolys = valid.map((s) => {
+            const from = getCoords(s.from);
+            const to = getCoords(s.to);
+            return new maps.Polyline({
+                map: mapRef.current,
+                path: [new maps.LatLng(from.lat, from.lng), new maps.LatLng(to.lat, to.lng)],
+                strokeColor: "#9ca3af",
+                strokeWeight: 4,
+                strokeOpacity: 0.5,
+                strokeLineCap: "round",
+                strokeLineJoin: "round",
+                strokeStyle: "shortdash",
+            });
+        });
+
+        dottedPolylinesRef.current.forEach((p) => p?.setMap(null));
+        dottedPolylinesRef.current = newPolys;
+        return () => {
+            newPolys.forEach((p) => p?.setMap(null));
+            dottedPolylinesRef.current = [];
+        };
+    }, [dottedPathSegments, mapReady]);
 
     // 🟢 [Triple-Layer Guard] 마커 아이콘 정의 - 3단계 방어 로직
     const userIcon = useMemo(() => {
@@ -356,32 +398,34 @@ export default function NaverMapComponent({
     }, [mapReady]);
 
     const getPlaceIcon = useCallback(
-        (isSelected: boolean) => {
-            // 1단계: window 및 전역 객체 존재 여부 통합 검증
+        (p: Place, isSelected: boolean) => {
             if (!mapReady || typeof window === "undefined" || !(window as any).naver || !(window as any).naver.maps) {
                 return null;
             }
 
             try {
-                // 2단계: 필요한 생성자(Point)가 함수인지 최종 확인
                 const maps = (window as any).naver.maps;
-                if (typeof maps.Point !== "function") {
-                    return null;
-                }
+                if (typeof maps.Point !== "function") return null;
+
+                const variant = p.markerVariant ?? "confirmed";
+                const isFaded = variant === "candidate";
+                const bg = isSelected ? "#5347AA" : isFaded ? "rgba(107,114,128,0.6)" : "#10B981";
+                const size = isSelected ? 52 : 42;
+
+                const ord = p.orderIndex ?? (p as { order_index?: number }).order_index;
+                const showNum = !isFaded && numberedMarkers && ord != null; // 미선택 후보는 항상 "?"
+                const label = isFaded ? "?" : showNum ? String(ord + 1) : "📍";
 
                 return {
-                    content: `<div style="width:${isSelected ? 52 : 42}px;height:${isSelected ? 52 : 42}px;background:${
-                        isSelected ? "#5347AA" : "#10B981"
-                    };border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);font-size:20px;">📍</div></div>`,
-                    anchor: new maps.Point(21, 42),
+                    content: `<div style="width:${size}px;height:${size}px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;opacity:${isFaded ? 0.7 : 1}"><div style="transform:rotate(45deg);font-size:${isFaded ? 16 : showNum ? 14 : 20}px;font-weight:700;color:white;${showNum ? "text-shadow:0 1px 2px rgba(0,0,0,0.3);" : ""}">${label}</div></div>`,
+                    anchor: new maps.Point(size / 2, size),
                 };
             } catch (error) {
-                // 3단계: 에러 발생 시 앱이 죽지 않도록 null 반환
                 console.warn("Naver Maps Point 생성 실패:", error);
                 return null;
             }
         },
-        [mapReady]
+        [mapReady, numberedMarkers]
     );
 
     return (
@@ -427,7 +471,7 @@ export default function NaverMapComponent({
                             key={p.id}
                             map={mapRef.current}
                             position={getCoords(p)}
-                            icon={getPlaceIcon(selectedPlace?.id === p.id)}
+                            icon={getPlaceIcon(p, selectedPlace?.id === p.id)}
                             zIndex={selectedPlace?.id === p.id ? 1000 : 100}
                             onClick={() => onPlaceClick(p)}
                         />

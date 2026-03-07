@@ -37,7 +37,7 @@
       "later": "あとで",
       "goTo": "移動"
     },
-    "memoryFallback": "私の思い出",
+    "memoryFallback": "今日の瞬間",
     "memoryImageAlt": "思い出の画像",
     "memoryPhotoAlt": "思い出の写真 {n}",
     "dayOfWeek": ["日", "月", "火", "水", "木", "金", "土"]
@@ -49,12 +49,12 @@
       "button": "ログイン"
     },
     "empty": {
-      "title": "私だけの秘密の記録",
+      "title": "今日のデートアルバム",
       "subtitle": "最初の思い出を残すと、おすすめが早くなります。",
       "button": "思い出を追加"
     },
     "filled": {
-      "title": "私だけの秘密の記録",
+      "title": "今日のデートアルバム",
       "subtitle": "最近のデートを振り返り、次の旅を始めましょう。",
       "button": "思い出を見る"
     },
@@ -319,7 +319,7 @@
     "modalClose": "モーダルを閉じる",
     "favoriteAdded": "お気に入りコースはマイページで確認できます",
     "favoriteRemoved": "お気に入りを解除しました",
-    "memoryLimitReached": "思い出の保存上限に達しました",
+    "memoryLimitReached": "今日の瞬間の保存上限に達しました",
     "upgradeToSaveMore": "さらに保存するにはサブスクリプションをアップグレードしてください。",
     "subscriptionUpgrade": "サブスクリプションアップグレード",
     "noDescription": "詳細説明がありません。",
@@ -336,7 +336,15 @@
     "shareModalTitle": "共有",
     "dateInProgress": "今日のデート進行中",
     "shareKakao": "カカオトークで共有",
-    "copyLink": "リンクをコピー"
+    "copyLink": "リンクをコピー",
+    "memoryRecordCta": "今日の瞬間を記録",
+    "walkingMinutes": "徒歩約{minutes}分",
+    "selectPlace": "選択する"
+  },
+  "sharePreview": {
+    "downloadModalTitle": "デートを台無しにしたくない？",
+    "downloadModalDesc": "アプリでリアルタイムルートや詳細なヒントをお届けします。",
+    "downloadApp": "アプリをダウンロード"
   },
   "search": {
     "placeholder": "エリア、テーマ、人気スポットを検索",
@@ -444,8 +452,8 @@
       },
       "saveRecord": {
         "title": "このコースを記録するには\nログインが必要です",
-        "description": "保存したコースは\nマイアルバムに集まります",
-        "benefit0": "保存したコースはアルバムに自動で集まります",
+        "description": "保存したコースは\n今日の瞬間に集まります",
+        "benefit0": "保存したコースは今日の瞬間に自動で集まります",
         "benefit1": "写真・コース記録をまとめて管理できます",
         "benefit2": "あとから簡単に見返せます"
       }
@@ -749,7 +757,7 @@
       "calendar": "カレンダー",
       "memories": "思い出",
       "footprintCalendarHint": "AIおすすめのデートコースが自動で記録されます",
-      "footprintMemoriesHint": "大切な思い出を確認しましょう",
+      "footprintMemoriesHint": "今日の瞬間を確認しましょう",
       "completedCourses": "完了コース",
       "todayDate": "今日のデート",
       "recommendedDate": "おすすめ",
@@ -824,7 +832,7 @@
         "name": "ベーシック メンバーシップ",
         "desc": "アーリーバード生涯割引！",
         "feature0": "BASIC グレードコース",
-        "feature1": "思い出最大10件保存",
+        "feature1": "今日の瞬間最大10件保存",
         "feature2": "FREE/BASIC デート tips",
         "feature3": "広告なしで快適に"
       },
@@ -832,7 +840,7 @@
         "name": "プレミアム メンバーシップ",
         "desc": "ベーシック + シークレットスポット公開",
         "feature0": "全コース・シークレットスポット",
-        "feature1": "思い出無制限保存",
+        "feature1": "今日の瞬間無制限保存",
         "feature2": "全プロ デート tips",
         "feature3": "広告なしで快適に",
         "feature4": "ベーシック全特典付き"

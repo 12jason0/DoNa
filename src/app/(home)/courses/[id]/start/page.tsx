@@ -432,7 +432,7 @@ function GuidePageInner() {
             // 🟢 나만의 추억 한도 초과 시 업그레이드 모달 표시
             if (message.includes("업그레이드") || message.includes("한도") || message.includes("MEMORY_LIMIT")) {
                 setMemoryLimitMessage(
-                    message || "나만의 추억 저장 한도에 도달했어요. 더 저장하려면 구독을 업그레이드해 주세요.",
+                    message || "오늘의 순간 저장 한도에 도달했어요. 더 저장하려면 구독을 업그레이드해 주세요.",
                 );
                 setShowMemoryLimitModal(true);
             } else {
@@ -941,7 +941,7 @@ function GuidePageInner() {
                         {/* 제목 및 설명 */}
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">사진이 부족해요</h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                            나만의 추억을 저장하려면
+                            오늘의 순간을 저장하려면
                             <br />
                             최소 <span className="font-bold text-amber-600 dark:text-amber-400">1장 이상</span>의 사진이
                             필요합니다.
