@@ -122,7 +122,11 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
                 reviewCount: 0,
                 participants: 0,
                 viewCount: course.view_count || 0,
-                createdAt: course.createdAt ? course.createdAt.toISOString() : undefined,
+                createdAt: course.createdAt
+                    ? typeof course.createdAt === "string"
+                        ? course.createdAt
+                        : course.createdAt.toISOString()
+                    : undefined,
                 grade: courseGrade,
                 isLocked: isLocked,
                 coursePlaces:
