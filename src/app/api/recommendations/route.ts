@@ -468,16 +468,17 @@ export async function GET(req: NextRequest) {
         let longTermPrefs: any = {};
         let recentBehaviorData: any = { concepts: [], regions: [], moods: [], goals: [] };
 
-        // 🟢 오늘의 데이트 추천: 유저 등급 조회
+        // 🟢 유저 등급 조회 (메인 추천·오늘의 데이트 모두 등급별 필터에 사용)
         let userTier: "FREE" | "BASIC" | "PREMIUM" = "FREE";
-        if (userId && mode === "ai") {
+        if (userId) {
             const user = await prisma.user.findUnique({
                 where: { id: userId },
                 select: { subscriptionTier: true },
             });
             const t = user?.subscriptionTier?.toUpperCase?.();
             if (t === "BASIC" || t === "PREMIUM") userTier = t;
-
+        }
+        if (userId && mode === "ai") {
             // 🟢 등급별 1일 추천 한도 체크 (FREE 1회, BASIC 5회, PREMIUM 무제한)
             const limit = getRecommendationDailyLimit(userTier);
             if (limit < Number.POSITIVE_INFINITY) {
@@ -629,17 +630,18 @@ export async function GET(req: NextRequest) {
         }
 
         const whereConditions: any = { isPublic: true };
-        if (!userId) {
-            // 비로그인: FREE 코스만
-            whereConditions.grade = "FREE";
+        if (mode === "ai") {
+            // 🟢 오늘의 데이트 추천: FREE/BASIC/PREMIUM 모두 조회 후 등급별 필터링
+            whereConditions.grade = { in: ["FREE", "BASIC", "PREMIUM"] };
         } else {
-            // 로그인 유저: mode에 따라 구분
-            if (mode === "ai") {
-                // 🟢 오늘의 데이트 추천: FREE/BASIC/PREMIUM 모두 조회 후 등급별 필터링
-                whereConditions.grade = { in: ["FREE", "BASIC", "PREMIUM"] };
-            } else {
-                // 🟢 일반 추천 (PersonalizedSection 등): FREE 코스만
+            // 🟢 메인 추천 (PersonalizedSection): 등급별 필터
+            // 미로그인 & FREE: FREE만 | BASIC: BASIC+FREE | PREMIUM: 전체
+            if (!userId || userTier === "FREE") {
                 whereConditions.grade = "FREE";
+            } else if (userTier === "BASIC") {
+                whereConditions.grade = { in: ["FREE", "BASIC"] };
+            } else {
+                whereConditions.grade = { in: ["FREE", "BASIC", "PREMIUM"] };
             }
         }
         // 🟢 strict 모드: UI 선택지(예: "홍대 · 연남 · 신촌")를 행정구역명(예: "마포구")으로 매핑해 DB 조회 (그대로 쓰면 0건)

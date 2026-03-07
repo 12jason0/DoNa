@@ -299,20 +299,9 @@ export default function PersonalizedSection() {
                             <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => {
-                                    if (!isLoggedIn) {
-                                        setShowLoginModal(true);
-                                        return;
-                                    }
-                                    router.push(`/courses/${courses[0].id}`);
-                                }}
+                                onClick={() => router.push(`/courses/${courses[0].id}`)}
                                 onKeyDown={(e) => {
-                                    if (e.key !== "Enter") return;
-                                    if (!isLoggedIn) {
-                                        setShowLoginModal(true);
-                                        return;
-                                    }
-                                    router.push(`/courses/${courses[0].id}`);
+                                    if (e.key === "Enter") router.push(`/courses/${courses[0].id}`);
                                 }}
                                 className="block w-full shrink-0 group relative select-none cursor-pointer"
                             >
@@ -371,13 +360,7 @@ export default function PersonalizedSection() {
                                 )}
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        if (!isLoggedIn) {
-                                            setShowLoginModal(true);
-                                            return;
-                                        }
-                                        router.push(`/courses/${courses[0].id}`);
-                                    }}
+                                    onClick={() => router.push(`/courses/${courses[0].id}`)}
                                     className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline active:opacity-80 cursor-pointer"
                                 >
                                     {t("personalized.viewCourse")}
@@ -387,7 +370,7 @@ export default function PersonalizedSection() {
                         </>
                     ) : null}
                 </div>
-                {!loading && courses.length >= 2 && isLoggedIn && (
+                {!loading && courses.length >= 2 && (
                     <div className="flex justify-end mt-3">
                         <button
                             type="button"
