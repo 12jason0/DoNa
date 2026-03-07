@@ -23,6 +23,7 @@ async function getSharedCourseData(shareId: string) {
                             order_index: true,
                             segment: true,
                             order_in_segment: true,
+                            coaching_tip: true,
                             coaching_tip_free: true,
                             recommended_time: true,
                             place: {
@@ -35,6 +36,11 @@ async function getSharedCourseData(shareId: string) {
                                     imageUrl: true,
                                     latitude: true,
                                     longitude: true,
+                                    opening_hours: true,
+                                    reservationUrl: true,
+                                    closed_days: {
+                                        select: { day_of_week: true, specific_date: true, note: true },
+                                    },
                                 },
                             },
                         },
@@ -76,7 +82,13 @@ async function getSharedCourseData(shareId: string) {
             order_in_segment: cp.order_in_segment,
             coaching_tip_free: cp.coaching_tip_free ?? null,
             recommended_time: cp.recommended_time ?? null,
-            place: cp.place,
+            hasPaidTip: !!(cp.coaching_tip && String(cp.coaching_tip).trim()),
+            place: cp.place
+                ? {
+                      ...cp.place,
+                      closed_days: cp.place.closed_days ?? [],
+                  }
+                : null,
         })),
     };
 }

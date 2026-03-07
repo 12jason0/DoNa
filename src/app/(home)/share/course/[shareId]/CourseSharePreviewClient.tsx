@@ -8,8 +8,26 @@ import { Place as MapPlace } from "@/types/map";
 import { isIOS, isAndroid } from "@/lib/platform";
 import { TipSection } from "@/components/TipSection";
 import { parseTipsFromDb } from "@/types/tip";
+import PlaceStatusBadge from "@/components/PlaceStatusBadge";
+import { getPlaceStatus } from "@/lib/placeStatus";
 
 const NaverMap = dynamic(() => import("@/components/NaverMap"), { ssr: false });
+
+const Icons = {
+    Lock: ({ className }: { className?: string }) => (
+        <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+    ),
+    ExternalLink: ({ className }: { className?: string }) => (
+        <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" x2="21" y1="14" y2="3" />
+        </svg>
+    ),
+};
 
 function getWalkingMinutes(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371000;
@@ -23,6 +41,22 @@ function getWalkingMinutes(lat1: number, lng1: number, lat2: number, lng2: numbe
     return Math.max(1, Math.round((distM * 1.4) / 80));
 }
 
+interface PlaceClosedDay {
+    day_of_week?: number | null;
+    specific_date?: string | null;
+    note?: string | null;
+}
+
+function normalizeClosedDays(
+    closed_days: PlaceClosedDay[] | undefined | null
+): { day_of_week: number | null; specific_date: Date | string | null; note?: string | null }[] {
+    return (closed_days ?? []).map((d) => ({
+        day_of_week: d.day_of_week ?? null,
+        specific_date: d.specific_date ?? null,
+        note: d.note ?? null,
+    }));
+}
+
 interface CoursePlace {
     id: number;
     place_id: number;
@@ -31,6 +65,7 @@ interface CoursePlace {
     order_in_segment?: number | null;
     coaching_tip_free?: string | null;
     recommended_time?: string | null;
+    hasPaidTip?: boolean;
     place: {
         id: number;
         name: string;
@@ -40,6 +75,9 @@ interface CoursePlace {
         imageUrl?: string | null;
         latitude?: number | null;
         longitude?: number | null;
+        opening_hours?: string | null;
+        reservationUrl?: string | null;
+        closed_days?: PlaceClosedDay[];
     };
 }
 
@@ -88,18 +126,21 @@ export default function CourseSharePreviewClient({
     const [showMapModal, setShowMapModal] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState<CoursePlace["place"] | null>(null);
     const [showDownloadAppModal, setShowDownloadAppModal] = useState(false);
+    const [placeModalSlideUp, setPlaceModalSlideUp] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setShowDownloadAppModal(true), 10000);
         return () => clearTimeout(timer);
     }, []);
 
-    const places = data.coursePlaces ?? [];
-    const sortedPlaces = useMemo(
-        () => [...places].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
-        [places]
-    );
+    useEffect(() => {
+        if (selectedPlace) {
+            setPlaceModalSlideUp(false);
+            requestAnimationFrame(() => requestAnimationFrame(() => setPlaceModalSlideUp(true)));
+        }
+    }, [selectedPlace]);
 
+    const places = data.coursePlaces ?? [];
     const isSelectionModeUnselected =
         data.isSelectionType && (data.selectedPlaceIds?.length ?? 0) === 0;
 
@@ -137,13 +178,35 @@ export default function CourseSharePreviewClient({
         return steps;
     }, [places, placesBySegment]);
 
-    const selectedBySegment = useMemo(() => {
+    const [selectedBySegment, setSelectedBySegment] = useState<Record<string, number>>({});
+    const defaultSelectedBySegment = useMemo(() => {
         const next: Record<string, number> = {};
         selectionOrderedSteps.forEach((step) => {
             if (step.type === "segment" && step.options?.[0]) next[step.segment] = step.options[0].place_id;
         });
         return next;
     }, [selectionOrderedSteps]);
+    const effectiveSelectedBySegment =
+        Object.keys(selectedBySegment).length > 0 ? selectedBySegment : defaultSelectedBySegment;
+
+    const displayPlaces = useMemo(() => {
+        if (!isSelectionModeUnselected) {
+            return [...places].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+        }
+        const result: CoursePlace[] = [];
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                result.push(step.coursePlace);
+            } else {
+                const pid = effectiveSelectedBySegment[step.segment];
+                const cp = step.options.find((o) => Number(o.place_id) === Number(pid));
+                if (cp) result.push(cp);
+            }
+        }
+        return result;
+    }, [isSelectionModeUnselected, places, selectionOrderedSteps, effectiveSelectedBySegment]);
+
+    const sortedPlaces = displayPlaces;
 
     const mapPlaces: MapPlace[] = useMemo(
         () =>
@@ -181,7 +244,7 @@ export default function CourseSharePreviewClient({
                     markerVariant: "confirmed",
                 });
             } else {
-                const selectedId = selectedBySegment[step.segment];
+                const selectedId = effectiveSelectedBySegment[step.segment];
                 const stepOrder = orderIdx++;
                 for (const cp of step.options) {
                     if (cp.place?.latitude == null || cp.place?.longitude == null) continue;
@@ -200,7 +263,7 @@ export default function CourseSharePreviewClient({
             }
         }
         return result;
-    }, [isSelectionModeUnselected, selectionOrderedSteps, selectedBySegment]);
+    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment]);
 
     const selectionPathPlaces = useMemo(() => {
         if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
@@ -221,7 +284,7 @@ export default function CourseSharePreviewClient({
                     });
                 }
             } else {
-                const selectedId = selectedBySegment[step.segment];
+                const selectedId = effectiveSelectedBySegment[step.segment];
                 const selected = step.options.find((o) => Number(o.place_id) === Number(selectedId));
                 if (selected?.place?.latitude != null && selected.place.longitude != null) {
                     path.push({
@@ -237,7 +300,7 @@ export default function CourseSharePreviewClient({
             }
         }
         return path;
-    }, [isSelectionModeUnselected, selectionOrderedSteps, selectedBySegment]);
+    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment]);
 
     const selectionDottedSegments = useMemo(() => {
         if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
@@ -257,7 +320,7 @@ export default function CourseSharePreviewClient({
                     };
                 }
             } else {
-                const selectedId = selectedBySegment[step.segment];
+                const selectedId = effectiveSelectedBySegment[step.segment];
                 const fromPlace = prevPlace;
                 for (const cp of step.options) {
                     if (cp.place?.latitude == null || cp.place?.longitude == null) continue;
@@ -288,7 +351,7 @@ export default function CourseSharePreviewClient({
             }
         }
         return segments;
-    }, [isSelectionModeUnselected, selectionOrderedSteps, selectedBySegment]);
+    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment]);
 
     const pathPlaces = mapPlaces;
     const heroImageUrl =
@@ -335,7 +398,7 @@ export default function CourseSharePreviewClient({
                     className="object-cover"
                     priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                     <p className="text-sm text-white/80 mb-1">공유된 코스</p>
                     <h1 className="text-2xl font-bold">{data.title}</h1>
@@ -396,14 +459,25 @@ export default function CourseSharePreviewClient({
                                     </span>
                                     <span className="text-xs text-gray-500">(택 1)</span>
                                 </div>
-                                {step.options.map((cp) => (
+                                {step.options.map((cp) => {
+                                    const isSelected = Number(effectiveSelectedBySegment[step.segment]) === Number(cp.place_id);
+                                    return (
                                     <div
                                         key={cp.id}
-                                        onClick={() => setSelectedPlace(cp.place)}
-                                        className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                                        onClick={() => {
+                                            setSelectedBySegment((prev) => ({ ...prev, [step.segment]: cp.place_id }));
+                                            setSelectedPlace(cp.place);
+                                        }}
+                                        className={`flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border cursor-pointer transition-colors ${
+                                            isSelected
+                                                ? "border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/30"
+                                                : "border-gray-100 dark:border-gray-800"
+                                        }`}
                                     >
-                                        <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-700 dark:text-amber-300 font-bold text-sm">
-                                            ?
+                                        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                                            isSelected ? "bg-emerald-500 text-white" : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                                        }`}>
+                                            {isSelected ? "✓" : "?"}
                                         </div>
                                         <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                                             {cp.place?.imageUrl && (
@@ -428,7 +502,8 @@ export default function CourseSharePreviewClient({
                                             </p>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         );
                     })
@@ -565,7 +640,12 @@ export default function CourseSharePreviewClient({
                             }
                             onPlaceClick={(p) => {
                                 const cp = places.find((x) => x.place?.id === p.id);
-                                if (cp?.place) setSelectedPlace(cp.place);
+                                if (cp?.place) {
+                                    if (isSelectionModeUnselected && cp.segment) {
+                                        setSelectedBySegment((prev) => ({ ...prev, [cp.segment!]: cp.place_id }));
+                                    }
+                                    setSelectedPlace(cp.place);
+                                }
                             }}
                             drawPath={
                                 isSelectionModeUnselected
@@ -584,7 +664,7 @@ export default function CourseSharePreviewClient({
 
             {showDownloadAppModal && (
                 <div
-                    className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-4"
                     onClick={() => setShowDownloadAppModal(false)}
                 >
                     <div
@@ -620,56 +700,125 @@ export default function CourseSharePreviewClient({
 
             {selectedPlace && (
                 <div
-                    className="fixed inset-0 z-60 bg-black/50 flex items-end justify-center p-4"
-                    onClick={() => setSelectedPlace(null)}
+                    className="fixed inset-0 z-9999 flex flex-col justify-end bg-black/60 animate-fade-in"
+                    onClick={() => {
+                        setPlaceModalSlideUp(false);
+                        setTimeout(() => setSelectedPlace(null), 300);
+                    }}
                 >
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-[500px] max-h-[70vh] overflow-y-auto p-6"
-                        onClick={(e) => e.stopPropagation()}
+                        className="fixed left-0 right-0 top-14 bottom-0 flex flex-col pointer-events-none"
                     >
-                        <div className="flex justify-end mb-2">
-                            <button
-                                type="button"
-                                onClick={() => setSelectedPlace(null)}
-                                className="text-gray-500"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        {selectedPlace.imageUrl ? (
-                            <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4">
-                                <Image
-                                    src={selectedPlace.imageUrl}
-                                    alt=""
-                                    fill
-                                    className="object-cover"
-                                    sizes="500px"
-                                />
-                            </div>
-                        ) : (
-                            <div className="w-full h-32 rounded-lg bg-gray-100 dark:bg-gray-800 mb-4 flex items-center justify-center">
-                                <span className="text-gray-400 text-sm">No Image</span>
-                            </div>
-                        )}
-                        <h3 className="font-bold text-xl">{selectedPlace.name}</h3>
-                        {selectedPlace.category && (
-                            <p className="text-sm text-gray-500 mt-1">{selectedPlace.category}</p>
-                        )}
-                        {selectedPlace.address && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                                {selectedPlace.address}
-                            </p>
-                        )}
-                        {(() => {
-                            const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
-                            const freeTips = parseTipsFromDb(cp?.coaching_tip_free);
-                            if (freeTips.length === 0) return null;
-                            return (
-                                <div className="mt-4">
-                                    <TipSection tips={freeTips} variant="free" compact={false} />
+                        <div
+                            className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full h-full overflow-hidden flex flex-col shadow-2xl pb-[env(safe-area-inset-bottom)]"
+                            style={{
+                                transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
+                                transition: "transform 0.3s ease-out",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="relative h-72 shrink-0 bg-gray-100 dark:bg-gray-800">
+                                {selectedPlace.imageUrl && (
+                                    <Image
+                                        src={selectedPlace.imageUrl}
+                                        alt={selectedPlace.name}
+                                        fill
+                                        className="object-cover pointer-events-none"
+                                        sizes="100vw"
+                                    />
+                                )}
+                                <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent pt-12 pb-4 px-4 z-1">
+                                    <h3 className="text-lg font-bold text-white drop-shadow-md">
+                                        {selectedPlace.name}
+                                    </h3>
                                 </div>
-                            );
-                        })()}
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    className="absolute inset-0 flex flex-col items-center pt-3 touch-none cursor-grab active:cursor-grabbing z-10"
+                                    onPointerDown={() => {
+                                        setPlaceModalSlideUp(false);
+                                        setTimeout(() => setSelectedPlace(null), 300);
+                                    }}
+                                >
+                                    <span className="w-12 h-1.5 rounded-full bg-white/90 shadow-md shrink-0" />
+                                </div>
+                            </div>
+                            <div className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+                                <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
+                                <div className="mb-3">
+                                    <PlaceStatusBadge
+                                        place={{
+                                            opening_hours: selectedPlace.opening_hours ?? null,
+                                            closed_days: normalizeClosedDays(selectedPlace.closed_days),
+                                        }}
+                                        closedDays={normalizeClosedDays(selectedPlace.closed_days)}
+                                        showHours={false}
+                                        size="sm"
+                                    />
+                                </div>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium truncate">
+                                    {selectedPlace.address}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
+                                    {selectedPlace.description || "상세 설명이 없습니다."}
+                                </p>
+                                {(() => {
+                                    const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
+                                    const freeTips = parseTipsFromDb(cp?.coaching_tip_free);
+                                    const hasPaidTip = cp?.hasPaidTip ?? false;
+                                    if (freeTips.length === 0 && !hasPaidTip) return null;
+                                    return (
+                                        <div className="mb-4 flex flex-col gap-2">
+                                            {freeTips.length > 0 && (
+                                                <TipSection tips={freeTips} variant="free" compact={false} />
+                                            )}
+                                            {hasPaidTip && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowDownloadAppModal(true);
+                                                    }}
+                                                    className="w-full py-3 rounded-lg bg-[#FFFBEB] dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 font-bold shadow-sm hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm"
+                                                >
+                                                    <Icons.Lock className="w-4 h-4 shrink-0" />
+                                                    시크릿 꿀팁 보기
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                                <div className="flex flex-col gap-2">
+                                    {selectedPlace.reservationUrl && (
+                                        <a
+                                            href={selectedPlace.reservationUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+                                        >
+                                            <Icons.ExternalLink className="w-4 h-4" />
+                                            {getPlaceStatus(
+                                                selectedPlace.opening_hours ?? null,
+                                                normalizeClosedDays(selectedPlace.closed_days),
+                                            ).status === "휴무"
+                                                ? t("courses.reserveOtherDay")
+                                                : t("courses.reserve")}
+                                        </a>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                        onClick={() => {
+                                            setPlaceModalSlideUp(false);
+                                            setTimeout(() => setSelectedPlace(null), 300);
+                                        }}
+                                    >
+                                        그냥 닫기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
