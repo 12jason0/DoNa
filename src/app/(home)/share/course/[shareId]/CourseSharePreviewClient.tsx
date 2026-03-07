@@ -588,18 +588,24 @@ export default function CourseSharePreviewClient({
             </div>
 
             {showMapModal && (
-                <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-[#0f1710]">
-                    <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
-                        <h2 className="font-bold">코스 지도</h2>
-                        <button
-                            type="button"
-                            onClick={() => setShowMapModal(false)}
-                            className="p-2 text-gray-500"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                    <div className="flex-1 min-h-0 relative" style={{ minHeight: "400px" }}>
+                <div className="fixed inset-0 z-50 flex flex-col justify-end">
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        aria-hidden
+                        onClick={() => setShowMapModal(false)}
+                    />
+                    <div className="relative z-10 flex flex-col bg-white dark:bg-[#0f1710] rounded-t-2xl max-h-[60vh] shadow-2xl">
+                        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+                            <h2 className="font-bold">코스 지도</h2>
+                            <button
+                                type="button"
+                                onClick={() => setShowMapModal(false)}
+                                className="p-2 text-gray-500"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="flex-1 min-h-0 relative" style={{ minHeight: "280px", maxHeight: "calc(60vh - 56px)" }}>
                         <NaverMap
                             key={isSelectionModeUnselected ? "select" : "path"}
                             places={
@@ -656,8 +662,9 @@ export default function CourseSharePreviewClient({
                             numberedMarkers
                             showControls={false}
                             className="w-full h-full"
-                            style={{ minHeight: "400px" }}
+                            style={{ minHeight: "280px" }}
                         />
+                        </div>
                     </div>
                 </div>
             )}
