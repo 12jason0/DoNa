@@ -3041,7 +3041,7 @@ export default function CourseDetailClient({
                                         <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
                                             {selectedPlace.description || "상세 설명이 없습니다."}
                                         </p>
-                                        {/* 🟢 무료 팁: 항상 표시. 유료 팁 버튼: 확정된 코스일 때만 */}
+                                        {/* 🟢 무료 팁: 항상 표시. 유료 팁 버튼: 유료 팁 있을 때 표시 */}
                                         {(() => {
                                             const coursePlace = sortedCoursePlaces.find(
                                                 (cp) => cp.place.id === selectedPlace.id,
@@ -3053,9 +3053,7 @@ export default function CourseDetailClient({
 
                                             if (!hasFreeTip && !hasPaidTip) return null;
 
-                                            const showPaidTipButton =
-                                                hasPaidTip &&
-                                                (!courseData?.isSelectionType || (mySelection && !showSelectionUI));
+                                            const showPaidTipButton = hasPaidTip;
 
                                             return (
                                                 <div className="mb-4 flex flex-col gap-2">

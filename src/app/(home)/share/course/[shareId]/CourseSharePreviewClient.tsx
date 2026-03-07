@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useLocale } from "@/context/LocaleContext";
 import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 import { Place as MapPlace } from "@/types/map";
-import { isIOS } from "@/lib/platform";
+import { isIOS, isAndroid } from "@/lib/platform";
 import { TipSection } from "@/components/TipSection";
 import { parseTipsFromDb } from "@/types/tip";
 
@@ -29,6 +28,7 @@ interface CoursePlace {
     place_id: number;
     order_index: number;
     segment?: string | null;
+    order_in_segment?: number | null;
     coaching_tip_free?: string | null;
     recommended_time?: string | null;
     place: {
@@ -59,6 +59,24 @@ interface ShareData {
 const APP_STORE_URL = "https://apps.apple.com/kr/app/dona/id6756777886";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=kr.io.dona.dona";
 
+const SEGMENT_ORDER = ["brunch", "lunch", "cafe", "dinner", "bar", "date"];
+const SEGMENT_LABELS: Record<string, string> = {
+    brunch: "브런치",
+    lunch: "점심",
+    cafe: "카페",
+    dinner: "저녁",
+    bar: "바",
+    date: "데이트",
+};
+const SEGMENT_ICONS: Record<string, string> = {
+    brunch: "🥐",
+    lunch: "🍽",
+    cafe: "☕",
+    dinner: "🍷",
+    bar: "🍸",
+    date: "💑",
+};
+
 export default function CourseSharePreviewClient({
     data,
     shareId,
@@ -66,7 +84,6 @@ export default function CourseSharePreviewClient({
     data: ShareData;
     shareId: string;
 }) {
-    const router = useRouter();
     const { t } = useLocale();
     const [showMapModal, setShowMapModal] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState<CoursePlace["place"] | null>(null);
@@ -82,6 +99,51 @@ export default function CourseSharePreviewClient({
         () => [...places].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
         [places]
     );
+
+    const isSelectionModeUnselected =
+        data.isSelectionType && (data.selectedPlaceIds?.length ?? 0) === 0;
+
+    const placesBySegment = useMemo(() => {
+        const list = places;
+        const map: Record<string, CoursePlace[]> = {};
+        for (const cp of list) {
+            const seg = cp.segment ?? "";
+            if (!seg) continue;
+            if (!map[seg]) map[seg] = [];
+            map[seg].push(cp);
+        }
+        for (const seg of Object.keys(map)) {
+            map[seg].sort((a, b) => (a.order_in_segment ?? 0) - (b.order_in_segment ?? 0));
+        }
+        return map;
+    }, [places]);
+
+    const selectionOrderedSteps = useMemo(() => {
+        const sorted = [...places].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+        const steps: (
+            | { type: "fixed"; coursePlace: CoursePlace }
+            | { type: "segment"; segment: string; options: CoursePlace[] }
+        )[] = [];
+        const seenSeg = new Set<string>();
+        for (const cp of sorted) {
+            const seg = cp.segment ?? "";
+            if (!seg) {
+                steps.push({ type: "fixed", coursePlace: cp });
+            } else if (!seenSeg.has(seg)) {
+                seenSeg.add(seg);
+                steps.push({ type: "segment", segment: seg, options: placesBySegment[seg] ?? [] });
+            }
+        }
+        return steps;
+    }, [places, placesBySegment]);
+
+    const selectedBySegment = useMemo(() => {
+        const next: Record<string, number> = {};
+        selectionOrderedSteps.forEach((step) => {
+            if (step.type === "segment" && step.options?.[0]) next[step.segment] = step.options[0].place_id;
+        });
+        return next;
+    }, [selectionOrderedSteps]);
 
     const mapPlaces: MapPlace[] = useMemo(
         () =>
@@ -100,11 +162,168 @@ export default function CourseSharePreviewClient({
         [sortedPlaces]
     );
 
+    const selectionMapPlaces = useMemo(() => {
+        if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
+        const result: (MapPlace & { markerVariant?: "confirmed" | "candidate-selected" | "candidate"; segmentKey?: string })[] = [];
+        let orderIdx = 0;
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                const p = step.coursePlace.place;
+                if (p?.latitude == null || p?.longitude == null) continue;
+                result.push({
+                    id: p.id,
+                    name: p.name,
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    address: p.address ?? undefined,
+                    imageUrl: p.imageUrl ?? undefined,
+                    orderIndex: orderIdx++,
+                    markerVariant: "confirmed",
+                });
+            } else {
+                const selectedId = selectedBySegment[step.segment];
+                const stepOrder = orderIdx++;
+                for (const cp of step.options) {
+                    if (cp.place?.latitude == null || cp.place?.longitude == null) continue;
+                    result.push({
+                        id: cp.place.id,
+                        name: cp.place.name,
+                        latitude: cp.place.latitude,
+                        longitude: cp.place.longitude,
+                        address: cp.place.address ?? undefined,
+                        imageUrl: cp.place.imageUrl ?? undefined,
+                        orderIndex: stepOrder,
+                        markerVariant: Number(cp.place_id) === Number(selectedId) ? "candidate-selected" : "candidate",
+                        segmentKey: step.segment,
+                    });
+                }
+            }
+        }
+        return result;
+    }, [isSelectionModeUnselected, selectionOrderedSteps, selectedBySegment]);
+
+    const selectionPathPlaces = useMemo(() => {
+        if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
+        const path: MapPlace[] = [];
+        let orderIdx = 0;
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                const p = step.coursePlace.place;
+                if (p?.latitude != null && p?.longitude != null) {
+                    path.push({
+                        id: p.id,
+                        name: p.name,
+                        latitude: p.latitude,
+                        longitude: p.longitude,
+                        address: p.address ?? undefined,
+                        imageUrl: p.imageUrl ?? undefined,
+                        orderIndex: orderIdx++,
+                    });
+                }
+            } else {
+                const selectedId = selectedBySegment[step.segment];
+                const selected = step.options.find((o) => Number(o.place_id) === Number(selectedId));
+                if (selected?.place?.latitude != null && selected.place.longitude != null) {
+                    path.push({
+                        id: selected.place.id,
+                        name: selected.place.name,
+                        latitude: selected.place.latitude,
+                        longitude: selected.place.longitude,
+                        address: selected.place.address ?? undefined,
+                        imageUrl: selected.place.imageUrl ?? undefined,
+                        orderIndex: orderIdx++,
+                    });
+                }
+            }
+        }
+        return path;
+    }, [isSelectionModeUnselected, selectionOrderedSteps, selectedBySegment]);
+
+    const selectionDottedSegments = useMemo(() => {
+        if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
+        const segments: { from: MapPlace; to: MapPlace }[] = [];
+        let prevPlace: MapPlace | null = null;
+        for (const step of selectionOrderedSteps) {
+            if (step.type === "fixed") {
+                const p = step.coursePlace.place;
+                if (p?.latitude != null && p?.longitude != null) {
+                    prevPlace = {
+                        id: p.id,
+                        name: p.name,
+                        latitude: p.latitude,
+                        longitude: p.longitude,
+                        address: p.address ?? undefined,
+                        imageUrl: p.imageUrl ?? undefined,
+                    };
+                }
+            } else {
+                const selectedId = selectedBySegment[step.segment];
+                const fromPlace = prevPlace;
+                for (const cp of step.options) {
+                    if (cp.place?.latitude == null || cp.place?.longitude == null) continue;
+                    if (Number(cp.place_id) !== Number(selectedId) && fromPlace) {
+                        segments.push({
+                            from: fromPlace,
+                            to: {
+                                id: cp.place.id,
+                                name: cp.place.name,
+                                latitude: cp.place.latitude,
+                                longitude: cp.place.longitude,
+                                address: cp.place.address ?? undefined,
+                                imageUrl: cp.place.imageUrl ?? undefined,
+                            },
+                        });
+                    }
+                    if (Number(cp.place_id) === Number(selectedId)) {
+                        prevPlace = {
+                            id: cp.place.id,
+                            name: cp.place.name,
+                            latitude: cp.place.latitude,
+                            longitude: cp.place.longitude,
+                            address: cp.place.address ?? undefined,
+                            imageUrl: cp.place.imageUrl ?? undefined,
+                        };
+                    }
+                }
+            }
+        }
+        return segments;
+    }, [isSelectionModeUnselected, selectionOrderedSteps, selectedBySegment]);
+
     const pathPlaces = mapPlaces;
     const heroImageUrl =
         data.imageUrl?.trim() ||
         sortedPlaces[0]?.place?.imageUrl?.trim() ||
         "/images/placeholder-course.jpg";
+
+    const handleOpenInApp = () => {
+        if (isIOS() || isAndroid()) {
+            const appUrl = `https://dona.io.kr/courses/${data.templateCourseId}`;
+            const storeUrl = isIOS() ? APP_STORE_URL : PLAY_STORE_URL;
+
+            let timeoutId: ReturnType<typeof setTimeout>;
+            const clearAndGoToStore = () => {
+                clearTimeout(timeoutId);
+                window.removeEventListener("visibilitychange", onVisibilityChange);
+                window.removeEventListener("pagehide", onVisibilityChange);
+                window.location.href = storeUrl;
+            };
+            const onVisibilityChange = () => {
+                if (document.visibilityState === "hidden") {
+                    clearTimeout(timeoutId);
+                    window.removeEventListener("visibilitychange", onVisibilityChange);
+                    window.removeEventListener("pagehide", onVisibilityChange);
+                }
+            };
+
+            window.addEventListener("visibilitychange", onVisibilityChange);
+            window.addEventListener("pagehide", onVisibilityChange);
+            timeoutId = setTimeout(clearAndGoToStore, 1800);
+            window.location.href = appUrl;
+        } else {
+            window.location.href = isIOS() ? APP_STORE_URL : PLAY_STORE_URL;
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] text-gray-900 dark:text-white pb-24">
@@ -127,65 +346,153 @@ export default function CourseSharePreviewClient({
             </header>
 
             <main className="max-w-[900px] mx-auto px-4 pt-6 space-y-6">
-                {sortedPlaces.map((cp, idx) => {
-                    const prev = idx > 0 ? sortedPlaces[idx - 1] : null;
-                    const walkingMin =
-                        prev?.place?.latitude != null &&
-                        prev.place.longitude != null &&
-                        cp.place?.latitude != null &&
-                        cp.place.longitude != null
-                            ? getWalkingMinutes(
-                                  prev.place.latitude,
-                                  prev.place.longitude,
-                                  cp.place.latitude,
-                                  cp.place.longitude
-                              )
-                            : null;
+                {isSelectionModeUnselected && selectionOrderedSteps.length > 0 ? (
+                    selectionOrderedSteps.map((step, stepIdx) => {
+                        if (step.type === "fixed") {
+                            const cp = step.coursePlace;
+                            return (
+                                <div key={`fixed-${cp.id}`} className="relative">
+                                    <div
+                                        onClick={() => setSelectedPlace(cp.place)}
+                                        className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                                    >
+                                        <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                                            {stepIdx + 1}
+                                        </div>
+                                        <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                            {cp.place?.imageUrl && (
+                                                <Image
+                                                    src={cp.place.imageUrl}
+                                                    alt=""
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="96px"
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                                {cp.place?.category ?? ""}
+                                            </span>
+                                            <h3 className="font-bold text-lg truncate mt-0.5">
+                                                {cp.place?.name ?? ""}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {cp.place?.address ?? ""}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        const label = SEGMENT_LABELS[step.segment] ?? step.segment;
+                        const icon = SEGMENT_ICONS[step.segment] ?? "📍";
+                        return (
+                            <div key={`seg-${step.segment}`} className="space-y-2">
+                                <div className="flex items-center gap-2 py-1">
+                                    <span className="text-lg">{icon}</span>
+                                    <span className="font-bold text-gray-700 dark:text-gray-200">
+                                        {stepIdx + 1}. {label}
+                                    </span>
+                                    <span className="text-xs text-gray-500">(택 1)</span>
+                                </div>
+                                {step.options.map((cp) => (
+                                    <div
+                                        key={cp.id}
+                                        onClick={() => setSelectedPlace(cp.place)}
+                                        className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                                    >
+                                        <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-700 dark:text-amber-300 font-bold text-sm">
+                                            ?
+                                        </div>
+                                        <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                            {cp.place?.imageUrl && (
+                                                <Image
+                                                    src={cp.place.imageUrl}
+                                                    alt=""
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="96px"
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                                {cp.place?.category ?? ""}
+                                            </span>
+                                            <h3 className="font-bold text-lg truncate mt-0.5">
+                                                {cp.place?.name ?? ""}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {cp.place?.address ?? ""}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })
+                ) : (
+                    sortedPlaces.map((cp, idx) => {
+                        const prev = idx > 0 ? sortedPlaces[idx - 1] : null;
+                        const walkingMin =
+                            prev?.place?.latitude != null &&
+                            prev.place.longitude != null &&
+                            cp.place?.latitude != null &&
+                            cp.place.longitude != null
+                                ? getWalkingMinutes(
+                                      prev.place.latitude,
+                                      prev.place.longitude,
+                                      cp.place.latitude,
+                                      cp.place.longitude
+                                  )
+                                : null;
 
-                    return (
-                        <div key={cp.id} className="relative">
-                            {walkingMin != null && (
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                        도보 약 {walkingMin}분
-                                    </span>
-                                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
-                                </div>
-                            )}
-                            <div
-                                onClick={() => setSelectedPlace(cp.place)}
-                                className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
-                            >
-                                <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
-                                    {idx + 1}
-                                </div>
-                                <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                                    {cp.place?.imageUrl && (
-                                        <Image
-                                            src={cp.place.imageUrl}
-                                            alt=""
-                                            fill
-                                            className="object-cover"
-                                            sizes="96px"
-                                        />
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase">
-                                        {cp.place?.category ?? ""}
-                                    </span>
-                                    <h3 className="font-bold text-lg truncate mt-0.5">
-                                        {cp.place?.name ?? ""}
-                                    </h3>
-                                    <p className="text-xs text-gray-500 truncate">
-                                        {cp.place?.address ?? ""}
-                                    </p>
+                        return (
+                            <div key={cp.id} className="relative">
+                                {walkingMin != null && (
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                            도보 약 {walkingMin}분
+                                        </span>
+                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                    </div>
+                                )}
+                                <div
+                                    onClick={() => setSelectedPlace(cp.place)}
+                                    className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
+                                >
+                                    <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                                        {idx + 1}
+                                    </div>
+                                    <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                        {cp.place?.imageUrl && (
+                                            <Image
+                                                src={cp.place.imageUrl}
+                                                alt=""
+                                                fill
+                                                className="object-cover"
+                                                sizes="96px"
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                            {cp.place?.category ?? ""}
+                                        </span>
+                                        <h3 className="font-bold text-lg truncate mt-0.5">
+                                            {cp.place?.name ?? ""}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            {cp.place?.address ?? ""}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </main>
 
             <div className="fixed bottom-0 left-0 right-0 max-w-[900px] mx-auto p-4 bg-white dark:bg-[#0f1710] border-t border-gray-200 dark:border-gray-800 flex gap-3">
@@ -198,7 +505,7 @@ export default function CourseSharePreviewClient({
                 </button>
                 <button
                     type="button"
-                    onClick={() => router.push(`/courses/${data.templateCourseId}`)}
+                    onClick={handleOpenInApp}
                     className="flex-1 py-3 px-4 rounded-lg bg-emerald-500 text-white font-bold"
                 >
                     앱에서 보기
@@ -219,8 +526,24 @@ export default function CourseSharePreviewClient({
                     </div>
                     <div className="flex-1 min-h-0 relative" style={{ minHeight: "400px" }}>
                         <NaverMap
-                            places={mapPlaces}
-                            pathPlaces={pathPlaces.length > 0 ? pathPlaces : undefined}
+                            key={isSelectionModeUnselected ? "select" : "path"}
+                            places={
+                                isSelectionModeUnselected && selectionMapPlaces.length > 0
+                                    ? selectionMapPlaces
+                                    : mapPlaces
+                            }
+                            pathPlaces={
+                                isSelectionModeUnselected
+                                    ? selectionPathPlaces.length > 0
+                                        ? selectionPathPlaces
+                                        : undefined
+                                    : pathPlaces.length > 0
+                                      ? pathPlaces
+                                      : undefined
+                            }
+                            dottedPathSegments={
+                                isSelectionModeUnselected ? selectionDottedSegments : undefined
+                            }
                             userLocation={null}
                             selectedPlace={
                                 selectedPlace &&
@@ -234,15 +557,21 @@ export default function CourseSharePreviewClient({
                                           address: selectedPlace.address ?? undefined,
                                           category: selectedPlace.category ?? undefined,
                                           imageUrl: selectedPlace.imageUrl ?? undefined,
-                                          orderIndex: sortedPlaces.findIndex((x) => x.place?.id === selectedPlace.id),
+                                          orderIndex: isSelectionModeUnselected
+                                              ? selectionMapPlaces.findIndex((x) => x.id === selectedPlace.id)
+                                              : sortedPlaces.findIndex((x) => x.place?.id === selectedPlace.id),
                                       }
                                     : null
                             }
                             onPlaceClick={(p) => {
-                                const cp = sortedPlaces.find((x) => x.place?.id === p.id);
+                                const cp = places.find((x) => x.place?.id === p.id);
                                 if (cp?.place) setSelectedPlace(cp.place);
                             }}
-                            drawPath={pathPlaces.length > 1}
+                            drawPath={
+                                isSelectionModeUnselected
+                                    ? selectionPathPlaces.length > 1
+                                    : pathPlaces.length > 1
+                            }
                             pathStraightOnly={false}
                             numberedMarkers
                             showControls={false}
