@@ -162,6 +162,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const isEscapeId = pathname ? /^\/escape\/[^/]+$/.test(pathname) : false;
     const isCourseStart = pathname ? /^\/courses\/[^/]+\/start$/.test(pathname) : false;
     const isCourseDetail = pathname ? /^\/courses\/[^/]+$/.test(pathname) : false; // 🟢 코스 상세 페이지
+    const isShareCoursePage = pathname?.startsWith("/share/course") ?? false; // 🟢 공유 코스 미리보기
     const isMapPage = pathname === "/map" || pathname.startsWith("/map/");
     const isOnboardingPage = pathname === "/onboarding";
     const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
@@ -628,7 +629,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             {/* 🟢 Footer + +버튼: Hydration 방지 — !mounted 시에도 mounted(웹)와 동일한 bottom 사용 */}
                             <div
                                 className={`shrink-0 bg-transparent ${
-                                    isEscapeId || isCourseStart || isCourseDetail || isOnboardingPage
+                                    isEscapeId || isCourseStart || isCourseDetail || isOnboardingPage || isShareCoursePage
                                         ? "hidden"
                                         : "block"
                                 } fixed ${

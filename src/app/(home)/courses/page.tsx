@@ -146,9 +146,10 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
         .filter((course: any) => course !== null);
 }
 
-// 🟢 [Performance]: 초기 코스 데이터 캐싱 (검색/필터 없을 때만)
-const getCachedDefaultCourses = unstable_cache(
-    async (userTier: string, unlockedCourseIds: number[]) => {
+// 🟢 [Performance]: raw 코스 데이터 캐싱 (유저별 차이 없음 → 캐시 히트율 극대화)
+// isLocked는 mapCourses에서 userTier + unlockedCourseIds로 매 요청 계산 → 잠금 상태 정확 유지
+const getCachedRawCourses = unstable_cache(
+    async () => {
         const rawAll = await prisma.course.findMany({
             where: { isPublic: true },
             take: 60,
@@ -179,7 +180,7 @@ const getCachedDefaultCourses = unstable_cache(
             if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
         }
 
-        return mapCourses(interleaved, userTier, unlockedCourseIds);
+        return interleaved;
     },
     [],
     {
@@ -255,8 +256,9 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
         return mapCourses(courses, userTier, unlockedCourseIds);
     }
 
-    // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    return getCachedDefaultCourses(userTier, unlockedCourseIds);
+    // 🟢 [Case 2: 초기 로드 - raw 캐시 + 유저별 isLocked 계산]
+    const rawCourses = await getCachedRawCourses();
+    return mapCourses(rawCourses, userTier, unlockedCourseIds);
 }
 
 export default async function CoursesPage({

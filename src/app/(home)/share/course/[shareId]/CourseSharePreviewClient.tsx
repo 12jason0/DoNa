@@ -7,6 +7,8 @@ import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 import { Place as MapPlace } from "@/types/map";
 import { isIOS } from "@/lib/platform";
+import { TipSection } from "@/components/TipSection";
+import { parseTipsFromDb } from "@/types/tip";
 
 const NaverMap = dynamic(() => import("@/components/NaverMap"), { ssr: false });
 
@@ -99,12 +101,16 @@ export default function CourseSharePreviewClient({
     );
 
     const pathPlaces = mapPlaces;
+    const heroImageUrl =
+        data.imageUrl?.trim() ||
+        sortedPlaces[0]?.place?.imageUrl?.trim() ||
+        "/images/placeholder-course.jpg";
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] text-gray-900 dark:text-white pb-24">
             <header className="relative w-full max-w-[900px] mx-auto h-[280px] overflow-hidden">
                 <Image
-                    src={data.imageUrl || "/images/placeholder-course.jpg"}
+                    src={heroImageUrl}
                     alt={data.title}
                     fill
                     className="object-cover"
@@ -216,7 +222,22 @@ export default function CourseSharePreviewClient({
                             places={mapPlaces}
                             pathPlaces={pathPlaces.length > 0 ? pathPlaces : undefined}
                             userLocation={null}
-                            selectedPlace={null}
+                            selectedPlace={
+                                selectedPlace &&
+                                selectedPlace.latitude != null &&
+                                selectedPlace.longitude != null
+                                    ? {
+                                          id: selectedPlace.id,
+                                          name: selectedPlace.name,
+                                          latitude: selectedPlace.latitude,
+                                          longitude: selectedPlace.longitude,
+                                          address: selectedPlace.address ?? undefined,
+                                          category: selectedPlace.category ?? undefined,
+                                          imageUrl: selectedPlace.imageUrl ?? undefined,
+                                          orderIndex: sortedPlaces.findIndex((x) => x.place?.id === selectedPlace.id),
+                                      }
+                                    : null
+                            }
                             onPlaceClick={(p) => {
                                 const cp = sortedPlaces.find((x) => x.place?.id === p.id);
                                 if (cp?.place) setSelectedPlace(cp.place);
@@ -286,7 +307,7 @@ export default function CourseSharePreviewClient({
                                 ✕
                             </button>
                         </div>
-                        {selectedPlace.imageUrl && (
+                        {selectedPlace.imageUrl ? (
                             <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4">
                                 <Image
                                     src={selectedPlace.imageUrl}
@@ -295,6 +316,10 @@ export default function CourseSharePreviewClient({
                                     className="object-cover"
                                     sizes="500px"
                                 />
+                            </div>
+                        ) : (
+                            <div className="w-full h-32 rounded-lg bg-gray-100 dark:bg-gray-800 mb-4 flex items-center justify-center">
+                                <span className="text-gray-400 text-sm">No Image</span>
                             </div>
                         )}
                         <h3 className="font-bold text-xl">{selectedPlace.name}</h3>
@@ -306,18 +331,16 @@ export default function CourseSharePreviewClient({
                                 {selectedPlace.address}
                             </p>
                         )}
-                        {data.coursePlaces.find((cp) => cp.place?.id === selectedPlace.id)
-                            ?.coaching_tip_free && (
-                            <div className="mt-4 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    {
-                                        data.coursePlaces.find(
-                                            (cp) => cp.place?.id === selectedPlace.id
-                                        )?.coaching_tip_free
-                                    }
-                                </p>
-                            </div>
-                        )}
+                        {(() => {
+                            const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
+                            const freeTips = parseTipsFromDb(cp?.coaching_tip_free);
+                            if (freeTips.length === 0) return null;
+                            return (
+                                <div className="mt-4">
+                                    <TipSection tips={freeTips} variant="free" compact={false} />
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

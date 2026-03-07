@@ -20,13 +20,13 @@ function getDatabaseUrlWithPoolConfig(url: string | undefined): string {
     if (hasParams) {
         // 기존 파라미터가 있으면 추가
         const urlObj = new URL(url);
-        urlObj.searchParams.set("connection_limit", "5"); // 🟢 연결 풀 크기 제한 (기본 10에서 5로 감소)
-        urlObj.searchParams.set("pool_timeout", "20"); // 🟢 연결 풀 타임아웃 20초로 증가
-        urlObj.searchParams.set("connect_timeout", "10"); // 🟢 연결 타임아웃 10초
+        urlObj.searchParams.set("connection_limit", "5");
+        urlObj.searchParams.set("pool_timeout", "30"); // 🟢 Cold start 대응: 30초
+        urlObj.searchParams.set("connect_timeout", "15"); // 🟢 첫 연결 지연 대응: 15초
         return urlObj.toString();
     } else {
         // 파라미터가 없으면 추가
-        return `${url}?connection_limit=5&pool_timeout=20&connect_timeout=10`;
+        return `${url}?connection_limit=5&pool_timeout=30&connect_timeout=15`;
     }
 }
 

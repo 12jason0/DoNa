@@ -212,53 +212,35 @@ const getCourse = unstable_cache(
     },
 );
 
-// 🔒 권한 확인 함수 (unstable_cache 제거 - 실시간 DB 조회로 열람권 구매 즉시 반영)
-// 매 요청마다 실시간으로 DB를 조회하여 열람권 구매 즉시 반영되도록 합니다.
-const getUserPermission = async (
-    userIdNum: number,
-    courseId: number,
-): Promise<{ userTier: string; hasUnlocked: boolean }> => {
-    try {
-        // 🟢 최적화: 유저 정보와 구매 기록을 한 번에 조회 (병렬 처리)
-        const [user, unlockRecord] = await Promise.all([
-            prisma.user
-                .findUnique({
-                    where: { id: userIdNum },
-                    select: { subscriptionTier: true },
-                })
-                .catch((e: any) => {
-                    if (process.env.NODE_ENV === "development") {
-                        console.error("[getUserPermission] user 조회 오류:", e);
-                    }
-                    return null;
-                }),
-            (prisma as any).courseUnlock
-                .findFirst({
-                    where: {
-                        userId: userIdNum,
-                        courseId: courseId,
-                    },
-                    select: { id: true, userId: true, courseId: true }, // 🔒 디버깅을 위해 추가 필드 조회
-                })
-                .catch((e: any) => {
-                    if (process.env.NODE_ENV === "development") {
-                        console.error("[getUserPermission] courseUnlock 조회 오류:", e);
-                    }
-                    return null;
-                }),
-        ]);
-
-        const userTier = user?.subscriptionTier || "FREE";
-
-        return {
-            userTier: userTier,
-            hasUnlocked: !!unlockRecord,
-        };
-    } catch (e) {
-        console.error("권한 확인 중 오류:", e);
-        return { userTier: "FREE", hasUnlocked: false };
-    }
-};
+// 🔒 권한 확인 함수 (60초 캐시 - 열람권 구매 후 최대 60초 내 반영)
+const getUserPermissionCached = unstable_cache(
+    async (userIdNum: number, courseId: number): Promise<{ userTier: string; hasUnlocked: boolean }> => {
+        try {
+            const [user, unlockRecord] = await Promise.all([
+                prisma.user
+                    .findUnique({
+                        where: { id: userIdNum },
+                        select: { subscriptionTier: true },
+                    })
+                    .catch(() => null),
+                (prisma as any).courseUnlock
+                    .findFirst({
+                        where: { userId: userIdNum, courseId },
+                        select: { id: true },
+                    })
+                    .catch(() => null),
+            ]);
+            return {
+                userTier: user?.subscriptionTier || "FREE",
+                hasUnlocked: !!unlockRecord,
+            };
+        } catch {
+            return { userTier: "FREE", hasUnlocked: false };
+        }
+    },
+    ["course-user-permission"],
+    { revalidate: 60, tags: ["course-user-permission"] }
+);
 
 // 2. 메인 페이지 컴포넌트
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -288,8 +270,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
             if (userIdStr) {
                 const userIdNum = Number(userIdStr);
                 if (!isNaN(userIdNum) && userIdNum > 0) {
-                    // 🟢 실시간 권한 확인 (unstable_cache 제거로 열람권 구매 즉시 반영)
-                    const permission = await getUserPermission(userIdNum, courseId);
+                    const permission = await getUserPermissionCached(userIdNum, courseId);
                     userTier = permission.userTier;
                     hasUnlocked = permission.hasUnlocked; // 열람권 구매 여부 확인
                 }
