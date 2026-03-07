@@ -25,6 +25,12 @@
     "ja": "日本語",
     "zh": "中文"
   },
+  "splash": {
+    "start": "出発",
+    "date": "デート",
+    "arrival": "到着",
+    "tagline": "あなただけの特別な瞬間を記録しましょう"
+  },
   "home": {
     "activeCourse": {
       "todayDate": "今日のデート",

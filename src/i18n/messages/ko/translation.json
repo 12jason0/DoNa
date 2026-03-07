@@ -18,14 +18,20 @@
         "light": "라이트",
         "dark": "다크"
     },
-    "language": {
-        "label": "언어",
-        "ko": "한국어",
-        "en": "English",
-        "ja": "日本語",
-        "zh": "中文"
-    },
-    "home": {
+  "language": {
+    "label": "언어",
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",
+    "zh": "中文"
+  },
+  "splash": {
+    "start": "출발",
+    "date": "데이트",
+    "arrival": "도착",
+    "tagline": "나만의 특별한 순간을 기록하세요"
+  },
+  "home": {
         "activeCourse": {
             "todayDate": "오늘의 데이트",
             "inProgress": "진행 중",

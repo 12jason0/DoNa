@@ -25,6 +25,12 @@
     "ja": "日本語",
     "zh": "中文"
   },
+  "splash": {
+    "start": "出发",
+    "date": "约会",
+    "arrival": "到达",
+    "tagline": "记录你的特别时刻"
+  },
   "home": {
     "activeCourse": {
       "todayDate": "今日约会",

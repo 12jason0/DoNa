@@ -25,6 +25,12 @@
     "ja": "日本語",
     "zh": "中文"
   },
+  "splash": {
+    "start": "Start",
+    "date": "Date",
+    "arrival": "Arrival",
+    "tagline": "Record your special moments"
+  },
   "home": {
     "activeCourse": {
       "todayDate": "Today's Date",

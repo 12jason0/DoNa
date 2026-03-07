@@ -1453,13 +1453,7 @@ export default function CourseDetailClient({
         const selectedPlaceIds = courseData.isSelectionType
             ? mySelection
                 ? mySelection.selectedPlaceIds
-                : selectionOrderedSteps
-                      .map((step) =>
-                          step.type === "fixed"
-                              ? step.coursePlace.place_id
-                              : selectedBySegment[step.segment],
-                      )
-                      .filter((id): id is number => id != null && id > 0)
+                : [] // 선택 전 공유 시 빈 배열 → 공유받은 사람은 고르기 화면(점선·?핀)으로 표시
             : displayCoursePlaces.map((cp) => cp.place_id);
 
         const res = await fetch("/api/share/create", {
@@ -1641,7 +1635,11 @@ export default function CourseDetailClient({
                                     📍 {courseData.region || t("courses.regionSeoul")}
                                 </span>
                                 <span className="px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/40">
-                                    👣 {displayCoursePlaces.length} {t("courseDetail.spots")}
+                                    👣{" "}
+                                    {courseData?.isSelectionType
+                                        ? selectionOrderedSteps.length
+                                        : displayCoursePlaces.length}{" "}
+                                    {t("courseDetail.spots")}
                                 </span>
                                 <span className="px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/40">
                                     ⏳ {courseData.duration}

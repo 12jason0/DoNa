@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { useLocale } from "@/context/LocaleContext";
 
 /** overlayOnly: true면 배경/로고는 그리지 않고 서버 스플래시 위에 애니메이션만 올림 (스플래시 두 번 느낌 방지) */
 export default function DonaSplashFinal({
@@ -11,6 +12,7 @@ export default function DonaSplashFinal({
     onDone?: () => void;
     overlayOnly?: boolean;
 }) {
+    const { t } = useLocale();
     const [fadeOut, setFadeOut] = useState(false);
     const [step, setStep] = useState(0);
     // 🟢 뷰포트 변경 시 위로 밀리는 현상 방지: 로고 표시 시점의 중앙 좌표를 픽셀으로 고정
@@ -193,7 +195,7 @@ export default function DonaSplashFinal({
                                 textShadow: "0 2px 4px rgba(0,0,0,0.2)",
                             }}
                         >
-                            출발
+                            {t("splash.start")}
                         </div>
                     </div>
                 )}
@@ -275,7 +277,7 @@ export default function DonaSplashFinal({
                                 textShadow: "0 2px 4px rgba(0,0,0,0.2)",
                             }}
                         >
-                            도착
+                            {t("splash.arrival")}
                         </div>
                     </div>
                 )}
@@ -308,7 +310,7 @@ export default function DonaSplashFinal({
                                 style={{ width: "300px", height: "auto", margin: "0 auto 12px", display: "block" }}
                             />
                             <p style={{ fontSize: 16, color: "#7FCC9F", margin: 0, fontWeight: 600 }}>
-                                나만의 특별한 순간을 기록하세요
+                                {t("splash.tagline")}
                             </p>
                         </div>
                     </div>
