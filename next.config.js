@@ -223,5 +223,6 @@ module.exports = withSentryConfig(nextConfig, {
     org: process.env.SENTRY_ORG || "",
     project: process.env.SENTRY_PROJECT || "",
     authToken: process.env.SENTRY_AUTH_TOKEN,
-    silent: !process.env.CI,
+    // auth token 없을 때 나오는 경고 숨김 (소스맵 업로드 안 함). 토큰 설정 시 정상 업로드
+    silent: true,
 });
