@@ -39,24 +39,19 @@ export async function GET(request: NextRequest) {
                 take: 5,
             });
 
-            // 코스 정보를 가져와서 제목과 함께 반환
+            // 코스 정보를 한 번에 조회 (N+1 방지)
             if (courseStats.length > 0) {
-                popularCourses = await Promise.all(
-                    courseStats.map(async (stat) => {
-                        const course = await prisma.course.findUnique({
-                            where: { id: stat.courseId },
-                            select: {
-                                id: true,
-                                title: true,
-                            },
-                        });
-                        return {
-                            courseId: stat.courseId,
-                            courseTitle: course?.title || `코스 #${stat.courseId}`,
-                            viewCount: stat._count.id,
-                        };
-                    })
-                );
+                const courseIds = courseStats.map((s) => s.courseId);
+                const courses = await prisma.course.findMany({
+                    where: { id: { in: courseIds } },
+                    select: { id: true, title: true },
+                });
+                const courseMap = new Map(courses.map((c) => [c.id, c]));
+                popularCourses = courseStats.map((stat) => ({
+                    courseId: stat.courseId,
+                    courseTitle: courseMap.get(stat.courseId)?.title ?? `코스 #${stat.courseId}`,
+                    viewCount: stat._count.id,
+                }));
             }
         } catch (courseError: any) {
             console.warn("[Admin Stats] 인기 코스 조회 실패:", courseError);

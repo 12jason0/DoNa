@@ -15,6 +15,7 @@ import {
     calculateRegionMatchV2,
     getUserPreferredGroupIds,
 } from "@/lib/weekendRecommendation";
+import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -289,16 +290,68 @@ function calculateGoalMatch(
     return Math.min(score, 1.0);
 }
 
+/** VALUE(분위기파 vs 실속파) 별도 가중치 */
+function calculateValueMatch(course: any, userValue: string | null): number {
+    if (!userValue) return 0.5;
+
+    const concept = String(course.concept || "");
+    const tagsObj = course.tags;
+    const tagsStr =
+        typeof tagsObj === "object" && tagsObj !== null
+            ? JSON.stringify(tagsObj)
+            : Array.isArray(tagsObj)
+              ? tagsObj.join(" ")
+              : String(tagsObj || "");
+    const text = (concept + " " + tagsStr).toLowerCase();
+
+    if (userValue === "visual") {
+        return ["인생샷", "뷰", "프리미엄", "야경", "감성"].some((k) => text.includes(k.toLowerCase())) ? 1.0 : 0.4;
+    }
+    if (userValue === "taste") {
+        return ["가성비", "맛집", "맛집탐방", "food_tour"].some((k) => text.includes(k.toLowerCase())) ? 1.0 : 0.4;
+    }
+    return 0.5;
+}
+
+/** 예산 매칭 (VALUE 미선택 시 추론: taste→3~5만, visual→5만+) */
+function calculateBudgetMatch(course: any, userBudget: string | null, userValue: string | null): number {
+    const budget = userBudget || (userValue === "taste" ? "3~5만원" : userValue === "visual" ? "5만원 이상" : null);
+    if (!budget) return 0.5;
+
+    const min = course.budget_min ?? 0;
+    const max = course.budget_max ?? 999999;
+
+    if (budget === "3만원 이하" || budget === "3만 이하") return max <= 30000 ? 1.0 : 0.25;
+    if (budget === "3~5만원" || budget === "3-5만원") return min >= 15000 && max <= 60000 ? 1.0 : 0.5;
+    if (budget === "5만원 이상" || budget === "5만 이상") return min >= 40000 ? 1.0 : 0.4;
+    return 0.5;
+}
+
+/** 시간대 매칭 (CoursePlace.segment: brunch/dinner) */
+function calculateTimeMatch(course: any, userTime: string | null): number {
+    if (!userTime) return 0.5;
+    const segments =
+        course.coursePlaces?.map((p: any) => p.segment).filter(Boolean) || [];
+
+    if (userTime === "점심" && segments.includes("brunch")) return 1.0;
+    if (userTime === "저녁" && segments.includes("dinner")) return 1.0;
+    if (userTime === "야간" && segments.some((s: string) => s?.includes("night") || s === "dinner")) return 0.9;
+    return 0.6;
+}
+
 // ---------------------------------------------
 // 🟢 [Fixed]: 데이터 희소성 해결을 위한 동적 가중치 정규화 로직
 // ---------------------------------------------
 function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayContext: any): number {
-    // 1. 기본 가중치 설정
+    // 1. 기본 가중치 설정 (VALUE·예산·시간대 추가)
     const WEIGHTS = {
-        concept: 0.25,
-        mood: 0.25,
-        region: 0.2,
-        goal: 0.3,
+        concept: 0.22,
+        mood: 0.22,
+        region: 0.18,
+        goal: 0.23,
+        value: 0.1,
+        budget: 0.05,
+        time: 0.0, // 시간대: todayContext.timeOfDay 있을 때만 활성화
     };
 
     let weightedScoreSum = 0;
@@ -340,6 +393,28 @@ function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayC
         activeWeightTotal += WEIGHTS.goal;
     }
 
+    // 5-1. VALUE(분위기파/실속파) 별도 가중치
+    if (todayContext.value) {
+        weightedScoreSum += calculateValueMatch(course, todayContext.value) * WEIGHTS.value;
+        activeWeightTotal += WEIGHTS.value;
+    }
+
+    // 5-2. 예산 매칭 (VALUE에서 추론 가능)
+    const effectiveBudget = todayContext.budget || (todayContext.value ? "infer" : null);
+    if (effectiveBudget || todayContext.value) {
+        weightedScoreSum +=
+            calculateBudgetMatch(course, todayContext.budget || null, todayContext.value || null) *
+            WEIGHTS.budget;
+        activeWeightTotal += WEIGHTS.budget;
+    }
+
+    // 5-3. 시간대 매칭
+    if (todayContext.timeOfDay) {
+        const timeWeight = 0.08;
+        weightedScoreSum += calculateTimeMatch(course, todayContext.timeOfDay) * timeWeight;
+        activeWeightTotal += timeWeight;
+    }
+
     // 6. 🟢 핵심: 입력된 정보가 하나라도 있다면 그 정보의 비중을 1.0으로 정규화
     // 정보가 전혀 없다면 기본 점수 0.5 부여
     let finalBaseScore = activeWeightTotal > 0 ? weightedScoreSum / activeWeightTotal : 0.5;
@@ -362,7 +437,15 @@ function calculateWeekendRecommendationScore(
     weekendWeatherRisk: { rainLikely: boolean } | null,
     weekendMode: "safe" | "partial" | "strong" | null,
 ): number {
-    const WEIGHTS = { concept: 0.25, mood: 0.25, region: 0.2, goal: 0.3 };
+    const WEIGHTS = {
+        concept: 0.21,
+        mood: 0.21,
+        region: 0.17,
+        goal: 0.22,
+        value: 0.1,
+        budget: 0.05,
+        time: 0.04,
+    };
     let weightedScoreSum = 0;
     let activeWeightTotal = 0;
 
@@ -399,6 +482,20 @@ function calculateWeekendRecommendationScore(
                 todayContext.companion_today || "",
             ) * WEIGHTS.goal;
         activeWeightTotal += WEIGHTS.goal;
+    }
+    if (todayContext.value) {
+        weightedScoreSum += calculateValueMatch(course, todayContext.value) * WEIGHTS.value;
+        activeWeightTotal += WEIGHTS.value;
+    }
+    if (todayContext.budget || todayContext.value) {
+        weightedScoreSum +=
+            calculateBudgetMatch(course, todayContext.budget || null, todayContext.value || null) *
+            WEIGHTS.budget;
+        activeWeightTotal += WEIGHTS.budget;
+    }
+    if (todayContext.timeOfDay) {
+        weightedScoreSum += calculateTimeMatch(course, todayContext.timeOfDay) * WEIGHTS.time;
+        activeWeightTotal += WEIGHTS.time;
     }
 
     let finalBaseScore = activeWeightTotal > 0 ? weightedScoreSum / activeWeightTotal : 0.5;
@@ -470,7 +567,18 @@ function getMatchReason(
 
 export async function GET(req: NextRequest) {
     try {
-        const userId = resolveUserId(req);
+        // 🟢 [보안] Rate limiting: 추천 API 남용 방지
+        const userIdForRl = resolveUserId(req);
+        const identifier = userIdForRl ? `user:${userIdForRl}` : getIdentifierFromRequest(req);
+        const rl = await checkRateLimit("recommendation", identifier);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", tier: "FREE", limit: rl.limit, used: rl.limit - rl.remaining },
+                { status: 429, headers: { "X-RateLimit-Limit": String(rl.limit), "X-RateLimit-Remaining": String(rl.remaining) } }
+            );
+        }
+
+        const userId = userIdForRl;
         const { searchParams } = new URL(req.url);
         const mode = searchParams.get("mode");
         const limit = Math.min(Math.max(Number(searchParams.get("limit") || 6), 1), 24);
@@ -537,7 +645,7 @@ export async function GET(req: NextRequest) {
                     .catch(() => null),
                 (prisma as any).userInteraction
                     .findMany({
-                        where: { userId, action: { in: ["view", "like"] } },
+                        where: { userId, action: { in: ["view", "like", "save", "start", "complete"] } },
                         orderBy: { createdAt: "desc" },
                         take: 50,
                         select: {
@@ -572,6 +680,9 @@ export async function GET(req: NextRequest) {
             const ACTION_WEIGHTS: { [key: string]: number } = {
                 like: 1.0,
                 view: 0.3,
+                save: 0.8,
+                start: 1.1,
+                complete: 1.5,
             };
 
             interactionData.forEach((interaction: any) => {
@@ -703,6 +814,7 @@ export async function GET(req: NextRequest) {
                 take: 10,
                 select: {
                     order_index: true,
+                    segment: true,
                     place: {
                         select: {
                             id: true,
@@ -818,6 +930,9 @@ export async function GET(req: NextRequest) {
             mood_today: moodToday,
             region_today: regionToday,
             weather_today: weatherToday,
+            value: (searchParams.get("value_today") || longTermPrefs?.value || "") || null,
+            budget: (searchParams.get("budget") || longTermPrefs?.budgetRange || null) || null,
+            timeOfDay: (searchParams.get("timeOfDay") || longTermPrefs?.timeOfDay || "") || null,
         };
 
         // 🟢 온보딩 완료 여부: 장기 선호도(분위기/가치관/지역)가 있어야 함 (오늘 질문만 있으면 X)
@@ -826,9 +941,16 @@ export async function GET(req: NextRequest) {
             (longTermPrefs.mood && longTermPrefs.mood.length > 0) ||
             (longTermPrefs.regions && longTermPrefs.regions.length > 0);
 
-        // 🟢 선호도 데이터나 오늘의 컨텍스트가 하나라도 있어야 점수 계산 (온보딩 companion 포함)
+        // 🟢 선호도 데이터나 오늘의 컨텍스트가 하나라도 있어야 점수 계산 (온보딩 companion/value 포함)
         const hasOnboardingData =
-            hasLongTermPreferences || goal || effectiveCompanionToday || moodToday || regionToday;
+            hasLongTermPreferences ||
+            goal ||
+            effectiveCompanionToday ||
+            moodToday ||
+            regionToday ||
+            !!todayContext.value ||
+            !!todayContext.budget ||
+            !!todayContext.timeOfDay;
 
         // 🟢 주말 모드: 유저 선호 권역 (recentBehavior + longTerm 합쳐서)
         const userRegionList =

@@ -9,6 +9,7 @@ import { CONCEPTS } from "@/constants/onboardingData";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import CourseCard from "@/components/CourseCard";
+import { getTimeOfDayFromKST } from "@/lib/kst";
 // 🟢 [Performance]: 필터링 로직과 모달을 별도 파일로 분리
 import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
@@ -208,6 +209,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             const params = new URLSearchParams(searchParams.toString());
             params.set("limit", "30");
             params.set("offset", String(offset));
+            const timeOfDay = getTimeOfDayFromKST();
+            if (timeOfDay) params.set("timeOfDay", timeOfDay);
 
             // 🟢 [Performance]: prefetch로 미리 로드
             const apiUrl = `/api/courses/nearby?${params.toString()}`;

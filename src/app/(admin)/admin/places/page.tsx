@@ -292,11 +292,8 @@ export default function AdminPlacesPage() {
         });
         const parsed = parseOpeningHoursToGroups(place.opening_hours || "");
         setOpeningHourGroups(parsed.length > 0 ? parsed : [{ ...DEFAULT_OPENING_GROUP }]);
-        const token = localStorage.getItem("authToken");
-        const headers: HeadersInit = {};
-        if (token) headers.Authorization = `Bearer ${token}`;
         try {
-            const res = await fetch(`/api/places/${place.id}`, { headers, credentials: "include" });
+            const res = await fetch(`/api/places/${place.id}`, { credentials: "include" });
             const data = await res.json();
             if (data?.place?.closed_days?.length) {
                 setClosedDays(
@@ -390,17 +387,10 @@ export default function AdminPlacesPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm("정말 이 장소를 삭제하시겠습니까?")) return;
-        const token = localStorage.getItem("authToken");
         try {
-            const headers: HeadersInit = {};
-            if (token) {
-                headers.Authorization = `Bearer ${token}`;
-            }
-
             const res = await fetch(`/api/places/${id}`, {
                 method: "DELETE",
-                headers,
-                credentials: "include", // 쿠키도 함께 전송 (admin 인증용)
+                credentials: "include",
             });
             if (res.ok) {
                 alert("삭제되었습니다.");
@@ -415,15 +405,11 @@ export default function AdminPlacesPage() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const token = localStorage.getItem("authToken");
         try {
             const url = editingId ? `/api/places/${editingId}` : "/api/places";
             const method = editingId ? "PATCH" : "POST";
 
             const headers: HeadersInit = { "Content-Type": "application/json" };
-            if (token) {
-                headers.Authorization = `Bearer ${token}`;
-            }
 
             const payload = {
                 ...formData,

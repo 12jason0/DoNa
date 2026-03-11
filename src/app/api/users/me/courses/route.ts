@@ -91,13 +91,11 @@ export async function POST(req: NextRequest) {
 
         // 🟢 [상업적 로직] 트랜잭션으로 저장과 잠금 해제를 동시에 처리
         const result = await prisma.$transaction(async (tx) => {
-            // 1. 이미 저장되어 있는지 확인
-            const existingSave = await tx.savedCourse.findUnique({
+            // 1. 이미 저장되어 있는지 확인 (SavedCourse에는 userId+courseId 복합 unique 없음 → findFirst 사용)
+            const existingSave = await tx.savedCourse.findFirst({
                 where: {
-                    userId_courseId: {
-                        userId: uId,
-                        courseId: cId,
-                    },
+                    userId: uId,
+                    courseId: cId,
                 },
             });
 
@@ -107,10 +105,13 @@ export async function POST(req: NextRequest) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma schema source 컬럼 있으나 타입 동기화 지연 시 우회
                     data: { userId: uId, courseId: cId, source: sourceValue } as any,
                 });
+                await (tx as any).userInteraction.create({
+                    data: { userId: uId, courseId: cId, action: "save" },
+                });
             } else if (sourceValue === "ai_recommendation") {
                 // 🟢 이미 저장된 코스를 AI 추천에서 다시 선택 시 source를 ai_recommendation으로 갱신
                 savedCourse = await tx.savedCourse.update({
-                    where: { userId_courseId: { userId: uId, courseId: cId } },
+                    where: { id: existingSave.id },
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma schema source 컬럼 있으나 타입 동기화 지연 시 우회
                     data: { source: "ai_recommendation" } as any,
                 });

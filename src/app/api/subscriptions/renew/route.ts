@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
                 });
 
                 try {
+                    // 🟢 [트랜잭션 일관성] 결제 실패 시 등급 강등만 수행 (단일 업데이트이므로 별도 트랜잭션 불필요)
                     await prisma.user.update({
                         where: { id: user.id },
                         data: {

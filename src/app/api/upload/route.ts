@@ -4,13 +4,31 @@ import { getS3Bucket, getS3Client, getS3PublicUrl } from "@/lib/s3";
 import { resolveUserId } from "@/lib/auth";
 import { randomBytes } from "crypto";
 import prisma from "@/lib/db";
+import { fileTypeFromBuffer } from "file-type";
+import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
+
+const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+/** 리뷰/나만의 추억 업로드: 파일당 최대 10MB. 탈출방 등 기타는 50MB */
+const MAX_BYTES_REVIEW_MEMORY = 10 * 1024 * 1024;
+const MAX_BYTES_DEFAULT = 50 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
     console.log("[/api/upload] Received a request."); // 로그 추가
 
     try {
+        // 🟢 Rate limiting: 분당 30회 (IP 또는 userId 기준)
+        const authUserId = resolveUserId(request);
+        const identifier = authUserId ? String(authUserId) : getIdentifierFromRequest(request);
+        const rl = await checkRateLimit("upload", identifier);
+        if (!rl.success) {
+            return NextResponse.json(
+                { message: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+                { status: 429, headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) } }
+            );
+        }
+
         const form = await request.formData();
         const formFiles = form.getAll("photos");
         const files: File[] = [];
@@ -92,16 +110,26 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 🟢 파일 용량 제한 (50MB)
-        const maxBytes = 50 * 1024 * 1024; // 50MB
+        // 🟢 파일 용량 제한: 리뷰/나만의 추억 10MB, 기타 50MB
+        const maxBytes = type === "review" || type === "memory" ? MAX_BYTES_REVIEW_MEMORY : MAX_BYTES_DEFAULT;
         for (const file of files) {
             if (file.size > maxBytes) {
+                const maxMB = maxBytes === MAX_BYTES_REVIEW_MEMORY ? 10 : 50;
                 return NextResponse.json(
-                    { message: `파일 크기가 너무 큽니다. 최대 50MB까지 업로드 가능합니다. (${file.name})` },
+                    { message: `파일 크기가 너무 큽니다. 최대 ${maxMB}MB까지 업로드 가능합니다. (${file.name})` },
                     { status: 413 }
                 );
             }
             const buffer = Buffer.from(await file.arrayBuffer());
+
+            // 🟢 [보안] 실제 바이너리(magic bytes)로 이미지 여부 검증 (파일명/Content-Type 위조 방지)
+            const detected = await fileTypeFromBuffer(buffer);
+            if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
+                return NextResponse.json(
+                    { message: `허용되지 않는 파일 형식입니다. 이미지 파일(jpg, png, webp, gif)만 업로드 가능합니다. (${file.name})` },
+                    { status: 400 }
+                );
+            }
 
             // --- ✨ 추가적으로 강화된 파일 이름 생성 로직 ---
             const originalExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -110,6 +138,9 @@ export async function POST(request: NextRequest) {
             const safeExt = originalExt.replace(/[^a-z0-9]/g, "").slice(0, 10);
 
             const uniqueFileName = `${Date.now()}-${randomBytes(8).toString("hex")}.${safeExt}`;
+
+            // Content-Type은 검증된 실제 타입 사용
+            const contentType = detected.mime;
 
             // 경로 생성: 타입에 따라 다른 경로 사용
             let key: string;
@@ -134,7 +165,7 @@ export async function POST(request: NextRequest) {
                     Bucket: bucket,
                     Key: key,
                     Body: buffer,
-                    ContentType: file.type || "image/jpeg",
+                    ContentType: contentType,
                 })
             );
 

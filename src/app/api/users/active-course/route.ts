@@ -95,6 +95,9 @@ export async function POST(request: NextRequest) {
             await prisma.activeCourse.create({
                 data: { userId, courseId },
             });
+            await (prisma as any).userInteraction.create({
+                data: { userId, courseId, action: "start" },
+            });
             return NextResponse.json({ success: true });
         }
 
@@ -105,6 +108,9 @@ export async function POST(request: NextRequest) {
         await prisma.activeCourse.update({
             where: { userId },
             data: { courseId, startedAt: new Date() },
+        });
+        await (prisma as any).userInteraction.create({
+            data: { userId, courseId, action: "start" },
         });
         return NextResponse.json({ success: true });
     } catch (error) {

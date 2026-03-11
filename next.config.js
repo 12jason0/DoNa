@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const os = require("os");
+const { withSentryConfig } = require("@sentry/nextjs");
 
 // 🟢 [추가]: 현재 개발 장비의 로컬 IP 주소를 동적으로 가져오는 로직
 const getLocalExternalIP = () => {
@@ -218,4 +219,9 @@ const nextConfig = {
     },
 };
 
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG || "",
+    project: process.env.SENTRY_PROJECT || "",
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    silent: !process.env.CI,
+});

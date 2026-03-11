@@ -368,7 +368,7 @@ export default function PersonalizedSection() {
                         </>
                     ) : null}
                 </div>
-                {!loading && courses.length >= 2 && (
+                {!loading && courses.length >= 2 && isLoggedIn === true && (
                     <div className="flex justify-end mt-3">
                         <button
                             type="button"

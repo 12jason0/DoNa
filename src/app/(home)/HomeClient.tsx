@@ -489,9 +489,9 @@ export default function HomeClient() {
         };
     }, [isAuthenticated, userId, pathname]);
 
-    // 🟢 personalized-home CTA 표시 여부: 비로그인은 표시, 로그인 후 FREE이고 오늘 사용 완료면 숨김
+    // 🟢 personalized-home CTA 표시: 로그인한 사용자에게만 표시 (FREE이고 오늘 사용 완료면 숨김)
     const showPersonalizedHomeCta =
-        !isAuthenticated || canUseRecommendation !== false;
+        isAuthenticated && canUseRecommendation !== false;
 
     return (
         <>
@@ -615,7 +615,8 @@ export default function HomeClient() {
                     </section>
                 )}
 
-                {/* 🟢 나만의 추억 CTA */}
+                {/* 🟢 나만의 추억 CTA - 로그인한 사용자에게만 표시 */}
+                {isAuthenticated && (
                 <section className="px-6 py-4">
                     <MemoryCTA
                         hasMemories={hasMemories}
@@ -649,6 +650,7 @@ export default function HomeClient() {
                         }}
                     />
                 </section>
+                )}
             </main>
 
             {/* 🟢 추억 상세 모달: 웹에서는 폰 내부로 포탈하여 폰 안에서 표시 */}

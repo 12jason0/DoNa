@@ -4,9 +4,20 @@ import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 export const dynamic = "force-dynamic";
 import { getJwtSecret } from "@/lib/auth";
+import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
     try {
+        // 🟢 [보안] Rate limiting: 로그인 시도 남용 방지
+        const identifier = getIdentifierFromRequest(request);
+        const rl = await checkRateLimit("auth_login", identifier);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: "너무 많은 로그인 시도입니다. 잠시 후 다시 시도해주세요." },
+                { status: 429, headers: { "X-RateLimit-Limit": String(rl.limit), "X-RateLimit-Remaining": String(rl.remaining) } }
+            );
+        }
+
         const { email, password } = await request.json();
 
         // 입력 검증

@@ -5,6 +5,8 @@ import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 import { REGION_GROUPS } from "@/constants/onboardingData";
+import { getTimeOfDayFromKST } from "@/lib/kst";
+import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐시 시간 증가
@@ -138,6 +140,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     // 🟢 [조건 체크] 검색이나 필터가 없는 순수 초기 로드인지 확인
     const isDefaultLoad = !keywordRaw && !concept && !tagIdsParam;
 
+    const timeOfDay = getTimeOfDayFromKST();
+
     // 🟢 공통 select 옵션
     const courseSelectOptions = {
         id: true,
@@ -156,6 +160,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             orderBy: { order_index: "asc" as const },
             select: {
                 order_index: true,
+                segment: true,
                 place: {
                     select: {
                         id: true,
@@ -226,7 +231,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 tagIds: string | undefined,
                 userTier: string,
                 unlockedIds: number[],
-                isMobile: boolean
+                isMobile: boolean,
+                timeOfDay: string | null
             ) => {
                 // 🟢 검색 조건 재구성 (캐싱 함수 내부에서)
                 const filterConditions: any[] = [{ isPublic: true }];
@@ -343,6 +349,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                     select: courseSelectOptions,
                 });
 
+                sortCoursesByTimeMatch(courses, timeOfDay);
+
                 // 매핑 함수
                 const mappedCourses = courses.map((c: any) => {
                     let isLocked = false;
@@ -406,7 +414,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
 
                 return mappedCourses;
             },
-            [`nearby-filter-${keywordRaw || ""}-${region || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}`],
+            [`nearby-filter-${keywordRaw || ""}-${region || ""}-${concept || ""}-${tagIdsParam || ""}-${userTier}-${timeOfDay ?? ""}`],
             {
                 revalidate: 120, // 🟢 2분 캐시
                 tags: ["nearby-filtered-courses"],
@@ -416,7 +424,6 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         // 🟢 iOS 플랫폼 감지 (서버 사이드)
         const headersList = await headers();
         const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-        // 🟢 iOS/Android 플랫폼 감지
         const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
         return getCachedFilteredCourses(
@@ -426,13 +433,14 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
             tagIdsParam,
             userTier,
             unlockedCourseIds,
-            isMobilePlatform
+            isMobilePlatform,
+            timeOfDay
         );
     }
 
     // 🟢 [Performance]: 초기 로드 데이터 캐싱
     const getCachedDefaultNearbyCourses = unstable_cache(
-        async (userTier: string, unlockedCourseIds: number[], isMobile: boolean) => {
+        async (userTier: string, unlockedCourseIds: number[], isMobile: boolean, timeOfDay: string | null) => {
             // 🟢 [5:3:2 비율 로직] 초기 로드 시 실행 (FREE:15, BASIC:9, PREMIUM:6)
             const TARGET_FREE = 15;
             const TARGET_BASIC = 9;
@@ -482,6 +490,8 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 if (bIdx < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[bIdx++]); // BASIC 1개
                 if (pIdx < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[pIdx++]); // PREMIUM 1개
             }
+
+            sortCoursesByTimeMatch(interleaved, timeOfDay);
 
             // 매핑 함수 적용
             const courses = interleaved;
@@ -558,7 +568,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
 
             return mappedCourses;
         },
-        [],
+        ["nearby-courses", timeOfDay ?? ""],
         {
             revalidate: 180, // 🟢 3분 캐시
             tags: ["nearby-courses"],
@@ -566,7 +576,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     );
 
     // 🟢 [Case 2: 초기 로드 - 캐싱된 데이터 사용]
-    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds, isMobilePlatform);
+    return getCachedDefaultNearbyCourses(userTier, unlockedCourseIds, isMobilePlatform, timeOfDay);
 }
 
 export default async function NearbyPage({

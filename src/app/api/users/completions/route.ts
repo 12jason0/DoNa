@@ -82,6 +82,10 @@ export async function POST(request: NextRequest) {
                 include: { course: true },
             });
 
+            await (tx as any).userInteraction.create({
+                data: { userId: Number(userId), courseId, action: "complete" },
+            });
+
             // 완료된 코스 개수 확인
             const completedCount = await tx.completedCourse.count({
                 where: { userId: Number(userId) },

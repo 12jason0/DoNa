@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { defaultCache } from "@/lib/cache";
+import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60; // 🟢 60초 캐시
@@ -27,6 +28,12 @@ export async function GET(request: NextRequest) {
     const offsetParam = searchParams.get("offset");
     const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 100) : 30;
     const offset = offsetParam ? Math.max(Number(offsetParam), 0) : 0;
+
+    const timeOfDayParam = (searchParams.get("timeOfDay") || "").trim();
+    const timeOfDay: "점심" | "저녁" | "야간" | null =
+        timeOfDayParam === "점심" || timeOfDayParam === "저녁" || timeOfDayParam === "야간"
+            ? timeOfDayParam
+            : null;
 
     // 2. 검색 조건 구성
     const andConditions: any[] = [];
@@ -86,10 +93,10 @@ export async function GET(request: NextRequest) {
     const whereClause = { AND: andConditions };
 
     // 🟢 [Performance]: 캐시 키 생성 (필터별로 캐싱)
-    const cacheKey = `nearby:${cleanKeyword || ""}:${concept || ""}:${tagIdsParam || ""}:${limit}:${offset}`;
+    const cacheKey = `nearby:${cleanKeyword || ""}:${concept || ""}:${tagIdsParam || ""}:${limit}:${offset}:${timeOfDay ?? ""}`;
 
     // 🟢 캐시에서 먼저 확인
-    const cached = defaultCache.get<any[]>(cacheKey);
+    const cached = await defaultCache.get<any[]>(cacheKey);
     if (cached) {
         return NextResponse.json(cached);
     }
@@ -106,6 +113,7 @@ export async function GET(request: NextRequest) {
             orderBy: { order_index: "asc" as const },
             select: {
                 order_index: true,
+                segment: true,
                 place: {
                     select: {
                         id: true,
@@ -162,8 +170,10 @@ export async function GET(request: NextRequest) {
             });
         }
 
+        sortCoursesByTimeMatch(courses, timeOfDay);
+
         // 🟢 [Performance]: 응답 데이터 캐싱 (60초)
-        defaultCache.set(cacheKey, courses, 60 * 1000);
+        await defaultCache.set(cacheKey, courses, 60 * 1000);
 
         return NextResponse.json(courses);
     } catch (error) {

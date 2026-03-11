@@ -5,6 +5,8 @@ import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePo
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
+import { getTimeOfDayFromKST } from "@/lib/kst";
+import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 
 // 🟢 Hero 슬라이더용 코스 (FREE 등급, "지금 많이 선택한 코스")
 async function getHeroCourses() {
@@ -64,6 +66,7 @@ const courseSelectOptions = {
     coursePlaces: {
         select: {
             order_index: true,
+            segment: true,
             place: {
                 select: {
                     id: true,
@@ -152,46 +155,49 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
 
 // 🟢 [Performance]: raw 코스 데이터 캐싱 (유저별 차이 없음 → 캐시 히트율 극대화)
 // isLocked는 mapCourses에서 userTier + unlockedCourseIds로 매 요청 계산 → 잠금 상태 정확 유지
-const getCachedRawCourses = unstable_cache(
-    async () => {
-        const rawAll = await prisma.course.findMany({
-            where: { isPublic: true },
-            take: 60,
-            orderBy: { id: "desc" },
-            select: courseSelectOptions,
-        });
+function getCachedRawCoursesWithTime(timeOfDay: string | null) {
+    return unstable_cache(
+        async () => {
+            const rawAll = await prisma.course.findMany({
+                where: { isPublic: true },
+                take: 60,
+                orderBy: { id: "desc" },
+                select: courseSelectOptions,
+            });
 
-        const freeRaw = rawAll.filter((c: any) => c.grade === "FREE");
-        const basicRaw = rawAll.filter((c: any) => c.grade === "BASIC").slice(0, 9);
-        const premiumRaw = rawAll.filter((c: any) => c.grade === "PREMIUM").slice(0, 6);
+            const freeRaw = rawAll.filter((c: any) => c.grade === "FREE");
+            const basicRaw = rawAll.filter((c: any) => c.grade === "BASIC").slice(0, 9);
+            const premiumRaw = rawAll.filter((c: any) => c.grade === "PREMIUM").slice(0, 6);
 
-        const neededFromFree = 15 + (9 - basicRaw.length) + (6 - premiumRaw.length);
-        const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
+            const neededFromFree = 15 + (9 - basicRaw.length) + (6 - premiumRaw.length);
+            const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
 
-        // 🟢 인터리빙 알고리즘 (비율 유지: FREE 2, BASIC 1, PREMIUM 1)
-        const interleaved: any[] = [];
-        let fIdx = 0,
-            bIdx = 0,
-            pIdx = 0;
+            const interleaved: any[] = [];
+            let fIdx = 0,
+                bIdx = 0,
+                pIdx = 0;
 
-        while (
-            interleaved.length < 30 &&
-            (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)
-        ) {
-            if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
-            if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]);
-            if (bIdx < basicRaw.length && interleaved.length < 30) interleaved.push(basicRaw[bIdx++]);
-            if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
-        }
+            while (
+                interleaved.length < 30 &&
+                (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)
+            ) {
+                if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
+                if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]);
+                if (bIdx < basicRaw.length && interleaved.length < 30) interleaved.push(basicRaw[bIdx++]);
+                if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
+            }
 
-        return interleaved;
-    },
-    [],
-    {
-        revalidate: 180, // 🟢 3분 캐시
-        tags: ["courses-list"],
-    }
-);
+            sortCoursesByTimeMatch(interleaved, timeOfDay);
+            return interleaved;
+        },
+        ["courses-list", timeOfDay ?? ""],
+        { revalidate: 180, tags: ["courses-list"] }
+    )();
+}
+
+async function getCachedRawCourses(timeOfDay: string | null) {
+    return getCachedRawCoursesWithTime(timeOfDay);
+}
 
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
@@ -257,11 +263,14 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
             select: courseSelectOptions,
         });
 
+        const timeOfDay = getTimeOfDayFromKST();
+        sortCoursesByTimeMatch(courses, timeOfDay);
         return mapCourses(courses, userTier, unlockedCourseIds);
     }
 
     // 🟢 [Case 2: 초기 로드 - raw 캐시 + 유저별 isLocked 계산]
-    const rawCourses = await getCachedRawCourses();
+    const timeOfDay = getTimeOfDayFromKST();
+    const rawCourses = await getCachedRawCourses(timeOfDay);
     return mapCourses(rawCourses, userTier, unlockedCourseIds);
 }
 

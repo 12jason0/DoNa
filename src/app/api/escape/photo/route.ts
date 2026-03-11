@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveUserId } from "@/lib/auth";
+import { fileTypeFromBuffer } from "file-type";
 
 export const dynamic = "force-dynamic";
+
+const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 // 간단한 사진 업로드 엔드포인트
 // - 현재는 저장소 연동 없이 업로드 성공 여부만 확인해 성공 응답을 반환합니다.
@@ -29,6 +32,16 @@ export async function POST(request: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         if (arrayBuffer.byteLength <= 0) {
             return NextResponse.json({ error: "빈 파일입니다" }, { status: 400 });
+        }
+
+        // 🟢 [보안] magic bytes로 이미지 형식 검증
+        const buffer = Buffer.from(arrayBuffer);
+        const detected = await fileTypeFromBuffer(buffer);
+        if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
+            return NextResponse.json(
+                { error: "허용되지 않는 파일 형식입니다. 이미지 파일만 업로드 가능합니다." },
+                { status: 400 }
+            );
         }
 
         // 여기에 S3 업로드 로직을 연결 가능

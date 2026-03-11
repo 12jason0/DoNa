@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
 import { resolveUserId } from "@/lib/auth";
 import { defaultCache } from "@/lib/cache";
+import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -21,6 +22,11 @@ export async function GET(request: NextRequest) {
         const noCache = searchParams.get("nocache");
         const imagePolicyParam = searchParams.get("imagePolicy");
         const gradeParam = searchParams.get("grade");
+        const timeOfDayParam = (searchParams.get("timeOfDay") || "").trim();
+        const timeOfDay: "점심" | "저녁" | "야간" | null =
+            timeOfDayParam === "점심" || timeOfDayParam === "저녁" || timeOfDayParam === "야간"
+                ? timeOfDayParam
+                : null;
 
         const userId = resolveUserId(request);
         let userTier = "FREE";
@@ -79,6 +85,7 @@ export async function GET(request: NextRequest) {
                 orderBy: { order_index: "asc" as const },
                 select: {
                     order_index: true,
+                    segment: true,
                     place: {
                         select: {
                             id: true,
@@ -163,8 +170,8 @@ export async function GET(request: NextRequest) {
         };
 
         if (isDefaultLoad) {
-            const cacheKey = `courses_def_v6:${imagePolicy}:${userTier}`;
-            let cached = noCache ? null : defaultCache.get<any[]>(cacheKey);
+            const cacheKey = `courses_def_v7:${imagePolicy}:${userTier}:${timeOfDay || ""}`;
+            let cached = noCache ? null : await defaultCache.get<any[]>(cacheKey);
             if (!cached) {
                 const allRaw = await prisma.course.findMany({
                     where: { isPublic: true },
@@ -189,8 +196,9 @@ export async function GET(request: NextRequest) {
                     if (b < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[b++]);
                     if (p < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[p++]);
                 }
+                sortCoursesByTimeMatch(interleaved, timeOfDay);
                 cached = interleaved.map(formatCourse).filter(Boolean);
-                if (!noCache) defaultCache.set(cacheKey, cached);
+                if (!noCache) await defaultCache.set(cacheKey, cached);
             }
             // limit이 30보다 작게 들어온 경우 슬라이싱 처리
             const finalData = effectiveLimit < 30 ? cached?.slice(0, effectiveLimit) : cached;
@@ -224,11 +232,11 @@ export async function GET(request: NextRequest) {
         // 🟢 [Performance]: 캐시 키 생성 (필터별로 캐싱)
         const cacheKey = `courses_filter:${concept || ""}:${q || ""}:${regionQuery || ""}:${tagIdsParam || ""}:${
             gradeParam || ""
-        }:${effectiveLimit}:${effectiveOffset}:${userTier}`;
+        }:${effectiveLimit}:${effectiveOffset}:${userTier}:${timeOfDay || ""}`;
 
         // 🟢 캐시에서 먼저 확인 (동기 함수)
         if (!noCache) {
-            const cached = defaultCache.get<{ data: any[]; isRecommendation: boolean }>(cacheKey);
+            const cached = await defaultCache.get<{ data: any[]; isRecommendation: boolean }>(cacheKey);
             if (cached) {
                 return NextResponse.json(cached);
             }
@@ -243,13 +251,14 @@ export async function GET(request: NextRequest) {
         });
 
         const finalFiltered = filterCoursesByImagePolicy(results as unknown as CourseWithPlaces[], imagePolicy);
+        sortCoursesByTimeMatch(finalFiltered, timeOfDay);
         const formattedCourses = finalFiltered.map(formatCourse).filter(Boolean);
 
         const responseData = { data: formattedCourses, isRecommendation: false };
 
         // 🟢 [Performance]: 응답 데이터 캐싱 (60초) - 동기 함수
         if (!noCache) {
-            defaultCache.set(cacheKey, responseData, 60 * 1000);
+            await defaultCache.set(cacheKey, responseData, 60 * 1000);
         }
 
         return NextResponse.json(responseData);

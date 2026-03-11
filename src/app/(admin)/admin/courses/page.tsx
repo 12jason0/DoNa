@@ -601,11 +601,10 @@ export default function AdminCoursesPage() {
     // --- 코스 삭제 ---
     const handleDelete = async (id: number) => {
         if (!confirm("정말 이 코스를 삭제하시겠습니까?")) return;
-        const token = localStorage.getItem("authToken");
         try {
             const res = await fetch(`/api/courses/${id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
+                credentials: "include",
             });
             if (res.ok) {
                 alert("삭제되었습니다.");
@@ -677,12 +676,12 @@ export default function AdminCoursesPage() {
         if (!editingId) return alert("코스를 먼저 생성하거나 수정 모드여야 합니다.");
         if (!addPlaceId) return alert("장소를 선택해주세요.");
 
-        const token = localStorage.getItem("authToken");
         try {
             // POST /api/courses/[id]/places -> course_places 테이블에 insert
             const res = await fetch(`/api/courses/${editingId}/places`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     place_id: Number(addPlaceId),
                     order_index: Number(addOrder),
@@ -725,11 +724,10 @@ export default function AdminCoursesPage() {
     const handleRemovePlaceFromCourse = async (place: LinkedPlace) => {
         if (!editingId || !("id" in place) || !place.id || !confirm("정말 이 장소를 코스에서 제거하시겠습니까?"))
             return;
-        const token = localStorage.getItem("authToken");
         try {
             const res = await fetch(`/api/courses/${editingId}/places/${place.id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
+                credentials: "include",
             });
             if (res.ok) {
                 await fetchCoursePlaces(editingId); // 리스트 갱신
@@ -769,15 +767,12 @@ export default function AdminCoursesPage() {
     const handleUpdatePlace = async (place: LinkedPlace & { id?: number }) => {
         if (!editingId || !editingPlaceId || !editingPlaceData || !("id" in place)) return;
 
-        const token = localStorage.getItem("authToken");
         try {
             const coursePlaceId = (place as any).id;
             const res = await fetch(`/api/courses/${editingId}/places/${coursePlaceId}`, {
                 method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     order_index: editingPlaceData.order_index,
                     segment: formData.isSelectionType && editingPlaceData.segment ? editingPlaceData.segment : null,
@@ -820,7 +815,6 @@ export default function AdminCoursesPage() {
         const currentOrder = place.order_index;
         const prevOrder = prevPlace.order_index;
 
-        const token = localStorage.getItem("authToken");
         try {
             // 두 장소의 order_index를 교환
             const currentPlaceId = (place as any).id;
@@ -830,18 +824,14 @@ export default function AdminCoursesPage() {
             const [res1, res2] = await Promise.all([
                 fetch(`/api/courses/${editingId}/places/${currentPlaceId}`, {
                     method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
                     body: JSON.stringify({ order_index: prevOrder }),
                 }),
                 fetch(`/api/courses/${editingId}/places/${prevPlaceId}`, {
                     method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
                     body: JSON.stringify({ order_index: currentOrder }),
                 }),
             ]);
@@ -872,7 +862,6 @@ export default function AdminCoursesPage() {
         const currentOrder = place.order_index;
         const nextOrder = nextPlace.order_index;
 
-        const token = localStorage.getItem("authToken");
         try {
             // 두 장소의 order_index를 교환
             const currentPlaceId = (place as any).id;
@@ -882,18 +871,14 @@ export default function AdminCoursesPage() {
             const [res1, res2] = await Promise.all([
                 fetch(`/api/courses/${editingId}/places/${currentPlaceId}`, {
                     method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
                     body: JSON.stringify({ order_index: nextOrder }),
                 }),
                 fetch(`/api/courses/${editingId}/places/${nextPlaceId}`, {
                     method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
                     body: JSON.stringify({ order_index: currentOrder }),
                 }),
             ]);

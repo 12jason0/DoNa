@@ -145,31 +145,20 @@ const ProfileTab = ({
         // 🟢 초기 로딩 시에는 로드하지 않음으로써 마이페이지 진입 속도 향상
         const fetchNotificationStatus = async () => {
             try {
-                const token = localStorage.getItem("authToken");
-                if (!token) {
+                const { fetchSession } = await import("@/lib/authClient");
+                const session = await fetchSession();
+                if (!session.authenticated || !session.user) {
                     setNotificationEnabled(false);
                     return;
                 }
 
                 // 🟢 최적화: userInfo prop에서 직접 userId 가져오기 (API 호출 제거)
                 let userId: number | null = null;
-
-                // 1순위: userInfo prop에서 가져오기
                 if (userInfo) {
                     userId = (userInfo as any)?.id || (userInfo as any)?.user?.id || null;
                 }
-
-                // 2순위: localStorage에서 가져오기
-                if (!userId) {
-                    try {
-                        const userStr = localStorage.getItem("user");
-                        if (userStr) {
-                            const userData = JSON.parse(userStr);
-                            userId = userData?.id || null;
-                        }
-                    } catch (e) {
-                        // 파싱 오류 무시
-                    }
+                if (!userId && session.user) {
+                    userId = session.user.id ?? null;
                 }
 
                 // 🟢 DB에서 알림 상태 조회 (캐싱 적용)
@@ -847,17 +836,14 @@ const ProfileTab = ({
                                 }
 
                                 // authenticatedFetch는 성공 시 데이터를 반환하므로, null이 아니면 성공
-                                // 탈퇴 성공 - 모든 데이터 정리
-                                localStorage.removeItem("authToken");
-                                localStorage.removeItem("user");
-                                localStorage.removeItem("loginTime");
+                                // 탈퇴 성공 - 쿠키 기반 로그아웃으로 세션 정리 후 리다이렉트
+                                const { logout } = await import("@/lib/authClient");
+                                await logout({ skipRedirect: true });
 
-                                // 인증 상태 변경 이벤트 발생
                                 if (typeof window !== "undefined") {
                                     window.dispatchEvent(new CustomEvent("authTokenChange"));
                                 }
 
-                                // 메인 페이지로 리디렉션
                                 alert(t("profile.deleteSuccess"));
                                 window.location.href = "/";
                             } catch (error: any) {

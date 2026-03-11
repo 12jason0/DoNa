@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
+import { fileTypeFromBuffer } from "file-type";
 
 export const runtime = "nodejs";
+
+const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
-        const file = formData.get("image") as File | null;
+        const raw = (formData as unknown as { get(name: string): File | FormDataEntryValue | null }).get("image");
+        const file = raw instanceof File ? raw : null;
         if (!file) {
             return NextResponse.json({ error: "이미지 파일이 필요합니다." }, { status: 400 });
         }
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
+
+        // 🟢 [보안] magic bytes로 이미지 형식 검증
+        const detected = await fileTypeFromBuffer(buffer);
+        if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
+            return NextResponse.json(
+                { error: "허용되지 않는 파일 형식입니다. 이미지 파일(jpg, png, webp, gif)만 업로드 가능합니다." },
+                { status: 400 }
+            );
+        }
 
         const filename = `escape-${Date.now()}.png`;
         const relPath = join("public", "uploads", "escapes", filename);

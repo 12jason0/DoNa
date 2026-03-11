@@ -24,3 +24,15 @@ export function isAfter9PMKST(): boolean {
     const kstDate = new Date(kstMs);
     return kstDate.getUTCHours() >= 21;
 }
+
+/** KST 기준 현재 시간대: 점심(11~14), 저녁(17~21), 야간(21~ 또는 0~6), 그 외 null (courses/nearby 정렬용) */
+export function getTimeOfDayFromKST(): "점심" | "저녁" | "야간" | null {
+    const now = new Date();
+    const kstMs = now.getTime() + KST_OFFSET_MS;
+    const kstDate = new Date(kstMs);
+    const hour = kstDate.getUTCHours();
+    if (hour >= 11 && hour < 14) return "점심";
+    if (hour >= 17 && hour < 21) return "저녁";
+    if (hour >= 21 || hour < 6) return "야간";
+    return null;
+}

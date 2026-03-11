@@ -14,6 +14,7 @@ function migratePreferences(oldPrefs: any): any {
             mood: oldPrefs.mood || [],
             regions: oldPrefs.regions || [],
             ...(typeof oldPrefs.companion === "string" ? { companion: oldPrefs.companion } : {}),
+            ...(typeof oldPrefs.value === "string" ? { value: oldPrefs.value } : {}),
         };
     }
 

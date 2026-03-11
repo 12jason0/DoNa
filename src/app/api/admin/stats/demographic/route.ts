@@ -83,54 +83,45 @@ export async function GET(request: NextRequest) {
             take: 10,
         });
 
-        // 3. 코스 상세 정보 조회
-        const courses = await Promise.all(
-            courseStats.map(async (stat) => {
-                const course = await prisma.course.findUnique({
-                    where: { id: stat.courseId },
-                    select: {
-                        id: true,
-                        title: true,
-                        sub_title: true,
-                        region: true,
-                        tags: true,
-                        concept: true,
-                        duration: true,
-                        rating: true,
-                        view_count: true,
-                        courseTags: {
-                            include: {
-                                tag: {
-                                    select: {
-                                        name: true,
-                                    },
-                                },
-                            },
+        // 3. 코스 상세 정보 한 번에 조회 (N+1 방지)
+        const courseIds = courseStats.map((s) => s.courseId);
+        const courseList = await prisma.course.findMany({
+            where: { id: { in: courseIds } },
+            select: {
+                id: true,
+                title: true,
+                sub_title: true,
+                region: true,
+                tags: true,
+                concept: true,
+                duration: true,
+                rating: true,
+                view_count: true,
+                courseTags: {
+                    include: {
+                        tag: {
+                            select: { name: true },
                         },
                     },
-                });
+                },
+            },
+        });
+        const courseById = new Map(courseList.map((c) => [c.id, c]));
 
-                if (!course) {
-                    return null;
-                }
+        const validCourses = courseStats
+            .map((stat) => {
+                const course = courseById.get(stat.courseId);
+                if (!course) return null;
 
-                // 태그 정보 정리 (JSON tags와 courseTags 둘 다 처리)
                 let tagNames: string[] = [];
                 if (course.tags && typeof course.tags === "object") {
                     const tagsObj = course.tags as any;
-                    if (tagsObj.concept && Array.isArray(tagsObj.concept)) {
-                        tagNames.push(...tagsObj.concept);
-                    }
-                    if (tagsObj.mood && Array.isArray(tagsObj.mood)) {
-                        tagNames.push(...tagsObj.mood);
-                    }
+                    if (tagsObj.concept && Array.isArray(tagsObj.concept)) tagNames.push(...tagsObj.concept);
+                    if (tagsObj.mood && Array.isArray(tagsObj.mood)) tagNames.push(...tagsObj.mood);
                 }
-                // courseTags에서도 추가
-                if (course.courseTags && course.courseTags.length > 0) {
+                if (course.courseTags?.length) {
                     course.courseTags.forEach((ct) => {
-                        if (ct.tag && !tagNames.includes(ct.tag.name)) {
-                            tagNames.push(ct.tag.name);
-                        }
+                        if (ct.tag && !tagNames.includes(ct.tag.name)) tagNames.push(ct.tag.name);
                     });
                 }
 
@@ -144,13 +135,10 @@ export async function GET(request: NextRequest) {
                     duration: course.duration || "시간 미지정",
                     rating: course.rating || 0,
                     viewCount: course.view_count || 0,
-                    demographicViewCount: stat._count.id, // 해당 그룹의 조회수
+                    demographicViewCount: stat._count.id,
                 };
             })
-        );
-
-        // null 제거
-        const validCourses = courses.filter((c) => c !== null);
+            .filter((c) => c !== null);
 
         return NextResponse.json({
             ageRange,

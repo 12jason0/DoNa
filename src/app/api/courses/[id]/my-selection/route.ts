@@ -150,6 +150,10 @@ export async function POST(
             });
         }
 
+        await (prisma as any).userInteraction.create({
+            data: { userId: userIdNum, courseId: templateCourseId, action: "start" },
+        });
+
         return NextResponse.json({
             success: true,
             selection: {

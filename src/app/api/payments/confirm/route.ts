@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { resolveUserId } from "@/lib/auth"; // 🔐 [보안] 서버 세션 쿠키 검증
+import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,17 @@ const PLAN_DATA: Record<PlanKey, PlanInfo> = {
 
 export async function POST(req: NextRequest) {
     try {
+        // 🟢 [보안] Rate limiting: 결제 API 남용 방지
+        const userIdForRl = resolveUserId(req);
+        const identifier = userIdForRl ? `user:${userIdForRl}` : getIdentifierFromRequest(req);
+        const rl = await checkRateLimit("payment", identifier);
+        if (!rl.success) {
+            return NextResponse.json(
+                { success: false, error: "RATE_LIMITED", message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+                { status: 429, headers: { "X-RateLimit-Limit": String(rl.limit), "X-RateLimit-Remaining": String(rl.remaining) } }
+            );
+        }
+
         const body = await req.json();
         const { paymentKey, orderId, amount, plan, userId, intentId } = body as {
             paymentKey?: string;

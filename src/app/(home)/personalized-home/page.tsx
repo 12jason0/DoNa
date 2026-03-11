@@ -312,7 +312,7 @@ const AIRecommender = () => {
                 setUserName(nick);
                 setNickname(nick);
                 setProfileImageUrl(convertToHttps(profileImage));
-                localStorage.setItem("user", JSON.stringify(userData));
+                // 🟢 [보안] JWT localStorage 제거: 사용자 정보는 쿠키 세션으로만 유지, localStorage에 저장하지 않음
             } else {
                 // 🟢 response.ok가 false인 경우에도 handleLogout 대신 로그인 상태만 변경 (리다이렉트 방지)
                 setIsLoggedIn(false);
@@ -323,10 +323,6 @@ const AIRecommender = () => {
             setIsUserDataLoading(false);
         } catch (error) {
             console.error("사용자 정보 조회 오류:", error);
-            // 🟢 에러 발생 시 localStorage 정리
-            localStorage.removeItem("authToken");
-            localStorage.removeItem("user");
-            localStorage.removeItem("loginTime");
             setIsLoggedIn(false);
             setIsUserDataLoading(false);
         }
@@ -335,43 +331,19 @@ const AIRecommender = () => {
     // 🟢 로그인 상태 확인 (쿠키 기반 인증) - 성능 최적화
     useEffect(() => {
         const checkLoginStatus = async () => {
-            // 🟢 [Performance]: localStorage에서 캐시된 사용자 정보 즉시 표시 (동기적으로)
-            const cachedUser = localStorage.getItem("user");
-            if (cachedUser) {
-                try {
-                    const parsed = JSON.parse(cachedUser);
-                    const nick =
-                        parsed.nickname ||
-                        parsed.name ||
-                        parsed.email?.split("@")[0] ||
-                        t("personalizedHome.userFallback");
-                    // 🟢 [Performance]: 즉시 표시 (requestAnimationFrame 제거로 지연 없음)
-                    setUserName(nick);
-                    setNickname(nick);
-                    setProfileImageUrl(parsed.profileImage || parsed.profileImageUrl || null);
-                    setIsLoggedIn(true);
-                    setIsUserDataLoading(false); // 🟢 캐시가 있으면 즉시 로딩 완료로 표시
-                } catch {}
-            }
-
             try {
-                // 🟢 [Performance]: fetchSession만 먼저 확인 (가볍게)
                 const { fetchSession } = await import("@/lib/authClient");
                 const session = await fetchSession();
 
                 if (session.authenticated && session.user) {
                     setIsLoggedIn(true);
-                    // 🟢 [Performance]: 캐시가 없을 때만 로딩 상태 유지, 있으면 백그라운드에서 업데이트
-                    if (!cachedUser) {
-                        setIsUserDataLoading(true);
-                    }
-                    // 🟢 [Performance]: 백그라운드에서 사용자 정보 업데이트 (비동기)
+                    const u = session.user;
+                    const nick = u.nickname || u.name || (u.email?.split("@")[0]) || t("personalizedHome.userFallback");
+                    setUserName(nick);
+                    setNickname(nick);
+                    setIsUserDataLoading(true);
                     fetchUserData();
                 } else {
-                    // 🟢 로그인되지 않은 경우 localStorage 정리 (이전 데이터 제거)
-                    localStorage.removeItem("authToken");
-                    localStorage.removeItem("user");
-                    localStorage.removeItem("loginTime");
                     setIsLoggedIn(false);
                     setUserName("");
                     setNickname("");
@@ -380,11 +352,10 @@ const AIRecommender = () => {
                 }
             } catch (error) {
                 console.error("로그인 상태 확인 실패:", error);
-                // 🟢 에러 발생 시에도 localStorage 정리
-                localStorage.removeItem("authToken");
-                localStorage.removeItem("user");
-                localStorage.removeItem("loginTime");
                 setIsLoggedIn(false);
+                setUserName("");
+                setNickname("");
+                setProfileImageUrl(null);
                 setIsUserDataLoading(false);
             }
         };
@@ -397,10 +368,6 @@ const AIRecommender = () => {
         };
 
         const handleAuthLogout = () => {
-            // 🟢 로그아웃 시 localStorage 정리 (이전 데이터 제거)
-            localStorage.removeItem("authToken");
-            localStorage.removeItem("user");
-            localStorage.removeItem("loginTime");
             setIsLoggedIn(false);
             setUserName("");
             setNickname("");
@@ -679,7 +646,7 @@ const AIRecommender = () => {
         let list: Course[] = [];
 
         try {
-            const token = localStorage.getItem("authToken");
+            // 🟢 [보안] 쿠키 기반 인증: apiFetch가 credentials: "include"로 전송
             const params = new URLSearchParams({
                 mode: "ai",
                 goal,
@@ -835,11 +802,12 @@ const AIRecommender = () => {
     };
 
     // 1. '선택하기' 버튼 클릭 시 실행 (확인 모달만 띄움)
-    const handleSelectCourse = (courseId: string, courseTitle: string) => {
+    const handleSelectCourse = async (courseId: string, courseTitle: string) => {
         if (isSelecting || selectedCourseId) return;
 
-        const token = localStorage.getItem("authToken");
-        if (!token) {
+        const { fetchSession } = await import("@/lib/authClient");
+        const session = await fetchSession();
+        if (!session.authenticated) {
             setShowLogin(true);
             return;
         }
@@ -1140,26 +1108,28 @@ const AIRecommender = () => {
 
     useEffect(() => {
         const inProgress = sessionStorage.getItem("auth:loggingIn") === "1";
-        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-        if (inProgress && !token) setAuthLoading(true);
+        if (!inProgress) return;
 
-        let intervalId: any;
-        if (inProgress) {
-            intervalId = setInterval(() => {
-                const t = localStorage.getItem("authToken");
-                if (t) {
-                    setAuthLoading(false);
-                    sessionStorage.removeItem("auth:loggingIn");
-                    clearInterval(intervalId);
-                }
-            }, 500);
-            setTimeout(() => {
-                if (intervalId) clearInterval(intervalId);
-            }, 120000);
-        }
+        setAuthLoading(true);
+        const checkSession = async () => {
+            const { fetchSession } = await import("@/lib/authClient");
+            const session = await fetchSession();
+            if (session.authenticated) {
+                setAuthLoading(false);
+                sessionStorage.removeItem("auth:loggingIn");
+            }
+        };
+
+        let intervalId: ReturnType<typeof setInterval> | undefined;
+        intervalId = setInterval(checkSession, 500);
+        const timeoutId = setTimeout(() => {
+            if (intervalId) clearInterval(intervalId);
+            setAuthLoading(false);
+        }, 120000);
 
         return () => {
             if (intervalId) clearInterval(intervalId);
+            clearTimeout(timeoutId);
         };
     }, []);
 

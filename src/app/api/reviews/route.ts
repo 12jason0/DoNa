@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import DOMPurify from "isomorphic-dompurify";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMemoryLimit } from "@/constants/subscription";
 import { decrypt, encrypt } from "@/lib/crypto";
+import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +129,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
+        // 🟢 Rate limiting: 분당 20회 (IP 또는 userId 기준)
+        const identifier = String(userId) || getIdentifierFromRequest(request);
+        const rl = await checkRateLimit("review", identifier);
+        if (!rl.success) {
+            return NextResponse.json(
+                { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+                { status: 429, headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) } }
+            );
+        }
+
         const body = await request.json().catch(() => {
             return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
         });
@@ -200,12 +212,22 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const finalComment: string =
+        const rawComment: string =
             typeof comment === "string" && comment.trim().length > 0
                 ? comment.trim()
                 : typeof content === "string"
                 ? content.trim()
                 : "";
+        // 🟢 XSS 방지: 저장 전 HTML/스크립트 제거 (Stored XSS 방지)
+        const finalComment = rawComment ? DOMPurify.sanitize(rawComment, { ALLOWED_TAGS: [] }) : "";
+
+        // 🟢 입력 길이 제한: 리뷰 코멘트 1000자
+        if (finalComment.length > 1000) {
+            return NextResponse.json(
+                { error: "리뷰는 1000자 이하로 작성해 주세요." },
+                { status: 400 }
+            );
+        }
 
         // 🟢 AES-256 암호화: 민감 텍스트는 DB 저장 전 암호화 (디지털 금고)
         const encryptedComment = finalComment ? encrypt(finalComment) : finalComment;

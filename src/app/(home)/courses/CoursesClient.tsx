@@ -14,6 +14,7 @@ import Image from "@/components/ImageFallback";
 import { LayoutGrid } from "lucide-react";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 import { getPlaceStatus } from "@/lib/placeStatus";
+import { getTimeOfDayFromKST } from "@/lib/kst";
 
 // --- Type Definitions (기존과 100% 동일) ---
 type PlaceClosedDay = { day_of_week: number | null; specific_date: Date | string | null; note?: string | null };
@@ -152,6 +153,8 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             params.set("limit", "30");
             params.set("offset", String(offset));
             if (conceptParam) params.set("concept", conceptParam);
+            const timeOfDay = getTimeOfDayFromKST();
+            if (timeOfDay) params.set("timeOfDay", timeOfDay);
 
             const { data, response } = await apiFetch<{ data?: Course[]; courses?: Course[] }>(
                 `/api/courses?${params.toString()}`,

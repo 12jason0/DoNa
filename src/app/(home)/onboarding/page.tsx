@@ -13,6 +13,7 @@ interface UserPreferences {
     mood: string[];
     regions: string[];
     companion?: string;
+    value?: string;
 }
 
 // 부모 컴포넌트에서 닫기를 제어할 수 있도록 onClose prop 추가 (선택 사항)
@@ -53,6 +54,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         mood: [],
         regions: [],
         companion: undefined,
+        value: undefined,
     });
 
     const [analysisKeyword, setAnalysisKeyword] = useState({ vibe: "", type: "" });
@@ -173,6 +175,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             mood: Array.isArray(prefsData?.mood) ? prefsData.mood : [],
                             regions: Array.isArray(prefsData?.regions) ? prefsData.regions : [],
                             companion: typeof prefsData?.companion === "string" ? prefsData.companion : undefined,
+                            value: typeof prefsData?.value === "string" ? prefsData.value : undefined,
                         };
                         serverPrefs = normalized;
                         setPreferences(normalized);
@@ -211,7 +214,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             preferences.concept.length > 0 ||
             preferences.mood.length > 0 ||
             preferences.regions.length > 0 ||
-            !!preferences.companion;
+            !!preferences.companion ||
+            !!preferences.value;
 
         if (!hasAnyData) return;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -278,6 +282,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             ...prev,
             concept: [...new Set([...baseConcepts, ...option.addConcept])],
             mood: [...new Set([...baseMoods, ...option.addMood])],
+            value: option.id,
         }));
 
         setSelectedValueId(option.id);
