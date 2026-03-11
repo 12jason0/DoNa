@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import DOMPurify from "isomorphic-dompurify";
+import xss from "xss";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMemoryLimit } from "@/constants/subscription";
@@ -218,8 +218,10 @@ export async function POST(request: NextRequest) {
                 : typeof content === "string"
                 ? content.trim()
                 : "";
-        // 🟢 XSS 방지: 저장 전 HTML/스크립트 제거 (Stored XSS 방지)
-        const finalComment = rawComment ? DOMPurify.sanitize(rawComment, { ALLOWED_TAGS: [] }) : "";
+        // 🟢 XSS 방지: 저장 전 HTML/스크립트 제거 (Stored XSS 방지) - xss 패키지 사용 (jsdom/ESM 호환)
+        const finalComment = rawComment
+            ? xss(rawComment, { whiteList: {}, stripIgnoreTag: true, stripIgnoreTagBody: ["script"] })
+            : "";
 
         // 🟢 입력 길이 제한: 리뷰 코멘트 1000자
         if (finalComment.length > 1000) {
