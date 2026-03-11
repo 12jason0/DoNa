@@ -140,170 +140,21 @@ const Login = () => {
             setLoading(false); // 🟢 [Fix]: 에러 시에만 loading 상태 해제
         }
     };
-    const authReceived = useRef(false);
-
-    // ... (기존 import 및 상단 로직 동일)
-
     const handleSocialLogin = async (provider: string) => {
         if (loading) return;
         setLoading(true);
         setError("");
         setMessage("");
-        authReceived.current = false;
 
         if (provider === "kakao") {
-            // 1. 웹뷰 환경 체크
-            const isMobileApp = !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent);
-            if (isMobileApp) {
-                // 🟢 [2026-01-23] 모바일 앱: Kakao JS SDK authorize 사용 → 카카오톡 앱 간편 로그인 가능
-                const mobileNext = next === "/" ? "mobile" : `mobile?redirect=${encodeURIComponent(next)}`;
-                const Kakao = (window as any).Kakao;
-                const redirectUri = `${window.location.origin}/api/auth/kakao/callback`;
-                if (Kakao?.Auth?.authorize && (Kakao.isInitialized?.() || process.env.NEXT_PUBLIC_KAKAO_JS_KEY)) {
-                    if (Kakao && !Kakao.isInitialized?.()) {
-                        Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
-                    }
-                    Kakao.Auth.authorize({
-                        redirectUri,
-                        state: mobileNext,
-                        scope: "profile_nickname,profile_image,age_range,gender",
-                    });
-                    return;
-                }
-                // SDK 미로드 시 기존 리다이렉트 방식 폴백
-                window.location.href = `/api/auth/kakao?next=${encodeURIComponent(mobileNext)}`;
-                return;
-            }
-
-            const kakaoClientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-            const redirectUri = `${window.location.origin}/api/auth/kakao/callback`; // 현재 도메인 기반으로 동적 설정
-
-            if (!kakaoClientId) {
-                setError(t("authPage.login.errorKakaoClientId"));
-                setLoading(false);
-                return;
-            }
-
-            // next 값을 sessionStorage에 저장 (팝업 인증 후 사용)
-            sessionStorage.setItem("auth:next", next);
-
-            // 2. 메시지 핸들러 정의 (팝업을 열기 전에 미리 정의)
-            const messageHandler = async (event: MessageEvent) => {
-                // 보안 체크: 현재 도메인과 보낸 도메인이 같은지 확인 (가장 안전한 방법)
-                if (event.origin !== window.location.origin && !event.origin.includes("kakao.com")) {
-                    console.warn("차단된 오리진으로부터의 메시지:", event.origin);
-                    return;
-                }
-
-                const { type, code, error: authError } = event.data;
-
-                if (type === "KAKAO_AUTH_CODE" && code) {
-                    authReceived.current = true; // ✅ 수신 확인
-                    // 콜백에서 전달받은 next 사용, 없으면 sessionStorage에서 가져오기, 둘 다 없으면 현재 next, 마지막으로 메인 페이지
-                    const receivedNext = (event.data as any).next || sessionStorage.getItem("auth:next") || next || "/";
-
-                    try {
-                        const response = await fetch("/api/auth/kakao", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ code, next: receivedNext }),
-                        });
-
-                        // 리다이렉트 응답인 경우
-                        if (response.redirected || response.url) {
-                            const redirectPath = response.url || receivedNext || "/";
-                            window.location.href = redirectPath;
-                            cleanup();
-                            return;
-                        }
-
-                        const data = await response.json();
-
-                        if (!response.ok) throw new Error(data.error || t("authPage.login.errorLoginProcess"));
-
-                        // 🟢 [Fix]: 세션 캐시 강제 갱신 플래그 및 트리거 저장 (로컬/카카오 로그인 통합)
-                        if (typeof window !== "undefined") {
-                            sessionStorage.setItem("auth:forceRefresh", Date.now().toString());
-                            sessionStorage.setItem("login_success_trigger", Date.now().toString());
-                        }
-
-                        // 🟢 쿠키 기반 인증: localStorage 제거
-                        // 쿠키는 서버에서 이미 설정되었으므로 클라이언트에서 별도 작업 불필요
-                        localStorage.removeItem("authToken");
-                        localStorage.removeItem("user");
-                        localStorage.removeItem("loginTime");
-
-                        // 🟢 로그인 성공 이벤트 발생 (useAuth 훅이 감지)
-                        window.dispatchEvent(new CustomEvent("authLoginSuccess"));
-
-                        // 🟢 [Fix]: 로그인 성공 시 "로그인 중..." 상태 유지한 채로 바로 메인으로 이동
-                        // cleanup()에서 setLoading(false)를 호출하지 않고 바로 리다이렉트
-                        cleanupWithoutLoading();
-
-                        // 🟢 LoginModal을 통한 로그인: receivedNext가 있으면 그곳으로, 없거나 로그인 페이지면 메인으로
-                        // 🟢 [Fix]: router.replace는 비동기적으로 작동하여 상태 업데이트가 먼저 일어날 수 있으므로
-                        // window.location.href를 사용하여 즉시 페이지 이동
-                        const redirectPath = !receivedNext || receivedNext.startsWith("/login") ? "/" : receivedNext;
-                        window.location.href = redirectPath;
-                    } catch (err: any) {
-                        setError(err.message);
-                        cleanup();
-                    }
-                } else if (type === "KAKAO_AUTH_ERROR") {
-                    setError(t("authPage.login.errorAuthFailed", { error: authError ?? "" }));
-                    cleanup();
-                }
-            };
-
-            // 3. 리스너 등록 및 팝업 감시 함수
-            let intervalId: any = null;
-            // 🟢 [Fix]: 로그인 성공 시 cleanup을 호출하지 않기 위한 별도 함수
-            const cleanupWithoutLoading = () => {
-                if (intervalId) clearInterval(intervalId);
-                window.removeEventListener("message", messageHandler);
-            };
-            const cleanup = () => {
-                cleanupWithoutLoading();
-                setLoading(false);
-            };
-
-            window.addEventListener("message", messageHandler);
-
-            // 4. 카카오 인증 URL 생성 및 팝업 열기
-            const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?${new URLSearchParams({
-                client_id: kakaoClientId,
-                redirect_uri: redirectUri,
-                response_type: "code",
-                scope: "profile_nickname, profile_image, age_range, gender",
-                state: encodeURIComponent(next || "/"), // next 값을 state로 전달
-            }).toString()}`;
-
-            const popup = window.open(
-                kakaoAuthUrl,
-                "kakao-login",
-                `width=500,height=700,left=${window.screen.width / 2 - 250},top=${window.screen.height / 2 - 350}`
-            );
-
-            if (!popup) {
-                setError(t("authPage.login.errorPopupBlocked"));
-                cleanup();
-                return;
-            }
-
-            // 5. 팝업 닫힘 감시 로직 (수정됨)
-            intervalId = setInterval(() => {
-                if (popup.closed) {
-                    clearInterval(intervalId);
-                    // 팝업이 닫히고 나서 1초만 더 기다려보고, 그 때도 수신이 안 됐으면 에러 처리
-                    setTimeout(() => {
-                        if (!authReceived.current) {
-                            setError(t("authPage.login.errorKakaoCanceled"));
-                            cleanup();
-                        }
-                    }, 1000);
-                }
-            }, 500);
-
+            // 🟢 회원가입과 동일하게 항상 서버 리다이렉트 사용 (앱 WebView에서 안정적, Kakao.Auth.authorize 제거)
+            const mobileNext =
+                !!(window as any).ReactNativeWebView || /ReactNative|Expo/i.test(navigator.userAgent)
+                    ? next === "/"
+                        ? "mobile"
+                        : `mobile?redirect=${encodeURIComponent(next)}`
+                    : next;
+            window.location.href = `/api/auth/kakao?next=${encodeURIComponent(mobileNext)}`;
             return;
         }
         setLoading(false);
