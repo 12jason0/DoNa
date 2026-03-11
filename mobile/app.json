@@ -107,7 +107,7 @@
                         "minSdkVersion": 24,
                         "compileSdkVersion": 35,
                         "targetSdkVersion": 35,
-                        "gradlePluginVersion": "8.6.1",
+                        "gradlePluginVersion": "8.3.2",
                         "enableProguardInReleaseBuilds": true,
                         "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"],
                         "enableMinifyInReleaseBuilds": true
