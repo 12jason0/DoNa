@@ -80,6 +80,10 @@ export default function HomeClient() {
         hasMemory: boolean;
     } | null>(null);
     const [showMemoryReminderModal, setShowMemoryReminderModal] = useState(false);
+    // 🟢 AI 추천 한도: FREE는 하루 1회 → 오늘 이미 사용했으면 메인 CTA 숨김
+    const [canUseRecommendation, setCanUseRecommendation] = useState<boolean | null>(null);
+    // 🟢 Hydration 방지: CTA 블록은 마운트 후에만 렌더 (서버/클라이언트 첫 렌더 일치)
+    const [hasMounted, setHasMounted] = useState(false);
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -461,6 +465,34 @@ export default function HomeClient() {
         runAfterPaint(fetchPersonalMemories);
     }, [fetchPersonalMemories]);
 
+    // 🟢 마운트 후에만 CTA 블록 렌더 (hydration mismatch 방지)
+    useEffect(() => setHasMounted(true), []);
+
+    // 🟢 AI 추천 precheck: 로그인 시 한도 확인, FREE이고 오늘 이미 사용했으면 CTA 숨김
+    useEffect(() => {
+        if (!isAuthenticated || !userId) {
+            setCanUseRecommendation(null);
+            return;
+        }
+        let cancelled = false;
+        apiFetch<{ canUse?: boolean }>("/api/recommendations/precheck", { cache: "no-store" })
+            .then(({ data }) => {
+                if (!cancelled && data && typeof data.canUse === "boolean") {
+                    setCanUseRecommendation(data.canUse);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setCanUseRecommendation(true);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, userId, pathname]);
+
+    // 🟢 personalized-home CTA 표시 여부: 비로그인은 표시, 로그인 후 FREE이고 오늘 사용 완료면 숨김
+    const showPersonalizedHomeCta =
+        !isAuthenticated || canUseRecommendation !== false;
+
     return (
         <>
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
@@ -560,10 +592,31 @@ export default function HomeClient() {
                 {/* 🟢 개인별 추천 섹션 */}
                 <MemoizedPersonalizedSection />
 
-                {/* 🟢 HeroSlider, TabbedConcepts → /courses 페이지로 이동 */}
+                {/* 🟢 AI 맞춤 추천(personalized-home) 진입 CTA - FREE는 오늘 이미 사용 시 숨김, 마운트 후에만 렌더 */}
+                {hasMounted && showPersonalizedHomeCta && (
+                    <section className="px-6 pt-2 pb-2">
+                        <TapFeedback className="w-full">
+                            <button
+                                type="button"
+                                onClick={() => router.push("/personalized-home")}
+                                className="w-full text-left flex items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-3xl hover:opacity-95 active:scale-[0.99] transition-all"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <div className="font-semibold text-[14px] leading-tight text-emerald-900 dark:text-emerald-100">
+                                        {t("home.personalizedHomeCta")}
+                                    </div>
+                                    <div className="text-[12px] text-emerald-700 dark:text-emerald-300 mt-0.5 font-normal">
+                                        {t("home.personalizedHomeCtaSub")}
+                                    </div>
+                                </div>
+                                <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-medium text-sm">→</span>
+                            </button>
+                        </TapFeedback>
+                    </section>
+                )}
 
                 {/* 🟢 나만의 추억 CTA */}
-                <section className="px-4 py-4">
+                <section className="px-6 py-4">
                     <MemoryCTA
                         hasMemories={hasMemories}
                         isAuthenticated={isAuthenticated}

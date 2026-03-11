@@ -138,7 +138,13 @@ model Course {
   id                   Int                 @id @default(autoincrement())
   userId               Int?
   title                String              @db.VarChar(100)
+  title_en             String?             @map("title_en")
+  title_ja             String?             @map("title_ja")
+  title_zh             String?             @map("title_zh")
   description          String?
+  description_en       String?             @map("description_en")
+  description_ja       String?             @map("description_ja")
+  description_zh       String?             @map("description_zh")
   imageUrl             String?             @db.VarChar(255)
   region               String?             @db.VarChar(50)
   duration             String?             @db.VarChar(45)
@@ -209,8 +215,14 @@ model Course {
 model Place {
   id                   Int              @id @default(autoincrement())
   name                 String           @db.VarChar(255)
+  name_en              String?          @map("name_en")
+  name_ja              String?          @map("name_ja")
+  name_zh              String?          @map("name_zh")
   address              String?          @db.VarChar(500)
   description          String?
+  description_en       String?          @map("description_en")
+  description_ja       String?          @map("description_ja")
+  description_zh       String?          @map("description_zh")
   category             String?          @db.VarChar(100)
   avg_cost_range       String?          @db.VarChar(100)
   opening_hours        String?          @db.VarChar(200)
@@ -246,7 +258,13 @@ model CoursePlace {
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
   coaching_tip       String?  @map("coaching_tip")   // 유료 팁 (BASIC+ 또는 구매 시만 표시)
+  coaching_tip_en    String?  @map("coaching_tip_en")
+  coaching_tip_ja    String?  @map("coaching_tip_ja")
+  coaching_tip_zh    String?  @map("coaching_tip_zh")
   coaching_tip_free  String?  @map("coaching_tip_free") // 무료 팁 (모두에게 표시)
+  coaching_tip_free_en String? @map("coaching_tip_free_en")
+  coaching_tip_free_ja String? @map("coaching_tip_free_ja")
+  coaching_tip_free_zh String? @map("coaching_tip_free_zh")
   course             Course   @relation(fields: [course_id], references: [id])
   place              Place    @relation(fields: [place_id], references: [id])
 

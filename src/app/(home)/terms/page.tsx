@@ -1,5 +1,5 @@
 export default function TermsOfServicePage() {
-    const CONTACT_EMAIL = "12jason@donacourse.com";
+    const CONTACT_EMAIL = "12jason@donacouse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
             <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
@@ -310,7 +310,7 @@ export default function TermsOfServicePage() {
                                 <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
                             </p>
                             <p className="text-gray-700 dark:text-gray-300 text-sm">
-                                <strong>고객센터:</strong> {CONTACT_EMAIL}
+                                <strong>문의:</strong> {CONTACT_EMAIL}
                             </p>
                         </div>
                     </div>

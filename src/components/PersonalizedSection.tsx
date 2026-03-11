@@ -77,9 +77,7 @@ export default function PersonalizedSection() {
             const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
             const mainDayType = kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today";
 
-            const { data, response } = await apiFetch(
-                `/api/recommendations?limit=3&dayType=${mainDayType}`,
-                {
+            const { data, response } = await apiFetch(`/api/recommendations?limit=3&dayType=${mainDayType}`, {
                 // 🟢 로그인 사용자: 짧은 캐싱 (최근 상호작용 반영을 위해)
                 // 🟢 비로그인 사용자: 긴 캐싱 (인기순 정렬이므로 동일 결과)
                 cache: isUserAuthenticated ? "no-store" : "force-cache", // 🟢 로그인 사용자: no-store로 최신 데이터 가져오기
@@ -361,7 +359,7 @@ export default function PersonalizedSection() {
                                 <button
                                     type="button"
                                     onClick={() => router.push(`/courses/${courses[0].id}`)}
-                                    className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline active:opacity-80 cursor-pointer"
+                                    className="mt-4 inline-flex items-center gap-1 px-4 py-2 rounded-full text-[14px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white active:opacity-90 cursor-pointer transition-colors"
                                 >
                                     {t("personalized.viewCourse")}
                                     <span className="inline-block">→</span>
@@ -441,7 +439,7 @@ export default function PersonalizedSection() {
                                     dayBanner === "weekend"
                                         ? "bg-emerald-600 text-white dark:bg-emerald-500"
                                         : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                                    }`}
+                                }`}
                             >
                                 {t("personalized.weekend")}
                             </button>
@@ -450,13 +448,8 @@ export default function PersonalizedSection() {
                             {(() => {
                                 // 주말: 메인=weekend면 courses, 평일이면 weekendCourses | 오늘: courses(평일만 노출)
                                 const modalData =
-                                    dayBanner === "weekend"
-                                        ? isMainWeekend
-                                            ? courses
-                                            : weekendCourses
-                                        : courses;
-                                const modalLoading =
-                                    dayBanner === "weekend" && !isMainWeekend && weekendLoading;
+                                    dayBanner === "weekend" ? (isMainWeekend ? courses : weekendCourses) : courses;
+                                const modalLoading = dayBanner === "weekend" && !isMainWeekend && weekendLoading;
                                 const hasMainInList =
                                     (dayBanner === "weekend" && isMainWeekend) ||
                                     (dayBanner === "today" && !isMainWeekend);
@@ -465,7 +458,9 @@ export default function PersonalizedSection() {
                                     <div className="flex flex-col items-center justify-center py-12 gap-4">
                                         <div className="h-8 w-8 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin" />
                                         <p className="text-sm text-gray-500">
-                                            {dayBanner === "weekend" ? t("personalized.loadingWeekend") : t("personalized.loadingToday")}
+                                            {dayBanner === "weekend"
+                                                ? t("personalized.loadingWeekend")
+                                                : t("personalized.loadingToday")}
                                         </p>
                                     </div>
                                 ) : displayList.length > 0 ? (
@@ -498,7 +493,9 @@ export default function PersonalizedSection() {
                                                 })()}
                                                 <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                                                 <div className="absolute bottom-3 left-3 right-3 text-white">
-                                                    <h4 className="font-bold line-clamp-2"><TranslatedCourseTitle title={course.title} /></h4>
+                                                    <h4 className="font-bold line-clamp-2">
+                                                        <TranslatedCourseTitle title={course.title} />
+                                                    </h4>
                                                     {course.region && (
                                                         <span className="text-xs text-gray-300">{course.region}</span>
                                                     )}

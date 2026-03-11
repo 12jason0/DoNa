@@ -36,10 +36,18 @@ export default function MemoryCTA({
 }: MemoryCTAProps) {
     const { t, locale } = useLocale();
     const content = !isAuthenticated
-        ? { title: t("memory.notLoggedIn.title"), subtitle: t("memory.notLoggedIn.subtitle"), button: t("memory.notLoggedIn.button") }
+        ? {
+              title: t("memory.notLoggedIn.title"),
+              subtitle: t("memory.notLoggedIn.subtitle"),
+              button: t("memory.notLoggedIn.button"),
+          }
         : hasMemories
-        ? { title: t("memory.filled.title"), subtitle: t("memory.filled.subtitle"), button: t("memory.filled.button") }
-        : { title: t("memory.empty.title"), subtitle: t("memory.empty.subtitle"), button: t("memory.empty.button") };
+          ? {
+                title: t("memory.filled.title"),
+                subtitle: t("memory.filled.subtitle"),
+                button: t("memory.filled.button"),
+            }
+          : { title: t("memory.empty.title"), subtitle: t("memory.empty.subtitle"), button: t("memory.empty.button") };
 
     const truncateTitle = (title: string | undefined | null): string => {
         if (!title) return t("home.memoryFallback");
@@ -221,23 +229,25 @@ export default function MemoryCTA({
                                     <p className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-1">
                                         {truncateTitle(memory.courseTitle || memory.title)}
                                     </p>
-                                    {memory.tags && memory.tags.length > 0 && (() => {
-                                        const doNa = memory.tags.find((t) => t === "DoNa");
-                                        const others = memory.tags.filter((t) => t !== "DoNa");
-                                        const displayTags = [...(doNa ? [doNa] : []), ...others.slice(0, 1)];
-                                        return displayTags.length > 0 ? (
-                                            <div className="flex flex-wrap gap-1.5 mt-1">
-                                                {displayTags.map((t) => (
-                                                    <span
-                                                        key={t}
-                                                        className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
-                                                    >
-                                                        #{t}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        ) : null;
-                                    })()}
+                                    {memory.tags &&
+                                        memory.tags.length > 0 &&
+                                        (() => {
+                                            const doNa = memory.tags.find((t) => t === "DoNa");
+                                            const others = memory.tags.filter((t) => t !== "DoNa");
+                                            const displayTags = [...(doNa ? [doNa] : []), ...others.slice(0, 1)];
+                                            return displayTags.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                                    {displayTags.map((t) => (
+                                                        <span
+                                                            key={t}
+                                                            className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                                        >
+                                                            #{t}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : null;
+                                        })()}
                                     {memory.createdAt && (
                                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                             {formatDate(memory.createdAt)}

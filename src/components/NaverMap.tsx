@@ -28,6 +28,7 @@ export default function NaverMapComponent({
     onMapReady,
     currentStep,
     onNextStep,
+    onMapClick,
 }: MapProps) {
     const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -224,6 +225,19 @@ export default function NaverMapComponent({
         }
     }, [mapReady, center?.lat, center?.lng, selectedPlace?.latitude, selectedPlace?.longitude]);
 
+    // 🟢 지도 배경(핀 외 영역) 클릭 시 콜백
+    useEffect(() => {
+        if (!mapReady || !mapRef.current || !onMapClick) return;
+        const naver = (window as any).naver;
+        if (!naver?.maps?.Event?.addListener) return;
+        const listener = naver.maps.Event.addListener(mapRef.current, "click", () => {
+            onMapClick?.();
+        });
+        return () => {
+            naver.maps.Event.removeListener(listener);
+        };
+    }, [mapReady, onMapClick]);
+
     // 🟢 [기능 유지] Bounds 자동 조정 - 안전한 접근 제어
     useEffect(() => {
         if (!mapReady || !mapRef.current || !places.length) return;
@@ -387,7 +401,7 @@ export default function NaverMapComponent({
             }
 
             return {
-                content: `<div style="width:40px;height:40px;background:#10B981;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;">📍</div>`,
+                content: `<div style="width:40px;height:40px;background:#99c08e;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;">📍</div>`,
                 anchor: new maps.Point(20, 20),
             };
         } catch (error) {
@@ -409,15 +423,20 @@ export default function NaverMapComponent({
 
                 const variant = p.markerVariant ?? "confirmed";
                 const isFaded = variant === "candidate";
-                const bg = isSelected ? "#5347AA" : isFaded ? "rgba(107,114,128,0.6)" : "#10B981";
-                const size = isSelected ? 52 : 42;
+                const bg = isSelected ? "#5347AA" : isFaded ? "rgba(107,114,128,0.6)" : "#99c08e";
+                const size = 42;
 
                 const ord = p.orderIndex ?? (p as { order_index?: number }).order_index;
-                const showNum = !isFaded && numberedMarkers && ord != null; // 미선택 후보는 항상 "?"
-                const label = isFaded ? "?" : showNum ? String(ord + 1) : "📍";
+                const showNum = !isFaded && numberedMarkers && ord != null;
+                const label = isFaded
+                    ? (numberedMarkers && ord != null ? `${ord + 1}B` : "?")
+                    : showNum
+                      ? String(ord + 1)
+                      : "📍";
+                const fontSize = isFaded ? (label.length > 1 ? 12 : 16) : showNum ? 14 : 20;
 
                 return {
-                    content: `<div style="width:${size}px;height:${size}px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;opacity:${isFaded ? 0.7 : 1}"><div style="transform:rotate(45deg);font-size:${isFaded ? 16 : showNum ? 14 : 20}px;font-weight:700;color:white;${showNum ? "text-shadow:0 1px 2px rgba(0,0,0,0.3);" : ""}">${label}</div></div>`,
+                    content: `<div style="width:${size}px;height:${size}px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;opacity:${isFaded ? 0.7 : 1}"><div style="transform:rotate(45deg);font-size:${fontSize}px;font-weight:700;color:white;${showNum || (isFaded && label !== "?") ? "text-shadow:0 1px 2px rgba(0,0,0,0.3);" : ""}">${label}</div></div>`,
                     anchor: new maps.Point(size / 2, size),
                 };
             } catch (error) {
@@ -449,7 +468,7 @@ export default function NaverMapComponent({
             {!mapReady && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#99c08e] mx-auto mb-2"></div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">지도 로딩 중...</p>
                     </div>
                 </div>

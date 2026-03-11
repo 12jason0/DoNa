@@ -59,6 +59,8 @@ export interface MapProps {
     // 자동 단계 전환을 위한 props
     currentStep?: number; // 현재 단계 (0부터 시작)
     onNextStep?: () => void; // 다음 단계로 이동하는 함수
+    // 지도 배경(핀 외 영역) 클릭 시 콜백
+    onMapClick?: () => void;
 }
 
 // 과거 호환용 타입 별칭 (점진적 마이그레이션용)

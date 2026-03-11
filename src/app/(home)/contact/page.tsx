@@ -23,7 +23,7 @@ const ContactPage = () => {
             return;
         }
 
-        const mailto = `mailto:12jason@donacourse.com?subject=${encodeURIComponent(
+        const mailto = `mailto:12jason@donacouse.com?subject=${encodeURIComponent(
             trimmedSubject
         )}&body=${encodeURIComponent(
             `이름: ${trimmedName}\n이메일: ${trimmedEmail}\n\n문의 내용:\n${trimmedMessage}`
@@ -33,7 +33,7 @@ const ContactPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
+            <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">문의하기</h1>
 
@@ -50,7 +50,7 @@ const ContactPage = () => {
                     <div className="grid md:grid-cols-2 gap-8 mb-12">
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
                             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">이메일 문의</h2>
-                            <p className="text-blue-600 dark:text-blue-400 font-medium">12jason@donacourse.com</p>
+                            <p className="text-blue-600 dark:text-blue-400 font-medium">12jason@donacouse.com</p>
                         </div>
 
                         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-6">

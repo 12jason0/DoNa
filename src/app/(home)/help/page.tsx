@@ -193,7 +193,7 @@ const FAQPage = () => {
                         <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">더 궁금한 점이 있으신가요?</h3>
                         <p className="text-blue-700 dark:text-blue-400 mb-4">
                             위의 질문에서 답을 찾지 못하셨다면 이메일로 문의해주세요:{" "}
-                            <strong className="text-blue-800 dark:text-blue-300">12jason@donacourse.com</strong>
+                            <strong className="text-blue-800 dark:text-blue-300">12jason@donacouse.com</strong>
                         </p>
                         <a
                             href="/contact"

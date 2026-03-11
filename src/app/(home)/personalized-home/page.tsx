@@ -475,7 +475,7 @@ const AIRecommender = () => {
         setShowChatModal(false); // 모달 닫기
     };
 
-    // 👇 [수정됨] 대화 시작 시 사용 횟수 체크 → 3회차+ 온보딩 미완 시 바텀시트 표시
+    // 👇 [수정됨] 대화 시작 시 사용 횟수 체크 → 2회차+ 온보딩 미완 시 바텀시트 표시
     const startConversation = async () => {
         // 비로그인 체크
         if (!isLoggedIn) {
@@ -503,7 +503,7 @@ const AIRecommender = () => {
             return;
         }
 
-        // 🟢 3회차 진입(usageCount >= 2) & 온보딩 미완 → 온보딩 바텀시트
+        // 🟢 2회차 진입(usageCount >= 1) & 온보딩 미완 → 온보딩 바텀시트
         try {
             const data = await authenticatedFetch<{ usageCount?: number; hasOnboardingData?: boolean }>(
                 "/api/ai-recommendation/usage-count",
@@ -512,7 +512,7 @@ const AIRecommender = () => {
             );
             const usageCount = data?.usageCount ?? 0;
             const hasOnboardingData = data?.hasOnboardingData === true;
-            if (usageCount >= 2 && !hasOnboardingData) {
+            if (usageCount >= 1 && !hasOnboardingData) {
                 setShowOnboardingSheet(true);
                 return;
             }

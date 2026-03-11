@@ -565,10 +565,10 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
                                                 </p>
                                                 <p>
-                                                    <strong>고객센터:</strong> 12jason@donacourse.com
+                                                    <strong>문의:</strong> 12jason@donacouse.com
                                                 </p>
                                                 <p>
-                                                    <strong>유선번호:</strong> 010-2271-9824
+                                                    <strong>고객센터:</strong> 010-2481-9824
                                                 </p>
                                                 <p>
                                                     <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33

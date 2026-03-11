@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Image from "@/components/ImageFallback";
@@ -8,7 +8,10 @@ import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { type LoginModalPresetKey } from "@/constants/loginModalPresets";
-import BridgeModal, { checkAndClearOpenSubscriptionAfterLogin } from "@/components/BridgeModal";
+import BridgeModal, {
+    checkAndClearOpenSubscriptionAfterLogin,
+    setOpenSubscriptionAfterLogin,
+} from "@/components/BridgeModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -424,7 +427,9 @@ export default function CourseDetailClient({
     const [favoriteModalSlideUp, setFavoriteModalSlideUp] = useState(false);
     // 🟢 예약/네이버 지도 하단 시트 (아래에서 위로, 헤더 아래까지)
     const [showWebSheet, setShowWebSheet] = useState(false);
+    const [webSheetType, setWebSheetType] = useState<"reservation" | "directions">("reservation");
     const [webSheetUrl, setWebSheetUrl] = useState<string>("");
+    const [webSheetPlaceName, setWebSheetPlaceName] = useState<string>("");
     const [webSheetSlideUp, setWebSheetSlideUp] = useState(false);
     const [webSheetDragY, setWebSheetDragY] = useState(0);
     const webSheetDragStartY = useRef(0);
@@ -449,16 +454,35 @@ export default function CourseDetailClient({
         }
     }, [courseData.isLocked, isAuthenticated, authLoading]);
 
-    // 🟢 브릿지 모달 → 로그인 후 돌아왔을 때 구독 모달 자동 오픈
+    // 🟢 유료팁 CTA → 로그인 후 돌아왔을 때: FREE 등급만 결제 모달 오픈, BASIC/PREMIUM은 모달 안 띄움
     useEffect(() => {
         if (authLoading || !isAuthenticated) return;
-        if (checkAndClearOpenSubscriptionAfterLogin()) {
-            // BridgeModal은 팁 CTA에서만 표시됨 → TIPS 컨텍스트
-            setSubscriptionModalContext("TIPS");
-            setShowSubscriptionModal(true);
-            setShowLoginModal(false);
-            setShowBridgeModal(false);
-        }
+        if (!checkAndClearOpenSubscriptionAfterLogin()) return;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
+                const tier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
+                if (cancelled) return;
+                setShowLoginModal(false);
+                setShowBridgeModal(false);
+                // BASIC/PREMIUM 유저는 유료팁 접근 가능 → 결제 모달 불필요
+                if (tier === "BASIC" || tier === "PREMIUM") return;
+                setSubscriptionModalContext("TIPS");
+                setShowSubscriptionModal(true);
+            } catch {
+                if (cancelled) return;
+                setShowLoginModal(false);
+                setShowBridgeModal(false);
+                setSubscriptionModalContext("TIPS");
+                setShowSubscriptionModal(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
     }, [isAuthenticated, authLoading]);
 
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -475,7 +499,7 @@ export default function CourseDetailClient({
         createdAt: string;
     } | null>(null);
     const [selectionLoading, setSelectionLoading] = useState(false);
-    const [showSelectionUI, setShowSelectionUI] = useState(false); // "다시 고르기" 시 true
+    const [showSelectionUI, setShowSelectionUI] = useState(false); // "코스 수정" 시 true
     // 세그먼트별 선택된 place_id (선택 UI용)
     const [selectedBySegment, setSelectedBySegment] = useState<Record<string, number>>({});
     const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -536,6 +560,8 @@ export default function CourseDetailClient({
         setTimeout(() => {
             setShowWebSheet(false);
             setWebSheetUrl("");
+            setWebSheetType("reservation");
+            setWebSheetPlaceName("");
         }, 300);
     }, []);
 
@@ -631,7 +657,6 @@ export default function CourseDetailClient({
         });
         return () => cancelAnimationFrame(t);
     }, [showShareModal]);
-
 
     // 🟢 지도 모달 하단 시트: 열릴 때 slideUp 애니메이션 + 드래그 초기화
     useEffect(() => {
@@ -1030,7 +1055,8 @@ export default function CourseDetailClient({
 
     // 선택형 코스 선택 모드: 고정(녹색) + 선택된 후보(녹색) + 미선택 후보(흐린 회색), 같은 스텝은 동일 번호
     const selectionMapPlaces = useMemo(() => {
-        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0) return [];
+        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0)
+            return [];
         const result: (MapPlace & {
             markerVariant?: "confirmed" | "candidate-selected" | "candidate";
             segmentKey?: string;
@@ -1074,7 +1100,8 @@ export default function CourseDetailClient({
 
     // 선택 모드: 메인 경로(실선) = 고정 + 선택된 후보 순서
     const selectionPathPlaces = useMemo(() => {
-        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0) return [];
+        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0)
+            return [];
         const path: MapPlace[] = [];
         let orderIdx = 0;
         for (const step of selectionOrderedSteps) {
@@ -1110,9 +1137,41 @@ export default function CourseDetailClient({
         return path;
     }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
 
+    // 🟢 선택 모드: 비선택 장소 클릭 시 해당 장소 기준 경로 임시 표시 (경로↔모달 일치)
+    const effectivePathPlaces = useMemo(() => {
+        if (
+            !courseData?.isSelectionType ||
+            (mySelection && !showSelectionUI) ||
+            selectionPathPlaces.length === 0 ||
+            !modalSelectedPlace?.segmentKey
+        )
+            return selectionPathPlaces;
+        const inPath = selectionPathPlaces.some((p) => Number(p.id) === Number(modalSelectedPlace!.id));
+        if (inPath) return selectionPathPlaces;
+        const stepIdx = selectionOrderedSteps.findIndex(
+            (s) => s.type === "segment" && s.segment === (modalSelectedPlace as { segmentKey?: string }).segmentKey,
+        );
+        if (stepIdx < 0) return selectionPathPlaces;
+        const before = selectionPathPlaces.slice(0, stepIdx);
+        const after = selectionPathPlaces.slice(stepIdx + 1);
+        const replaced: MapPlace = {
+            ...modalSelectedPlace,
+            orderIndex: stepIdx,
+        };
+        return [...before, replaced, ...after];
+    }, [
+        courseData?.isSelectionType,
+        mySelection,
+        showSelectionUI,
+        selectionPathPlaces,
+        selectionOrderedSteps,
+        modalSelectedPlace,
+    ]);
+
     // 선택 모드: 미선택 후보 점선용 [{from: 이전스텝, to: 미선택후보}]
     const selectionDottedSegments = useMemo(() => {
-        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0) return [];
+        if (!courseData?.isSelectionType || (mySelection && !showSelectionUI) || selectionOrderedSteps.length === 0)
+            return [];
         const segments: { from: MapPlace; to: MapPlace }[] = [];
         let prevPlace: MapPlace | null = null;
         for (const step of selectionOrderedSteps) {
@@ -1668,25 +1727,40 @@ export default function CourseDetailClient({
                                     <div className="absolute left-5 top-4 bottom-0 w-[2px] border-l-2 border-dashed border-gray-200 dark:border-gray-700 z-0" />
                                 )}
                             <div className="space-y-8">
-                                {/* 선택형 코스: 첫 방문 또는 "다시 고르기" 시 고정 장소 + 세그먼트 선택 UI (order_index 순) */}
+                                {/* 선택형 코스: 첫 방문 또는 "코스 수정" 시 고정 장소 + 세그먼트 선택 UI (order_index 순) */}
                                 {courseData.isSelectionType &&
                                     selectionOrderedSteps.length > 0 &&
                                     (!mySelection || showSelectionUI) && (
                                         <div className="space-y-6 relative z-10">
                                             {selectionOrderedSteps.map((step, stepIdx) => {
-                                                const getPrevResolvedPlace = (): { lat: number; lng: number } | null => {
+                                                const getPrevResolvedPlace = (): {
+                                                    lat: number;
+                                                    lng: number;
+                                                } | null => {
                                                     for (let i = stepIdx - 1; i >= 0; i--) {
                                                         const s = selectionOrderedSteps[i];
                                                         if (s.type === "fixed")
-                                                            return s.coursePlace.place.latitude != null && s.coursePlace.place.longitude != null
-                                                                ? { lat: s.coursePlace.place.latitude, lng: s.coursePlace.place.longitude }
+                                                            return s.coursePlace.place.latitude != null &&
+                                                                s.coursePlace.place.longitude != null
+                                                                ? {
+                                                                      lat: s.coursePlace.place.latitude,
+                                                                      lng: s.coursePlace.place.longitude,
+                                                                  }
                                                                 : null;
                                                         if (s.type === "segment") {
                                                             const opt = s.options.find(
-                                                                (o) => Number(o.place_id) === Number(selectedBySegment[s.segment]),
+                                                                (o) =>
+                                                                    Number(o.place_id) ===
+                                                                    Number(selectedBySegment[s.segment]),
                                                             );
-                                                            if (opt?.place.latitude != null && opt.place.longitude != null)
-                                                                return { lat: opt.place.latitude, lng: opt.place.longitude };
+                                                            if (
+                                                                opt?.place.latitude != null &&
+                                                                opt.place.longitude != null
+                                                            )
+                                                                return {
+                                                                    lat: opt.place.latitude,
+                                                                    lng: opt.place.longitude,
+                                                                };
                                                         }
                                                     }
                                                     return null;
@@ -1695,7 +1769,7 @@ export default function CourseDetailClient({
                                                 if (step.type === "fixed") {
                                                     const coursePlace = step.coursePlace;
                                                     const isSelected = selectedPlace?.id === coursePlace.place.id;
-                                                    const circleBg = "bg-emerald-500";
+                                                    const circleBg = "bg-[#99c08e]";
                                                     const walkingMin =
                                                         prev &&
                                                         coursePlace.place.latitude != null &&
@@ -1722,7 +1796,9 @@ export default function CourseDetailClient({
                                                                     <div className="flex items-center gap-2 mb-2">
                                                                         <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
                                                                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0">
-                                                                            {t("courseDetail.walkingMinutes", { minutes: walkingMin })}
+                                                                            {t("courseDetail.walkingMinutes", {
+                                                                                minutes: walkingMin,
+                                                                            })}
                                                                         </span>
                                                                         <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
                                                                     </div>
@@ -1772,7 +1848,9 @@ export default function CourseDetailClient({
                                                 }
                                                 const { segment: seg, options } = step;
                                                 const selectedPlaceId = selectedBySegment[seg];
-                                                const selectedOpt = options.find((o) => Number(o.place_id) === Number(selectedPlaceId));
+                                                const selectedOpt = options.find(
+                                                    (o) => Number(o.place_id) === Number(selectedPlaceId),
+                                                );
                                                 const walkingMinSeg =
                                                     prev &&
                                                     selectedOpt?.place.latitude != null &&
@@ -1786,10 +1864,16 @@ export default function CourseDetailClient({
                                                         : null;
                                                 return (
                                                     <div key={`seg-${seg}`} className="mb-6 flex gap-4">
-                                                        <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                                                        <div className="shrink-0 w-10 h-10 rounded-full bg-[#99c08e] flex items-center justify-center text-white font-bold text-sm">
                                                             {stepIdx + 1}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                                                                {t("courseDetail.selectSegmentPrompt")}
+                                                            </p>
+                                                            <p className="text-base font-bold text-gray-900 dark:text-white mb-3">
+                                                                {t("courseDetail.whereDoYouWant")}
+                                                            </p>
                                                             {walkingMinSeg != null && (
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
@@ -1801,9 +1885,6 @@ export default function CourseDetailClient({
                                                                     <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
                                                                 </div>
                                                             )}
-                                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                                                오늘의 추천 중 하나를 선택하세요
-                                                            </p>
                                                             <HorizontalScrollContainer
                                                                 scrollMode="drag"
                                                                 className="flex gap-3 overflow-x-auto pt-2 pb-2 -mx-4 px-4 scroll-smooth snap-x snap-mandatory scrollbar-hide select-none"
@@ -1894,288 +1975,369 @@ export default function CourseDetailClient({
                                                         onClick={() => setShowSelectionUI(true)}
                                                         className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
                                                     >
-                                                        다시 고르기
+                                                        코스 수정
                                                     </button>
                                                 </div>
                                             )}
-                                            {displaySections.map((sec, secIdx) => (
-                                                <div key={`${sec.segmentKey}-${secIdx}`} className="mb-8">
-                                                    <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm mb-3">
-                                                        {secIdx + 1}
-                                                    </div>
-                                                    {sec.places.map((coursePlace: CoursePlace, idx: number) => {
-                                                        const isSelected = selectedPlace?.id === coursePlace.place.id;
-                                                        const prevPlace: CoursePlace | undefined =
-                                                            idx > 0
-                                                                ? sec.places[idx - 1]
-                                                                : secIdx > 0
-                                                                  ? displaySections[secIdx - 1].places[
-                                                                        displaySections[secIdx - 1].places.length - 1
-                                                                    ]
-                                                                  : undefined;
-                                                        const walkingMin =
-                                                            prevPlace && prevPlace.place.latitude != null && prevPlace.place.longitude != null
-                                                                ? getWalkingMinutes(
-                                                                      prevPlace.place.latitude,
-                                                                      prevPlace.place.longitude,
-                                                                      coursePlace.place.latitude ?? 0,
-                                                                      coursePlace.place.longitude ?? 0,
-                                                                  )
-                                                                : null;
-                                                        return (
-                                                            <div key={coursePlace.id} className="relative">
-                                                                {walkingMin != null && (
-                                                                    <div className="flex items-center gap-2 mt-2 mb-1 ml-0">
-                                                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
-                                                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0">
-                                                                            {t("courseDetail.walkingMinutes", { minutes: walkingMin })}
-                                                                        </span>
-                                                                        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
-                                                                    </div>
-                                                                )}
+                                            {displaySections.map((sec, secIdx) => {
+                                                const placeStartIndex = displaySections
+                                                    .slice(0, secIdx)
+                                                    .reduce((acc, s) => acc + s.places.length, 0);
+                                                return (
+                                                    <div key={`${sec.segmentKey}-${secIdx}`} className="mb-8">
+                                                        {sec.places.map((coursePlace: CoursePlace, idx: number) => {
+                                                            const placeNumber = placeStartIndex + idx + 1;
+                                                            const isSelected =
+                                                                selectedPlace?.id === coursePlace.place.id;
+                                                            const prevPlace: CoursePlace | undefined =
+                                                                idx > 0
+                                                                    ? sec.places[idx - 1]
+                                                                    : secIdx > 0
+                                                                      ? displaySections[secIdx - 1].places[
+                                                                            displaySections[secIdx - 1].places.length -
+                                                                                1
+                                                                        ]
+                                                                      : undefined;
+                                                            const walkingMin =
+                                                                prevPlace &&
+                                                                prevPlace.place.latitude != null &&
+                                                                prevPlace.place.longitude != null
+                                                                    ? getWalkingMinutes(
+                                                                          prevPlace.place.latitude,
+                                                                          prevPlace.place.longitude,
+                                                                          coursePlace.place.latitude ?? 0,
+                                                                          coursePlace.place.longitude ?? 0,
+                                                                      )
+                                                                    : null;
+                                                            return (
                                                                 <div
-                                                                    onClick={() => {
-                                                                        setSelectedPlace(coursePlace.place);
-                                                                        setShowPlaceModal(true);
-                                                                    }}
-                                                                    className={`relative ml-0 mt-3 bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-4 transition-all duration-300 border cursor-pointer ${
-                                                                        isSelected
-                                                                            ? "shadow-sm border-emerald-500 border-2 scale-[1.01]"
-                                                                            : "border-white/40 dark:border-gray-700/40 opacity-90 hover:opacity-100"
-                                                                    }`}
+                                                                    key={coursePlace.id}
+                                                                    className="relative flex gap-4 mb-6"
                                                                 >
-                                                                    <div className="flex gap-4">
-                                                                        <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                                                                            {coursePlace.place.imageUrl && (
-                                                                                <Image
-                                                                                    src={coursePlace.place.imageUrl}
-                                                                                    alt=""
-                                                                                    fill
-                                                                                    className="object-cover"
-                                                                                    loading="lazy"
-                                                                                    quality={60}
-                                                                                    sizes="96px"
-                                                                                    placeholder="blur"
-                                                                                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                                                                                    // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
-                                                                                />
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                                            <div className="flex items-center gap-2 mb-1">
-                                                                                <span className="text-[10px] font-bold text-gray-400 uppercase">
-                                                                                    {coursePlace.place.category}
+                                                                    <div className="shrink-0 w-10 h-10 rounded-full bg-[#99c08e] flex items-center justify-center text-white font-bold text-sm">
+                                                                        {placeNumber}
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        {walkingMin != null && (
+                                                                            <div className="flex items-center gap-2 mt-2 mb-1 ml-0">
+                                                                                <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
+                                                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium shrink-0">
+                                                                                    {t("courseDetail.walkingMinutes", {
+                                                                                        minutes: walkingMin,
+                                                                                    })}
                                                                                 </span>
-                                                                                {(() => {
-                                                                                    const status = getPlaceStatus(
-                                                                                        coursePlace.place
-                                                                                            .opening_hours ?? null,
-                                                                                        coursePlace.place.closed_days ??
-                                                                                            [],
-                                                                                    ).status;
-                                                                                    const statusStyles: Record<
-                                                                                        string,
-                                                                                        string
-                                                                                    > = {
-                                                                                        영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
-                                                                                        "곧 마감":
-                                                                                            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                        "곧 브레이크":
-                                                                                            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                        "브레이크 중":
-                                                                                            "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                        "오픈 준비중":
-                                                                                            "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-                                                                                        휴무: "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
-                                                                                        영업종료:
-                                                                                            "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
-                                                                                        "정보 없음":
-                                                                                            "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-                                                                                    };
-                                                                                    const statusKeyMap: Record<
-                                                                                        string,
-                                                                                        string
-                                                                                    > = {
-                                                                                        영업중: "courseDetail.placeStatusOpen",
-                                                                                        "곧 마감":
-                                                                                            "courseDetail.placeStatusClosingSoon",
-                                                                                        "곧 브레이크":
-                                                                                            "courseDetail.placeStatusBreakSoon",
-                                                                                        "브레이크 중":
-                                                                                            "courseDetail.placeStatusOnBreak",
-                                                                                        "오픈 준비중":
-                                                                                            "courseDetail.placeStatusOpeningSoon",
-                                                                                        휴무: "courseDetail.placeStatusClosed",
-                                                                                        영업종료:
-                                                                                            "courseDetail.placeStatusClosedToday",
-                                                                                        "정보 없음":
-                                                                                            "courseDetail.placeStatusNoInfo",
-                                                                                    };
-                                                                                    return (
-                                                                                        <span
-                                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
-                                                                                                statusStyles[status] ??
-                                                                                                statusStyles[
-                                                                                                    "정보 없음"
-                                                                                                ]
-                                                                                            }`}
-                                                                                        >
-                                                                                            {t(
-                                                                                                (statusKeyMap[status] ??
-                                                                                                    "courseDetail.placeStatusNoInfo") as "courseDetail.placeStatusOpen",
-                                                                                            )}
-                                                                                        </span>
-                                                                                    );
-                                                                                })()}
+                                                                                <div className="h-px flex-1 bg-gray-200 dark:bg-gray-600" />
                                                                             </div>
-                                                                            <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate mb-0.5">
-                                                                                {coursePlace.place.name}
-                                                                            </h4>
-                                                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">
-                                                                                {coursePlace.recommended_time ||
-                                                                                    coursePlace.place.address}
-                                                                            </p>
-                                                                            {/* 🟢 예약 버튼 - 하단 시트로 열기 (휴무일이면 "다른 날 예약하기") */}
-                                                                            {coursePlace.place.reservationUrl && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setWebSheetUrl(
-                                                                                            coursePlace.place
-                                                                                                .reservationUrl!,
-                                                                                        );
-                                                                                        setShowWebSheet(true);
-                                                                                    }}
-                                                                                    className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
-                                                                                >
-                                                                                    {getPlaceStatus(
+                                                                        )}
+                                                                        <div
+                                                                            onClick={() => {
+                                                                                setSelectedPlace(coursePlace.place);
+                                                                                setShowPlaceModal(true);
+                                                                            }}
+                                                                            className={`relative ml-0 mt-3 bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md rounded-xl p-4 transition-all duration-300 border cursor-pointer ${
+                                                                                isSelected
+                                                                                    ? "shadow-sm border-emerald-500 border-2 scale-[1.01]"
+                                                                                    : "border-white/40 dark:border-gray-700/40 opacity-90 hover:opacity-100"
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex gap-4">
+                                                                                <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                                                                                    {coursePlace.place.imageUrl && (
+                                                                                        <Image
+                                                                                            src={
+                                                                                                coursePlace.place
+                                                                                                    .imageUrl
+                                                                                            }
+                                                                                            alt=""
+                                                                                            fill
+                                                                                            className="object-cover"
+                                                                                            loading="lazy"
+                                                                                            quality={60}
+                                                                                            sizes="96px"
+                                                                                            placeholder="blur"
+                                                                                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                                                                            // 🟢 priority 제거: 작은 썸네일이므로 lazy 로딩
+                                                                                        />
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                                                                                            {coursePlace.place.category}
+                                                                                        </span>
+                                                                                        {(() => {
+                                                                                            const status =
+                                                                                                getPlaceStatus(
+                                                                                                    coursePlace.place
+                                                                                                        .opening_hours ??
+                                                                                                        null,
+                                                                                                    coursePlace.place
+                                                                                                        .closed_days ??
+                                                                                                        [],
+                                                                                                ).status;
+                                                                                            const statusStyles: Record<
+                                                                                                string,
+                                                                                                string
+                                                                                            > = {
+                                                                                                영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+                                                                                                "곧 마감":
+                                                                                                    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                                                "곧 브레이크":
+                                                                                                    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                                                "브레이크 중":
+                                                                                                    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                                                                                                "오픈 준비중":
+                                                                                                    "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+                                                                                                휴무: "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
+                                                                                                영업종료:
+                                                                                                    "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
+                                                                                                "정보 없음":
+                                                                                                    "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
+                                                                                            };
+                                                                                            const statusKeyMap: Record<
+                                                                                                string,
+                                                                                                string
+                                                                                            > = {
+                                                                                                영업중: "courseDetail.placeStatusOpen",
+                                                                                                "곧 마감":
+                                                                                                    "courseDetail.placeStatusClosingSoon",
+                                                                                                "곧 브레이크":
+                                                                                                    "courseDetail.placeStatusBreakSoon",
+                                                                                                "브레이크 중":
+                                                                                                    "courseDetail.placeStatusOnBreak",
+                                                                                                "오픈 준비중":
+                                                                                                    "courseDetail.placeStatusOpeningSoon",
+                                                                                                휴무: "courseDetail.placeStatusClosed",
+                                                                                                영업종료:
+                                                                                                    "courseDetail.placeStatusClosedToday",
+                                                                                                "정보 없음":
+                                                                                                    "courseDetail.placeStatusNoInfo",
+                                                                                            };
+                                                                                            return (
+                                                                                                <span
+                                                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
+                                                                                                        statusStyles[
+                                                                                                            status
+                                                                                                        ] ??
+                                                                                                        statusStyles[
+                                                                                                            "정보 없음"
+                                                                                                        ]
+                                                                                                    }`}
+                                                                                                >
+                                                                                                    {t(
+                                                                                                        (statusKeyMap[
+                                                                                                            status
+                                                                                                        ] ??
+                                                                                                            "courseDetail.placeStatusNoInfo") as "courseDetail.placeStatusOpen",
+                                                                                                    )}
+                                                                                                </span>
+                                                                                            );
+                                                                                        })()}
+                                                                                    </div>
+                                                                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate mb-0.5">
+                                                                                        {coursePlace.place.name}
+                                                                                    </h4>
+                                                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">
+                                                                                        {coursePlace.recommended_time ||
+                                                                                            coursePlace.place.address}
+                                                                                    </p>
+                                                                                    {/* 🟢 예약 버튼 - 하단 시트로 열기 (선택형 코스에서는 숨김) */}
+                                                                                    {!courseData?.isSelectionType &&
                                                                                         coursePlace.place
-                                                                                            .opening_hours ?? null,
-                                                                                        coursePlace.place.closed_days ??
-                                                                                            [],
-                                                                                    ).status === "휴무"
-                                                                                        ? t("courses.reserveInAdvance")
-                                                                                        : t("courses.reserve")}
-                                                                                </button>
-                                                                            )}
+                                                                                            .reservationUrl && (
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={(e) => {
+                                                                                                    e.stopPropagation();
+                                                                                                    const url =
+                                                                                                        coursePlace
+                                                                                                            .place
+                                                                                                            .reservationUrl!;
+                                                                                                    const isNaver =
+                                                                                                        /naver\.com|map\.naver|place\.naver/i.test(
+                                                                                                            url,
+                                                                                                        );
+                                                                                                    if (
+                                                                                                        !inApp &&
+                                                                                                        isNaver
+                                                                                                    ) {
+                                                                                                        window.open(
+                                                                                                            url,
+                                                                                                            "_blank",
+                                                                                                            "noopener,noreferrer",
+                                                                                                        );
+                                                                                                    } else {
+                                                                                                        setWebSheetType(
+                                                                                                            "reservation",
+                                                                                                        );
+                                                                                                        setWebSheetUrl(
+                                                                                                            url,
+                                                                                                        );
+                                                                                                        setShowWebSheet(
+                                                                                                            true,
+                                                                                                        );
+                                                                                                    }
+                                                                                                }}
+                                                                                                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
+                                                                                            >
+                                                                                                {getPlaceStatus(
+                                                                                                    coursePlace.place
+                                                                                                        .opening_hours ??
+                                                                                                        null,
+                                                                                                    coursePlace.place
+                                                                                                        .closed_days ??
+                                                                                                        [],
+                                                                                                ).status === "휴무"
+                                                                                                    ? t(
+                                                                                                          "courses.reserveInAdvance",
+                                                                                                      )
+                                                                                                    : t(
+                                                                                                          "courses.reserve",
+                                                                                                      )}
+                                                                                            </button>
+                                                                                        )}
+                                                                                </div>
+                                                                            </div>
+                                                                            {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
+                                                                            {(() => {
+                                                                                const courseGrade = (
+                                                                                    courseData.grade || "FREE"
+                                                                                ).toUpperCase();
+                                                                                const currentUserTier = (
+                                                                                    userTier || "FREE"
+                                                                                ).toUpperCase();
+                                                                                const shouldShowPaidTip = !(
+                                                                                    (courseGrade === "FREE" &&
+                                                                                        currentUserTier === "FREE") ||
+                                                                                    courseData.isLocked
+                                                                                );
+
+                                                                                const freeTips = parseTipsFromDb(
+                                                                                    coursePlace.coaching_tip_free,
+                                                                                );
+                                                                                const paidTips = parseTipsFromDb(
+                                                                                    coursePlace.coaching_tip,
+                                                                                );
+                                                                                const hasFreeTip = freeTips.length > 0;
+                                                                                const hasPaidTip =
+                                                                                    coursePlace.hasPaidTip ??
+                                                                                    paidTips.length > 0;
+
+                                                                                if (!hasFreeTip && !hasPaidTip)
+                                                                                    return null;
+
+                                                                                const getCategoryLabel = (
+                                                                                    cat: string,
+                                                                                ) =>
+                                                                                    FREE_TIP_CATEGORIES.find(
+                                                                                        (c) => c.value === cat,
+                                                                                    )?.label ??
+                                                                                    PAID_TIP_CATEGORIES.find(
+                                                                                        (c) => c.value === cat,
+                                                                                    )?.label ??
+                                                                                    t("courseDetail.etc");
+
+                                                                                const freeCategories = [
+                                                                                    ...new Set(
+                                                                                        freeTips.map((t) => t.category),
+                                                                                    ),
+                                                                                ];
+                                                                                const paidCategories = [
+                                                                                    ...new Set(
+                                                                                        paidTips.map((t) => t.category),
+                                                                                    ),
+                                                                                ];
+
+                                                                                return (
+                                                                                    <div className="mt-2 flex flex-col gap-1.5">
+                                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                                                                                            ✨{" "}
+                                                                                            {t("courseDetail.freeTips")}
+                                                                                        </span>
+                                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                                            {freeCategories.map(
+                                                                                                (cat) => (
+                                                                                                    <span
+                                                                                                        key={`free-${cat}`}
+                                                                                                        className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
+                                                                                                    >
+                                                                                                        <TipCategoryIcon
+                                                                                                            category={
+                                                                                                                cat
+                                                                                                            }
+                                                                                                            className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
+                                                                                                        />
+                                                                                                        {getCategoryLabel(
+                                                                                                            cat,
+                                                                                                        )}
+                                                                                                    </span>
+                                                                                                ),
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {hasPaidTip && (
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={(e) => {
+                                                                                                    e.stopPropagation();
+                                                                                                    if (
+                                                                                                        shouldShowPaidTip
+                                                                                                    ) {
+                                                                                                        setSelectedPlace(
+                                                                                                            coursePlace.place,
+                                                                                                        );
+                                                                                                        setShowPlaceModal(
+                                                                                                            true,
+                                                                                                        );
+                                                                                                    } else if (
+                                                                                                        isAuthenticated
+                                                                                                    ) {
+                                                                                                        setSubscriptionModalContext(
+                                                                                                            "TIPS",
+                                                                                                        );
+                                                                                                        setShowSubscriptionModal(
+                                                                                                            true,
+                                                                                                        );
+                                                                                                    } else {
+                                                                                                        setSubscriptionModalContext(
+                                                                                                            "TIPS",
+                                                                                                        );
+                                                                                                        setOpenSubscriptionAfterLogin();
+                                                                                                        setLoginModalPreset(
+                                                                                                            "courseDetail",
+                                                                                                        );
+                                                                                                        setShowLoginModal(
+                                                                                                            true,
+                                                                                                        );
+                                                                                                    }
+                                                                                                }}
+                                                                                                className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
+                                                                                            >
+                                                                                                <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-medium text-gray-800 dark:text-gray-100">
+                                                                                                    🔥 꼭 알아야 할 실패
+                                                                                                    방지 꿀팁
+                                                                                                </div>
+                                                                                                <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
+                                                                                                    {
+                                                                                                        getPremiumQuestions(
+                                                                                                            coursePlace
+                                                                                                                .place
+                                                                                                                ?.category,
+                                                                                                        ).headline
+                                                                                                    }
+                                                                                                </p>
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })()}
                                                                         </div>
                                                                     </div>
-                                                                    {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
-                                                                    {(() => {
-                                                                        const courseGrade = (
-                                                                            courseData.grade || "FREE"
-                                                                        ).toUpperCase();
-                                                                        const currentUserTier = (
-                                                                            userTier || "FREE"
-                                                                        ).toUpperCase();
-                                                                        const shouldShowPaidTip = !(
-                                                                            (courseGrade === "FREE" &&
-                                                                                currentUserTier === "FREE") ||
-                                                                            courseData.isLocked
-                                                                        );
-
-                                                                        const freeTips = parseTipsFromDb(
-                                                                            coursePlace.coaching_tip_free,
-                                                                        );
-                                                                        const paidTips = parseTipsFromDb(
-                                                                            coursePlace.coaching_tip,
-                                                                        );
-                                                                        const hasFreeTip = freeTips.length > 0;
-                                                                        const hasPaidTip =
-                                                                            coursePlace.hasPaidTip ??
-                                                                            paidTips.length > 0;
-
-                                                                        if (!hasFreeTip && !hasPaidTip) return null;
-
-                                                                        const getCategoryLabel = (cat: string) =>
-                                                                            FREE_TIP_CATEGORIES.find(
-                                                                                (c) => c.value === cat,
-                                                                            )?.label ??
-                                                                            PAID_TIP_CATEGORIES.find(
-                                                                                (c) => c.value === cat,
-                                                                            )?.label ??
-                                                                            t("courseDetail.etc");
-
-                                                                        const freeCategories = [
-                                                                            ...new Set(freeTips.map((t) => t.category)),
-                                                                        ];
-                                                                        const paidCategories = [
-                                                                            ...new Set(paidTips.map((t) => t.category)),
-                                                                        ];
-
-                                                                        return (
-                                                                            <div className="mt-2 flex flex-col gap-1.5">
-                                                                                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                                                                                    ✨ {t("courseDetail.freeTips")}
-                                                                                </span>
-                                                                                <div className="flex flex-wrap gap-1.5">
-                                                                                    {freeCategories.map((cat) => (
-                                                                                        <span
-                                                                                            key={`free-${cat}`}
-                                                                                            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
-                                                                                        >
-                                                                                            <TipCategoryIcon
-                                                                                                category={cat}
-                                                                                                className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
-                                                                                            />
-                                                                                            {getCategoryLabel(cat)}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                                {hasPaidTip && (
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            if (shouldShowPaidTip) {
-                                                                                                setSelectedPlace(
-                                                                                                    coursePlace.place,
-                                                                                                );
-                                                                                                setShowPlaceModal(true);
-                                                                                            } else if (
-                                                                                                isAuthenticated
-                                                                                            ) {
-                                                                                                setSubscriptionModalContext(
-                                                                                                    "TIPS",
-                                                                                                );
-                                                                                                setShowSubscriptionModal(
-                                                                                                    true,
-                                                                                                );
-                                                                                            } else {
-                                                                                                setSubscriptionModalContext(
-                                                                                                    "TIPS",
-                                                                                                );
-                                                                                                setShowBridgeModal(
-                                                                                                    true,
-                                                                                                );
-                                                                                            }
-                                                                                        }}
-                                                                                        className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
-                                                                                    >
-                                                                                        <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-medium text-gray-800 dark:text-gray-100">
-                                                                                            🔥 꼭 알아야 할 실패 방지
-                                                                                            꿀팁
-                                                                                        </div>
-                                                                                        <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
-                                                                                            {
-                                                                                                getPremiumQuestions(
-                                                                                                    coursePlace.place
-                                                                                                        ?.category,
-                                                                                                ).headline
-                                                                                            }
-                                                                                        </p>
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-                                                                        );
-                                                                    })()}
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ))}
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })}
                                         </>
                                     )}
                             </div>
@@ -2315,7 +2477,7 @@ export default function CourseDetailClient({
                                         disabled={selectionLoading}
                                         className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center disabled:opacity-60"
                                     >
-                                        {selectionLoading ? "저장 중..." : "이 코스로 저장"}
+                                        {selectionLoading ? "확정 중..." : "이 코스로 확정"}
                                     </button>
                                 </TapFeedback>
                             ) : activeCourse && activeCourse.courseId === Number(courseId) ? (
@@ -2542,7 +2704,7 @@ export default function CourseDetailClient({
                                     setShowFullMapModal(true);
                                 }}
                                 aria-label={t("courseDetail.mapView")}
-                                className="flex items-center justify-center w-12 h-12 rounded-full bg-[#99c08e] hover:bg-[#85ad78] dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-lg text-white font-bold text-sm transition-all duration-200 ease-out hover:scale-105 active:scale-95"
+                                className="flex items-center justify-center w-12 h-12 rounded-full bg-[#99c08e] hover:bg-[#85ad78] shadow-lg text-white font-bold text-sm transition-all duration-200 ease-out hover:scale-105 active:scale-95"
                             >
                                 <Icons.Map className="w-6 h-6 text-white" />
                             </button>
@@ -2577,36 +2739,114 @@ export default function CourseDetailClient({
                                         >
                                             <span className="w-12 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
                                         </div>
+                                        {/* 🟢 상단 1 → 2 → 3 순번: 클릭 시 해당 핀 정보 표시 */}
+                                        {(() => {
+                                            const pathPlacesForBar =
+                                                courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                    ? effectivePathPlaces
+                                                    : mapPlaces;
+                                            const stepCount = pathPlacesForBar.length;
+                                            if (stepCount === 0) return null;
+                                            return (
+                                                <div className="flex items-center justify-center gap-1.5 shrink-0 py-2 border-b border-gray-100 dark:border-gray-800">
+                                                    {Array.from({ length: stepCount }, (_, i) => {
+                                                        const place = pathPlacesForBar[i];
+                                                        const isSelected = modalSelectedPlace?.id === place?.id;
+                                                        return (
+                                                            <React.Fragment key={i}>
+                                                                {i > 0 && (
+                                                                    <span className="text-gray-400 dark:text-gray-500 font-bold">
+                                                                        →
+                                                                    </span>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        place && setModalSelectedPlace(place)
+                                                                    }
+                                                                    className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm transition-all ${
+                                                                        isSelected
+                                                                            ? "bg-[#5347AA] text-white ring-2 ring-[#5347AA] ring-offset-2"
+                                                                            : "bg-[#99c08e] text-white hover:opacity-90"
+                                                                    }`}
+                                                                >
+                                                                    {i + 1}
+                                                                </button>
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
+                                        })()}
                                         {/* 🟢 [Fix]: 지도 보기 모달에서도 지도가 제대로 표시되도록 키 추가 */}
                                         <div className="flex-1 min-h-0 relative">
                                             <NaverMap
-                                                key={`full-map-modal-${(!mySelection || showSelectionUI) ? "select" : "path"}`}
-                                                places={
-                                                    courseData?.isSelectionType && (!mySelection || showSelectionUI)
-                                                        ? selectionMapPlaces
-                                                        : mapPlaces
-                                                }
-                                                pathPlaces={
-                                                    courseData?.isSelectionType && (!mySelection || showSelectionUI)
-                                                        ? selectionPathPlaces.length > 0
-                                                            ? selectionPathPlaces
-                                                            : undefined
-                                                        : mapPlaces.length > 0
-                                                          ? mapPlaces
-                                                          : undefined
-                                                }
+                                                key={`full-map-modal-${!mySelection || showSelectionUI ? "select" : "path"}-${modalSelectedPlace?.id ?? "none"}`}
+                                                places={(() => {
+                                                    const allPlaces =
+                                                        courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                            ? selectionMapPlaces
+                                                            : mapPlaces;
+                                                    const fullPath =
+                                                        courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                            ? effectivePathPlaces
+                                                            : mapPlaces;
+                                                    if (!modalSelectedPlace || fullPath.length === 0) return allPlaces;
+                                                    const idx = fullPath.findIndex(
+                                                        (p) => p.id === modalSelectedPlace.id,
+                                                    );
+                                                    const orderIdx =
+                                                        idx >= 0
+                                                            ? idx
+                                                            : ((modalSelectedPlace as { orderIndex?: number })
+                                                                  .orderIndex ?? 0);
+                                                    if (orderIdx <= 0) return allPlaces;
+                                                    const minOrd = orderIdx - 1;
+                                                    const maxOrd = orderIdx;
+                                                    return allPlaces.filter((p) => {
+                                                        const ord =
+                                                            p.orderIndex ??
+                                                            (p as { order_index?: number }).order_index ??
+                                                            0;
+                                                        return ord >= minOrd && ord <= maxOrd;
+                                                    });
+                                                })()}
+                                                pathPlaces={(() => {
+                                                    const fullPath =
+                                                        courseData?.isSelectionType && (!mySelection || showSelectionUI)
+                                                            ? effectivePathPlaces
+                                                            : mapPlaces;
+                                                    if (!modalSelectedPlace) {
+                                                        return fullPath.length > 0 ? fullPath : undefined;
+                                                    }
+                                                    const idx = fullPath.findIndex(
+                                                        (p) => p.id === modalSelectedPlace.id,
+                                                    );
+                                                    const orderIdx =
+                                                        idx >= 0
+                                                            ? idx
+                                                            : ((modalSelectedPlace as { orderIndex?: number })
+                                                                  .orderIndex ?? 0);
+                                                    if (orderIdx <= 0)
+                                                        return fullPath.length > 0 ? fullPath : undefined;
+                                                    if (fullPath.length < 2) return undefined;
+                                                    return [fullPath[orderIdx - 1], fullPath[orderIdx]];
+                                                })()}
                                                 dottedPathSegments={
                                                     courseData?.isSelectionType && (!mySelection || showSelectionUI)
                                                         ? selectionDottedSegments
                                                         : undefined
                                                 }
                                                 userLocation={null}
-                                                selectedPlace={null}
+                                                selectedPlace={modalSelectedPlace}
                                                 onPlaceClick={handleMapPlaceClick}
+                                                onMapClick={() => setModalSelectedPlace(null)}
                                                 drawPath={
-                                                    (courseData?.isSelectionType && (!mySelection || showSelectionUI) &&
+                                                    (courseData?.isSelectionType &&
+                                                        (!mySelection || showSelectionUI) &&
                                                         selectionPathPlaces.length > 0) ||
-                                                    ((mySelection || !courseData?.isSelectionType) && displayCoursePlaces.length > 0)
+                                                    ((mySelection || !courseData?.isSelectionType) &&
+                                                        displayCoursePlaces.length > 0)
                                                 }
                                                 pathStraightOnly={false}
                                                 numberedMarkers={true}
@@ -2616,8 +2856,8 @@ export default function CourseDetailClient({
                                             />
                                         </div>
                                         {modalSelectedPlace ? (
-                                            <div className="absolute bottom-0 w-full bg-white dark:bg-[#1a241b] p-5 border-t-4 border-emerald-500 rounded-t-lg shadow-2xl z-20">
-                                                <div className="flex gap-4 items-center mb-4">
+                                            <div className="absolute bottom-0 w-full bg-white dark:bg-[#1a241b] p-5 border-t-4 border-[#99c08e] rounded-t-lg shadow-2xl z-20">
+                                                <div className="flex gap-4 items-center mb-3">
                                                     <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative shrink-0">
                                                         {modalSelectedPlace.imageUrl && (
                                                             <Image
@@ -2636,7 +2876,73 @@ export default function CourseDetailClient({
                                                         <h4 className="font-bold text-gray-900 dark:text-white">
                                                             {modalSelectedPlace.name}
                                                         </h4>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                                        {/* 🟢 2→3 도보 20분: 크고 진하게, 거리 위로, 주소 아래로 */}
+                                                        {(() => {
+                                                            const pathPlaces =
+                                                                courseData?.isSelectionType &&
+                                                                (!mySelection || showSelectionUI)
+                                                                    ? effectivePathPlaces
+                                                                    : mapPlaces;
+                                                            const idxById = pathPlaces.findIndex(
+                                                                (p) => p.id === modalSelectedPlace.id,
+                                                            );
+                                                            const orderIdx =
+                                                                idxById >= 0
+                                                                    ? idxById
+                                                                    : ((modalSelectedPlace as { orderIndex?: number })
+                                                                          .orderIndex ?? 0);
+                                                            const prevPlace =
+                                                                orderIdx > 0 &&
+                                                                pathPlaces[orderIdx - 1]?.latitude != null &&
+                                                                pathPlaces[orderIdx - 1]?.longitude != null
+                                                                    ? pathPlaces[orderIdx - 1]
+                                                                    : null;
+                                                            const walkingMin =
+                                                                prevPlace &&
+                                                                modalSelectedPlace.latitude != null &&
+                                                                modalSelectedPlace.longitude != null
+                                                                    ? getWalkingMinutes(
+                                                                          prevPlace.latitude,
+                                                                          prevPlace.longitude,
+                                                                          modalSelectedPlace.latitude,
+                                                                          modalSelectedPlace.longitude,
+                                                                      )
+                                                                    : null;
+                                                            const getPlaceLabel = (p: typeof modalSelectedPlace) => {
+                                                                const ord =
+                                                                    p.orderIndex ??
+                                                                    (p as { order_index?: number }).order_index ??
+                                                                    0;
+                                                                const base = ord + 1;
+                                                                return (p as { markerVariant?: string })
+                                                                    .markerVariant === "candidate"
+                                                                    ? `${base}B`
+                                                                    : String(base);
+                                                            };
+                                                            return walkingMin != null ? (
+                                                                <div className="mt-2 inline-block rounded-lg bg-gray-100 dark:bg-gray-800/80 px-2.5 py-1">
+                                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                                                        ⏱️
+                                                                        {" "}
+                                                                        {prevPlace
+                                                                            ? t(
+                                                                                  "courseDetail.walkingMinutesWithRoute",
+                                                                                  {
+                                                                                      prev: getPlaceLabel(prevPlace),
+                                                                                      curr: getPlaceLabel(
+                                                                                          modalSelectedPlace,
+                                                                                      ),
+                                                                                      minutes: walkingMin,
+                                                                                  },
+                                                                              )
+                                                                            : t("courseDetail.walkingMinutes", {
+                                                                                  minutes: walkingMin,
+                                                                              })}
+                                                                    </p>
+                                                                </div>
+                                                            ) : null;
+                                                        })()}
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">
                                                             {modalSelectedPlace.address}
                                                         </p>
                                                     </div>
@@ -2648,57 +2954,93 @@ export default function CourseDetailClient({
                                                     </button>
                                                 </div>
                                                 <div className="flex flex-col gap-2">
-                                                    {/* 🟢 예약 버튼 추가 (휴무일이면 "다른 날 예약하기") */}
-                                                    {(() => {
-                                                        const fullPlace = sortedCoursePlaces.find(
-                                                            (c) => c.place.id === modalSelectedPlace.id,
-                                                        )?.place;
-                                                        const isClosedToday =
-                                                            fullPlace &&
-                                                            getPlaceStatus(
-                                                                fullPlace.opening_hours ?? null,
-                                                                fullPlace.closed_days ?? [],
-                                                            ).status === "휴무";
-                                                        return fullPlace?.reservationUrl ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setWebSheetUrl(fullPlace.reservationUrl!);
-                                                                    setShowWebSheet(true);
-                                                                }}
-                                                                className="w-full py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                                                            >
-                                                                <Icons.ExternalLink className="w-4 h-4" />
-                                                                {isClosedToday
-                                                                    ? t("courses.reserveOtherDay")
-                                                                    : t("courses.reserve")}
-                                                            </button>
-                                                        ) : null;
-                                                    })()}
+                                                    {/* 🟢 길찾기: 웹=네이버 지도 웹(현재위치→장소), 앱=하단 시트→네이버 지도 앱 */}
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            const q = encodeURIComponent(modalSelectedPlace.name);
-                                                            const url = `https://map.naver.com/v5/search/${q}?c=${modalSelectedPlace.longitude},${modalSelectedPlace.latitude},15,0,0,0,dh`;
-                                                            setWebSheetUrl(url);
-                                                            setShowWebSheet(true);
+                                                            const dname = modalSelectedPlace.name;
+                                                            const dlat = modalSelectedPlace.latitude ?? 0;
+                                                            const dlng = modalSelectedPlace.longitude ?? 0;
+                                                            const destination =
+                                                                dname ||
+                                                                (modalSelectedPlace as { address?: string }).address ||
+                                                                "목적지";
+                                                            if (Number.isNaN(dlat) || Number.isNaN(dlng)) {
+                                                                showToast(
+                                                                    t("courseDetail.errorRetry") ||
+                                                                        "위치 정보가 없어요.",
+                                                                    "error",
+                                                                );
+                                                                return;
+                                                            }
+                                                            const appname = encodeURIComponent(
+                                                                typeof window !== "undefined"
+                                                                    ? window.location.origin
+                                                                    : "donacourse.com",
+                                                            );
+                                                            const searchOnlyUrl = `https://map.naver.com/p/search/${encodeURIComponent(destination)}`;
+                                                            const openWebDirections = () => {
+                                                                if (!navigator.geolocation) {
+                                                                    window.open(
+                                                                        searchOnlyUrl,
+                                                                        "_blank",
+                                                                        "noopener,noreferrer",
+                                                                    );
+                                                                    return;
+                                                                }
+                                                                navigator.geolocation.getCurrentPosition(
+                                                                    (pos) => {
+                                                                        const slng = pos.coords.longitude;
+                                                                        const slat = pos.coords.latitude;
+                                                                        const directionsUrl = `https://map.naver.com/index.nhn?slng=${slng}&slat=${slat}&stext=${encodeURIComponent("현재 위치")}&elng=${dlng}&elat=${dlat}&etext=${encodeURIComponent(destination)}&menu=route`;
+                                                                        window.open(
+                                                                            directionsUrl,
+                                                                            "_blank",
+                                                                            "noopener,noreferrer",
+                                                                        );
+                                                                    },
+                                                                    () =>
+                                                                        window.open(
+                                                                            searchOnlyUrl,
+                                                                            "_blank",
+                                                                            "noopener,noreferrer",
+                                                                        ),
+                                                                    {
+                                                                        enableHighAccuracy: false,
+                                                                        timeout: 8000,
+                                                                        maximumAge: 60000,
+                                                                    },
+                                                                );
+                                                            };
+                                                            if (inApp) {
+                                                                const nmapUrl = `nmap://route/public?dlat=${dlat}&dlng=${dlng}&dname=${encodeURIComponent(destination)}&appname=${appname}`;
+                                                                setWebSheetType("directions");
+                                                                setWebSheetUrl(nmapUrl);
+                                                                setWebSheetPlaceName(destination);
+                                                                setShowWebSheet(true);
+                                                            } else {
+                                                                openWebDirections();
+                                                            }
                                                         }}
-                                                        className="w-full py-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-bold text-xs hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-600 mb-2"
+                                                        className="w-full py-2.5 rounded-lg bg-gray-400 text-white font-bold text-xs hover:bg-gray-500 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                                                     >
-                                                        네이버 지도
+                                                        <Icons.Map className="w-4 h-4" />
+                                                        {t("courseDetail.navigation")}
                                                     </button>
                                                     <div className="flex gap-2">
                                                         {(modalSelectedPlace as { segmentKey?: string })?.segmentKey ? (
                                                             <button
                                                                 onClick={() => {
-                                                                    const seg = (modalSelectedPlace as { segmentKey?: string }).segmentKey!;
+                                                                    const seg = (
+                                                                        modalSelectedPlace as { segmentKey?: string }
+                                                                    ).segmentKey!;
                                                                     setSelectedBySegment((prev) => ({
                                                                         ...prev,
                                                                         [seg]: modalSelectedPlace.id,
                                                                     }));
                                                                     setModalSelectedPlace(null);
                                                                 }}
-                                                                className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all"
+                                                                className="flex-1 py-2.5 rounded-lg bg-[#99c08e] text-white font-bold text-xs hover:bg-[#85ad78] active:scale-95 transition-all"
                                                             >
                                                                 {t("courseDetail.selectPlace")}
                                                             </button>
@@ -2708,24 +3050,56 @@ export default function CourseDetailClient({
                                                                 const cp = sortedCoursePlaces.find(
                                                                     (c) => c.place.id === modalSelectedPlace.id,
                                                                 );
-                                                                setShowFullMapModalSlideUp(false);
-                                                                setFullMapModalDragY(0);
-                                                                setTimeout(() => {
-                                                                    setShowFullMapModal(false);
-                                                                    setModalSelectedPlace(null);
-                                                                    if (cp) handleTimelinePlaceClick(cp);
-                                                                }, 300);
+                                                                if (cp) {
+                                                                    setSelectedPlace(cp.place);
+                                                                    setShowPlaceModal(true);
+                                                                }
                                                             }}
                                                             className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white font-bold text-xs active:scale-95 transition-all"
                                                         >
                                                             상세보기
                                                         </button>
-                                                        <button
-                                                            onClick={() => setModalSelectedPlace(null)}
-                                                            className="py-2.5 px-4 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold active:scale-95 transition-all"
-                                                        >
-                                                            닫기
-                                                        </button>
+                                                        {(() => {
+                                                            const fullPlace = sortedCoursePlaces.find(
+                                                                (c) => c.place.id === modalSelectedPlace.id,
+                                                            )?.place;
+                                                            const isClosedToday =
+                                                                fullPlace &&
+                                                                getPlaceStatus(
+                                                                    fullPlace.opening_hours ?? null,
+                                                                    fullPlace.closed_days ?? [],
+                                                                ).status === "휴무";
+                                                            return !courseData?.isSelectionType &&
+                                                                fullPlace?.reservationUrl ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const url = fullPlace.reservationUrl!;
+                                                                        const isNaver =
+                                                                            /naver\.com|map\.naver|place\.naver/i.test(
+                                                                                url,
+                                                                            );
+                                                                        if (!inApp && isNaver) {
+                                                                            window.open(
+                                                                                url,
+                                                                                "_blank",
+                                                                                "noopener,noreferrer",
+                                                                            );
+                                                                        } else {
+                                                                            setWebSheetType("reservation");
+                                                                            setWebSheetUrl(url);
+                                                                            setShowWebSheet(true);
+                                                                        }
+                                                                    }}
+                                                                    className="flex-1 py-2.5 rounded-lg bg-gray-400 text-white font-bold text-xs hover:bg-gray-500 active:scale-95 transition-all flex items-center justify-center gap-1"
+                                                                >
+                                                                    <Icons.ExternalLink className="w-3.5 h-3.5" />
+                                                                    {isClosedToday
+                                                                        ? t("courses.reserveOtherDay")
+                                                                        : t("courses.reserve")}
+                                                                </button>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3075,13 +3449,20 @@ export default function CourseDetailClient({
                                             );
                                         })()}
                                         <div className="flex flex-col gap-2">
-                                            {/* 🟢 예약하기: 하단 시트로 열기 (휴무일이면 "다른 날 예약하기") */}
-                                            {selectedPlace.reservationUrl && (
+                                            {/* 🟢 예약하기: 하단 시트로 열기 (선택형 코스에서는 숨김) */}
+                                            {!courseData?.isSelectionType && selectedPlace.reservationUrl && (
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        setWebSheetUrl(selectedPlace.reservationUrl!);
-                                                        setShowWebSheet(true);
+                                                        const url = selectedPlace.reservationUrl!;
+                                                        const isNaver = /naver\.com|map\.naver|place\.naver/i.test(url);
+                                                        if (!inApp && isNaver) {
+                                                            window.open(url, "_blank", "noopener,noreferrer");
+                                                        } else {
+                                                            setWebSheetType("reservation");
+                                                            setWebSheetUrl(url);
+                                                            setShowWebSheet(true);
+                                                        }
                                                     }}
                                                     className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                                 >
@@ -3216,7 +3597,9 @@ export default function CourseDetailClient({
                                                             setShowSubscriptionModal(true);
                                                         } else {
                                                             setSubscriptionModalContext("TIPS");
-                                                            setShowBridgeModal(true);
+                                                            setOpenSubscriptionAfterLogin();
+                                                            setLoginModalPreset("courseDetail");
+                                                            setShowLoginModal(true);
                                                         }
                                                     }}
                                                     className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
@@ -3244,9 +3627,10 @@ export default function CourseDetailClient({
 
             {/* 🟢 예약하기 / 네이버 지도 바텀 시트 (헤더 아래~하단 전체, 핸들바만) - 웹 폰 목업에서는 폰 안으로 */}
             {showWebSheet &&
-                webSheetUrl &&
+                (webSheetUrl || webSheetType === "directions") &&
                 (() => {
                     const posClass = containInPhone && !inApp ? "absolute" : "fixed";
+                    const isDirections = webSheetType === "directions";
                     const modalContent = (
                         <>
                             <div
@@ -3275,12 +3659,57 @@ export default function CourseDetailClient({
                                     >
                                         <span className="w-12 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
                                     </div>
-                                    <iframe
-                                        src={webSheetUrl}
-                                        title="예약 / 지도"
-                                        className="flex-1 w-full min-h-0 border-0"
-                                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-                                    />
+                                    {isDirections ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
+                                            <p className="text-base font-medium text-gray-800 dark:text-gray-100 mb-1">
+                                                네이버 지도로 길찾기
+                                            </p>
+                                            {webSheetPlaceName && (
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                                    {webSheetPlaceName}
+                                                </p>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (webSheetUrl) window.location.href = webSheetUrl;
+                                                }}
+                                                className="w-full max-w-[280px] py-3 rounded-xl bg-[#03C75A] text-white font-bold text-base hover:bg-[#02b351] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Icons.Map className="w-5 h-5" />
+                                                네이버 지도 앱으로 열기
+                                            </button>
+                                        </div>
+                                    ) : /naver\.com|map\.naver|place\.naver/i.test(webSheetUrl || "") ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
+                                            <p className="text-base font-medium text-gray-800 dark:text-gray-100 mb-1">
+                                                네이버 예약 페이지
+                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                                                네이버 예약은 앱 내부에서 표시할 수 없어요.
+                                                <br />
+                                                외부 브라우저에서 열어주세요.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (webSheetUrl)
+                                                        window.open(webSheetUrl, "_blank", "noopener,noreferrer");
+                                                }}
+                                                className="w-full max-w-[280px] py-3 rounded-xl bg-[#03C75A] text-white font-bold text-base hover:bg-[#02b351] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Icons.ExternalLink className="w-5 h-5" />
+                                                예약 페이지 열기
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <iframe
+                                            src={webSheetUrl}
+                                            title="예약 / 지도"
+                                            className="flex-1 w-full min-h-0 border-0"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </>

@@ -1,5 +1,5 @@
 export default function DataDeletionPage() {
-    const CONTACT_EMAIL = "12jason@donacourse.com";
+    const CONTACT_EMAIL = "12jason@donacouse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
             <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">

@@ -419,7 +419,7 @@ export default function CourseSharePreviewClient({
                                         onClick={() => setSelectedPlace(cp.place)}
                                         className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
                                     >
-                                        <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                                        <div className="shrink-0 w-10 h-10 rounded-full bg-[#85ad78] flex items-center justify-center text-white font-bold text-sm">
                                             {stepIdx + 1}
                                         </div>
                                         <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
@@ -470,12 +470,12 @@ export default function CourseSharePreviewClient({
                                         }}
                                         className={`flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border cursor-pointer transition-colors ${
                                             isSelected
-                                                ? "border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/30"
+                                                ? "border-[#85ad78] dark:border-[#85ad78] ring-2 ring-[#85ad78]/30"
                                                 : "border-gray-100 dark:border-gray-800"
                                         }`}
                                     >
                                         <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                                            isSelected ? "bg-emerald-500 text-white" : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                                            isSelected ? "bg-[#85ad78] text-white" : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                                         }`}>
                                             {isSelected ? "✓" : "?"}
                                         </div>
@@ -538,7 +538,7 @@ export default function CourseSharePreviewClient({
                                     onClick={() => setSelectedPlace(cp.place)}
                                     className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer"
                                 >
-                                    <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                                    <div className="shrink-0 w-10 h-10 rounded-full bg-[#85ad78] flex items-center justify-center text-white font-bold text-sm">
                                         {idx + 1}
                                     </div>
                                     <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
@@ -581,7 +581,7 @@ export default function CourseSharePreviewClient({
                 <button
                     type="button"
                     onClick={handleOpenInApp}
-                    className="flex-1 py-3 px-4 rounded-lg bg-emerald-500 text-white font-bold"
+                    className="flex-1 py-3 px-4 rounded-lg bg-[#85ad78] text-white font-bold"
                 >
                     앱에서 보기
                 </button>
@@ -689,7 +689,7 @@ export default function CourseSharePreviewClient({
                                 href={isIOS() ? APP_STORE_URL : PLAY_STORE_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 py-3 px-4 rounded-lg bg-emerald-500 text-white font-bold text-center text-sm hover:bg-emerald-600 transition-colors"
+                                className="flex-1 py-3 px-4 rounded-lg bg-[#85ad78] text-white font-bold text-center text-sm"
                             >
                                 {t("sharePreview.downloadApp")}
                             </a>
@@ -802,7 +802,7 @@ export default function CourseSharePreviewClient({
                                             href={selectedPlace.reservationUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+                                            className="w-full py-3 rounded-lg bg-[#85ad78] text-white font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
                                         >
                                             <Icons.ExternalLink className="w-4 h-4" />
                                             {getPlaceStatus(

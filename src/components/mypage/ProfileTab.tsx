@@ -312,7 +312,7 @@ const ProfileTab = ({
 
     return (
         <React.Fragment>
-            <div className="space-y-6 max-w-4xl mx-auto pb-28 lg:pb-32">
+            <div className="space-y-6 max-w-4xl mx-auto pb-10">
                 {/* ======================================================================
           1. 기본 정보 카드 (Profile Card)
       ====================================================================== */}
@@ -878,8 +878,8 @@ const ProfileTab = ({
                             <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
                             <p>통신판매업 신고번호: 제 2025-충남홍성-0193 호</p>
                             <p>주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                            <p>고객센터: 12jason@donacourse.com</p>
-                            <p>유선번호: 010-2271-9824</p>
+                            <p>문의: 12jason@donacouse.com</p>
+                            <p>고객센터: 010-2481-9824</p>
                         </div>
                         {/* 서비스 소개, 이용 안내, 개인정보처리방침, 이용약관 */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2">

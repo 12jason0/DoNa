@@ -46,7 +46,9 @@
         "memoryFallback": "오늘의 순간",
         "memoryImageAlt": "추억 이미지",
         "memoryPhotoAlt": "추억 사진 {n}",
-        "dayOfWeek": ["일", "월", "화", "수", "목", "금", "토"]
+        "dayOfWeek": ["일", "월", "화", "수", "목", "금", "토"],
+        "personalizedHomeCta": "이번 주말·기념일 코스",
+        "personalizedHomeCtaSub": "상황에 맞는 데이트 코스를 만들어드려요"
     },
     "memory": {
         "notLoggedIn": {
@@ -67,10 +69,10 @@
         "viewAll": "전체보기"
     },
     "personalized": {
-        "todayPick": "오늘의 선택",
-        "loginHint": "로그인하면 내 취향 기준으로 추천돼요",
-        "howRecommended": "이런 방식으로 추천돼요",
-        "viewCourse": "코스 구경하기",
+        "todayPick": "오늘 어디 가지?",
+        "loginHint": "오늘 데이트, 이 코스 어떠세요?",
+        "howRecommended": "미리 보는 DoNa의 0티어 데이트 코스",
+        "viewCourse": "이 코스 보기",
         "viewMore": "다른 선택도 함께 볼래요",
         "today": "오늘",
         "weekend": "주말",
@@ -345,7 +347,13 @@
         "copyLink": "링크 복사",
         "memoryRecordCta": "오늘의 순간 기록하기",
         "walkingMinutes": "도보 약 {minutes}분",
-        "selectPlace": "선택하기"
+        "walkingMinutesWithRoute": "{prev}→{curr} 도보 {minutes}분",
+        "selectPlace": "이 장소로 변경",
+        "selectSegmentPrompt": "어디로 갈까요?",
+        "nthPlace": "{n}번째 장소",
+        "whichPlacePrefer": "어느 곳이 더 마음에 드세요?",
+        "whereDoYouWant": "둘 중 하나를 선택하세요",
+        "navigation": "길찾기"
     },
     "sharePreview": {
         "downloadModalTitle": "데이트를 망치기 싫다면?",
@@ -474,6 +482,7 @@
     "bridgeModal": {
         "close": "닫기",
         "title": "멤버십 전용 시크릿 정보입니다",
+        "tipsUnlockCta": "지금 로그인하고 990원으로\n이 코스 유료팁 잠금 해제",
         "desc": "지금 가입하고",
         "priceUnit": "월 {price}원",
         "desc2": "으로\n서울 코스 핫플 공략집 무제한 보기",
@@ -832,6 +841,7 @@
         "alreadySubscribed": "이미 이용 중인 멤버십입니다",
         "perMonth": "/ 월",
         "executionGuide": "실행 가이드",
+        "tipsUnlockOption": "990원으로 이 코스 유료팁 잠금 해제",
         "courseTicket": "코스 열람권",
         "tipsPlusCourse": "실행 팁 + 코스 전체 열기",
         "alreadyAvailable": "이미 이용 가능",
@@ -842,8 +852,8 @@
         "businessInfo": "두나(DoNa) 사업자 정보",
         "businessDetails": "대표: 오승용 | 사업자등록번호: 166-10-03081",
         "businessAddress": "주소: 충청남도 홍성군 홍북읍 신대로 33",
-        "businessContact": "통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacourse.com",
-        "customerCenter": "고객센터: 010-2271-9824",
+        "businessContact": "통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacouse.com",
+        "customerCenter": "고객센터: 010-2481-9824",
         "ticketTip1": "결제 후 코스 전체 + 실행 팁이 열려요",
         "ticketTip2": "단건 열람권은 구매 즉시 콘텐츠가 제공되어 환불이 제한됩니다.",
         "loadingPayment": "결제창을 불러오고 있어요...",

@@ -1,8 +1,8 @@
 export default function PrivacyPolicyPage() {
-    const CONTACT_EMAIL = "12jason@donacourse.com";
+    const CONTACT_EMAIL = "12jason@donacouse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
+            <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">개인정보처리방침</h1>
                         <p className="text-gray-600 dark:text-white mb-6">
@@ -419,7 +419,7 @@ export default function PrivacyPolicyPage() {
                                 <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
                             </p>
                             <p className="text-gray-700 dark:text-white mb-2">
-                                <strong>고객센터:</strong> {CONTACT_EMAIL}
+                                <strong>문의:</strong> {CONTACT_EMAIL}
                             </p>
                         </div>
                     </div>
