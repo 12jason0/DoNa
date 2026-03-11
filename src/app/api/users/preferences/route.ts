@@ -7,10 +7,14 @@ export const revalidate = 300; // 5분 캐싱
 
 // 기존 사용자 데이터를 새로운 구조로 마이그레이션하는 함수
 function migratePreferences(oldPrefs: any): any {
-    // 이미 새로운 구조인 경우 concept, mood, regions만 유지 (companion 제거)
+    // 이미 새로운 구조인 경우 concept, mood, regions, companion 유지
     if (oldPrefs.concept || oldPrefs.mood || oldPrefs.regions) {
-        const { companion: _c, ...rest } = oldPrefs;
-        return rest;
+        return {
+            concept: oldPrefs.concept || [],
+            mood: oldPrefs.mood || [],
+            regions: oldPrefs.regions || [],
+            ...(typeof oldPrefs.companion === "string" ? { companion: oldPrefs.companion } : {}),
+        };
     }
 
     const newPrefs: any = {};
@@ -95,11 +99,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "선호도 데이터가 없습니다." }, { status: 400 });
         }
 
-        // companion 필드 제거 (온보딩에서 제거됨)
-        if (typeof preferencesData === "object" && "companion" in preferencesData) {
-            const { companion: _c, ...rest } = preferencesData;
-            preferencesData = rest;
-        }
+        // ✅ companion 필드 유지 (온보딩 5개 질문 흐름에서 사용)
 
         // ✅ [수정됨] prisma.user_preferences -> prisma.userPreference
         const updatedPreferences = await prisma.userPreference.upsert({

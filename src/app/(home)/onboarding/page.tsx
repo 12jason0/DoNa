@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { VIBE_OPTIONS, VALUE_OPTIONS, REGION_GROUPS } from "@/constants/onboardingData";
+import { VIBE_OPTIONS, VALUE_OPTIONS, REGION_GROUPS, CREW_OPTIONS } from "@/constants/onboardingData";
 import Image from "next/image";
 import { X, ArrowRight } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
@@ -12,6 +12,7 @@ interface UserPreferences {
     concept: string[];
     mood: string[];
     regions: string[];
+    companion?: string;
 }
 
 // 부모 컴포넌트에서 닫기를 제어할 수 있도록 onClose prop 추가 (선택 사항)
@@ -32,10 +33,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             const s1 = localStorage.getItem("onboardingStep1") === "1";
             const s2 = localStorage.getItem("onboardingStep2") === "1";
             const s3 = localStorage.getItem("onboardingStep3") === "1";
+            const s4 = localStorage.getItem("onboardingStep4") === "1";
             if (!s1) return 1;
             if (!s2) return 2;
             if (!s3) return 3;
-            return 3;
+            if (!s4) return 4;
+            return 4;
         } catch {
             return 1;
         }
@@ -49,14 +52,16 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         concept: [],
         mood: [],
         regions: [],
+        companion: undefined,
     });
 
     const [analysisKeyword, setAnalysisKeyword] = useState({ vibe: "", type: "" });
-    const totalSteps = 3;
+    const totalSteps = 4;
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isSavingRef = useRef(false);
 
     const [selectedVibeIds, setSelectedVibeIds] = useState<string[]>([]);
+    const [selectedCompanion, setSelectedCompanion] = useState<string | null>(null);
     const [selectedValueId, setSelectedValueId] = useState<string | null>(null);
     const [isResetting, setIsResetting] = useState(false); // 🟢 reset 중인지 확인하는 플래그
 
@@ -70,6 +75,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 localStorage.removeItem("onboardingStep1");
                 localStorage.removeItem("onboardingStep2");
                 localStorage.removeItem("onboardingStep3");
+                localStorage.removeItem("onboardingStep4");
                 localStorage.removeItem("onboardingComplete");
             } catch (e) {
                 // localStorage 접근 실패 무시
@@ -82,6 +88,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 regions: [],
             });
             setSelectedVibeIds([]);
+            setSelectedCompanion(null);
             setSelectedValueId(null);
             // URL에서 reset 파라미터 제거
             const url = new URL(window.location.href);
@@ -93,7 +100,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     // =================================================================
     // API 저장 로직
     // =================================================================
-    const savePreferences = useCallback(async (prefsToSave: UserPreferences, silent = true) => {
+    const savePreferences = useCallback(async (prefsToSave: UserPreferences & { companion?: string }, silent = true) => {
         if (isSavingRef.current) return;
         try {
             // 🟢 쿠키 기반 인증: authenticatedFetch 사용
@@ -123,18 +130,22 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
         const computeFirstUnansweredStep = (
             prefs: UserPreferences,
-            flags: { s1: boolean; s2: boolean; s3: boolean },
+            flags: { s1: boolean; s2: boolean; s3: boolean; s4: boolean },
         ) => {
             // 1단계: 분위기/컨셉
             const step1Answered = flags.s1 || prefs.mood.length > 0 || prefs.concept.length > 0;
             if (!step1Answered) return 1;
 
-            // 2단계: 가치관 (DB에 별도 필드가 없어 로컬 플래그 s2 의존도가 높음)
-            const step2Answered = flags.s2;
+            // 2단계: 동행자
+            const step2Answered = flags.s2 || !!prefs.companion;
             if (!step2Answered) return 2;
 
-            // 3단계: 지역 (선택이지만, 완료 플래그가 없으면 보여줌)
-            return 3;
+            // 3단계: 가치관
+            const step3Answered = flags.s3;
+            if (!step3Answered) return 3;
+
+            // 4단계: 지역
+            return 4;
         };
 
         const init = async () => {
@@ -161,6 +172,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             concept: Array.isArray(prefsData?.concept) ? prefsData.concept : [],
                             mood: Array.isArray(prefsData?.mood) ? prefsData.mood : [],
                             regions: Array.isArray(prefsData?.regions) ? prefsData.regions : [],
+                            companion: typeof prefsData?.companion === "string" ? prefsData.companion : undefined,
                         };
                         serverPrefs = normalized;
                         setPreferences(normalized);
@@ -174,9 +186,10 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 const s1 = localStorage.getItem("onboardingStep1") === "1";
                 const s2 = localStorage.getItem("onboardingStep2") === "1";
                 const s3 = localStorage.getItem("onboardingStep3") === "1";
+                const s4 = localStorage.getItem("onboardingStep4") === "1";
 
                 // 3. 다음 단계 계산
-                const next = computeFirstUnansweredStep(serverPrefs ?? preferences, { s1, s2, s3 });
+                const next = computeFirstUnansweredStep(serverPrefs ?? preferences, { s1, s2, s3, s4 });
 
                 setCurrentStep(next);
 
@@ -197,7 +210,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         const hasAnyData =
             preferences.concept.length > 0 ||
             preferences.mood.length > 0 ||
-            preferences.regions.length > 0;
+            preferences.regions.length > 0 ||
+            !!preferences.companion;
 
         if (!hasAnyData) return;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -268,6 +282,13 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
         setSelectedValueId(option.id);
         setAnalysisKeyword((prev) => ({ ...prev, type: option.typeLabel }));
+        localStorage.setItem("onboardingStep3", "1");
+        setTimeout(() => nextStep(), 300);
+    };
+
+    const handleCompanionSelect = (value: string) => {
+        setPreferences((prev) => ({ ...prev, companion: value }));
+        setSelectedCompanion(value);
         localStorage.setItem("onboardingStep2", "1");
         setTimeout(() => nextStep(), 300);
     };
@@ -298,7 +319,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
             }
             return { ...prev, regions: newRegions };
         });
-        localStorage.setItem("onboardingStep3", "1");
+        localStorage.setItem("onboardingStep4", "1");
     };
 
     const nextStep = () => {
@@ -322,7 +343,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
             // 완료 플래그 설정 및 임시 플래그 삭제
             localStorage.setItem("onboardingComplete", "1");
-            ["onboardingStep1", "onboardingStep2", "onboardingStep3"].forEach((key) =>
+            ["onboardingStep1", "onboardingStep2", "onboardingStep3", "onboardingStep4"].forEach((key) =>
                 localStorage.removeItem(key),
             );
         }, 1500);
@@ -483,12 +504,10 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 {/* 질문 컨텐츠 (기존 로직 유지) */}
                 <div className="flex-1 flex flex-col px-5 w-full mx-auto overflow-hidden relative">
                     {currentStep === 1 && (
-                        /* Step 1 UI */
+                        /* Step 1: 분위기 (VIBE) */
                         <div className="animate-slideUp flex flex-col h-full overflow-y-auto scrollbar-hide">
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-4 leading-tight shrink-0 tracking-tight">
-                                {t("onboarding.step1Title")}
-                                <br />
-                                {t("onboarding.step1Question")}
+                                {t("onboarding.qVibe")}
                             </h1>
                             <div className="grid grid-cols-2 gap-3 pb-6">
                                 {VIBE_OPTIONS.map((opt) => (
@@ -513,11 +532,37 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             </div>
                         </div>
                     )}
-                    {/* Step 2: 가치관 선택 */}
+                    {/* Step 2: 동행자 선택 */}
                     {currentStep === 2 && (
                         <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 tracking-tight">
+                                {t("onboarding.qCompanion")}
+                            </h1>
+                            <div className="flex flex-col gap-3">
+                                {CREW_OPTIONS.map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => handleCompanionSelect(opt.value)}
+                                        className={`w-full bg-white dark:bg-[#0f1710] p-5 rounded-xl border transition-all active:scale-95 flex flex-col items-start gap-1 text-left group ${
+                                            selectedCompanion === opt.value
+                                                ? "border-[#7aa06f] dark:border-emerald-600 ring-2 ring-[#7aa06f] dark:ring-emerald-600"
+                                                : "border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+                                        }`}
+                                    >
+                                        <span className="text-lg font-bold text-gray-800 dark:text-white">{opt.label}</span>
+                                        {opt.sub && (
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">{opt.sub}</span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {/* Step 3: 가치관 선택 */}
+                    {currentStep === 3 && (
+                        <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                                {t("onboarding.step2Title")}
+                                {t("onboarding.qValue")}
                             </h1>
                             <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">
                                 {t("onboarding.step2Desc")}
@@ -547,8 +592,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         </div>
                     )}
 
-                    {/* Step 3: 지역 선택 */}
-                    {currentStep === 3 && (
+                    {/* Step 4: 지역 선택 */}
+                    {currentStep === 4 && (
                         <div className="animate-slideUp flex flex-col h-full px-1">
                             {/* 헤더 섹션: 가이드 텍스트 추가 */}
                             <div className="mb-8 mt-4">

@@ -149,6 +149,7 @@ function calculateConceptMatch(courseConcept: string | null, longTermConcepts: s
         기념일: ["프리미엄", "특별한", "로맨틱", "감성데이트", "인생샷"],
         데이트: ["로맨틱", "감성", "데이트"],
         힐링: ["힐링", "감성", "조용한"],
+        활동: ["활동적인", "액티비티", "체험"],
     };
     (goalConceptMap[goalNorm] || []).forEach((gc) => {
         if (courseConcepts.some((c) => c.includes(gc) || gc.includes(c))) matchCount++;
@@ -172,7 +173,11 @@ function calculateMoodMatch(courseMoods: string[], longTermMoods: string[], mood
     });
 
     // 오늘의 무드 기반 매칭
-    const moodMap: Record<string, string[]> = { 조용한: ["조용한", "프라이빗"], 트렌디한: ["트렌디한", "핫플"] };
+    const moodMap: Record<string, string[]> = {
+        조용한: ["조용한", "프라이빗"],
+        트렌디한: ["트렌디한", "핫플"],
+        활동적인: ["활동적인", "액티비티", "체험"],
+    };
     (moodMap[moodToday] || []).forEach((tm) => {
         if (courseMoods.some((m) => m.includes(tm) || tm.includes(m))) matchCount++;
     });
@@ -246,9 +251,16 @@ function calculateGoalMatch(
     if (!goal) return 0;
     let score = 0;
 
-    // 동반자 매칭
+    // 동반자 매칭 (온보딩/personalized-home 동행자 선택지 전체 지원)
     if (companionToday && courseGoal) {
-        const companionMap: Record<string, string[]> = { 연인: ["연인", "커플", "데이트"], 친구: ["친구"] };
+        const companionMap: Record<string, string[]> = {
+            연인: ["연인", "커플", "데이트"],
+            친구: ["친구"],
+            소개팅: ["데이트", "로맨틱", "감성", "소개팅"],
+            "썸 상대": ["데이트", "로맨틱", "감성"],
+            "소개팅 상대": ["데이트", "로맨틱", "감성", "소개팅"],
+            혼자: ["혼자", "솔로", "나들이"],
+        };
         if ((companionMap[companionToday] || []).some((ct) => courseGoal.includes(ct))) score += 0.5;
     }
 
@@ -259,7 +271,12 @@ function calculateGoalMatch(
             : goal === "DATE"
               ? "데이트"
               : goal;
-    const goalTags: Record<string, string[]> = { 기념일: ["기념일", "특별한", "로맨틱", "감성"], 데이트: ["데이트", "로맨틱"] };
+    const goalTags: Record<string, string[]> = {
+        기념일: ["기념일", "특별한", "로맨틱", "감성"],
+        데이트: ["데이트", "로맨틱"],
+        활동: ["활동적인", "액티비티", "체험"],
+        힐링: ["힐링", "감성", "조용한"],
+    };
     const goalKeywords = goalTags[goalNorm] || [];
 
     if (courseGoal && goalKeywords.some((gt) => courseGoal.includes(gt))) {
@@ -791,10 +808,13 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // 🟢 companion_today가 비면 온보딩에서 저장한 longTermPrefs.companion 사용 (메인 추천 정확도 향상)
+        const effectiveCompanionToday = companionToday || (longTermPrefs?.companion || "");
+
         const todayContext = {
             goal,
             goal_detail: goalDetail,
-            companion_today: companionToday,
+            companion_today: effectiveCompanionToday,
             mood_today: moodToday,
             region_today: regionToday,
             weather_today: weatherToday,
@@ -806,9 +826,9 @@ export async function GET(req: NextRequest) {
             (longTermPrefs.mood && longTermPrefs.mood.length > 0) ||
             (longTermPrefs.regions && longTermPrefs.regions.length > 0);
 
-        // 🟢 선호도 데이터나 오늘의 컨텍스트가 하나라도 있어야 점수 계산
+        // 🟢 선호도 데이터나 오늘의 컨텍스트가 하나라도 있어야 점수 계산 (온보딩 companion 포함)
         const hasOnboardingData =
-            hasLongTermPreferences || goal || companionToday || moodToday || regionToday;
+            hasLongTermPreferences || goal || effectiveCompanionToday || moodToday || regionToday;
 
         // 🟢 주말 모드: 유저 선호 권역 (recentBehavior + longTerm 합쳐서)
         const userRegionList =

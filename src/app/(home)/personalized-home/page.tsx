@@ -112,32 +112,33 @@ interface Course {
     matchReason?: string;
 }
 
-// 질문 시나리오 (t 함수로 번역 적용)
+// 질문 시나리오 (t 함수로 번역 적용) - goal + mood_today 통합, 기념일 세부 유지
 const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
     {
         id: "greeting",
         type: "ai",
         text: t("personalizedHome.qGreeting"),
         options: [
-            { text: t("personalizedHome.qGreetingStart"), value: "start", next: "goal" },
+            { text: t("personalizedHome.qGreetingStart"), value: "start", next: "purpose_today" },
             { text: t("personalizedHome.qGreetingPreview"), value: "preview", next: "preview" },
         ],
     },
     {
         id: "preview",
-        type: "ai", 
+        type: "ai",
         text: t("personalizedHome.qPreview"),
-        options: [{ text: t("personalizedHome.qPreviewStart"), value: "start", next: "goal" }],
+        options: [{ text: t("personalizedHome.qPreviewStart"), value: "start", next: "purpose_today" }],
     },
     {
-        id: "goal",
+        id: "purpose_today",
         type: "ai",
-        text: t("personalizedHome.qGoal"),
+        text: t("personalizedHome.qPurpose"),
         options: [
             { text: t("personalizedHome.qGoalAnniversary"), value: "기념일", next: "goal_detail" },
             { text: t("personalizedHome.qGoalNormal"), value: "무난", next: "companion_today" },
             { text: t("personalizedHome.qGoalEmotional"), value: "감성", next: "companion_today" },
             { text: t("personalizedHome.qGoalActive"), value: "활동", next: "companion_today" },
+            { text: t("personalizedHome.qPurposeTrendy"), value: "트렌디", next: "companion_today" },
         ],
     },
     {
@@ -145,9 +146,9 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qGoalDetail"),
         options: [
-            { text: t("personalizedHome.qGoalDetail100"), value: "100일", next: "mood_today" },
-            { text: t("personalizedHome.qGoalDetailBirthday"), value: "생일", next: "mood_today" },
-            { text: t("personalizedHome.qGoalDetailYearEnd"), value: "연말", next: "mood_today" },
+            { text: t("personalizedHome.qGoalDetail100"), value: "100일", next: "companion_today" },
+            { text: t("personalizedHome.qGoalDetailBirthday"), value: "생일", next: "companion_today" },
+            { text: t("personalizedHome.qGoalDetailYearEnd"), value: "연말", next: "companion_today" },
         ],
     },
     {
@@ -155,22 +156,11 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qCompanion"),
         options: [
-            { text: t("personalizedHome.qCompanionLover"), value: "연인", next: "mood_today" },
-            { text: t("personalizedHome.qCompanionSome"), value: "썸 상대", next: "mood_today" },
-            { text: t("personalizedHome.qCompanionBlind"), value: "소개팅 상대", next: "mood_today" },
-            { text: t("personalizedHome.qCompanionFriend"), value: "친구", next: "mood_today" },
-            { text: t("personalizedHome.qCompanionAlone"), value: "혼자", next: "mood_today" },
-        ],
-    },
-    {
-        id: "mood_today",
-        type: "ai",
-        text: t("personalizedHome.qMood"),
-        options: [
-            { text: t("personalizedHome.qMoodQuiet"), value: "조용한", next: "region_today" },
-            { text: t("personalizedHome.qMoodEmotional"), value: "감성 가득한", next: "region_today" },
-            { text: t("personalizedHome.qMoodTrendy"), value: "트렌디한", next: "region_today" },
-            { text: t("personalizedHome.qMoodActive"), value: "활동적인", next: "region_today" },
+            { text: t("personalizedHome.qCompanionLover"), value: "연인", next: "region_today" },
+            { text: t("personalizedHome.qCompanionSome"), value: "썸 상대", next: "region_today" },
+            { text: t("personalizedHome.qCompanionBlind"), value: "소개팅 상대", next: "region_today" },
+            { text: t("personalizedHome.qCompanionFriend"), value: "친구", next: "region_today" },
+            { text: t("personalizedHome.qCompanionAlone"), value: "혼자", next: "region_today" },
         ],
     },
     {
@@ -589,7 +579,7 @@ const AIRecommender = () => {
 
         setTimeout(async () => {
             setIsTyping(false);
-            const progressKeys = ["goal", "companion_today", "mood_today", "region_today"];
+            const progressKeys = ["purpose_today", "goal_detail", "companion_today", "region_today"];
             const answered = Object.keys(newAnswers).filter((k) => progressKeys.includes(k)).length;
             const totalSteps = 4;
             const pct = Math.min(100, Math.round((answered / totalSteps) * 100));
@@ -652,32 +642,38 @@ const AIRecommender = () => {
             }
         };
 
-        const goalValue = answers.goal || "";
+        const purposeToday = answers.purpose_today || answers.goal || "";
         const goalDetailFromUser = answers.goal_detail || "";
         const companionToday = answers.companion_today || "";
-        const moodToday = answers.mood_today || "";
         const regionToday = answers.region_today || "";
 
-        // goal → API용 goal + goal_detail (기념일 선택 시 2차 질문에서 goal_detail 저장)
+        // purpose_today → API용 goal + goal_detail + mood_today (goal+mood 통합)
         let goal: string;
         let goalDetail: string;
-        if (goalValue === "기념일") {
-            goal = "ANNIVERSARY";
-            goalDetail = goalDetailFromUser; // 100일, 생일, 연말
+        let moodToday: string;
+        const PURPOSE_MAP: Record<string, { goal: string; goalDetail: string; moodToday: string }> = {
+            기념일: { goal: "ANNIVERSARY", goalDetail: goalDetailFromUser, moodToday: "" },
+            무난: { goal: "DATE", goalDetail: "", moodToday: "" },
+            감성: { goal: "힐링", goalDetail: "", moodToday: "조용한" },
+            활동: { goal: "활동", goalDetail: "", moodToday: "활동적인" },
+            트렌디: { goal: "DATE", goalDetail: "", moodToday: "트렌디한" },
+        };
+        const mapped = PURPOSE_MAP[purposeToday];
+        if (mapped) {
+            goal = mapped.goal;
+            goalDetail = mapped.goalDetail;
+            moodToday = mapped.moodToday;
         } else {
-            const GOAL_MAP: Record<string, { goal: string; goalDetail: string }> = {
-                무난: { goal: "DATE", goalDetail: "" },
-                감성: { goal: "DATE", goalDetail: "" },
-                활동: { goal: "DATE", goalDetail: "" },
-                일상: { goal: "DATE", goalDetail: "" },
-                // 하위 호환
-                "100일": { goal: "ANNIVERSARY", goalDetail: "100일" },
-                생일: { goal: "ANNIVERSARY", goalDetail: "생일" },
-                연말: { goal: "ANNIVERSARY", goalDetail: "연말" },
-            };
-            const mapped = GOAL_MAP[goalValue];
-            goal = mapped?.goal ?? goalValue;
-            goalDetail = mapped?.goalDetail ?? "";
+            // 하위 호환 (기존 goal 답변)
+            if (purposeToday === "100일" || purposeToday === "생일" || purposeToday === "연말") {
+                goal = "ANNIVERSARY";
+                goalDetail = purposeToday;
+                moodToday = "";
+            } else {
+                goal = purposeToday || "DATE";
+                goalDetail = "";
+                moodToday = "";
+            }
         }
 
         let list: Course[] = [];
