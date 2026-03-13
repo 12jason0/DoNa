@@ -22,6 +22,50 @@ interface Course {
     chips?: ChipId[];
 }
 
+const MAIN_REC_CACHE_PREFIX = "dona_main_rec_";
+
+function getKstDateStr(): string {
+    const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    return kst.toISOString().slice(0, 10);
+}
+
+function getMainDayType(): "today" | "weekend" {
+    const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    return kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today";
+}
+
+function readMainRecommendationCache(key: string): { recommendations: Course[]; hasOnboardingData: boolean; tagType: UserTagType } | null {
+    try {
+        const raw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(key) : null;
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as { recommendations?: Course[]; hasOnboardingData?: boolean; tagType?: UserTagType };
+        if (!Array.isArray(parsed.recommendations) || parsed.recommendations.length === 0) return null;
+        return {
+            recommendations: parsed.recommendations,
+            hasOnboardingData: Boolean(parsed.hasOnboardingData),
+            tagType: parsed.tagType ?? "default",
+        };
+    } catch {
+        return null;
+    }
+}
+
+function saveMainRecommendationCache(
+    key: string,
+    recommendations: Course[],
+    hasOnboardingData: boolean,
+    tagType: UserTagType
+) {
+    try {
+        if (typeof sessionStorage !== "undefined" && recommendations.length > 0) {
+            sessionStorage.setItem(
+                key,
+                JSON.stringify({ recommendations, hasOnboardingData, tagType })
+            );
+        }
+    } catch {}
+}
+
 export default function PersonalizedSection() {
     const router = useRouter();
     const { t } = useLocale();
@@ -51,37 +95,86 @@ export default function PersonalizedSection() {
         if (showMoreModal) setModalDragY(0);
     }, [showMoreModal]);
 
-    // 🟢 데이터 가져오기 함수 (성능 최적화: 프로필 API 호출 제거, 캐싱 개선)
+    // 🟢 데이터 가져오기 함수 (오늘 추천 캐시: 2번째 진입 시 즉시 표시 후 백그라운드 갱신)
     const fetchData = useCallback(async () => {
+        const { fetchSession, apiFetch } = await import("@/lib/authClient");
+
+        // 1. 세션 확인
+        const session = await fetchSession();
+        const isUserAuthenticated = session.authenticated && session.user;
+
+        // 2. 로그인 상태 및 이름 설정
+        if (isUserAuthenticated && session.user) {
+            setIsLoggedIn(true);
+            const sessionName = (session.user.name || session.user.nickname || "").trim();
+            setUserName(sessionName || t("commonFallback.member"));
+        } else {
+            setIsLoggedIn(false);
+            setUserName(t("commonFallback.member"));
+            setHasOnboardingData(false);
+        }
+
+        const mainDayType = getMainDayType();
+        const kstDateStr = getKstDateStr();
+        const userId = session.user?.id != null ? String(session.user.id) : "guest";
+        const cacheKey = `${MAIN_REC_CACHE_PREFIX}${kstDateStr}_${mainDayType}_${userId}`;
+
+        // 3. 🟢 오늘 추천 캐시 확인 → 있으면 즉시 표시 후 백그라운드에서 API 호출
+        const cached = readMainRecommendationCache(cacheKey);
+        if (cached) {
+            setCourses(cached.recommendations);
+            setHasOnboardingData(cached.hasOnboardingData);
+            setCurrentTagType(cached.tagType);
+            setLoading(false);
+            // 백그라운드에서 최신 데이터로 갱신 (같은 날이면 결과 동일할 가능성 높음)
+            apiFetch(`/api/recommendations?limit=3&dayType=${mainDayType}`, {
+                cache: isUserAuthenticated ? "no-store" : "force-cache",
+                next: { revalidate: isUserAuthenticated ? 0 : 300 },
+            })
+                .then(({ data, response }) => {
+                    if (!response.ok || !data) return;
+                    const recommendations = (data as any)?.recommendations || [];
+                    if (recommendations.length === 0) return;
+                    const apiHasOnboardingData = (data as any)?.hasOnboardingData === true;
+                    let hasOnboarding = apiHasOnboardingData;
+                    if (isUserAuthenticated && !apiHasOnboardingData) {
+                        const hasMatchScore = recommendations.some(
+                            (c: any) => c.matchScore !== undefined && c.matchScore !== null
+                        );
+                        hasOnboarding =
+                            hasMatchScore ||
+                            (session.user as any)?.hasOnboarding === true ||
+                            (session.user as any)?.onboardingComplete === true;
+                    }
+                    let tagType: UserTagType = isUserAuthenticated ? "default" : "guest";
+                    if (isUserAuthenticated && recommendations[0]?.tags) {
+                        const topTags = recommendations[0].tags;
+                        if (topTags.concept?.includes("힐링") || topTags.mood?.includes("조용한")) tagType = "healing";
+                        else if (
+                            topTags.concept?.includes("인생샷") ||
+                            topTags.mood?.includes("사진") ||
+                            topTags.mood?.includes("인스타")
+                        )
+                            tagType = "photo";
+                        else if (topTags.concept?.includes("맛집") || topTags.concept?.includes("먹방")) tagType = "food";
+                        else if (topTags.budget === "저렴함" || topTags.concept?.includes("가성비")) tagType = "cost";
+                        else if (topTags.mood?.includes("활동적인")) tagType = "activity";
+                    }
+                    setCourses(recommendations);
+                    setHasOnboardingData(hasOnboarding);
+                    setCurrentTagType(tagType);
+                    saveMainRecommendationCache(cacheKey, recommendations, hasOnboarding, tagType);
+                })
+                .catch(() => {});
+            return;
+        }
+
+        // 4. 캐시 없음 → API 호출 후 표시 및 캐시 저장
         try {
             setLoading(true);
-            const { fetchSession, apiFetch } = await import("@/lib/authClient");
-
-            // 1. 세션 확인
-            const session = await fetchSession();
-            const isUserAuthenticated = session.authenticated && session.user;
-
-            // 2. 로그인 상태 및 이름 설정 (세션에서만 추출 - 프로필 API 호출 제거)
-            if (isUserAuthenticated && session.user) {
-                setIsLoggedIn(true);
-                // 🟢 세션에서 이름 추출 (프로필 API 호출 없이)
-                const sessionName = (session.user.name || session.user.nickname || "").trim();
-                setUserName(sessionName || t("commonFallback.member"));
-            } else {
-                setIsLoggedIn(false);
-                setUserName(t("commonFallback.member"));
-                setHasOnboardingData(false);
-            }
-
-            // 3. 추천 API 호출 - 메인은 오늘 요일로 dayType 자동 분기 (토/일→주말, 월~금→오늘)
-            const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-            const mainDayType = kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today";
-
             const { data, response } = await apiFetch(`/api/recommendations?limit=3&dayType=${mainDayType}`, {
-                // 🟢 로그인 사용자: 짧은 캐싱 (최근 상호작용 반영을 위해)
-                // 🟢 비로그인 사용자: 긴 캐싱 (인기순 정렬이므로 동일 결과)
-                cache: isUserAuthenticated ? "no-store" : "force-cache", // 🟢 로그인 사용자: no-store로 최신 데이터 가져오기
-                next: { revalidate: isUserAuthenticated ? 0 : 300 }, // 로그인: 0초 (즉시 갱신), 비로그인: 5분
+                cache: isUserAuthenticated ? "no-store" : "force-cache",
+                next: { revalidate: isUserAuthenticated ? 0 : 300 },
             });
 
             if (!response.ok || !data) {
@@ -92,65 +185,42 @@ export default function PersonalizedSection() {
             }
 
             const recommendations = (data as any)?.recommendations || [];
-            // 🟢 API에서 직접 반환한 hasOnboardingData 사용 (서버에서 정확히 계산된 값)
             const apiHasOnboardingData = (data as any)?.hasOnboardingData === true;
 
             if (recommendations.length > 0) {
-                setCourses(recommendations);
-
-                // 🟢 API에서 반환한 hasOnboardingData 우선 사용
+                let hasOnboarding = false;
                 if (isUserAuthenticated) {
                     if (apiHasOnboardingData) {
-                        setHasOnboardingData(true);
+                        hasOnboarding = true;
                     } else {
-                        // 🟢 API에서 반환하지 않은 경우 fallback: matchScore 확인
                         const hasMatchScore = recommendations.some(
-                            (c: any) => c.matchScore !== undefined && c.matchScore !== null,
+                            (c: any) => c.matchScore !== undefined && c.matchScore !== null
                         );
-                        if (hasMatchScore) {
-                            setHasOnboardingData(true);
-                        } else {
-                            // 🟢 [Security] localStorage 의존도 제거: 서버 세션(쿠키) 기반으로 온보딩 정보 확인
-                            const onboardingFromSession =
-                                (session.user as any)?.hasOnboarding === true ||
-                                (session.user as any)?.onboardingComplete === true;
-                            setHasOnboardingData(onboardingFromSession);
-                        }
+                        hasOnboarding =
+                            hasMatchScore ||
+                            (session.user as any)?.hasOnboarding === true ||
+                            (session.user as any)?.onboardingComplete === true;
                     }
-                } else {
-                    setHasOnboardingData(false);
                 }
+                setCourses(recommendations);
+                setHasOnboardingData(hasOnboarding);
 
-                // 🟢 태그 분석 로직 (로그인 상태에 따라)
-                if (isUserAuthenticated) {
-                    // 멘트 결정 로직 (1등 코스 태그 분석)
-                    const topCourse = recommendations[0];
-                    const topTags = topCourse.tags;
-
-                    if (topTags) {
-                        if (topTags.concept?.includes("힐링") || topTags.mood?.includes("조용한")) {
-                            setCurrentTagType("healing");
-                        } else if (
-                            topTags.concept?.includes("인생샷") ||
-                            topTags.mood?.includes("사진") ||
-                            topTags.mood?.includes("인스타")
-                        ) {
-                            setCurrentTagType("photo");
-                        } else if (topTags.concept?.includes("맛집") || topTags.concept?.includes("먹방")) {
-                            setCurrentTagType("food");
-                        } else if (topTags.budget === "저렴함" || topTags.concept?.includes("가성비")) {
-                            setCurrentTagType("cost");
-                        } else if (topTags.mood?.includes("활동적인")) {
-                            setCurrentTagType("activity");
-                        } else {
-                            setCurrentTagType("default");
-                        }
-                    } else {
-                        setCurrentTagType("default");
-                    }
-                } else {
-                    setCurrentTagType("guest");
+                let tagType: UserTagType = isUserAuthenticated ? "default" : "guest";
+                if (isUserAuthenticated && recommendations[0]?.tags) {
+                    const topTags = recommendations[0].tags;
+                    if (topTags.concept?.includes("힐링") || topTags.mood?.includes("조용한")) tagType = "healing";
+                    else if (
+                        topTags.concept?.includes("인생샷") ||
+                        topTags.mood?.includes("사진") ||
+                        topTags.mood?.includes("인스타")
+                    )
+                        tagType = "photo";
+                    else if (topTags.concept?.includes("맛집") || topTags.concept?.includes("먹방")) tagType = "food";
+                    else if (topTags.budget === "저렴함" || topTags.concept?.includes("가성비")) tagType = "cost";
+                    else if (topTags.mood?.includes("활동적인")) tagType = "activity";
                 }
+                setCurrentTagType(tagType);
+                saveMainRecommendationCache(cacheKey, recommendations, hasOnboarding, tagType);
             } else {
                 setCourses([]);
                 setCurrentTagType(isUserAuthenticated ? "default" : "guest");
@@ -161,7 +231,7 @@ export default function PersonalizedSection() {
         } finally {
             setLoading(false);
         }
-    }, []); // 의존성 없음 (setState 함수들은 안정적)
+    }, [t]);
 
     const fetchWeekendData = useCallback(async () => {
         const { fetchSession, apiFetch } = await import("@/lib/authClient");

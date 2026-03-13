@@ -456,6 +456,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     width={128}
                                                     height={128}
                                                     priority
+                                                    fetchPriority="high"
                                                     className="w-full h-full object-contain"
                                                 />
                                             </div>

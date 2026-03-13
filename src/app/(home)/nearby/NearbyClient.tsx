@@ -760,7 +760,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                                     )}
                                                     <CourseCard
                                                         course={c}
-                                                        isPriority={i < 20} // 🟢 상위 20개 이미지만 우선 로딩 (preload 경고 방지)
+                                                        isPriority={i < 10} // 🟢 첫 10개 카드 priority (LCP + 첫 화면 이미지 빠르게 표시)
                                                         isFavorite={favoriteIds.has(Number(c.id))}
                                                         onToggleFavorite={toggleFavorite}
                                                         hasClosedPlace={hasClosedPlace}

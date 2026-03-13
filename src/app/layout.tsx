@@ -68,10 +68,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         style={{ display: "none", visibility: "hidden" }}
                     />
                 </noscript>
-                {/* Google Tag Manager - 가능한 위에 */}
+                {/* 🟢 [LCP] GTM을 afterInteractive로 변경해 초기 파싱/실행 블로킹 최소화 */}
                 <Script
                     id="gtm"
-                    strategy="beforeInteractive"
+                    strategy="afterInteractive"
                     dangerouslySetInnerHTML={{
                         __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
