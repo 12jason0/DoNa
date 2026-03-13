@@ -52,7 +52,7 @@
         "backgroundColor": "#6db48c"
       },
       "package": "kr.io.dona.dona",
-      "versionCode": 45,
+      "versionCode": 46,
       "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -138,14 +138,7 @@
           }
         }
       ],
-      "expo-font",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-1305222191440436~8406993965",
-          "iosAppId": "ca-app-pub-1305222191440436~8406993965"
-        }
-      ]
+      "expo-font"
     ],
     "extra": {
       "eas": {

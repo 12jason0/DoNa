@@ -13,30 +13,6 @@ import * as Application from "expo-application";
 import { loadAuthToken, saveAuthToken } from "../storage";
 import { PushTokenContext } from "../context/PushTokenContext";
 import { WEB_BASE } from "../config";
-import AdMobBanner from "./AdMobBanner";
-
-/** 광고 표시: / (메인), /mypage만. personalized-home, nearby, courses, 나만 아는 비밀 앨범(view=memories) 등 제외 */
-function shouldShowAdMob(pathOrUrl: string): boolean {
-    try {
-        const full = pathOrUrl.startsWith("http") ? pathOrUrl : `https://dummy.com${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
-        const u = new URL(full);
-        const p = (u.pathname.replace(/\/$/, "") || "/");
-
-        // 🟢 1번: personalized-home (홍대 검색/취향 저격 등) - 광고 숨김
-        if (p.startsWith("/personalized-home")) return false;
-        if (p.startsWith("/nearby")) return false;
-        if (p.startsWith("/courses")) return false;
-
-        if (p === "/") return true;
-        if (p === "/mypage") {
-            if (u.searchParams.get("view") === "memories") return false;
-            return true;
-        }
-        return false;
-    } catch {
-        return false;
-    }
-}
 
 type Props = {
     uri: string;
@@ -144,7 +120,6 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
     const [loading, setLoading] = useState(true);
     const [canGoBack, setCanGoBack] = useState(false);
     const [currentUrl, setCurrentUrl] = useState(resolvedUri);
-    const [currentPathForAd, setCurrentPathForAd] = useState<string | null>(null);
     const insets = useSafeAreaInsets();
     const pushToken = useContext(PushTokenContext);
     const [initialScript, setInitialScript] = useState<string | null>(null);
@@ -428,10 +403,6 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                         setCanGoBack(nav.canGoBack);
                         setCurrentUrl(nav.url);
                         if (!nav.loading && nav.url) {
-                            try {
-                                const path = (new URL(nav.url).pathname || "/").replace(/\/$/, "") || "/";
-                                setCurrentPathForAd(path + (nav.url.includes("?") ? new URL(nav.url).search : ""));
-                            } catch {}
                             setLoading(false);
                             // 🟢 페이지 이동 시 추억 상세 모달 상태 초기화
                             if (!nav.url.includes("mypage") || !nav.url.includes("view=memories")) {
@@ -663,13 +634,8 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                             } else if (data.type === "dateCoursesModalClose") {
                                 setIsDateCoursesModalOpen(false);
                             }
-                            // 🟢 [AdMob]: 웹 모달 열림 시 광고 숨김 (모달이 광고 위에 표시되도록)
                             else if (data.type === "modalState" && typeof data.isOpen === "boolean") {
                                 setIsWebModalOpen(data.isOpen);
-                            }
-                            // 🟢 [AdMob]: 웹에서 전달한 경로 (클라이언트 라우팅 시 광고 표시 여부 판단)
-                            else if (data.type === "pathChange" && typeof data.path === "string") {
-                                setCurrentPathForAd(data.path);
                             }
                             // 🟢 [2026-01-21] 다크모드 변경 감지
                             else if (data.type === "darkModeChange") {
@@ -1131,13 +1097,6 @@ export default function WebScreen({ uri: initialUri, onRegisterNavigate, onUserL
                     </View>
                 )}
             </View>
-            {/* 🟢 [AdMob]: 메인(/)·mypage에서만 표시. 모달·추억상세·추천코스모달 열림 시 숨김 */}
-            {isSplashDone &&
-                !isDateCoursesModalOpen &&
-                !isMemoryDetailOpen &&
-                !isWebModalOpen &&
-                currentPathForAd != null &&
-                shouldShowAdMob(currentPathForAd) && <AdMobBanner />}
         </View>
     );
 }

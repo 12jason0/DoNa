@@ -29,7 +29,7 @@ const activities = [
     { key: "이색데이트", label: "✨ 이색데이트" },
 ];
 
-const regions = ["강남", "성수", "홍대", "종로", "연남", "영등포", "서초", "송파", "신촌"];
+const regions = ["강남", "성수", "홍대", "종로", "연남", "영등포"];
 
 const SkeletonLoader = () => (
     <div className="space-y-8 animate-pulse">

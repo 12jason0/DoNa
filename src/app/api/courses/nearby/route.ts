@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 60; // 🟢 60초 캐시
 
 // 주요 지역 리스트 (NearbyClient와 동기화)
-const majorRegions = ["압구정", "합정정", "성수", "홍대", "종로", "연남", "한남", "서초", "건대", "송파", "신촌"];
+const majorRegions = ["압구정", "합정정", "성수", "홍대", "종로", "연남", "한남", "건대"];
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);

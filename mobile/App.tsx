@@ -1,7 +1,6 @@
 import "react-native-gesture-handler";
 import React, { useEffect, useRef, useState } from "react";
 import { View, Platform } from "react-native"; // View 추가
-import mobileAds from "react-native-google-mobile-ads";
 import { NavigationContainer, DefaultTheme, Theme } from "@react-navigation/native";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -102,20 +101,6 @@ export default function App() {
         initDB().catch((error) => {
             console.error("DB 초기화 실패:", error);
         });
-
-        // 🟢 [AdMob]: Google Mobile Ads SDK 초기화
-        mobileAds()
-            .initialize()
-            .then(() => {
-                if (__DEV__) {
-                    console.log("[AdMob] SDK 초기화 완료");
-                }
-            })
-            .catch((error) => {
-                if (__DEV__) {
-                    console.warn("[AdMob] SDK 초기화 실패:", error);
-                }
-            });
 
         // 🟢 [IN-APP PURCHASE]: RevenueCat 초기화
         (async () => {
