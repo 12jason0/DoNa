@@ -241,6 +241,8 @@ const AIRecommender = () => {
         used: number;
     } | null>(null);
     const [showOnboardingSheet, setShowOnboardingSheet] = useState(false);
+    /** 🟢 부분 온보딩(1·2단계만 완료) 시 "이어서 온보딩" 모달 */
+    const [showContinueOnboardingModal, setShowContinueOnboardingModal] = useState(false);
     const [pendingCourse, setPendingCourse] = useState<{ id: string; title: string; grade?: string } | null>(null);
     /** 카드에서 '{t("personalizedHome.viewDetail")}' 클릭 시 뜨는 상세 모달 (여기서 '코스 시작하기' 시 저장 → 피드백 모달) */
     const [detailModalCourse, setDetailModalCourse] = useState<Course | null>(null);
@@ -440,6 +442,22 @@ const AIRecommender = () => {
             return;
         }
 
+        // 🟢 부분 온보딩(1·2단계만 완료) 체크 → 이어서 온보딩 모달 표시
+        if (typeof window !== "undefined") {
+            const s1 = localStorage.getItem("onboardingStep1") === "1";
+            const s2 = localStorage.getItem("onboardingStep2") === "1";
+            const complete = localStorage.getItem("onboardingComplete") === "1";
+            if ((s1 || s2) && !complete) {
+                setShowContinueOnboardingModal(true);
+                return;
+            }
+        }
+
+        await proceedToChat();
+    };
+
+    /** 채팅 모달까지 진행 (precheck, usageCount, showChatModal) */
+    const proceedToChat = async () => {
         // 🟢 [단일 소스] precheck: AiRecommendationUsage 기준, 초과 시 채팅 안 열고 바로 모달
         try {
             const pre = await authenticatedFetch<{
@@ -1149,6 +1167,50 @@ const AIRecommender = () => {
                         onboardingUrl="/onboarding?returnTo=/personalized-home"
                     />
                 )}
+                {/* 🟢 부분 온보딩(1·2단계 완료) 시 이어하기 모달 */}
+                {showContinueOnboardingModal && (
+                    <div className="fixed inset-0 z-10020 flex items-end justify-center animate-in fade-in duration-200">
+                        <div
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm cursor-pointer"
+                            onClick={() => setShowContinueOnboardingModal(false)}
+                            aria-hidden="true"
+                        />
+                        <div className="relative w-full max-w-md bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 p-6 pb-8 pt-8">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                                    <Sparkles className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
+                                {t("personalizedHome.continueOnboardingTitle")}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6 leading-relaxed">
+                                {t("personalizedHome.continueOnboardingDesc")}
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowContinueOnboardingModal(false);
+                                        router.push("/onboarding?returnTo=/personalized-home");
+                                    }}
+                                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors active:scale-[0.98]"
+                                >
+                                    {t("personalizedHome.continueOnboarding")}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowContinueOnboardingModal(false);
+                                        proceedToChat();
+                                    }}
+                                    className="w-full py-3 px-4 rounded-xl text-gray-500 dark:text-gray-400 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    {t("personalizedHome.skipForNow")}
+                                </button>
+                            </div>
+                            <div className="h-[env(safe-area-inset-bottom)]" />
+                        </div>
+                    </div>
+                )}
                 {/* 🟢 오늘의 데이트 추천 일일 사용 완료 모달 */}
                 {showAlreadyUsedModal && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
@@ -1501,13 +1563,13 @@ const AIRecommender = () => {
                     </div>
                 )}
 
-                {/* 👇 [추가됨] 대화창 모달 - Sara(헤더)·네비게이션 바 고려 safe-area 적용 */}
+                {/* 👇 대화창 모달 - Sara(헤더)·네비게이션 바 고려, 살짝 위로 여유 */}
                 {showChatModal && (
                     <div
                         className="fixed inset-0 z-60 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
                         style={{
                             paddingTop: "env(safe-area-inset-top, 0px)",
-                            paddingBottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
+                            paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
                         }}
                     >
                         {/* 모달 컨테이너 */}
