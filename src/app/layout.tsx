@@ -54,6 +54,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="ko" className={lineSeed.variable} suppressHydrationWarning>
+            <head>
+                {/* 예약 사이트(캐치테이블 등) 사전 연결으로 로딩 속도 개선 */}
+                <link rel="preconnect" href="https://www.catchtable.co.kr" crossOrigin="" />
+            </head>
             <body className={`${lineSeed.className} font-sans antialiased`} style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
                 {/* Google Tag Manager (noscript) - body 바로 뒤 */}
                 <noscript>

@@ -432,6 +432,7 @@ export default function CourseDetailClient({
     const [webSheetPlaceName, setWebSheetPlaceName] = useState<string>("");
     const [webSheetSlideUp, setWebSheetSlideUp] = useState(false);
     const [webSheetDragY, setWebSheetDragY] = useState(0);
+    const [webSheetIframeLoaded, setWebSheetIframeLoaded] = useState(false);
     const webSheetDragStartY = useRef(0);
     const webSheetDragYRef = useRef(0);
     const webSheetHandleRef = useRef<HTMLElement | null>(null);
@@ -542,10 +543,11 @@ export default function CourseDetailClient({
         return () => cancelAnimationFrame(t);
     }, [showPlaceModal, selectedPlace]);
 
-    // 🟢 예약/네이버 지도 시트: 열릴 때 slideUp + 드래그 초기화
+    // 🟢 예약/네이버 지도 시트: 열릴 때 slideUp + 드래그·로딩 초기화
     useEffect(() => {
         if (!showWebSheet) return;
         setWebSheetDragY(0);
+        setWebSheetIframeLoaded(false);
         webSheetDragYRef.current = 0;
         setWebSheetSlideUp(false);
         const t = requestAnimationFrame(() => {
@@ -557,6 +559,7 @@ export default function CourseDetailClient({
     const webSheetClose = useCallback(() => {
         setWebSheetSlideUp(false);
         setWebSheetDragY(0);
+        setWebSheetIframeLoaded(false);
         setTimeout(() => {
             setShowWebSheet(false);
             setWebSheetUrl("");
@@ -3680,15 +3683,13 @@ export default function CourseDetailClient({
                                                 네이버 지도 앱으로 열기
                                             </button>
                                         </div>
-                                    ) : /naver\.com|map\.naver|place\.naver/i.test(webSheetUrl || "") ? (
+                                    ) : /naver\.com|map\.naver|place\.naver|catchtable\.co\.kr/i.test(webSheetUrl || "") ? (
                                         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
                                             <p className="text-base font-medium text-gray-800 dark:text-gray-100 mb-1">
-                                                네이버 예약 페이지
+                                                예약 페이지
                                             </p>
                                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
-                                                네이버 예약은 앱 내부에서 표시할 수 없어요.
-                                                <br />
-                                                외부 브라우저에서 열어주세요.
+                                                예약 페이지는 새 탭에서 열면 더 빠르게 이용할 수 있어요.
                                             </p>
                                             <button
                                                 type="button"
@@ -3703,12 +3704,21 @@ export default function CourseDetailClient({
                                             </button>
                                         </div>
                                     ) : (
-                                        <iframe
-                                            src={webSheetUrl}
-                                            title="예약 / 지도"
-                                            className="flex-1 w-full min-h-0 border-0"
-                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-                                        />
+                                        <div className="flex-1 min-h-0 relative flex flex-col">
+                                            {!webSheetIframeLoaded && (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900/50 z-10">
+                                                    <div className="w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                                                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">로딩 중...</p>
+                                                </div>
+                                            )}
+                                            <iframe
+                                                src={webSheetUrl}
+                                                title="예약 / 지도"
+                                                className={`flex-1 w-full min-h-0 border-0 transition-opacity duration-300 ${webSheetIframeLoaded ? "opacity-100" : "opacity-0"}`}
+                                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                                                onLoad={() => setWebSheetIframeLoaded(true)}
+                                            />
+                                        </div>
                                     )}
                                 </div>
                             </div>
