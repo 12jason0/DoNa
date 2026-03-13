@@ -468,11 +468,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div
-                        className={`bg-white dark:bg-[#1a241b] w-full flex flex-col overflow-hidden shadow-2xl transition-transform duration-200 ease-out ${
-                            containInPhone
-                                ? "h-[70vh] max-h-[70vh] rounded-t-3xl"
-                                : "max-w-md h-[90vh] sm:h-auto sm:max-h-[80vh] rounded-t-3xl sm:rounded-2xl"
-                        }`}
+                        className={`bg-white dark:bg-[#1a241b] w-full flex flex-col overflow-hidden shadow-2xl transition-transform duration-200 ease-out max-w-md h-[70vh] max-h-[70vh] rounded-t-3xl sm:rounded-2xl`}
                         style={{
                             transform: modalSlideUp ? "translateY(0)" : "translateY(100%)",
                         }}

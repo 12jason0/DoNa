@@ -2716,7 +2716,7 @@ export default function CourseDetailClient({
                             const posClass = containInPhone && !inApp ? "absolute" : "fixed";
                             const modalContent = (
                                 <div
-                                    className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal`}
+                                    className={`${posClass} inset-0 bg-black/60 dark:bg-black/70 z-6000 flex flex-col justify-end animate-fade-in full-map-modal ${inApp && isAndroid() ? "pb-[env(safe-area-inset-bottom,0px)]" : ""}`}
                                     onClick={fullMapModalClose}
                                 >
                                     <div

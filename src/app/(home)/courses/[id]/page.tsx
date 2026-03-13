@@ -6,7 +6,7 @@ import prisma from "@/lib/db";
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -42,174 +42,153 @@ async function retryDatabaseOperation<T>(
     throw lastError || new Error("Database operation failed after retries");
 }
 
-// 1. 데이터 페칭 함수 (코스 정보 캐싱) - 🟢 성능 최적화: select 사용으로 필요한 필드만 가져오기
-const getCourse = unstable_cache(
-    async (id: string): Promise<CourseData | null> => {
-        const courseId = Number(id);
-        if (isNaN(courseId)) return null;
-        try {
-            // 🟢 [Fix]: 재시도 로직이 포함된 데이터베이스 조회
-            const course = await retryDatabaseOperation(async () => {
-                return await (prisma as any).course.findUnique({
-                    where: { id: courseId },
-                    select: {
-                        id: true,
-                        title: true,
-                        description: true,
-                        region: true,
-                        sub_title: true,
-                        target_situation: true,
-                        duration: true,
-                        imageUrl: true,
-                        concept: true,
-                        rating: true,
-                        isPopular: true,
-                        grade: true,
-                        isSelectionType: true,
-                        createdAt: true,
-                        updatedAt: true,
-                        // 🔥 태그 데이터 추가
-                        mood: true,
-                        goal: true,
-                        budget_range: true,
-                        tags: true,
-                        highlights: {
-                            select: {
-                                id: true,
-                                title: true,
-                                description: true,
-                                icon: true,
-                            },
-                        },
-                        coursePlaces: {
-                            orderBy: { order_index: "asc" },
-                            select: {
-                                id: true,
-                                course_id: true,
-                                place_id: true,
-                                order_index: true,
-                                segment: true,
-                                order_in_segment: true,
-                                estimated_duration: true,
-                                recommended_time: true,
-                                coaching_tip: true,
-                                coaching_tip_free: true,
-                                place: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        address: true,
-                                        description: true,
-                                        category: true,
-                                        avg_cost_range: true,
-                                        opening_hours: true,
-                                        phone: true,
-                                        parking_available: true,
-                                        reservation_required: true,
-                                        reservationUrl: true,
-                                        latitude: true,
-                                        longitude: true,
-                                        imageUrl: true,
-                                        closed_days: {
-                                            select: { day_of_week: true, specific_date: true, note: true },
-                                        },
+// 🟢 [404 Fix] 캐시 없는 직접 DB 조회 (캐시된 null 우회용)
+async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
+    const courseId = Number(id);
+    if (isNaN(courseId)) return null;
+    try {
+        const course = await retryDatabaseOperation(async () => {
+            return await (prisma as any).course.findUnique({
+                where: { id: courseId },
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    region: true,
+                    sub_title: true,
+                    target_situation: true,
+                    duration: true,
+                    imageUrl: true,
+                    concept: true,
+                    rating: true,
+                    isPopular: true,
+                    grade: true,
+                    isSelectionType: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    mood: true,
+                    goal: true,
+                    budget_range: true,
+                    tags: true,
+                    highlights: {
+                        select: { id: true, title: true, description: true, icon: true },
+                    },
+                    coursePlaces: {
+                        orderBy: { order_index: "asc" },
+                        select: {
+                            id: true,
+                            course_id: true,
+                            place_id: true,
+                            order_index: true,
+                            segment: true,
+                            order_in_segment: true,
+                            estimated_duration: true,
+                            recommended_time: true,
+                            coaching_tip: true,
+                            coaching_tip_free: true,
+                            place: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    address: true,
+                                    description: true,
+                                    category: true,
+                                    avg_cost_range: true,
+                                    opening_hours: true,
+                                    phone: true,
+                                    parking_available: true,
+                                    reservation_required: true,
+                                    reservationUrl: true,
+                                    latitude: true,
+                                    longitude: true,
+                                    imageUrl: true,
+                                    closed_days: {
+                                        select: { day_of_week: true, specific_date: true, note: true },
                                     },
                                 },
                             },
                         },
-                        courseDetail: {
-                            select: {
-                                recommended_start_time: true,
-                                season: true,
-                                course_type: true,
-                                transportation: true,
-                            },
-                        },
-                        _count: {
-                            select: { coursePlaces: true },
+                    },
+                    courseDetail: {
+                        select: {
+                            recommended_start_time: true,
+                            season: true,
+                            course_type: true,
+                            transportation: true,
                         },
                     },
-                });
-            });
-
-            if (!course) {
-                console.error(`[CourseDetail] 코스를 찾을 수 없습니다: ${courseId}`);
-                return null;
-            }
-
-            // 🟢 에러 처리: courseDetail이 null일 수 있음
-            const courseDetail = course.courseDetail || null;
-            const highlights = course.highlights || [];
-            const coursePlaces = course.coursePlaces || [];
-
-            return {
-                id: String(course.id),
-                title: course.title,
-                description: course.description || "",
-                region: course.region || null,
-                sub_title: course.sub_title || null,
-                target_situation: course.target_situation || null,
-                budget_range: course.budget_range || null,
-                duration: course.duration || "시간 미정",
-                price: "",
-                imageUrl: course.imageUrl || "",
-                concept: course.concept || "",
-                rating: Number(course.rating),
-                isPopular: course.isPopular,
-                grade: course.grade || "FREE",
-                isSelectionType: !!course.isSelectionType,
-                recommended_start_time: courseDetail?.recommended_start_time || "오후 2시",
-                season: courseDetail?.season || "사계절",
-                courseType: courseDetail?.course_type || "데이트",
-                transportation: courseDetail?.transportation || "도보",
-                reservationRequired: coursePlaces.some((cp: any) => cp.place?.reservation_required) || false,
-                createdAt: course.createdAt.toISOString(),
-                updatedAt: course.updatedAt.toISOString(),
-                highlights: highlights,
-                // 🔥 태그 데이터 추가
-                tags: {
-                    ...((course.tags as any) || {}),
-                    mood: course.mood || [],
-                    goal: course.goal || undefined,
-                    budget: course.budget_range || undefined,
-                    target: (course.tags as any)?.target || [],
+                    _count: { select: { coursePlaces: true } },
                 },
-                coursePlaces: coursePlaces.map((cp: any) => ({
-                    ...cp,
-                    segment: cp.segment ?? null,
-                    order_in_segment: cp.order_in_segment ?? null,
-                    place: cp.place
-                        ? {
-                              ...cp.place,
-                              reservationUrl: cp.place.reservationUrl || null,
-                              latitude: cp.place.latitude ? Number(cp.place.latitude) : null,
-                              longitude: cp.place.longitude ? Number(cp.place.longitude) : null,
-                              closed_days: cp.place.closed_days || [],
-                          }
-                        : null,
-                })),
-            };
-        } catch (e: any) {
-            console.error(`[CourseDetail] 코스 데이터 로드 실패 (ID: ${id}):`, {
-                error: e?.message,
-                code: e?.code,
-                courseId: courseId,
             });
+        });
 
-            // 🟢 연결 풀 에러인 경우 null 반환하여 404로 처리
-            if (e?.code === "P2024" || e?.message?.includes("connection pool")) {
-                console.error(`[CourseDetail] 데이터베이스 연결 풀 에러 - 404 반환`);
-            }
+        if (!course) return null;
 
-            return null;
-        }
+        const courseDetail = course.courseDetail || null;
+        const highlights = course.highlights || [];
+        const coursePlaces = course.coursePlaces || [];
+
+        return {
+            id: String(course.id),
+            title: course.title,
+            description: course.description || "",
+            region: course.region || null,
+            sub_title: course.sub_title || null,
+            target_situation: course.target_situation || null,
+            budget_range: course.budget_range || null,
+            duration: course.duration || "시간 미정",
+            price: "",
+            imageUrl: course.imageUrl || "",
+            concept: course.concept || "",
+            rating: Number(course.rating),
+            isPopular: course.isPopular,
+            grade: course.grade || "FREE",
+            isSelectionType: !!course.isSelectionType,
+            recommended_start_time: courseDetail?.recommended_start_time || "오후 2시",
+            season: courseDetail?.season || "사계절",
+            courseType: courseDetail?.course_type || "데이트",
+            transportation: courseDetail?.transportation || "도보",
+            reservationRequired: coursePlaces.some((cp: any) => cp.place?.reservation_required) || false,
+            createdAt: course.createdAt.toISOString(),
+            updatedAt: course.updatedAt.toISOString(),
+            highlights: highlights,
+            tags: {
+                ...((course.tags as any) || {}),
+                mood: course.mood || [],
+                goal: course.goal || undefined,
+                budget: course.budget_range || undefined,
+                target: (course.tags as any)?.target || [],
+            },
+            coursePlaces: coursePlaces.map((cp: any) => ({
+                ...cp,
+                segment: cp.segment ?? null,
+                order_in_segment: cp.order_in_segment ?? null,
+                place: cp.place
+                    ? {
+                          ...cp.place,
+                          reservationUrl: cp.place.reservationUrl || null,
+                          latitude: cp.place.latitude ? Number(cp.place.latitude) : null,
+                          longitude: cp.place.longitude ? Number(cp.place.longitude) : null,
+                          closed_days: cp.place.closed_days || [],
+                      }
+                    : null,
+            })),
+        };
+    } catch {
+        return null;
+    }
+}
+
+// 1. 데이터 페칭 함수 (코스 정보 캐싱) - 🟢 성능 최적화: select 사용으로 필요한 필드만 가져오기
+const getCourse = unstable_cache(
+    async (id: string): Promise<CourseData | null> => {
+        const result = await fetchCourseFromDb(id);
+        if (result) return result;
+        // 🟢 null은 캐시하지 않음: null 반환 시 호출부에서 revalidate + 직접 재조회
+        return null;
     },
-    // 🟢 빈 배열: 함수 파라미터(id)가 자동으로 캐시 키에 포함됨
     [],
-    {
-        revalidate: 300, // 🟢 캐시 시간 5분으로 증가 (기존 180초에서) - DB 요청 감소로 연결 풀 부하 감소
-        tags: ["course-detail"],
-    },
+    { revalidate: 300, tags: ["course-detail"] }
 );
 
 // 🔒 권한 확인 함수 (60초 캐시 - 열람권 구매 후 최대 60초 내 반영)
@@ -250,10 +229,17 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     const courseId = Number(cleanId); // ID를 확실하게 숫자로 변환
 
     // 🟢 [1단계: 데이터 병렬 조회] 코스 상세 정보와 유저 권한을 동시에 조회하여 성능 최적화
-    const [courseData, cookieStore] = await Promise.all([
+    const [courseDataFromCache, cookieStore] = await Promise.all([
         getCourse(cleanId),
-        cookies(), // 🟢 쿠키도 병렬로 가져오기
+        cookies(),
     ]);
+    let courseData = courseDataFromCache;
+
+    // 🟢 [404 Fix] 캐시된 null로 인한 잘못된 404 방지: null이면 캐시 무효화 후 직접 DB 재조회
+    if (!courseData) {
+        revalidateTag("course-detail", "max");
+        courseData = await fetchCourseFromDb(cleanId);
+    }
 
     if (!courseData) {
         notFound();

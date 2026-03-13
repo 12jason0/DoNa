@@ -268,6 +268,14 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             return;
         }
 
+        // 🟢 [LCP 최적화]: 앱 WebView에서는 스플래시 스킵 → 메인 콘텐츠 즉시 표시 (LCP 2.5초 이내)
+        if (typeof window !== "undefined" && isMobileApp()) {
+            setShowSplash(false);
+            setContentReady(true);
+            removeServerSplash();
+            return;
+        }
+
         // 🟢 클라이언트에서만: 첫 방문이면 스플래시 표시, 아니면 콘텐츠 바로 표시
         // 🟢 dona-splash-started: 리마운트 시 스플래시 재시작 방지 (한 번이라도 시작했으면 재진입 시 스킵)
         try {

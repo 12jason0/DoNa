@@ -9,6 +9,7 @@ import TapFeedback from "@/components/TapFeedback";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { CATEGORY_ICONS } from "@/constants/onboardingData";
 import { useLocale } from "@/context/LocaleContext";
+import { useAppLayout } from "@/context/AppLayoutContext";
 import { translateCourseConcept } from "@/lib/courseTranslate";
 import Image from "@/components/ImageFallback";
 import { LayoutGrid } from "lucide-react";
@@ -64,6 +65,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
     const searchParams = useSearchParams();
     const router = useRouter();
     const { t } = useLocale();
+    const { isAndroidApp } = useAppLayout();
     const conceptParam = searchParams.get("concept");
 
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -320,7 +322,9 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
             <div
-                className="bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 pt-[calc(env(safe-area-inset-top,0)+1.25rem)] top-[env(safe-area-inset-top,0)]"
+                className={`bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 top-[env(safe-area-inset-top,0)] ${
+                    isAndroidApp ? "pt-3" : "pt-[calc(env(safe-area-inset-top,0)+1.25rem)]"
+                }`}
             >
                 <div>
                     <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
