@@ -162,7 +162,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             aria-label={t("header.closeSearchModal")}
         >
             <div
-                className={`${posClass} left-0 right-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden pb-10 ${!isAndroidApp ? "bottom-0" : ""}`}
+                className={`${posClass} left-0 right-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden pb-10 ${!isAndroidApp ? "bottom-3" : ""}`}
                 style={{
                     top: containInPhone ? "4.5rem" : "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                     ...(containInPhone ? { width: "100%", height: "calc(100% - 4.5rem)" } : {}),

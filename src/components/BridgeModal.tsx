@@ -76,7 +76,7 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
             aria-hidden
         >
             <div
-                className={`${posClass} left-0 right-0 z-10000 w-full pointer-events-auto ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                className={`${posClass} left-0 right-0 z-10000 w-full pointer-events-auto ${!isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
                 style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
                 onClick={(e) => e.stopPropagation()}
             >

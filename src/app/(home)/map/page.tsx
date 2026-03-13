@@ -984,8 +984,8 @@ function MapPageInner() {
 
     return (
         <div className="relative w-full min-h-screen h-full overflow-hidden bg-gray-100 dark:bg-[#0f1710] font-sans touch-none">
-            {/* 상단: 플로팅 UI (지도 움직일 때만 현 지도 검색 노출). Android 앱에서 상태바와 겹침 방지 */}
-            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-2 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none"
+            {/* 상단: 플로팅 UI (지도 움직일 때만 현 지도 검색 노출). Android 앱에서 상태바(safe-area) 아래로 배치 */}
+            <div className="absolute top-0 left-0 right-0 z-30 flex flex-col p-2 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] sm:pt-2 bg-linear-to-b from-white/90 via-white/60 to-transparent dark:from-[#1a241b]/90 dark:via-[#1a241b]/60 dark:to-transparent pointer-events-none"
             >
                 <div className="flex items-center gap-1.5 pointer-events-auto mb-1.5">
                     <button
@@ -1219,7 +1219,7 @@ function MapPageInner() {
 
             {/* 하단 패널 */}
             <div
-                className={`z-40 absolute inset-x-0 bottom-0 bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
+                className={`z-40 absolute inset-x-0 bottom-3 bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
             >
                 <div
                     className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none select-none active:bg-gray-50 dark:active:bg-gray-800 transition-colors rounded-t-3xl"

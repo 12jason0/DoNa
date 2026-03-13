@@ -460,7 +460,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 />
                 {/* 하단 시트: 바닥에 붙여 위로 슬라이드, 폰 내부에서는 양쪽 끝에 붙임. Android 앱은 footer와 같은 위치에서 시작 */}
                 <div
-                    className={`${posClass} left-0 right-0 z-10000 flex ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "p-0" : "justify-center p-0 sm:p-5 sm:items-center"}`}
+                    className={`${posClass} left-0 right-0 z-10000 flex ${!isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "p-0" : "justify-center p-0 sm:p-5 sm:items-center"}`}
                     style={{
                         pointerEvents: "auto",
                         ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),

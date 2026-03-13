@@ -31,7 +31,7 @@ const NotificationModal = ({ onClose }: NotificationModalProps) => {
             aria-label={t("notificationModal.closeModal")}
         >
             <div
-                className={`${posClass} left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${!isAndroidApp ? "bottom-0" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
+                className={`${posClass} left-0 right-0 z-2001 overflow-y-auto rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl ${!isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
                 style={{
                     animation: "slideUp 0.3s ease-out forwards",
                     ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),

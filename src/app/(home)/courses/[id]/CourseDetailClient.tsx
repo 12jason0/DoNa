@@ -2432,7 +2432,7 @@ export default function CourseDetailClient({
 
                     {/* 찜하기·공유 하단바: 폰 프레임에 transform 있으면 fixed가 폰 안에만 적용됨 */}
                     <div
-                        className="fixed left-0 right-0 bottom-0 z-40 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto"
+                        className="fixed left-0 right-0 bottom-3 z-40 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto"
                         style={
                             inApp && !containInPhone
                                 ? { paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" }
@@ -3233,7 +3233,7 @@ export default function CourseDetailClient({
                         aria-hidden
                     />
                     <div
-                        className="fixed left-0 right-0 bottom-0 z-5001 flex justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-auto"
+                        className="fixed left-0 right-0 bottom-3 z-5001 flex justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-auto"
                         style={{
                             transform: favoriteModalSlideUp ? "translateY(0)" : "translateY(100%)",
                             transition: "transform 0.3s ease-out",
@@ -3281,7 +3281,7 @@ export default function CourseDetailClient({
                                 onClick={() => setShowMemoryLimitModal(false)}
                                 aria-hidden
                             />
-                            <div className={`${posClass} left-0 right-0 bottom-0 z-5001 w-full`}>
+                            <div className={`${posClass} left-0 right-0 bottom-3 z-5001 w-full`}>
                                 <div
                                     className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
                                     style={{

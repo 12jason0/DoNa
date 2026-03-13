@@ -65,7 +65,7 @@ export default function ShopModal({ onClose }: ShopModalProps) {
             onClick={onClose}
         >
             <div
-                className={`${posClass} left-0 right-0 w-full flex justify-center ${!isAndroidApp ? "bottom-0" : ""}`}
+                className={`${posClass} left-0 right-0 w-full flex justify-center ${!isAndroidApp ? "bottom-3" : ""}`}
                 style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
             >
                 <div

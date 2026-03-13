@@ -29,7 +29,7 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
             aria-hidden
         >
             <div
-                className={`${posClass} left-0 right-0 z-2001 w-full pointer-events-auto ${!isAndroidApp ? "bottom-0" : ""}`}
+                className={`${posClass} left-0 right-0 z-2001 w-full pointer-events-auto ${!isAndroidApp ? "bottom-3" : ""}`}
                 style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
                 onClick={(e) => e.stopPropagation()}
             >

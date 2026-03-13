@@ -973,7 +973,7 @@ function GuidePageInner() {
                                 onClick={() => setShowMemoryLimitModal(false)}
                                 aria-hidden
                             />
-                            <div className={`${posClass} left-0 right-0 bottom-0 z-5001 w-full`}>
+                            <div className={`${posClass} left-0 right-0 bottom-3 z-5001 w-full`}>
                                 <div
                                     className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
                                     style={{
