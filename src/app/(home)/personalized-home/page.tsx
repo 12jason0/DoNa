@@ -1501,11 +1501,17 @@ const AIRecommender = () => {
                     </div>
                 )}
 
-                {/* 👇 [추가됨] 대화창 모달 */}
+                {/* 👇 [추가됨] 대화창 모달 - Sara(헤더)·네비게이션 바 고려 safe-area 적용 */}
                 {showChatModal && (
-                    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div
+                        className="fixed inset-0 z-60 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        style={{
+                            paddingTop: "env(safe-area-inset-top, 0px)",
+                            paddingBottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
+                        }}
+                    >
                         {/* 모달 컨테이너 */}
-                        <div className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md w-full h-full md:h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
+                        <div className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md w-full flex-1 min-h-0 max-w-[600px] md:h-[85vh] md:flex-none md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
                             {/* 헤더 */}
                             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-[#1a241b]/80">
                                 <div className="flex items-center gap-3">

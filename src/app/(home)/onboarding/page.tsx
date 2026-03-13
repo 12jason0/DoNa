@@ -396,20 +396,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 {/* 무거운 외부 이미지 대신 가벼운 그라디언트 배경 사용 */}
                 <div className="absolute inset-0 z-0 bg-linear-to-br from-black via-gray-900 to-black" />
 
-                <div className="relative z-10 w-full h-full max-w-[480px] mx-auto flex flex-col justify-between p-8 pb-12 animate-fadeIn">
-                    <div className="flex justify-end pt-4">
-                        {/* 🔥 닫기 버튼에 '다음에 하기' 툴팁이나 텍스트를 추가해도 좋음 */}
-                        <button
-                            onClick={handleClose}
-                            className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/80 hover:bg-white/20 transition-all border border-white/10 group relative"
-                        >
-                            <X size={20} />
-                            <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 text-white/80 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                다음에 하기
-                            </span>
-                        </button>
-                    </div>
-
+                <div className="relative z-10 w-full h-full max-w-[480px] mx-auto flex flex-col justify-between p-8 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] animate-fadeIn">
+                    {/* 🟢 AI DONA / 타이틀 영역 (Sara) → X는 그 아래 */}
                     <div className="flex flex-col items-start text-left space-y-6">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/30 bg-white/10 backdrop-blur-md text-white/90 text-xs font-medium tracking-wider uppercase">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -423,18 +411,30 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                         <p className="text-white/70 text-base font-light leading-relaxed max-w-[80%] whitespace-pre-line">
                             {t("onboarding.subtitle")}
                         </p>
-                        <div className="h-4"></div>
-                        <button
-                            onClick={handleStart}
-                            className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-between px-6 group"
-                        >
-                            <span>{t("onboarding.startButton")}</span>
-                            <ArrowRight
-                                size={20}
-                                className="text-emerald-100 group-hover:text-white group-hover:translate-x-1 transition-all"
-                            />
-                        </button>
+                        {/* 🔥 X 버튼: Sara(브랜딩 영역) 아래로 이동 */}
+                        <div className="flex justify-end w-full pt-2">
+                            <button
+                                onClick={handleClose}
+                                className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/80 hover:bg-white/20 transition-all border border-white/10 group relative"
+                            >
+                                <X size={20} />
+                                <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 text-white/80 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                    다음에 하기
+                                </span>
+                            </button>
+                        </div>
                     </div>
+
+                    <button
+                        onClick={handleStart}
+                        className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-between px-6 group shrink-0"
+                    >
+                        <span>{t("onboarding.startButton")}</span>
+                        <ArrowRight
+                            size={20}
+                            className="text-emerald-100 group-hover:text-white group-hover:translate-x-1 transition-all"
+                        />
+                    </button>
                 </div>
             </div>
         );
