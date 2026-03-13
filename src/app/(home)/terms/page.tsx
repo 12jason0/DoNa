@@ -1,52 +1,56 @@
+"use client";
+
+import { useLocale } from "@/context/LocaleContext";
+
 export default function TermsOfServicePage() {
+    const { t } = useLocale();
     const CONTACT_EMAIL = "12jason@donacouse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
+            <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">이용약관</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t("terms.title")}</h1>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        서비스 이용에 필요한 핵심 조항을 빠르게 찾아볼 수 있도록 구성했습니다.
+                        {t("terms.subtitle")}
                     </p>
 
                     <div className="prose prose-lg max-w-none leading-relaxed">
-                        {/* 빠른 이동 */}
                         <div className="mb-6 flex flex-wrap gap-2">
                             <a
                                 href="#def"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                정의
+                                {t("terms.navDef")}
                             </a>
                             <a
                                 href="#change"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                약관 변경
+                                {t("terms.navChange")}
                             </a>
                             <a
                                 href="#service"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                서비스 제공
+                                {t("terms.navService")}
                             </a>
                             <a
                                 href="#signup"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                회원가입
+                                {t("terms.navSignup")}
                             </a>
                             <a
                                 href="#duty"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                회원 의무
+                                {t("terms.navDuty")}
                             </a>
                             <a
                                 href="#ip"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                저작권
+                                {t("terms.navIp")}
                             </a>
                         </div>
 
@@ -281,36 +285,36 @@ export default function TermsOfServicePage() {
                         </ul>
 
                         <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">📞 문의처</h3>
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">📞 {t("terms.contactTitle")}</h3>
                             <p className="text-gray-700 dark:text-gray-300 text-sm">
-                                본 약관에 대한 문의사항이 있으시면 아래로 연락주시기 바랍니다.
+                                {t("terms.contactDesc")}
                             </p>
                             <p className="text-gray-700 text-sm mt-2">
-                                <strong>이메일:</strong> {CONTACT_EMAIL}
+                                <strong>{t("terms.contactEmail")}:</strong> {CONTACT_EMAIL}
                                 <br />
-                                <strong>운영시간:</strong> 평일 10:00 - 18:00 (주말 및 공휴일 제외)
+                                <strong>{t("terms.contactHours")}:</strong> {t("terms.contactHoursValue")}
                             </p>
                         </div>
 
                         <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">사업자 정보</h3>
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{t("terms.businessTitle")}</h3>
                             <p className="text-gray-700 text-sm mb-1">
-                                <strong>상호:</strong> (주)두나 (DoNa)
+                                <strong>{t("terms.businessName")}:</strong> {t("terms.businessNameValue")}
                             </p>
                             <p className="text-gray-700 text-sm mb-1">
-                                <strong>대표:</strong> 오승용
+                                <strong>{t("terms.businessRep")}:</strong> {t("terms.businessRepValue")}
                             </p>
                             <p className="text-gray-700 text-sm mb-1">
-                                <strong>사업자등록번호:</strong> 166-10-03081
+                                <strong>{t("terms.businessRegNo")}:</strong> {t("terms.businessRegNoValue")}
                             </p>
                             <p className="text-gray-700 text-sm mb-1">
-                                <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
+                                <strong>{t("terms.businessSaleNo")}:</strong> {t("terms.businessSaleNoValue")}
                             </p>
                             <p className="text-gray-700 text-sm mb-1">
-                                <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
+                                <strong>{t("terms.businessAddress")}:</strong> {t("terms.businessAddressValue")}
                             </p>
                             <p className="text-gray-700 dark:text-gray-300 text-sm">
-                                <strong>문의:</strong> {CONTACT_EMAIL}
+                                <strong>{t("terms.businessContact")}:</strong> {CONTACT_EMAIL}
                             </p>
                         </div>
                     </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Header from "@/components/Header";
+import { useLocale } from "@/context/LocaleContext";
 
 interface FAQItem {
     id: number;
@@ -12,64 +13,40 @@ interface FAQItem {
 }
 
 const FAQPage = () => {
+    const { t } = useLocale();
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
-    const [faqs, setFaqs] = useState<FAQItem[]>([
-        {
-            id: 1,
-            question: "DoNa는 어떤 서비스인가요?",
-            answer: "DoNa는 AI가 추천하는 완벽한 여행 코스를 제공하는 서비스입니다. 밀키트처럼 꺼내 먹는 여행 코스로, 복잡한 계획 없이도 완벽한 여행을 경험할 수 있습니다.",
-            category: "서비스 소개",
-            isOpen: false,
-        },
-        {
-            id: 2,
-            question: "회원가입은 어떻게 하나요?",
-            answer: "홈페이지 상단의 '로그인' 버튼을 클릭하신 후, '회원가입' 탭을 선택하여 이메일과 비밀번호를 입력하시면 됩니다.",
-            category: "계정 관리",
-            isOpen: false,
-        },
-        {
-            id: 3,
-            question: "오늘의 데이트 추천 코스는 어떻게 작동하나요?",
-            answer: "AI가 여러분의 취향, 현재 날씨, 이동 동선을 분석해서 완벽한 여행 코스를 추천해드립니다. 컨셉과 카테고리만 선택하면 바로 출발할 수 있어요!",
-            category: "서비스 이용",
-            isOpen: false,
-        },
-        {
-            id: 4,
-            question: "코스는 무료인가요?",
-            answer: "기본 코스는 무료로 제공되며, 프리미엄 코스의 경우 별도 요금이 발생할 수 있습니다. 각 코스의 상세 페이지에서 가격 정보를 확인하실 수 있습니다.",
-            category: "결제",
-            isOpen: false,
-        },
-        {
-            id: 5,
-            question: "지도에서 현재 위치가 표시되지 않아요",
-            answer: "브라우저 및 앱의 위치 권한을 '허용'으로 설정해주세요. DoNa는 사용자의 정확한 위치를 기반으로 가장 가까운 데이트 코스를 실시간으로 추천하기 위해 GPS 정보를 사용합니다. 설정 > 개인정보 보호 > 위치 서비스에서 DoNa에 대한 위치 권한을 확인해주세요.",
-            category: "기술 문제",
-            isOpen: false,
-        },
-        {
-            id: 6,
-            question: "코스 후기를 남길 수 있나요?",
-            answer: "네, 코스를 이용하신 후에는 후기를 남기실 수 있습니다. 다른 사용자들에게 도움이 되는 소중한 정보가 됩니다.",
-            category: "서비스 이용",
-            isOpen: false,
-        },
-        {
-            id: 7,
-            question: "공식 출시일은 언제인가요?",
-            answer: "DoNa는 2026년 1월 1일 정식 서비스를 시작합니다. 현재는 안정적인 서비스를 위한 최종 심사 단계입니다.",
-            category: "서비스 소개",
-            isOpen: false,
-        },
-    ]);
 
-    const [selectedCategory, setSelectedCategory] = useState<string>("전체");
+    const faqsBase = useMemo<FAQItem[]>(
+        () => [
+            { id: 1, question: t("help.faq1Question"), answer: t("help.faq1Answer"), category: t("help.faq1Category"), isOpen: false },
+            { id: 2, question: t("help.faq2Question"), answer: t("help.faq2Answer"), category: t("help.faq2Category"), isOpen: false },
+            { id: 3, question: t("help.faq3Question"), answer: t("help.faq3Answer"), category: t("help.faq3Category"), isOpen: false },
+            { id: 4, question: t("help.faq4Question"), answer: t("help.faq4Answer"), category: t("help.faq4Category"), isOpen: false },
+            { id: 5, question: t("help.faq5Question"), answer: t("help.faq5Answer"), category: t("help.faq5Category"), isOpen: false },
+            { id: 6, question: t("help.faq6Question"), answer: t("help.faq6Answer"), category: t("help.faq6Category"), isOpen: false },
+            { id: 7, question: t("help.faq7Question"), answer: t("help.faq7Answer"), category: t("help.faq7Category"), isOpen: false },
+        ],
+        [t]
+    );
+    const [faqs, setFaqs] = useState<FAQItem[]>(faqsBase);
+    useEffect(() => {
+        setFaqs(faqsBase);
+    }, [faqsBase]);
+
+    const categories = useMemo(
+        () => [t("help.categoryAll"), t("help.categoryService"), t("help.categoryAccount"), t("help.categoryUse"), t("help.categoryPayment"), t("help.categoryTech")],
+        [t]
+    );
+
+    const [selectedCategory, setSelectedCategory] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState<string>("");
     const categoriesTrackRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (categories[0]) setSelectedCategory(categories[0]);
+    }, [categories]);
 
     const handleSelectCategory = (category: string, ev: React.MouseEvent<HTMLButtonElement>) => {
         setSelectedCategory(category);
@@ -87,14 +64,13 @@ const FAQPage = () => {
         } catch {}
     };
 
-    const categories = ["전체", "서비스 소개", "계정 관리", "서비스 이용", "결제", "기술 문제"];
-
     const toggleFAQ = (id: number) => {
         setFaqs(faqs.map((faq) => (faq.id === id ? { ...faq, isOpen: !faq.isOpen } : faq)));
     };
 
+    const activeCategory = selectedCategory || categories[0];
     const filteredFAQs = faqs.filter((faq) => {
-        const matchesCategory = selectedCategory === "전체" || faq.category === selectedCategory;
+        const matchesCategory = activeCategory === categories[0] || faq.category === activeCategory;
         const matchesSearch =
             faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
             faq.answer.toLowerCase().includes(searchTerm.toLowerCase());
@@ -103,13 +79,11 @@ const FAQPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
-            <main className="flex-grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
+            <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold mb-6 text-center text-black dark:text-white">자주 묻는 질문</h1>
+                    <h1 className="text-3xl font-bold mb-6 text-center text-black dark:text-white">{t("help.title")}</h1>
 
-                    {/* 검색 및 필터 */}
                     <div className="mb-8">
-                        {/* 검색창 영역 */}
                         <div className="mb-4">
                             <div className="relative">
                                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -117,7 +91,7 @@ const FAQPage = () => {
                                 </span>
                                 <input
                                     type="text"
-                                    placeholder="질문을 검색해보세요..."
+                                    placeholder={t("help.searchPlaceholder")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="text-gray-800 dark:text-white w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-2xl bg-white dark:bg-[#1a241b] shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
@@ -134,9 +108,9 @@ const FAQPage = () => {
                                 <button
                                     key={category}
                                     onClick={(e) => handleSelectCategory(category, e)}
-                                    aria-pressed={selectedCategory === category}
+                                    aria-pressed={activeCategory === category}
                                     className={`${
-                                        selectedCategory === category
+                                        activeCategory === category
                                             ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700 shadow"
                                             : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700"
                                     } min-w-[88px] px-4 py-3 rounded-2xl text-sm font-semibold border text-center leading-snug break-keep hover:cursor-pointer`}
@@ -182,24 +156,23 @@ const FAQPage = () => {
                         ) : (
                             <div className="text-center py-12">
                                 <div className="text-6xl mb-4">🔍</div>
-                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">검색 결과가 없습니다</h3>
-                                <p className="text-gray-600 dark:text-gray-400">다른 키워드로 검색해보세요.</p>
+                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t("help.noResultsTitle")}</h3>
+                                <p className="text-gray-600 dark:text-gray-400">{t("help.noResultsDesc")}</p>
                             </div>
                         )}
                     </div>
 
-                    {/* 추가 문의 안내 */}
                     <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-6 text-center">
-                        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">더 궁금한 점이 있으신가요?</h3>
+                        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">{t("help.moreHelpTitle")}</h3>
                         <p className="text-blue-700 dark:text-blue-400 mb-4">
-                            위의 질문에서 답을 찾지 못하셨다면 이메일로 문의해주세요:{" "}
+                            {t("help.moreHelpText")}{" "}
                             <strong className="text-blue-800 dark:text-blue-300">12jason@donacouse.com</strong>
                         </p>
                         <a
                             href="/contact"
                             className="inline-block bg-blue-600 dark:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:cursor-pointer mt-2"
                         >
-                            문의하기
+                            {t("help.contactBtn")}
                         </a>
                     </div>
                 </div>

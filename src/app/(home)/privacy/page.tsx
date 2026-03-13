@@ -1,58 +1,62 @@
+"use client";
+
+import { useLocale } from "@/context/LocaleContext";
+
 export default function PrivacyPolicyPage() {
+    const { t } = useLocale();
     const CONTACT_EMAIL = "12jason@donacouse.com";
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
             <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">개인정보처리방침</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t("privacy.title")}</h1>
                         <p className="text-gray-600 dark:text-white mb-6">
-                        개인정보의 수집·이용 목적과 보관 기간을 항목별로 쉽게 확인할 수 있도록 구성했습니다.
+                        {t("privacy.subtitle")}
                     </p>
 
                     <div className="prose prose-lg max-w-none leading-relaxed">
-                        {/* 빠른 이동 */}
                         <div className="mb-6 flex flex-wrap gap-2">
                             <a
                                 href="#purpose"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                처리 목적
+                                {t("privacy.navPurpose")}
                             </a>
                             <a
                                 href="#retention"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                보유 기간
+                                {t("privacy.navRetention")}
                             </a>
                             <a
                                 href="#items"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                처리 항목
+                                {t("privacy.navItems")}
                             </a>
                             <a
                                 href="#behavior"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                행태정보
+                                {t("privacy.navBehavior")}
                             </a>
                             <a
                                 href="#rights"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                권리
+                                {t("privacy.navRights")}
                             </a>
                             <a
                                 href="#security"
                                 className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white text-sm hover:bg-white dark:hover:bg-gray-700 border dark:border-gray-700"
                             >
-                                안전조치
+                                {t("privacy.navSecurity")}
                             </a>
                             <a
                                 href="/data-deletion"
                                 className="px-3 py-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800/50 font-medium"
                             >
-                                계정 탈퇴 / 데이터 삭제
+                                {t("privacy.navDataDeletion")}
                             </a>
                         </div>
 

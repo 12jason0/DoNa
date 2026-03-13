@@ -634,9 +634,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                             >
                                 <div className={`min-h-full ${!isMapPage ? "pb-22 lg:pb-0" : ""}`}>{children}</div>
                             </main>
-                            {/* 🟢 Footer + +버튼: Hydration 방지 — !mounted 시에도 mounted(웹)와 동일한 bottom 사용 */}
+                            {/* 🟢 Footer + +버튼: pointer-events-none으로 통과시켜 왼쪽 콘텐츠 클릭 가능 */}
                             <div
-                                className={`shrink-0 bg-transparent ${
+                                className={`shrink-0 bg-transparent pointer-events-none ${
                                     isEscapeId || isCourseStart || isCourseDetail || isOnboardingPage || isShareCoursePage
                                         ? "hidden"
                                         : "block"
@@ -776,7 +776,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                             ? modalContainerRef.current
                                             : document.body,
                                     )}
-                                {!isMapPage && <Footer isApp={isApp} plusButton={null} />}
+                                {!isMapPage && (
+                                    <div className="pointer-events-auto w-full">
+                                        <Footer isApp={isApp} plusButton={null} />
+                                    </div>
+                                )}
                             </div>
                             {/* 🟢 AdMob/AdSense 비활성화: 웹 하단 광고 주석 */}
                             {/* {!isApp && shouldShowWebAd && webAdVisible && hasCheckedViewport && !isLgOrUp && (

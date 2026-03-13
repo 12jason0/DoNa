@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "@/components/ImageFallback";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/context/LocaleContext";
 
 interface Course {
     id: string;
@@ -44,6 +45,7 @@ interface Review {
 
 const AboutPage = () => {
     const router = useRouter();
+    const { t } = useLocale();
     const [courseCount, setCourseCount] = useState<number>(0);
     const [courses, setCourses] = useState<Course[]>([]);
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -182,30 +184,29 @@ const AboutPage = () => {
                         <div className="mb-6">
                             <span className="text-6xl">📦</span>
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">여행, 이제 직접 안 짜도 돼요</h1>
-                        <p className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-3">밀키트처럼 꺼내 먹는 여행 코스, DoNa</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{t("about.heroTitle")}</h1>
+                        <p className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-3">{t("about.heroTagline")}</p>
                         <p className="text-base text-gray-600 dark:text-gray-400 mb-6 max-w-3xl mx-auto">
-                            여행 계획하기 귀찮으시죠? DoNa가 여러분을 위한 완벽한 여행 코스를 준비해드립니다. 컨셉과
-                            카테고리만 선택하면 바로 출발할 수 있어요!
+                            {t("about.heroDesc")}
                         </p>
                         <div className="flex flex-wrap justify-center gap-3">
                             <div className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                                💕 커플
+                                💕 {t("about.badgeCouple")}
                             </div>
                             <div className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                                👨‍👩‍👧‍👦 가족
+                                👨‍👩‍👧‍👦 {t("about.badgeFamily")}
                             </div>
                             <div className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                                👥 친구
+                                👥 {t("about.badgeFriends")}
                             </div>
                             <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                                ☕ 카페
+                                ☕ {t("about.badgeCafe")}
                             </div>
                             <div className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                                🍽️ 맛집
+                                🍽️ {t("about.badgeFood")}
                             </div>
                             <div className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                                🌿 힐링
+                                🌿 {t("about.badgeHealing")}
                             </div>
                         </div>
                     </div>
@@ -217,17 +218,17 @@ const AboutPage = () => {
                         <div className="grid grid-cols-1 gap-4">
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">213+</div>
-                                <div className="text-gray-600 dark:text-gray-400">지금까지 여행을 떠난 사용자</div>
+                                <div className="text-gray-600 dark:text-gray-400">{t("about.statsUsers")}</div>
                             </div>
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">4.7★</div>
-                                <div className="text-gray-600 dark:text-gray-400">평균 사용자 만족도</div>
+                                <div className="text-gray-600 dark:text-gray-400">{t("about.statsRating")}</div>
                             </div>
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
-                                    {loading ? "..." : `${courseCount}개`}
+                                    {loading ? "..." : `${courseCount}`}
                                 </div>
-                                <div className="text-gray-600 dark:text-gray-400">검증된 완벽한 코스</div>
+                                <div className="text-gray-600 dark:text-gray-400">{t("about.statsCourses")}</div>
                             </div>
                         </div>
                     </div>
@@ -237,39 +238,36 @@ const AboutPage = () => {
                 <section className="py-12 px-4 bg-gray-50 dark:bg-[#1a241b]">
                     <div className="max-w-[500px] mx-auto">
                         <h2 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-6">
-                            이렇게 간단해요! 3단계로 완성되는 여행
+                            {t("about.stepsTitle")}
                         </h2>
                         <div className="grid grid-cols-1 gap-6">
-                            {/* 1단계 */}
                             <div className="text-center p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-lg">
                                 <div className="w-12 h-12 bg-blue-600 dark:bg-blue-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="text-xl">1️⃣</span>
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">컨셉 선택</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t("about.step1Title")}</h3>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    커플, 가족, 친구 중에서 누구와 함께 여행할지 선택하세요
+                                    {t("about.step1Desc")}
                                 </p>
                             </div>
 
-                            {/* 2단계 */}
                             <div className="text-center p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-lg">
                                 <div className="w-12 h-12 bg-purple-600 dark:bg-purple-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="text-xl">2️⃣</span>
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">AI 코스 추천</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t("about.step2Title")}</h3>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    AI가 여러분의 취향, 현재 날씨, 이동 동선을 분석해서 완벽한 여행 코스를 추천해드려요
+                                    {t("about.step2Desc")}
                                 </p>
                             </div>
 
-                            {/* 3단계 */}
                             <div className="text-center p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-lg">
                                 <div className="w-12 h-12 bg-green-600 dark:bg-green-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="text-xl">3️⃣</span>
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">바로 여행 출발</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t("about.step3Title")}</h3>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    지도에서 코스를 확인하고 바로 여행을 시작하세요!
+                                    {t("about.step3Desc")}
                                 </p>
                             </div>
                         </div>
