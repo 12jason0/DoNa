@@ -322,8 +322,10 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710]">
             <div
-                className={`bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 top-[env(safe-area-inset-top,0)] ${
-                    isAndroidApp ? "pt-3" : "pt-[calc(env(safe-area-inset-top,0)+1.25rem)]"
+                className={`bg-white dark:bg-[#1a241b] px-5 pb-1.5 sticky z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-gray-900/20 ${
+                    isAndroidApp
+                        ? "top-0 pt-2"
+                        : "top-[env(safe-area-inset-top,0)] pt-[calc(env(safe-area-inset-top,0)+1.25rem)]"
                 }`}
             >
                 <div>
