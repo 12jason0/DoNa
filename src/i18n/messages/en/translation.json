@@ -57,12 +57,12 @@
             "button": "Log in"
         },
         "empty": {
-            "title": "Today's Date Album",
+            "title": "My Date Album",
             "subtitle": "Leave your first memory for better recommendations.",
             "button": "Add Memory"
         },
         "filled": {
-            "title": "Today's Date Album",
+            "title": "My Date Album",
             "subtitle": "Relive your recent dates and plan your next adventure.",
             "button": "View Memories"
         },

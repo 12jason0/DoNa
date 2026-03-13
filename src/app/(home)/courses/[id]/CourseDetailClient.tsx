@@ -3055,7 +3055,7 @@ export default function CourseDetailClient({
                                                                     setShowPlaceModal(true);
                                                                 }
                                                             }}
-                                                            className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white font-bold text-xs active:scale-95 transition-all"
+                                                            className="flex-1 py-2.5 rounded-lg bg-gray-900 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-bold text-xs hover:bg-gray-800 active:scale-95 transition-all"
                                                         >
                                                             상세보기
                                                         </button>

@@ -264,7 +264,7 @@ export default function MemoryCTA({
                 <button
                     type="button"
                     onClick={onAction}
-                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-lg transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white bg-[#7aa06f] shadow-lg transition-all"
                 >
                     {content.button}
                 </button>
