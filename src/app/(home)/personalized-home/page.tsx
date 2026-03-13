@@ -1563,17 +1563,17 @@ const AIRecommender = () => {
                     </div>
                 )}
 
-                {/* 👇 대화창 모달 - Sara(헤더)·네비게이션 바 고려, 살짝 위로 여유 */}
+                {/* 👇 대화창 - 화면 전체 커버 */}
                 {showChatModal && (
                     <div
-                        className="fixed inset-0 z-60 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        className="fixed inset-0 z-60 flex flex-col animate-in fade-in duration-300"
                         style={{
                             paddingTop: "env(safe-area-inset-top, 0px)",
-                            paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
+                            paddingBottom: "env(safe-area-inset-bottom, 0px)",
                         }}
                     >
-                        {/* 모달 컨테이너 */}
-                        <div className="bg-white/95 dark:bg-[#1a241b]/95 backdrop-blur-md w-full flex-1 min-h-0 max-w-[600px] md:h-[85vh] md:flex-none md:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden">
+                        {/* 전체 페이지 컨테이너 */}
+                        <div className="bg-white dark:bg-[#1a241b] w-full flex-1 min-h-0 flex flex-col overflow-hidden">
                             {/* 헤더 */}
                             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-[#1a241b]/80">
                                 <div className="flex items-center gap-3">
