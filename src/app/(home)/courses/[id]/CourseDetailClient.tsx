@@ -8,10 +8,7 @@ import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { type LoginModalPresetKey } from "@/constants/loginModalPresets";
-import BridgeModal, {
-    checkAndClearOpenSubscriptionAfterLogin,
-    setOpenSubscriptionAfterLogin,
-} from "@/components/BridgeModal";
+import BridgeModal from "@/components/BridgeModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -19,7 +16,6 @@ import { useAuth } from "@/context/AuthContext";
 import TapFeedback from "@/components/TapFeedback";
 import { TipSection, TipCategoryIcon } from "@/components/TipSection";
 import { parseTipsFromDb, FREE_TIP_CATEGORIES, PAID_TIP_CATEGORIES } from "@/types/tip";
-import { getPremiumQuestions } from "../../../../lib/placeCategory";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
@@ -218,9 +214,7 @@ export interface CoursePlace {
     order_in_segment?: number | null;
     estimated_duration: number;
     recommended_time: string;
-    coaching_tip?: string | null; // 유료 팁
-    coaching_tip_free?: string | null; // 무료 팁
-    hasPaidTip?: boolean; // 서버 전달: 유료 팁 존재 여부(내용 숨김 시 잠김 영역 표시용)
+    tips?: string | null;
     place: Place;
 }
 
@@ -404,7 +398,6 @@ export default function CourseDetailClient({
     const [showShareModal, setShowShareModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showPlaceModal, setShowPlaceModal] = useState(false);
-    const [showPaidTipModal, setShowPaidTipModal] = useState(false);
     const [placeModalSlideUp, setPlaceModalSlideUp] = useState(false);
     const [placeModalDragY, setPlaceModalDragY] = useState(0);
     const placeModalDragStartY = useRef(0);
@@ -415,8 +408,7 @@ export default function CourseDetailClient({
     const [shareModalSlideUp, setShareModalSlideUp] = useState(false);
     // 🔒 [접근 제어] 잠긴 코스는 useEffect에서 인증 상태 확인 후 모달 표시 (미로그인 → 로그인 모달, 로그인 → TicketPlans)
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-    // TIPS: 유료 팁 CTA로 열림 | COURSE: 코스 잠금으로 열림 (모달 카피 분기용)
-    const [subscriptionModalContext, setSubscriptionModalContext] = useState<"TIPS" | "COURSE">("COURSE");
+    const [subscriptionModalContext] = useState<"COURSE">("COURSE");
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginModalPreset, setLoginModalPreset] = useState<LoginModalPresetKey>("courseDetail");
     const [showBridgeModal, setShowBridgeModal] = useState(false);
@@ -448,43 +440,10 @@ export default function CourseDetailClient({
             setShowLoginModal(true);
             setShowSubscriptionModal(false);
         } else {
-            // 🟢 로그인 유저 → TicketPlans만 표시 (코스 잠금 = COURSE 컨텍스트)
-            setSubscriptionModalContext("COURSE");
             setShowSubscriptionModal(true);
             setShowLoginModal(false);
         }
     }, [courseData.isLocked, isAuthenticated, authLoading]);
-
-    // 🟢 유료팁 CTA → 로그인 후 돌아왔을 때: FREE 등급만 결제 모달 오픈, BASIC/PREMIUM은 모달 안 띄움
-    useEffect(() => {
-        if (authLoading || !isAuthenticated) return;
-        if (!checkAndClearOpenSubscriptionAfterLogin()) return;
-
-        let cancelled = false;
-        (async () => {
-            try {
-                const { authenticatedFetch } = await import("@/lib/authClient");
-                const data = await authenticatedFetch<{ user?: { subscriptionTier?: string } }>("/api/users/profile");
-                const tier = (data?.user?.subscriptionTier || "FREE").toUpperCase();
-                if (cancelled) return;
-                setShowLoginModal(false);
-                setShowBridgeModal(false);
-                // BASIC/PREMIUM 유저는 유료팁 접근 가능 → 결제 모달 불필요
-                if (tier === "BASIC" || tier === "PREMIUM") return;
-                setSubscriptionModalContext("TIPS");
-                setShowSubscriptionModal(true);
-            } catch {
-                if (cancelled) return;
-                setShowLoginModal(false);
-                setShowBridgeModal(false);
-                setSubscriptionModalContext("TIPS");
-                setShowSubscriptionModal(true);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [isAuthenticated, authLoading]);
 
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [activeCourse, setActiveCourse] = useState<{
@@ -1346,9 +1305,11 @@ export default function CourseDetailClient({
 
     const reviewsSectionRef = useRef<HTMLElement | null>(null);
 
-    // 🟢 코스 상세 진입 시 해당 코스 리뷰 바로 로드 (공개 리뷰만 표시)
+    // 🟢 리뷰는 첫 페인트 후 지연 로드 (초기 로딩 체감 개선)
     useEffect(() => {
-        if (courseId) fetchReviews();
+        if (!courseId) return;
+        const timer = window.setTimeout(fetchReviews, 200);
+        return () => clearTimeout(timer);
     }, [courseId, fetchReviews]);
 
     // 🟢 후기 작성 성공 시 바로 목록 갱신
@@ -1639,7 +1600,6 @@ export default function CourseDetailClient({
                             quality={75}
                             fetchPriority="high"
                             sizes="(max-width: 768px) 100vw, 33vw"
-                            unoptimized={false}
                         />
                         {/* 🔥 진한 그라데이션 오버레이 */}
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent" />
@@ -2203,133 +2163,35 @@ export default function CourseDetailClient({
                                                                             </div>
                                                                             {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
                                                                             {(() => {
-                                                                                const courseGrade = (
-                                                                                    courseData.grade || "FREE"
-                                                                                ).toUpperCase();
-                                                                                const currentUserTier = (
-                                                                                    userTier || "FREE"
-                                                                                ).toUpperCase();
-                                                                                const shouldShowPaidTip = !(
-                                                                                    (courseGrade === "FREE" &&
-                                                                                        currentUserTier === "FREE") ||
-                                                                                    courseData.isLocked
-                                                                                );
+                                                                                const allTips = parseTipsFromDb(coursePlace.tips);
+                                                                                if (allTips.length === 0) return null;
 
-                                                                                const freeTips = parseTipsFromDb(
-                                                                                    coursePlace.coaching_tip_free,
-                                                                                );
-                                                                                const paidTips = parseTipsFromDb(
-                                                                                    coursePlace.coaching_tip,
-                                                                                );
-                                                                                const hasFreeTip = freeTips.length > 0;
-                                                                                const hasPaidTip =
-                                                                                    coursePlace.hasPaidTip ??
-                                                                                    paidTips.length > 0;
-
-                                                                                if (!hasFreeTip && !hasPaidTip)
-                                                                                    return null;
-
-                                                                                const getCategoryLabel = (
-                                                                                    cat: string,
-                                                                                ) =>
-                                                                                    FREE_TIP_CATEGORIES.find(
-                                                                                        (c) => c.value === cat,
-                                                                                    )?.label ??
-                                                                                    PAID_TIP_CATEGORIES.find(
-                                                                                        (c) => c.value === cat,
-                                                                                    )?.label ??
+                                                                                const getCategoryLabel = (cat: string) =>
+                                                                                    FREE_TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
+                                                                                    PAID_TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
                                                                                     t("courseDetail.etc");
 
-                                                                                const freeCategories = [
-                                                                                    ...new Set(
-                                                                                        freeTips.map((t) => t.category),
-                                                                                    ),
-                                                                                ];
-                                                                                const paidCategories = [
-                                                                                    ...new Set(
-                                                                                        paidTips.map((t) => t.category),
-                                                                                    ),
-                                                                                ];
+                                                                                const categories = [...new Set(allTips.map((t) => t.category))];
 
                                                                                 return (
                                                                                     <div className="mt-2 flex flex-col gap-1.5">
                                                                                         <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                                                                                            ✨{" "}
-                                                                                            {t("courseDetail.freeTips")}
+                                                                                            ✨ {t("courseDetail.freeTips")}
                                                                                         </span>
                                                                                         <div className="flex flex-wrap gap-1.5">
-                                                                                            {freeCategories.map(
-                                                                                                (cat) => (
-                                                                                                    <span
-                                                                                                        key={`free-${cat}`}
-                                                                                                        className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
-                                                                                                    >
-                                                                                                        <TipCategoryIcon
-                                                                                                            category={
-                                                                                                                cat
-                                                                                                            }
-                                                                                                            className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
-                                                                                                        />
-                                                                                                        {getCategoryLabel(
-                                                                                                            cat,
-                                                                                                        )}
-                                                                                                    </span>
-                                                                                                ),
-                                                                                            )}
+                                                                                            {categories.map((cat) => (
+                                                                                                <span
+                                                                                                    key={cat}
+                                                                                                    className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
+                                                                                                >
+                                                                                                    <TipCategoryIcon
+                                                                                                        category={cat}
+                                                                                                        className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
+                                                                                                    />
+                                                                                                    {getCategoryLabel(cat)}
+                                                                                                </span>
+                                                                                            ))}
                                                                                         </div>
-                                                                                        {hasPaidTip && (
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={(e) => {
-                                                                                                    e.stopPropagation();
-                                                                                                    if (
-                                                                                                        shouldShowPaidTip
-                                                                                                    ) {
-                                                                                                        setSelectedPlace(
-                                                                                                            coursePlace.place,
-                                                                                                        );
-                                                                                                        setShowPlaceModal(
-                                                                                                            true,
-                                                                                                        );
-                                                                                                    } else if (
-                                                                                                        isAuthenticated
-                                                                                                    ) {
-                                                                                                        setSubscriptionModalContext(
-                                                                                                            "TIPS",
-                                                                                                        );
-                                                                                                        setShowSubscriptionModal(
-                                                                                                            true,
-                                                                                                        );
-                                                                                                    } else {
-                                                                                                        setSubscriptionModalContext(
-                                                                                                            "TIPS",
-                                                                                                        );
-                                                                                                        setOpenSubscriptionAfterLogin();
-                                                                                                        setLoginModalPreset(
-                                                                                                            "courseDetail",
-                                                                                                        );
-                                                                                                        setShowLoginModal(
-                                                                                                            true,
-                                                                                                        );
-                                                                                                    }
-                                                                                                }}
-                                                                                                className="w-full text-left rounded-lg p-2.5 transition-all hover:opacity-95 bg-[#FFFBEB] dark:bg-[#1c1917] border border-amber-200 dark:border-amber-800/50"
-                                                                                            >
-                                                                                                <div className="flex items-center gap-1.5 mb-0.5 text-[11px] font-medium text-gray-800 dark:text-gray-100">
-                                                                                                    🔥 꼭 알아야 할 실패
-                                                                                                    방지 꿀팁
-                                                                                                </div>
-                                                                                                <p className="text-[11px] font-medium text-gray-800 dark:text-gray-100">
-                                                                                                    {
-                                                                                                        getPremiumQuestions(
-                                                                                                            coursePlace
-                                                                                                                .place
-                                                                                                                ?.category,
-                                                                                                        ).headline
-                                                                                                    }
-                                                                                                </p>
-                                                                                            </button>
-                                                                                        )}
                                                                                     </div>
                                                                                 );
                                                                             })()}
@@ -3416,38 +3278,16 @@ export default function CourseDetailClient({
                                         <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
                                             {selectedPlace.description || "상세 설명이 없습니다."}
                                         </p>
-                                        {/* 🟢 무료 팁: 항상 표시. 유료 팁 버튼: 유료 팁 있을 때 표시 */}
+                                        {/* 팁: 통합 표시 (권한 있으면 전체) */}
                                         {(() => {
                                             const coursePlace = sortedCoursePlaces.find(
                                                 (cp) => cp.place.id === selectedPlace.id,
                                             );
-                                            const freeTips = parseTipsFromDb(coursePlace?.coaching_tip_free);
-                                            const paidTips = parseTipsFromDb(coursePlace?.coaching_tip);
-                                            const hasFreeTip = freeTips.length > 0;
-                                            const hasPaidTip = coursePlace?.hasPaidTip ?? paidTips.length > 0;
-
-                                            if (!hasFreeTip && !hasPaidTip) return null;
-
-                                            const showPaidTipButton = hasPaidTip;
-
+                                            const tips = parseTipsFromDb(coursePlace?.tips);
+                                            if (tips.length === 0) return null;
                                             return (
                                                 <div className="mb-4 flex flex-col gap-2">
-                                                    {hasFreeTip && (
-                                                        <TipSection tips={freeTips} variant="free" compact={false} />
-                                                    )}
-                                                    {showPaidTipButton && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setShowPaidTipModal(true);
-                                                            }}
-                                                            className="w-full py-3 rounded-lg bg-[#FFFBEB] dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 font-bold shadow-sm hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm"
-                                                        >
-                                                            <Icons.Lock className="w-4 h-4 shrink-0" />
-                                                            시크릿 꿀팁 보기
-                                                        </button>
-                                                    )}
+                                                    <TipSection tips={tips} variant="free" compact={false} />
                                                 </div>
                                             );
                                         })()}
@@ -3499,133 +3339,6 @@ export default function CourseDetailClient({
                             ? modalContainerRef.current
                             : document.body;
                     return createPortal(modalContent, portalTarget);
-                })()}
-
-            {/* 🟢 유료 팁 전용 모달 (장소 모달 위에 표시) */}
-            {showPaidTipModal &&
-                selectedPlace &&
-                (() => {
-                    const coursePlace = sortedCoursePlaces.find((cp) => cp.place.id === selectedPlace.id);
-                    const paidTips = parseTipsFromDb(coursePlace?.coaching_tip);
-                    const hasPaidTip = coursePlace?.hasPaidTip ?? paidTips.length > 0;
-                    const courseGrade = (courseData?.grade || "FREE").toUpperCase();
-                    const currentUserTier = (userTier || "FREE").toUpperCase();
-                    const shouldShowPaidTip = !(
-                        (courseGrade === "FREE" && currentUserTier === "FREE") ||
-                        courseData.isLocked
-                    );
-                    const posClass = containInPhone && !inApp ? "absolute" : "fixed";
-                    const content = (
-                        <>
-                            <div
-                                className={`${posClass} inset-0 bg-black/60 z-10002 animate-in fade-in duration-200`}
-                                onClick={() => setShowPaidTipModal(false)}
-                                aria-hidden
-                            />
-                            <div
-                                className={`${posClass} inset-0 z-10003 flex items-end justify-center pointer-events-none`}
-                            >
-                                <div
-                                    className="pointer-events-auto w-full max-w-lg mx-auto max-h-[85vh] overflow-hidden rounded-t-2xl bg-white dark:bg-[#1a241b] border-t border-x border-gray-200 dark:border-gray-700 shadow-2xl animate-in slide-in-from-bottom duration-300"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">시크릿 꿀팁</h3>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPaidTipModal(false)}
-                                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
-                                            aria-label={t("common.close")}
-                                        >
-                                            <svg
-                                                className="w-5 h-5"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M6 18L18 6M6 6l12 12"
-                                                />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                    <div className="p-4 pb-8 overflow-y-auto max-h-[calc(85vh-4rem)]">
-                                        {hasPaidTip && shouldShowPaidTip ? (
-                                            <TipSection tips={paidTips} variant="paid" compact={false} />
-                                        ) : hasPaidTip ? (
-                                            <>
-                                                <div className="rounded-xl p-4 bg-[#FFFBEB] dark:bg-[#1c1917] dark:border dark:border-amber-800/50 mb-4">
-                                                    {(() => {
-                                                        const copy = getPremiumQuestions(selectedPlace?.category);
-                                                        return (
-                                                            <>
-                                                                <div className="flex items-center gap-1.5 mb-2">
-                                                                    <Icons.Lock className="w-4 h-4 text-amber-600 dark:text-amber-300 shrink-0" />
-                                                                    <span className="text-xs font-bold text-amber-700 dark:text-amber-300">
-                                                                        이 구역 시크릿 공략집
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                                                                    {copy.headline}
-                                                                </p>
-                                                                {copy.questions.length > 0 && (
-                                                                    <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                                                                        {copy.questions.map((q, i) => (
-                                                                            <li
-                                                                                key={i}
-                                                                                className="flex gap-2 items-start"
-                                                                            >
-                                                                                <TipCategoryIcon
-                                                                                    category={q.iconCategory}
-                                                                                    className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
-                                                                                />
-                                                                                <span>{q.text}</span>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setShowPaidTipModal(false);
-                                                        if (isAuthenticated) {
-                                                            setSubscriptionModalContext("TIPS");
-                                                            setShowSubscriptionModal(true);
-                                                        } else {
-                                                            setSubscriptionModalContext("TIPS");
-                                                            setOpenSubscriptionAfterLogin();
-                                                            setLoginModalPreset("courseDetail");
-                                                            setShowLoginModal(true);
-                                                        }
-                                                    }}
-                                                    className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
-                                                >
-                                                    <Icons.Lock className="w-4 h-4" />
-                                                    시크릿 꿀팁 잠금 해제 (커피 한 잔 값)
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                이 장소에는 유료 팁이 없습니다.
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    );
-                    const portalTarget =
-                        containInPhone && !inApp && modalContainerRef?.current
-                            ? modalContainerRef.current
-                            : document.body;
-                    return createPortal(content, portalTarget);
                 })()}
 
             {/* 🟢 예약하기 / 네이버 지도 바텀 시트 (헤더 아래~하단 전체, 핸들바만) - 웹 폰 목업에서는 폰 안으로 */}

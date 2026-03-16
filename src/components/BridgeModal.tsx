@@ -109,14 +109,6 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                                         {t("bridgeModal.title")}
                                     </h2>
-                                    {/* 🟢 990원 유료팁 옵션 (4,900 구독 위에) */}
-                                    <button
-                                        onClick={handleProceed}
-                                        className="w-full py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-4"
-                                    >
-                                        <Lock className="w-4 h-4 shrink-0" />
-                                        <span className="whitespace-pre-line text-center">{t("bridgeModal.tipsUnlockCta")}</span>
-                                    </button>
                                     {/* 4,900원 구독 안내 */}
                                     <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line mb-4">
                                         {t("bridgeModal.desc")}{" "}

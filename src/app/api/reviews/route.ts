@@ -112,7 +112,9 @@ export async function GET(request: NextRequest) {
             console.log(`[API] /api/reviews?userId=me - 전체: ${formatted.length}, 공개: ${publicCount}, 개인: ${privateCount}`);
         }
 
-        return NextResponse.json(formatted);
+        return NextResponse.json(formatted, {
+            headers: { "Cache-Control": "private, max-age=60" },
+        });
     } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         console.error("API: /api/reviews failed, returning empty list:", message);

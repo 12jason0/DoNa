@@ -51,8 +51,8 @@ export interface TicketPlansProps {
     courseId?: number;
     /** 코스 등급: BASIC이면 ticket_premium 비활성화, PREMIUM이면 ticket_basic 비활성화 */
     courseGrade?: "BASIC" | "PREMIUM";
-    /** TIPS: 유료 팁 잠금 해제로 열림 | COURSE: 코스 열람으로 열림 | UPGRADE: 등급 업그레이드(구독권만, 티켓 숨김) */
-    context?: "TIPS" | "COURSE" | "UPGRADE";
+    /** COURSE: 코스 열람으로 열림 | UPGRADE: 등급 업그레이드(구독권만, 티켓 숨김) */
+    context?: "COURSE" | "UPGRADE";
 }
 
 const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context = "COURSE" }: TicketPlansProps) => {
@@ -476,29 +476,16 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                         {/* 상단 헤더 */}
                         <div className="px-5 pt-6 pb-3 flex justify-between items-start shrink-0">
                             <div>
-                                {context === "TIPS" && courseId != null ? (
-                                    <>
-                                        <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
-                                            {t("ticketPlans.tipsTitle")}
-                                        </h2>
-                                        <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 font-medium">
-                                            {t("ticketPlans.tipsSubtitle")}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
-                                            {t("ticketPlans.mainTitle")}
-                                            <br />
-                                            <span className="text-emerald-500 dark:text-emerald-400">
-                                                {t("ticketPlans.mainHighlight")}
-                                            </span>
-                                        </h2>
-                                        <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 font-medium">
-                                            {t("ticketPlans.mainSubtitle")}
-                                        </p>
-                                    </>
-                                )}
+                                <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
+                                    {t("ticketPlans.mainTitle")}
+                                    <br />
+                                    <span className="text-emerald-500 dark:text-emerald-400">
+                                        {t("ticketPlans.mainHighlight")}
+                                    </span>
+                                </h2>
+                                <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 font-medium">
+                                    {t("ticketPlans.mainSubtitle")}
+                                </p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -551,71 +538,6 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             <>
                 {/* 스크롤 가능한 콘텐츠 영역 */}
                 <div className={isModal ? "flex-1 overflow-y-auto px-5 space-y-6 pb-8 scrollbar-hide" : "space-y-8"}>
-                    {/* 🟢 TIPS: 990원 유료팁 옵션을 4,900 구독 위에 배치 */}
-                    {context === "TIPS" && courseId != null && courseGrade && (
-                        <div className="space-y-4 pt-2">
-                            <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
-                                {t("ticketPlans.tipsUnlockOption")}
-                            </h4>
-                            <div className="grid grid-cols-1 gap-3">
-                                {updatedPlans
-                                    .filter((p) => p.type === "ticket")
-                                    .map((plan) => {
-                                        const isTicketDisabled =
-                                            courseGrade === "BASIC" && plan.id === "ticket_premium"
-                                                ? true
-                                                : courseGrade === "PREMIUM" && plan.id === "ticket_basic"
-                                                  ? true
-                                                  : currentTier === "BASIC" && plan.id === "ticket_basic"
-                                                    ? true
-                                                    : false;
-                                        return (
-                                            <div
-                                                key={plan.id}
-                                                onClick={() => !isTicketDisabled && setSelectedPlanId(plan.id)}
-                                                className={`relative p-4 rounded-xl border-2 transition-all flex justify-between items-center ${
-                                                    isTicketDisabled
-                                                        ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 opacity-50 cursor-not-allowed"
-                                                        : selectedPlanId === plan.id
-                                                          ? "border-emerald-500 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 cursor-pointer"
-                                                          : "border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-[#0f1710] cursor-pointer"
-                                                }`}
-                                            >
-                                                {isTicketDisabled && currentTier === "BASIC" && plan.id === "ticket_basic" && (
-                                                    <span className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500">
-                                                        {t("ticketPlans.alreadyAvailable")}
-                                                    </span>
-                                                )}
-                                                <div className="flex items-center gap-3">
-                                                    <div
-                                                        className={`w-2 h-2 rounded-full shrink-0 ${
-                                                            isTicketDisabled
-                                                                ? "bg-gray-300 dark:bg-gray-600"
-                                                                : selectedPlanId === plan.id
-                                                                  ? "bg-emerald-500 dark:bg-emerald-400"
-                                                                  : "bg-gray-300 dark:bg-gray-600"
-                                                        }`}
-                                                    />
-                                                    <span
-                                                        className={`font-bold text-sm ${isTicketDisabled ? "text-gray-400 dark:text-gray-500" : "dark:text-white"}`}
-                                                    >
-                                                        {context === "TIPS" && plan.id === "ticket_basic"
-                                                            ? t("ticketPlans.tipsUnlockOption")
-                                                            : plan.name}
-                                                    </span>
-                                                </div>
-                                                <span
-                                                    className={`font-black text-sm shrink-0 ${isTicketDisabled ? "text-gray-400 dark:text-gray-500" : "dark:text-white"}`}
-                                                >
-                                                    {plan.price.toLocaleString()}원
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-                        </div>
-                    )}
-
                     {/* 구독 플랜 */}
                     <div className="space-y-4 pt-2">
                         <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
@@ -739,8 +661,8 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                             })}
                     </div>
 
-                    {/* 티켓 플랜 (코스 컨텍스트 있을 때만, TIPS는 위에서 이미 렌더) */}
-                    {courseId != null && courseGrade && context !== "UPGRADE" && context !== "TIPS" && (
+                    {/* 티켓 플랜 (코스 컨텍스트 있을 때만) */}
+                    {courseId != null && courseGrade && context !== "UPGRADE" && (
                         <div className="space-y-4">
                             <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">
                                 {t("ticketPlans.courseTicket")}
@@ -858,9 +780,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 >
                     {selectedPlan?.type === "ticket" && (
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center mb-3">
-                            {context === "TIPS" && selectedPlan?.id === "ticket_basic"
-                                ? t("ticketPlans.ticketTip1")
-                                : t("ticketPlans.ticketTip2")}
+                            {t("ticketPlans.ticketTip2")}
                         </p>
                     )}
                     <button
@@ -873,11 +793,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                         ) : (
                             <>
                                 <span>
-                                    {context === "TIPS" && selectedPlan?.id === "ticket_basic"
-                                        ? t("ticketPlans.openTips", {
-                                              price: (selectedPlan?.price ?? 990).toLocaleString(),
-                                          })
-                                        : t("ticketPlans.startPlan", { name: selectedPlan?.name ?? "" })}
+                                    {t("ticketPlans.startPlan", { name: selectedPlan?.name ?? "" })}
                                 </span>
                                 <ChevronRight className="w-4 h-4 text-emerald-400 dark:text-emerald-500" />
                             </>

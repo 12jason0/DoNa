@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { getMergedTipsFromRow } from "@/types/tip";
 export const dynamic = "force-dynamic";
 
 // 인증: 유저 JWT 또는 관리자(admin_auth) 허용
@@ -51,8 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             order_in_segment: cp.order_in_segment ?? null,
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
-            coaching_tip: cp.coaching_tip || null,
-            coaching_tip_free: cp.coaching_tip_free ?? null,
+            tips: getMergedTipsFromRow(cp),
             place: {
                 id: cp.place_id,
                 name: cp.place?.name ?? "",
@@ -95,13 +95,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const { id: courseIdParam } = await params;
         const course_id = Number(courseIdParam);
         const body = await request.json();
-        const { place_id, order_index, estimated_duration, recommended_time, coaching_tip, coaching_tip_free } = body || {};
+        const { place_id, order_index, segment, order_in_segment, estimated_duration, recommended_time, tips } = body || {};
 
         if (!course_id || !place_id || !order_index) {
             return NextResponse.json({ error: "course_id, place_id, order_index는 필수입니다." }, { status: 400 });
         }
 
-        // 생성
         const created = await (prisma as any).coursePlace.create({
             data: {
                 course_id,
@@ -111,8 +110,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 order_in_segment: order_in_segment !== undefined && order_in_segment !== null ? Number(order_in_segment) : null,
                 estimated_duration: typeof estimated_duration === "number" ? estimated_duration : null,
                 recommended_time: recommended_time || null,
-                coaching_tip: coaching_tip || null,
-                coaching_tip_free: coaching_tip_free ?? null,
+                tips: tips && String(tips).trim() ? String(tips).trim() : null,
             },
         });
 

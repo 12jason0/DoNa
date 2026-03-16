@@ -316,7 +316,6 @@
         "placeStatusClosedToday": "영업종료",
         "placeStatusNoInfo": "정보 없음",
         "freeTips": "보유 꿀팁",
-        "paidTipHeadline": "꼭 알아야 할 실패 방지 꿀팁",
         "reviews": "이용후기",
         "writeReview": "작성하기",
         "errorRetry": "오류가 발생했습니다. 다시 시도해주세요.",
@@ -491,7 +490,6 @@
     "bridgeModal": {
         "close": "닫기",
         "title": "멤버십 전용 시크릿 정보입니다",
-        "tipsUnlockCta": "지금 로그인하고 990원으로\n이 코스 유료팁 잠금 해제",
         "desc": "지금 가입하고",
         "priceUnit": "월 {price}원",
         "desc2": "으로\n서울 코스 핫플 공략집 무제한 보기",
@@ -839,8 +837,6 @@
         "viewAll": "전체 보기"
     },
     "ticketPlans": {
-        "tipsTitle": "실행 팁 열기",
-        "tipsSubtitle": "커피 한 잔 값으로 시크릿 공략집을 열어요",
         "mainTitle": "두나 멤버십으로",
         "mainHighlight": "데이트 고민 끝! ✨",
         "mainSubtitle": "합리적인 가격으로 즐기는 스마트한 데이트",
@@ -850,9 +846,7 @@
         "alreadySubscribed": "이미 이용 중인 멤버십입니다",
         "perMonth": "/ 월",
         "executionGuide": "실행 가이드",
-        "tipsUnlockOption": "990원으로 이 코스 유료팁 잠금 해제",
         "courseTicket": "코스 열람권",
-        "tipsPlusCourse": "실행 팁 + 코스 전체 열기",
         "alreadyAvailable": "이미 이용 가능",
         "legalNotice": "법적 필수 안내",
         "privacyPolicy": "개인정보 처리방침",
@@ -863,10 +857,8 @@
         "businessAddress": "주소: 충청남도 홍성군 홍북읍 신대로 33",
         "businessContact": "통신판매업: 제 2025-충남홍성-0193 호 | 12jason@donacouse.com",
         "customerCenter": "고객센터: 010-2481-9824",
-        "ticketTip1": "결제 후 코스 전체 + 실행 팁이 열려요",
         "ticketTip2": "단건 열람권은 구매 즉시 콘텐츠가 제공되어 환불이 제한됩니다.",
         "loadingPayment": "결제창을 불러오고 있어요...",
-        "openTips": "실행 팁 열기 · {price}원",
         "startPlan": "{name} 시작하기",
         "plans": {
             "sub_basic": {

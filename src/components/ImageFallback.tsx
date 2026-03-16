@@ -40,19 +40,21 @@ export default function ImageFallback(props: ImageFallbackProps) {
         );
     }
 
-    // 🟢 성능 최적화 기본값 설정
+    // 🟢 CDN 이미지는 Next 최적화 경유 시 타임아웃 → 브라우저에서 직접 로드
+    const isRemoteCdn =
+        typeof src === "string" &&
+        (src.startsWith("https://d13xx6k6chk2in.cloudfront.net") ||
+            src.includes("cloudfront.net") ||
+            src.includes("amazonaws.com"));
+
     const defaultSizes = rest.sizes ?? "(max-width: 768px) 100vw, 500px";
     const defaultQuality = typeof rest.quality === "number" ? rest.quality : 65;
 
-    // 1. rest에서 priority와 loading을 완전히 분리해냅니다.
-    const { priority, loading, ...restProps } = rest;
-
-    // 2. restProps에서도 priority와 loading을 명시적으로 제거 (안전장치)
+    const { priority, loading, unoptimized: restUnoptimized, ...restProps } = rest;
     const cleanRestProps = { ...restProps };
     delete (cleanRestProps as any).priority;
     delete (cleanRestProps as any).loading;
 
-    // 3. 전달할 props 객체를 새로 구성합니다 (priority와 loading 없이 시작)
     const imageProps: any = {
         ...cleanRestProps,
         src,
@@ -61,8 +63,7 @@ export default function ImageFallback(props: ImageFallbackProps) {
         fill,
         width,
         height,
-        sizes: defaultSizes,
-        quality: defaultQuality,
+        ...(isRemoteCdn ? { unoptimized: true } : { sizes: defaultSizes, quality: defaultQuality }),
         onError: (e: any) => {
             try {
                 setErrored(true);

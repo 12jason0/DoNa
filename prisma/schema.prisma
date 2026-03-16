@@ -257,14 +257,7 @@ model CoursePlace {
   recommended_time   String?  @db.VarChar(100)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-  coaching_tip       String?  @map("coaching_tip")   // 유료 팁 (BASIC+ 또는 구매 시만 표시)
-  coaching_tip_en    String?  @map("coaching_tip_en")
-  coaching_tip_ja    String?  @map("coaching_tip_ja")
-  coaching_tip_zh    String?  @map("coaching_tip_zh")
-  coaching_tip_free  String?  @map("coaching_tip_free") // 무료 팁 (모두에게 표시)
-  coaching_tip_free_en String? @map("coaching_tip_free_en")
-  coaching_tip_free_ja String? @map("coaching_tip_free_ja")
-  coaching_tip_free_zh String? @map("coaching_tip_free_zh")
+  tips              String?  @map("tips")   // 통합 팁 (JSON 배열)
   course             Course   @relation(fields: [course_id], references: [id])
   place              Place    @relation(fields: [place_id], references: [id])
 

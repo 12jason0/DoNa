@@ -316,7 +316,6 @@
         "placeStatusClosedToday": "Closed today",
         "placeStatusNoInfo": "No info",
         "freeTips": "Your tips",
-        "paidTipHeadline": "Must-know failure prevention tips",
         "reviews": "Reviews",
         "writeReview": "Write",
         "errorRetry": "An error occurred. Please try again.",
@@ -491,7 +490,6 @@
     "bridgeModal": {
         "close": "Close",
         "title": "Members-only secret content",
-        "tipsUnlockCta": "Log in and unlock\nthis course's paid tips for 990₩",
         "desc": "Sign up now and",
         "priceUnit": "{price}/month",
         "desc2": "for\nUnlimited access to Seoul course hot spot guides",
@@ -839,8 +837,6 @@
         "viewAll": "View all"
     },
     "ticketPlans": {
-        "tipsTitle": "Open tips",
-        "tipsSubtitle": "Unlock the secret guide for the price of a coffee",
         "mainTitle": "DoNa membership",
         "mainHighlight": "No more date worries! ✨",
         "mainSubtitle": "Smart dating at a reasonable price",
@@ -850,9 +846,7 @@
         "alreadySubscribed": "You're already subscribed",
         "perMonth": "/ month",
         "executionGuide": "Execution guide",
-        "tipsUnlockOption": "Unlock this course's paid tips for 990₩",
         "courseTicket": "Course ticket",
-        "tipsPlusCourse": "Tips + Full course unlock",
         "alreadyAvailable": "Already available",
         "legalNotice": "Legal notice",
         "privacyPolicy": "Privacy Policy",
@@ -863,10 +857,8 @@
         "businessAddress": "Address: 33 Sindaero, Hongbuk-eup, Hongseong-gun, Chungcheongnam-do",
         "businessContact": "E-commerce: 2025-Chungnam-Hongseong-0193 | 12jason@donacouse.com",
         "customerCenter": "Customer support: 010-2481-9824",
-        "ticketTip1": "Full course + tips unlock after payment",
         "ticketTip2": "Single ticket content is delivered immediately upon purchase. Refunds are limited.",
         "loadingPayment": "Loading payment...",
-        "openTips": "Open tips · {price} KRW",
         "startPlan": "Start {name}",
         "plans": {
             "sub_basic": {

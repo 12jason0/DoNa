@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { getMergedTipsFromRow } from "@/types/tip";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         select: {
                             id: true,
                             order_index: true,
-                            coaching_tip: true,
-                            coaching_tip_free: true,
+                            tips: true,
                             place: {
                                 select: {
                                     id: true,
@@ -99,18 +99,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     return null;
                 }
 
-                const coachingTip = cp.coaching_tip || null;
-                const coachingTipFree = cp.coaching_tip_free ?? null;
+                const tipsValue = getMergedTipsFromRow(cp);
 
                 return {
                     order_index: cp.order_index,
-                    movement_guide: null, // DB에 필드가 없으므로 null
+                    movement_guide: null,
                     place: {
                         id: cp.place.id,
                         name: cp.place.name || null,
                         imageUrl: cp.place.imageUrl || null,
-                        coaching_tip: coachingTip, // 유료 팁 (클라이언트에서 권한 체크)
-                        coaching_tip_free: coachingTipFree, // 무료 팁
+                        tips: tipsValue,
                     },
                 };
             })

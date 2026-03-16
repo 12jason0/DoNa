@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { getMergedTipsFromRow } from "@/types/tip";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/share/course/[shareId]
  * 공유 미리보기용 코스 데이터 (비로그인 허용)
- * - coaching_tip 제외, coaching_tip_free만 포함
- * - selectedPlaceIds 있으면 완성 코스, 없으면 같이 고르기(템플릿 구조)
+ * - tips 통합 필드로 팁 포함
  */
 export async function GET(
     request: NextRequest,
@@ -39,7 +39,7 @@ export async function GET(
                                 order_index: true,
                                 segment: true,
                                 order_in_segment: true,
-                                coaching_tip_free: true,
+                                tips: true,
                                 recommended_time: true,
                                 place: {
                                     select: {
@@ -90,7 +90,7 @@ export async function GET(
             order_index: cp.order_index ?? cp.order_index,
             segment: cp.segment,
             order_in_segment: cp.order_in_segment,
-            coaching_tip_free: cp.coaching_tip_free ?? null,
+            tips: getMergedTipsFromRow(cp),
             recommended_time: cp.recommended_time ?? null,
             place: cp.place
                 ? {

@@ -316,7 +316,6 @@
         "placeStatusClosedToday": "今日已打烊",
         "placeStatusNoInfo": "暂无信息",
         "freeTips": "我的小贴士",
-        "paidTipHeadline": "必知的防失败小贴士",
         "reviews": "用户评价",
         "writeReview": "撰写",
         "errorRetry": "发生错误，请重试。",
@@ -491,7 +490,6 @@
     "bridgeModal": {
         "close": "关闭",
         "title": "会员专属秘密内容",
-        "tipsUnlockCta": "登录并以990元\n解锁本课程付费攻略",
         "desc": "立即注册",
         "priceUnit": "每月{price}元",
         "desc2": "\n无限观看首尔课程热门攻略",
@@ -839,8 +837,6 @@
         "viewAll": "查看全部"
     },
     "ticketPlans": {
-        "tipsTitle": "打开攻略提示",
-        "tipsSubtitle": "一杯咖啡的价格解锁秘密攻略",
         "mainTitle": "DoNa会员",
         "mainHighlight": "约会烦恼一扫光！✨",
         "mainSubtitle": "实惠价格享受智能约会",
@@ -850,9 +846,7 @@
         "alreadySubscribed": "您已是该方案会员",
         "perMonth": "/ 月",
         "executionGuide": "执行指南",
-        "tipsUnlockOption": "以990元解锁本课程付费攻略",
         "courseTicket": "路线阅览券",
-        "tipsPlusCourse": "攻略提示 + 完整路线",
         "alreadyAvailable": "已可用",
         "legalNotice": "法定必读事项",
         "privacyPolicy": "隐私政策",
@@ -863,10 +857,8 @@
         "businessAddress": "地址：忠清南道洪城郡洪北邑新大路33",
         "businessContact": "电子商务：第2025-忠南洪城-0193号 | 12jason@donacouse.com",
         "customerCenter": "客服：010-2481-9824",
-        "ticketTip1": "支付后解锁完整路线+攻略提示",
         "ticketTip2": "单次阅览券购买即提供内容，退款有限制。",
         "loadingPayment": "正在加载支付...",
-        "openTips": "打开攻略 · {price}元",
         "startPlan": "开始{name}",
         "plans": {
             "sub_basic": {

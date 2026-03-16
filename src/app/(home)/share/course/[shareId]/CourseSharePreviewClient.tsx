@@ -63,9 +63,8 @@ interface CoursePlace {
     order_index: number;
     segment?: string | null;
     order_in_segment?: number | null;
-    coaching_tip_free?: string | null;
+    tips?: string | null;
     recommended_time?: string | null;
-    hasPaidTip?: boolean;
     place: {
         id: number;
         name: string;
@@ -772,27 +771,11 @@ export default function CourseSharePreviewClient({
                                 </p>
                                 {(() => {
                                     const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
-                                    const freeTips = parseTipsFromDb(cp?.coaching_tip_free);
-                                    const hasPaidTip = cp?.hasPaidTip ?? false;
-                                    if (freeTips.length === 0 && !hasPaidTip) return null;
+                                    const tips = parseTipsFromDb(cp?.tips);
+                                    if (tips.length === 0) return null;
                                     return (
                                         <div className="mb-4 flex flex-col gap-2">
-                                            {freeTips.length > 0 && (
-                                                <TipSection tips={freeTips} variant="free" compact={false} />
-                                            )}
-                                            {hasPaidTip && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setShowDownloadAppModal(true);
-                                                    }}
-                                                    className="w-full py-3 rounded-lg bg-[#FFFBEB] dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 font-bold shadow-sm hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm"
-                                                >
-                                                    <Icons.Lock className="w-4 h-4 shrink-0" />
-                                                    시크릿 꿀팁 보기
-                                                </button>
-                                            )}
+                                            <TipSection tips={tips} variant="free" compact={false} />
                                         </div>
                                     );
                                 })()}

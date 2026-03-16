@@ -57,7 +57,7 @@ interface CoursePlace {
     order_index: number;
     estimated_duration: number;
     recommended_time: string;
-    coaching_tip?: string | null;
+    tips?: string | null;
     place: Place;
 }
 

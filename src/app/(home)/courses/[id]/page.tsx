@@ -6,7 +6,7 @@ import prisma from "@/lib/db";
 import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
-import { unstable_cache, revalidateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -84,8 +84,7 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
                             order_in_segment: true,
                             estimated_duration: true,
                             recommended_time: true,
-                            coaching_tip: true,
-                            coaching_tip_free: true,
+                            tips: true,
                             place: {
                                 select: {
                                     id: true,
@@ -235,9 +234,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     ]);
     let courseData = courseDataFromCache;
 
-    // 🟢 [404 Fix] 캐시된 null로 인한 잘못된 404 방지: null이면 캐시 무효화 후 직접 DB 재조회
+    // 🟢 [404 Fix] 캐시에서 null이 나오면 직접 DB 재조회 (revalidateTag는 렌더 중 호출 불가)
     if (!courseData) {
-        revalidateTag("course-detail", "max");
         courseData = await fetchCourseFromDb(cleanId);
     }
 
@@ -281,68 +279,61 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     const hasTipAccess = currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
 
     const isLocked = !canAccess;
-
-    // 🔒 [3단계: 데이터 마스킹 (Sanitization)] 권한이 없으면 coaching_tip과 상세 주소 정보 삭제
-    const secureCourseData = isLocked
-        ? {
-              ...courseData,
-              isLocked,
-              description: "", // 마스킹
-              sub_title: null, // 마스킹
-              highlights: [], // 마스킹
-              recommended_start_time: "오후 2시", // 기본값으로 마스킹
-              season: "사계절", // 기본값으로 마스킹
-              courseType: "데이트", // 기본값으로 마스킹
-              transportation: "도보", // 기본값으로 마스킹
-              coursePlaces:
-                  courseData.coursePlaces?.map((cp: any) => ({
-                      ...cp,
-                      estimated_duration: null, // 마스킹
-                      recommended_time: null, // 마스킹
-                      coaching_tip: null, // 마스킹 (유료)
-                      coaching_tip_free: cp.coaching_tip_free ?? null, // 무료 팁은 표시
-                      hasPaidTip: !!(cp.coaching_tip && String(cp.coaching_tip).trim()), // 유료 팁 존재 여부(잠김 영역 표시용)
-                      place: cp.place
-                          ? {
-                                id: cp.place.id,
-                                name: cp.place.name, // 허용
-                                category: cp.place.category, // 허용
-                                imageUrl: cp.place.imageUrl, // 허용
-                                // 나머지는 모두 마스킹
-                                address: null,
-                                description: null,
-                                avg_cost_range: null,
-                                opening_hours: null,
-                                phone: null,
-                                parking_available: null,
-                                reservation_required: null,
-                                reservationUrl: null,
-                                latitude: null,
-                                longitude: null,
-                                closed_days: [],
-                            }
-                          : null,
-                  })) || [],
-              reservationRequired: false, // 마스킹
-          }
-        : {
-              ...courseData,
-              isLocked,
-              // 무료 팁(coaching_tip_free): 항상 전달. 유료 팁(coaching_tip): hasTipAccess일 때만
-              coursePlaces:
-                  courseData.coursePlaces?.map((cp: any) => ({
-                      ...cp,
-                      coaching_tip: hasTipAccess ? (cp.coaching_tip ?? null) : null,
-                      coaching_tip_free: cp.coaching_tip_free ?? null,
-                      hasPaidTip: !!(cp.coaching_tip && String(cp.coaching_tip).trim()), // 유료 팁 존재 여부(잠김 영역 표시용)
-                      place: cp.place
-                          ? {
-                                ...cp.place,
-                                coaching_tip: hasTipAccess ? (cp.place?.coaching_tip ?? cp.coaching_tip ?? null) : null,
-                            }
-                          : null,
-                  })) || [],
-          };
+    const secureCourseData = (() => {
+        const getTips = (cp: any) => {
+            if (cp.tips != null && String(cp.tips).trim()) return hasTipAccess ? cp.tips : null;
+            return null;
+        };
+        return isLocked
+            ? {
+                  ...courseData,
+                  isLocked,
+                  description: "",
+                  sub_title: null,
+                  highlights: [],
+                  recommended_start_time: "오후 2시",
+                  season: "사계절",
+                  courseType: "데이트",
+                  transportation: "도보",
+                  coursePlaces:
+                      courseData.coursePlaces?.map((cp: any) => ({
+                          ...cp,
+                          estimated_duration: null,
+                          recommended_time: null,
+                          tips: null,
+                          place: cp.place
+                              ? {
+                                    id: cp.place.id,
+                                    name: cp.place.name,
+                                    category: cp.place.category,
+                                    imageUrl: cp.place.imageUrl,
+                                    address: null,
+                                    description: null,
+                                    avg_cost_range: null,
+                                    opening_hours: null,
+                                    phone: null,
+                                    parking_available: null,
+                                    reservation_required: null,
+                                    reservationUrl: null,
+                                    latitude: null,
+                                    longitude: null,
+                                    closed_days: [],
+                                }
+                              : null,
+                      })) || [],
+                  reservationRequired: false,
+              }
+            : {
+                  ...courseData,
+                  isLocked,
+                  coursePlaces:
+                      courseData.coursePlaces?.map((cp: any) => ({
+                          ...cp,
+                          tips: getTips(cp),
+                          place: cp.place ? { ...cp.place } : null,
+                      })) || [],
+              };
+    })();
 
     // 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드
     return (

@@ -125,3 +125,11 @@ export function tipsToJson(tips: TipItem[]): string | null {
     if (valid.length === 0) return null;
     return JSON.stringify(valid);
 }
+
+/**
+ * DB 행에서 통합 팁 문자열 반환
+ */
+export function getMergedTipsFromRow(row: { tips?: string | null }): string | null {
+    if (row.tips != null && String(row.tips).trim()) return row.tips.trim();
+    return null;
+}

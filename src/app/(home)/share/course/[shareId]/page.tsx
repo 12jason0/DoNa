@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import CourseSharePreviewClient from "./CourseSharePreviewClient";
 import prisma from "@/lib/db";
+import { getMergedTipsFromRow } from "@/types/tip";
 
 async function getSharedCourseData(shareId: string) {
     const shared = await prisma.sharedCourse.findUnique({
@@ -23,8 +24,7 @@ async function getSharedCourseData(shareId: string) {
                             order_index: true,
                             segment: true,
                             order_in_segment: true,
-                            coaching_tip: true,
-                            coaching_tip_free: true,
+                            tips: true,
                             recommended_time: true,
                             place: {
                                 select: {
@@ -80,9 +80,8 @@ async function getSharedCourseData(shareId: string) {
             order_index: cp.order_index,
             segment: cp.segment,
             order_in_segment: cp.order_in_segment,
-            coaching_tip_free: cp.coaching_tip_free ?? null,
+            tips: getMergedTipsFromRow(cp),
             recommended_time: cp.recommended_time ?? null,
-            hasPaidTip: !!(cp.coaching_tip && String(cp.coaching_tip).trim()),
             place: cp.place
                 ? {
                       ...cp.place,
