@@ -52,16 +52,16 @@ export default function DonaSplashFinal({
         body.style.setProperty("overscroll-behavior", "none");
         body.style.setProperty("touch-action", "none");
 
-        // 🟢 [모바일 LCP]: 스플래시 0.8초로 단축 (메인 콘텐츠 최대한 빨리 표시)
+        // 🟢 스플래시 4초 (로고·브랜드 인지 가능하도록 복구)
         const timeline = [
-            { delay: 15, action: () => setStep(1) },
-            { delay: 55, action: () => setStep(2) },
-            { delay: 110, action: () => setStep(3) },
-            { delay: 180, action: () => setStep(4) },
-            { delay: 260, action: () => setStep(5) },
-            { delay: 350, action: () => setStep(6) }, // 로고 등장
-            { delay: 550, action: () => setFadeOut(true) },
-            { delay: 800, action: () => onDoneRef.current?.() }, // 완전 종료 (0.8초)
+            { delay: 70, action: () => setStep(1) },
+            { delay: 270, action: () => setStep(2) },
+            { delay: 530, action: () => setStep(3) },
+            { delay: 870, action: () => setStep(4) },
+            { delay: 1330, action: () => setStep(5) },
+            { delay: 2000, action: () => setStep(6) }, // 로고 등장
+            { delay: 3330, action: () => setFadeOut(true) },
+            { delay: 4000, action: () => onDoneRef.current?.() }, // 완전 종료 (4초)
         ];
         const timers = timeline.map(({ delay, action }) => setTimeout(action, delay));
         return () => {

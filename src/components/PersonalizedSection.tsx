@@ -303,6 +303,25 @@ export default function PersonalizedSection() {
         };
     }, [fetchData]);
 
+    // 🟢 메인 첫 추천 이미지 preload (API 응답 후 즉시 요청해 화면 표시 시점에 캐시 활용)
+    const firstImageUrl =
+        courses.length > 0
+            ? (courses[0].imageUrl?.trim() || courses[0].coursePlaces?.[0]?.place?.imageUrl?.trim() || "")
+            : "";
+    useEffect(() => {
+        if (!firstImageUrl || typeof document === "undefined") return;
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = firstImageUrl;
+        document.head.appendChild(link);
+        return () => {
+            try {
+                if (link.parentNode) link.parentNode.removeChild(link);
+            } catch {}
+        };
+    }, [firstImageUrl]);
+
     // 로딩 중이거나 데이터 없으면 아무것도 안 보여줌
     if (!loading && courses.length === 0) return null;
 

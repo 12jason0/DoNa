@@ -1006,7 +1006,7 @@ const FootprintTab = ({
                                         return dateB.getTime() - dateA.getTime();
                                     });
 
-                                    return sortedMonths.map(([monthKey, stories]) => (
+                                    return sortedMonths.map(([monthKey, stories], monthIdx) => (
                                         <div key={monthKey} className="space-y-4">
                                             {/* 월 헤더 */}
                                             <h5 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
@@ -1021,9 +1021,10 @@ const FootprintTab = ({
                                                             new Date(b.createdAt).getTime() -
                                                             new Date(a.createdAt).getTime(),
                                                     )
-                                                    .map((story) => {
+                                                    .map((story, storyIdx) => {
                                                         const date = new Date(story.createdAt);
                                                         const dayOfWeek = dayNames[date.getDay()];
+                                                        const isPriorityImage = monthIdx === 0 && storyIdx < 3;
 
                                                         return (
                                                             <div
@@ -1045,6 +1046,8 @@ const FootprintTab = ({
                                                                             alt={t("mypage.footprintTab.personalMemory")}
                                                                             className="group-hover:scale-105 transition-transform duration-300"
                                                                             sizes="(max-width: 768px) 100vw, 50vw"
+                                                                            priority={isPriorityImage}
+                                                                            loading={isPriorityImage ? "eager" : "lazy"}
                                                                         />
                                                                     </div>
                                                                 ) : (

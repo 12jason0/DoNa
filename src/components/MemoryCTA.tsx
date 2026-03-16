@@ -217,6 +217,8 @@ export default function MemoryCTA({
                                             fill
                                             className="object-cover object-center"
                                             sizes="180px"
+                                            priority={index < 2}
+                                            loading={index < 2 ? "eager" : "lazy"}
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-4xl text-gray-400">
