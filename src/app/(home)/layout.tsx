@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import ClientBodyLayout from "./ClientBodyLayout";
+import AsyncFonts from "@/components/AsyncFonts";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
 
 const logoUrl = getS3StaticUrlForMetadata("logo/donalogo_512.png");
@@ -98,13 +99,9 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
                 .focus\:border-transparent:focus { border-color: var(--brand-green) !important; }
             `}</style>
 
-            {/* 수동 Link 태그들 (Next.js App Router에서는 가급적 Metadata API 사용 권장하지만, 일단 그대로 유지) */}
             <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-            <link
-                rel="stylesheet"
-                href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css"
-            />
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/stylesheet.css" />
+            {/* 🟢 [모바일 LCP] 폰트는 AsyncFonts에서 비동기 주입 → 렌더 블로킹 제거 */}
+            <AsyncFonts />
             <link
                 rel="preconnect"
                 href={

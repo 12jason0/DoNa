@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, memo } from "react";
+import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/authClient";
 import { useAuth } from "@/context/AuthContext";
@@ -8,10 +9,17 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Image from "@/components/ImageFallback";
 import PersonalizedSection from "@/components/PersonalizedSection";
 import BenefitConsentModal from "@/components/BenefitConsentModal";
-import MemoryCTA, { MemoryPreview } from "@/components/MemoryCTA";
 import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
 import { X } from "lucide-react";
+
+import type { MemoryPreview } from "@/components/MemoryCTA";
+
+// 🟢 [모바일 LCP] 나만의 추억 섹션 지연 로딩 (메인 추천 카드 이후 로드)
+const MemoryCTA = dynamic(() => import("@/components/MemoryCTA").then((m) => m.default), {
+    loading: () => null,
+    ssr: false,
+});
 
 import { isIOS } from "@/lib/platform";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
