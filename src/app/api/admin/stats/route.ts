@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getExcludedStatsUserIds } from "@/lib/statsExclude";
 
 // 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
@@ -14,8 +16,13 @@ export async function GET(request: NextRequest) {
         // 관리자 권한 확인
         ensureAdmin(request);
 
+        const excludedUserIds = await getExcludedStatsUserIds(prisma);
+        const viewWhereBase: Prisma.UserInteractionWhereInput = {
+            action: "view",
+            ...(excludedUserIds.length > 0 ? { userId: { notIn: excludedUserIds } } : {}),
+        };
+
         // 1. 인기 코스 TOP 5 데이터 (Bar Chart용)
-        // 먼저 courseId별 조회수 집계
         let popularCourses: Array<{
             courseId: number;
             courseTitle: string;
@@ -25,9 +32,7 @@ export async function GET(request: NextRequest) {
         try {
             const courseStats = await prisma.userInteraction.groupBy({
                 by: ["courseId"],
-                where: {
-                    action: "view", // 조회 액션만 집계
-                },
+                where: viewWhereBase,
                 _count: {
                     id: true,
                 },
@@ -63,12 +68,27 @@ export async function GET(request: NextRequest) {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         sevenDaysAgo.setHours(0, 0, 0, 0); // 자정으로 설정
 
-        // 날짜별로 그룹화하기 위해 Raw SQL 사용 (Prisma로는 날짜 그룹화가 어려움)
+        // 날짜별로 그룹화하기 위해 Raw SQL 사용 (테스트 계정 제외)
         let dailyActivityMap = new Map<string, number>();
         try {
-            const dailyActivityRaw = await prisma.$queryRaw<
-                Array<{ date: Date; count: bigint | number }>
-            >`
+            const dailyActivityRaw =
+                excludedUserIds.length > 0
+                    ? await prisma.$queryRaw<
+                          Array<{ date: Date; count: bigint | number }>
+                      >(Prisma.sql`
+                SELECT 
+                    DATE("created_at") as date,
+                    COUNT(*)::integer as count
+                FROM "user_interactions"
+                WHERE "created_at" >= ${sevenDaysAgo}
+                    AND "action" = 'view'
+                    AND "user_id" NOT IN (${Prisma.join(excludedUserIds)})
+                GROUP BY DATE("created_at")
+                ORDER BY date ASC
+            `)
+                    : await prisma.$queryRaw<
+                          Array<{ date: Date; count: bigint | number }>
+                      >`
                 SELECT 
                     DATE("created_at") as date,
                     COUNT(*)::integer as count
@@ -91,6 +111,7 @@ export async function GET(request: NextRequest) {
                 where: {
                     createdAt: { gte: sevenDaysAgo },
                     action: "view",
+                    ...(excludedUserIds.length > 0 ? { userId: { notIn: excludedUserIds } } : {}),
                 },
                 select: {
                     createdAt: true,
@@ -169,8 +190,10 @@ export async function GET(request: NextRequest) {
             console.warn("[Admin Stats] 성별별 통계 조회 실패:", genderError);
         }
 
-        // 5. 전체 통계 요약
-        const totalInteractions = await prisma.userInteraction.count();
+        // 5. 전체 통계 요약 (테스트 계정 제외)
+        const totalInteractions = await prisma.userInteraction.count({
+            where: excludedUserIds.length > 0 ? { userId: { notIn: excludedUserIds } } : undefined,
+        });
         const totalUsers = await prisma.user.count({
             where: {
                 deletedAt: null, // 탈퇴하지 않은 사용자만

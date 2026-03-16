@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getExcludedStatsUserIds } from "@/lib/statsExclude";
 
 // 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
@@ -43,12 +44,15 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // 1. 해당 연령대/성별의 사용자 ID 목록 조회
+        const excludedUserIds = await getExcludedStatsUserIds(prisma);
+
+        // 1. 해당 연령대/성별의 사용자 ID 목록 조회 (테스트 계정 제외)
         const targetUsers = await prisma.user.findMany({
             where: {
                 ageRange,
                 gender,
-                deletedAt: null, // 탈퇴하지 않은 사용자만
+                deletedAt: null,
+                ...(excludedUserIds.length > 0 ? { id: { notIn: excludedUserIds } } : {}),
             },
             select: {
                 id: true,
