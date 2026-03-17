@@ -2171,6 +2171,8 @@ export default function CourseDetailClient({
                                                                                     t("courseDetail.etc");
 
                                                                                 const categories = [...new Set(allTips.map((t) => t.category))];
+                                                                                const displayCategories = categories.slice(0, 3);
+                                                                                const hasMore = categories.length > 3;
 
                                                                                 return (
                                                                                     <div className="mt-2 flex flex-col gap-1.5">
@@ -2178,7 +2180,7 @@ export default function CourseDetailClient({
                                                                                             ✨ {t("courseDetail.freeTips")}
                                                                                         </span>
                                                                                         <div className="flex flex-wrap gap-1.5">
-                                                                                            {categories.map((cat) => (
+                                                                                            {displayCategories.map((cat) => (
                                                                                                 <span
                                                                                                     key={cat}
                                                                                                     className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
@@ -2190,6 +2192,11 @@ export default function CourseDetailClient({
                                                                                                     {getCategoryLabel(cat)}
                                                                                                 </span>
                                                                                             ))}
+                                                                                            {hasMore && (
+                                                                                                <span className="inline-flex items-center py-0.5 px-2 rounded-md text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                                                                                    ...
+                                                                                                </span>
+                                                                                            )}
                                                                                         </div>
                                                                                     </div>
                                                                                 );
