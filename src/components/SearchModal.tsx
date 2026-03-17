@@ -373,7 +373,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                                         src={
                                                             CATEGORY_ICONS[
                                                                 CONCEPTS[tag.id as keyof typeof CONCEPTS] || label
-                                                            ] || CATEGORY_ICONS["기타"]
+                                                            ] || CATEGORY_ICONS[CONCEPTS.UNIQUE]
                                                         }
                                                         alt={label}
                                                         className="w-8 h-8 object-contain"

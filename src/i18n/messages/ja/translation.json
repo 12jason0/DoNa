@@ -278,7 +278,17 @@
         "anniversary": "記念日",
         "friends": "友達",
         "solo": "ひとり",
-        "rainy": "雨の日"
+        "rainy": "雨の日",
+        "hip": "ヒップ",
+        "lively": "活発",
+        "retro": "レトロ",
+        "premiumMood": "プレミアム",
+        "quiet": "静か",
+        "exotic": "エキゾチック",
+        "couple": "カップル",
+        "some": "サム",
+        "family": "家族",
+        "blindDate": "お見合い"
     },
     "courseReportBanner": {
         "badge": "Spot Wanted",
@@ -498,6 +508,7 @@
     },
     "categoryFilterModal": {
         "title": "フィルター設定",
+        "concept": "コンセプト",
         "activity": "活動",
         "vibe": "雰囲気",
         "context": "状況",

@@ -24,8 +24,8 @@ const nextConfig = {
     // URL 끝의 슬래시(/) 유무를 하나로 통일하여 경로 매칭 실패를 방지합니다.
     trailingSlash: false,
 
-    // 1. 기존 유지: 빌드 오류 무시
-    typescript: { ignoreBuildErrors: true },
+    // TypeScript 빌드 오류 엄격 검사 활성화
+    typescript: { ignoreBuildErrors: false },
 
     // 🟢 [추가]: 개발 모드 이중 렌더링 방지 (Violation 및 setInterval 지연 해결 핵심)
     reactStrictMode: false,

@@ -12,7 +12,7 @@ const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif
 export async function POST(request: NextRequest) {
     try {
         const userIdStr = resolveUserId(request);
-        const form = await request.formData();
+        const form = await request.formData() as unknown as globalThis.FormData;
 
         const file = form.get("photo");
         const storyId = form.get("storyId");

@@ -178,7 +178,8 @@ export function getWeekendWeatherRisk(
 export function getIndoorScore(concept: string | null): number {
     if (!concept) return 0.5;
     const c = concept.toLowerCase();
-    if (c.includes("실내") || c.includes("카페") || c.includes("전시") || c.includes("쇼핑"))
+    // 11개: 실내데이트, 맛집탐방, 카페투어, 공연·전시
+    if (c.includes("실내") || c.includes("맛집") || c.includes("카페") || c.includes("전시"))
         return 1;
     if (c.includes("야외") && !c.includes("대체")) return 0;
     if (c.includes("공원") || c.includes("산책")) return 0.2;
@@ -191,8 +192,9 @@ export function isOutdoorOnly(concept: string | null): boolean {
     return (
         (c.includes("야외") || c.includes("공원") || c.includes("산책")) &&
         !c.includes("실내") &&
+        !c.includes("맛집") &&
         !c.includes("카페") &&
-        !c.includes("쇼핑")
+        !c.includes("전시")
     );
 }
 

@@ -278,7 +278,17 @@
         "anniversary": "Anniversary",
         "friends": "Friends",
         "solo": "Solo",
-        "rainy": "Rainy Day"
+        "rainy": "Rainy Day",
+        "hip": "Hip",
+        "lively": "Lively",
+        "retro": "Retro",
+        "premiumMood": "Premium",
+        "quiet": "Quiet",
+        "exotic": "Exotic",
+        "couple": "Couple",
+        "some": "Some",
+        "family": "Family",
+        "blindDate": "Blind Date"
     },
     "courseReportBanner": {
         "badge": "Spot Wanted",
@@ -498,6 +508,7 @@
     },
     "categoryFilterModal": {
         "title": "Filter settings",
+        "concept": "Concept",
         "activity": "Activity",
         "vibe": "Vibe",
         "context": "Context",

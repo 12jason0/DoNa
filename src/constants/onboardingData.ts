@@ -5,33 +5,25 @@
 // ✅ CloudFront를 통한 개념 아이콘 URL 생성
 import { getS3StaticUrl } from "@/lib/s3Static";
 
+/** 11개 컨셉 (필터/온보딩용) - DB course.concept 값과 일치 */
 export const CONCEPTS = {
-    COST_EFFECTIVE: "가성비",
+    UNIQUE: "이색데이트",
     EMOTIONAL: "감성데이트",
-    ALLEY: "골목투어",
-    EXHIBITION: "공연·전시",
+    NIGHT_VIEW: "야경",
+    HEALING: "힐링",
+    COST_EFFECTIVE: "가성비",
+    PHOTO: "인생샷",
     FOOD_TOUR: "맛집탐방",
-    ART: "문화예술",
-    SHOPPING: "쇼핑",
+    CAFE: "카페투어",
     DRINKING: "술자리",
     INDOOR: "실내데이트",
-    NIGHT_VIEW: "야경",
-    UNIQUE: "이색데이트",
-    PHOTO: "인생샷",
-    TRADITION: "전통문화",
-    ETC: "기타",
-    EXPERIENCE: "체험",
-    CAFE: "카페투어",
-    THEME_PARK: "테마파크",
-    HOT_PLACE: "핫플레이스",
-    HEALING: "힐링",
-    HIPSTER: "힙스터",
+    EXHIBITION: "공연·전시",
 } as const;
 
 export const MOODS = {
     QUIET: "조용한",
     EMOTIONAL: "감성적",
-    TRENDY: "트렌디한",
+    HIP: "힙한", // 트렌디한 흡수
     LIVELY: "활기찬",
     PREMIUM: "프리미엄",
     VINTAGE: "빈티지",
@@ -108,7 +100,7 @@ export const VIBE_OPTIONS = [
         // [교체] 따뜻한 우드톤 카페 & 햇살 느낌
         img: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800&auto=format&fit=crop",
         title: "따스한 햇살 & 커피",
-        concepts: [CONCEPTS.HEALING, CONCEPTS.CAFE, CONCEPTS.EMOTIONAL],
+        concepts: [CONCEPTS.HEALING, CONCEPTS.FOOD_TOUR, CONCEPTS.EMOTIONAL],
         moods: [MOODS.QUIET, MOODS.EMOTIONAL],
         desc: "여유로운 힐링",
     },
@@ -117,8 +109,8 @@ export const VIBE_OPTIONS = [
         // [교체] 을지로/이태원 감성의 네온사인 펍 (깨진 이미지 수정됨)
         img: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?q=80&w=800&auto=format&fit=crop",
         title: "힙한 네온사인 & 에너지",
-        concepts: [CONCEPTS.HIPSTER, CONCEPTS.HOT_PLACE, CONCEPTS.DRINKING],
-        moods: [MOODS.TRENDY, MOODS.LIVELY],
+        concepts: [CONCEPTS.UNIQUE, CONCEPTS.DRINKING],
+        moods: [MOODS.HIP, MOODS.LIVELY],
         desc: "트렌드 세터",
     },
     {
@@ -135,7 +127,7 @@ export const VIBE_OPTIONS = [
         // [교체] 서울 도심 속 공원/산책로 느낌 (야자수 삭제됨)
         img: "https://images.unsplash.com/photo-1538485399081-7191377e8241?q=80&w=800&auto=format&fit=crop",
         title: "탁 트인 야외 & 산책",
-        concepts: [CONCEPTS.EXPERIENCE, CONCEPTS.THEME_PARK, CONCEPTS.PHOTO],
+        concepts: [CONCEPTS.EXHIBITION, CONCEPTS.PHOTO],
         moods: [MOODS.NEAT, MOODS.UNIQUE],
         desc: "자연과 낭만",
     },
@@ -176,25 +168,15 @@ export const CREW_OPTIONS = [
 const S3_BASE_URL = getS3StaticUrl("concept-Icon");
 
 export const CATEGORY_ICONS: Record<string, string> = {
-    // 파일명이 한글이 아니라, 영어 Key값(예: EMOTIONAL.png)으로 되어 있으므로 맞춰줍니다.
     [CONCEPTS.COST_EFFECTIVE]: `${S3_BASE_URL}/COST_EFFECTIVE.png`,
     [CONCEPTS.EMOTIONAL]: `${S3_BASE_URL}/EMOTIONAL.png`,
-    [CONCEPTS.ALLEY]: `${S3_BASE_URL}/ALLEY.png`,
     [CONCEPTS.EXHIBITION]: `${S3_BASE_URL}/EXHIBITION.png`,
     [CONCEPTS.FOOD_TOUR]: `${S3_BASE_URL}/FOOD_TOUR.png`,
-    [CONCEPTS.ART]: `${S3_BASE_URL}/ART.png`,
-    [CONCEPTS.SHOPPING]: `${S3_BASE_URL}/SHOPPING.png`,
+    [CONCEPTS.CAFE]: `${S3_BASE_URL}/CAFE.png`,
     [CONCEPTS.DRINKING]: `${S3_BASE_URL}/DRINKING.png`,
     [CONCEPTS.INDOOR]: `${S3_BASE_URL}/INDOOR.png`,
     [CONCEPTS.NIGHT_VIEW]: `${S3_BASE_URL}/NIGHT_VIEW.png`,
     [CONCEPTS.UNIQUE]: `${S3_BASE_URL}/UNIQUE.png`,
     [CONCEPTS.PHOTO]: `${S3_BASE_URL}/PHOTO.png`,
-    [CONCEPTS.TRADITION]: `${S3_BASE_URL}/TRADITION.png`,
-    [CONCEPTS.ETC]: `${S3_BASE_URL}/ETC.png`,
-    [CONCEPTS.EXPERIENCE]: `${S3_BASE_URL}/EXPERIENCE.png`,
-    [CONCEPTS.CAFE]: `${S3_BASE_URL}/CAFE.png`,
-    [CONCEPTS.THEME_PARK]: `${S3_BASE_URL}/THEME_PARK.png`,
-    [CONCEPTS.HOT_PLACE]: `${S3_BASE_URL}/HOT_PLACE.png`,
     [CONCEPTS.HEALING]: `${S3_BASE_URL}/HEALING.png`,
-    [CONCEPTS.HIPSTER]: `${S3_BASE_URL}/HIPSTER.png`,
 };

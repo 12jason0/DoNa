@@ -641,7 +641,7 @@ const AIRecommender = () => {
             무난: { goal: "DATE", goalDetail: "", moodToday: "" },
             감성: { goal: "힐링", goalDetail: "", moodToday: "조용한" },
             활동: { goal: "활동", goalDetail: "", moodToday: "활동적인" },
-            트렌디: { goal: "DATE", goalDetail: "", moodToday: "트렌디한" },
+            트렌디: { goal: "DATE", goalDetail: "", moodToday: "힙한" },
         };
         const mapped = PURPOSE_MAP[purposeToday];
         if (mapped) {

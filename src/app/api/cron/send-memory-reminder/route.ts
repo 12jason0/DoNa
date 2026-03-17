@@ -50,7 +50,9 @@ export async function GET(req: NextRequest) {
         }
 
         // 2) 배치 조회: (userId, courseId) 쌍 중 "나만의 추억" 있는 쌍
-        const pairs = actives.map((a) => ({ userId: a.userId, courseId: a.courseId }));
+        const pairs = actives
+            .filter((a): a is typeof a & { courseId: number } => a.courseId !== null)
+            .map((a) => ({ userId: a.userId, courseId: a.courseId }));
         const withMemory = await prisma.review.findMany({
             where: {
                 isPublic: false,

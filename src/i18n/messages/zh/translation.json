@@ -278,7 +278,17 @@
         "anniversary": "纪念日",
         "friends": "朋友",
         "solo": "独自",
-        "rainy": "下雨天"
+        "rainy": "下雨天",
+        "hip": "潮流",
+        "lively": "活力",
+        "retro": "复古",
+        "premiumMood": "高级",
+        "quiet": "安静",
+        "exotic": "异国",
+        "couple": "情侣",
+        "some": "暧昧",
+        "family": "家人",
+        "blindDate": "相亲"
     },
     "courseReportBanner": {
         "badge": "Spot Wanted",
@@ -498,6 +508,7 @@
     },
     "categoryFilterModal": {
         "title": "筛选设置",
+        "concept": "概念",
         "activity": "活动",
         "vibe": "氛围",
         "context": "情境",

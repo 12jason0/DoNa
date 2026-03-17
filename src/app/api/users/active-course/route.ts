@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         const memory = await prisma.review.findFirst({
             where: {
                 userId,
-                courseId: active.courseId,
+                courseId: active.courseId ?? undefined,
                 isPublic: false,
             },
         });

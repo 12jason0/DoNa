@@ -9,23 +9,43 @@ import { translateCourseConcept } from "@/lib/courseTranslate";
 
 const LABEL_KEYS: Record<
     string,
-    | "categoryFilterModal.activity"
+    | "categoryFilterModal.concept"
     | "categoryFilterModal.vibe"
     | "categoryFilterModal.context"
     | "categoryFilterModal.condition"
 > = {
-    MANDATORY: "categoryFilterModal.activity",
-    VIBE: "categoryFilterModal.vibe",
-    CONTEXT: "categoryFilterModal.context",
+    CONCEPT: "categoryFilterModal.concept",
+    MOOD: "categoryFilterModal.vibe",
+    TARGET: "categoryFilterModal.context",
     CONDITION: "categoryFilterModal.condition",
 };
 
-// tags: DB/course_tags와 매칭용 한국어 키. 표시는 translateCourseConcept으로 번역됨
+// 컨셉(11) / 분위기(8) / 상황(7) / 조건(4) - Admin과 계산 로직은 건드리지 않음
 const TAG_CATEGORIES: Record<string, { tags: string[] }> = {
-    MANDATORY: { tags: ["맛집탐방", "카페투어", "주점", "액티비티", "전시관람"] },
-    VIBE: { tags: ["힙스터", "감성", "로맨틱", "인생샷", "핫플", "신상"] },
-    CONTEXT: { tags: ["데이트", "기념일", "가성비", "친구", "혼자"] },
-    CONDITION: { tags: ["실내", "야외", "야경", "비오는날"] },
+    CONCEPT: {
+        tags: [
+            "이색데이트",
+            "감성데이트",
+            "야경",
+            "힐링",
+            "가성비",
+            "인생샷",
+            "맛집탐방",
+            "카페투어",
+            "술자리",
+            "실내데이트",
+            "공연·전시",
+        ],
+    },
+    MOOD: {
+        tags: ["로맨틱", "힙한", "활기찬", "레트로", "고급스러운", "감성", "조용한", "이국적인"],
+    },
+    TARGET: {
+        tags: ["연인", "썸", "친구", "가족", "혼자", "기념일", "소개팅"],
+    },
+    CONDITION: {
+        tags: ["실내", "야외", "비오는날", "야경"],
+    },
 };
 
 interface CategoryFilterModalProps {
@@ -55,15 +75,15 @@ export default function CategoryFilterModal({
 
     return (
         <div
-            className="fixed inset-0 z-9999 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-5 animate-in fade-in duration-200"
+            className="fixed inset-0 z-9999 bg-black/60 flex items-end justify-center p-0 animate-in fade-in duration-200"
             onClick={onClose}
             role="presentation"
         >
             <div
-                className={`w-full flex justify-center sm:items-end ${isAndroidApp ? "mb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:mb-0" : ""}`}
+                className={`w-full flex items-end ${isAndroidApp ? "mb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]" : ""}`}
             >
                 <div
-                    className="bg-white dark:bg-[#1a241b] w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl border border-gray-100 dark:border-gray-800 relative flex flex-col max-h-[85vh] animate-slide-up"
+                    className="bg-white dark:bg-[#1a241b] w-full max-w-[480px] mx-auto rounded-t-xl border border-gray-100 dark:border-gray-800 relative flex flex-col max-h-[75vh] animate-slide-up"
                     onClick={(e) => e.stopPropagation()}
                 >
                 {!isLocaleReady ? (
@@ -81,19 +101,13 @@ export default function CategoryFilterModal({
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
                             {/* course_tags 테이블의 태그를 카테고리별로 표시 */}
                             {Object.entries(TAG_CATEGORIES).map(([key, category]) => {
-                                // allTags에서 해당 카테고리에 속하는 태그만 필터링
-                                const categoryTags = allTags.filter((tag) => category.tags.includes(tag.name));
-
-                                // allTags에 없는 경우 하드코딩된 태그 사용 (fallback)
-                                const displayTags =
-                                    categoryTags.length > 0
-                                        ? categoryTags
-                                        : category.tags.map((name) => ({ id: 0, name }));
+                                // 항상 TAG_CATEGORIES 전체 표시 (DB allTags와 무관)
+                                const displayTags = category.tags.map((name) => ({ id: 0, name }));
 
                                 return (
                                     <div key={key}>
                                         <div className="text-[15px] font-bold mb-3 text-gray-900 dark:text-white">
-                                            {t(LABEL_KEYS[key] ?? "categoryFilterModal.activity")}
+                                            {t(LABEL_KEYS[key] ?? "categoryFilterModal.concept")}
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {displayTags.map((tag) => {

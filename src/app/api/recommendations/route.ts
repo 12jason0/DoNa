@@ -20,9 +20,9 @@ import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
-const PUBLIC_DATA_API_KEY = process.env.KMA_API_KEY || process.env.AIRKOREA_API_KEY;
-const KMA_API_KEY = PUBLIC_DATA_API_KEY;
-const AIRKOREA_API_KEY = PUBLIC_DATA_API_KEY;
+// data.go.kr 공공데이터 서비스 키 (기상청 날씨 + AirKorea 미세먼지 API 공통 사용)
+const KMA_API_KEY = process.env.KMA_API_KEY;
+const AIRKOREA_API_KEY = KMA_API_KEY;
 
 // ---------------------------------------------
 // [온보딩 UI 텍스트 → 행정구역명 매핑]
@@ -38,7 +38,7 @@ const regionMapping: Record<string, string> = {
     "여의도 · 영등포": "영등포구",
     // personalized-home Q4 옵션
     "문래·영등포": "영등포구",
-    "합정·용산": "마포구",
+    "합정·용산": "용산구", // 합정(마포구)+용산(용산구) 복합 권역 — 날씨 API용으로 용산구 기준 적용
     "안국·서촌": "종로구",
     "을지로": "중구",
     "여의도": "영등포구",
@@ -122,7 +122,7 @@ function calculateWeatherPenalty(courseConcept: string | null, weatherToday: str
         if (courseConcept.includes("실내")) penalty += 0.05;
     } else if (weatherToday.includes("미세먼지") || weatherToday.includes("황사")) {
         if (courseConcept.includes("활동적인") || courseConcept.includes("야외")) penalty -= 0.15;
-        if (courseConcept.includes("전시") || courseConcept.includes("쇼핑")) penalty += 0.03;
+        if (courseConcept.includes("전시") || courseConcept.includes("실내") || courseConcept.includes("맛집") || courseConcept.includes("카페")) penalty += 0.03;
     } else if (weatherToday.includes("맑음")) {
         if (courseConcept.includes("야외") || courseConcept.includes("활동적인")) penalty += 0.1;
     }
@@ -173,10 +173,10 @@ function calculateMoodMatch(courseMoods: string[], longTermMoods: string[], mood
         if (courseMoods.some((m) => m.includes(pref) || pref.includes(m))) matchCount++;
     });
 
-    // 오늘의 무드 기반 매칭
+    // 오늘의 무드 기반 매칭 (트렌디한→힙한, 편안한→조용한 흡수)
     const moodMap: Record<string, string[]> = {
-        조용한: ["조용한", "프라이빗"],
-        트렌디한: ["트렌디한", "핫플"],
+        조용한: ["조용한", "편안한", "프라이빗"],
+        힙한: ["힙한", "트렌디한", "핫플"],
         활동적인: ["활동적인", "액티비티", "체험"],
     };
     (moodMap[moodToday] || []).forEach((tm) => {

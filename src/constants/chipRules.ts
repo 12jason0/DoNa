@@ -90,8 +90,8 @@ function getChipCandidates(course: ChipCourse, context: ChipContext): { id: Chip
         candidates.push({ id: "LOW_MOVE", score: 8 });
     }
 
-    // C. 날씨 (실내/날씨 무관)
-    if (concept.includes("실내") || concept.includes("카페") || concept.includes("전시") || concept.includes("쇼핑")) {
+    // C. 날씨 (실내/날씨 무관) - 실내데이트, 맛집탐방, 카페투어, 공연·전시
+    if (concept.includes("실내") || concept.includes("맛집") || concept.includes("카페") || concept.includes("전시")) {
         const weatherBoost =
             context.weatherToday?.includes("비") ||
             context.weatherToday?.includes("눈") ||

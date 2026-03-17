@@ -1,56 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { REGION_MAPPING } from "@/lib/regionMapping";
 
 export const dynamic = "force-dynamic";
-
-// [추가] 지역명 동의어 매핑 (사용자 입력 -> DB region)
-const REGION_MAPPING: Record<string, string> = {
-    // 1. 홍대/연남
-    마포: "홍대/연남",
-    마포구: "홍대/연남",
-    홍대: "홍대/연남",
-    연남: "홍대/연남",
-    연남동: "홍대/연남",
-    서교동: "홍대/연남",
-    합정: "홍대/연남",
-    망원: "홍대/연남",
-
-    // 2. 성수
-    성수: "성수",
-    성수동: "성수",
-    성동구: "성수",
-    뚝섬: "성수",
-    서울숲: "성수",
-
-    // 3. 종로/북촌
-    종로: "종로/북촌",
-    종로구: "종로/북촌",
-    북촌: "종로/북촌",
-    삼청동: "종로/북촌",
-    익선동: "종로/북촌",
-    서촌: "종로/북촌",
-    인사동: "종로/북촌",
-    광화문: "종로/북촌",
-
-    // 4. 을지로
-    을지로: "을지로",
-    을지로3가: "을지로",
-    을지로4가: "을지로",
-    중구: "을지로",
-    명동: "을지로",
-    충무로: "을지로",
-    힙지로: "을지로",
-
-    // 5. 용산
-    용산: "용산",
-    용산구: "용산",
-    이태원: "용산",
-    한남: "용산",
-    한남동: "용산",
-    해방촌: "용산",
-    경리단길: "용산",
-    신용산: "용산",
-};
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);

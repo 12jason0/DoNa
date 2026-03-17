@@ -479,9 +479,17 @@ export default function AdminDashboard() {
                                                     radius={[4, 4, 0, 0]}
                                                     name="사용자 수"
                                                     shape={(props: any) => {
-                                                        const { payload, ...barProps } = props;
+                                                        const {
+                                                            payload,
+                                                            stackedBarStart,
+                                                            tooltipPosition,
+                                                            parentViewBox,
+                                                            isActive,
+                                                            dataKey,
+                                                            ...rectProps
+                                                        } = props;
                                                         return (
-                                                            <rect {...barProps} fill={getGenderColor(payload.gender)} />
+                                                            <rect {...rectProps} fill={getGenderColor(payload.gender)} />
                                                         );
                                                     }}
                                                 />

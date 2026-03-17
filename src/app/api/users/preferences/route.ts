@@ -25,7 +25,7 @@ function migratePreferences(oldPrefs: any): any {
         const vibeMoodMap: Record<string, string[]> = {
             romantic: ["감성적", "로맨틱"],
             calm: ["조용한", "감성적"],
-            hip: ["트렌디한"],
+            hip: ["힙한"],
             private: ["조용한", "프라이빗"],
             active: ["활동적인", "활기찬"],
         };

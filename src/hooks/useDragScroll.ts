@@ -51,5 +51,5 @@ export function useDragScroll<T extends HTMLElement>(
         [ref, active, getClientX]
     );
 
-    return { onMouseDown: handlePointerDown as (e: React.MouseEvent) => void, onTouchStart: handlePointerDown as (e: React.TouchEvent) => void };
+    return { onMouseDown: handlePointerDown as unknown as (e: React.MouseEvent) => void, onTouchStart: handlePointerDown as unknown as (e: React.TouchEvent) => void };
 }

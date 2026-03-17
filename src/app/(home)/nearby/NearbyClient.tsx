@@ -19,14 +19,17 @@ import CourseReportBanner from "@/components/CourseReportBanner";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 
 const activities = [
-    { key: "카페투어", label: "☕ 카페투어" },
-    { key: "맛집탐방", label: "🍜 맛집탐방" },
-    { key: "쇼핑", label: "🛍️ 쇼핑" },
-    { key: "문화예술", label: "🎨 문화예술" },
-    { key: "야경", label: "🌃 야경" },
-    { key: "테마파크", label: "🎢 테마파크" },
-    { key: "체험", label: "🧪 체험" },
-    { key: "이색데이트", label: "✨ 이색데이트" },
+    { key: CONCEPTS.UNIQUE, label: `✨ ${CONCEPTS.UNIQUE}` },
+    { key: CONCEPTS.EMOTIONAL, label: `💕 ${CONCEPTS.EMOTIONAL}` },
+    { key: CONCEPTS.NIGHT_VIEW, label: `🌃 ${CONCEPTS.NIGHT_VIEW}` },
+    { key: CONCEPTS.HEALING, label: `🌿 ${CONCEPTS.HEALING}` },
+    { key: CONCEPTS.COST_EFFECTIVE, label: `💰 ${CONCEPTS.COST_EFFECTIVE}` },
+    { key: CONCEPTS.PHOTO, label: `📸 ${CONCEPTS.PHOTO}` },
+    { key: CONCEPTS.FOOD_TOUR, label: `🍜 ${CONCEPTS.FOOD_TOUR}` },
+    { key: CONCEPTS.CAFE, label: `☕ ${CONCEPTS.CAFE}` },
+    { key: CONCEPTS.DRINKING, label: `🍺 ${CONCEPTS.DRINKING}` },
+    { key: CONCEPTS.INDOOR, label: `🏠 ${CONCEPTS.INDOOR}` },
+    { key: CONCEPTS.EXHIBITION, label: `🎭 ${CONCEPTS.EXHIBITION}` },
 ];
 
 const regions = ["강남", "성수", "홍대", "종로", "연남", "영등포"];

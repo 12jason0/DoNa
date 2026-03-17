@@ -278,7 +278,17 @@
         "anniversary": "기념일",
         "friends": "친구",
         "solo": "혼자",
-        "rainy": "비오는날"
+        "rainy": "비오는날",
+        "hip": "힙한",
+        "lively": "활기찬",
+        "retro": "레트로",
+        "premiumMood": "고급스러운",
+        "quiet": "조용한",
+        "exotic": "이국적인",
+        "couple": "연인",
+        "some": "썸",
+        "family": "가족",
+        "blindDate": "소개팅"
     },
     "courseReportBanner": {
         "badge": "Spot Wanted",
@@ -498,6 +508,7 @@
     },
     "categoryFilterModal": {
         "title": "필터 설정",
+        "concept": "컨셉",
         "activity": "활동",
         "vibe": "분위기",
         "context": "상황",
