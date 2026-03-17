@@ -15,7 +15,7 @@ import { getS3StaticUrl } from "@/lib/s3Static";
 import { useAuth } from "@/context/AuthContext";
 import TapFeedback from "@/components/TapFeedback";
 import { TipSection, TipCategoryIcon } from "@/components/TipSection";
-import { parseTipsFromDb, FREE_TIP_CATEGORIES, PAID_TIP_CATEGORIES } from "@/types/tip";
+import { parseTipsFromDb, TIP_CATEGORIES } from "@/types/tip";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
@@ -2167,8 +2167,7 @@ export default function CourseDetailClient({
                                                                                 if (allTips.length === 0) return null;
 
                                                                                 const getCategoryLabel = (cat: string) =>
-                                                                                    FREE_TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
-                                                                                    PAID_TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
+                                                                                    TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
                                                                                     t("courseDetail.etc");
 
                                                                                 const categories = [...new Set(allTips.map((t) => t.category))];

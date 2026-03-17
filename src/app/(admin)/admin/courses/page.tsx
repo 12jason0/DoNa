@@ -721,7 +721,17 @@ export default function AdminCoursesPage() {
                     cancelEditPlace();
                 }
             } else {
-                alert("제거 실패");
+                const text = await res.text();
+                let errMsg = `HTTP ${res.status}`;
+                try {
+                    if ((res.headers.get("content-type") || "").includes("application/json")) {
+                        const err = JSON.parse(text);
+                        errMsg = err.error || errMsg;
+                    }
+                } catch {
+                    if (text.startsWith("<")) errMsg = `${res.status} (서버가 HTML을 반환했습니다)`;
+                }
+                alert(`제거 실패: ${errMsg}`);
             }
         } catch (e) {
             console.error(e);
@@ -777,8 +787,18 @@ export default function AdminCoursesPage() {
                 cancelEditPlace();
                 await fetchCoursePlaces(editingId);
             } else {
-                const err = await res.json();
-                alert(`수정 실패: ${err.error || "알 수 없는 오류"}`);
+                const text = await res.text();
+                let errMsg = `HTTP ${res.status}`;
+                try {
+                    const ct = res.headers.get("content-type") || "";
+                    if (ct.includes("application/json")) {
+                        const err = JSON.parse(text);
+                        errMsg = err.error || errMsg;
+                    }
+                } catch {
+                    if (text.startsWith("<")) errMsg = `${res.status} (서버가 HTML을 반환했습니다)`;
+                }
+                alert(`수정 실패: ${errMsg}`);
             }
         } catch (e) {
             console.error("장소 수정 실패:", e);
@@ -823,9 +843,20 @@ export default function AdminCoursesPage() {
             if (res1.ok && res2.ok) {
                 await fetchCoursePlaces(editingId);
             } else {
-                const err1 = await res1.json().catch(() => ({}));
-                const err2 = await res2.json().catch(() => ({}));
-                alert(`순서 변경 실패: ${err1.error || err2.error || "알 수 없는 오류"}`);
+                const parse = async (r: Response) => {
+                    const text = await r.text();
+                    if ((r.headers.get("content-type") || "").includes("application/json")) {
+                        try {
+                            return (JSON.parse(text) as { error?: string }).error;
+                        } catch {
+                            return undefined;
+                        }
+                    }
+                    return r.status === 200 ? undefined : `HTTP ${r.status}`;
+                };
+                const err1 = await parse(res1);
+                const err2 = await parse(res2);
+                alert(`순서 변경 실패: ${err1 || err2 || "알 수 없는 오류"}`);
             }
         } catch (e) {
             console.error("순서 변경 실패:", e);
@@ -870,9 +901,20 @@ export default function AdminCoursesPage() {
             if (res1.ok && res2.ok) {
                 await fetchCoursePlaces(editingId);
             } else {
-                const err1 = await res1.json().catch(() => ({}));
-                const err2 = await res2.json().catch(() => ({}));
-                alert(`순서 변경 실패: ${err1.error || err2.error || "알 수 없는 오류"}`);
+                const parse = async (r: Response) => {
+                    const text = await r.text();
+                    if ((r.headers.get("content-type") || "").includes("application/json")) {
+                        try {
+                            return (JSON.parse(text) as { error?: string }).error;
+                        } catch {
+                            return undefined;
+                        }
+                    }
+                    return r.status === 200 ? undefined : `HTTP ${r.status}`;
+                };
+                const err1 = await parse(res1);
+                const err2 = await parse(res2);
+                alert(`순서 변경 실패: ${err1 || err2 || "알 수 없는 오류"}`);
             }
         } catch (e) {
             console.error("순서 변경 실패:", e);

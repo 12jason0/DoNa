@@ -12,19 +12,41 @@ function isAuthenticated(request: NextRequest): boolean {
     return !!adminAuth;
 }
 
+type RouteParams = { id: string; placeId: string };
+
+// GET: 라우트 도달 여부 확인용 (인증 없이 200 + { ok: true })
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<RouteParams> }
+) {
+    const { id: courseIdParam, placeId } = await params;
+    const course_id = Number(courseIdParam);
+    const course_place_id = Number(placeId);
+    if (!course_id || !course_place_id || isNaN(course_id) || isNaN(course_place_id)) {
+        return NextResponse.json({ error: "Invalid course ID or place ID" }, { status: 400 });
+    }
+    const existing = await (prisma as any).coursePlace.findFirst({
+        where: { id: course_place_id, course_id: course_id },
+    });
+    if (!existing) {
+        return NextResponse.json({ error: "Course place not found" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, course_place: existing });
+}
+
 // 코스의 장소(course_place) 수정
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string; coursePlaceId: string }> }
+    { params }: { params: Promise<RouteParams> }
 ) {
     try {
         if (!isAuthenticated(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        const { id: courseIdParam, coursePlaceId } = await params;
+        const { id: courseIdParam, placeId } = await params;
         const course_id = Number(courseIdParam);
-        const course_place_id = Number(coursePlaceId);
+        const course_place_id = Number(placeId);
 
         if (!course_id || !course_place_id || isNaN(course_id) || isNaN(course_place_id)) {
             return NextResponse.json({ error: "Invalid course ID or course place ID" }, { status: 400 });
@@ -89,16 +111,16 @@ export async function PATCH(
 // 코스의 장소(course_place) 삭제
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string; coursePlaceId: string }> }
+    { params }: { params: Promise<RouteParams> }
 ) {
     try {
         if (!isAuthenticated(request)) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
 
-        const { id: courseIdParam, coursePlaceId } = await params;
+        const { id: courseIdParam, placeId } = await params;
         const course_id = Number(courseIdParam);
-        const course_place_id = Number(coursePlaceId);
+        const course_place_id = Number(placeId);
 
         if (!course_id || !course_place_id || isNaN(course_id) || isNaN(course_place_id)) {
             return NextResponse.json({ error: "Invalid course ID or course place ID" }, { status: 400 });
