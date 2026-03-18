@@ -5,6 +5,7 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import { getS3Client, getS3Bucket } from "@/lib/s3";
 import { DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export async function DELETE(request: NextRequest) {
                 // 향후 분석을 위해 별도 로그나 DB에 저장 가능
             }
         } catch (e) {
+
+                captureApiError(e);
             // JSON 파싱 실패 시 무시 (body가 없을 수도 있음)
         }
 
@@ -122,6 +125,8 @@ export async function DELETE(request: NextRequest) {
                         console.log("사용자는 Apple ID 설정에서 직접 앱 연동을 해제할 수 있습니다.");
                     }
                 } catch (revokeError: any) {
+
+                        captureApiError(revokeError);
                     console.error(
                         `[User Delete] 애플 연동 해제 중 오류 발생 (User ID: ${userId}, 무시하고 진행):`,
                         revokeError.response?.data || revokeError.message
@@ -129,6 +134,8 @@ export async function DELETE(request: NextRequest) {
                 }
             }
         } catch (socialError: any) {
+
+                captureApiError(socialError);
             // 소셜 해제 실패 시 로그는 남기되 DB 삭제는 진행 (이미 플랫폼에서 앱을 삭제했을 수 있음)
             console.error(
                 "소셜 연동 해제 중 오류 발생(무시하고 진행):",
@@ -156,6 +163,8 @@ export async function DELETE(request: NextRequest) {
                     );
                     console.log(`프로필 이미지 삭제 성공: ${key}`);
                 } catch (s3Error) {
+
+                        captureApiError(s3Error);
                     console.error("프로필 이미지 삭제 실패 (무시):", s3Error);
                 }
             }
@@ -181,12 +190,16 @@ export async function DELETE(request: NextRequest) {
                                     })
                                 );
                             } catch (s3Error) {
+
+                                    captureApiError(s3Error);
                                 console.error(`리뷰 이미지 삭제 실패 (무시): ${imageUrl}`, s3Error);
                             }
                         }
                     }
                 }
             } catch (reviewError) {
+
+                    captureApiError(reviewError);
                 console.error("리뷰 이미지 삭제 중 오류 (무시):", reviewError);
             }
 
@@ -210,14 +223,20 @@ export async function DELETE(request: NextRequest) {
                                 })
                             );
                         } catch (s3Error) {
+
+                                captureApiError(s3Error);
                             console.error(`코스 이미지 삭제 실패 (무시): ${course.imageUrl}`, s3Error);
                         }
                     }
                 }
             } catch (courseError) {
+
+                    captureApiError(courseError);
                 console.error("코스 이미지 삭제 중 오류 (무시):", courseError);
             }
         } catch (s3Error) {
+
+                captureApiError(s3Error);
             // S3 삭제 실패해도 DB 삭제는 진행
             console.error("S3 이미지 삭제 중 전체 오류 (무시하고 진행):", s3Error);
         }
@@ -234,6 +253,8 @@ export async function DELETE(request: NextRequest) {
             try {
                 await tx.userReward.deleteMany({ where: { userId: userId } });
             } catch (e) {
+
+                    captureApiError(e);
                 console.error("UserReward 삭제 실패 (무시):", e);
             }
 
@@ -241,9 +262,13 @@ export async function DELETE(request: NextRequest) {
             try {
                 await tx.userStoryProgress.deleteMany({ where: { user_id: userId } });
             } catch (e) {
+
+                    captureApiError(e);
                 try {
                     await tx.userStoryProgress.deleteMany({ where: { userId: userId } as any });
                 } catch (e2) {
+
+                        captureApiError(e2);
                     console.error("UserStoryProgress 삭제 실패 (무시):", e, e2);
                 }
             }
@@ -288,6 +313,8 @@ export async function DELETE(request: NextRequest) {
             message: "계정 및 모든 연동 데이터가 성공적으로 삭제되었습니다.",
         });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("계정 삭제 전체 프로세스 오류:", error);
         return NextResponse.json(
             {

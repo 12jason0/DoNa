@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 // Bearer 토큰 또는 'auth' 쿠키에서 사용자 ID를 가져오는 헬퍼 함수
 // 통합 인증 사용 (Authorization 헤더 우선, 없으면 auth 쿠키)
@@ -43,6 +44,8 @@ export async function GET(request: NextRequest) {
         const urls = submissions.map((s: { photoUrl: string | null }) => s.photoUrl!).filter(Boolean) as string[];
         return NextResponse.json({ success: true, urls });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ message: error?.message || "조회 실패" }, { status: 500 });
     }
 }

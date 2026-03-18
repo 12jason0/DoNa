@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ ok: true });
     } catch (error) {
+
+            captureApiError(error);
         return NextResponse.json({ error: "Failed to save progress" }, { status: 500 });
     }
 }

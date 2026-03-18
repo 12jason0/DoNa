@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 // 쿼리: ?tag=coffee&count=3&places=4
 // places 테이블에서 tag/category/name에 tag가 포함된 장소를 랜덤 샘플링해
@@ -302,6 +303,8 @@ export async function GET(request: NextRequest) {
         const merged = mergeSingletonCourses(courses);
         return NextResponse.json({ success: true, courses: merged });
     } catch (error) {
+
+            captureApiError(error);
         console.error("GET /api/courses/generate error:", error);
         const message = error instanceof Error ? error.message : String(error);
         return NextResponse.json({ success: false, error: message }, { status: 500 });

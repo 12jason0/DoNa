@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 // Fetch dialogue messages by ids.
 // NOTE: 현재 스키마에서 메시지는 PlaceDialogue 모델을 사용합니다.
@@ -45,6 +46,7 @@ export async function GET(req: Request) {
             { headers: { "Cache-Control": "no-store" } }
         );
     } catch (e) {
+            captureApiError(e);
         return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
     }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
+import { captureApiError } from "@/lib/sentry";
 
 export async function POST(req: NextRequest) {
     try {
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
             { status: 400 }
         );
     } catch (error) {
+            captureApiError(error);
         console.error("푸시 알림 에러:", error);
         return NextResponse.json({ error: "서버 오류" }, { status: 500 });
     }

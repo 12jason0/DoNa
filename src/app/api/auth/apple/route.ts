@@ -4,6 +4,7 @@ import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
         }
         return await handleAppAppleAuthLogic(request, identityToken, fullName, appEmail, authorizationCode);
     } catch (error) {
+            captureApiError(error);
         console.error("Apple POST API 오류:", error);
         return NextResponse.json({ error: "서버 오류" }, { status: 500 });
     }
@@ -173,6 +175,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                     },
                 });
             } catch (upsertError: any) {
+                    captureApiError(upsertError);
                 // 🟢 [Fix]: upsert 실패 시 (email unique constraint 등) 재시도 로직
                 if (upsertError?.code === "P2002" && upsertError?.meta?.target?.includes("email")) {
                     console.warn(`[Apple Auth] Email unique constraint 에러 재시도: ${email}`);
@@ -244,6 +247,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         window.location.replace("${decodedNext}");
                     }
                 } catch (err) {
+                        captureApiError(err);
                     console.error('Apple 로그인 팝업 처리 오류:', err);
                     // 에러 발생 시 팝업이 아닌 경우에만 직접 리다이렉트
                     if (!window.opener || window.opener.closed) {
@@ -254,6 +258,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
             serviceToken
         );
     } catch (err: any) {
+            captureApiError(err);
         console.error("[Apple Auth] 웹 인증 오류:", {
             error: err?.message,
             code: err?.code,
@@ -281,6 +286,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
                         window.location.href = '/login';
                     }
                 } catch (e) {
+                        captureApiError(e);
                     console.error('에러 처리 중 오류:', e);
                     window.location.href = '/login';
                 }
@@ -379,6 +385,7 @@ async function handleAppAppleAuthLogic(
                     },
                 });
             } catch (upsertError: any) {
+                    captureApiError(upsertError);
                 // 🟢 [Fix]: upsert 실패 시 (email unique constraint 등) 재시도 로직
                 if (upsertError?.code === "P2002" && upsertError?.meta?.target?.includes("email")) {
                     console.warn(`[Apple Auth] Email unique constraint 에러 재시도: ${email}`);
@@ -454,6 +461,7 @@ async function handleAppAppleAuthLogic(
 
         return res;
     } catch (err: any) {
+            captureApiError(err);
         console.error("[Apple Auth] 앱 인증 오류:", {
             error: err?.message,
             code: err?.code,

@@ -3,6 +3,7 @@ import { getS3PublicUrl, getPresignedPutUrl } from "@/lib/s3";
 import { resolveUserId } from "@/lib/auth";
 import { randomBytes } from "crypto";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 
@@ -112,6 +113,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, uploads });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("[/api/upload/presign] Error:", error);
         return NextResponse.json(
             { message: error?.message || "Presign 처리 중 오류가 발생했습니다." },

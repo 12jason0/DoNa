@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export async function GET(request: NextRequest) {
     try {
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ message: error?.message || "배지 조회 실패" }, { status: 500 });
     }
 }

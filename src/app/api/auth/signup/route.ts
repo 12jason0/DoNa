@@ -5,6 +5,7 @@ import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
 
         return res;
     } catch (error: any) {
+            captureApiError(error);
         console.error("[Signup API Error]:", error);
 
         // Prisma 유니크 제약 조건 에러 처리 (이중 방어)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // 5분 캐싱
@@ -27,6 +28,8 @@ export async function GET(_request: NextRequest) {
             },
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("API: Error fetching concept counts:", error);
         return NextResponse.json({ error: "concept 개수를 가져오는 중 오류 발생" }, { status: 500 });
     }

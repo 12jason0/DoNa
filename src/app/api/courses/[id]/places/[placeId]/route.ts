@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
 // 인증: 유저 JWT 또는 관리자(admin_auth) 허용
 function isAuthenticated(request: NextRequest): boolean {
-    const userId = resolveUserId(request);
-    if (userId) return true;
-    const adminAuth = request.cookies.get("admin_auth")?.value === "true";
-    return !!adminAuth;
+    if (resolveUserId(request)) return true;
+    return verifyAdminJwt(request);
 }
 
 type RouteParams = { id: string; placeId: string };
@@ -93,6 +92,8 @@ export async function PATCH(
 
         return NextResponse.json({ success: true, course_place: updated });
     } catch (error) {
+
+            captureApiError(error);
         console.error("API: 코스-장소 연결 수정 오류:", error);
         console.error("API: 에러 상세:", {
             message: error instanceof Error ? error.message : "Unknown error",
@@ -145,6 +146,8 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
+
+            captureApiError(error);
         console.error("API: 코스-장소 연결 삭제 오류:", error);
         console.error("API: 에러 상세:", {
             message: error instanceof Error ? error.message : "Unknown error",

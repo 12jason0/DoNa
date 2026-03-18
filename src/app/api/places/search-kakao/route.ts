@@ -23,6 +23,7 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
 }
 
 import { REGION_MAPPING } from "@/lib/regionMapping";
+import { captureApiError } from "@/lib/sentry";
 
 // ---------------------------------------------------------
 // 2-2. 데이트 분위기 제외 카테고리 (카카오 category_group_code)
@@ -293,6 +294,7 @@ export async function GET(request: NextRequest) {
                     },
                 });
             } catch (logError) {
+                    captureApiError(logError);
                 // 로그 저장 실패해도 검색 결과는 정상 반환
                 console.error("위치 로그 저장 실패:", logError);
             }
@@ -304,6 +306,7 @@ export async function GET(request: NextRequest) {
             relatedCourses: relatedCourses,
         });
     } catch (error) {
+            captureApiError(error);
         console.error("KAKAO 장소 검색 API 오류:", error);
         return NextResponse.json({ error: "장소 검색 중 오류 발생" }, { status: 500 });
     }

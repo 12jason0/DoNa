@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 export async function PUT() {
     try {
@@ -10,6 +11,7 @@ export async function PUT() {
             message: "All notifications marked as read",
         });
     } catch (error) {
+            captureApiError(error);
         console.error("Failed to mark all notifications as read:", error);
         return NextResponse.json({ error: "Failed to mark all notifications as read" }, { status: 500 });
     }

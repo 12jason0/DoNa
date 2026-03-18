@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export async function GET(request: NextRequest) {
             isSearchHistoryEnabled: user?.isSearchHistoryEnabled ?? true,
         });
     } catch (error: unknown) {
+
+            captureApiError(error);
         const message = error instanceof Error ? error.message : "An error occurred";
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -85,6 +88,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ saved: true });
     } catch (error: unknown) {
+
+            captureApiError(error);
         const message = error instanceof Error ? error.message : "An error occurred";
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -111,6 +116,8 @@ export async function DELETE(request: NextRequest) {
 
         return NextResponse.json({ deleted: true });
     } catch (error: unknown) {
+
+            captureApiError(error);
         const message = error instanceof Error ? error.message : "An error occurred";
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -139,6 +146,8 @@ export async function PATCH(request: NextRequest) {
 
         return NextResponse.json({ success: true, isSearchHistoryEnabled: enabled });
     } catch (error: unknown) {
+
+            captureApiError(error);
         const message = error instanceof Error ? error.message : "An error occurred";
         return NextResponse.json({ error: message }, { status: 500 });
     }

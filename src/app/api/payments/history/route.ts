@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveUserId } from "@/lib/auth"; // 🟢 12.24 개편된 보안 세션 유틸 사용
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
             })),
         });
     } catch (error: any) {
+            captureApiError(error);
         console.error("결제 내역 조회 오류:", error);
         return NextResponse.json(
             { error: "결제 내역을 불러오는 중 오류가 발생했습니다.", details: error?.message },

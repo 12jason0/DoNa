@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 /**
  * [법적 필수] 6개월 이상 된 LocationLog와 LoginLog 자동 삭제
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
             cutoffDate: sixMonthsAgo.toISOString(),
         });
     } catch (error) {
+            captureApiError(error);
         console.error("로그 정리 오류:", error);
         return NextResponse.json(
             {
@@ -95,6 +97,7 @@ export async function GET(request: NextRequest) {
             cutoffDate: sixMonthsAgo.toISOString(),
         });
     } catch (error) {
+            captureApiError(error);
         console.error("로그 조회 오류:", error);
         return NextResponse.json({ error: "조회 실패" }, { status: 500 });
     }

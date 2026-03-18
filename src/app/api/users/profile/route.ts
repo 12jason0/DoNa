@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic"; // 🟢 실시간 인증 정보를 위해 필수
 export const revalidate = 0; // 🟢 캐시 완전 비활성화
@@ -76,6 +77,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(responseData);
     } catch (e) {
+            captureApiError(e);
         return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
     }
 }
@@ -134,6 +136,7 @@ export async function PUT(request: NextRequest) {
             },
         });
     } catch (e: any) {
+            captureApiError(e);
         return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
     }
 }

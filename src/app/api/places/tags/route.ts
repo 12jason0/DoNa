@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 // places.tags 컬럼에서 태그 목록을 수집해 unique로 반환
 // tags 컬럼이 없거나 비어있으면 category를 fallback으로 사용
@@ -44,6 +45,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ success: true, tags: sorted });
     } catch (error) {
+
+            captureApiError(error);
         console.error("GET /api/places/tags error:", error);
         // 실패 시에도 빈 배열을 반환하여 페이지가 계속 동작하도록 함
         return NextResponse.json({ success: true, tags: [] });

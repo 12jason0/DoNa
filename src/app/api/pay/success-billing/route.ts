@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 // 사용자님이 언급한 세션 검증 함수 (예시 경로)
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +123,8 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ success: true, message: "구독 결제 완료" });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("[Billing Error]", error);
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }

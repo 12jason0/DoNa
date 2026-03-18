@@ -1,6 +1,7 @@
 // src/app/api/course-tags/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 600; // 10분 캐싱
@@ -20,6 +21,8 @@ export async function GET(_request: NextRequest) {
             }
         );
     } catch (error) {
+
+            captureApiError(error);
         console.error("GET /api/course-tags error:", error);
         return NextResponse.json({ success: false, error: "Failed to fetch course tags" }, { status: 500 });
     }

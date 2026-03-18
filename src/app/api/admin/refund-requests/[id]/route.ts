@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
-// 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
-    const ok = req.cookies.get("admin_auth")?.value === "true";
-    if (!ok) throw new Error("ADMIN_ONLY");
+    if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
 /**
@@ -186,6 +186,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         return NextResponse.json({ error: "알 수 없는 액션입니다." }, { status: 400 });
     } catch (error: any) {
+
+            captureApiError(error);
         if (error.message === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ shareId: shared.id });
     } catch (e) {
+
+            captureApiError(e);
         console.error("[share/create]", e);
         return NextResponse.json({ error: "Failed to create share" }, { status: 500 });
     }

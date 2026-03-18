@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 });
                 hasUnlocked = !!unlock;
             } catch (e) {
+                    captureApiError(e);
                 console.warn("[Auth] CourseUnlock check failed:", e);
             }
         }
@@ -145,6 +147,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     });
                 }
             } catch (e) {
+                    captureApiError(e);
                 console.warn("[API] placeClosedDay 조회 실패:", e);
                 // 에러가 발생해도 계속 진행 (closedDaysMap은 빈 객체로 유지)
             }
@@ -236,6 +239,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         place: mappedPlace,
                     };
                 } catch (e) {
+                        captureApiError(e);
                     console.warn("[API] coursePlace 처리 중 에러:", e, cp);
                     return null; // 에러 발생 시 해당 place 제외
                 }
@@ -254,6 +258,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 if (!isNaN(date.getTime())) createdAt = date.toISOString();
             }
         } catch (e) {
+                captureApiError(e);
             console.warn("[API] createdAt 직렬화 실패:", e);
         }
         try {
@@ -262,6 +267,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 if (!isNaN(date.getTime())) updatedAt = date.toISOString();
             }
         } catch (e) {
+                captureApiError(e);
             console.warn("[API] updatedAt 직렬화 실패:", e);
         }
 
@@ -294,6 +300,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         return NextResponse.json(payload);
     } catch (error: any) {
+            captureApiError(error);
         console.error("🔴 [CRITICAL API ERROR]:", {
             message: error.message,
             stack: error.stack,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,6 +30,8 @@ export async function POST(request: NextRequest) {
         // 완료 카운트 계산 (최근 4개 중 2개 성공 여부 등은 클라이언트에서 판정)
         return NextResponse.json({ ok: true });
     } catch (error) {
+
+            captureApiError(error);
         return NextResponse.json({ error: "Submit failed" }, { status: 500 });
     }
 }

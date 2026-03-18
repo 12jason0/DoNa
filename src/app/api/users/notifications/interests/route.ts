@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ interests });
     } catch (error) {
+
+            captureApiError(error);
         console.error("알림 관심사 조회 실패:", error);
         return NextResponse.json({ error: "조회 실패" }, { status: 500 });
     }

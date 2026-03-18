@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth"; // 🔐 서버 세션 검증 유틸
+import { captureApiError } from "@/lib/sentry";
 
 // GET: 현재 알림 상태 조회
 export async function GET(req: NextRequest) {
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
             canReceiveNotifications: (pushToken?.subscribed ?? false) && (user?.isMarketingAgreed ?? false),
         });
     } catch (error) {
+            captureApiError(error);
         console.error("조회 실패:", error);
         return NextResponse.json({ error: "조회 중 오류 발생" }, { status: 500 });
     }
@@ -112,6 +114,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
+            captureApiError(error);
         return NextResponse.json({ error: "저장 실패" }, { status: 500 });
     }
 }

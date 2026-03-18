@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 export async function GET() {
     try {
@@ -38,6 +39,7 @@ export async function GET() {
 
         return NextResponse.json(notifications);
     } catch (error) {
+            captureApiError(error);
         console.error("Failed to fetch notifications:", error);
         return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 });
     }

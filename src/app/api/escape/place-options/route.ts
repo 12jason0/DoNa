@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +19,14 @@ export async function GET(request: NextRequest) {
         });
         return NextResponse.json({ items });
     } catch (err) {
+
+            captureApiError(err);
         return NextResponse.json({ error: "조회 실패" }, { status: 500 });
     }
 }
 
-// 관리자 보호 미들웨어(간단 쿠키 검사)
 function ensureAdmin(req: NextRequest) {
-    const ok = req.cookies.get("admin_auth")?.value === "true";
-    if (!ok) throw new Error("ADMIN_ONLY");
+    if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
 // POST /api/escape/place-options
@@ -53,6 +55,8 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json({ success: true, item: created }, { status: 201 });
     } catch (err: any) {
+
+            captureApiError(err);
         if (String(err?.message) === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }
@@ -88,6 +92,8 @@ export async function PUT(request: NextRequest) {
         });
         return NextResponse.json({ success: true, item: updated });
     } catch (err: any) {
+
+            captureApiError(err);
         if (String(err?.message) === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }
@@ -107,6 +113,8 @@ export async function DELETE(request: NextRequest) {
         await prisma.placeOption.delete({ where: { id } });
         return NextResponse.json({ success: true });
     } catch (err: any) {
+
+            captureApiError(err);
         if (String(err?.message) === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }

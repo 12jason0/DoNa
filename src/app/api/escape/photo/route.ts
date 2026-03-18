@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveUserId } from "@/lib/auth";
 import { fileTypeFromBuffer } from "file-type";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
             chapterNumber: chapterNumber ? Number(chapterNumber) : null,
         });
     } catch (error) {
+            captureApiError(error);
         return NextResponse.json({ error: "사진 업로드 실패" }, { status: 500 });
     }
 }

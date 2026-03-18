@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { SubscriptionTier } from "@prisma/client";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,6 +56,8 @@ export async function GET(req: NextRequest) {
                 await processSubscriptionRenewal(user.id, user.billingKey!, user.subscriptionTier);
                 results.success++;
             } catch (error: any) {
+
+                    captureApiError(error);
                 console.error(`[구독 자동갱신 실패] User ${user.id}:`, error);
 
                 // ❌ [슬랙 알림] 결제 실패 시 즉시 전송
@@ -88,6 +91,8 @@ export async function GET(req: NextRequest) {
                         },
                     });
                 } catch (updateError) {
+
+                        captureApiError(updateError);
                     console.error(`[등급 변경 실패] User ${user.id}:`, updateError);
                 }
             }
@@ -99,6 +104,8 @@ export async function GET(req: NextRequest) {
             results,
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("[구독 자동갱신 전체 오류]:", error);
         return NextResponse.json(
             { success: false, error: "구독 자동갱신 처리 중 오류가 발생했습니다." },
@@ -207,6 +214,8 @@ async function sendSlackMessage(text: string) {
             body: JSON.stringify({ text }),
         });
     } catch (err) {
+
+            captureApiError(err);
         console.error("슬랙 전송 에러:", err);
     }
 }

@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(npx prisma:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(find /c/Users/12jas/stylemap -name .env* -type f)",
+      "Bash(node:*)",
+      "Bash(grep -r \"captureException\\\\|Sentry\\\\.\" C:/Users/12jas/stylemap/src/app/api --include=*.ts -l)"
     ]
   }
 }

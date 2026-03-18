@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,8 @@ export async function POST(req: NextRequest) {
             planId,
         });
     } catch (e: any) {
+
+            captureApiError(e);
         console.error("[unlock-intent] Error:", e);
         return NextResponse.json(
             { error: e?.message || "서버 오류가 발생했습니다." },

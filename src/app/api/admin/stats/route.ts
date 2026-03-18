@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getExcludedStatsUserIds } from "@/lib/statsExclude";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
-// 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
-    const ok = req.cookies.get("admin_auth")?.value === "true";
-    if (!ok) {
-        throw new Error("ADMIN_ONLY");
-    }
+    if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
 export async function GET(request: NextRequest) {
@@ -59,6 +57,8 @@ export async function GET(request: NextRequest) {
                 }));
             }
         } catch (courseError: any) {
+
+                captureApiError(courseError);
             console.warn("[Admin Stats] 인기 코스 조회 실패:", courseError);
             // 에러 발생 시 빈 배열 유지
         }
@@ -105,6 +105,8 @@ export async function GET(request: NextRequest) {
                 dailyActivityMap.set(dateStr, typeof item.count === 'bigint' ? Number(item.count) : item.count);
             });
         } catch (sqlError: any) {
+
+                captureApiError(sqlError);
             console.warn("[Admin Stats] Raw SQL 실패, 대체 방법 사용:", sqlError);
             // Raw SQL 실패 시 Prisma로 전체 데이터를 가져와서 그룹화
             const allInteractions = await prisma.userInteraction.findMany({
@@ -165,6 +167,8 @@ export async function GET(request: NextRequest) {
                 return indexA - indexB;
             });
         } catch (ageError: any) {
+
+                captureApiError(ageError);
             console.warn("[Admin Stats] 연령대별 통계 조회 실패:", ageError);
         }
 
@@ -187,6 +191,8 @@ export async function GET(request: NextRequest) {
                 count: item._count.id,
             }));
         } catch (genderError: any) {
+
+                captureApiError(genderError);
             console.warn("[Admin Stats] 성별별 통계 조회 실패:", genderError);
         }
 
@@ -217,6 +223,8 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error: any) {
+
+            captureApiError(error);
         if (error.message === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -91,6 +92,8 @@ export async function POST(request: NextRequest) {
         const inRange = nearest.distance <= RADIUS;
         return NextResponse.json({ inRange, started: true, nearest });
     } catch (error) {
+
+            captureApiError(error);
         console.error("Geofence check error", error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }

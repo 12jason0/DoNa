@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // 5분 캐싱
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(normalized);
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ error: error?.message || "An error occurred" }, { status: 500 });
     }
 }
@@ -81,6 +84,8 @@ export async function POST(request: NextRequest) {
                 },
             });
         } catch (error: any) {
+
+                captureApiError(error);
             // P2002는 Prisma의 unique constraint violation 에러 코드
             if (error?.code === "P2002") {
                 // 이미 존재하는 경우 성공으로 처리
@@ -98,6 +103,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ error: error?.message || "create error" }, { status: 500 });
     }
 }
@@ -111,6 +118,8 @@ export async function DELETE(request: NextRequest) {
         await (prisma as any).userFavorite.deleteMany({ where: { user_id: userId, course_id: courseId } });
         return NextResponse.json({ success: true });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ error: error?.message || "delete error" }, { status: 500 });
     }
 }

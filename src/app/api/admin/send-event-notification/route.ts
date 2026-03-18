@@ -1,15 +1,12 @@
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sendPushNotificationToAll, sendPushNotificationToEveryone } from "@/lib/push-notifications";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
         // ✅ 1. 관리자 인증 확인
-        const jar = await cookies();
-        const cookie = jar.get("admin_auth");
-        const isAdmin = cookie?.value === "true";
-
-        if (!isAdmin) {
+        if (!verifyAdminJwt(req)) {
             return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
         }
 
@@ -38,6 +35,8 @@ export async function POST(req: Request) {
             message: `총 ${result.sent}명에게 알림 전송 완료`,
         });
     } catch (err) {
+
+            captureApiError(err);
         console.error("❌ 알림 전송 실패:", err);
         return NextResponse.json({ error: "서버 오류로 알림 전송 실패" }, { status: 500 });
     }

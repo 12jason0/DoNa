@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getS3PublicUrl } from "@/lib/s3";
+import { captureApiError } from "@/lib/sentry";
 
 /**
  * 디버깅용 API: S3 URL 생성 테스트
@@ -28,6 +29,8 @@ export async function GET(request: Request) {
             isS3Direct: generatedUrl.includes("s3.ap-northeast-2.amazonaws.com"),
         });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({
             success: false,
             error: error.message,

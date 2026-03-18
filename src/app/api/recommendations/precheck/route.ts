@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getRecommendationDailyLimit } from "@/constants/subscription";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,8 @@ export async function GET(request: NextRequest) {
             remaining: canUse ? remaining : 0,
         });
     } catch (err) {
+
+            captureApiError(err);
         console.error("[precheck] 오류:", err);
         return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }

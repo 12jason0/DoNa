@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
+
+            captureApiError(error);
         console.error("알림 동의 처리 실패:", error);
         return NextResponse.json({ error: "처리 실패" }, { status: 500 });
     }

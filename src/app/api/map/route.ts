@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export async function GET(request: NextRequest) {
     try {
@@ -117,6 +118,7 @@ export async function GET(request: NextRequest) {
                     },
                 });
             } catch (logError) {
+                    captureApiError(logError);
                 // 로그 저장 실패해도 검색 결과는 정상 반환
                 console.error("위치 로그 저장 실패:", logError);
             }
@@ -124,6 +126,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ places, courses: mappedCourses });
     } catch (error) {
+            captureApiError(error);
         console.error("🔥 Map API Error:", error);
         return NextResponse.json({ error: "Internal Server Error", details: String(error) }, { status: 500 });
     }

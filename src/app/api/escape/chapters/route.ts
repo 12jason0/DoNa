@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -228,6 +229,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
+            captureApiError(error);
         console.error("Error in /api/escape/chapters:", error);
         return NextResponse.json({ error: "Failed to fetch chapters" }, { status: 500 });
     }

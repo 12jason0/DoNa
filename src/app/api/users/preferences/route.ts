@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // 5분 캐싱
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
         // preferences 객체의 preferences 필드를 반환 (클라이언트에서 일관되게 접근할 수 있도록)
         return NextResponse.json({ preferences: migratedPrefs }, { status: 200 });
     } catch (error) {
+            captureApiError(error);
         console.error("사용자 선호도 가져오기 오류:", error);
         return NextResponse.json({ error: "사용자 선호도를 가져오는 중 오류 발생" }, { status: 500 });
     }
@@ -88,6 +90,7 @@ export async function POST(request: NextRequest) {
                 body = JSON.parse(text);
             }
         } catch (parseError) {
+                captureApiError(parseError);
             console.error("JSON 파싱 오류:", parseError);
             return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
         }
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(updatedPreferences, { status: 200 });
     } catch (error) {
+            captureApiError(error);
         console.error("사용자 선호도 저장 오류:", error);
         return NextResponse.json({ error: "사용자 선호도 저장 중 오류 발생" }, { status: 500 });
     }

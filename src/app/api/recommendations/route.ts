@@ -16,6 +16,7 @@ import {
     getUserPreferredGroupIds,
 } from "@/lib/weekendRecommendation";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -82,6 +83,7 @@ async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | nu
         if (jsonResponse?.response?.header?.resultCode !== "00") return null;
         return extractWeatherStatus(jsonResponse);
     } catch (error) {
+            captureApiError(error);
         clearTimeout(timeout);
         return null;
     }
@@ -108,6 +110,7 @@ async function fetchAirQualityStatus(sidoName: string): Promise<string | null> {
         if (pm10Value > 75 || pm25Value > 35) return "미세먼지";
         return null;
     } catch (error) {
+            captureApiError(error);
         clearTimeout(timeout);
         return null;
     }
@@ -1171,6 +1174,7 @@ export async function GET(req: NextRequest) {
             userTier: userTier,
         });
     } catch (e: any) {
+            captureApiError(e);
         console.error("Recommendation Error:", e.message);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

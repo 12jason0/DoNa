@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
                     },
                 });
             } catch (createError: any) {
+                    captureApiError(createError);
                 // unique constraint 오류인 경우 (race condition 대비)
                 if (createError?.code === "P2002" && createError?.meta?.target?.includes("order_id")) {
                     console.warn("[RevenueCat Confirm] Payment record already exists:", orderId);
@@ -162,6 +164,7 @@ export async function POST(request: NextRequest) {
         if (unlockCourseId != null) resPayload.courseId = unlockCourseId;
         return NextResponse.json(resPayload);
     } catch (error: any) {
+            captureApiError(error);
         console.error("[RevenueCat Confirm] Error:", error);
         return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { REGION_MAPPING } from "@/lib/regionMapping";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,8 @@ export async function GET(request: NextRequest) {
             places,
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("통합 검색 API 오류:", error);
         return NextResponse.json({ error: "검색 중 오류 발생" }, { status: 500 });
     }

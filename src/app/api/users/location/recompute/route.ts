@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -96,6 +97,8 @@ export async function POST(request: NextRequest) {
             updatedCount,
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("Failed to recompute user.location:", error);
         return NextResponse.json({ error: "Failed to recompute user.location" }, { status: 500 });
     }

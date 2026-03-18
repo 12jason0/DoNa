@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getKSTTodayRange } from "@/lib/kst";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,8 @@ export async function GET(request: NextRequest) {
             hasMemory: !!memory,
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("[active-course GET]", error);
         return NextResponse.json({ error: "Failed to get active course" }, { status: 500 });
     }
@@ -114,6 +117,8 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json({ success: true });
     } catch (error) {
+
+            captureApiError(error);
         console.error("[active-course POST]", error);
         return NextResponse.json({ error: "Failed to set active course" }, { status: 500 });
     }

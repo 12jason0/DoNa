@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 
 const DEEPL_TARGET: Record<string, string> = { en: "EN", ja: "JA", zh: "ZH" };
 

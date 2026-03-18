@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getJwtSecret, getUserIdFromRequest, resolveUserId as resolveUserIdFromAuth } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -145,6 +146,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(Array.from(unique.values()));
     } catch (error: any) {
+            captureApiError(error);
         return NextResponse.json({ error: error?.message || "casefiles get failed" }, { status: 500 });
     }
 }

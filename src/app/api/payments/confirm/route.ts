@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { resolveUserId } from "@/lib/auth"; // 🔐 [보안] 서버 세션 쿠키 검증
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
                 Authorization: `Basic ${authHeader}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ paymentKey, orderId, amount }),
+            body: JSON.stringify({ paymentKey, orderId, amount: planInfo.amount }),
             cache: "no-store",
         });
 
@@ -298,6 +299,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(responseData);
     } catch (e: any) {
+            captureApiError(e);
         console.error("Payment Confirm Error:", e);
         console.error("Error details:", {
             message: e?.message,

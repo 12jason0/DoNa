@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ success: true, rewards });
     } catch (e) {
+
+            captureApiError(e);
         console.error("[보상 내역 API] 에러:", e);
         return NextResponse.json({ success: false, error: "SERVER_ERROR" }, { status: 500 });
     }

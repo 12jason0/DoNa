@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 
 export async function GET(req: NextRequest) {
     try {
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
         console.error("❌ 경로 검색 실패 상세:", data);
         return NextResponse.json({ coordinates: [], fallback: true, error: data.message || "NO_ROUTE" });
     } catch (error: any) {
+            captureApiError(error);
         console.error("❌ API Error:", error.message);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

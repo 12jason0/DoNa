@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,8 @@ export async function GET(
             },
         });
     } catch (e) {
+
+            captureApiError(e);
         console.error("[my-selection GET]", e);
         return NextResponse.json({ error: "Failed to get selection" }, { status: 500 });
     }
@@ -163,6 +166,8 @@ export async function POST(
             },
         });
     } catch (e) {
+
+            captureApiError(e);
         console.error("[my-selection POST]", e);
         return NextResponse.json({ error: "Failed to save selection" }, { status: 500 });
     }

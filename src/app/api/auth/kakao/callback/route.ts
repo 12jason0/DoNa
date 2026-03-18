@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSafeRedirectPath } from "@/lib/redirect";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
                 }
             );
     } catch (err) {
+            captureApiError(err);
         console.error("Callback 처리 중 오류:", err);
         return NextResponse.redirect(new URL("/login?error=server_error", origin));
     }

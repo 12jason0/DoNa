@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { getUserIdFromRequest, verifyAdminJwt } from "@/lib/auth";
 import { sendPushNotificationToAll } from "@/lib/push-notifications";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,8 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("Failed to fetch stories:", error);
         return NextResponse.json({ error: "Failed to fetch stories" }, { status: 500 });
     }
@@ -116,9 +119,7 @@ export async function GET(request: NextRequest) {
 // 새 스토리 생성
 export async function POST(request: NextRequest) {
     try {
-        // 관리자만 허용: /api/admin/auth 에서 발급한 쿠키 검사
-        const isAdmin = request.cookies.get("admin_auth")?.value === "true";
-        if (!isAdmin) {
+        if (!verifyAdminJwt(request)) {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }
 
@@ -185,11 +186,15 @@ export async function POST(request: NextRequest) {
             });
             console.log("스토리 푸시 전송 성공:", created.title);
         } catch (err) {
+
+                captureApiError(err);
             console.error("스토리 푸시 전송 실패:", err);
         }
 
         return NextResponse.json({ success: true, story: created }, { status: 201 });
     } catch (error) {
+
+            captureApiError(error);
         console.error("스토리 생성 실패:", error);
         return NextResponse.json({ error: "스토리 생성 실패" }, { status: 500 });
     }
@@ -198,8 +203,7 @@ export async function POST(request: NextRequest) {
 // 스토리 수정 (관리자)
 export async function PUT(request: NextRequest) {
     try {
-        const isAdmin = request.cookies.get("admin_auth")?.value === "true";
-        if (!isAdmin) {
+        if (!verifyAdminJwt(request)) {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }
         const body = await request.json().catch(() => ({}));
@@ -234,6 +238,8 @@ export async function PUT(request: NextRequest) {
         const updated = await prisma.story.update({ where: { id: storyId }, data, select: { id: true, title: true } });
         return NextResponse.json({ success: true, story: updated });
     } catch (error) {
+
+            captureApiError(error);
         console.error("스토리 수정 실패:", error);
         return NextResponse.json({ error: "스토리 수정 실패" }, { status: 500 });
     }

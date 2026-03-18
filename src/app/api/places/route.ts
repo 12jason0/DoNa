@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -155,20 +156,15 @@ export async function GET(request: NextRequest) {
             region: region,
         });
     } catch (error) {
+            captureApiError(error);
         console.error("API: 장소 검색 오류:", error);
         return NextResponse.json({ error: "장소 검색 중 오류가 발생했습니다." }, { status: 500 });
     }
 }
 
-// Admin 인증 체크 헬퍼 함수
 function ensureAdminOrUser(req: NextRequest): boolean {
-    // Admin 인증 확인 (admin_auth 쿠키)
-    const adminAuth = req.cookies.get("admin_auth")?.value;
-    if (adminAuth === "true") return true;
-    
-    // 일반 사용자 인증 확인
-    const userId = resolveUserId(req);
-    return userId !== null;
+    if (verifyAdminJwt(req)) return true;
+    return resolveUserId(req) !== null;
 }
 
 /** closed_days 배열 정규화: { day_of_week?: number|null, specific_date?: string|null, note?: string|null }[] → DB 입력용 */
@@ -287,6 +283,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, place: created }, { status: 201 });
     } catch (error) {
+            captureApiError(error);
         console.error("API: 장소 생성 오류:", error);
         return NextResponse.json({ error: "장소 생성 실패" }, { status: 500 });
     }

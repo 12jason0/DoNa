@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 // 간단한 XML 파서 (RSS entry 일부만 필요하므로 정규식 기반)
 function parseYouTubeRss(xml: string) {
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ success: true, channelId, videos: entries });
     } catch (e) {
+            captureApiError(e);
         return NextResponse.json({ success: false, error: "Internal error" }, { status: 500 });
     }
 }

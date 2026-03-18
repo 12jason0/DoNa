@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import prisma from "@/lib/db";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 /**
  * GET: AI 추천 사용 횟수 및 온보딩 완료 여부 조회
@@ -47,6 +48,8 @@ export async function GET() {
 
         return NextResponse.json({ usageCount, hasOnboardingData });
     } catch (err) {
+
+            captureApiError(err);
         console.error("AI 추천 사용 횟수 조회 오류", err);
         return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }

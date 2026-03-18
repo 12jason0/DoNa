@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -45,6 +46,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ categories: unique });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ message: error?.message || "조회 실패" }, { status: 500 });
     }
 }

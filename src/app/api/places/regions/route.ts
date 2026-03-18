@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 // places.address에서 상위 지역(예: '서울', '경기 광명시', '부산') 후보를 추출
 export async function GET(_req: NextRequest) {
@@ -28,6 +29,8 @@ export async function GET(_req: NextRequest) {
 
         return NextResponse.json({ success: true, regions: sorted });
     } catch (e) {
+
+            captureApiError(e);
         console.error("GET /api/places/regions error:", e);
         // 실패 시에도 기본 빈 배열을 반환하여 페이지가 계속 동작하도록 함
         return NextResponse.json({ success: true, regions: [] });

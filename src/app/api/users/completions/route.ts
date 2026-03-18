@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
             escapes: completedEscapes,
         });
     } catch (error) {
+            captureApiError(error);
         return NextResponse.json({ error: "완료 목록을 가져오는 중 오류 발생" }, { status: 500 });
     }
 }
@@ -101,6 +103,7 @@ export async function POST(request: NextRequest) {
             completedCount: result.completedCount,
         });
     } catch (error) {
+            captureApiError(error);
         return NextResponse.json({ error: "코스 완료 저장 중 오류 발생" }, { status: 500 });
     }
 }

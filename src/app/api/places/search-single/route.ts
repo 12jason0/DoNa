@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ success: false, error: "검색 결과가 없습니다." }, { status: 404 });
     } catch (error: any) {
+
+            captureApiError(error);
         return NextResponse.json({ success: false, error: error?.message || "검색 실패" }, { status: 500 });
     }
 }

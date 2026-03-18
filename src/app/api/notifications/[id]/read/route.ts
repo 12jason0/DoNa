@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {

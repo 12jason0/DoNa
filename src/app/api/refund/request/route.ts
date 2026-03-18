@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
                 where: { paymentId: payment.id },
             });
         } catch (err: any) {
+                captureApiError(err);
             // 테이블이 없는 경우 에러 로깅 후 계속 진행 (마이그레이션 필요)
             if (err.code === "P2001" || err.message?.includes("does not exist") || err.message?.includes("Unknown model")) {
                 console.error("[환불 요청] refund_requests 테이블이 아직 생성되지 않았습니다. 마이그레이션을 실행해주세요:", err);
@@ -193,6 +195,7 @@ export async function POST(request: NextRequest) {
                 });
             });
         } catch (err: any) {
+                captureApiError(err);
             if (err.code === "P2001" || err.message?.includes("does not exist") || err.message?.includes("Unknown model")) {
                 console.error("[환불 요청] refund_requests 테이블이 아직 생성되지 않았습니다. 마이그레이션을 실행해주세요:", err);
                 return NextResponse.json({ 
@@ -209,6 +212,7 @@ export async function POST(request: NextRequest) {
             orderId: orderId,
         });
     } catch (error: any) {
+            captureApiError(error);
         console.error("[환불 요청 API 오류]:", error);
         return NextResponse.json({ error: error.message || "환불 요청 처리 중 오류가 발생했습니다." }, { status: 500 });
     }

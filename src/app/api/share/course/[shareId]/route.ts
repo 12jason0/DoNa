@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getMergedTipsFromRow } from "@/types/tip";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,7 @@ export async function GET(
             coursePlaces: coursePlacesOut,
         });
     } catch (e) {
+            captureApiError(e);
         console.error("[share/course GET]", e);
         return NextResponse.json({ error: "Failed to fetch shared course" }, { status: 500 });
     }

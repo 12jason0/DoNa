@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +26,7 @@ export async function GET(request: NextRequest) {
 }
 
 function ensureAdmin(req: NextRequest) {
-    const ok = req.cookies.get("admin_auth")?.value === "true";
-    if (!ok) throw new Error("ADMIN_ONLY");
+    if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
 // POST create
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json({ success: true, item: created }, { status: 201 });
     } catch (e: any) {
+
+            captureApiError(e);
         if (String(e?.message) === "ADMIN_ONLY") return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         return NextResponse.json({ error: "생성 실패" }, { status: 500 });
     }
@@ -74,6 +77,8 @@ export async function PUT(request: NextRequest) {
         });
         return NextResponse.json({ success: true, item: updated });
     } catch (e: any) {
+
+            captureApiError(e);
         if (String(e?.message) === "ADMIN_ONLY") return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         return NextResponse.json({ error: "수정 실패" }, { status: 500 });
     }
@@ -89,6 +94,8 @@ export async function DELETE(request: NextRequest) {
         await prisma.placeDialogue.delete({ where: { id } });
         return NextResponse.json({ success: true });
     } catch (e: any) {
+
+            captureApiError(e);
         if (String(e?.message) === "ADMIN_ONLY") return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         return NextResponse.json({ error: "삭제 실패" }, { status: 500 });
     }

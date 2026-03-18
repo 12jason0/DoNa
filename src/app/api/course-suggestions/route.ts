@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureApiError } from "@/lib/sentry";
 
 type SuggestionPayload = {
     title: string;
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ ok: true });
     } catch (e) {
+
+            captureApiError(e);
         console.error("/api/course-suggestions error", e);
         return NextResponse.json({ error: "서버 오류" }, { status: 500 });
     }

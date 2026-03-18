@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import prisma from "@/lib/db";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 /** 한국 시간 기준 오늘 날짜 문자열 (YYYY-MM-DD) */
 function getTodayKst(): string {
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ canUse });
     } catch (err) {
+            captureApiError(err);
         console.error("오늘의 데이트 추천 일일 조회 오류", err);
         return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ canUse: true });
     } catch (err) {
+            captureApiError(err);
         console.error("오늘의 데이트 추천 일일 제한 확인 오류", err);
         return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }

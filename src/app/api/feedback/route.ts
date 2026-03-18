@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {
+            captureApiError(error);
         console.error("피드백 저장 오류:", error);
         return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }

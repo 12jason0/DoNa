@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
-// 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
-    const ok = req.cookies.get("admin_auth")?.value === "true";
-    if (!ok) throw new Error("ADMIN_ONLY");
+    if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
 /**
@@ -55,6 +55,8 @@ export async function GET(request: NextRequest) {
                 console.warn("[환불 요청] refundRequest 모델이 존재하지 않습니다. 마이그레이션을 실행해주세요.");
             }
         } catch (err: any) {
+
+                captureApiError(err);
             console.error("[환불 요청 조회 Prisma 에러]:", err);
             // 테이블이 없거나 모델이 없는 경우 빈 배열 반환
             if (
@@ -86,6 +88,8 @@ export async function GET(request: NextRequest) {
             refundRequests: refundRequests || [],
         });
     } catch (error: any) {
+
+            captureApiError(error);
         if (error.message === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
         }

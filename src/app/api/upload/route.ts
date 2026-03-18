@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import prisma from "@/lib/db";
 import { fileTypeFromBuffer } from "file-type";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
+import { captureApiError } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
                     userName = `user_${userId}`;
                 }
             } catch (err) {
+                    captureApiError(err);
                 console.error("[/api/upload] 유저 이름 조회 실패:", err);
                 userName = `user_${userId}`;
             }
@@ -176,6 +178,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, photo_urls: uploadedUrls });
     } catch (error: any) {
+            captureApiError(error);
         console.error("[/api/upload] CRITICAL ERROR:", error);
         console.error("[/api/upload] Error Name:", error.name);
         console.error("[/api/upload] Error Message:", error.message);

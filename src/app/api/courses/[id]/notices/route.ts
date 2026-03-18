@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.log("API: Found notices:", rows.length);
         return NextResponse.json(rows);
     } catch (error) {
+            captureApiError(error);
         console.error("API: Error fetching notices:", error);
         console.error("API: Error details:", {
             message: error instanceof Error ? error.message : "Unknown error",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { getJwtSecret } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,8 @@ export async function GET(req: NextRequest) {
         try {
             payload = jwt.verify(token, getJwtSecret()) as any;
         } catch (verifyError) {
+
+                captureApiError(verifyError);
             // 토큰이 만료되었거나 유효하지 않은 경우
             console.warn("[Session API] JWT 검증 실패:", verifyError);
             return NextResponse.json({ authenticated: false, user: null });
@@ -110,6 +113,8 @@ export async function GET(req: NextRequest) {
                 };
             }
         } catch (dbError) {
+
+                captureApiError(dbError);
             console.warn("[Session API] DB 조회 실패, 토큰 정보 사용:", dbError);
             // 🟢 DB 조회 실패 시에도 JWT 정보로 이름 설정
             const displayName = payload?.name || payload?.nickname || "";
@@ -125,6 +130,8 @@ export async function GET(req: NextRequest) {
             user: userInfo,
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("[Session API] 세션 확인 오류:", error);
         return NextResponse.json({ authenticated: false, user: null });
     }

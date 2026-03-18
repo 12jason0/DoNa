@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { isExcludedStatsUser } from "@/lib/statsExclude";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (!row) return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 });
         return NextResponse.json({ success: true, view_count: row.view_count });
     } catch (e) {
+            captureApiError(e);
         console.error("GET /api/courses/[id]/view error", e);
         return NextResponse.json({ success: false, error: "Failed to fetch view count" }, { status: 500 });
     }
@@ -66,12 +68,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                     },
                 });
             } catch (interactionError) {
+                    captureApiError(interactionError);
                 console.error("user_interactions 기록 실패:", interactionError);
             }
         }
 
         return NextResponse.json({ success: true, view_count: updated.view_count });
     } catch (error) {
+            captureApiError(error);
         console.error("API: Error incrementing view count:", error);
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });

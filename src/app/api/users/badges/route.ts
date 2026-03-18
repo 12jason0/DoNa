@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 
 // Bearer 토큰 또는 'auth' 쿠키에서 사용자 ID를 가져오는 헬퍼 함수
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(result);
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("Badge 조회 실패:", error);
         return NextResponse.json({ message: error?.message || "배지 조회에 실패했습니다." }, { status: 500 });
     }
@@ -75,6 +78,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, message: "배지가 수여되었습니다." }, { status: 201 });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("배지 수여 실패:", error);
         return NextResponse.json({ message: error?.message || "배지 수여에 실패했습니다." }, { status: 500 });
     }

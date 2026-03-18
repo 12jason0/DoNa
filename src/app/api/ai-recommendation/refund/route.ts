@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ async function sendSlackMessage(text: string) {
             body: JSON.stringify({ text }),
         });
     } catch (err) {
+            captureApiError(err);
         console.error("슬랙 알림 실패:", err);
     }
 }
@@ -241,6 +243,7 @@ export async function POST(request: NextRequest) {
             isInApp: isInAppPayment,
         });
     } catch (error: any) {
+            captureApiError(error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

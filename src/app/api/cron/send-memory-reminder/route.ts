@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 import { getKSTTodayRange } from "@/lib/kst";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -127,6 +128,8 @@ export async function GET(req: NextRequest) {
             errors: errors.slice(0, MAX_ERRORS_IN_RESPONSE),
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("[memory-reminder cron]", error);
         return NextResponse.json({ error: "Cron failed" }, { status: 500 });
     }

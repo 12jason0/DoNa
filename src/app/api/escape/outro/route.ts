@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ messages });
     } catch (e: any) {
+            captureApiError(e);
         // [수정] 반환 형식을 { messages: [] }로 통일
         return NextResponse.json({ messages: [] });
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export async function GET(req: Request) {
     try {
@@ -50,6 +51,8 @@ export async function GET(req: Request) {
             }
         );
     } catch (e) {
+
+            captureApiError(e);
         return NextResponse.json({ stories: [], missions: [], error: "SERVER_ERROR" }, { status: 500 });
     }
 }

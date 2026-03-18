@@ -5,6 +5,7 @@ import { resolveUserId } from "@/lib/auth";
 import { getMemoryLimit } from "@/constants/subscription";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -116,11 +117,10 @@ export async function GET(request: NextRequest) {
             headers: { "Cache-Control": "private, max-age=60" },
         });
     } catch (error) {
+            captureApiError(error);
         const message = error instanceof Error ? error.message : "Unknown error";
-        console.error("API: /api/reviews failed, returning empty list:", message);
-        // 🚨 중요: 오류 발생 시 500 대신 200과 빈 배열을 반환
-        // 🟢 HTTP 헤더는 ASCII만 허용하므로 한글 메시지는 헤더에서 제거
-        return NextResponse.json([], { status: 200 });
+        console.error("API: /api/reviews GET failed:", message);
+        return NextResponse.json({ error: "리뷰 조회 중 오류가 발생했습니다." }, { status: 500 });
     }
 }
 
@@ -319,6 +319,7 @@ export async function POST(request: NextRequest) {
             }, { status: 200 });
         }
     } catch (error) {
+            captureApiError(error);
         // [보안] 상세한 에러 메시지는 서버 로그에만 기록하고, 클라이언트에는 일반적인 메시지만 반환
         console.error("리뷰 생성 오류:", error);
 

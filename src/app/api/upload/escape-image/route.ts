@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
 import { fileTypeFromBuffer } from "file-type";
+import { captureApiError } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, imageUrl });
     } catch (error) {
+
+            captureApiError(error);
         console.error("이미지 업로드 실패:", error);
         return NextResponse.json({ error: "이미지 업로드에 실패했습니다." }, { status: 500 });
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth"; // 🟢 쿠키 기반 인증 통일
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ savedCourses: savedCoursesWithImage });
     } catch (error) {
+            captureApiError(error);
         console.error("Failed to fetch saved courses:", error);
         return NextResponse.json({ error: "Failed to fetch saved courses" }, { status: 500 });
     }
@@ -139,6 +141,7 @@ export async function POST(req: NextRequest) {
             savedCourse: result,
         });
     } catch (error) {
+            captureApiError(error);
         console.error("Failed to save and unlock course:", error);
         return NextResponse.json({ error: "처리 중 오류가 발생했습니다." }, { status: 500 });
     }

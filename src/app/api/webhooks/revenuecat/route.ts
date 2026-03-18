@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
+            captureApiError(error);
         console.error("[RevenueCat Webhook] Error:", error);
         return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });
     }
@@ -151,6 +153,7 @@ async function handleInitialPurchase(
                 },
             });
         } catch (e) {
+                captureApiError(e);
             // orderId 중복 등으로 인한 오류는 무시 (이미 처리된 것으로 간주)
             console.warn("[RevenueCat Webhook] Payment record creation skipped:", e);
         }

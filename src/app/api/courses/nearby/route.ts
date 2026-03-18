@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { defaultCache } from "@/lib/cache";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60; // 🟢 60초 캐시
@@ -177,6 +178,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(courses);
     } catch (error) {
+            captureApiError(error);
         console.error("❌ API 오류:", error);
         return NextResponse.json({ success: false, error: "서버 오류 발생" }, { status: 500 });
     }

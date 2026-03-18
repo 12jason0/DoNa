@@ -5,6 +5,7 @@ import prisma from "@/lib/db";
 export const dynamic = "force-dynamic";
 import { getJwtSecret } from "@/lib/auth";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
+import { captureApiError } from "@/lib/sentry";
 
 export async function POST(request: NextRequest) {
     try {
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
                 },
             });
         } catch (logError) {
+                captureApiError(logError);
             // 로그 저장 실패해도 로그인은 성공 처리
             console.error("로그인 로그 저장 실패:", logError);
         }
@@ -113,6 +115,7 @@ export async function POST(request: NextRequest) {
         
         return res;
     } catch (error) {
+            captureApiError(error);
         console.error("로그인 오류:", error);
         console.error("에러 상세:", {
             message: error instanceof Error ? error.message : "Unknown error",

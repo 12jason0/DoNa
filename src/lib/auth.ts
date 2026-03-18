@@ -74,6 +74,33 @@ export function resolveUserId(request: NextRequest): number | null {
     return null;
 }
 
+// --- 어드민 JWT 인증 ---
+
+const ADMIN_COOKIE_NAME = "admin_auth";
+
+export function getAdminJwtSecret(): string {
+    const secret = process.env.ADMIN_JWT_SECRET;
+    if (!secret) throw new Error("ADMIN_JWT_SECRET environment variable is required");
+    return secret;
+}
+
+/** 어드민 JWT 토큰을 서명합니다 (로그인 시 호출). */
+export function signAdminToken(): string {
+    return jwt.sign({ role: "admin" }, getAdminJwtSecret(), { expiresIn: "12h" });
+}
+
+/** 요청 쿠키의 admin_auth JWT가 유효한지 검증합니다. */
+export function verifyAdminJwt(request: NextRequest): boolean {
+    try {
+        const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+        if (!token) return false;
+        const payload = jwt.verify(token, getAdminJwtSecret()) as { role?: string };
+        return payload?.role === "admin";
+    } catch {
+        return false;
+    }
+}
+
 // --- 데이터 보안 처리 관련 함수 ---
 
 /**

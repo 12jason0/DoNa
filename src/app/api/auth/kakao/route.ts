@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -252,6 +253,7 @@ export async function POST(request: NextRequest) {
 
         return res;
     } catch (err) {
+            captureApiError(err);
         // 🟢 [2026-01-21] 에러 로깅 강화: 서버 내부 에러가 조용히 넘어가지 않도록
         console.error("🔥 [카카오 로그인 API] 서버 오류 상세:");
         console.error("에러 타입:", err instanceof Error ? err.constructor.name : typeof err);

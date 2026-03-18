@@ -5,6 +5,7 @@ import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } f
 import { resolveUserId } from "@/lib/auth";
 import { defaultCache } from "@/lib/cache";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -263,6 +264,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(responseData);
     } catch (error: any) {
+            captureApiError(error);
         return NextResponse.json({ error: "Server Error", message: error.message }, { status: 500 });
     }
 }

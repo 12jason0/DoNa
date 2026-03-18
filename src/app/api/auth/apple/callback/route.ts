@@ -4,6 +4,7 @@ import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
 import { getSafeRedirectPath } from "@/lib/redirect";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,8 @@ export async function POST(request: NextRequest) {
                         window.location.replace("${decodedNext}");
                     }
                 } catch (err) {
+
+                        captureApiError(err);
                     console.error('Apple 로그인 후처리 오류:', err);
                     // 에러 발생 시 팝업이 아닌 경우에만 직접 리다이렉트
                     if (!window.opener || window.opener.closed) {
@@ -116,6 +119,8 @@ export async function POST(request: NextRequest) {
             serviceToken
         );
     } catch (err) {
+
+            captureApiError(err);
         console.error("[Apple Callback] 오류:", err);
         const errorMsg = err instanceof Error ? err.message : "알 수 없는 오류";
         return generateHtmlResponse(
@@ -131,6 +136,8 @@ export async function POST(request: NextRequest) {
                         window.location.href = '/login';
                     }
                 } catch (e) {
+
+                        captureApiError(e);
                     console.error('에러 처리 중 오류:', e);
                     window.location.href = '/login';
                 }

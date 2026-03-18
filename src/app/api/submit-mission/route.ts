@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
 import jwt from "jsonwebtoken";
 import { getJwtSecret, resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -82,6 +83,8 @@ export async function POST(request: NextRequest) {
         console.log("[/api/submit-mission] text create id=", created.id);
         return NextResponse.json({ success: true, type: "text", id: created.id });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("[/api/submit-mission] ERROR", error);
         return NextResponse.json({ message: error?.message || "저장 실패" }, { status: 500 });
     }
@@ -119,6 +122,8 @@ export async function GET(request: NextRequest) {
             submissions: list.map((s) => ({ id: s.id, textAnswer: s.textAnswer, photoUrl: (s as any).photoUrl })),
         });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("[/api/submit-mission][GET] ERROR", error);
         return NextResponse.json({ message: error?.message || "조회 실패" }, { status: 500 });
     }

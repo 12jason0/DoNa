@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMemoryLimit } from "@/constants/subscription";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export async function GET(request: NextRequest) {
             tier,
         });
     } catch (error) {
+
+            captureApiError(error);
         console.error("[memory-count]", error);
         return NextResponse.json({ error: "Failed to get memory count" }, { status: 500 });
     }

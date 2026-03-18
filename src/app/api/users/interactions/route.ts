@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { extractBearerToken, verifyJwtAndGetUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (e) {
+
+            captureApiError(e);
         return NextResponse.json({ error: "record failed" }, { status: 500 });
     }
 }

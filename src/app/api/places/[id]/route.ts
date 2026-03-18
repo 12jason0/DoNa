@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
-// Admin 인증 체크 헬퍼 함수
 function ensureAdminOrUser(req: NextRequest): boolean {
-    // Admin 인증 확인 (admin_auth 쿠키)
-    const adminAuth = req.cookies.get("admin_auth")?.value;
-    if (adminAuth === "true") return true;
-    
-    // 일반 사용자 인증 확인
-    const userId = resolveUserId(req);
-    return userId !== null;
+    if (verifyAdminJwt(req)) return true;
+    return resolveUserId(req) !== null;
 }
 
 function normalizeClosedDays(
@@ -76,6 +71,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (!place) return NextResponse.json({ error: "장소를 찾을 수 없습니다." }, { status: 404 });
         return NextResponse.json({ success: true, place });
     } catch (error) {
+
+            captureApiError(error);
         console.error("API: 장소 단건 조회 오류:", error);
         return NextResponse.json({ error: "장소 조회 실패" }, { status: 500 });
     }
@@ -174,6 +171,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
         return NextResponse.json({ success: true, place: updated });
     } catch (error) {
+
+            captureApiError(error);
         console.error("API: 장소 수정 오류:", error);
         return NextResponse.json({ error: "장소 수정 실패" }, { status: 500 });
     }
@@ -192,6 +191,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         await (prisma as any).place.delete({ where: { id: placeId } });
         return NextResponse.json({ success: true });
     } catch (error) {
+
+            captureApiError(error);
         console.error("API: 장소 삭제 오류:", error);
         return NextResponse.json({ error: "장소 삭제 실패" }, { status: 500 });
     }

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 
 // 인증: 유저 JWT 또는 관리자(admin_auth) 허용
 function isAuthenticated(request: NextRequest): boolean {
-    const userId = resolveUserId(request);
-    if (userId) return true;
-    const adminAuth = request.cookies.get("admin_auth")?.value === "true";
-    return !!adminAuth;
+    if (resolveUserId(request)) return true;
+    return verifyAdminJwt(request);
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -71,6 +70,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         return NextResponse.json(formatted);
     } catch (error) {
+            captureApiError(error);
         console.error("API: Error fetching course places:", error);
         console.error("API: Error details:", {
             message: error instanceof Error ? error.message : "Unknown error",
@@ -116,6 +116,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         return NextResponse.json({ success: true, course_place: created }, { status: 201 });
     } catch (error) {
+            captureApiError(error);
         console.error("API: 코스-장소 연결 생성 오류:", error);
         return NextResponse.json({ error: "코스-장소 연결 생성 실패" }, { status: 500 });
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         return NextResponse.json(payload);
     } catch (error: any) {
+            captureApiError(error);
         console.error("🔴 [START API ERROR]:", {
             message: error.message,
             stack: error.stack,

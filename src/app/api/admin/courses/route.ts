@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { verifyAdminJwt } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 
-// 관리자 인증 체크 헬퍼 함수
 function ensureAdmin(req: NextRequest) {
-    const ok = req.cookies.get("admin_auth")?.value === "true";
-    if (!ok) {
-        throw new Error("ADMIN_ONLY");
-    }
+    if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
 // Budget 파싱 헬퍼 함수
@@ -83,6 +81,8 @@ export async function GET() {
 
         return NextResponse.json(formattedCourses);
     } catch (error: any) {
+
+            captureApiError(error);
         if (error.message === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
         }
@@ -184,6 +184,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, course: created });
     } catch (error: any) {
+
+            captureApiError(error);
         if (error.message === "ADMIN_ONLY") {
             return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
         }

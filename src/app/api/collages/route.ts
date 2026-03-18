@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { getAlbumLimit } from "@/constants/subscription";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
             albumLimit: Number.isFinite(albumLimit) ? albumLimit : null,
         });
     } catch (error: any) {
+            captureApiError(error);
         return NextResponse.json({ error: error?.message || "FAILED" }, { status: 500 });
     }
 }
@@ -101,6 +103,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, item: created });
     } catch (error: any) {
+            captureApiError(error);
         return NextResponse.json({ error: error?.message || "FAILED" }, { status: 500 });
     }
 }

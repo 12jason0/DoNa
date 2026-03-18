@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
+import { captureApiError } from "@/lib/sentry";
 export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest) {
@@ -29,6 +30,8 @@ export async function PUT(request: NextRequest) {
         await prisma.user.update({ where: { id: Number(userId) }, data: { password: hashed } } as any);
         return NextResponse.json({ success: true });
     } catch (e) {
+
+            captureApiError(e);
         return NextResponse.json({ error: "비밀번호 변경 중 오류가 발생했습니다." }, { status: 500 });
     }
 }

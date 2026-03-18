@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +105,8 @@ export async function POST(request: NextRequest) {
             },
         });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("[법적 데이터 정리] 오류:", error);
         return NextResponse.json(
             {
@@ -169,6 +172,8 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error: any) {
+
+            captureApiError(error);
         console.error("[법적 데이터 조회] 오류:", error);
         return NextResponse.json(
             {
