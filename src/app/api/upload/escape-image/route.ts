@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
-import { fileTypeFromBuffer } from "file-type";
+import { fromBuffer } from "file-type";
 import { captureApiError } from "@/lib/sentry";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(bytes);
 
         // 🟢 [보안] magic bytes로 이미지 형식 검증
-        const detected = await fileTypeFromBuffer(buffer);
+        const detected = await fromBuffer(buffer);
         if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
             return NextResponse.json(
                 { error: "허용되지 않는 파일 형식입니다. 이미지 파일(jpg, png, webp, gif)만 업로드 가능합니다." },

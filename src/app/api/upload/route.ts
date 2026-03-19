@@ -4,7 +4,7 @@ import { getS3Bucket, getS3Client, getS3PublicUrl } from "@/lib/s3";
 import { resolveUserId } from "@/lib/auth";
 import { randomBytes } from "crypto";
 import prisma from "@/lib/db";
-import { fileTypeFromBuffer } from "file-type";
+import { fromBuffer } from "file-type";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 import { captureApiError } from "@/lib/sentry";
 
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
             const buffer = Buffer.from(await file.arrayBuffer());
 
             // 🟢 [보안] 실제 바이너리(magic bytes)로 이미지 여부 검증 (파일명/Content-Type 위조 방지)
-            const detected = await fileTypeFromBuffer(buffer);
+            const detected = await fromBuffer(buffer);
             if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
                 return NextResponse.json(
                     { message: `허용되지 않는 파일 형식입니다. 이미지 파일(jpg, png, webp, gif)만 업로드 가능합니다. (${file.name})` },
