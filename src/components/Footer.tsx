@@ -81,6 +81,32 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
 
     const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
+    const NavLink = ({
+        href,
+        children,
+        ...props
+    }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: React.ReactNode }) => {
+        if (isApp) {
+            return (
+                <a
+                    href={href}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        window.location.href = href;
+                    }}
+                    {...props}
+                >
+                    {children}
+                </a>
+            );
+        }
+        return (
+            <Link href={href} prefetch={true} {...(props as any)}>
+                {children}
+            </Link>
+        );
+    };
+
     // 공통 SVG 속성 (라인 얇게: strokeWidth 1.25~1.5)
     const svgProps = {
         width: "22",
@@ -299,9 +325,8 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
             >
                 {/* 1. 홈 */}
                 <TapFeedback>
-                    <Link
+                    <NavLink
                         href="/"
-                        prefetch={true}
                         aria-label={t("nav.main")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/")
@@ -314,14 +339,13 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                             <polyline points="9 22 9 12 15 12 15 22" />
                         </svg>
-                    </Link>
+                    </NavLink>
                 </TapFeedback>
 
                 {/* 2. 코스 */}
                 <TapFeedback>
-                    <Link
+                    <NavLink
                         href="/courses"
-                        prefetch={true}
                         aria-label={t("nav.courses")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/courses")
@@ -335,14 +359,13 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                             <line x1="8" y1="2" x2="8" y2="18" />
                             <line x1="16" y1="6" x2="16" y2="22" />
                         </svg>
-                    </Link>
+                    </NavLink>
                 </TapFeedback>
 
                 {/* 3. 맵 */}
                 <TapFeedback>
-                    <Link
+                    <NavLink
                         href="/map"
-                        prefetch={true}
                         aria-label={t("nav.map")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/map")
@@ -355,14 +378,13 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                             <circle cx="12" cy="10" r="3" />
                         </svg>
-                    </Link>
+                    </NavLink>
                 </TapFeedback>
 
                 {/* 4. 오늘의 데이트 추천 */}
                 <TapFeedback>
-                    <Link
+                    <NavLink
                         href="/personalized-home"
-                        prefetch={true}
                         aria-label={t("nav.todayRecommend")}
                         className={`p-1.5 rounded-full transition-colors block ${
                             isActive("/personalized-home")
@@ -379,17 +401,14 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                             <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
                             <path d="M9 11v2" />
                         </svg>
-                    </Link>
+                    </NavLink>
                 </TapFeedback>
 
                 {/* 5. 마이페이지 */}
                 {isAuthenticated ? (
                     <TapFeedback>
-                        <Link
+                        <NavLink
                             href="/mypage"
-                            prefetch={true}
-                            onMouseEnter={() => router.prefetch("/mypage")}
-                            onFocus={() => router.prefetch("/mypage")}
                             aria-label={t("nav.myPage")}
                             className={`p-1.5 rounded-full transition-colors relative block ${
                                 isActive("/mypage")
@@ -402,19 +421,18 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                 <circle cx="12" cy="7" r="4" />
                             </svg>
-                            {isAuthenticated && notificationEnabled === false && (
+                            {notificationEnabled === false && (
                                 <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
                                 </span>
                             )}
-                        </Link>
+                        </NavLink>
                     </TapFeedback>
                 ) : (
                     <TapFeedback>
-                        <Link
+                        <NavLink
                             href="/login"
-                            prefetch={false}
                             aria-label={t("nav.myPage")}
                             className="p-1.5 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 block"
                             style={{ color: "#6b7280" }}
@@ -423,7 +441,7 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                 <circle cx="12" cy="7" r="4" />
                             </svg>
-                        </Link>
+                        </NavLink>
                     </TapFeedback>
                 )}
             </nav>

@@ -26,8 +26,22 @@ export default function RoutePrefetcher() {
             } catch {}
         };
 
+        const isDoNaApp =
+            typeof window !== "undefined" &&
+            ((window as any).__DoNa_App === true ||
+                !!(window as any).ReactNativeWebView);
+
+        if (isDoNaApp) {
+            try {
+                [...priorityRoutes, ...secondaryRoutes].forEach((r) => {
+                    if (r !== pathname) router.prefetch(r);
+                });
+            } catch {}
+            return;
+        }
+
         // 🟢 즉시 priority prefetch (idle 대기 단축 → 100ms), 타이밍 최적화
-        const hasRic = typeof window !== "undefined" && typeof window.requestIdleCallback === "function";
+        const hasRic = typeof window.requestIdleCallback === "function";
         const id = hasRic
             ? (window.requestIdleCallback as (cb: () => void, opts?: { timeout: number }) => number)(doPrefetch, { timeout: 150 })
             : setTimeout(doPrefetch, 50);
