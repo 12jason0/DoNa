@@ -154,51 +154,45 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
         .filter((course: any) => course !== null);
 }
 
-// 🟢 [Performance]: raw 코스 데이터 캐싱 (유저별 차이 없음 → 캐시 히트율 극대화)
+// 🟢 [Performance]: raw 코스 데이터 캐싱 - 모듈 레벨 정의로 Next.js 캐시 정상 작동
 // isLocked는 mapCourses에서 userTier + unlockedCourseIds로 매 요청 계산 → 잠금 상태 정확 유지
-function getCachedRawCoursesWithTime(timeOfDay: string | null) {
-    return unstable_cache(
-        async () => {
-            const rawAll = await prisma.course.findMany({
-                where: { isPublic: true },
-                take: 60,
-                orderBy: { id: "desc" },
-                select: courseSelectOptions,
-            });
+const getCachedRawCourses = unstable_cache(
+    async (timeOfDay: string | null) => {
+        const rawAll = await prisma.course.findMany({
+            where: { isPublic: true },
+            take: 60,
+            orderBy: { id: "desc" },
+            select: courseSelectOptions,
+        });
 
-            const freeRaw = rawAll.filter((c: any) => c.grade === "FREE");
-            const basicRaw = rawAll.filter((c: any) => c.grade === "BASIC").slice(0, 9);
-            const premiumRaw = rawAll.filter((c: any) => c.grade === "PREMIUM").slice(0, 6);
+        const freeRaw = rawAll.filter((c: any) => c.grade === "FREE");
+        const basicRaw = rawAll.filter((c: any) => c.grade === "BASIC").slice(0, 9);
+        const premiumRaw = rawAll.filter((c: any) => c.grade === "PREMIUM").slice(0, 6);
 
-            const neededFromFree = 15 + (9 - basicRaw.length) + (6 - premiumRaw.length);
-            const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
+        const neededFromFree = 15 + (9 - basicRaw.length) + (6 - premiumRaw.length);
+        const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
 
-            const interleaved: any[] = [];
-            let fIdx = 0,
-                bIdx = 0,
-                pIdx = 0;
+        const interleaved: any[] = [];
+        let fIdx = 0,
+            bIdx = 0,
+            pIdx = 0;
 
-            while (
-                interleaved.length < 30 &&
-                (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)
-            ) {
-                if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
-                if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]);
-                if (bIdx < basicRaw.length && interleaved.length < 30) interleaved.push(basicRaw[bIdx++]);
-                if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
-            }
+        while (
+            interleaved.length < 30 &&
+            (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)
+        ) {
+            if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
+            if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]);
+            if (bIdx < basicRaw.length && interleaved.length < 30) interleaved.push(basicRaw[bIdx++]);
+            if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
+        }
 
-            sortCoursesByTimeMatch(interleaved, timeOfDay);
-            return interleaved;
-        },
-        ["courses-list", timeOfDay ?? ""],
-        { revalidate: 180, tags: ["courses-list"] }
-    )();
-}
-
-async function getCachedRawCourses(timeOfDay: string | null) {
-    return getCachedRawCoursesWithTime(timeOfDay);
-}
+        sortCoursesByTimeMatch(interleaved, timeOfDay);
+        return interleaved;
+    },
+    ["courses-list"],
+    { revalidate: 180, tags: ["courses-list"] }
+);
 
 async function getInitialCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;

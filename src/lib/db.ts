@@ -10,33 +10,13 @@ declare global {
 // ✅ PRISMA_DATABASE_URL (Accelerate)를 우선 사용
 const databaseUrl = process.env.PRISMA_DATABASE_URL || process.env.DATABASE_URL;
 
-// 🟢 [Fix]: 연결 풀 설정 추가 (아이패드 연결 풀 타임아웃 문제 해결)
-function getDatabaseUrlWithPoolConfig(url: string | undefined): string {
-    if (!url) return "";
-    
-    // 이미 연결 파라미터가 있는지 확인
-    const hasParams = url.includes("?");
-    
-    if (hasParams) {
-        // 기존 파라미터가 있으면 추가
-        const urlObj = new URL(url);
-        urlObj.searchParams.set("connection_limit", "5");
-        urlObj.searchParams.set("pool_timeout", "30"); // 🟢 Cold start 대응: 30초
-        urlObj.searchParams.set("connect_timeout", "15"); // 🟢 첫 연결 지연 대응: 15초
-        return urlObj.toString();
-    } else {
-        // 파라미터가 없으면 추가
-        return `${url}?connection_limit=5&pool_timeout=30&connect_timeout=15`;
-    }
-}
-
 export const prisma: PrismaClient =
     global.__prisma ??
     new PrismaClient({
         log: process.env.NODE_ENV === "production" ? ["error"] : ["query", "error", "warn"],
         datasources: {
             db: {
-                url: getDatabaseUrlWithPoolConfig(databaseUrl),
+                url: databaseUrl, // .env의 connection_limit, pgbouncer 설정 그대로 사용
             },
         },
     });
