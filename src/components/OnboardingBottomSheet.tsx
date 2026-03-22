@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 interface OnboardingBottomSheetProps {
     isOpen: boolean;
@@ -18,6 +19,7 @@ interface OnboardingBottomSheetProps {
  */
 export default function OnboardingBottomSheet({ isOpen, onClose, onboardingUrl }: OnboardingBottomSheetProps) {
     const router = useRouter();
+    const { iosIgnoreSafeAreaBottom } = useAppLayout();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -74,8 +76,8 @@ export default function OnboardingBottomSheet({ isOpen, onClose, onboardingUrl }
                         </button>
                     </div>
                 </div>
-                {/* Safe area padding for mobile */}
-                <div className="h-[env(safe-area-inset-bottom)]" />
+                {/* Safe area padding for mobile (iOS 앱에서는 무시) */}
+                {!iosIgnoreSafeAreaBottom && <div className="h-[env(safe-area-inset-bottom)]" />}
             </div>
         </div>
     );

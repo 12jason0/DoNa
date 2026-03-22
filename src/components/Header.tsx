@@ -30,7 +30,7 @@ const LogoutOverlay = ({ message }: { message: string }) => (
 // 🟢 React.memo를 사용하여 Header의 자체 상태 변경이 부모 레이아웃 전체에 영향을 주지 않도록 격리
 const Header = memo(() => {
     const { isAuthenticated } = useAuth();
-    const { containInPhone, isAndroidApp } = useAppLayout();
+    const { containInPhone, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
     const { resolvedTheme, setTheme } = useTheme();
     const { locale, setLocaleSafe, isLocaleLoading, t } = useLocale();
@@ -237,10 +237,10 @@ const Header = memo(() => {
                     aria-label={t("header.closeSettingsModal")}
                 >
                     <div
-                        className={`${posClass} left-0 right-0 z-2001 overflow-y-auto scrollbar-hide rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800 ${!isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
+                        className={`${posClass} left-0 right-0 z-2001 overflow-y-auto scrollbar-hide rounded-t-2xl bg-white dark:bg-[#1a241b] shadow-2xl border-t border-gray-100 dark:border-gray-800 ${!iosIgnoreSafeAreaBottom && !isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[calc(100vh-3rem)]"}`}
                         style={{
                             animation: "slideUp 0.3s ease-out forwards",
-                            ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
+                            ...(iosIgnoreSafeAreaBottom ? { bottom: 0 } : isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >

@@ -12,12 +12,15 @@ interface AppLayoutContextType {
     modalContainerRef: React.RefObject<HTMLDivElement | null>;
     /** Android 앱 WebView 여부 — 바텀시트 모달을 footer와 같은 bottom에서 시작 */
     isAndroidApp: boolean;
+    /** iOS 앱 WebView 여부 — 하단 safe area 무시하고 맨 아래에 붙임 */
+    iosIgnoreSafeAreaBottom: boolean;
 }
 
 const AppLayoutContext = createContext<AppLayoutContextType>({
     containInPhone: false,
     modalContainerRef: { current: null },
     isAndroidApp: false,
+    iosIgnoreSafeAreaBottom: false,
 });
 
 export function useAppLayout() {

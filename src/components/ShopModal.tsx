@@ -12,7 +12,7 @@ interface ShopModalProps {
 
 export default function ShopModal({ onClose }: ShopModalProps) {
     const { t, isLocaleReady } = useLocale();
-    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
     const [dragY, setDragY] = useState(0);
@@ -65,11 +65,17 @@ export default function ShopModal({ onClose }: ShopModalProps) {
             onClick={onClose}
         >
             <div
-                className={`${posClass} left-0 right-0 w-full flex justify-center ${!isAndroidApp ? "bottom-3" : ""}`}
-                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
+                className={`${posClass} left-0 right-0 w-full flex justify-center ${!iosIgnoreSafeAreaBottom && !isAndroidApp ? "bottom-3" : ""}`}
+                style={
+                    isAndroidApp
+                        ? { bottom: ANDROID_MODAL_BOTTOM }
+                        : iosIgnoreSafeAreaBottom
+                          ? { bottom: 0 }
+                          : undefined
+                }
             >
                 <div
-                    className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
+                    className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-lg mx-auto p-6 text-center ${iosIgnoreSafeAreaBottom ? "pb-6" : "pb-[calc(1.5rem+env(safe-area-inset-bottom))]"} ${!isDragging ? "transition-transform duration-300 ease-out" : ""}`}
                     style={{
                         transform: slideUp ? (dragY > 0 ? `translateY(${dragY}px)` : "translateY(0)") : "translateY(100%)",
                     }}

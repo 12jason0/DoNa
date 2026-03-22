@@ -33,7 +33,7 @@ interface BridgeModalProps {
 
 export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalProps) {
     const { t, locale, isLocaleReady } = useLocale();
-    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     const [mounted, setMounted] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
 
@@ -76,8 +76,14 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
             aria-hidden
         >
             <div
-                className={`${posClass} left-0 right-0 z-10000 w-full pointer-events-auto ${!isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
-                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
+                className={`${posClass} left-0 right-0 z-10000 w-full pointer-events-auto ${!iosIgnoreSafeAreaBottom && !isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "max-h-[85%]" : "max-h-[90vh]"}`}
+                style={
+                    isAndroidApp
+                        ? { bottom: ANDROID_MODAL_BOTTOM }
+                        : iosIgnoreSafeAreaBottom
+                          ? { bottom: 0 }
+                          : undefined
+                }
                 onClick={(e) => e.stopPropagation()}
             >
                 <div
@@ -87,7 +93,9 @@ export default function BridgeModal({ onClose, onProceedToLogin }: BridgeModalPr
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="p-6 sm:p-8 relative pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                    <div
+                        className={`p-6 sm:p-8 relative ${iosIgnoreSafeAreaBottom ? "pb-8" : "pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}
+                    >
                         <button
                             onClick={onClose}
                             aria-label={t("bridgeModal.close")}

@@ -13,7 +13,7 @@ interface LogoutModalProps {
 
 export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
     const { t, isLocaleReady } = useLocale();
-    const { containInPhone, isAndroidApp } = useAppLayout();
+    const { containInPhone, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
     const [slideUp, setSlideUp] = useState(false);
 
@@ -29,8 +29,14 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
             aria-hidden
         >
             <div
-                className={`${posClass} left-0 right-0 z-2001 w-full pointer-events-auto ${!isAndroidApp ? "bottom-3" : ""}`}
-                style={isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : undefined}
+                className={`${posClass} left-0 right-0 z-2001 w-full pointer-events-auto ${!iosIgnoreSafeAreaBottom && !isAndroidApp ? "bottom-3" : ""}`}
+                style={
+                    isAndroidApp
+                        ? { bottom: ANDROID_MODAL_BOTTOM }
+                        : iosIgnoreSafeAreaBottom
+                          ? { bottom: 0 }
+                          : undefined
+                }
                 onClick={(e) => e.stopPropagation()}
             >
                 <div
@@ -40,7 +46,7 @@ export default function LogoutModal({ onClose, onConfirm }: LogoutModalProps) {
                     }}
                 >
                     <div
-                        className="p-6 pt-5 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                        className={`p-6 pt-5 ${iosIgnoreSafeAreaBottom ? "pb-6" : "pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}
                     >
                         {!isLocaleReady ? (
                             <div className="flex items-center justify-center py-12">

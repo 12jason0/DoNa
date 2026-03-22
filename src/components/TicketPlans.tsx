@@ -58,7 +58,7 @@ export interface TicketPlansProps {
 const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context = "COURSE" }: TicketPlansProps) => {
     const router = useRouter();
     const { t } = useLocale();
-    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     // 🟢 [IN-APP PURCHASE]: 모바일 앱(WebView)에서만 인앱결제 사용
     const isMobileNative = isMobileApp();
 
@@ -774,7 +774,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 <div
                     className={
                         isModal
-                            ? "px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white dark:bg-[#1a241b] border-t border-gray-50 dark:border-gray-800 shrink-0"
+                            ? `px-5 py-4 shrink-0 bg-white dark:bg-[#1a241b] border-t border-gray-50 dark:border-gray-800 ${iosIgnoreSafeAreaBottom ? "pb-4" : "pb-[max(1rem,env(safe-area-inset-bottom))]"}`
                             : "mt-8"
                     }
                 >

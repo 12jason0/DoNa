@@ -25,7 +25,7 @@ interface SearchModalProps {
 }
 
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
-    const { containInPhone, modalContainerRef, isAndroidApp } = useAppLayout();
+    const { containInPhone, modalContainerRef, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     const { t, isLocaleReady } = useLocale();
     const [query, setQuery] = useState("");
     const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
@@ -162,11 +162,11 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             aria-label={t("header.closeSearchModal")}
         >
             <div
-                className={`${posClass} left-0 right-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden pb-10 ${!isAndroidApp ? "bottom-3" : ""}`}
+                className={`${posClass} left-0 right-0 z-10000 flex flex-col rounded-t-2xl bg-white dark:bg-[#0f1710] shadow-xl overflow-hidden pb-10 ${!iosIgnoreSafeAreaBottom && !isAndroidApp ? "bottom-3" : ""}`}
                 style={{
                     top: containInPhone ? "4.5rem" : "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                     ...(containInPhone ? { width: "100%", height: "calc(100% - 4.5rem)" } : {}),
-                    ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
+                    ...(iosIgnoreSafeAreaBottom ? { bottom: 0 } : isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
                     animation: "slideUp 0.3s ease-out forwards",
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -217,7 +217,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                             style={
                                 isAndroidApp
                                     ? { paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))" }
-                                    : undefined
+                                    : iosIgnoreSafeAreaBottom
+                                      ? { paddingBottom: "2rem" }
+                                      : undefined
                             }
                         >
                             {/* 검색 기록: 최근 검색어(왼쪽) / 검색 기록 안 남기기 or 다시 남기기(오른쪽) */}

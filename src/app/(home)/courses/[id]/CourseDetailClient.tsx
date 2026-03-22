@@ -354,7 +354,7 @@ export default function CourseDetailClient({
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [platform, setPlatform] = useState<"ios" | "android" | "web">("web");
     const [inApp, setInApp] = useState(false);
-    const { containInPhone, modalContainerRef } = useAppLayout();
+    const { containInPhone, modalContainerRef, iosIgnoreSafeAreaBottom } = useAppLayout();
 
     // 🟢 플랫폼 감지 (iOS / Android / web) + 앱 WebView 여부 (하단바·지도버튼 위로 올리기)
     useEffect(() => {
@@ -972,8 +972,9 @@ export default function CourseDetailClient({
     }, [courseData?.isSelectionType, courseData?.coursePlaces, mySelection, showSelectionUI, sortedCoursePlaces]);
 
     // 세그먼트별 섹션 그룹 (이미지 스타일 레이아웃: 브런치 / 산책·기타 / 저녁·바)
+    // 🟢 place가 null인 coursePlace 제외 (3번째 장소부터 렌더 실패 방지)
     const displaySections = useMemo(() => {
-        const list = displayCoursePlaces;
+        const list = displayCoursePlaces.filter((cp) => cp?.place != null);
         if (list.length === 0) return [];
         const orderToSegment = new Map<number, string>();
         list.forEach((cp) => {
@@ -998,9 +999,23 @@ export default function CourseDetailClient({
         return sections;
     }, [displayCoursePlaces]);
 
+    // 🟢 getPlaceStatus 결과 메모이제이션 (3번째 장소 이후 렉 감소)
+    const placeStatusMap = useMemo(() => {
+        const m = new Map<number, string>();
+        for (const cp of displayCoursePlaces) {
+            if (cp?.place?.id != null) {
+                m.set(
+                    Number(cp.place.id),
+                    getPlaceStatus(cp.place.opening_hours ?? null, cp.place.closed_days ?? []).status,
+                );
+            }
+        }
+        return m;
+    }, [displayCoursePlaces]);
+
     // DB order_index: 1-based(1,2,3) → 0-based 변환. resolved는 이미 0-based(0,1,2)
     const mapPlaces = useMemo(() => {
-        const list = displayCoursePlaces;
+        const list = displayCoursePlaces.filter((cp) => cp?.place != null);
         const minOrder = list.length > 0 ? Math.min(...list.map((cp) => cp.order_index ?? 0)) : 0;
         const toZeroBased = minOrder >= 1; // 1-based면 -1, 0-based면 그대로
         return list.map((cp) => ({
@@ -1949,6 +1964,7 @@ export default function CourseDetailClient({
                                                 return (
                                                     <div key={`${sec.segmentKey}-${secIdx}`} className="mb-8">
                                                         {sec.places.map((coursePlace: CoursePlace, idx: number) => {
+                                                            if (!coursePlace?.place) return null;
                                                             const placeNumber = placeStartIndex + idx + 1;
                                                             const isSelected =
                                                                 selectedPlace?.id === coursePlace.place.id;
@@ -2030,14 +2046,12 @@ export default function CourseDetailClient({
                                                                                         </span>
                                                                                         {(() => {
                                                                                             const status =
-                                                                                                getPlaceStatus(
-                                                                                                    coursePlace.place
-                                                                                                        .opening_hours ??
-                                                                                                        null,
-                                                                                                    coursePlace.place
-                                                                                                        .closed_days ??
-                                                                                                        [],
-                                                                                                ).status;
+                                                                                                placeStatusMap.get(
+                                                                                                    Number(
+                                                                                                        coursePlace.place
+                                                                                                            .id,
+                                                                                                    ),
+                                                                                                ) ?? "정보 없음";
                                                                                             const statusStyles: Record<
                                                                                                 string,
                                                                                                 string
@@ -2143,14 +2157,13 @@ export default function CourseDetailClient({
                                                                                                 }}
                                                                                                 className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] px-3 py-1.5 rounded-md font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
                                                                                             >
-                                                                                                {getPlaceStatus(
-                                                                                                    coursePlace.place
-                                                                                                        .opening_hours ??
-                                                                                                        null,
-                                                                                                    coursePlace.place
-                                                                                                        .closed_days ??
-                                                                                                        [],
-                                                                                                ).status === "휴무"
+                                                                                                {(placeStatusMap.get(
+                                                                                                    Number(
+                                                                                                        coursePlace.place
+                                                                                                            .id,
+                                                                                                    ),
+                                                                                                ) ?? "정보 없음") ===
+                                                                                                "휴무"
                                                                                                     ? t(
                                                                                                           "courses.reserveInAdvance",
                                                                                                       )
@@ -2303,9 +2316,9 @@ export default function CourseDetailClient({
 
                     {/* 찜하기·공유 하단바: 폰 프레임에 transform 있으면 fixed가 폰 안에만 적용됨 */}
                     <div
-                        className="fixed left-0 right-0 bottom-3 z-40 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto"
+                        className={`fixed left-0 right-0 z-40 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800 px-6 py-4 shadow-lg flex items-center justify-between gap-4 max-w-[900px] mx-auto ${iosIgnoreSafeAreaBottom ? "bottom-0" : "bottom-3"}`}
                         style={
-                            inApp && !containInPhone
+                            inApp && !containInPhone && !iosIgnoreSafeAreaBottom
                                 ? { paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" }
                                 : undefined
                         }
@@ -2936,10 +2949,8 @@ export default function CourseDetailClient({
                                                             )?.place;
                                                             const isClosedToday =
                                                                 fullPlace &&
-                                                                getPlaceStatus(
-                                                                    fullPlace.opening_hours ?? null,
-                                                                    fullPlace.closed_days ?? [],
-                                                                ).status === "휴무";
+                                                                (placeStatusMap.get(Number(fullPlace.id)) ??
+                                                                    "정보 없음") === "휴무";
                                                             return !courseData?.isSelectionType &&
                                                                 fullPlace?.reservationUrl ? (
                                                                 <button
@@ -3000,7 +3011,7 @@ export default function CourseDetailClient({
                             }}
                         >
                             <div
-                                className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 shadow-2xl transition-transform duration-300 ease-out pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+                                className={`bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-x border-gray-100 dark:border-gray-800 w-full max-w-sm mx-auto p-6 shadow-2xl transition-transform duration-300 ease-out ${iosIgnoreSafeAreaBottom ? "pb-6" : "pb-[calc(1.5rem+env(safe-area-inset-bottom))]"}`}
                                 style={{
                                     transform: shareModalSlideUp ? "translateY(0)" : "translateY(100%)",
                                 }}
@@ -3104,7 +3115,7 @@ export default function CourseDetailClient({
                         aria-hidden
                     />
                     <div
-                        className="fixed left-0 right-0 bottom-3 z-5001 flex justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-auto"
+                        className={`fixed left-0 right-0 z-5001 flex justify-center px-4 pointer-events-auto ${iosIgnoreSafeAreaBottom ? "bottom-0 pb-4" : "bottom-3 pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}
                         style={{
                             transform: favoriteModalSlideUp ? "translateY(0)" : "translateY(100%)",
                             transition: "transform 0.3s ease-out",
@@ -3152,7 +3163,9 @@ export default function CourseDetailClient({
                                 onClick={() => setShowMemoryLimitModal(false)}
                                 aria-hidden
                             />
-                            <div className={`${posClass} left-0 right-0 bottom-3 z-5001 w-full`}>
+                            <div
+                                className={`${posClass} left-0 right-0 z-5001 w-full ${iosIgnoreSafeAreaBottom ? "bottom-0" : "bottom-3"}`}
+                            >
                                 <div
                                     className="bg-white dark:bg-[#1a241b] rounded-t-2xl border-t border-gray-100 dark:border-gray-800 w-full shadow-2xl transition-transform duration-300 ease-out"
                                     style={{
@@ -3160,7 +3173,9 @@ export default function CourseDetailClient({
                                     }}
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <div className="p-6 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] text-center">
+                                    <div
+                                        className={`p-6 pt-8 text-center ${iosIgnoreSafeAreaBottom ? "pb-6" : "pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}
+                                    >
                                         <div className="mb-4 flex justify-center">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
@@ -3222,7 +3237,7 @@ export default function CourseDetailClient({
                                 className={`${posClass} left-0 right-0 top-14 bottom-0 flex flex-col pointer-events-none`}
                             >
                                 <div
-                                    className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md h-full overflow-hidden flex flex-col shadow-2xl mx-auto pb-[env(safe-area-inset-bottom)]"
+                                    className={`pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full max-w-md h-full overflow-hidden flex flex-col shadow-2xl mx-auto ${iosIgnoreSafeAreaBottom ? "pb-0" : "pb-[env(safe-area-inset-bottom)]"}`}
                                     style={{
                                         transform: placeModalSlideUp
                                             ? `translateY(${placeModalDragY}px)`
@@ -3316,10 +3331,8 @@ export default function CourseDetailClient({
                                                     className="w-full py-3 rounded-lg bg-emerald-500 text-white font-bold shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
                                                 >
                                                     <Icons.ExternalLink className="w-4 h-4" />
-                                                    {getPlaceStatus(
-                                                        selectedPlace.opening_hours ?? null,
-                                                        selectedPlace.closed_days ?? [],
-                                                    ).status === "휴무"
+                                                    {(placeStatusMap.get(Number(selectedPlace.id)) ??
+                                                        "정보 없음") === "휴무"
                                                         ? t("courses.reserveOtherDay")
                                                         : t("courses.reserve")}
                                                 </button>

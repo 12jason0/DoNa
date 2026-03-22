@@ -68,7 +68,7 @@ export default function CategoryFilterModal({
     onReset,
 }: CategoryFilterModalProps) {
     const { t, isLocaleReady } = useLocale();
-    const { isAndroidApp } = useAppLayout();
+    const { isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     useNativeModalNotify(isOpen);
 
     if (!isOpen) return null;
@@ -133,7 +133,9 @@ export default function CategoryFilterModal({
                                 );
                             })}
                         </div>
-                        <div className="p-5 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
+                        <div
+                            className={`p-5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a241b] ${iosIgnoreSafeAreaBottom ? "pb-5" : "pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}
+                        >
                             <div className="flex gap-3">
                                 <button
                                     onClick={onReset}

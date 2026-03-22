@@ -9,6 +9,7 @@ import TapFeedback from "@/components/TapFeedback";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch, fetchSession } from "@/lib/authClient";
 import { isMobileApp } from "@/lib/platform";
+import { useAppLayout } from "@/context/AppLayoutContext";
 
 // --- 타입 정의 ---
 interface Place {
@@ -274,6 +275,7 @@ const LoadingSpinner = ({ text = "로딩 중..." }: { text?: string }) => (
 // --- 메인 지도 페이지 ---
 function MapPageInner() {
     const router = useRouter();
+    const { iosIgnoreSafeAreaBottom } = useAppLayout();
     const [mapsReady, setMapsReady] = useState(false);
     const mapRef = useRef<any>(null);
 
@@ -699,10 +701,12 @@ function MapPageInner() {
                     });
                 }
 
-                // Map -> Array 변환하여 상태 업데이트
+                // Map -> Array 변환하여 상태 업데이트 (성능: 최대 40개로 제한하여 렌더 부하 감소)
+                const MAX_DISPLAY = 40;
+                const allPlaces = Array.from(uniquePlaces.values());
                 const courseArray = Array.from(uniqueCourses.values());
-                setPlaces(Array.from(uniquePlaces.values()));
-                setCourses(courseArray);
+                setPlaces(allPlaces.slice(0, MAX_DISPLAY));
+                setCourses(courseArray.slice(0, MAX_DISPLAY));
 
                 // 코스 상세 미리 가져오기 (클릭 시 즉시 표시)
                 courseArray.slice(0, 10).forEach((c) => prefetchCourseDetail(c));
@@ -905,8 +909,11 @@ function MapPageInner() {
                 });
             }
 
-            setPlaces(Array.from(uniquePlaces.values()));
-            setCourses(Array.from(uniqueCourses.values()));
+            const MAX_DISPLAY = 40;
+            const allPlaces = Array.from(uniquePlaces.values());
+            const allCourses = Array.from(uniqueCourses.values());
+            setPlaces(allPlaces.slice(0, MAX_DISPLAY));
+            setCourses(allCourses.slice(0, MAX_DISPLAY));
             setShowMapSearchButton(false);
             setPanelState("default");
         } catch (e: any) {
@@ -1219,7 +1226,7 @@ function MapPageInner() {
 
             {/* 하단 패널 */}
             <div
-                className={`z-40 absolute inset-x-0 bottom-3 bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()}`}
+                className={`z-40 absolute inset-x-0 bg-white dark:bg-[#1a241b] rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out flex flex-col ${getPanelHeightClass()} ${iosIgnoreSafeAreaBottom ? "bottom-0" : "bottom-3"}`}
             >
                 <div
                     className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none select-none active:bg-gray-50 dark:active:bg-gray-800 transition-colors rounded-t-3xl"

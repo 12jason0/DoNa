@@ -11,7 +11,7 @@ import SideMenuDrawer from "@/components/SideMenuDrawer";
 import AppInstallQR from "@/components/AppInstallQR";
 import DonaSplashFinal from "@/components/DonaSplashFinal";
 import { getS3StaticUrl } from "@/lib/s3Static";
-import { isMobileApp, isAndroid } from "@/lib/platform";
+import { isMobileApp, isAndroid, isIOS } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
 import { useLocale } from "@/context/LocaleContext";
 // import AdSlot from "@/components/AdSlot"; // 🟢 AdMob/AdSense 비활성화
@@ -152,6 +152,8 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [isApp, setIsApp] = useState(false);
     // 🟢 Android: 하단 네비(뒤로가기/홈)보다 5(20px) 위로 올림
     const [isAndroidClient, setIsAndroidClient] = useState(false);
+    // 🟢 iOS: 모달/하단바 safe area 무시하고 맨 아래에 붙임
+    const [iosIgnoreSafeAreaBottom, setIosIgnoreSafeAreaBottom] = useState(false);
     // 🟢 웹 광고 실제 표시 여부 (AdMob/AdSense 비활성화로 false)
     const [webAdVisible, setWebAdVisible] = useState(false);
     const [isLgOrUp, setIsLgOrUp] = useState(false);
@@ -202,6 +204,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     useEffect(() => {
         if (typeof window !== "undefined" && isMobileApp() && isAndroid()) {
             setIsAndroidClient(true);
+        }
+    }, []);
+
+    // 🟢 iOS 앱 WebView 감지 — 모달/하단바 safe area 무시하고 맨 아래에 붙임
+    useEffect(() => {
+        if (typeof window !== "undefined" && isMobileApp() && isIOS()) {
+            setIosIgnoreSafeAreaBottom(true);
         }
     }, []);
 
@@ -388,7 +397,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
             )}
 
             {/* 🟢 메인 콘텐츠 항상 렌더 (스플래시 중에도 DOM에 있어 이미지 로드 → LCP 2.5초 이내 목표) */}
-            <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef, isAndroidApp: isAndroidClient }}>
+            <AppLayoutProvider value={{ containInPhone: !isApp, modalContainerRef, isAndroidApp: isAndroidClient, iosIgnoreSafeAreaBottom }}>
                 <SearchModal
                     isOpen={isSearchModalOpen}
                     onClose={() => {
@@ -652,7 +661,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                 } left-0 right-0 z-50 lg:relative lg:z-auto flex flex-col items-end gap-3 transition-[bottom] duration-300 ease-in-out`}
                                 style={
                                     mounted && isApp
-                                        ? { bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }
+                                        ? {
+                                              bottom: iosIgnoreSafeAreaBottom
+                                                  ? "1.25rem"
+                                                  : "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+                                          }
                                         : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
                                           ? { bottom: "calc(80px + 1.25rem)" }
                                           : undefined
@@ -711,7 +724,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                             style={
                                                 mounted && isApp
                                                     ? {
-                                                          bottom: "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))",
+                                                          bottom: iosIgnoreSafeAreaBottom
+                                                              ? "calc(5rem + 1.25rem)"
+                                                              : "calc(5rem + 1.25rem + env(safe-area-inset-bottom, 0px))",
                                                       }
                                                     : mounted && !isApp && shouldShowWebAd && webAdVisible && !isLgOrUp
                                                       ? { bottom: "calc(80px + 1.25rem + 5rem)" }

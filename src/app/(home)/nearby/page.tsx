@@ -142,7 +142,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
 
     const timeOfDay = getTimeOfDayFromKST();
 
-    // 🟢 공통 select 옵션
+    // 🟢 공통 select 옵션 (성능: coursePlaces는 카드 이미지/휴무용 1개만, placesCount는 _count로)
     const courseSelectOptions = {
         id: true,
         title: true,
@@ -158,6 +158,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
         courseTags: { select: { tag: { select: { name: true } } } },
         coursePlaces: {
             orderBy: { order_index: "asc" as const },
+            take: 1,
             select: {
                 order_index: true,
                 segment: true,
@@ -177,6 +178,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                 },
             },
         },
+        _count: { select: { coursePlaces: true } },
     };
 
     // ✅ [유저 등급 확인 및 잠금 해제된 코스 목록 조회]
@@ -404,6 +406,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                                       : null,
                               }))
                             : [],
+                        placesCount: c._count?.coursePlaces ?? (c.coursePlaces?.length || 0),
                         tags: allTags,
                     };
                 });
@@ -558,6 +561,7 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
                                   : null,
                           }))
                         : [],
+                    placesCount: c._count?.coursePlaces ?? (c.coursePlaces?.length || 0),
                     tags: allTags,
                 };
             });

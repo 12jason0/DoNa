@@ -64,6 +64,8 @@ const courseSelectOptions = {
     createdAt: true,
     grade: true,
     coursePlaces: {
+        orderBy: { order_index: "asc" as const },
+        take: 1,
         select: {
             order_index: true,
             segment: true,
@@ -80,7 +82,6 @@ const courseSelectOptions = {
                 },
             },
         },
-        orderBy: { order_index: "asc" as const },
     },
     // 🟢 [Fix]: 장소 개수를 위한 _count 추가
     _count: { select: { coursePlaces: true } },

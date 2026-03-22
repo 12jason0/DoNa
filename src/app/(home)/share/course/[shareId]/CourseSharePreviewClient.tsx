@@ -6,6 +6,7 @@ import Image from "@/components/ImageFallback";
 import dynamic from "next/dynamic";
 import { Place as MapPlace } from "@/types/map";
 import { isIOS, isAndroid } from "@/lib/platform";
+import { useAppLayout } from "@/context/AppLayoutContext";
 import { TipSection } from "@/components/TipSection";
 import { parseTipsFromDb } from "@/types/tip";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
@@ -122,6 +123,7 @@ export default function CourseSharePreviewClient({
     shareId: string;
 }) {
     const { t } = useLocale();
+    const { iosIgnoreSafeAreaBottom } = useAppLayout();
     const [showMapModal, setShowMapModal] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState<CoursePlace["place"] | null>(null);
     const [showDownloadAppModal, setShowDownloadAppModal] = useState(false);
@@ -716,7 +718,7 @@ export default function CourseSharePreviewClient({
                         className="fixed left-0 right-0 top-14 bottom-0 flex flex-col pointer-events-none"
                     >
                         <div
-                            className="pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full h-full overflow-hidden flex flex-col shadow-2xl pb-[env(safe-area-inset-bottom)]"
+                            className={`pointer-events-auto bg-white dark:bg-[#1a241b] rounded-t-2xl w-full h-full overflow-hidden flex flex-col shadow-2xl ${iosIgnoreSafeAreaBottom ? "pb-0" : "pb-[env(safe-area-inset-bottom)]"}`}
                             style={{
                                 transform: placeModalSlideUp ? "translateY(0)" : "translateY(100%)",
                                 transition: "transform 0.3s ease-out",
