@@ -226,6 +226,7 @@ export async function POST(request: NextRequest) {
         const res = NextResponse.json({
             success: true,
             message,
+            token,
             user: {
                 id: user.id,
                 email: user.email,

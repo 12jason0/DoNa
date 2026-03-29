@@ -3,7 +3,7 @@
     "name": "두나(DoNa)",
     "slug": "duna",
     "owner": "dona-app",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "platforms": [
       "ios",
       "android"
@@ -18,7 +18,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6db48c"
+      "backgroundColor": "#7FCC9F"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -27,7 +27,7 @@
       "backgroundColor": "#6db48c",
       "supportsTablet": false,
       "bundleIdentifier": "kr.io.dona.dona",
-      "buildNumber": "34",
+      "buildNumber": "37",
       "usesAppleSignIn": true,
       "userInterfaceStyle": "light",
       "associatedDomains": [
@@ -52,7 +52,8 @@
         "backgroundColor": "#6db48c"
       },
       "package": "kr.io.dona.dona",
-      "versionCode": 48,
+      "versionCode": 51,
+      "launchMode": "singleTop",
       "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -111,14 +112,33 @@
     },
     "plugins": [
       "./purchases-plugin.js",
-      "expo-sqlite",
       "expo-web-browser",
       "expo-apple-authentication",
       "expo-notifications",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#7FCC9F",
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#7FCC9F"
+          }
+        }
+      ],
+      [
         "@react-native-kakao/core",
         {
           "nativeAppKey": "a6c31213198b3d562121ddace8d1b65f"
+        }
+      ],
+      [
+        "@mj-studio/react-native-naver-map",
+        {
+          "client_id": "4gfc00t72p",
+          "android": {
+            "addMavenRepo": true
+          }
         }
       ],
       [
@@ -132,7 +152,8 @@
             "gradlePluginVersion": "8.3.2",
             "enableProguardInReleaseBuilds": true,
             "extraMavenRepos": [
-              "https://devrepo.kakao.com/nexus/content/groups/public/"
+              "https://devrepo.kakao.com/nexus/content/groups/public/",
+              "https://repository.map.naver.com/archive/maven"
             ],
             "enableMinifyInReleaseBuilds": true
           }
@@ -145,7 +166,7 @@
         "projectId": "78b14f63-823b-4fb6-ba4a-8c5a8528a204"
       }
     },
-    "runtimeVersion": "1.2.1",
+    "runtimeVersion": "1.2.2",
     "updates": {
       "url": "https://u.expo.dev/78b14f63-823b-4fb6-ba4a-8c5a8528a204"
     }

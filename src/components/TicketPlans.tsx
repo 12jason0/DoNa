@@ -27,7 +27,7 @@ const PLANS = [
         price: 9900,
         badge: "VIP",
         featuresCount: 4,
-        featureIndices: [0, 1, 2, 4],
+        featureIndices: [0, 1, 2, 3],
         tier: "PREMIUM",
     },
     {
@@ -460,7 +460,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 />
                 {/* 하단 시트: 바닥에 붙여 위로 슬라이드, 폰 내부에서는 양쪽 끝에 붙임. Android 앱은 footer와 같은 위치에서 시작 */}
                 <div
-                    className={`${posClass} left-0 right-0 z-10000 flex ${!isAndroidApp ? "bottom-3" : ""} ${containInPhone ? "p-0" : "justify-center p-0 sm:p-5 sm:items-center"}`}
+                    className={`${posClass} left-0 right-0 bottom-0 z-10000 flex ${containInPhone ? "p-0" : "justify-center px-0 sm:px-5"}`}
                     style={{
                         pointerEvents: "auto",
                         ...(isAndroidApp ? { bottom: ANDROID_MODAL_BOTTOM } : {}),
@@ -468,7 +468,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div
-                        className={`bg-white dark:bg-[#1a241b] w-full flex flex-col overflow-hidden shadow-2xl transition-transform duration-200 ease-out max-w-md h-[70vh] max-h-[70vh] rounded-t-3xl sm:rounded-2xl`}
+                        className={`bg-white dark:bg-[#1a241b] w-full flex flex-col overflow-hidden shadow-2xl transition-transform duration-200 ease-out max-w-md h-[70vh] max-h-[70vh] rounded-t-3xl`}
                         style={{
                             transform: modalSlideUp ? "translateY(0)" : "translateY(100%)",
                         }}

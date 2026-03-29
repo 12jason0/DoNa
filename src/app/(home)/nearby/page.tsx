@@ -12,41 +12,41 @@ export const dynamic = "force-dynamic";
 export const revalidate = 120;
 
 // ✅ [모듈 레벨] 공통 select 옵션
-const courseSelectOptions = {
-    id: true,
-    title: true,
-    description: true,
-    duration: true,
-    region: true,
-    imageUrl: true,
-    concept: true,
-    grade: true,
-    rating: true,
-    view_count: true,
-    createdAt: true,
-    courseTags: { select: { tag: { select: { name: true } } } },
-    coursePlaces: {
-        orderBy: { order_index: "asc" as const },
+    const courseSelectOptions = {
+        id: true,
+        title: true,
+        description: true,
+        duration: true,
+        region: true,
+        imageUrl: true,
+        concept: true,
+        grade: true,
+        rating: true,
+        view_count: true,
+        createdAt: true,
+        courseTags: { select: { tag: { select: { name: true } } } },
+        coursePlaces: {
+            orderBy: { order_index: "asc" as const },
         take: 1,
-        select: {
-            order_index: true,
-            segment: true,
-            place: {
-                select: {
-                    id: true,
-                    name: true,
-                    imageUrl: true,
-                    latitude: true,
-                    longitude: true,
-                    opening_hours: true,
-                    reservationUrl: true,
-                    closed_days: {
-                        select: { day_of_week: true, specific_date: true, note: true },
+            select: {
+                order_index: true,
+                segment: true,
+                place: {
+                    select: {
+                        id: true,
+                        name: true,
+                        imageUrl: true,
+                        latitude: true,
+                        longitude: true,
+                        opening_hours: true,
+                        reservationUrl: true,
+                        closed_days: {
+                            select: { day_of_week: true, specific_date: true, note: true },
+                        },
                     },
                 },
             },
         },
-    },
     _count: { select: { coursePlaces: true } },
 };
 
@@ -183,141 +183,141 @@ const getCachedDefaultNearbyCourses = unstable_cache(
 );
 
 // ✅ [모듈 레벨] 검색/필터 캐시 - userTier/unlockedIds 제거 → 동일 검색어라면 모든 유저 캐시 공유
-const getCachedFilteredCourses = unstable_cache(
-    async (
-        keyword: string,
-        regionParam: string | undefined,
-        concept: string | undefined,
-        tagIds: string | undefined,
-        isMobile: boolean,
-        timeOfDay: string | null
-    ) => {
-        const filterConditions: any[] = [{ isPublic: true }];
+        const getCachedFilteredCourses = unstable_cache(
+            async (
+                keyword: string,
+                regionParam: string | undefined,
+                concept: string | undefined,
+                tagIds: string | undefined,
+                isMobile: boolean,
+                timeOfDay: string | null
+            ) => {
+                const filterConditions: any[] = [{ isPublic: true }];
 
-        if (regionParam) {
-            const regionGroup = REGION_GROUPS.find((g) =>
-                (g.dbValues as readonly string[]).includes(regionParam)
-            );
-            if (regionGroup) {
-                const regionConditions: any[] = [];
-                (regionGroup.dbValues as readonly string[]).forEach((dbValue: string) => {
+                if (regionParam) {
+                    const regionGroup = REGION_GROUPS.find((g) =>
+                        (g.dbValues as readonly string[]).includes(regionParam)
+                    );
+                    if (regionGroup) {
+                        const regionConditions: any[] = [];
+                        (regionGroup.dbValues as readonly string[]).forEach((dbValue: string) => {
                     regionConditions.push({ region: { contains: dbValue, mode: "insensitive" } });
-                });
-                const combinedPattern = (regionGroup.dbValues as readonly string[]).join("/");
+                        });
+                        const combinedPattern = (regionGroup.dbValues as readonly string[]).join("/");
                 regionConditions.push({ region: { contains: combinedPattern, mode: "insensitive" } });
-                const reversedPattern = [...(regionGroup.dbValues as readonly string[])].reverse().join("/");
-                if (reversedPattern !== combinedPattern) {
+                        const reversedPattern = [...(regionGroup.dbValues as readonly string[])].reverse().join("/");
+                        if (reversedPattern !== combinedPattern) {
                     regionConditions.push({ region: { contains: reversedPattern, mode: "insensitive" } });
-                }
-                filterConditions.push({ OR: regionConditions });
-            } else {
+                        }
+                        filterConditions.push({ OR: regionConditions });
+                    } else {
                 filterConditions.push({ region: { contains: regionParam, mode: "insensitive" } });
-            }
-        } else if (keyword) {
-            const keywords = keyword.split(/\s+/).filter(Boolean);
-            keywords.forEach((k) => {
-                const cleanKeyword = k.replace("동", "");
-                filterConditions.push({
-                    OR: [
-                        { region: { contains: cleanKeyword, mode: "insensitive" } },
-                        { title: { contains: cleanKeyword, mode: "insensitive" } },
-                        { concept: { contains: cleanKeyword, mode: "insensitive" } },
-                        { description: { contains: cleanKeyword, mode: "insensitive" } },
-                        {
-                            coursePlaces: {
-                                some: {
-                                    place: {
-                                        OR: [
-                                            { name: { contains: cleanKeyword, mode: "insensitive" } },
-                                            { address: { contains: cleanKeyword, mode: "insensitive" } },
-                                        ],
+                    }
+                } else if (keyword) {
+                    const keywords = keyword.split(/\s+/).filter(Boolean);
+                    keywords.forEach((k) => {
+                        const cleanKeyword = k.replace("동", "");
+                        filterConditions.push({
+                            OR: [
+                                { region: { contains: cleanKeyword, mode: "insensitive" } },
+                                { title: { contains: cleanKeyword, mode: "insensitive" } },
+                                { concept: { contains: cleanKeyword, mode: "insensitive" } },
+                                { description: { contains: cleanKeyword, mode: "insensitive" } },
+                                {
+                                    coursePlaces: {
+                                        some: {
+                                            place: {
+                                                OR: [
+                                                    { name: { contains: cleanKeyword, mode: "insensitive" } },
+                                                    { address: { contains: cleanKeyword, mode: "insensitive" } },
+                                                ],
+                                            },
+                                        },
                                     },
                                 },
-                            },
-                        },
-                    ],
-                });
-            });
-        }
-
-        if (concept) {
-            filterConditions.push({ concept: { contains: concept, mode: "insensitive" } });
-        }
-
-        if (tagIds) {
-            const tagIdArray = tagIds
-                .split(",")
-                .map(Number)
-                .filter((n) => !isNaN(n) && n > 0);
-            if (tagIdArray.length > 0) {
-                if (tagIdArray.length === 1) {
-                    filterConditions.push({
-                        courseTags: { some: { tagId: { equals: tagIdArray[0] } } },
-                    });
-                } else {
-                    filterConditions.push({
-                        AND: tagIdArray.map((tagId) => ({
-                            courseTags: { some: { tagId: { equals: tagId } } },
-                        })),
+                            ],
+                        });
                     });
                 }
-            }
-        }
 
-        const whereClause = filterConditions.length > 0 ? { AND: filterConditions } : { isPublic: true };
-        const takeLimit = keyword ? 200 : 30;
-        const courses = await prisma.course.findMany({
-            where: whereClause,
-            orderBy: { id: "desc" },
-            take: takeLimit,
-            select: courseSelectOptions,
-        });
+                if (concept) {
+            filterConditions.push({ concept: { contains: concept, mode: "insensitive" } });
+                }
 
-        sortCoursesByTimeMatch(courses, timeOfDay);
+                if (tagIds) {
+                    const tagIdArray = tagIds
+                        .split(",")
+                        .map(Number)
+                        .filter((n) => !isNaN(n) && n > 0);
+                    if (tagIdArray.length > 0) {
+                        if (tagIdArray.length === 1) {
+                            filterConditions.push({
+                        courseTags: { some: { tagId: { equals: tagIdArray[0] } } },
+                            });
+                        } else {
+                            filterConditions.push({
+                                AND: tagIdArray.map((tagId) => ({
+                            courseTags: { some: { tagId: { equals: tagId } } },
+                                })),
+                            });
+                        }
+                    }
+                }
+
+                const whereClause = filterConditions.length > 0 ? { AND: filterConditions } : { isPublic: true };
+                const takeLimit = keyword ? 200 : 30;
+                const courses = await prisma.course.findMany({
+                    where: whereClause,
+                    orderBy: { id: "desc" },
+                    take: takeLimit,
+                    select: courseSelectOptions,
+                });
+
+                sortCoursesByTimeMatch(courses, timeOfDay);
 
         const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
 
         const mapped = courses.map((c: any) => {
-            const allTags = Array.isArray(c?.courseTags)
-                ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                : [];
+                    const allTags = Array.isArray(c?.courseTags)
+                        ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
+                        : [];
 
-            return {
-                id: String(c.id),
-                title: c.title || "제목 없음",
-                description: c.description || "",
-                duration: c.duration || "",
-                location: c.region || "",
-                imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
-                concept: c.concept || "",
+                    return {
+                        id: String(c.id),
+                        title: c.title || "제목 없음",
+                        description: c.description || "",
+                        duration: c.duration || "",
+                        location: c.region || "",
+                        imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+                        concept: c.concept || "",
                 grade: c.grade || "FREE",
-                rating: Number(c.rating) || 0,
-                reviewCount: 0,
-                participants: 0,
-                viewCount: c.view_count || 0,
-                createdAt: c.createdAt ? c.createdAt.toISOString() : undefined,
+                        rating: Number(c.rating) || 0,
+                        reviewCount: 0,
+                        participants: 0,
+                        viewCount: c.view_count || 0,
+                        createdAt: c.createdAt ? c.createdAt.toISOString() : undefined,
                 isLocked: false, // applyIsLocked()에서 덮어씀
-                coursePlaces: Array.isArray(c.coursePlaces)
-                    ? c.coursePlaces.map((cp: any) => ({
-                          order_index: cp.order_index,
-                          place: cp.place
-                              ? {
-                                    id: cp.place.id,
-                                    name: cp.place.name,
-                                    imageUrl: cp.place.imageUrl,
-                                    latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
-                                    longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
-                                    opening_hours: cp.place.opening_hours || null,
-                                    reservationUrl: cp.place.reservationUrl || null,
-                                    closed_days: cp.place.closed_days || [],
-                                }
-                              : null,
-                      }))
-                    : [],
+                        coursePlaces: Array.isArray(c.coursePlaces)
+                            ? c.coursePlaces.map((cp: any) => ({
+                                  order_index: cp.order_index,
+                                  place: cp.place
+                                      ? {
+                                            id: cp.place.id,
+                                            name: cp.place.name,
+                                            imageUrl: cp.place.imageUrl,
+                                            latitude: cp.place.latitude ? Number(cp.place.latitude) : undefined,
+                                            longitude: cp.place.longitude ? Number(cp.place.longitude) : undefined,
+                                            opening_hours: cp.place.opening_hours || null,
+                                            reservationUrl: cp.place.reservationUrl || null,
+                                            closed_days: cp.place.closed_days || [],
+                                        }
+                                      : null,
+                              }))
+                            : [],
                 placesCount: c._count?.coursePlaces ?? (c.coursePlaces?.length || 0),
-                tags: allTags,
-            };
-        });
+                        tags: allTags,
+                    };
+                });
 
         mapped.sort((a: any, b: any) => (gradeWeight[a.grade] || 1) - (gradeWeight[b.grade] || 1));
         return mapped;
@@ -371,9 +371,9 @@ async function getInitialNearbyCourses(searchParams: { [key: string]: string | s
     }
 
     // 3. 모바일 감지
-    const headersList = await headers();
-    const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
-    const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
+        const headersList = await headers();
+        const userAgent = headersList.get("user-agent")?.toLowerCase() || "";
+        const isMobilePlatform = /iphone|ipad|ipod|android/.test(userAgent);
 
     const timeOfDay = getTimeOfDayFromKST();
     const isDefaultLoad = !keywordRaw && !concept && !tagIdsParam;

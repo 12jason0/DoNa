@@ -598,28 +598,34 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 }
                             }}
                             placeholder="성수동 힙한 카페 어디지?"
-                            className="w-full bg-gray-50 dark:bg-[#1a241b] rounded-xl py-3.5 pl-12 pr-12 text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700 focus:bg-white dark:focus:bg-[#1a241b] transition-all tracking-tight"
+                            className="w-full bg-gray-50 dark:bg-[#1a241b] rounded-xl py-3.5 pl-12 pr-[3.75rem] text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700 focus:bg-white dark:focus:bg-[#1a241b] transition-all tracking-tight"
                         />
-                        <TapFeedback>
-                            <button
-                                onClick={() => {
-                                    setModalSelectedLabels([...selectedFilterLabels]);
-                                    setShowCategoryModal(true);
-                                }}
-                                className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-12 -translate-y-3"
-                            >
-                                <div className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors flex items-center justify-center">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                                        />
-                                    </svg>
-                                </div>
-                            </button>
-                        </TapFeedback>
+                        {/* 태그 필터 버튼 */}
+                        <button
+                            onClick={() => {
+                                setModalSelectedLabels([...selectedFilterLabels]);
+                                setShowCategoryModal(true);
+                            }}
+                            className="absolute inset-y-0 right-1.5 flex items-center justify-center my-1.5"
+                            aria-label="태그 필터"
+                        >
+                            <div className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                                selectedFilterLabels.length > 0
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                            }`}>
+                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                                        d="M3 4h18M7 12h10M11 20h2" />
+                                </svg>
+                                <span>태그</span>
+                                {selectedFilterLabels.length > 0 && (
+                                    <span className="bg-white text-emerald-700 text-[11px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                                        {selectedFilterLabels.length}
+                                    </span>
+                                )}
+                            </div>
+                        </button>
                     </div>
 
                     <div className="flex flex-col gap-3">

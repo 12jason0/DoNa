@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Container as MapDiv, NaverMap, Marker, Polyline } from "react-naver-maps";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
@@ -275,6 +275,7 @@ const LoadingSpinner = ({ text = "로딩 중..." }: { text?: string }) => (
 // --- 메인 지도 페이지 ---
 function MapPageInner() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { iosIgnoreSafeAreaBottom } = useAppLayout();
     const [mapsReady, setMapsReady] = useState(false);
     const mapRef = useRef<any>(null);
@@ -348,6 +349,13 @@ function MapPageInner() {
     const dragStartY = useRef<number>(0);
     const panelDragDidDragRef = useRef(false); // 드래그 시 클릭(순환) 방지용
     const fetchAbortRef = useRef<AbortController | null>(null);
+    const queryAppliedRef = useRef<string | null>(null);
+
+    // 코스 상세(/courses/[id])에서 넘어온 지도 딥링크 파라미터
+    const incomingCourseId = searchParams.get("courseId");
+    const incomingPlaceIndexRaw = searchParams.get("placeIndex");
+    const incomingRouteMode = searchParams.get("routeMode");
+    const fromCourseDetail = searchParams.get("from") === "courseDetail";
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
@@ -464,6 +472,67 @@ function MapPageInner() {
         },
         [fetchCourseDetailToCache],
     );
+
+    // 코스 상세 지도 모달에서 들어오면 해당 코스/장소를 즉시 오픈
+    useEffect(() => {
+        if (!fromCourseDetail || !incomingCourseId) return;
+        const key = `${incomingCourseId}:${incomingPlaceIndexRaw ?? ""}:${incomingRouteMode ?? ""}`;
+        if (queryAppliedRef.current === key) return;
+        queryAppliedRef.current = key;
+
+        (async () => {
+            const routeCourseId = `c-${incomingCourseId}`;
+            setActiveTab("courses");
+
+            let cached = courseDetailCacheRef.current[routeCourseId];
+            if (!cached) {
+                try {
+                    await fetchCourseDetailToCache(routeCourseId, incomingCourseId);
+                    cached = courseDetailCacheRef.current[routeCourseId];
+                } catch {}
+            }
+            if (!cached) return;
+
+            const selectedCourse =
+                courses.find((c) => c.id === routeCourseId) ??
+                ({
+                    id: routeCourseId,
+                    title: "데이트 코스",
+                    description: "",
+                    distance: 0,
+                } as Course);
+
+            setSelectedCourseForRoute(selectedCourse);
+            setCourseRoutePath(cached.path);
+            setCoursePlacesList(cached.list);
+
+            if (incomingRouteMode === "full") {
+                setSelectedPlace(null);
+                setPanelState("default");
+                return;
+            }
+
+            const parsedIdx = Number(incomingPlaceIndexRaw ?? "0");
+            const safeIdx =
+                Number.isFinite(parsedIdx) && parsedIdx >= 0
+                    ? Math.min(parsedIdx, Math.max(0, cached.list.length - 1))
+                    : 0;
+            const place = cached.list[safeIdx];
+            if (!place) return;
+
+            setSelectedPlace(place);
+            setCenter({ lat: place.latitude, lng: place.longitude });
+            setZoom(17);
+            setPanelState("default");
+        })();
+    }, [
+        fromCourseDetail,
+        incomingCourseId,
+        incomingPlaceIndexRaw,
+        incomingRouteMode,
+        courses,
+        fetchCourseDetailToCache,
+    ]);
 
     /** 코스 탭 → 장소 탭 전환 시 선택 코스·리스트·로딩 초기화 */
     useEffect(() => {

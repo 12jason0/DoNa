@@ -391,6 +391,24 @@ const AIRecommender = () => {
         };
     }, []);
 
+    // 페이지 진입 시 한도 초과 여부 자동 확인
+    useEffect(() => {
+        if (!isLoggedIn) return;
+        authenticatedFetch<{
+            canUse: boolean;
+            limit: number | null;
+            used: number;
+            tier: "FREE" | "BASIC" | "PREMIUM";
+        }>("/api/recommendations/precheck", { method: "GET", cache: "no-store" }, false)
+            .then((pre) => {
+                if (pre?.canUse === false) {
+                    setLimitExceededContext({ tier: pre.tier, limit: pre.limit, used: pre.used });
+                    setShowAlreadyUsedModal(true);
+                }
+            })
+            .catch(() => {});
+    }, [isLoggedIn]);
+
     // 로그아웃
     const handleLogout = async () => {
         try {
@@ -619,8 +637,8 @@ const AIRecommender = () => {
                     hadNetworkError = true;
                     return [];
                 });
-                if (!Array.isArray(data)) return [] as Course[];
-                return buildList(data);
+                const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+                return buildList(rows);
             } catch {
                 hadNetworkError = true;
                 return [] as Course[];
@@ -1213,8 +1231,18 @@ const AIRecommender = () => {
                 )}
                 {/* 🟢 오늘의 데이트 추천 일일 사용 완료 모달 */}
                 {showAlreadyUsedModal && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-[#1a241b] rounded-4xl w-full max-w-sm overflow-hidden shadow-2xl border border-white/20 dark:border-gray-800/50 animate-in zoom-in-95 duration-300">
+                    <div
+                        className="fixed inset-0 z-100 flex items-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                        onClick={() => { setShowAlreadyUsedModal(false); setLimitExceededContext(null); }}
+                    >
+                        <div
+                            className="bg-white dark:bg-[#1a241b] rounded-t-3xl w-full max-w-lg mx-auto overflow-hidden shadow-2xl border-t border-white/20 dark:border-gray-800/50 animate-in slide-in-from-bottom duration-300 pb-safe"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* 핸들바 */}
+                            <div className="flex justify-center pt-3 pb-1">
+                                <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                            </div>
                             <div className="p-8 text-center">
                                 <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
                                     <CheckCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" />

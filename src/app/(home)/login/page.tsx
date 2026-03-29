@@ -313,21 +313,10 @@ const Login = () => {
                             </div>
                         </div>
 
-                        <div className="mt-4 space-y-3 text-black">
-                            <button
-                                type="button"
-                                onClick={() => handleSocialLogin("kakao")}
-                                disabled={loading}
-                                className="w-full flex items-center justify-center px-4 py-3 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-semibold shadow"
-                            >
-                                <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 3c5.799 0 10.5 3.402 10.5 7.5 0 4.098-4.701 7.5-10.5 7.5-.955 0-1.886-.1-2.777-.282L3.234 21l1.781-3.13C3.69 16.56 1.5 14.165 1.5 10.5 1.5 6.402 6.201 3 12 3z" />
-                                </svg>
-                                {loading ? t("authPage.login.kakaoSubmitting") : t("authPage.login.kakaoSubmit")}
-                            </button>
-
-                            {/* Apple 로그인 버튼 (웹 및 모바일 앱 모두 지원) */}
+                        <div className="mt-4 flex items-center justify-center gap-5 text-black">
+                            {/* Apple 왼쪽 · 카카오 오른쪽 */}
                             <AppleLoginButton
+                                variant="icon"
                                 next={next}
                                 onSuccess={async (credential: any) => {
                                     try {
@@ -387,6 +376,18 @@ const Login = () => {
                                 }}
                                 disabled={loading}
                             />
+                            <button
+                                type="button"
+                                onClick={() => handleSocialLogin("kakao")}
+                                disabled={loading}
+                                title={t("authPage.login.kakaoSubmit")}
+                                aria-label={t("authPage.login.kakaoSubmit")}
+                                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#FEE500] text-[#191919] shadow-md transition-colors hover:bg-[#FDD835] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                                    <path d="M12 3c5.799 0 10.5 3.402 10.5 7.5 0 4.098-4.701 7.5-10.5 7.5-.955 0-1.886-.1-2.777-.282L3.234 21l1.781-3.13C3.69 16.56 1.5 14.165 1.5 10.5 1.5 6.402 6.201 3 12 3z" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     </>

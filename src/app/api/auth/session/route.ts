@@ -21,13 +21,16 @@ export async function GET(req: NextRequest) {
 
         // 🟢 [Fix]: 쿠키가 있는 경우에만 지연 (로그인 후 쿠키 저장 시간 확보)
         // 로그아웃 시에는 지연하지 않아 빠른 응답 제공
-        const token = req.cookies.get("auth")?.value;
-        if (isApp && token) {
-            // 🟢 [Fix]: 앱 환경에서 쿠키가 있는 경우(로그인 후) 쿠키 동기화를 위해 2초 대기
-            // WebScreen.tsx가 500ms 후에 리다이렉트하므로, 그 전에 쿠키가 저장되도록 충분한 시간 확보
-            // 스플래시가 다 나온 다음 메인으로 가도록 시간을 더 늘림
+        const cookieToken = req.cookies.get("auth")?.value;
+        const authHeader = req.headers.get("authorization");
+        const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+        // 쿠키 기반(구 WebView 흐름)에만 딜레이 적용 — Bearer 토큰(네이티브 앱)은 즉시 응답
+        if (isApp && cookieToken && !bearerToken) {
             await new Promise((resolve) => setTimeout(resolve, 2000));
         }
+
+        const token = cookieToken ?? bearerToken;
 
         if (!token) {
             return NextResponse.json({ authenticated: false, user: null });

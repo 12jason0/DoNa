@@ -8,12 +8,38 @@ import { unstable_cache } from "next/cache";
 import { getTimeOfDayFromKST } from "@/lib/kst";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 
-// 🟢 Hero 슬라이더용 코스 (FREE 등급, "지금 많이 선택한 코스")
-async function getHeroCourses() {
+type HeroSliderItem = {
+    id: string;
+    title: string;
+    imageUrl: string;
+    location: string;
+    concept: string;
+};
+
+function mapRowToHeroItem(c: {
+    id: number;
+    title: string | null;
+    region: string | null;
+    imageUrl: string | null;
+    concept: string | null;
+    coursePlaces?: { place?: { imageUrl?: string | null } | null }[];
+}): HeroSliderItem {
+    return {
+        id: String(c.id),
+        title: c.title || "",
+        imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
+        location: c.region || "",
+        concept: c.concept || "",
+    };
+}
+
+/** "지금 많이 선택한 코스" — 조회수 상위 공개 코스 (등급 제한 제거, FREE만이면 비는 문제 방지) */
+async function getHeroCourses(): Promise<HeroSliderItem[]> {
     try {
         const heroRaw = await prisma.course.findMany({
-            where: { isPublic: true, grade: "FREE" },
-            take: 10,
+            where: { isPublic: true },
+            orderBy: [{ view_count: "desc" }, { id: "desc" }],
+            take: 20,
             select: {
                 id: true,
                 title: true,
@@ -28,22 +54,23 @@ async function getHeroCourses() {
             },
         });
         const filtered = filterCoursesByImagePolicy(heroRaw as unknown as CourseWithPlaces[], "any");
-        if (filtered.length === 0) return [];
-        const threeDayEpoch = Math.floor(Date.now() / 259200000);
-        const startIndex = threeDayEpoch % filtered.length;
-        return Array.from(
-            { length: Math.min(5, filtered.length) },
-            (_, i) => filtered[(startIndex + i) % filtered.length]
-        )        .map((c: any) => ({
-            id: String(c.id),
-            title: c.title || "",
-            imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
-            location: c.region || "",
-            concept: c.concept || "",
-        }));
+        const top = filtered.slice(0, 5);
+        return top.map((c) => mapRowToHeroItem(c as any));
     } catch {
         return [];
     }
+}
+
+/** 히어로 전용 조회가 비었을 때 목록 상단 코스로 폴밄 (동일 슬라이더 형식) */
+function heroFromInitialCourses(courses: any[]): HeroSliderItem[] {
+    if (!Array.isArray(courses) || courses.length === 0) return [];
+    return courses.slice(0, 5).map((c) => ({
+        id: String(c.id),
+        title: c.title || "",
+        imageUrl: c.imageUrl || "",
+        location: c.location || "",
+        concept: c.concept || "",
+    }));
 }
 
 export const dynamic = "force-dynamic";
@@ -280,10 +307,13 @@ export default async function CoursesPage({
         getHeroCourses(),
     ]);
 
+    const heroCourses =
+        initialHeroCourses.length > 0 ? initialHeroCourses : heroFromInitialCourses(initialCourses);
+
     return (
         <Suspense fallback={<div className="min-h-screen bg-white" />}>
             {/* 🟢 initialCourses, initialHeroCourses를 주입하여 클라이언트에서의 첫 로드를 생략 */}
-            <CoursesClient initialCourses={initialCourses} initialHeroCourses={initialHeroCourses} />
+            <CoursesClient initialCourses={initialCourses} initialHeroCourses={heroCourses} />
         </Suspense>
     );
 }

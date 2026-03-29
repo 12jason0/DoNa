@@ -134,22 +134,10 @@ const Signup = () => {
                     </div>
                 )}
 
-                <div className="mt-6 space-y-3">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            window.location.href = `/api/auth/kakao?next=${encodeURIComponent(next)}`;
-                        }}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center px-4 py-4 border border-transparent rounded-2xl shadow-sm text-[15px] font-bold text-[#3C1E1E] bg-[#FEE500] hover:bg-[#FDD835] transition-all disabled:opacity-50"
-                    >
-                        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 3C5.9 3 1 6.5 1 10.8c0 2.6 1.7 4.9 4.3 6.3-.2.8-.8 2.8-.8 3 0 .1 0 .2.2.2.1 0 .2-.1.3-.2 3.3-2.3 4.8-3.4 4.8-3.4.4.1.8.1 1.2.1 6.1 0 11-3.5 11-7.8C23 6.5 18.1 3 12 3z" />
-                        </svg>
-                        {t("authPage.signup.kakaoCta")}
-                    </button>
-
+                <div className="mt-6 flex items-center justify-center gap-5">
                     <AppleLoginButton
+                        variant="icon"
+                        disabled={loading}
                         next={next}
                         onSuccess={async (credential: any) => {
                             setLoading(true);
@@ -175,6 +163,20 @@ const Signup = () => {
                             }
                         }}
                     />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            window.location.href = `/api/auth/kakao?next=${encodeURIComponent(next)}`;
+                        }}
+                        disabled={loading}
+                        title={t("authPage.signup.kakaoCta")}
+                        aria-label={t("authPage.signup.kakaoCta")}
+                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#FEE500] text-[#191919] shadow-md transition-colors hover:bg-[#FDD835] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <svg className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                            <path d="M12 3C5.9 3 1 6.5 1 10.8c0 2.6 1.7 4.9 4.3 6.3-.2.8-.8 2.8-.8 3 0 .1 0 .2.2.2.1 0 .2-.1.3-.2 3.3-2.3 4.8-3.4 4.8-3.4.4.1.8.1 1.2.1 6.1 0 11-3.5 11-7.8C23 6.5 18.1 3 12 3z" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div className="relative my-8">

@@ -8,9 +8,17 @@ interface AppleLoginButtonProps {
     onError?: (error: any) => void;
     disabled?: boolean;
     next?: string; // 리다이렉트 경로
+    /** icon: 검은 원형 버튼(로그인/회원가입 소셜 행과 맞춤) */
+    variant?: "default" | "icon";
 }
 
-export default function AppleLoginButton({ onSuccess, onError, disabled, next }: AppleLoginButtonProps) {
+export default function AppleLoginButton({
+    onSuccess,
+    onError,
+    disabled,
+    next,
+    variant = "default",
+}: AppleLoginButtonProps) {
     const { t } = useLocale();
     const [isMobileApp, setIsMobileApp] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
@@ -226,23 +234,41 @@ export default function AppleLoginButton({ onSuccess, onError, disabled, next }:
         }
     };
 
+    const appleSvg = (
+        <svg
+            className={variant === "icon" ? "h-7 w-7" : "w-5 h-5 mr-3"}
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+        >
+            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+        </svg>
+    );
+
+    if (variant === "icon") {
+        return (
+            <button
+                type="button"
+                onClick={handleAppleLogin}
+                disabled={disabled || isLoggingIn}
+                title={t("authPage.login.appleSubmit")}
+                aria-label={t("authPage.login.appleSubmit")}
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-md transition-colors hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-[#1a241b] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                {appleSvg}
+            </button>
+        );
+    }
+
     return (
         <button
             type="button"
             onClick={handleAppleLogin}
             disabled={disabled || isLoggingIn}
-            className="w-full flex items-center justify-center px-4 py-4 bg-black text-white rounded-2xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-bold shadow-sm text-[15px]"
+            className="flex w-full cursor-pointer items-center justify-center rounded-2xl bg-black px-4 py-4 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
-            {/* Apple 공식 로고 SVG (공식 가이드라인 준수) */}
-            <svg
-                className="w-5 h-5 mr-3"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-            >
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-            </svg>
+            {appleSvg}
             {disabled || isLoggingIn ? t("authPage.login.submitting") : t("authPage.login.appleSubmit")}
         </button>
     );

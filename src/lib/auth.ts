@@ -51,8 +51,9 @@ export function resolveUserId(request: NextRequest): number | null {
             return Number(fromHeader);
         }
 
-        // 2) auth 쿠키(JWT) 디코드
-        const token = request.cookies.get("auth")?.value;
+        // 2) auth 또는 authorization 쿠키(JWT) — 미들웨어·레거시 클라이언트와 동일한 우선순위
+        const token =
+            request.cookies.get("auth")?.value || request.cookies.get("authorization")?.value || null;
         if (!token) return null;
         
         try {

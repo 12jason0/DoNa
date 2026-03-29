@@ -8,7 +8,6 @@ import dynamic from "next/dynamic";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { type LoginModalPresetKey } from "@/constants/loginModalPresets";
-import BridgeModal from "@/components/BridgeModal";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -411,7 +410,6 @@ export default function CourseDetailClient({
     const [subscriptionModalContext] = useState<"COURSE">("COURSE");
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginModalPreset, setLoginModalPreset] = useState<LoginModalPresetKey>("courseDetail");
-    const [showBridgeModal, setShowBridgeModal] = useState(false);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
     const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
     const [showFavoriteAddedModal, setShowFavoriteAddedModal] = useState(false);
@@ -1593,7 +1591,7 @@ export default function CourseDetailClient({
     // 🔒 [조건부 렌더링] isUnlocked 상태를 기준으로 콘텐츠 렌더링
     const isUnlocked = !courseData.isLocked;
     // 🔒 모달이 표시될 때는 코스 콘텐츠를 완전히 숨김
-    const shouldShowContent = isUnlocked && !showSubscriptionModal && !showLoginModal && !showBridgeModal;
+    const shouldShowContent = isUnlocked && !showSubscriptionModal && !showLoginModal;
 
     return (
         <>
@@ -3078,16 +3076,6 @@ export default function CourseDetailClient({
                             return; // 모달 상태 변경 없이 바로 이탈
                         }
                         setShowSubscriptionModal(false);
-                    }}
-                />
-            )}
-            {showBridgeModal && (
-                <BridgeModal
-                    onClose={() => setShowBridgeModal(false)}
-                    onProceedToLogin={() => {
-                        setShowBridgeModal(false);
-                        setLoginModalPreset("courseDetail");
-                        setShowLoginModal(true);
                     }}
                 />
             )}

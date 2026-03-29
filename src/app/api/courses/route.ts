@@ -210,7 +210,18 @@ export async function GET(request: NextRequest) {
         const andWhere: any[] = [{ isPublic: true }];
         if (concept) andWhere.push({ concept: { contains: concept, mode: "insensitive" } }); // 🟢 case-insensitive로 변경
         if (gradeParam) andWhere.push({ grade: gradeParam });
-        if (regionQuery) andWhere.push({ region: { contains: regionQuery, mode: "insensitive" } }); // 🟢 case-insensitive로 변경
+        if (regionQuery) {
+            // "합정·용산" → ['합정', '용산'] 토큰 분리 후 OR 조건
+            const regionTokens = regionQuery
+                .split(/[·,\/\s]+/)
+                .map((t) => t.trim())
+                .filter((t) => t.length >= 2);
+            if (regionTokens.length > 1) {
+                andWhere.push({ OR: regionTokens.map((token) => ({ region: { contains: token, mode: "insensitive" } })) });
+            } else {
+                andWhere.push({ region: { contains: regionQuery, mode: "insensitive" } });
+            }
+        }
         if (q) {
             andWhere.push({
                 OR: [

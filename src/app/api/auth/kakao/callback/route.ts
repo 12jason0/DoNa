@@ -59,11 +59,14 @@ export async function GET(request: NextRequest) {
         });
 
         const setCookie = response.headers.get("set-cookie");
+        const responseBody = await response.json().catch(() => ({}));
+        const jwtToken: string = (responseBody as any)?.token ?? "";
 
         // 🟢 [2026-01-21] 모바일 앱인 경우: 앱의 커스텀 스킴으로 리다이렉트 (조건 강화)
         if (isMobileApp || normalizedState.includes("mobile")) {
             // app.json에 설정된 scheme인 duna:// 를 사용합니다.
-            const appRedirectUrl = `duna://success?next=${encodeURIComponent(actualNext)}`;
+            // JWT 토큰을 딥링크에 포함 → 앱이 MMKV에 저장해서 Bearer 인증에 사용
+            const appRedirectUrl = `duna://success?token=${encodeURIComponent(jwtToken)}&next=${encodeURIComponent(actualNext)}`;
             return new NextResponse(null, {
                 status: 307,
                 headers: {

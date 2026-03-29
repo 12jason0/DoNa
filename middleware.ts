@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { resolveUserId } from "@/lib/auth";
 
 export function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
-    // 🟢 [배포용 최종 Fix]: 서버 API에서 사용하는 이름과 반드시 일치시켜야 합니다.
-    // 쿠키 이름 불일치로 인한 무한 루프 방지
-    const token = req.cookies.get("authorization")?.value || req.cookies.get("auth")?.value;
-    const isAuth = Boolean(token);
+    // 🟢 [Fix]: 쿠키 문자열만 존재하는 것과 실제 유효 JWT를 구분 (만료·변조 토큰은 비로그인으로 처리)
+    // AuthContext와 동일하게 검증해, 푸터 로그인 → /login 클릭 시 무효한 쿠키로 홈으로 튕기는 현상 방지
+    const resolvedUserId = resolveUserId(req);
+    const isAuth = Boolean(resolvedUserId && resolvedUserId > 0);
 
     // 1. Prefetch 및 RSC 요청 제외
     if (req.headers.get("x-middleware-prefetch") || req.nextUrl.searchParams.has("_rsc")) {
