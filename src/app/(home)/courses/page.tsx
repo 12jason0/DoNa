@@ -326,9 +326,9 @@ async function getInitialCourses(searchParams: { [key: string]: string | string[
 export default async function CoursesPage({
     searchParams,
 }: {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const resolvedParams = await Promise.resolve(searchParams);
+    const resolvedParams = await searchParams;
     const [initialCourses, initialHeroCourses] = await Promise.all([
         getInitialCourses(resolvedParams),
         getHeroCourses(),

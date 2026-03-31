@@ -287,7 +287,7 @@ export default function PlaceDetailView({ place }: { place: PlaceDetailSerialize
                         </div>
                     )}
 
-                    {place.tags && (
+                    {Boolean(place.tags) && (
                         <div className="bg-white rounded-2xl shadow-lg p-6">
                             <h2 className="text-2xl font-bold mb-4">{t("placeDetail.tags")}</h2>
                             <div className="flex flex-wrap gap-2">
