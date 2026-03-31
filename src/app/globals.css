@@ -1,4 +1,109 @@
 @import "tailwindcss";
+@source not "../../mobile";
+
+/* 레거시·컴포넌트 직접 지정용 (지도 등) — public/fonts/Cafe24DongdongRegular.{otf,ttf} */
+@font-face {
+    font-family: "Cafe24Dongdong";
+    src:
+        url("/fonts/Cafe24DongdongRegular.otf") format("opentype"),
+        url("/fonts/Cafe24DongdongRegular.ttf") format("truetype");
+    font-weight: 100 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/*
+ * RoundDisplay: 감성용 합성 패밀리 — 라틴·숫자는 Kalam, 한글 음절·자모는 Cafe24Dongdong (unicode-range)
+ * 일·중 한자 충돌은 html lang / :lang() 보완 규칙으로 처리
+ */
+@font-face {
+    font-family: "RoundDisplay";
+    src: url("/fonts/Kalam-Light.ttf") format("truetype");
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0020-007F, U+00A0-00FF, U+0100-024F, U+2000-206F, U+20AC;
+}
+@font-face {
+    font-family: "RoundDisplay";
+    src: url("/fonts/Kalam-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0020-007F, U+00A0-00FF, U+0100-024F, U+2000-206F, U+20AC;
+}
+@font-face {
+    font-family: "RoundDisplay";
+    src: url("/fonts/Kalam-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0020-007F, U+00A0-00FF, U+0100-024F, U+2000-206F, U+20AC;
+}
+@font-face {
+    font-family: "RoundDisplay";
+    src:
+        url("/fonts/Cafe24DongdongRegular.otf") format("opentype"),
+        url("/fonts/Cafe24DongdongRegular.ttf") format("truetype");
+    font-weight: 100 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+3000-303F, U+AC00-D7A3, U+1100-11FF, U+3130-318F, U+A960-A97F;
+}
+
+/* fallback 체인 직접 지정용 */
+@font-face {
+    font-family: "Kalam";
+    src: url("/fonts/Kalam-Light.ttf") format("truetype");
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Kalam";
+    src: url("/fonts/Kalam-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Kalam";
+    src: url("/fonts/Kalam-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/*
+ * ArrowFix: 화살표/기호만 전용 fallback 사용
+ * NOTE: @font-face src 는 폰트 파일/로컬 폰트여야 하며 CSS URL은 불가
+ */
+@font-face {
+    font-family: "ArrowFix";
+    src: local("Pretendard Variable"), local("Pretendard"), local("Noto Sans Symbols 2"), local("Segoe UI Symbol");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+2190-21FF, U+27F0-27FF, U+2900-297F, U+2B00-2BFF, U+2700-27BF;
+}
+
+/* public/fonts/HachiMaruPop-Regular.ttf — 일본어(ja) */
+@font-face {
+    font-family: "HachiMaruPop";
+    src: url("/fonts/HachiMaruPop-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* public/fonts/ZCOOLKuaiLe-Regular.ttf — 중국어(zh) */
+@font-face {
+    font-family: "ZCOOLKuaiLe";
+    src: url("/fonts/ZCOOLKuaiLe-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* 🟢 Tailwind v4 클래스 기반 다크모드 활성화 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -20,9 +125,42 @@
 :root {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    /* 🟢 최적화: Tailwind 기본 샌스 폰트에 LINE Seed 변수 연결 */
-    --font-sans: var(--font-line-seed), var(--font-geist-sans);
-    --font-mono: var(--font-geist-mono);
+    /* ko 기본: 영어도 Cafe24Dongdong 우선, ja/zh만 전용 폰트로 폴백 */
+    --font-app:
+        "ArrowFix", "Cafe24Dongdong", "HachiMaruPop", "ZCOOLKuaiLe", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+        Roboto, "Noto Sans JP", "Noto Sans SC", "PingFang SC", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    --font-sans: var(--font-app);
+    --font-mono: var(--font-app);
+}
+
+/* 영어 UI */
+html[lang="en"],
+html:lang(en) {
+    --font-app:
+        "ArrowFix", "Kalam", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    --font-sans: var(--font-app);
+    --font-mono: var(--font-app);
+}
+
+/* 일본어 UI — 한자·히라가나 등 전체를 일본용 폰트로 */
+html[lang="ja"],
+html:lang(ja) {
+    --font-app:
+        "ArrowFix", "HachiMaruPop", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", ui-sans-serif,
+        system-ui, sans-serif;
+    --font-sans: var(--font-app);
+    --font-mono: var(--font-app);
+}
+
+/* 중국어 UI */
+html[lang="zh"],
+html[lang="zh-CN"],
+html:lang(zh),
+html:lang(zh-CN) {
+    --font-app:
+        "ArrowFix", "ZCOOLKuaiLe", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: var(--font-app);
+    --font-mono: var(--font-app);
 }
 
 /* 🟢 다크 모드 변수 정의 (클래스 기반) */
@@ -45,11 +183,15 @@ body {
     background-color: var(--background);
     color: var(--foreground);
     /* 🟢 전역 트랜지션: 테마 변경 시 눈의 피로도 감소 */
-    transition: background-color 0.3s ease, color 0.3s ease;
-    /* 🟢 최적화: var(--font-line-seed)를 최우선으로 배치하여 프리로드 경고 해결 */
-    font-family: var(--font-line-seed), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "맑은 고딕", Dotum,
-        "돋움", sans-serif;
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+    font-family: var(--font-app);
+    font-weight: 400;
+}
+
+html[lang="ko"] body {
+    font-weight: 300;
 }
 
 /* 🟢 스플래시 표시 중에만 초록색 배경 강제 적용 */
@@ -57,20 +199,10 @@ body.splash-active {
     background-color: #7fcc9f !important;
 }
 
-@font-face {
-    /* 폰트 패밀리 이름을 'Juache'로 지정 */
-    font-family: "Juache";
-    /* 눈누에서 제공하는 CDN URL 사용 */
-    src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/BMJUA.woff") format("woff");
-    font-weight: normal; /* 주아체는 하나의 굵기만 지원 */
-    font-style: normal;
-    font-display: swap; /* 폰트 로딩 최적화 */
-}
-
 /* 전역 버튼 기본값 통일 */
 @layer base {
     button {
-        @apply rounded-lg font-medium px-4 py-2 transition-colors;
+        @apply rounded-lg font-normal px-4 py-2 transition-colors;
     }
 }
 
@@ -88,10 +220,7 @@ body.splash-active {
 .typography-smooth h4 {
     letter-spacing: -0.02em;
     line-height: 1.3;
-    /* 🟢 최적화: 제목 영역에도 LINE Seed 우선 적용 */
-    font-family: var(--font-line-seed), "SUIT Variable", "SUIT", "Pretendard Variable", Pretendard, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR",
-        "Malgun Gothic", "맑은 고딕", Dotum, "돋움", sans-serif;
+    font-family: var(--font-app);
 }
 
 .typography-smooth p,
@@ -210,31 +339,13 @@ body.splash-active {
         border-color: var(--border-color);
     }
 
-    /* 제목/브랜드 영역에 사용하는 폰트 유틸 */
     .font-brand {
-        /* 🟢 최적화: 브랜드 폰트 스택 최상단에 LINE Seed 추가 */
-        font-family: var(--font-line-seed), "GmarketSans", "SUIT Variable", "SUIT", "Pretendard Variable", Pretendard,
-            -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo",
-            "Noto Sans KR", "Malgun Gothic", "맑은 고딕", Dotum, "돋움", sans-serif;
+        font-family: var(--font-app);
         letter-spacing: -0.02em;
     }
 }
 
 /* removed palette override */
-
-@font-face {
-    font-family: "TmoneyRoundWind";
-    src: url("/assets/fonts/TmoneyRoundWindRegular.ttf") format("truetype");
-    font-weight: 400;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: "TmoneyRoundWind";
-    src: url("/assets/fonts/TmoneyRoundWindExtraBold.ttf") format("truetype");
-    font-weight: 700;
-    font-style: normal;
-}
 
 /* 개발 편의 배지(Next.js Dev Tools) 숨김 - 로컬 개발 화면 가독성 개선 */
 #devtools-indicator,
@@ -282,4 +393,61 @@ button[data-nextjs-dev-tools-button],
 .dark .naver-map-container [data-naver-map="true"] .naver-maps-marker-content,
 .dark .naver-map-container [data-naver-map="true"] [class*="marker"] {
     filter: invert(100%) hue-rotate(-180deg) brightness(110%);
+}
+
+/*
+ * RoundDisplay / Cafe24Dongdong: @theme 는 Turbopack에서 패닉 유발 가능성 있어 미사용.
+ * 비-layer 규칙으로 Tailwind utilities(.font-sans 등)보다 나중에 적용되도록 파일 끝에 둠.
+ */
+.font-sans,
+.font-mono {
+    font-family: var(--font-app);
+}
+
+/* 기호 버튼(+, ×, →, ←)은 locale과 무관하게 한국어 폰트로 고정 */
+.symbol-ko-font {
+    font-family: "Cafe24Dongdong", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* 기존 클래스명 호환 */
+.plus-ko-font {
+    font-family: "Cafe24Dongdong", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/*
+ * 전역 굵기 완화: 합성 볼드 완화 + 한 단계 더 가볍게.
+ */
+.font-medium {
+    font-weight: 350 !important;
+}
+.font-semibold {
+    font-weight: 400 !important;
+}
+.font-bold {
+    font-weight: 450 !important;
+}
+.font-extrabold {
+    font-weight: 500 !important;
+}
+.font-black {
+    font-weight: 600 !important;
+}
+
+html[lang="ko"] .font-normal {
+    font-weight: 300 !important;
+}
+html[lang="ko"] .font-medium {
+    font-weight: 300 !important;
+}
+html[lang="ko"] .font-semibold {
+    font-weight: 350 !important;
+}
+html[lang="ko"] .font-bold {
+    font-weight: 400 !important;
+}
+html[lang="ko"] .font-extrabold {
+    font-weight: 450 !important;
+}
+html[lang="ko"] .font-black {
+    font-weight: 500 !important;
 }

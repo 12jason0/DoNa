@@ -6,12 +6,14 @@ import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useM
 import { useLocale } from "@/context/LocaleContext";
 import { translateCourseConcept } from "@/lib/courseTranslate";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
+import { pickCourseDescription, pickCourseTitle } from "@/lib/courseLocalized";
 import CourseLockOverlay from "./CourseLockOverlay";
 import TicketPlans from "@/components/TicketPlans";
 import LoginModal from "@/components/LoginModal";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/platform";
 import { useAuth } from "@/context/AuthContext";
+import { localeToBcp47 } from "@/lib/localeBcp47";
 
 // --- Interfaces (기존과 동일) ---
 interface PlaceClosedDay {
@@ -42,8 +44,14 @@ export interface CourseCardProps {
     course: {
         id: string;
         title: string;
+        title_en?: string | null;
+        title_ja?: string | null;
+        title_zh?: string | null;
         sub_title?: string;
         description?: string;
+        description_en?: string | null;
+        description_ja?: string | null;
+        description_zh?: string | null;
         imageUrl?: string;
         concept?: string;
         region?: string;
@@ -65,13 +73,14 @@ export interface CourseCardProps {
     showNewBadge?: boolean;
 }
 
-// --- Helper Functions (컴포넌트 외부로 분리하여 메모리 최적화) ---
-const formatViewCount = (views: number) => {
-    if (views >= 10000) return `${(views / 10000).toFixed(views % 10000 ? 1 : 0)}만`;
-    if (views >= 1000) return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}천`;
-    return `${views}`;
-};
+function formatCompactViews(views: number, locale: string): string {
+    return new Intl.NumberFormat(localeToBcp47(locale), {
+        notation: "compact",
+        maximumFractionDigits: 1,
+    }).format(views);
+}
 
+// --- Helper Functions (컴포넌트 외부로 분리하여 메모리 최적화) ---
 const PlaceholderImage = memo(() => (
     <div className="w-full h-full bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center text-gray-300 dark:text-gray-500">
         <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,8 +113,16 @@ const CourseCard = memo(
         const router = useRouter();
         const { isAuthenticated } = useAuth();
         const { t, locale } = useLocale();
-        const translatedTitle = useTranslatedTitle(course.title, locale);
+        const hasDbTranslation = locale === "ko"
+            || (locale === "en" && !!course.title_en?.trim())
+            || (locale === "ja" && !!course.title_ja?.trim())
+            || (locale === "zh" && !!course.title_zh?.trim());
+        const translatedTitleByApi = useTranslatedTitle(hasDbTranslation ? null : course.title, locale);
+        const translatedTitle = hasDbTranslation
+            ? pickCourseTitle(course, locale)
+            : (translatedTitleByApi || course.title);
         const translatedSubTitle = useTranslatedTitle(course.sub_title || "", locale);
+        const translatedDescription = pickCourseDescription(course, locale) || course.description || "";
         const displayConcept = translateCourseConcept(course.concept, t as (k: string) => string);
 
         // 🟢 iOS 플랫폼 감지
@@ -130,13 +147,14 @@ const CourseCard = memo(
         const infoDisplay = useMemo(() => {
             const views = Number(course.viewCount || 0);
             if (views >= 1000) {
-                return { type: "views", content: `👀 ${formatViewCount(views)}명이 보는 중` };
+                const compact = formatCompactViews(views, locale);
+                return { type: "views" as const, content: t("courses.viewsWatching", { compact }) };
             }
             if (course.reviewCount && course.reviewCount > 0) {
-                return { type: "rating", content: `★ ${course.rating} (${course.reviewCount})` };
+                return { type: "rating" as const, content: `★ ${course.rating} (${course.reviewCount})` };
             }
             return null;
-        }, [course.viewCount, course.reviewCount, course.rating]);
+        }, [course.viewCount, course.reviewCount, course.rating, t, locale]);
 
         // [Optimization] 실제 유효한 장소 개수 연산 메모이제이션
         const validPlacesCount = useMemo(() => {
@@ -278,9 +296,12 @@ const CourseCard = memo(
                 <div className="px-1 pt-1">
                     {/* 1. 제목과 설명 영역 */}
                     <div className="mb-2">
-                        <h3 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">
+                        <h3 className="text-[17px] font-medium text-gray-900 dark:text-white leading-tight">
                             {(course.sub_title ? translatedSubTitle : translatedTitle) || course.sub_title || course.title || t("courses.noTitle")}
                         </h3>
+                        {translatedDescription && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{translatedDescription}</p>
+                        )}
                         {course.sub_title && (
                             <p className="text-xs text-gray-600 dark:text-gray-400 font-light mt-1 opacity-90 line-clamp-1">
                                 {translatedTitle || course.title || t("courses.noTitle")}
@@ -289,7 +310,11 @@ const CourseCard = memo(
                     </div>
 
                     {/* 2. 하단 메타 태그 영역 */}
-                    <div className="flex items-center gap-2 mt-3 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                        {infoDisplay && <span>{infoDisplay.content}</span>}
+                        {infoDisplay && (course.region || course.location || validPlacesCount > 0 || course.duration) && (
+                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full shrink-0" />
+                        )}
                         {/* 지역 */}
                         {(course.region || course.location) && (
                             <div className="flex items-center gap-1">
@@ -300,20 +325,17 @@ const CourseCard = memo(
 
                         {/* 구분선 (점) */}
                         {(course.region || course.location) && validPlacesCount > 0 && (
-                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full"></span>
+                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full shrink-0"></span>
                         )}
 
                         {/* 스팟 수 */}
                         {validPlacesCount > 0 && (
-                            <div className="flex items-center gap-1">
-                                <span>👣</span>
-                                <span>{validPlacesCount} 스팟</span>
-                            </div>
+                            <span>{t("courses.metaSpots", { count: validPlacesCount, spots: t("courseDetail.spots") })}</span>
                         )}
 
                         {/* 구분선 */}
                         {validPlacesCount > 0 && course.duration && (
-                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full"></span>
+                            <span className="w-0.5 h-0.5 bg-gray-400 rounded-full shrink-0"></span>
                         )}
 
                         {/* 소요 시간 */}

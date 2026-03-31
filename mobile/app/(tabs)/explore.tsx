@@ -863,7 +863,7 @@ export default function ExploreScreen() {
                                                     </View>
                                                     {isCourse && isSelectedCourse && (
                                                         <TouchableOpacity onPress={(e) => { router.push(`/courses/${item.id.replace("c-", "")}`); }}>
-                                                            <Text style={{ fontSize: 11, fontWeight: "700", color: "#6bb88a" }}>상세 보기</Text>
+                                                            <Text style={{ fontSize: 11, fontWeight: "500", color: "#6bb88a" }}>상세 보기</Text>
                                                         </TouchableOpacity>
                                                     )}
                                                 </View>
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
     root: { flex: 1 },
     fallback: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
     fallbackEmoji: { fontSize: 48, marginBottom: 8 },
-    fallbackTitle: { fontSize: 16, fontWeight: "700" },
+    fallbackTitle: { fontSize: 16, fontWeight: "500" },
     fallbackSub: { fontSize: 13 },
 
     // 상단
@@ -929,13 +929,13 @@ const styles = StyleSheet.create({
         backgroundColor: "#6bb88a", borderRadius: 17,
     },
     tabBtn: { paddingHorizontal: 20, paddingVertical: 6, zIndex: 1 },
-    tabText: { fontSize: 12, fontWeight: "700" },
+    tabText: { fontSize: 12, fontWeight: "500" },
     tabTextActive: { color: "#fff" },
     areaSearchBtn: {
         paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
         shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
     },
-    areaSearchText: { fontSize: 12, fontWeight: "700", color: "#6bb88a" },
+    areaSearchText: { fontSize: 12, fontWeight: "500", color: "#6bb88a" },
 
     // 토스트
     toast: {
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(31,41,55,0.95)", paddingHorizontal: 20, paddingVertical: 12,
         borderRadius: 24, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
     },
-    toastText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    toastText: { color: "#fff", fontSize: 13, fontWeight: "500" },
 
     // 내 위치 버튼
     locationBtn: { position: "absolute", right: 16, zIndex: 20 },
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20, paddingVertical: 12,
         borderBottomWidth: 1,
     },
-    panelTitle: { fontSize: 17, fontWeight: "800", marginBottom: 3 },
+    panelTitle: { fontSize: 17, fontWeight: "600", marginBottom: 3 },
     panelSub: { fontSize: 12 },
     closeCourseBtn: { padding: 8 },
 
@@ -980,9 +980,9 @@ const styles = StyleSheet.create({
     // 장소 상세
     detailHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8, marginTop: 4 },
     categoryBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
-    categoryBadgeText: { fontSize: 12, fontWeight: "700" },
+    categoryBadgeText: { fontSize: 12, fontWeight: "500" },
     closeDetailBtn: { padding: 8 },
-    detailName: { fontSize: 18, fontWeight: "800", marginBottom: 4, lineHeight: 24 },
+    detailName: { fontSize: 18, fontWeight: "600", marginBottom: 4, lineHeight: 24 },
     detailAddress: { fontSize: 13, marginBottom: 20, lineHeight: 18 },
     detailActions: { flexDirection: "row", gap: 10, height: 44 },
     phoneBtn: {
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
         flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
         shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
     },
-    dirBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    dirBtnText: { color: "#fff", fontSize: 14, fontWeight: "500" },
 
     // 목록
     listItem: {
@@ -1006,8 +1006,8 @@ const styles = StyleSheet.create({
     iconBox: { width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" },
     badgeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" },
     badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
-    badgeText: { fontSize: 11, fontWeight: "700" },
-    itemName: { fontSize: 13, fontWeight: "600", marginBottom: 2 },
+    badgeText: { fontSize: 11, fontWeight: "500" },
+    itemName: { fontSize: 13, fontWeight: "500", marginBottom: 2 },
     itemSub: { fontSize: 12 },
     arrowBox: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });

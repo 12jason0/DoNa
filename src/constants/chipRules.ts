@@ -7,17 +7,17 @@ import { REGION_GROUPS } from "./onboardingData";
 // 1. 칩 정의 (최소 세트)
 // ------------------------------------------------------
 export const CHIP_DEFINITIONS = {
-    TODAY_GOOD: { id: "TODAY_GOOD", label: "오늘추천", icon: "", basePriority: 10 },
-    LOW_MOVE: { id: "LOW_MOVE", label: "이동편함", icon: "", basePriority: 9 },
-    WEATHER_SAFE: { id: "WEATHER_SAFE", label: "날씨영향↓", icon: "", basePriority: 8 },
-    QUIET_MOOD: { id: "QUIET_MOOD", label: "조용함", icon: "", basePriority: 7 },
-    EMOTIONAL: { id: "EMOTIONAL", label: "감성", icon: "", basePriority: 6 },
-    PHOTO: { id: "PHOTO", label: "포토", icon: "", basePriority: 5 },
-    COUPLE: { id: "COUPLE", label: "연인추천", icon: "", basePriority: 4 },
-    FIRST_MEET: { id: "FIRST_MEET", label: "첫만남", icon: "", basePriority: 3 },
-    SOLO: { id: "SOLO", label: "혼자가기", icon: "", basePriority: 2 },
-    RESERVATION_OK: { id: "RESERVATION_OK", label: "예약추천", icon: "", basePriority: 1 },
-    WEEKEND_FIT: { id: "WEEKEND_FIT", label: "주말추천", icon: "", basePriority: 9 },
+    TODAY_GOOD: { id: "TODAY_GOOD", icon: "", basePriority: 10 },
+    LOW_MOVE: { id: "LOW_MOVE", icon: "", basePriority: 9 },
+    WEATHER_SAFE: { id: "WEATHER_SAFE", icon: "", basePriority: 8 },
+    QUIET_MOOD: { id: "QUIET_MOOD", icon: "", basePriority: 7 },
+    EMOTIONAL: { id: "EMOTIONAL", icon: "", basePriority: 6 },
+    PHOTO: { id: "PHOTO", icon: "", basePriority: 5 },
+    COUPLE: { id: "COUPLE", icon: "", basePriority: 4 },
+    FIRST_MEET: { id: "FIRST_MEET", icon: "", basePriority: 3 },
+    SOLO: { id: "SOLO", icon: "", basePriority: 2 },
+    RESERVATION_OK: { id: "RESERVATION_OK", icon: "", basePriority: 1 },
+    WEEKEND_FIT: { id: "WEEKEND_FIT", icon: "", basePriority: 9 },
 } as const;
 
 export type ChipId = keyof typeof CHIP_DEFINITIONS;

@@ -140,7 +140,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 }
             }
         } catch (error) {
-            console.error("사용자 등급 조회 실패:", error);
+            console.error("Failed to fetch user tier:", error);
             setCurrentTier("FREE");
         }
     }, [context]);
@@ -203,7 +203,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
         if (typeof window === "undefined") return;
 
         const handlePurchaseSuccess = () => {
-            console.log("[TicketPlans] 결제 성공 이벤트 감지 - 사용자 등급 업데이트 중...");
+            console.log("[TicketPlans] Payment success detected - updating user tier...");
             // 약간의 지연 후 업데이트 (결제 처리 완료 대기)
             setTimeout(() => {
                 fetchUserTier();
@@ -244,7 +244,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
                 }
             });
 
-            console.log("[TicketPlans] RevenueCat 상품 정보 수신:", productMap);
+            console.log("[TicketPlans] RevenueCat product info received:", productMap);
             setRevenueCatProducts(productMap);
         };
 
@@ -437,7 +437,7 @@ const TicketPlans = ({ onClose, isModal = true, courseId, courseGrade, context =
             alert(t("ticketPlans.alerts.appUpdateRequired"));
             setLoading(false);
         } catch (error: any) {
-            console.error("[인앱결제 에러]:", error);
+            console.error("[In-app purchase error]:", error);
             const errorMessage = error?.message || t("ticketPlans.alerts.paymentError");
             alert(errorMessage);
             setLoading(false);

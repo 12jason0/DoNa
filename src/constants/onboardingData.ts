@@ -46,6 +46,11 @@ export const REGION_GROUPS = [
         dbValues: ["홍대", "연남", "신촌", "망원", "합정", "상수"],
     },
     {
+        id: "MAPO",
+        label: "마포 · 합정 · 홍대",
+        dbValues: ["마포"],
+    },
+    {
         id: "JONGNO",
         label: "종로 · 북촌 · 서촌",
         dbValues: ["종로", "북촌", "서촌", "인사", "안국", "혜화", "대학로", "익선", "광화문"],
@@ -152,12 +157,13 @@ export const VALUE_OPTIONS = [
     },
 ];
 
+/** 동행자 — value는 API/DB 저장용(한글 고정), id는 i18n 키(onboarding.crew.{id}) */
 export const CREW_OPTIONS = [
-    { value: "연인", label: "💖 연인", sub: "사랑받는 센스쟁이" },
-    { value: "친구", label: "😎 친구", sub: "수다 떨기 좋은 인싸" },
-    { value: "혼자", label: "🧘 혼자", sub: "프로 독학러" },
-    { value: "소개팅", label: "👋 소개팅", sub: "설레는 첫 만남" },
-];
+    { value: "연인", id: "partner" },
+    { value: "친구", id: "friend" },
+    { value: "혼자", id: "solo" },
+    { value: "소개팅", id: "blindDate" },
+] as const;
 
 // ... (위쪽 기존 코드들: REGION_GROUPS, VIBE_OPTIONS 등은 그대로 둠) ...
 

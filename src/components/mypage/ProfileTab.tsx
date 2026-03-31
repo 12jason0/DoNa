@@ -6,6 +6,8 @@ import Link from "next/link";
 import { UserInfo, UserPreferences } from "@/types/user";
 import { authenticatedFetch, apiFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
+import type { TranslationKeys } from "@/types/i18n";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { isIOS, isMobileApp, isAndroid } from "@/lib/platform";
 import DeleteUsersModal from "./DeleteUsersModal";
@@ -177,7 +179,7 @@ const ProfileTab = ({
                     setNotificationEnabled(false);
                 }
             } catch (error) {
-                console.error("알림 상태 조회 오류:", error);
+                console.error("Failed to fetch notification state:", error);
                 setNotificationEnabled(false);
             }
         };
@@ -281,7 +283,7 @@ const ProfileTab = ({
                 }
             }
         } catch (error: any) {
-            console.error("알림 토글 오류:", error);
+            console.error("Failed to toggle notifications:", error);
             // 실패 시 원래 상태로 되돌리기
             setNotificationEnabled(!newSubscribedState);
             if (typeof window !== "undefined") {
@@ -421,7 +423,7 @@ const ProfileTab = ({
                             {userPreferences.concept && userPreferences.concept.length > 0 && (
                                 <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-emerald-100 dark:hover:border-emerald-800/50 transition-colors group">
                                     <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                        선호 콘셉트
+                                        {t("mypage.profileTab.preferredConceptLabel")}
                                     </h4>
                                     <div
                                         className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide"
@@ -432,7 +434,8 @@ const ProfileTab = ({
                                                 key={idx}
                                                 className="px-3.5 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold rounded-lg text-sm whitespace-nowrap shrink-0 border border-emerald-200 dark:border-emerald-800/50"
                                             >
-                                                #{item}
+                                                #
+                                                {translateCourseConcept(item, (k) => t(k as TranslationKeys))}
                                             </span>
                                         ))}
                                     </div>
@@ -443,7 +446,7 @@ const ProfileTab = ({
                             {userPreferences.mood && userPreferences.mood.length > 0 && (
                                 <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-emerald-100 dark:hover:border-emerald-800/50 transition-colors group">
                                     <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                        선호 분위기
+                                        {t("mypage.profileTab.preferredMoodLabel")}
                                     </h4>
                                     <div
                                         className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide"
@@ -454,7 +457,8 @@ const ProfileTab = ({
                                                 key={idx}
                                                 className="px-3.5 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold rounded-lg text-sm whitespace-nowrap shrink-0 border border-orange-200 dark:border-orange-800/50"
                                             >
-                                                #{item}
+                                                #
+                                                {translateCourseConcept(item, (k) => t(k as TranslationKeys))}
                                             </span>
                                         ))}
                                     </div>
@@ -465,7 +469,7 @@ const ProfileTab = ({
                             {userPreferences.regions && userPreferences.regions.length > 0 && (
                                 <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-emerald-100 dark:hover:border-emerald-800/50 transition-colors group">
                                     <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                        관심 지역
+                                        {t("mypage.profileTab.interestedRegionsLabel")}
                                     </h4>
                                     <div
                                         className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide"
@@ -486,13 +490,13 @@ const ProfileTab = ({
                     ) : (
                         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                             <p className="text-gray-500 dark:text-gray-400 font-medium mb-4">
-                                아직 등록된 취향 정보가 없어요 😢
+                                {t("mypage.profileTab.preferencesEmptyTitle")}
                             </p>
                             <button
                                 onClick={onEditPreferences}
                                 className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline hover:text-emerald-700 dark:hover:text-emerald-500 transition-colors"
                             >
-                                지금 바로 설정하러 가기 &rarr;
+                                {t("mypage.profileTab.preferencesEmptyCta")}
                             </button>
                         </div>
                     )}
@@ -860,12 +864,14 @@ const ProfileTab = ({
                     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("mypage.profileTab.businessInfo")}</h4>
                         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 leading-relaxed mb-4">
-                            <p className="font-semibold text-gray-600 dark:text-gray-400">(주)두나 (DoNa)</p>
-                            <p>대표: 오승용 | 사업자등록번호: 166-10-03081</p>
-                            <p>통신판매업 신고번호: 제 2025-충남홍성-0193 호</p>
-                            <p>주소: 충청남도 홍성군 홍북읍 신대로 33</p>
-                            <p>문의: 12jason@donacouse.com</p>
-                            <p>고객센터: 010-2481-9824</p>
+                            <p className="font-semibold text-gray-600 dark:text-gray-400">
+                                {t("mypage.profileTab.businessCompanyName")}
+                            </p>
+                            <p>{t("mypage.profileTab.businessLineCeoReg")}</p>
+                            <p>{t("mypage.profileTab.businessLineMailOrder")}</p>
+                            <p>{t("mypage.profileTab.businessLineAddress")}</p>
+                            <p>{t("mypage.profileTab.businessLineInquiry")}</p>
+                            <p>{t("mypage.profileTab.businessLineCustomerCenter")}</p>
                         </div>
                         {/* 서비스 소개, 이용 안내, 개인정보처리방침, 이용약관 */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -896,6 +902,13 @@ const ProfileTab = ({
                                 className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                             >
                                 {t("mypage.profileTab.footerTerms")}
+                            </Link>
+                            <Link
+                                href="/contact"
+                                prefetch={true}
+                                className="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1 col-span-2"
+                            >
+                                {t("mypage.profileTab.footerContact")}
                             </Link>
                         </div>
                     </div>

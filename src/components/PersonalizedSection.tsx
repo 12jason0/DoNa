@@ -4,16 +4,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RECOMMENDATION_MESSAGES, UserTagType } from "@/constants/recommendations";
-import { CHIP_DEFINITIONS, type ChipId } from "@/constants/chipRules";
-import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
+import type { ChipId } from "@/constants/chipRules";
 import LoginModal from "@/components/LoginModal";
 import { useLocale } from "@/context/LocaleContext";
 import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
+import type { TranslationKeys } from "@/types/i18n";
+import { pickCourseTitle } from "@/lib/courseLocalized";
 
 interface Course {
     id: number;
     title: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     imageUrl: string | null;
     region: string | null;
     tags: any;
@@ -34,47 +37,37 @@ function getMainDayType(): "today" | "weekend" {
     return kst.getDay() === 0 || kst.getDay() === 6 ? "weekend" : "today";
 }
 
-function readMainRecommendationCache(key: string): { recommendations: Course[]; hasOnboardingData: boolean; tagType: UserTagType } | null {
+function readMainRecommendationCache(key: string): { recommendations: Course[]; hasOnboardingData: boolean } | null {
     try {
         const raw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(key) : null;
         if (!raw) return null;
-        const parsed = JSON.parse(raw) as { recommendations?: Course[]; hasOnboardingData?: boolean; tagType?: UserTagType };
+        const parsed = JSON.parse(raw) as { recommendations?: Course[]; hasOnboardingData?: boolean };
         if (!Array.isArray(parsed.recommendations) || parsed.recommendations.length === 0) return null;
         return {
             recommendations: parsed.recommendations,
             hasOnboardingData: Boolean(parsed.hasOnboardingData),
-            tagType: parsed.tagType ?? "default",
         };
     } catch {
         return null;
     }
 }
 
-function saveMainRecommendationCache(
-    key: string,
-    recommendations: Course[],
-    hasOnboardingData: boolean,
-    tagType: UserTagType
-) {
+function saveMainRecommendationCache(key: string, recommendations: Course[], hasOnboardingData: boolean) {
     try {
         if (typeof sessionStorage !== "undefined" && recommendations.length > 0) {
-            sessionStorage.setItem(
-                key,
-                JSON.stringify({ recommendations, hasOnboardingData, tagType })
-            );
+            sessionStorage.setItem(key, JSON.stringify({ recommendations, hasOnboardingData }));
         }
     } catch {}
 }
 
 export default function PersonalizedSection() {
     const router = useRouter();
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState(() => "");
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // 🟢 null = 아직 확인 중
     const [hasOnboardingData, setHasOnboardingData] = useState(false); // 온보딩 데이터 보유 여부
-    const [currentTagType, setCurrentTagType] = useState<UserTagType>("default");
 
     const [showMoreModal, setShowMoreModal] = useState(false);
     // 🟢 모달 내 오늘/주말 탭 (today=오늘, weekend=주말)
@@ -124,7 +117,6 @@ export default function PersonalizedSection() {
         if (cached) {
             setCourses(cached.recommendations);
             setHasOnboardingData(cached.hasOnboardingData);
-            setCurrentTagType(cached.tagType);
             setLoading(false);
             // 백그라운드에서 최신 데이터로 갱신 (같은 날이면 결과 동일할 가능성 높음)
             apiFetch(`/api/recommendations?limit=3&dayType=${mainDayType}`, {
@@ -146,24 +138,9 @@ export default function PersonalizedSection() {
                             (session.user as any)?.hasOnboarding === true ||
                             (session.user as any)?.onboardingComplete === true;
                     }
-                    let tagType: UserTagType = isUserAuthenticated ? "default" : "guest";
-                    if (isUserAuthenticated && recommendations[0]?.tags) {
-                        const topTags = recommendations[0].tags;
-                        if (topTags.concept?.includes("힐링") || topTags.mood?.includes("조용한")) tagType = "healing";
-                        else if (
-                            topTags.concept?.includes("인생샷") ||
-                            topTags.mood?.includes("사진") ||
-                            topTags.mood?.includes("인스타")
-                        )
-                            tagType = "photo";
-                        else if (topTags.concept?.includes("맛집") || topTags.concept?.includes("먹방")) tagType = "food";
-                        else if (topTags.budget === "저렴함" || topTags.concept?.includes("가성비")) tagType = "cost";
-                        else if (topTags.mood?.includes("활동적인")) tagType = "activity";
-                    }
                     setCourses(recommendations);
                     setHasOnboardingData(hasOnboarding);
-                    setCurrentTagType(tagType);
-                    saveMainRecommendationCache(cacheKey, recommendations, hasOnboarding, tagType);
+                    saveMainRecommendationCache(cacheKey, recommendations, hasOnboarding);
                 })
                 .catch(() => {});
             return;
@@ -204,26 +181,9 @@ export default function PersonalizedSection() {
                 }
                 setCourses(recommendations);
                 setHasOnboardingData(hasOnboarding);
-
-                let tagType: UserTagType = isUserAuthenticated ? "default" : "guest";
-                if (isUserAuthenticated && recommendations[0]?.tags) {
-                    const topTags = recommendations[0].tags;
-                    if (topTags.concept?.includes("힐링") || topTags.mood?.includes("조용한")) tagType = "healing";
-                    else if (
-                        topTags.concept?.includes("인생샷") ||
-                        topTags.mood?.includes("사진") ||
-                        topTags.mood?.includes("인스타")
-                    )
-                        tagType = "photo";
-                    else if (topTags.concept?.includes("맛집") || topTags.concept?.includes("먹방")) tagType = "food";
-                    else if (topTags.budget === "저렴함" || topTags.concept?.includes("가성비")) tagType = "cost";
-                    else if (topTags.mood?.includes("활동적인")) tagType = "activity";
-                }
-                setCurrentTagType(tagType);
-                saveMainRecommendationCache(cacheKey, recommendations, hasOnboarding, tagType);
+                saveMainRecommendationCache(cacheKey, recommendations, hasOnboarding);
             } else {
                 setCourses([]);
-                setCurrentTagType(isUserAuthenticated ? "default" : "guest");
             }
         } catch (error) {
             console.error("추천 로딩 실패:", error);
@@ -286,7 +246,6 @@ export default function PersonalizedSection() {
             setWeekendCourses([]);
             setUserName(t("commonFallback.member"));
             setIsLoggedIn(false);
-            setCurrentTagType("guest");
             setLoading(false);
             setWeekendLoading(false);
             setHasOnboardingData(false);
@@ -342,12 +301,6 @@ export default function PersonalizedSection() {
         );
     }
 
-    // ✅ 여기서 멘트를 가져옵니다!
-    // 비로그인 상태이면 무조건 guest 메시지 사용, 로그인 상태이면 태그 분석 결과 사용
-    const content = !isLoggedIn
-        ? RECOMMENDATION_MESSAGES["guest"]
-        : RECOMMENDATION_MESSAGES[currentTagType] || RECOMMENDATION_MESSAGES["default"];
-
     return (
         <section className="py-2 px-6">
             {/* 1. 헤더: 오늘의 선택 (18px/700) + 설명(비로그인 시) */}
@@ -365,11 +318,6 @@ export default function PersonalizedSection() {
                         {!isLoggedIn && (
                             <p className="text-[14px] font-normal text-[#7A8E99] dark:text-gray-500 mt-1 animate-fade-in">
                                 {t("personalized.loginHint")}
-                            </p>
-                        )}
-                        {isLoggedIn && content.sectionTitle && (
-                            <p className="text-[12px] text-gray-400 dark:text-gray-500 font-medium mt-1 animate-fade-in">
-                                {content.sectionTitle}
                             </p>
                         )}
                     </>
@@ -413,7 +361,7 @@ export default function PersonalizedSection() {
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                                    No Image
+                                                    {t("common.imagePlaceholder")}
                                                 </div>
                                             );
                                         })()}
@@ -427,22 +375,18 @@ export default function PersonalizedSection() {
                                     </p>
                                 )}
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-snug animate-fade-in tracking-tight">
-                                    <TranslatedCourseTitle title={courses[0].title} />
+                                    {pickCourseTitle(courses[0], locale) || courses[0].title}
                                 </h3>
                                 {courses[0].chips && courses[0].chips.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mt-2">
-                                        {courses[0].chips.map((chipId) => {
-                                            const def = CHIP_DEFINITIONS[chipId];
-                                            if (!def) return null;
-                                            return (
-                                                <span
-                                                    key={chipId}
-                                                    className="inline-flex px-2.5 py-1 rounded-full text-[13px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                                                >
-                                                    #{def.label}
-                                                </span>
-                                            );
-                                        })}
+                                        {courses[0].chips.map((chipId) => (
+                                            <span
+                                                key={chipId}
+                                                className="inline-flex px-2.5 py-1 rounded-full text-[13px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                                            >
+                                                #{t(`chip.${chipId}` as TranslationKeys)}
+                                            </span>
+                                        ))}
                                     </div>
                                 )}
                                 <button
@@ -451,7 +395,7 @@ export default function PersonalizedSection() {
                                     className="mt-4 inline-flex items-center gap-1 px-4 py-2 rounded-full text-[14px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white active:opacity-90 cursor-pointer transition-colors"
                                 >
                                     {t("personalized.viewCourse")}
-                                    <span className="inline-block">→</span>
+                                    <span className="inline-block symbol-ko-font">→</span>
                                 </button>
                             </div>
                         </>
@@ -465,7 +409,7 @@ export default function PersonalizedSection() {
                             className="text-[14px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
                         >
                             {t("personalized.viewMore")}
-                            <span className="inline-block">→</span>
+                            <span className="inline-block symbol-ko-font">→</span>
                         </button>
                     </div>
                 )}
@@ -576,31 +520,28 @@ export default function PersonalizedSection() {
                                                         />
                                                     ) : (
                                                         <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                                                            No Image
+                                                            {t("common.imagePlaceholder")}
                                                         </div>
                                                     );
                                                 })()}
                                                 <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                                                 <div className="absolute bottom-3 left-3 right-3 text-white">
                                                     <h4 className="font-bold line-clamp-2">
-                                                        <TranslatedCourseTitle title={course.title} />
+                                                        {pickCourseTitle(course, locale) || course.title}
                                                     </h4>
                                                     {course.region && (
                                                         <span className="text-xs text-gray-300">{course.region}</span>
                                                     )}
                                                     {course.chips && course.chips.length > 0 && (
                                                         <div className="flex flex-wrap gap-1.5 mt-2">
-                                                            {course.chips.slice(0, 3).map((chipId) => {
-                                                                const def = CHIP_DEFINITIONS[chipId];
-                                                                return def ? (
-                                                                    <span
-                                                                        key={chipId}
-                                                                        className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm"
-                                                                    >
-                                                                        #{def.label}
-                                                                    </span>
-                                                                ) : null;
-                                                            })}
+                                                            {course.chips.slice(0, 3).map((chipId) => (
+                                                                <span
+                                                                    key={chipId}
+                                                                    className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm"
+                                                                >
+                                                                    #{t(`chip.${chipId}` as TranslationKeys)}
+                                                                </span>
+                                                            ))}
                                                         </div>
                                                     )}
                                                 </div>

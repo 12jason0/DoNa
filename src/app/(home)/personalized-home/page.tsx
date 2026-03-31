@@ -4,6 +4,18 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
+import {
+    normalizeCompanionCode,
+    normalizeRegionCode,
+    PURPOSE_CODE_TO_GOAL_MOOD,
+    GOAL_DETAIL_CODE_TO_API,
+    COMPANION_CODE_TO_API,
+    REGION_CODE_TO_API,
+    normalizePurposeCode,
+    normalizeGoalDetailCode,
+    answersToKoreanContext,
+} from "@/lib/personalizedHomeAnswerMaps";
 import Image from "@/components/ImageFallback";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient"; // 🟢 쿠키 기반 API 호출
 import { getS3StaticUrl } from "@/lib/s3Static";
@@ -13,6 +25,7 @@ import OnboardingBottomSheet from "@/components/OnboardingBottomSheet";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
 import TapFeedback from "@/components/TapFeedback";
 import { isIOS } from "@/lib/platform";
+import { pickCourseDescription, pickCourseTitle } from "@/lib/courseLocalized";
 import {
     Sparkles,
     MapPin,
@@ -112,6 +125,32 @@ interface Course {
     matchReason?: string;
 }
 
+function regionCodeToDisplay(code: string, t: ReturnType<typeof useLocale>["t"]): string {
+    const c = normalizeRegionCode(code);
+    const m: Record<string, TranslationKeys> = {
+        mulla_yeongdeungpo: "personalizedHome.qRegionMulla",
+        hapjeong_yongsan: "personalizedHome.qRegionHapjeong",
+        anguk_seochon: "personalizedHome.qRegionAnguk",
+        euljiro: "personalizedHome.qRegionEuljiro",
+        yeouido: "personalizedHome.qRegionYeouido",
+    };
+    const key = m[c];
+    return key ? t(key) : "";
+}
+
+function companionCodeToDisplay(code: string, t: ReturnType<typeof useLocale>["t"]): string {
+    const c = normalizeCompanionCode(code);
+    const m: Record<string, TranslationKeys> = {
+        lover: "personalizedHome.qCompanionLover",
+        some: "personalizedHome.qCompanionSome",
+        blind: "personalizedHome.qCompanionBlind",
+        friend: "personalizedHome.qCompanionFriend",
+        alone: "personalizedHome.qCompanionAlone",
+    };
+    const key = m[c];
+    return key ? t(key) : "";
+}
+
 // 질문 시나리오 (t 함수로 번역 적용) - goal + mood_today 통합, 기념일 세부 유지
 const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
     {
@@ -134,11 +173,11 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qPurpose"),
         options: [
-            { text: t("personalizedHome.qGoalAnniversary"), value: "기념일", next: "goal_detail" },
-            { text: t("personalizedHome.qGoalNormal"), value: "무난", next: "companion_today" },
-            { text: t("personalizedHome.qGoalEmotional"), value: "감성", next: "companion_today" },
-            { text: t("personalizedHome.qGoalActive"), value: "활동", next: "companion_today" },
-            { text: t("personalizedHome.qPurposeTrendy"), value: "트렌디", next: "companion_today" },
+            { text: t("personalizedHome.qGoalAnniversary"), value: "anniversary", next: "goal_detail" },
+            { text: t("personalizedHome.qGoalNormal"), value: "casual", next: "companion_today" },
+            { text: t("personalizedHome.qGoalEmotional"), value: "emotional", next: "companion_today" },
+            { text: t("personalizedHome.qGoalActive"), value: "active", next: "companion_today" },
+            { text: t("personalizedHome.qPurposeTrendy"), value: "trendy", next: "companion_today" },
         ],
     },
     {
@@ -146,9 +185,9 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qGoalDetail"),
         options: [
-            { text: t("personalizedHome.qGoalDetail100"), value: "100일", next: "companion_today" },
-            { text: t("personalizedHome.qGoalDetailBirthday"), value: "생일", next: "companion_today" },
-            { text: t("personalizedHome.qGoalDetailYearEnd"), value: "연말", next: "companion_today" },
+            { text: t("personalizedHome.qGoalDetail100"), value: "day100", next: "companion_today" },
+            { text: t("personalizedHome.qGoalDetailBirthday"), value: "birthday", next: "companion_today" },
+            { text: t("personalizedHome.qGoalDetailYearEnd"), value: "yearend", next: "companion_today" },
         ],
     },
     {
@@ -156,11 +195,11 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qCompanion"),
         options: [
-            { text: t("personalizedHome.qCompanionLover"), value: "연인", next: "region_today" },
-            { text: t("personalizedHome.qCompanionSome"), value: "썸 상대", next: "region_today" },
-            { text: t("personalizedHome.qCompanionBlind"), value: "소개팅 상대", next: "region_today" },
-            { text: t("personalizedHome.qCompanionFriend"), value: "친구", next: "region_today" },
-            { text: t("personalizedHome.qCompanionAlone"), value: "혼자", next: "region_today" },
+            { text: t("personalizedHome.qCompanionLover"), value: "lover", next: "region_today" },
+            { text: t("personalizedHome.qCompanionSome"), value: "some", next: "region_today" },
+            { text: t("personalizedHome.qCompanionBlind"), value: "blind", next: "region_today" },
+            { text: t("personalizedHome.qCompanionFriend"), value: "friend", next: "region_today" },
+            { text: t("personalizedHome.qCompanionAlone"), value: "alone", next: "region_today" },
         ],
     },
     {
@@ -168,11 +207,11 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
         type: "ai",
         text: t("personalizedHome.qRegion"),
         options: [
-            { text: t("personalizedHome.qRegionMulla"), value: "문래·영등포", next: "payment_prompt" },
-            { text: t("personalizedHome.qRegionHapjeong"), value: "합정·용산", next: "payment_prompt" },
-            { text: t("personalizedHome.qRegionAnguk"), value: "안국·서촌", next: "payment_prompt" },
-            { text: t("personalizedHome.qRegionEuljiro"), value: "을지로", next: "payment_prompt" },
-            { text: t("personalizedHome.qRegionYeouido"), value: "여의도", next: "payment_prompt" },
+            { text: t("personalizedHome.qRegionMulla"), value: "mulla_yeongdeungpo", next: "payment_prompt" },
+            { text: t("personalizedHome.qRegionHapjeong"), value: "hapjeong_yongsan", next: "payment_prompt" },
+            { text: t("personalizedHome.qRegionAnguk"), value: "anguk_seochon", next: "payment_prompt" },
+            { text: t("personalizedHome.qRegionEuljiro"), value: "euljiro", next: "payment_prompt" },
+            { text: t("personalizedHome.qRegionYeouido"), value: "yeouido", next: "payment_prompt" },
         ],
     },
     {
@@ -189,7 +228,7 @@ const getQuestionFlow = (t: ReturnType<typeof useLocale>["t"]): Question[] => [
 const AIRecommender = () => {
     const router = useRouter();
     const pathname = usePathname();
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const questionFlow = useMemo(() => getQuestionFlow(t), [t]);
 
     // 상태 관리
@@ -324,7 +363,7 @@ const AIRecommender = () => {
             }
             setIsUserDataLoading(false);
         } catch (error) {
-            console.error("사용자 정보 조회 오류:", error);
+            console.error("Failed to fetch user info:", error);
             setIsLoggedIn(false);
             setIsUserDataLoading(false);
         }
@@ -340,7 +379,7 @@ const AIRecommender = () => {
                 if (session.authenticated && session.user) {
                     setIsLoggedIn(true);
                     const u = session.user;
-                    const nick = u.nickname || u.name || (u.email?.split("@")[0]) || t("personalizedHome.userFallback");
+                    const nick = u.nickname || u.name || u.email?.split("@")[0] || t("personalizedHome.userFallback");
                     setUserName(nick);
                     setNickname(nick);
                     setIsUserDataLoading(true);
@@ -353,7 +392,7 @@ const AIRecommender = () => {
                     setIsUserDataLoading(false);
                 }
             } catch (error) {
-                console.error("로그인 상태 확인 실패:", error);
+                console.error("Failed to verify login status:", error);
                 setIsLoggedIn(false);
                 setUserName("");
                 setNickname("");
@@ -422,7 +461,7 @@ const AIRecommender = () => {
             setProfileImageUrl(null);
             resetConversation();
         } catch (error) {
-            console.error("로그아웃 실패:", error);
+            console.error("Logout failed:", error);
             // 🟢 에러 발생 시에도 상태 초기화
             setIsLoggedIn(false);
             setUserName("");
@@ -542,9 +581,13 @@ const AIRecommender = () => {
 
                 const texts = [
                     t("personalizedHome.analysisScanning"),
-                    t("personalizedHome.analysisExploring", { region: userAnswers["region_today"] || "" }),
+                    t("personalizedHome.analysisExploring", {
+                        region: regionCodeToDisplay(userAnswers["region_today"] || "", t),
+                    }),
                     t("personalizedHome.analysisWeather"),
-                    t("personalizedHome.analysisFiltering", { companion: userAnswers["companion_today"] || "" }),
+                    t("personalizedHome.analysisFiltering", {
+                        companion: companionCodeToDisplay(userAnswers["companion_today"] || "", t),
+                    }),
                     t("personalizedHome.analysisSimulating"),
                     t("personalizedHome.analysisFound"),
                 ];
@@ -575,7 +618,7 @@ const AIRecommender = () => {
         const newAnswers = { ...userAnswers, [currentQuestion.id]: option.value };
         // 기념일(100일/생일/연말) 선택 시 "누구랑 가요" 자동 연인
         if (currentQuestion.id === "goal_detail") {
-            newAnswers["companion_today"] = "연인";
+            newAnswers["companion_today"] = "lover";
         }
         setUserAnswers(newAnswers);
         setIsTyping(true);
@@ -606,8 +649,8 @@ const AIRecommender = () => {
                 const imageUrl = c.imageUrl?.trim() || firstPlaceImage?.trim() || "";
                 return {
                     id: String(c.id),
-                    title: c.title,
-                    description: c.description || "",
+                    title: pickCourseTitle(c, locale) || c.title,
+                    description: pickCourseDescription(c, locale) || c.description || "",
                     duration: c.duration || "",
                     location: c.location || c.region || "",
                     price: c.price || "",
@@ -637,7 +680,7 @@ const AIRecommender = () => {
                     hadNetworkError = true;
                     return [];
                 });
-                const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+                const rows = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
                 return buildList(rows);
             } catch {
                 hadNetworkError = true;
@@ -650,33 +693,33 @@ const AIRecommender = () => {
         const companionToday = answers.companion_today || "";
         const regionToday = answers.region_today || "";
 
-        // purpose_today → API용 goal + goal_detail + mood_today (goal+mood 통합)
+        const pCode = normalizePurposeCode(purposeToday);
+        const gdCode = normalizeGoalDetailCode(goalDetailFromUser);
+        const companionApi =
+            COMPANION_CODE_TO_API[normalizeCompanionCode(companionToday)] || companionToday;
+        const regionApi = REGION_CODE_TO_API[normalizeRegionCode(regionToday)] || regionToday;
+
         let goal: string;
         let goalDetail: string;
         let moodToday: string;
-        const PURPOSE_MAP: Record<string, { goal: string; goalDetail: string; moodToday: string }> = {
-            기념일: { goal: "ANNIVERSARY", goalDetail: goalDetailFromUser, moodToday: "" },
-            무난: { goal: "DATE", goalDetail: "", moodToday: "" },
-            감성: { goal: "힐링", goalDetail: "", moodToday: "조용한" },
-            활동: { goal: "활동", goalDetail: "", moodToday: "활동적인" },
-            트렌디: { goal: "DATE", goalDetail: "", moodToday: "힙한" },
-        };
-        const mapped = PURPOSE_MAP[purposeToday];
-        if (mapped) {
-            goal = mapped.goal;
-            goalDetail = mapped.goalDetail;
-            moodToday = mapped.moodToday;
-        } else {
-            // 하위 호환 (기존 goal 답변)
-            if (purposeToday === "100일" || purposeToday === "생일" || purposeToday === "연말") {
-                goal = "ANNIVERSARY";
-                goalDetail = purposeToday;
-                moodToday = "";
+
+        const base = PURPOSE_CODE_TO_GOAL_MOOD[pCode];
+        if (base) {
+            goal = base.goal;
+            moodToday = base.moodToday;
+            if (pCode === "anniversary") {
+                goalDetail = GOAL_DETAIL_CODE_TO_API[gdCode] || goalDetailFromUser || "";
             } else {
-                goal = purposeToday || "DATE";
                 goalDetail = "";
-                moodToday = "";
             }
+        } else if (["100일", "생일", "연말"].includes(purposeToday)) {
+            goal = "ANNIVERSARY";
+            goalDetail = purposeToday;
+            moodToday = "";
+        } else {
+            goal = purposeToday || "DATE";
+            goalDetail = "";
+            moodToday = "";
         }
 
         let list: Course[] = [];
@@ -687,9 +730,9 @@ const AIRecommender = () => {
                 mode: "ai",
                 goal,
                 goal_detail: goalDetail,
-                companion_today: companionToday,
+                companion_today: companionApi,
                 mood_today: moodToday,
-                region_today: regionToday,
+                region_today: regionApi,
                 limit: "2",
                 strict: "true",
             }).toString();
@@ -728,14 +771,14 @@ const AIRecommender = () => {
                 setUpsellFor(null);
             }
         } catch (error) {
-            console.error("추천 API 오류:", error);
+            console.error("Recommendation API error:", error);
             hadNetworkError = true;
         }
 
         if (list.length === 0) {
             setUpsellFor(null);
             let fallbackList = await fetchCourses({
-                ...(regionToday ? { region: regionToday } : {}),
+                ...(regionApi ? { region: regionApi } : {}),
             });
             list = fallbackList.slice(0, 2);
         }
@@ -814,7 +857,7 @@ const AIRecommender = () => {
                         alert(t("personalizedHome.saveError"));
                     }
                 } catch (error) {
-                    console.error("저장 오류:", error);
+                    console.error("Save error:", error);
                     alert(t("personalizedHome.saveError"));
                 } finally {
                     setIsSelecting(false);
@@ -822,7 +865,7 @@ const AIRecommender = () => {
                 return;
             }
         } catch (error) {
-            console.error("코스 정보 조회 오류:", error);
+            console.error("Failed to fetch course info:", error);
             // 에러 발생 시 기존 로직 계속 진행
         }
 
@@ -1121,7 +1164,7 @@ const AIRecommender = () => {
     useEffect(() => {
         const paymentSuccess = searchParams.get("paymentSuccess");
         if (paymentSuccess === "true") {
-            console.log("[결제 성공 감지] 데이터 갱신 및 캐시 무효화 시작");
+            console.log("[Payment success] refreshing data and invalidating cache");
 
             // 1. 서버 데이터 강제 호출 (캐시 무시) - 비동기 처리
             fetchUserData(true).then(() => {
@@ -1233,7 +1276,10 @@ const AIRecommender = () => {
                 {showAlreadyUsedModal && (
                     <div
                         className="fixed inset-0 z-100 flex items-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-                        onClick={() => { setShowAlreadyUsedModal(false); setLimitExceededContext(null); }}
+                        onClick={() => {
+                            setShowAlreadyUsedModal(false);
+                            setLimitExceededContext(null);
+                        }}
                     >
                         <div
                             className="bg-white dark:bg-[#1a241b] rounded-t-3xl w-full max-w-lg mx-auto overflow-hidden shadow-2xl border-t border-white/20 dark:border-gray-800/50 animate-in slide-in-from-bottom duration-300 pb-safe"
@@ -1308,12 +1354,12 @@ const AIRecommender = () => {
                                     <Navigation className="w-8 h-8 text-emerald-600" />
                                 </div>
                                 <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">
-                                    이 코스로 결정할까요?
+                                    {t("personalizedHome.confirmModalTitle")}
                                 </h3>
                                 <p className="text-gray-500 text-sm leading-relaxed px-2">
                                     <span className="text-emerald-600 font-bold">"{pendingCourse.title}"</span>
                                     <br />
-                                    선택하신 코스는 마이페이지에 보관됩니다.
+                                    {t("personalizedHome.confirmModalSaved")}
                                 </p>
                             </div>
                             <div className="flex border-t border-gray-100">
@@ -1526,7 +1572,7 @@ const AIRecommender = () => {
                                                 courseId: id,
                                                 matchScore: detailModalCourse.matchScore ?? undefined,
                                                 matchReason: detailModalCourse.matchReason,
-                                                todayContext: userAnswers,
+                                                todayContext: answersToKoreanContext(userAnswers),
                                             });
                                             setShowFeedbackModal(true);
                                         }}
@@ -1722,7 +1768,6 @@ const AIRecommender = () => {
                                     </div>
                                 )}
                             </div>
-
                             {/* 답변 선택 영역 (하단 고정) */}
                             {!isTyping && !showRecommendations && currentQuestion.options && (
                                 <div className="p-4 md:p-6 bg-white dark:bg-[#1a241b] border-t border-gray-100 dark:border-gray-800">

@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
         flexShrink: 1,
     },
     iconCircle: {

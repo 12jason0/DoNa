@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     },
     badgeText: {
         fontSize: 10,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#b45309",
     },
     iconBlock: {
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: "900",
+        fontWeight: "700",
         color: "#111827",
         textAlign: "center",
         lineHeight: 28,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     },
     ctaText: {
         fontSize: 16,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#fff",
     },
     ctaChevron: { marginLeft: 4 },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     },
     laterText: {
         fontSize: 12,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#9ca3af",
     },
 });

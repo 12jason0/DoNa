@@ -146,7 +146,7 @@ function StoryDetailModal({
                             <View style={[s.detailBadgeBox, { backgroundColor: t.isDark ? "#1c2e1f" : "#fef3c7", borderColor: t.isDark ? "#854d0e" : "#fcd34d" }]}>
                                 <Ionicons name="ribbon" size={18} color="#f59e0b" />
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#b45309" }}>{story.badge.name}</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#b45309" }}>{story.badge.name}</Text>
                                     <Text style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>{story.badge.description}</Text>
                                 </View>
                             </View>
@@ -211,7 +211,7 @@ export default function EscapeScreen() {
             ) : stories.length === 0 ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
                     <Text style={{ fontSize: 48 }}>🗺️</Text>
-                    <Text style={[{ fontSize: 16, fontWeight: "700", color: t.text }]}>스토리를 준비 중이에요</Text>
+                    <Text style={[{ fontSize: 16, fontWeight: "500", color: t.text }]}>스토리를 준비 중이에요</Text>
                     <Text style={[{ fontSize: 14, color: t.textMuted, textAlign: "center" }]}>곧 새로운 미션 코스가 오픈됩니다!</Text>
                 </View>
             ) : (
@@ -255,16 +255,16 @@ export default function EscapeScreen() {
 const s = StyleSheet.create({
     root: { flex: 1 },
     header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-    headerTitle: { fontSize: 17, fontWeight: "700" },
+    headerTitle: { fontSize: 17, fontWeight: "500" },
     headerSub: { fontSize: 12, marginTop: 1 },
     banner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12 },
-    bannerText: { fontSize: 13, fontWeight: "600", flex: 1 },
+    bannerText: { fontSize: 13, fontWeight: "500", flex: 1 },
     card: { borderRadius: 16, overflow: "hidden", borderWidth: 1 },
     cardImg: { width: "100%", height: 160 },
     cardBody: { padding: 14 },
     regionTag: { backgroundColor: "#dcfce7", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-    regionTagText: { fontSize: 11, fontWeight: "600", color: "#047857" },
-    cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 4, letterSpacing: -0.3 },
+    regionTagText: { fontSize: 11, fontWeight: "500", color: "#047857" },
+    cardTitle: { fontSize: 16, fontWeight: "500", marginBottom: 4, letterSpacing: -0.3 },
     cardSynopsis: { fontSize: 13, lineHeight: 19 },
     badgeRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
     badgeText: { fontSize: 12 },
@@ -273,9 +273,9 @@ const s = StyleSheet.create({
     detailSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "90%", overflow: "hidden" },
     handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#d1d5db", alignSelf: "center", marginTop: 10, marginBottom: 4 },
     detailImg: { width: "100%", height: 200 },
-    detailTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4, marginBottom: 8 },
+    detailTitle: { fontSize: 20, fontWeight: "600", letterSpacing: -0.4, marginBottom: 8 },
     detailSynopsis: { fontSize: 14, lineHeight: 22, marginBottom: 14 },
     detailBadgeBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 14 },
     startBtn: { backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-    startBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+    startBtnText: { fontSize: 16, fontWeight: "500", color: "#fff" },
 });

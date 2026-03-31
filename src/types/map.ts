@@ -1,12 +1,21 @@
 export interface Place {
     id: number;
     name: string;
+    name_en?: string | null;
+    name_ja?: string | null;
+    name_zh?: string | null;
     latitude: number;
     longitude: number;
     address?: string;
+    address_en?: string | null;
+    address_ja?: string | null;
+    address_zh?: string | null;
     category?: string;
     imageUrl?: string;
     description?: string;
+    description_en?: string | null;
+    description_ja?: string | null;
+    description_zh?: string | null;
     iconUrl?: string; // 커스텀 마커 아이콘 (고대 룬 등)
     orderIndex?: number; // 타임라인 순서를 지도에 표시
     /** 선택형 코스: 확정(녹색) vs 선택된 후보(녹색) vs 미선택 후보(흐린 회색) */

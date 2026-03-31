@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import type { MapProps, Place } from "@/types/map";
 import { MapMarker } from "./MapMarker";
+import { useLocale } from "@/context/LocaleContext";
 
 export default function NaverMapComponent({
     places,
@@ -30,6 +31,7 @@ export default function NaverMapComponent({
     onNextStep,
     onMapClick,
 }: MapProps) {
+    const { t } = useLocale();
     const mapElementRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const polylineRef = useRef<any>(null);
@@ -120,7 +122,7 @@ export default function NaverMapComponent({
 
             // 1단계: window 및 전역 객체 존재 여부 통합 검증
             if (typeof window === "undefined" || !(window as any).naver || !(window as any).naver.maps) {
-                console.warn("[NaverMap] Naver Maps SDK가 로드되지 않았습니다.");
+                console.warn("[NaverMap] Naver Maps SDK is not loaded.");
                 return;
             }
 
@@ -138,7 +140,7 @@ export default function NaverMapComponent({
 
             // 2단계: 필요한 생성자 함수 확인
             if (!naver.maps || typeof naver.maps.Map !== "function" || typeof naver.maps.LatLng !== "function") {
-                console.error("Naver Maps SDK가 완전히 로드되지 않았습니다.");
+                console.error("Naver Maps SDK is not fully loaded.");
                 return;
             }
 
@@ -171,7 +173,7 @@ export default function NaverMapComponent({
                                 maxLng: ne.lng(),
                             };
                         } catch (error) {
-                            console.error("지도 bounds 가져오기 실패:", error);
+                            console.error("Failed to get map bounds:", error);
                             return null;
                         }
                     });
@@ -189,7 +191,7 @@ export default function NaverMapComponent({
                 }, 200);
             } catch (error) {
                 // 3단계: 에러 발생 시 앱이 죽지 않도록 로그만 남김
-                console.error("지도 초기화 실패:", error);
+                console.error("Map initialization failed:", error);
             }
         })();
 
@@ -203,7 +205,7 @@ export default function NaverMapComponent({
                 try {
                     mapRef.current = null;
                 } catch (error) {
-                    console.warn("지도 정리 중 오류:", error);
+                    console.warn("Error while cleaning map instance:", error);
                 }
             }
         };
@@ -221,7 +223,7 @@ export default function NaverMapComponent({
                 mapRef.current.setCenter(new maps.LatLng(coords.lat, coords.lng));
             }
         } catch (error) {
-            console.warn("지도 중심점 업데이트 실패:", error);
+            console.warn("Failed to update map center:", error);
         }
     }, [mapReady, center?.lat, center?.lng, selectedPlace?.latitude, selectedPlace?.longitude]);
 
@@ -270,7 +272,7 @@ export default function NaverMapComponent({
             });
         } catch (error) {
             // 3단계: 에러 발생 시 앱이 죽지 않도록 로그만 남김
-            console.warn("Bounds 자동 조정 실패:", error);
+            console.warn("Failed to auto-fit bounds:", error);
         }
     }, [places.length, mapReady, userLocation]);
 
@@ -347,7 +349,7 @@ export default function NaverMapComponent({
         };
         buildRoute().catch((error) => {
             // 3단계: 에러 발생 시 앱이 죽지 않도록 로그만 남김
-            console.warn("경로 렌더링 실패:", error);
+            console.warn("Route rendering failed:", error);
         });
     }, [places, pathPlaces, userLocation, drawPath, mapReady, pathStraightOnly]);
 
@@ -406,7 +408,7 @@ export default function NaverMapComponent({
             };
         } catch (error) {
             // 3단계: 에러 발생 시 앱이 죽지 않도록 null 반환
-            console.warn("Naver Maps Point 생성 실패:", error);
+            console.warn("Failed to create Naver Maps Point:", error);
             return null;
         }
     }, [mapReady]);
@@ -440,7 +442,7 @@ export default function NaverMapComponent({
                     anchor: new maps.Point(size / 2, size),
                 };
             } catch (error) {
-                console.warn("Naver Maps Point 생성 실패:", error);
+                console.warn("Failed to create Naver Maps Point:", error);
                 return null;
             }
         },
@@ -469,7 +471,7 @@ export default function NaverMapComponent({
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#99c08e] mx-auto mb-2"></div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">지도 로딩 중...</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t("courseDetail.mapLoading")}</p>
                     </div>
                 </div>
             )}
@@ -533,7 +535,7 @@ export default function NaverMapComponent({
                                     mapRef.current.panTo(new maps.LatLng(userLocation.lat, userLocation.lng));
                                 }
                             } catch (error) {
-                                console.warn("지도 이동 실패:", error);
+                                console.warn("Failed to pan map:", error);
                             }
                         }}
                         style={{

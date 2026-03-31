@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     },
     brand: {
         fontSize: 18,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#064e3b", // emerald-900
         letterSpacing: -0.4,
     },

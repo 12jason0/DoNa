@@ -106,21 +106,29 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
     const isLocaleReady = locale === "ko" || !!messagesCache[locale];
 
-    // 클라이언트: 저장된 언어 복원 — 해당 언어 메시지 로드 후에만 locale 전환 (번역 깜빡임 방지)
+    // 클라이언트: 저장된 언어 복원 — 없으면 브라우저 언어 자동 감지
     useEffect(() => {
         const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
-        if (!stored || !["ko", "en", "ja", "zh"].includes(stored)) return;
-        if (stored === "ko") {
+        const supported: Locale[] = ["ko", "en", "ja", "zh"];
+
+        const targetLocale: Locale = (() => {
+            if (stored && supported.includes(stored)) return stored;
+            // 첫 방문: 브라우저 언어 감지
+            const browserLang = navigator.language.split("-")[0];
+            return supported.includes(browserLang as Locale) ? (browserLang as Locale) : "ko";
+        })();
+
+        if (targetLocale === "ko") {
             setLocaleState("ko");
             document.documentElement.lang = "ko";
             return;
         }
-        const applyStored = (data: Record<string, unknown>) => {
-            setMessagesCache((prev) => ({ ...prev, [stored]: data }));
-            setLocaleState(stored);
-            document.documentElement.lang = stored === "zh" ? "zh-CN" : stored;
+        const applyLocaleData = (data: Record<string, unknown>) => {
+            setMessagesCache((prev) => ({ ...prev, [targetLocale]: data }));
+            setLocaleState(targetLocale);
+            document.documentElement.lang = targetLocale === "zh" ? "zh-CN" : targetLocale;
         };
-        messageLoaders[stored]().then(applyStored);
+        messageLoaders[targetLocale]().then(applyLocaleData);
     }, []);
 
     // html lang 속성 초기화

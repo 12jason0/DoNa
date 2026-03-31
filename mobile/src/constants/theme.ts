@@ -94,11 +94,12 @@ export const FontSize = {
     '4xl': 32,
 } as const;
 
+/** 전역적으로 가볍게 */
 export const FontWeight = {
     normal: '400' as const,
-    medium: '500' as const,
-    semibold: '600' as const,
-    bold: '700' as const,
+    medium: '400' as const,
+    semibold: '400' as const,
+    bold: '400' as const,
 };
 
 export const Spacing = {

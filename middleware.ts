@@ -1,13 +1,33 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { resolveUserId } from "@/lib/auth";
+import { jwtVerify } from "jose";
 
-export function middleware(req: NextRequest) {
+async function resolveUserIdEdge(req: NextRequest): Promise<number | null> {
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret.length < 32) return null;
+
+    const token =
+        req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+        req.cookies.get("auth")?.value ||
+        req.cookies.get("authorization")?.value ||
+        null;
+    if (!token) return null;
+
+    try {
+        const key = new TextEncoder().encode(secret);
+        const { payload } = await jwtVerify(token, key);
+        const userId = Number((payload as any).userId);
+        return Number.isFinite(userId) && userId > 0 ? userId : null;
+    } catch {
+        return null;
+    }
+}
+
+export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
-    // 🟢 [Fix]: 쿠키 문자열만 존재하는 것과 실제 유효 JWT를 구분 (만료·변조 토큰은 비로그인으로 처리)
-    // AuthContext와 동일하게 검증해, 푸터 로그인 → /login 클릭 시 무효한 쿠키로 홈으로 튕기는 현상 방지
-    const resolvedUserId = resolveUserId(req);
+    // Edge Runtime 호환: jose 사용 (jsonwebtoken은 Node.js crypto 미지원)
+    const resolvedUserId = await resolveUserIdEdge(req);
     const isAuth = Boolean(resolvedUserId && resolvedUserId > 0);
 
     // 1. Prefetch 및 RSC 요청 제외

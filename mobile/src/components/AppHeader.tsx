@@ -71,7 +71,8 @@ const styles = StyleSheet.create({
     },
     logo: {
         fontSize: 18,
-        fontWeight: "700",
+        fontWeight: "500",
+        fontFamily: "Cafe24Dongdong",
         color: "#111827",
         letterSpacing: -0.3,
     },

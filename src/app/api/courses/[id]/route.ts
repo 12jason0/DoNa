@@ -45,6 +45,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             select: {
                 id: true,
                 title: true,
+                title_en: true,
+                title_ja: true,
+                title_zh: true,
                 description: true,
                 region: true,
                 sub_title: true,
@@ -80,12 +83,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         estimated_duration: true,
                         recommended_time: true,
                         tips: true,
+                        tips_en: true,
+                        tips_ja: true,
+                        tips_zh: true,
                         place: {
                             select: {
                                 id: true,
                                 name: true,
+                                name_en: true,
+                                name_ja: true,
+                                name_zh: true,
                                 address: true,
+                                address_en: true,
+                                address_ja: true,
+                                address_zh: true,
                                 description: true,
+                                description_en: true,
+                                description_ja: true,
+                                description_zh: true,
                                 category: true,
                                 avg_cost_range: true,
                                 opening_hours: true,
@@ -161,8 +176,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 열람권으로 구매한 경우만 팁 표시
-        const hasTipAccess = userTier === "BASIC" || userTier === "PREMIUM" || hasUnlocked;
+        // 코스 접근 권한이 있으면 장소 팁도 표시
+        const hasTipAccess = hasAccess;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
@@ -179,6 +194,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                             estimated_duration: null,
                             recommended_time: null,
                             tips: null,
+                            tips_en: null,
+                            tips_ja: null,
+                            tips_zh: null,
                             movement_guide: null,
                             place: {
                                 id: cp.place.id,
@@ -235,6 +253,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         estimated_duration: cp.estimated_duration,
                         recommended_time: cp.recommended_time,
                         tips: tipsValue,
+                        tips_en: hasTipAccess ? cp.tips_en ?? null : null,
+                        tips_ja: hasTipAccess ? cp.tips_ja ?? null : null,
+                        tips_zh: hasTipAccess ? cp.tips_zh ?? null : null,
                         movement_guide: null,
                         place: mappedPlace,
                     };
@@ -275,6 +296,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const payload = {
             id: String(course.id),
             title: course.title || "",
+            title_en: course.title_en || null,
+            title_ja: course.title_ja || null,
+            title_zh: course.title_zh || null,
             description: hasAccess ? course.description || "" : "", // 🔒 마스킹
             sub_title: hasAccess ? course.sub_title : null, // 🔒 마스킹
             target_situation: course.target_situation || null,

@@ -20,23 +20,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSlideModalAnimation } from "../hooks/useSlideModalAnimation";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useThemeColors } from "../hooks/useThemeColors";
+import { useLocale } from "../lib/useLocale";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
 import type { LocalePreference } from "../lib/appSettingsStorage";
-
-const COPY = {
-    title: "설정",
-    languageLabel: "언어",
-    themeLabel: "테마",
-    light: "라이트",
-    dark: "다크",
-    locales: {
-        ko: "한국어",
-        en: "English",
-        ja: "日本語",
-        zh: "中文",
-    } satisfies Record<LocalePreference, string>,
-};
 
 type Props = {
     visible: boolean;
@@ -46,7 +33,8 @@ type Props = {
 const LOCALES: LocalePreference[] = ["ko", "en", "ja", "zh"];
 
 export default function SettingsModal({ visible, onClose }: Props) {
-    const t = useThemeColors();
+    const tc = useThemeColors();
+    const { t: lt } = useLocale();
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.85, height - insets.top - 24);
@@ -65,18 +53,18 @@ export default function SettingsModal({ visible, onClose }: Props) {
         onClose();
     };
 
+    const localeLabelStyle = (loc: LocalePreference) => {
+        if (loc === "ja") return { fontFamily: "HachiMaruPop", fontWeight: "400" as const };
+        if (loc === "zh") return { fontFamily: "ZCOOLKuaiLe", fontWeight: "400" as const };
+        return null;
+    };
+
     if (!rendered) return null;
 
     const isDarkSheet = theme === "dark";
 
     return (
-        <Modal
-            visible={rendered}
-            transparent
-            animationType="none"
-            onRequestClose={onClose}
-            {...MODAL_ANDROID_PROPS}
-        >
+        <Modal visible={rendered} transparent animationType="none" onRequestClose={onClose} {...MODAL_ANDROID_PROPS}>
             <View style={styles.root}>
                 <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
                     <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -93,14 +81,14 @@ export default function SettingsModal({ visible, onClose }: Props) {
                     <View
                         style={[
                             styles.sheet,
-                            { backgroundColor: t.card, borderColor: t.border },
+                            { backgroundColor: tc.card, borderColor: tc.border },
                             { paddingBottom: bottomPad },
                         ]}
                     >
-                        <View style={[styles.headRow, { borderBottomColor: t.border }]}>
-                            <Text style={[styles.headTitle, { color: t.text }]}>{COPY.title}</Text>
+                        <View style={[styles.headRow, { borderBottomColor: tc.border }]}>
+                            <Text style={[styles.headTitle, { color: tc.text }]}>{lt("common.settings")}</Text>
                             <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={12}>
-                                <Ionicons name="close" size={22} color={t.textMuted} />
+                                <Ionicons name="close" size={22} color={tc.textMuted} />
                             </TouchableOpacity>
                         </View>
 
@@ -109,9 +97,7 @@ export default function SettingsModal({ visible, onClose }: Props) {
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={styles.scrollInner}
                         >
-                            <Text style={[styles.sectionLabel, { color: t.textMuted }]}>
-                                {COPY.languageLabel}
-                            </Text>
+                            <Text style={[styles.sectionLabel, { color: tc.textMuted }]}>{lt("language.label")}</Text>
                             <View style={styles.langGrid}>
                                 {LOCALES.map((loc) => {
                                     const active = locale === loc;
@@ -120,7 +106,7 @@ export default function SettingsModal({ visible, onClose }: Props) {
                                             key={loc}
                                             style={[
                                                 styles.langChip,
-                                                { borderColor: t.border, backgroundColor: t.surface },
+                                                { borderColor: tc.border, backgroundColor: tc.surface },
                                                 active && styles.langChipActive,
                                                 active && isDarkSheet && styles.langChipActiveDark,
                                             ]}
@@ -130,26 +116,27 @@ export default function SettingsModal({ visible, onClose }: Props) {
                                             <Text
                                                 style={[
                                                     styles.langChipText,
-                                                    { color: t.textMuted },
+                                                    { color: tc.textMuted },
+                                                    localeLabelStyle(loc),
                                                     active && styles.langChipTextActive,
                                                 ]}
                                                 numberOfLines={1}
                                             >
-                                                {COPY.locales[loc]}
+                                                {lt(`language.${loc}`)}
                                             </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </View>
 
-                            <Text style={[styles.sectionLabel, styles.themeSection, { color: t.textMuted }]}>
-                                {COPY.themeLabel}
+                            <Text style={[styles.sectionLabel, styles.themeSection, { color: tc.textMuted }]}>
+                                {lt("theme.label")}
                             </Text>
                             <View style={styles.themeRow}>
                                 <TouchableOpacity
                                     style={[
                                         styles.themeBtn,
-                                        { borderColor: t.border, backgroundColor: t.surface },
+                                        { borderColor: tc.border, backgroundColor: tc.surface },
                                         theme === "light" && styles.themeBtnActive,
                                     ]}
                                     onPress={() => pickTheme("light")}
@@ -158,22 +145,22 @@ export default function SettingsModal({ visible, onClose }: Props) {
                                     <Ionicons
                                         name="sunny-outline"
                                         size={22}
-                                        color={theme === "light" ? "#059669" : t.textMuted}
+                                        color={theme === "light" ? "#059669" : tc.textMuted}
                                     />
                                     <Text
                                         style={[
                                             styles.themeBtnText,
-                                            { color: t.textMuted },
+                                            { color: tc.textMuted },
                                             theme === "light" && styles.themeBtnTextActive,
                                         ]}
                                     >
-                                        {COPY.light}
+                                        {lt("theme.light")}
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
                                         styles.themeBtn,
-                                        { borderColor: t.border, backgroundColor: t.surface },
+                                        { borderColor: tc.border, backgroundColor: tc.surface },
                                         theme === "dark" && styles.themeBtnActive,
                                     ]}
                                     onPress={() => pickTheme("dark")}
@@ -182,16 +169,16 @@ export default function SettingsModal({ visible, onClose }: Props) {
                                     <Ionicons
                                         name="moon-outline"
                                         size={22}
-                                        color={theme === "dark" ? "#059669" : t.textMuted}
+                                        color={theme === "dark" ? "#059669" : tc.textMuted}
                                     />
                                     <Text
                                         style={[
                                             styles.themeBtnText,
-                                            { color: t.textMuted },
+                                            { color: tc.textMuted },
                                             theme === "dark" && styles.themeBtnTextActive,
                                         ]}
                                     >
-                                        {COPY.dark}
+                                        {lt("theme.dark")}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -249,7 +236,7 @@ const styles = StyleSheet.create({
     },
     headTitle: {
         fontSize: 18,
-        fontWeight: "800",
+        fontWeight: "500",
         color: "#111827",
     },
     textLight: {
@@ -271,7 +258,7 @@ const styles = StyleSheet.create({
     },
     sectionLabel: {
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "400",
         color: "#6b7280",
         marginBottom: 10,
     },
@@ -308,7 +295,7 @@ const styles = StyleSheet.create({
     },
     langChipText: {
         fontSize: 13,
-        fontWeight: "600",
+        fontWeight: "400",
         color: "#4b5563",
     },
     langChipTextActive: {
@@ -340,7 +327,7 @@ const styles = StyleSheet.create({
     },
     themeBtnText: {
         fontSize: 14,
-        fontWeight: "700",
+        fontWeight: "400",
         color: "#4b5563",
     },
     themeBtnTextActive: {

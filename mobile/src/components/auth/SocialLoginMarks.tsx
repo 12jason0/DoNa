@@ -5,8 +5,8 @@
 import React from "react";
 import Svg, { Path } from "react-native-svg";
 
-/** 56px 원 안에 맞춘 기본 아이콘 크기 */
-export const SOCIAL_MARK_SIZE = 30;
+/** 소셜 원형 버튼(64px) 안에 맞춘 기본 아이콘 크기 */
+export const SOCIAL_MARK_SIZE = 34;
 
 type MarkProps = { size?: number };
 

@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     },
     headTitle: {
         fontSize: 18,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#111827",
     },
     iconHit: { padding: 4 },
@@ -494,12 +494,12 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 14,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#111827",
     },
     sectionTitleStandalone: {
         fontSize: 14,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#111827",
         marginBottom: 20,
     },
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     linkGreen: {
         fontSize: 12,
         color: "#059669",
-        fontWeight: "600",
+        fontWeight: "500",
     },
     chipsRow: {
         flexDirection: "row",
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     themeLabel: {
         flex: 1,
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#1f2937",
     },
     confirmSheetWrap: {
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     },
     confirmTitle: {
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#111827",
         textAlign: "center",
         marginBottom: 8,
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     },
     confirmBtnGhostText: {
         fontSize: 15,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#374151",
     },
     confirmBtnPrimary: {
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     },
     confirmBtnPrimaryText: {
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#fff",
     },
 });

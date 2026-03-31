@@ -1,3 +1,5 @@
+import type { TranslationKeys } from "@/types/i18n";
+
 /**
  * 팁 아이템: 카테고리 + 내용 (JSON 구조화)
  */
@@ -22,23 +24,44 @@ export interface TipItem {
     content: string;
 }
 
-/** 팁 카테고리 목록 */
-export const TIP_CATEGORIES: { value: TipCategory; label: string }[] = [
-    { value: "PARKING", label: "주차" },
-    { value: "WALKING", label: "뚜벅이" },
-    { value: "SIGNATURE_MENU", label: "시그니처" },
-    { value: "RESTROOM", label: "화장실" },
-    { value: "WAITING", label: "웨이팅" },
-    { value: "PHOTO_ZONE", label: "포토존" },
-    { value: "PARKING_LOT", label: "주차장" },
-    { value: "BEST_SPOT", label: "명당" },
-    { value: "ROUTE", label: "동선" },
-    { value: "ATTIRE", label: "복장" },
-    { value: "GOOD_TO_KNOW", label: "알고가면 좋은 정보" },
-    { value: "CAUTION", label: "리스크" },
-    { value: "VIBE_CHECK", label: "분위기" },
-    { value: "ETC", label: "기타" },
-];
+/** 유효 카테고리 값 목록 (어드민 select·검증용) */
+export const TIP_CATEGORY_VALUES: readonly TipCategory[] = [
+    "PARKING",
+    "WALKING",
+    "SIGNATURE_MENU",
+    "RESTROOM",
+    "WAITING",
+    "PHOTO_ZONE",
+    "PARKING_LOT",
+    "BEST_SPOT",
+    "ROUTE",
+    "ATTIRE",
+    "GOOD_TO_KNOW",
+    "CAUTION",
+    "VIBE_CHECK",
+    "ETC",
+] as const;
+
+const TIP_CATEGORY_SET = new Set<string>(TIP_CATEGORY_VALUES);
+
+function isKnownTipCategory(c: string): c is TipCategory {
+    return TIP_CATEGORY_SET.has(c);
+}
+
+/**
+ * UI 표시용 라벨 — translation.json `tipCategory.{PARKING|...}`
+ */
+export function getTipCategoryLabel(
+    category: string,
+    t: (key: TranslationKeys, params?: Record<string, string | number>) => string,
+): string {
+    const key = `tipCategory.${category}` as TranslationKeys;
+    const out = t(key);
+    if (out === key || !out) {
+        return t("tipCategory.ETC");
+    }
+    return out;
+}
 
 export function getTipIcon(category: string): string {
     switch (category) {
@@ -96,7 +119,7 @@ export function parseTipsFromDb(value: string | null | undefined): TipItem[] {
                 .map((x) => {
                     const cat = x.category as string;
                     const mapped = LEGACY_CATEGORY_MAP[cat] || (cat as TipCategory);
-                    const valid = TIP_CATEGORIES.some((c) => c.value === mapped);
+                    const valid = isKnownTipCategory(mapped);
                     return {
                         category: valid ? mapped : ("ETC" as TipCategory),
                         content: String(x.content || "").trim(),
@@ -117,6 +140,30 @@ export function tipsToJson(tips: TipItem[]): string | null {
     const valid = tips.filter((t) => t.content.trim().length > 0);
     if (valid.length === 0) return null;
     return JSON.stringify(valid);
+}
+
+export type CoursePlaceTipsRow = {
+    tips?: string | null;
+    tips_en?: string | null;
+    tips_ja?: string | null;
+    tips_zh?: string | null;
+};
+
+export type AppLocale = "ko" | "en" | "ja" | "zh";
+
+/**
+ * DB locale 컬럼 + 기본 tips(한국어)에서 현재 locale에 맞는 TipItem[] 생성
+ */
+export function parseTipsFromDbForLocale(row: CoursePlaceTipsRow, locale: AppLocale): TipItem[] {
+    if (locale === "ko") return parseTipsFromDb(row.tips);
+    const alt =
+        locale === "en"
+            ? row.tips_en
+            : locale === "ja"
+              ? row.tips_ja
+              : row.tips_zh;
+    if (alt != null && String(alt).trim()) return parseTipsFromDb(alt);
+    return parseTipsFromDb(row.tips);
 }
 
 /**

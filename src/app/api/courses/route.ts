@@ -66,8 +66,14 @@ export async function GET(request: NextRequest) {
         const courseSelect = {
             id: true,
             title: true,
+            title_en: true,
+            title_ja: true,
+            title_zh: true,
             sub_title: true,
             description: true,
+            description_en: true,
+            description_ja: true,
+            description_zh: true,
             duration: true,
             region: true,
             imageUrl: true,
@@ -76,12 +82,12 @@ export async function GET(request: NextRequest) {
             rating: true,
             view_count: true,
             createdAt: true,
-            // 🔥 태그 데이터 추가
+            // 🔥 태그 데이터
             mood: true,
+            target: true,
             goal: true,
             budget_range: true,
             tags: true,
-            courseTags: { select: { tag: { select: { name: true } } } },
             coursePlaces: {
                 orderBy: { order_index: "asc" as const },
                 select: {
@@ -129,8 +135,14 @@ export async function GET(request: NextRequest) {
             return {
                 id: String(course.id),
                 title: course.title || "제목 없음",
+                title_en: course.title_en || null,
+                title_ja: course.title_ja || null,
+                title_zh: course.title_zh || null,
                 sub_title: course.sub_title || undefined,
                 description: course.description || "",
+                description_en: course.description_en || null,
+                description_ja: course.description_ja || null,
+                description_zh: course.description_zh || null,
                 duration: course.duration || "",
                 location: course.region || "",
                 imageUrl: resolvedImageUrl,
@@ -140,16 +152,12 @@ export async function GET(request: NextRequest) {
                 rating: Number(course.rating) || 0,
                 view_count: course.view_count || 0,
                 createdAt: course.createdAt || new Date().toISOString(),
-                // 🔥 courseTags (관계 테이블) 배열은 유지
-                tags: Array.isArray(course?.courseTags)
-                    ? course.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                    : [],
-                // 🔥 태그 객체 형식 추가 (UI 호환성)
+                tags: [],
                 tagData: {
                     mood: course.mood || [],
+                    target: course.target || [],
                     goal: course.goal || undefined,
                     budget: course.budget_range || undefined,
-                    target: (course.tags as any)?.target || [],
                 },
                 coursePlaces: Array.isArray(course.coursePlaces)
                     ? course.coursePlaces.map((cp: any) => ({
@@ -231,16 +239,6 @@ export async function GET(request: NextRequest) {
                 ],
             });
         }
-        if (tagIdsParam) {
-            const tagIds = tagIdsParam
-                .split(",")
-                .map((id) => Number(id.trim()))
-                .filter((n) => !isNaN(n));
-            if (tagIds.length > 0) {
-                andWhere.push({ courseTags: { some: { tagId: { in: tagIds } } } });
-            }
-        }
-
         // 🟢 [Performance]: 캐시 키 생성 (필터별로 캐싱)
         const cacheKey = `courses_filter:${concept || ""}:${q || ""}:${regionQuery || ""}:${tagIdsParam || ""}:${
             gradeParam || ""

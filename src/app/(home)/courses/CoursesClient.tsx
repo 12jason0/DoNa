@@ -14,7 +14,7 @@ import { translateCourseConcept } from "@/lib/courseTranslate";
 import Image from "@/components/ImageFallback";
 import { LayoutGrid } from "lucide-react";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
-import { getPlaceStatus } from "@/lib/placeStatus";
+import { getPlaceStatus, PLACE_STATUS_CLOSED } from "@/lib/placeStatus";
 import { getTimeOfDayFromKST } from "@/lib/kst";
 
 // --- Type Definitions (기존과 100% 동일) ---
@@ -33,7 +33,13 @@ type CoursePlace = { order_index: number; place: Place | null };
 export interface Course {
     id: string;
     title: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     description: string;
+    description_en?: string | null;
+    description_ja?: string | null;
+    description_zh?: string | null;
     duration: string;
     location: string;
     participants: number;
@@ -53,6 +59,9 @@ type HeroSliderItem = {
     location?: string;
     concept?: string;
     title?: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     tags?: string[];
 };
 
@@ -320,7 +329,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                 }`}
             >
                 <div>
-                    <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-none">
+                    <h1 className="text-xl font-medium text-gray-900 dark:text-white tracking-tight leading-none">
                         {t("courses.pageTitle")}
                     </h1>
                 </div>
@@ -438,7 +447,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             {/* 🟢 HeroSlider - 지금 많이 선택한 코스 */}
             {initialHeroCourses.length > 0 && (
                 <section className="pt-4 px-4 pb-6">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 leading-snug tracking-tight px-1">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-3 leading-snug tracking-tight px-1">
                         {t("courses.heroTitle")}
                     </h2>
                     <HeroSlider items={initialHeroCourses} />
@@ -448,7 +457,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             {/* 🟢 구분선 + 코스 리스트 영역 */}
             <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a241b]">
                 <div className="px-5 pt-6 pb-2">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white leading-snug tracking-tight">
                         {t("courses.allCourses")}
                     </h2>
                 </div>
@@ -480,7 +489,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                                     getPlaceStatus(
                                                         cp.place.opening_hours || null,
                                                         cp.place.closed_days || [],
-                                                    ).status === "휴무",
+                                                    ).status === PLACE_STATUS_CLOSED,
                                             )
                                         }
                                         getClosedPlaceCount={(c) =>
@@ -490,7 +499,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                                                     getPlaceStatus(
                                                         cp.place.opening_hours || null,
                                                         cp.place.closed_days || [],
-                                                    ).status === "휴무",
+                                                    ).status === PLACE_STATUS_CLOSED,
                                             ).length
                                         }
                                     />

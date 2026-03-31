@@ -22,7 +22,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { login as kakaoNativeLogin } from '@react-native-kakao/user';
 import { useQueryClient } from '@tanstack/react-query';
 import Purchases from 'react-native-purchases';
 
@@ -33,6 +32,15 @@ import { AUTH_QUERY_KEY } from '../../src/hooks/useAuth';
 import AppHeader from '../../src/components/AppHeader';
 import StandaloneTabBar from '../../src/components/StandaloneTabBar';
 import { AppleMark, KakaoMark, SOCIAL_MARK_SIZE } from '../../src/components/auth/SocialLoginMarks';
+
+// @react-native-kakao/user — 네이티브 모듈, 정적 import 시 일부 빌드에서 크래시 가능 → 동적 require
+let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
+try {
+    const kakaoUserModule = require('@react-native-kakao/user');
+    kakaoNativeLogin = kakaoUserModule.login ?? null;
+} catch {
+    kakaoNativeLogin = null;
+}
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -106,20 +114,7 @@ export default function LoginScreen() {
         setError('');
 
         try {
-            if (Platform.OS === 'android') {
-                // 네이티브 SDK로 카카오 로그인 → accessToken을 서버로 전송
-                const kakaoToken = await kakaoNativeLogin();
-                const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
-                    accessToken: kakaoToken.accessToken,
-                });
-                if (data.user) {
-                    setMessage('로그인 중...');
-                    await handleLoginSuccess(data.user, data.token);
-                } else {
-                    setError(data.error || '카카오 로그인에 실패했습니다.');
-                }
-            } else {
-                // iOS: 웹 OAuth — duna://success?token=JWT 딥링크로 콜백
+            const runKakaoWebOAuth = async () => {
                 const result = await WebBrowser.openAuthSessionAsync(
                     `${BASE_URL}/api/auth/kakao?next=mobile`,
                     'duna://success',
@@ -133,6 +128,22 @@ export default function LoginScreen() {
                     await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
                     router.replace('/(tabs)');
                 }
+            };
+
+            if (Platform.OS === 'android' && kakaoNativeLogin) {
+                const kakaoToken = await kakaoNativeLogin();
+                const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
+                    accessToken: kakaoToken.accessToken,
+                });
+                if (data.user) {
+                    setMessage('로그인 중...');
+                    await handleLoginSuccess(data.user, data.token);
+                } else {
+                    setError(data.error || '카카오 로그인에 실패했습니다.');
+                }
+            } else {
+                // iOS 또는 안드로이드에서 네이티브 모듈 없을 때: 웹 OAuth
+                await runKakaoWebOAuth();
             }
         } catch (e: any) {
             // 사용자가 직접 취소한 경우 에러 표시 안 함
@@ -291,7 +302,7 @@ export default function LoginScreen() {
                             <View style={styles.dividerLine} />
                         </View>
 
-                        {/* 소셜 로그인 — 원형 아이콘 (Apple 왼쪽, 카카오 오른쪽 · iOS만 Apple) */}
+                        {/* 소셜 로그인 — 원형 아이콘 64px (Apple 왼쪽, 카카오 오른쪽 · iOS만 Apple) */}
                         <View style={styles.socialRow}>
                             {Platform.OS === 'ios' && (
                                 <TouchableOpacity
@@ -367,7 +378,7 @@ const styles = StyleSheet.create({
     iconEmoji: { fontSize: 24 },
     title: {
         fontSize: FontSize['2xl'],
-        fontWeight: '700',
+        fontWeight: '500',
         color: Colors.gray900,
         letterSpacing: -0.5,
         marginBottom: 4,
@@ -440,7 +451,7 @@ const styles = StyleSheet.create({
     btnSubmitText: {
         color: Colors.white,
         fontSize: FontSize.base,
-        fontWeight: '600',
+        fontWeight: '500',
         letterSpacing: -0.3,
     },
     btnDisabled: { opacity: 0.5 },
@@ -480,21 +491,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 20,
+        gap: 28,
     },
     socialCircleKakao: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         backgroundColor: '#FEE500',
         alignItems: 'center',
         justifyContent: 'center',
         ...Shadow.sm,
     },
     socialCircleApple: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         backgroundColor: '#000000',
         alignItems: 'center',
         justifyContent: 'center',

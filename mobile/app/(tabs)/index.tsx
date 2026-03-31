@@ -29,6 +29,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
 
 import { Colors } from "../../src/constants/theme";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
@@ -41,6 +42,9 @@ import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
 import type { Course, ActiveCourse } from "../../src/types/api";
 import MemoryDetailModal, { type MemoryDetailStory } from "../../src/components/MemoryDetailModal";
+import BenefitConsentBottomSheet from "../../src/components/BenefitConsentBottomSheet";
+import { getBenefitConsentHideUntil, setBenefitConsentHideUntil } from "../../src/lib/mmkv";
+import type { UserProfile } from "../../src/types/api";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -50,6 +54,17 @@ type RecommendationResponse = {
 };
 
 type PersonalStory = MemoryDetailStory;
+
+function InlineArrow({ color, size = 14 }: { color: string; size?: number }) {
+    return (
+        <Ionicons
+            name="arrow-forward-outline"
+            size={size}
+            color={color}
+            style={{ marginTop: 1, marginLeft: 1, opacity: 0.9 }}
+        />
+    );
+}
 
 // translation.json 키 매핑 (HOME_I18N 대체)
 type HomeI18nText = {
@@ -143,7 +158,7 @@ function ActiveCourseBanner({ course, tx }: { course: ActiveCourse; tx: HomeI18n
                         <Text style={[styles.activeBannerStatus, { color: t.textMuted }]}>{tx.inProgress}</Text>
                         <TouchableOpacity style={styles.activeContinueBtn} onPress={goCourse} activeOpacity={0.88}>
                             <Text style={styles.activeContinueText}>{tx.continue}</Text>
-                            <Text style={styles.activeContinueArrow}>→</Text>
+                            <InlineArrow color="#fff" size={14} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -191,7 +206,10 @@ function FeaturedCourseCard({ course, tx }: { course: Course; tx: HomeI18nText }
                     activeOpacity={0.88}
                     onPress={() => router.push(`/courses/${course.id}` as any)}
                 >
-                    <Text style={styles.featuredBtnText}>{tx.viewCourse} →</Text>
+                    <View style={styles.inlineTextWithArrow}>
+                        <Text style={styles.featuredBtnText}>{tx.viewCourse}</Text>
+                        <InlineArrow color="#fff" size={14} />
+                    </View>
                 </TouchableOpacity>
             </View>
         </View>
@@ -344,7 +362,7 @@ function AiCtaCard({ tx }: { tx: HomeI18nText }) {
                     <Text style={styles.aiCtaSub}>{tx.aiCtaSub}</Text>
                 </View>
             </View>
-            <Text style={styles.aiCtaArrow}>→</Text>
+            <InlineArrow color="#059669" size={18} />
         </TouchableOpacity>
     );
 }
@@ -356,6 +374,7 @@ export default function HomeScreen() {
     const { user } = useAuth();
     const { t: translate, locale } = useLocale();
     const [showMore, setShowMore] = useState(false);
+    const [benefitConsentOpen, setBenefitConsentOpen] = useState(false);
     const [selectedMemory, setSelectedMemory] = useState<PersonalStory | null>(null);
     const [showMemoryModal, setShowMemoryModal] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -397,6 +416,29 @@ export default function HomeScreen() {
         enabled: !!user,
         staleTime: 1000 * 60 * 2,
     });
+
+    const { data: userProfile } = useQuery<UserProfile>({
+        queryKey: ["users", "profile", "benefit-consent"],
+        queryFn: () => api.get<UserProfile>("/api/users/profile"),
+        enabled: !!user,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    useEffect(() => {
+        if (!user || !userProfile || userProfile.hasSeenConsentModal !== false) return;
+        const hideUntil = getBenefitConsentHideUntil();
+        if (hideUntil) {
+            const hideUntilDate = new Date(hideUntil);
+            const now = new Date();
+            const kstOffset = 9 * 60 * 60 * 1000;
+            const nowKST = new Date(now.getTime() + kstOffset);
+            const hideUntilKST = new Date(hideUntilDate.getTime() + kstOffset);
+            if (nowKST < hideUntilKST) return;
+            setBenefitConsentHideUntil(null);
+        }
+        const timer = setTimeout(() => setBenefitConsentOpen(true), 300);
+        return () => clearTimeout(timer);
+    }, [user, userProfile]);
 
     const recommendations = recData?.recommendations ?? [];
     const featuredCourse = recommendations[0] ?? null;
@@ -448,7 +490,10 @@ export default function HomeScreen() {
                                     onPress={() => setShowMore(true)}
                                     activeOpacity={0.75}
                                 >
-                                    <Text style={styles.viewMoreText}>{tx.viewMore} →</Text>
+                                    <View style={styles.inlineTextWithArrow}>
+                                        <Text style={styles.viewMoreText}>{tx.viewMore}</Text>
+                                        <InlineArrow color="#059669" size={14} />
+                                    </View>
                                 </TouchableOpacity>
                             )}
                         </>
@@ -489,7 +534,10 @@ export default function HomeScreen() {
                                         }
                                         activeOpacity={0.7}
                                     >
-                                        <Text style={styles.viewMoreText}>{tx.memoryAlbumViewMore} →</Text>
+                                        <View style={styles.inlineTextWithArrow}>
+                                            <Text style={styles.viewMoreText}>{tx.memoryAlbumViewMore}</Text>
+                                            <InlineArrow color="#059669" size={14} />
+                                        </View>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -625,6 +673,8 @@ export default function HomeScreen() {
                 }}
                 locale={locale}
             />
+
+            <BenefitConsentBottomSheet visible={benefitConsentOpen} onClose={() => setBenefitConsentOpen(false)} />
         </SafeAreaView>
     );
 }
@@ -672,7 +722,7 @@ const styles = StyleSheet.create({
     },
     sectionTitleGreen: {
         fontSize: 18,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#059669",
         letterSpacing: -0.3,
     },
@@ -720,13 +770,13 @@ const styles = StyleSheet.create({
     },
     activeBannerKicker: {
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "500",
         marginBottom: 6,
         letterSpacing: -0.2,
     },
     activeBannerTitle: {
         fontSize: 16,
-        fontWeight: "800",
+        fontWeight: "600",
         lineHeight: 22,
         letterSpacing: -0.4,
         marginTop: 2,
@@ -740,7 +790,7 @@ const styles = StyleSheet.create({
     },
     activeBannerStatus: {
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "500",
     },
     activeContinueBtn: {
         flexDirection: "row",
@@ -753,13 +803,18 @@ const styles = StyleSheet.create({
     },
     activeContinueText: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#fff",
     },
     activeContinueArrow: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#fff",
+    },
+    inlineTextWithArrow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 1,
     },
 
     // Featured 카드 (오늘의 선택)
@@ -806,7 +861,7 @@ const styles = StyleSheet.create({
     },
     featuredTitle: {
         fontSize: 17,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#111827",
         lineHeight: 24,
         letterSpacing: -0.3,
@@ -826,7 +881,7 @@ const styles = StyleSheet.create({
     },
     featuredBtnText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#fff",
     },
     featuredSkeleton: {
@@ -879,7 +934,7 @@ const styles = StyleSheet.create({
     },
     aiCtaTitle: {
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#064e3b",
         letterSpacing: -0.2,
     },
@@ -934,12 +989,12 @@ const styles = StyleSheet.create({
     },
     moreCardTagText: {
         fontSize: 11,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#fff",
     },
     moreCardTitle: {
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#fff",
         lineHeight: 20,
     },
@@ -993,7 +1048,7 @@ const styles = StyleSheet.create({
     },
     sheetTabText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#6b7280",
     },
     sheetTabTextActive: {
@@ -1021,7 +1076,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         marginBottom: 10,
     },
-    memoryAlbumTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3 },
+    memoryAlbumTitle: { fontSize: 18, fontWeight: "600", letterSpacing: -0.3 },
     memoryAlbumEmptyWrap: { paddingTop: 2 },
     memoryAlbumEmptySub: { fontSize: 14, marginTop: 4, marginBottom: 14, lineHeight: 20 },
     memoryAlbumCtaBtn: {
@@ -1037,7 +1092,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 3,
     },
-    memoryAlbumCtaText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    memoryAlbumCtaText: { color: "#fff", fontSize: 14, fontWeight: "500" },
     memoryAlbumScroll: { paddingRight: 6 },
     memoryAlbumCard: {
         width: 178,
@@ -1054,7 +1109,7 @@ const styles = StyleSheet.create({
     memoryAlbumBody: { paddingHorizontal: 10, paddingVertical: 10, minHeight: 74 },
     memoryAlbumCaption: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: "500",
     },
     memoryTagRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 6 },
     memoryTagPill: {
@@ -1063,6 +1118,6 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "#d1fae5",
     },
-    memoryTagText: { fontSize: 10, fontWeight: "700", color: "#047857" },
+    memoryTagText: { fontSize: 10, fontWeight: "500", color: "#047857" },
     memoryDateText: { fontSize: 11, marginTop: 5 },
 });

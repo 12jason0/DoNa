@@ -8,7 +8,8 @@ import { Place as MapPlace } from "@/types/map";
 import { isIOS, isAndroid } from "@/lib/platform";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { TipSection } from "@/components/TipSection";
-import { parseTipsFromDb } from "@/types/tip";
+import { parseTipsFromDbForLocale } from "@/types/tip";
+import { pickPlaceAddress, pickPlaceDescription, pickPlaceName } from "@/lib/placeLocalized";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { getPlaceStatus } from "@/lib/placeStatus";
 
@@ -65,12 +66,24 @@ interface CoursePlace {
     segment?: string | null;
     order_in_segment?: number | null;
     tips?: string | null;
+    tips_en?: string | null;
+    tips_ja?: string | null;
+    tips_zh?: string | null;
     recommended_time?: string | null;
     place: {
         id: number;
         name: string;
+        name_en?: string | null;
+        name_ja?: string | null;
+        name_zh?: string | null;
         address?: string | null;
+        address_en?: string | null;
+        address_ja?: string | null;
+        address_zh?: string | null;
         description?: string | null;
+        description_en?: string | null;
+        description_ja?: string | null;
+        description_zh?: string | null;
         category?: string | null;
         imageUrl?: string | null;
         latitude?: number | null;
@@ -99,12 +112,12 @@ const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=kr.io.dona
 
 const SEGMENT_ORDER = ["brunch", "lunch", "cafe", "dinner", "bar", "date"];
 const SEGMENT_LABELS: Record<string, string> = {
-    brunch: "브런치",
-    lunch: "점심",
-    cafe: "카페",
-    dinner: "저녁",
-    bar: "바",
-    date: "데이트",
+    brunch: "sharePreview.segment.brunch",
+    lunch: "sharePreview.segment.lunch",
+    cafe: "sharePreview.segment.cafe",
+    dinner: "sharePreview.segment.dinner",
+    bar: "sharePreview.segment.bar",
+    date: "sharePreview.segment.date",
 };
 const SEGMENT_ICONS: Record<string, string> = {
     brunch: "🥐",
@@ -122,7 +135,7 @@ export default function CourseSharePreviewClient({
     data: ShareData;
     shareId: string;
 }) {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const { iosIgnoreSafeAreaBottom } = useAppLayout();
     const [showMapModal, setShowMapModal] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState<CoursePlace["place"] | null>(null);
@@ -215,15 +228,15 @@ export default function CourseSharePreviewClient({
                 .filter((cp) => cp.place?.latitude != null && cp.place?.longitude != null)
                 .map((cp, idx) => ({
                     id: cp.place!.id,
-                    name: cp.place!.name,
+                    name: pickPlaceName(cp.place!, locale),
                     latitude: cp.place!.latitude!,
                     longitude: cp.place!.longitude!,
-                    address: cp.place!.address ?? undefined,
+                    address: pickPlaceAddress(cp.place!, locale),
                     category: cp.place!.category ?? undefined,
                     imageUrl: cp.place!.imageUrl ?? undefined,
                     orderIndex: idx,
                 })),
-        [sortedPlaces]
+        [sortedPlaces, locale]
     );
 
     const selectionMapPlaces = useMemo(() => {
@@ -236,10 +249,10 @@ export default function CourseSharePreviewClient({
                 if (p?.latitude == null || p?.longitude == null) continue;
                 result.push({
                     id: p.id,
-                    name: p.name,
+                    name: pickPlaceName(p, locale),
                     latitude: p.latitude,
                     longitude: p.longitude,
-                    address: p.address ?? undefined,
+                    address: pickPlaceAddress(p, locale),
                     imageUrl: p.imageUrl ?? undefined,
                     orderIndex: orderIdx++,
                     markerVariant: "confirmed",
@@ -251,10 +264,10 @@ export default function CourseSharePreviewClient({
                     if (cp.place?.latitude == null || cp.place?.longitude == null) continue;
                     result.push({
                         id: cp.place.id,
-                        name: cp.place.name,
+                        name: pickPlaceName(cp.place, locale),
                         latitude: cp.place.latitude,
                         longitude: cp.place.longitude,
-                        address: cp.place.address ?? undefined,
+                        address: pickPlaceAddress(cp.place, locale),
                         imageUrl: cp.place.imageUrl ?? undefined,
                         orderIndex: stepOrder,
                         markerVariant: Number(cp.place_id) === Number(selectedId) ? "candidate-selected" : "candidate",
@@ -264,7 +277,7 @@ export default function CourseSharePreviewClient({
             }
         }
         return result;
-    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment]);
+    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment, locale]);
 
     const selectionPathPlaces = useMemo(() => {
         if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
@@ -276,10 +289,10 @@ export default function CourseSharePreviewClient({
                 if (p?.latitude != null && p?.longitude != null) {
                     path.push({
                         id: p.id,
-                        name: p.name,
+                        name: pickPlaceName(p, locale),
                         latitude: p.latitude,
                         longitude: p.longitude,
-                        address: p.address ?? undefined,
+                        address: pickPlaceAddress(p, locale),
                         imageUrl: p.imageUrl ?? undefined,
                         orderIndex: orderIdx++,
                     });
@@ -290,10 +303,10 @@ export default function CourseSharePreviewClient({
                 if (selected?.place?.latitude != null && selected.place.longitude != null) {
                     path.push({
                         id: selected.place.id,
-                        name: selected.place.name,
+                        name: pickPlaceName(selected.place, locale),
                         latitude: selected.place.latitude,
                         longitude: selected.place.longitude,
-                        address: selected.place.address ?? undefined,
+                        address: pickPlaceAddress(selected.place, locale),
                         imageUrl: selected.place.imageUrl ?? undefined,
                         orderIndex: orderIdx++,
                     });
@@ -301,7 +314,7 @@ export default function CourseSharePreviewClient({
             }
         }
         return path;
-    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment]);
+    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment, locale]);
 
     const selectionDottedSegments = useMemo(() => {
         if (!isSelectionModeUnselected || selectionOrderedSteps.length === 0) return [];
@@ -313,10 +326,10 @@ export default function CourseSharePreviewClient({
                 if (p?.latitude != null && p?.longitude != null) {
                     prevPlace = {
                         id: p.id,
-                        name: p.name,
+                        name: pickPlaceName(p, locale),
                         latitude: p.latitude,
                         longitude: p.longitude,
-                        address: p.address ?? undefined,
+                        address: pickPlaceAddress(p, locale),
                         imageUrl: p.imageUrl ?? undefined,
                     };
                 }
@@ -330,10 +343,10 @@ export default function CourseSharePreviewClient({
                             from: fromPlace,
                             to: {
                                 id: cp.place.id,
-                                name: cp.place.name,
+                                name: pickPlaceName(cp.place, locale),
                                 latitude: cp.place.latitude,
                                 longitude: cp.place.longitude,
-                                address: cp.place.address ?? undefined,
+                                address: pickPlaceAddress(cp.place, locale),
                                 imageUrl: cp.place.imageUrl ?? undefined,
                             },
                         });
@@ -341,10 +354,10 @@ export default function CourseSharePreviewClient({
                     if (Number(cp.place_id) === Number(selectedId)) {
                         prevPlace = {
                             id: cp.place.id,
-                            name: cp.place.name,
+                            name: pickPlaceName(cp.place, locale),
                             latitude: cp.place.latitude,
                             longitude: cp.place.longitude,
-                            address: cp.place.address ?? undefined,
+                            address: pickPlaceAddress(cp.place, locale),
                             imageUrl: cp.place.imageUrl ?? undefined,
                         };
                     }
@@ -352,7 +365,7 @@ export default function CourseSharePreviewClient({
             }
         }
         return segments;
-    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment]);
+    }, [isSelectionModeUnselected, selectionOrderedSteps, effectiveSelectedBySegment, locale]);
 
     const pathPlaces = mapPlaces;
     const heroImageUrl =
@@ -401,7 +414,7 @@ export default function CourseSharePreviewClient({
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <p className="text-sm text-white/80 mb-1">공유된 코스</p>
+                    <p className="text-sm text-white/80 mb-1">{t("sharePreview.sharedCourse")}</p>
                     <h1 className="text-2xl font-bold">{data.title}</h1>
                     {data.sub_title && (
                         <p className="text-sm text-white/90 mt-1">{data.sub_title}</p>
@@ -439,17 +452,18 @@ export default function CourseSharePreviewClient({
                                                 {cp.place?.category ?? ""}
                                             </span>
                                             <h3 className="font-bold text-lg truncate mt-0.5">
-                                                {cp.place?.name ?? ""}
+                                                {cp.place ? pickPlaceName(cp.place, locale) : ""}
                                             </h3>
                                             <p className="text-xs text-gray-500 truncate">
-                                                {cp.place?.address ?? ""}
+                                                {cp.place ? pickPlaceAddress(cp.place, locale) : ""}
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             );
                         }
-                        const label = SEGMENT_LABELS[step.segment] ?? step.segment;
+                        const labelKey = SEGMENT_LABELS[step.segment];
+                        const label = labelKey ? t(labelKey as never) : step.segment;
                         const icon = SEGMENT_ICONS[step.segment] ?? "📍";
                         return (
                             <div key={`seg-${step.segment}`} className="space-y-2">
@@ -458,7 +472,7 @@ export default function CourseSharePreviewClient({
                                     <span className="font-bold text-gray-700 dark:text-gray-200">
                                         {stepIdx + 1}. {label}
                                     </span>
-                                    <span className="text-xs text-gray-500">(택 1)</span>
+                                    <span className="text-xs text-gray-500">{t("sharePreview.selectOne")}</span>
                                 </div>
                                 {step.options.map((cp) => {
                                     const isSelected = Number(effectiveSelectedBySegment[step.segment]) === Number(cp.place_id);
@@ -496,10 +510,10 @@ export default function CourseSharePreviewClient({
                                                 {cp.place?.category ?? ""}
                                             </span>
                                             <h3 className="font-bold text-lg truncate mt-0.5">
-                                                {cp.place?.name ?? ""}
+                                                {cp.place ? pickPlaceName(cp.place, locale) : ""}
                                             </h3>
                                             <p className="text-xs text-gray-500 truncate">
-                                                {cp.place?.address ?? ""}
+                                                {cp.place ? pickPlaceAddress(cp.place, locale) : ""}
                                             </p>
                                         </div>
                                     </div>
@@ -558,10 +572,10 @@ export default function CourseSharePreviewClient({
                                             {cp.place?.category ?? ""}
                                         </span>
                                         <h3 className="font-bold text-lg truncate mt-0.5">
-                                            {cp.place?.name ?? ""}
+                                            {cp.place ? pickPlaceName(cp.place, locale) : ""}
                                         </h3>
                                         <p className="text-xs text-gray-500 truncate">
-                                            {cp.place?.address ?? ""}
+                                            {cp.place ? pickPlaceAddress(cp.place, locale) : ""}
                                         </p>
                                     </div>
                                 </div>
@@ -577,14 +591,14 @@ export default function CourseSharePreviewClient({
                     onClick={() => setShowMapModal(true)}
                     className="flex-1 py-3 px-4 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium"
                 >
-                    지도 보기
+                    {t("sharePreview.viewMap")}
                 </button>
                 <button
                     type="button"
                     onClick={handleOpenInApp}
                     className="flex-1 py-3 px-4 rounded-lg bg-[#85ad78] text-white font-bold"
                 >
-                    앱에서 보기
+                    {t("sharePreview.openInApp")}
                 </button>
             </div>
 
@@ -597,13 +611,13 @@ export default function CourseSharePreviewClient({
                     />
                     <div className="relative z-10 flex flex-col bg-white dark:bg-[#0f1710] rounded-t-2xl max-h-[60vh] shadow-2xl">
                         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
-                            <h2 className="font-bold">코스 지도</h2>
+                            <h2 className="font-bold">{t("sharePreview.mapTitle")}</h2>
                             <button
                                 type="button"
                                 onClick={() => setShowMapModal(false)}
                                 className="p-2 text-gray-500"
                             >
-                                ✕
+                                <span className="symbol-ko-font">✕</span>
                             </button>
                         </div>
                         <div className="flex-1 min-h-0 relative" style={{ minHeight: "280px", maxHeight: "calc(60vh - 56px)" }}>
@@ -633,10 +647,10 @@ export default function CourseSharePreviewClient({
                                 selectedPlace.longitude != null
                                     ? {
                                           id: selectedPlace.id,
-                                          name: selectedPlace.name,
+                                          name: pickPlaceName(selectedPlace, locale),
                                           latitude: selectedPlace.latitude,
                                           longitude: selectedPlace.longitude,
-                                          address: selectedPlace.address ?? undefined,
+                                          address: pickPlaceAddress(selectedPlace, locale),
                                           category: selectedPlace.category ?? undefined,
                                           imageUrl: selectedPlace.imageUrl ?? undefined,
                                           orderIndex: isSelectionModeUnselected
@@ -729,7 +743,7 @@ export default function CourseSharePreviewClient({
                                 {selectedPlace.imageUrl && (
                                     <Image
                                         src={selectedPlace.imageUrl}
-                                        alt={selectedPlace.name}
+                                        alt={pickPlaceName(selectedPlace, locale)}
                                         fill
                                         className="object-cover pointer-events-none"
                                         sizes="100vw"
@@ -737,7 +751,7 @@ export default function CourseSharePreviewClient({
                                 )}
                                 <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent pt-12 pb-4 px-4 z-1">
                                     <h3 className="text-lg font-bold text-white drop-shadow-md">
-                                        {selectedPlace.name}
+                                        {pickPlaceName(selectedPlace, locale)}
                                     </h3>
                                 </div>
                                 <div
@@ -753,7 +767,7 @@ export default function CourseSharePreviewClient({
                                 </div>
                             </div>
                             <div className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-                                <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
+                                <h3 className="text-xl font-bold mb-2 dark:text-white">{pickPlaceName(selectedPlace, locale)}</h3>
                                 <div className="mb-3">
                                     <PlaceStatusBadge
                                         place={{
@@ -766,14 +780,14 @@ export default function CourseSharePreviewClient({
                                     />
                                 </div>
                                 <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium truncate">
-                                    {selectedPlace.address}
+                                    {pickPlaceAddress(selectedPlace, locale)}
                                 </p>
                                 <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
-                                    {selectedPlace.description || "상세 설명이 없습니다."}
+                                    {pickPlaceDescription(selectedPlace, locale) || t("sharePreview.noDescription")}
                                 </p>
                                 {(() => {
                                     const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
-                                    const tips = parseTipsFromDb(cp?.tips);
+                                    const tips = parseTipsFromDbForLocale(cp ?? {}, locale);
                                     if (tips.length === 0) return null;
                                     return (
                                         <div className="mb-4 flex flex-col gap-2">
@@ -806,7 +820,7 @@ export default function CourseSharePreviewClient({
                                             setTimeout(() => setSelectedPlace(null), 300);
                                         }}
                                     >
-                                        그냥 닫기
+                                        {t("sharePreview.closePlain")}
                                     </button>
                                 </div>
                             </div>

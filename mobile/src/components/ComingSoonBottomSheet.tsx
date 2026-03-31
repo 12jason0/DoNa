@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: "800",
+        fontWeight: "600",
         letterSpacing: -0.4,
         marginBottom: 8,
         textAlign: "center",
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     ctaText: {
         color: "#fff",
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
     },
     doneBox: {
         width: "100%",
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     },
     doneText: {
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#059669",
     },
     closeLink: {
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     },
     closeLinkText: {
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "500",
         textDecorationLine: "underline",
     },
 });

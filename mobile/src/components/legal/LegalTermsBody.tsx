@@ -324,7 +324,7 @@ export default function LegalTermsBody({ tr, theme, scrollRef, anchorYs }: Props
 }
 
 const styles = StyleSheet.create({
-    h1: { fontSize: 28, fontWeight: "700", marginBottom: 8 },
+    h1: { fontSize: 28, fontWeight: "500", marginBottom: 8 },
     subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 20 },
     navRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
     navChip: {
@@ -333,17 +333,17 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         borderWidth: 1,
     },
-    navChipText: { fontSize: 13, fontWeight: "600" },
-    h2: { fontSize: 22, fontWeight: "700", marginTop: 24, marginBottom: 12 },
-    h3: { fontSize: 17, fontWeight: "600", marginTop: 12, marginBottom: 8 },
+    navChipText: { fontSize: 13, fontWeight: "500" },
+    h2: { fontSize: 22, fontWeight: "500", marginTop: 24, marginBottom: 12 },
+    h3: { fontSize: 17, fontWeight: "500", marginTop: 12, marginBottom: 8 },
     p: { fontSize: 15, lineHeight: 24, marginBottom: 12 },
     li: { fontSize: 15, lineHeight: 24, marginBottom: 10, paddingLeft: 4 },
     disc: { fontSize: 15, lineHeight: 24, marginBottom: 6, paddingLeft: 8 },
     disc2: { fontSize: 15, lineHeight: 24, marginBottom: 4, paddingLeft: 20 },
-    strong: { fontWeight: "700" },
+    strong: { fontWeight: "500" },
     calloutBlue: { padding: 10, borderRadius: 8, marginBottom: 10 },
-    calloutBlueText: { fontSize: 14, lineHeight: 21, fontWeight: "600" },
+    calloutBlueText: { fontSize: 14, lineHeight: 21, fontWeight: "500" },
     grayBox: { padding: 16, borderRadius: 10, marginTop: 20, marginBottom: 8 },
-    boxTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
+    boxTitle: { fontSize: 16, fontWeight: "500", marginBottom: 8 },
     boxSmall: { fontSize: 13, lineHeight: 20, marginBottom: 4 },
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 interface SocialLoginProps {
     onSuccess?: (token: string, user: unknown) => void;
@@ -8,6 +9,7 @@ interface SocialLoginProps {
 }
 
 export default function SocialLogin({ onSuccess, onError }: SocialLoginProps) {
+    const { t } = useLocale();
     const [isLoading, setIsLoading] = useState<string | null>(null);
 
     const handleKakaoLogin = async () => {
@@ -81,7 +83,7 @@ export default function SocialLogin({ onSuccess, onError }: SocialLoginProps) {
             });
         } catch (error) {
             console.error("Kakao login error:", error);
-            onError?.("카카오 로그인에 실패했습니다.");
+            onError?.(t("socialLogin.kakaoFailed"));
             setIsLoading(null);
         }
     };
@@ -89,7 +91,7 @@ export default function SocialLogin({ onSuccess, onError }: SocialLoginProps) {
     return (
         <div className="space-y-4">
             <div className="text-center mb-6">
-                <p className="text-gray-600 mb-2">소셜 계정으로 간편하게 로그인하세요</p>
+                <p className="text-gray-600 mb-2">{t("socialLogin.socialHint")}</p>
             </div>
 
             {/* Kakao 로그인 */}
@@ -101,7 +103,9 @@ export default function SocialLogin({ onSuccess, onError }: SocialLoginProps) {
                 <div className="w-6 h-6 bg-yellow-600 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs font-bold">K</span>
                 </div>
-                <span className="font-medium">{isLoading === "kakao" ? "로그인 중..." : "카카오로 계속하기"}</span>
+                <span className="font-medium">
+                    {isLoading === "kakao" ? t("socialLogin.loggingIn") : t("socialLogin.continueWithKakao")}
+                </span>
             </button>
         </div>
     );

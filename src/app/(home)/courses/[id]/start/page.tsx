@@ -13,6 +13,7 @@ import MemorySavedIcon from "@/components/MemorySavedIcon";
 import { motion, PanInfo } from "framer-motion";
 import { isIOS, isAndroid, isMobileApp } from "@/lib/platform";
 import Image from "@/components/ImageFallback";
+import { useLocale } from "@/context/LocaleContext";
 
 // --- Types ---
 type Place = {
@@ -53,6 +54,7 @@ function LoadingSpinner() {
 function GuidePageInner() {
     const params = useParams();
     const router = useRouter();
+    const { t, locale } = useLocale();
     const courseId = params?.id as string;
 
     const [course, setCourse] = useState<Course | null>(null);
@@ -120,7 +122,21 @@ function GuidePageInner() {
 
     // 🟢 한 번에 업로드 (장소별 X)
     const [allPhotos, setAllPhotos] = useState<string[]>([]);
-    const SUGGESTED_TAGS = ["낭만적인", "감성", "조용한", "인생샷", "숨겨진", "데이트", "사진", "카페", "맛집"];
+    const suggestedTags = useMemo(
+        () =>
+            [
+                t("courseStart.suggestedTag1"),
+                t("courseStart.suggestedTag2"),
+                t("courseStart.suggestedTag3"),
+                t("courseStart.suggestedTag4"),
+                t("courseStart.suggestedTag5"),
+                t("courseStart.suggestedTag6"),
+                t("courseStart.suggestedTag7"),
+                t("courseStart.suggestedTag8"),
+                t("courseStart.suggestedTag9"),
+            ] as const,
+        [t],
+    );
     const mainImageInputRef = useRef<HTMLInputElement>(null);
 
     // 🟢 GPS 도착 체크 및 자동 이동 기능 제거
@@ -216,12 +232,11 @@ function GuidePageInner() {
                     setCourse(data);
                     setLoading(false); // 🟢 데이터 받으면 즉시 로딩 해제
                 } else {
-                    throw new Error("코스를 찾을 수 없습니다.");
+                    throw new Error(t("courseStart.errorCourseNotFound"));
                 }
             } catch (error: any) {
                 console.error("코스 로딩 오류:", error);
-                const errorMessage = error?.message || "코스를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.";
-                alert(errorMessage);
+                alert(t("courseStart.errorLoadFailed"));
                 router.push("/courses");
             } finally {
                 setLoading(false);
@@ -229,7 +244,7 @@ function GuidePageInner() {
         };
 
         fetchCourse();
-    }, [courseId, router]);
+    }, [courseId, router, t]);
 
     // 🟢 GPS 위치 추적 제거됨
 
@@ -297,14 +312,15 @@ function GuidePageInner() {
         const filesToUpload = Array.from(files).slice(0, remaining);
 
         if (filesToUpload.length === 0) {
-            alert(`최대 ${MAX_PHOTOS}장까지 업로드할 수 있어요.`);
+            alert(t("courseStart.alertMaxPhotos", { max: MAX_PHOTOS }));
             return;
         }
 
         setUploadingImages(true);
         try {
             filesToUpload.forEach((file) => {
-                if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}의 크기가 50MB를 초과합니다.`);
+                if (file.size > 50 * 1024 * 1024)
+                    throw new Error(t("courseStart.errorFileTooLarge", { name: file.name }));
             });
             const { uploadViaPresign } = await import("@/lib/uploadViaPresign");
             const photoUrls = await uploadViaPresign(filesToUpload, {
@@ -316,7 +332,7 @@ function GuidePageInner() {
             }
         } catch (err) {
             console.error("이미지 업로드 오류:", err);
-            alert("이미지 업로드에 실패했습니다.");
+            alert(t("courseStart.alertUploadFailed"));
         } finally {
             setUploadingImages(false);
         }
@@ -353,7 +369,9 @@ function GuidePageInner() {
                 if (jsKey) Kakao.init(jsKey);
             }
 
-            const shareText = `${course?.title || "데이트"} 후기\n오늘 정말 좋은 하루였어요! 💕`;
+            const shareText = t("courseStart.kakaoShareText", {
+                title: course?.title || t("courseStart.dateWord"),
+            });
             Kakao.Share.sendDefault({
                 objectType: "text",
                 text: shareText,
@@ -364,7 +382,7 @@ function GuidePageInner() {
             });
         } catch (err) {
             console.error("카카오톡 공유 실패:", err);
-            alert("카카오톡 공유에 실패했습니다.");
+            alert(t("courseStart.alertKakaoFailed"));
         }
     };
 
@@ -375,12 +393,12 @@ function GuidePageInner() {
         }
 
         if (!courseId) {
-            alert("코스 정보를 찾을 수 없습니다.");
+            alert(t("courseStart.alertCourseMissing"));
             return;
         }
 
         if (allPhotos.length < 1) {
-            alert("최소 1장 이상의 사진을 추가해주세요.");
+            alert(t("courseStart.alertMinPhotos"));
             return;
         }
 
@@ -423,19 +441,17 @@ function GuidePageInner() {
                     setShowSaveSuccessModal(true);
                 }, 0);
             } else {
-                alert((data as any)?.error || "저장에 실패했습니다.");
+                alert((data as any)?.error || t("courseStart.alertSaveFailed"));
             }
         } catch (err) {
             console.error("추억 저장 오류:", err);
             const message = err instanceof Error ? err.message : "";
             // 🟢 나만의 추억 한도 초과 시 업그레이드 모달 표시
-            if (message.includes("업그레이드") || message.includes("한도") || message.includes("MEMORY_LIMIT")) {
-                setMemoryLimitMessage(
-                    message || "오늘의 순간 저장 한도에 도달했어요. 더 저장하려면 구독을 업그레이드해 주세요.",
-                );
+            if (/MEMORY_LIMIT|업그레이드|한도|upgrade|subscription/i.test(message)) {
+                setMemoryLimitMessage(message || t("courseStart.memoryLimitFallback"));
                 setShowMemoryLimitModal(true);
             } else {
-                alert(message || "추억 저장 중 오류가 발생했습니다.");
+                alert(message || t("courseStart.alertSaveError"));
             }
         }
     };
@@ -453,9 +469,11 @@ function GuidePageInner() {
         return null;
     }
 
-    const currentDate = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+    const localeTag =
+        locale === "ko" ? "ko-KR" : locale === "ja" ? "ja-JP" : locale === "zh" ? "zh-CN" : "en-US";
+    const currentDate = new Date().toLocaleDateString(localeTag, { year: "numeric", month: "long", day: "numeric" });
     const formattedDate = new Date()
-        .toLocaleDateString("ko-KR", { year: "numeric", month: "numeric", day: "numeric" })
+        .toLocaleDateString(localeTag, { year: "numeric", month: "numeric", day: "numeric" })
         .replace(/\s/g, "");
 
     // 🟢 이미지 슬라이더 스와이프 핸들러
@@ -535,15 +553,15 @@ function GuidePageInner() {
                     >
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                             {userName && course?.region
-                                ? `${userName}의 ${course.region} 데이트`
+                                ? t("courseStart.titleUserRegion", { user: userName, region: course.region })
                                 : userName
-                                  ? `${userName}의 ${course?.region || ""} 데이트`
+                                  ? t("courseStart.titleUserOnly", { user: userName })
                                   : course?.region
-                                    ? `${course.region} 데이트`
-                                    : "데이트"}
+                                    ? t("courseStart.titleRegionOnly", { region: course.region })
+                                    : t("courseStart.titleDateFallback")}
                         </h1>
                         <p className="text-lg text-gray-600 dark:text-gray-300 mt-2">❤️ {formattedDate}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">화면을 터치하여 시작하기</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">{t("courseStart.touchToStart")}</p>
                     </motion.div>
                 </div>
             </div>
@@ -562,7 +580,7 @@ function GuidePageInner() {
                         onClick={() => router.push(`/courses/${courseId}`)}
                         className="w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-[#1a241b]/80 backdrop-blur-sm rounded-full shadow-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                     >
-                        ✕
+                        <span className="symbol-ko-font">✕</span>
                     </button>
                 </div>
             </div>
@@ -614,15 +632,15 @@ function GuidePageInner() {
                     <div className="pt-4 pb-4 px-6">
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                             {userName && course?.region
-                                ? `${userName}의 ${course.region} 데이트`
+                                ? t("courseStart.titleUserRegion", { user: userName, region: course.region })
                                 : userName
-                                  ? `${userName}의 데이트`
+                                  ? t("courseStart.titleUserOnly", { user: userName })
                                   : course?.region
-                                    ? `${course.region} 데이트`
-                                    : "우리의 데이트"}
+                                    ? t("courseStart.titleRegionOnly", { region: course.region })
+                                    : t("courseStart.titleOurDate")}
                         </h1>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            <span>{course?.title || "코스"}</span>
+                            <span>{course?.title || t("courseStart.courseFallback")}</span>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">❤️ {currentDate}</p>
                     </div>
@@ -643,7 +661,7 @@ function GuidePageInner() {
                             <>
                                 <div className="pb-6">
                                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-3">
-                                        📸 우리의 순간들
+                                        {t("courseStart.photosSection")}
                                     </label>
 
                                     {allPhotos.length === 0 ? (
@@ -658,13 +676,13 @@ function GuidePageInner() {
                                             />
                                             <div className="text-4xl text-gray-400 dark:text-gray-500 mb-2">📷</div>
                                             <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                                                사진을 추가해주세요 (1장 이상)
+                                                {t("courseStart.addPhotosHint")}
                                             </p>
                                             <p className="text-xs text-gray-400 dark:text-gray-500">
-                                                최대 10장, 파일당 50MB
+                                                {t("courseStart.photoLimitsHint")}
                                             </p>
                                             {uploadingImages && (
-                                                <div className="mt-2 text-xs text-gray-500">업로드 중...</div>
+                                                <div className="mt-2 text-xs text-gray-500">{t("courseStart.uploading")}</div>
                                             )}
                                         </label>
                                     ) : (
@@ -682,7 +700,7 @@ function GuidePageInner() {
                                                     }
                                                     className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
                                                 >
-                                                    ✕
+                                                    <span className="symbol-ko-font">✕</span>
                                                 </button>
                                                 {allPhotos.length < MAX_PHOTOS && (
                                                     <label className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center cursor-pointer">
@@ -694,7 +712,7 @@ function GuidePageInner() {
                                                             onChange={handlePhotoUpload}
                                                             style={{ display: "none" }}
                                                         />
-                                                        <span className="text-xl">+</span>
+                                                        <span className="text-xl symbol-ko-font">+</span>
                                                     </label>
                                                 )}
                                             </div>
@@ -725,7 +743,7 @@ function GuidePageInner() {
                                 {/* 별점 */}
                                 <div className="py-6 text-center border-b border-gray-100 dark:border-gray-800 mb-6">
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                        이 데이트는 어떠셨나요?
+                                        {t("courseStart.ratingPrompt")}
                                     </p>
                                     <div className="flex justify-center gap-2 mb-2">
                                         {[1, 2, 3, 4, 5].map((star) => (
@@ -748,23 +766,23 @@ function GuidePageInner() {
                                         ))}
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {storyRating === 5 && "최고였어요! 💕"}
-                                        {storyRating === 4 && "정말 좋았어요! 😊"}
-                                        {storyRating === 3 && "보통이었어요 😐"}
-                                        {storyRating === 2 && "좀 아쉬웠어요 😕"}
-                                        {storyRating === 1 && "별로였어요... 😢"}
+                                        {storyRating === 5 && t("courseStart.rating5")}
+                                        {storyRating === 4 && t("courseStart.rating4")}
+                                        {storyRating === 3 && t("courseStart.rating3")}
+                                        {storyRating === 2 && t("courseStart.rating2")}
+                                        {storyRating === 1 && t("courseStart.rating1")}
                                     </p>
                                 </div>
 
                                 {/* 텍스트(설명) 입력 */}
                                 <div className="pb-4">
                                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                        ✏️ 메모 (선택)
+                                        {t("courseStart.memoLabel")}
                                     </label>
                                     <textarea
                                         value={descriptionText}
                                         onChange={(e) => setDescriptionText(e.target.value)}
-                                        placeholder="이 데이트에 대해 남기고 싶은 말"
+                                        placeholder={t("courseStart.memoPlaceholder")}
                                         rows={3}
                                         className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm resize-none outline-none focus:border-[#99c08e]"
                                     />
@@ -785,7 +803,7 @@ function GuidePageInner() {
                                                             onClick={() => removeTag(tag)}
                                                             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm leading-none m-0 p-0"
                                                         >
-                                                            ✕
+                                                            <span className="symbol-ko-font">✕</span>
                                                         </button>
                                                     )}
                                                 </div>
@@ -800,7 +818,7 @@ function GuidePageInner() {
                                             value={tagInput}
                                             onChange={(e) => setTagInput(e.target.value)}
                                             onKeyDown={handleTagInputKeyDown}
-                                            placeholder="태그 직접 입력 (Enter) - #DoNa은 맨 앞에 자동 포함"
+                                            placeholder={t("courseStart.tagInputPlaceholder")}
                                             maxLength={10}
                                             className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-[#1a241b] dark:text-white rounded-lg text-sm outline-none focus:border-[#99c08e] focus:ring-2 focus:ring-[#99c08e]/10 transition-colors"
                                         />
@@ -809,13 +827,13 @@ function GuidePageInner() {
                                             disabled={!tagInput.trim()}
                                             className="px-4 py-2 bg-[#99c08e] text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap flex items-center justify-center"
                                         >
-                                            추가
+                                            {t("courseStart.addTag")}
                                         </button>
                                     </div>
 
                                     {/* 제안 태그 */}
                                     <div className="flex flex-wrap gap-2">
-                                        {SUGGESTED_TAGS.map((tag) => {
+                                        {suggestedTags.map((tag) => {
                                             const isSelected = selectedTags.includes(tag);
 
                                             return (
@@ -847,13 +865,13 @@ function GuidePageInner() {
                                 onClick={handlePrev}
                                 className="px-6 h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
                             >
-                                ← 뒤로
+                                {t("courseStart.back")}
                             </button>
                             <button
                                 onClick={handleSubmit}
                                 className="flex-1 h-14 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
                             >
-                                저장하기
+                                {t("courseStart.save")}
                             </button>
                         </>
                     ) : (
@@ -862,7 +880,7 @@ function GuidePageInner() {
                             className="w-full h-14 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all"
                             style={{ backgroundColor: "#99c08e" }}
                         >
-                            다음
+                            {t("courseStart.next")}
                         </button>
                     )}
                 </div>
@@ -872,19 +890,15 @@ function GuidePageInner() {
                 <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
                         <div className="text-6xl mb-4">🏆</div>
-                        <h3 className="text-2xl font-black text-slate-950 mb-2">코스 정복 완료!</h3>
+                        <h3 className="text-2xl font-black text-slate-950 mb-2">{t("courseStart.congratsTitle")}</h3>
 
-                        <p className="text-gray-500 mb-8">
-                            오늘 데이트는 어떠셨나요?
-                            <br />
-                            소중한 후기를 남겨주세요.
-                        </p>
+                        <p className="text-gray-500 mb-8 whitespace-pre-line">{t("courseStart.congratsBody")}</p>
                         <button
                             onClick={handleSubmit}
                             className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl mb-3 transition-all"
                             style={{ backgroundColor: "#99c08e" }}
                         >
-                            추억 저장하기
+                            {t("courseStart.saveMemory")}
                         </button>
                         <button
                             onClick={() => {
@@ -893,7 +907,7 @@ function GuidePageInner() {
                             }}
                             className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
                         >
-                            홈으로 가기
+                            {t("courseStart.goHome")}
                         </button>
                     </div>
                 </div>
@@ -938,15 +952,18 @@ function GuidePageInner() {
                         </div>
 
                         {/* 제목 및 설명 */}
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">사진이 부족해요</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{t("courseStart.photoModalTitle")}</h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                            오늘의 순간을 저장하려면
+                            {t("courseStart.photoModalP1")}
                             <br />
-                            최소 <span className="font-bold text-amber-600 dark:text-amber-400">1장 이상</span>의 사진이
-                            필요합니다.
+                            {t("courseStart.photoModalP2Before")}
+                            <span className="font-bold text-amber-600 dark:text-amber-400">
+                                {t("courseStart.photoModalP2Bold")}
+                            </span>
+                            {t("courseStart.photoModalP2After")}
                             <br />
                             <br />
-                            현재 <span className="font-bold">{allPhotos.length}장</span>의 사진이 있습니다.
+                            {t("courseStart.photoModalP3", { count: allPhotos.length })}
                         </p>
 
                         {/* 버튼 */}
@@ -955,7 +972,7 @@ function GuidePageInner() {
                             className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl transition-all"
                             style={{ backgroundColor: "#99c08e" }}
                         >
-                            확인
+                            {t("courseStart.confirm")}
                         </button>
                     </div>
                 </div>
@@ -992,10 +1009,10 @@ function GuidePageInner() {
                                             </svg>
                                         </div>
                                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                                            둘만의 추억 창고가 가득 찼어요
+                                            {t("courseStart.memoryLimitTitle")}
                                         </h2>
                                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                                            {memoryLimitMessage || "더 저장하려면 구독을 업그레이드해 주세요."}
+                                            {memoryLimitMessage || t("courseStart.memoryLimitUpgradeHint")}
                                         </p>
                                         <div className="flex flex-col gap-3">
                                             <button
@@ -1005,13 +1022,13 @@ function GuidePageInner() {
                                                 }}
                                                 className="w-full py-4 text-white rounded-xl font-bold text-lg shadow-md hover:shadow-xl transition-all bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 scale-100 hover:scale-[1.02] active:scale-95"
                                             >
-                                                구독 업그레이드
+                                                {t("courseStart.subscriptionUpgrade")}
                                             </button>
                                             <button
                                                 onClick={() => setShowMemoryLimitModal(false)}
                                                 className="w-full py-3 text-gray-600 dark:text-gray-400 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                             >
-                                                닫기
+                                                {t("courseStart.close")}
                                             </button>
                                         </div>
                                     </div>
@@ -1033,14 +1050,14 @@ function GuidePageInner() {
                         <MemorySavedIcon imageUrl={savedImageUrl} />
 
                         {/* 제목 및 설명 */}
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">추억이 저장되었습니다!</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t("courseStart.saveSuccessTitle")}</h2>
                         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed mb-6">
-                            오늘의 소중한 한 장이
+                            {t("courseStart.saveSuccessLine1")}
                             <br />
-                            DoNa의 '{userName} 스토리'에 남았어요.
+                            {t("courseStart.saveSuccessLine2", { name: userName ?? "" })}
                         </p>
 
-                        <p className="text-gray-600 dark:text-gray-400 mb-8">소중한 추억이 잘 저장되었어요!</p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">{t("courseStart.saveSuccessFooter")}</p>
                         <button
                             onClick={() => {
                                 setShowSaveSuccessModal(false);
@@ -1049,7 +1066,7 @@ function GuidePageInner() {
                             className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl mb-3 transition-all"
                             style={{ backgroundColor: "#99c08e" }}
                         >
-                            확인
+                            {t("courseStart.confirm")}
                         </button>
                     </div>
                 </div>

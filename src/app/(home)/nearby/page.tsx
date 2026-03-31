@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { cookies, headers } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
-import { REGION_GROUPS } from "@/constants/onboardingData";
+import { resolveNearbyRegionParam } from "@/constants/nearbyRegionSlug";
 import { getTimeOfDayFromKST } from "@/lib/kst";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 
@@ -20,11 +20,12 @@ export const revalidate = 120;
         region: true,
         imageUrl: true,
         concept: true,
+        mood: true,
+        target: true,
         grade: true,
         rating: true,
         view_count: true,
         createdAt: true,
-        courseTags: { select: { tag: { select: { name: true } } } },
         coursePlaces: {
             orderBy: { order_index: "asc" as const },
         take: 1,
@@ -69,6 +70,27 @@ function applyIsLocked(courses: any[], userTier: string, unlockedCourseIds: numb
 
         return { ...course, isLocked };
     });
+}
+
+const DISTRICT_TO_REGION_TOKENS: Record<string, string[]> = {
+    마포: ["마포", "홍대", "연남", "합정", "망원", "상수", "신촌"],
+    용산: ["용산", "이태원", "한남", "해방촌", "경리단", "삼각지", "신용산"],
+    강남: ["강남", "압구정", "신사", "가로수길", "논현", "청담", "반포", "서초", "역삼", "도곡", "양재", "잠원"],
+    종로: ["종로", "북촌", "서촌", "인사", "안국", "혜화", "대학로", "익선", "광화문"],
+    성동: ["성수", "뚝섬", "서울숲"],
+    송파: ["잠실", "송파", "석촌", "방이", "문정"],
+    영등포: ["영등포", "여의도", "문래"],
+    중구: ["을지로", "충무로", "명동", "종로3가"],
+};
+
+function normalizeRegionToken(raw: string): string {
+    return raw.trim().replace(/\s+/g, "").replace(/구$/, "");
+}
+
+function buildRegionSearchTerms(raw: string): string[] {
+    const token = normalizeRegionToken(raw);
+    if (!token) return [];
+    return DISTRICT_TO_REGION_TOKENS[token] || [token];
 }
 
 // ✅ [모듈 레벨] 초기 로드 캐시 - userTier/unlockedCourseIds 제거 → 모든 유저 캐시 공유
@@ -125,22 +147,15 @@ const getCachedDefaultNearbyCourses = unstable_cache(
         const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
 
         const mapped = interleaved.map((c: any) => {
-            const tagsFromRelation = Array.isArray(c?.courseTags)
-                ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                : [];
-            const tagsFromJson: string[] = [];
-            if (c.tags && typeof c.tags === "object" && !Array.isArray(c.tags)) {
-                const tagsJson = c.tags as any;
-                if (Array.isArray(tagsJson.concept)) tagsFromJson.push(...tagsJson.concept);
-                if (Array.isArray(tagsJson.mood)) tagsFromJson.push(...tagsJson.mood);
-                if (Array.isArray(tagsJson.target)) tagsFromJson.push(...tagsJson.target);
-                if (typeof tagsJson.budget === "string" && tagsJson.budget) tagsFromJson.push(tagsJson.budget);
-            }
-            const allTags = Array.from(new Set([...tagsFromRelation, ...tagsFromJson]));
+            const allTags: string[] = Array.from(new Set([
+                ...(c.concept ? [c.concept] : []),
+                ...(Array.isArray(c.mood) ? c.mood : []),
+                ...(Array.isArray(c.target) ? c.target : []),
+            ]));
 
             return {
                 id: String(c.id),
-                title: c.title || "제목 없음",
+                title: c.title || "",
                 description: c.description || "",
                 duration: c.duration || "",
                 location: c.region || "",
@@ -195,31 +210,22 @@ const getCachedDefaultNearbyCourses = unstable_cache(
                 const filterConditions: any[] = [{ isPublic: true }];
 
                 if (regionParam) {
-                    const regionGroup = REGION_GROUPS.find((g) =>
-                        (g.dbValues as readonly string[]).includes(regionParam)
-                    );
-                    if (regionGroup) {
-                        const regionConditions: any[] = [];
-                        (regionGroup.dbValues as readonly string[]).forEach((dbValue: string) => {
-                    regionConditions.push({ region: { contains: dbValue, mode: "insensitive" } });
+                    const terms = buildRegionSearchTerms(regionParam);
+                    if (terms.length > 0) {
+                        filterConditions.push({
+                            OR: terms.map((term) => ({ region: { contains: term, mode: "insensitive" } })),
                         });
-                        const combinedPattern = (regionGroup.dbValues as readonly string[]).join("/");
-                regionConditions.push({ region: { contains: combinedPattern, mode: "insensitive" } });
-                        const reversedPattern = [...(regionGroup.dbValues as readonly string[])].reverse().join("/");
-                        if (reversedPattern !== combinedPattern) {
-                    regionConditions.push({ region: { contains: reversedPattern, mode: "insensitive" } });
-                        }
-                        filterConditions.push({ OR: regionConditions });
-                    } else {
-                filterConditions.push({ region: { contains: regionParam, mode: "insensitive" } });
                     }
                 } else if (keyword) {
                     const keywords = keyword.split(/\s+/).filter(Boolean);
                     keywords.forEach((k) => {
                         const cleanKeyword = k.replace("동", "");
+                        const regionTerms = buildRegionSearchTerms(cleanKeyword);
                         filterConditions.push({
                             OR: [
-                                { region: { contains: cleanKeyword, mode: "insensitive" } },
+                                ...regionTerms.map((term) => ({
+                                    region: { contains: term, mode: "insensitive" as const },
+                                })),
                                 { title: { contains: cleanKeyword, mode: "insensitive" } },
                                 { concept: { contains: cleanKeyword, mode: "insensitive" } },
                                 { description: { contains: cleanKeyword, mode: "insensitive" } },
@@ -244,26 +250,6 @@ const getCachedDefaultNearbyCourses = unstable_cache(
             filterConditions.push({ concept: { contains: concept, mode: "insensitive" } });
                 }
 
-                if (tagIds) {
-                    const tagIdArray = tagIds
-                        .split(",")
-                        .map(Number)
-                        .filter((n) => !isNaN(n) && n > 0);
-                    if (tagIdArray.length > 0) {
-                        if (tagIdArray.length === 1) {
-                            filterConditions.push({
-                        courseTags: { some: { tagId: { equals: tagIdArray[0] } } },
-                            });
-                        } else {
-                            filterConditions.push({
-                                AND: tagIdArray.map((tagId) => ({
-                            courseTags: { some: { tagId: { equals: tagId } } },
-                                })),
-                            });
-                        }
-                    }
-                }
-
                 const whereClause = filterConditions.length > 0 ? { AND: filterConditions } : { isPublic: true };
                 const takeLimit = keyword ? 200 : 30;
                 const courses = await prisma.course.findMany({
@@ -278,13 +264,15 @@ const getCachedDefaultNearbyCourses = unstable_cache(
         const gradeWeight: Record<string, number> = { FREE: 1, BASIC: 2, PREMIUM: 3 };
 
         const mapped = courses.map((c: any) => {
-                    const allTags = Array.isArray(c?.courseTags)
-                        ? c.courseTags.map((ct: any) => ct?.tag?.name).filter(Boolean)
-                        : [];
+                    const allTags: string[] = Array.from(new Set([
+                        ...(c.concept ? [c.concept] : []),
+                        ...(Array.isArray(c.mood) ? c.mood : []),
+                        ...(Array.isArray(c.target) ? c.target : []),
+                    ]));
 
                     return {
                         id: String(c.id),
-                        title: c.title || "제목 없음",
+                        title: c.title || "",
                         description: c.description || "",
                         duration: c.duration || "",
                         location: c.region || "",
@@ -329,7 +317,8 @@ const getCachedDefaultNearbyCourses = unstable_cache(
 async function getInitialNearbyCourses(searchParams: { [key: string]: string | string[] | undefined }) {
     // 1. URL 파라미터 파싱
     const q = typeof searchParams?.q === "string" ? searchParams.q : undefined;
-    const region = typeof searchParams?.region === "string" ? searchParams.region : undefined;
+    const regionRaw = typeof searchParams?.region === "string" ? searchParams.region : undefined;
+    const region = regionRaw ? resolveNearbyRegionParam(regionRaw) : undefined;
     const keywordRaw = region ? region.trim() : (q || "").trim();
     const concept = typeof searchParams?.concept === "string" ? searchParams.concept.trim() : undefined;
     const tagIdsParam = typeof searchParams?.tagIds === "string" ? searchParams.tagIds.trim() : undefined;

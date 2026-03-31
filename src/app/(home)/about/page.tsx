@@ -5,6 +5,7 @@ import Image from "@/components/ImageFallback";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
 
 interface Course {
     id: string;
@@ -45,7 +46,7 @@ interface Review {
 
 const AboutPage = () => {
     const router = useRouter();
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const [courseCount, setCourseCount] = useState<number>(0);
     const [courses, setCourses] = useState<Course[]>([]);
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -278,7 +279,13 @@ const AboutPage = () => {
                 <section className="py-12 px-4 bg-white dark:bg-[#0f1710] select-none">
                     <div className="max-w-[500px] mx-auto">
                         <h2 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-6">
-                            이런 코스들이 준비되어 있어요
+                            {locale === "ko"
+                                ? "이런 코스들이 준비되어 있어요"
+                                : locale === "ja"
+                                  ? "こんなコースをご用意しています"
+                                  : locale === "zh"
+                                    ? "已为你准备好这些路线"
+                                    : "These courses are ready for you"}
                         </h2>
                         <div className="relative">
                             <div
@@ -379,7 +386,7 @@ const AboutPage = () => {
                                                             className="object-cover"
                                                         />
                                                         <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                            {course.concept || "코스"}
+                                                            {translateCourseConcept(course.concept, t as (k: string) => string) || t("about.courseConceptFallback")}
                                                         </div>
                                                     </div>
                                                     <div className="p-3">
@@ -393,16 +400,34 @@ const AboutPage = () => {
                                                             </div>
                                                         </div>
                                                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                                                            {course.description || "완벽한 여행 코스"}
+                                                            {course.description || t("about.courseDescFallback")}
                                                         </p>
                                                         <div className="flex items-center gap-2 mb-3">
                                                             <div className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center">
                                                                 <span className="mr-1">⏰</span>
-                                                                <span>{course.duration || "4시간"}</span>
+                                                                <span>
+                                                                    {course.duration ||
+                                                                        (locale === "ko"
+                                                                            ? "4시간"
+                                                                            : locale === "ja"
+                                                                              ? "4時間"
+                                                                              : locale === "zh"
+                                                                                ? "4小时"
+                                                                                : "4 hours")}
+                                                                </span>
                                                             </div>
                                                             <div className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center">
                                                                 <span className="mr-1">📍</span>
-                                                                <span>{course.location || "서울"}</span>
+                                                                <span>
+                                                                    {course.location ||
+                                                                        (locale === "ko"
+                                                                            ? "서울"
+                                                                            : locale === "ja"
+                                                                              ? "ソウル"
+                                                                              : locale === "zh"
+                                                                                ? "首尔"
+                                                                                : "Seoul")}
+                                                                </span>
                                                             </div>
                                                             {course.price && (
                                                                 <div className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center">
@@ -414,10 +439,14 @@ const AboutPage = () => {
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                                                                 <span className="mr-1">👥</span>
-                                                                <span>지금 {course.participants || 0}명 진행중</span>
+                                                                <span>
+                                                                    {t("about.courseLive", {
+                                                                        count: course.participants || 0,
+                                                                    })}
+                                                                </span>
                                                             </div>
                                                             <button className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
-                                                                코스 시작하기
+                                                                {t("about.ctaStartCourse")}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -426,7 +455,7 @@ const AboutPage = () => {
                                         ))
                                     ) : (
                                         <div className="w-full shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
-                                            준비된 코스가 없습니다.
+                                            {t("about.noCourses")}
                                         </div>
                                     )}
                                 </div>
@@ -449,7 +478,7 @@ const AboutPage = () => {
                 <section className="py-12 px-4 bg-gray-50 dark:bg-[#1a241b]">
                     <div className="max-w-[500px] mx-auto text-black dark:text-white">
                         <h2 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-6">
-                            실제 사용자들의 생생한 후기
+                            {t("about.reviewsTitle")}
                         </h2>
                         <div className="relative">
                             {/* 슬라이드 컨테이너 (한 장씩) */}
@@ -530,7 +559,9 @@ const AboutPage = () => {
                                                                     >
                                                                         <Image
                                                                             src={imageUrl}
-                                                                            alt={`후기 이미지 ${idx + 1}`}
+                                                                            alt={t("about.reviewImageAlt", {
+                                                                                idx: idx + 1,
+                                                                            })}
                                                                             fill
                                                                             className="object-cover"
                                                                             loading="lazy"
@@ -547,7 +578,7 @@ const AboutPage = () => {
                                         })
                                     ) : (
                                         <div className="w-full shrink-0 text-center text-gray-500 dark:text-gray-400 py-8">
-                                            등록된 후기가 없습니다.
+                                            {t("about.noReviews")}
                                         </div>
                                     )}
                                 </div>
@@ -571,23 +602,14 @@ const AboutPage = () => {
                 {/* 왜 DoNa인가요? */}
                 <section className="py-12 px-4 bg-white">
                     <div className="max-w-[500px] mx-auto">
-                        <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">왜 DoNa인가요?</h2>
+                        <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">{t("about.whyTitle")}</h2>
                         <div className="bg-linear-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-8">
                             <div className="grid grid-cols-1 gap-6 items-center">
                                 <div>
-                                    <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                                        여행 계획하기 너무 귀찮으시죠?
-                                    </h3>
-                                    <p className="text-gray-600 mb-4">
-                                        "어디 갈까?", "뭐 먹을까?", "길 찾기 어려워..." 이런 고민들, 이제 그만!
-                                    </p>
-                                    <p className="text-gray-600 mb-4">
-                                        DoNa는 여러분이 직접 여행 계획을 짤 필요 없이, 이미 검증된 완벽한 코스를
-                                        밀키트처럼 제공해드립니다.
-                                    </p>
-                                    <p className="text-gray-600">
-                                        컨셉과 카테고리만 선택하면 AI가 여러분을 위한 최적의 여행 코스를 만들어드려요!
-                                    </p>
+                                    <h3 className="text-2xl font-semibold text-gray-900 mb-4">{t("about.whyH3")}</h3>
+                                    <p className="text-gray-600 mb-4">{t("about.whyP1")}</p>
+                                    <p className="text-gray-600 mb-4">{t("about.whyP2")}</p>
+                                    <p className="text-gray-600">{t("about.whyP3")}</p>
                                 </div>
                                 <div className="text-center">
                                     <div className="w-48 h-48 bg-linear-to-br from-blue-400 to-purple-600 rounded-full mx-auto flex items-center justify-center">
@@ -602,23 +624,23 @@ const AboutPage = () => {
                 {/* CTA 섹션 */}
                 <section className="py-12 px-4 bg-white dark:bg-[#0f1710]">
                     <div className="max-w-[500px] mx-auto text-center">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">지금 바로 여행을 시작해보세요!</h2>
-                        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-                            복잡한 계획 없이, 밀키트처럼 간편하게 완벽한 여행을 경험해보세요.
-                        </p>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                            {t("about.ctaSectionTitle")}
+                        </h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">{t("about.ctaSectionDesc")}</p>
                         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
                             <Link
                                 href="/personalized-home"
                                 prefetch={true}
                                 className="bg-blue-600 dark:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-lg"
                             >
-                                🎯 오늘의 데이트 추천 바로 가기
+                                {t("about.ctaPersonalized")}
                             </Link>
                             <Link
                                 href="/map"
                                 className="bg-purple-600 dark:bg-purple-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors text-lg"
                             >
-                                🗺️ 지도에서 탐색하기
+                                {t("about.ctaMap")}
                             </Link>
                         </div>
                     </div>
@@ -703,7 +725,7 @@ const AboutPage = () => {
                     >
                         <img
                             src={previewImage}
-                            alt="후기 이미지 미리보기"
+                            alt={t("about.previewImageAlt")}
                             className="max-w-full max-h-full object-contain"
                         />
                     </div>

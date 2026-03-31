@@ -40,6 +40,13 @@ function parseBudget(budgetString: string | undefined) {
     return null;
 }
 
+function buildTargetSituationFromTags(tags: unknown): string {
+    if (!tags || typeof tags !== "object") return "";
+    const target = (tags as { target?: unknown }).target;
+    if (!Array.isArray(target)) return "";
+    return target.map((v) => String(v).trim()).filter(Boolean).join(", ");
+}
+
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }, // Next.js 15+ 에서는 params가 Promise일 수 있음
@@ -70,6 +77,7 @@ export async function GET(
         const tagsForAdmin = {
             ...(courseAny.tags || {}),
             mood: courseAny.mood || [],
+            target: courseAny.target || [],
             goal: courseAny.goal || undefined,
             budget: courseAny.budget_range || undefined,
         };
@@ -128,6 +136,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const regionValue = region !== undefined ? region : location;
 
         // 🔥 tags 객체에서 컬럼으로 변환 (tags가 있을 때만)
+        const targetSituation = buildTargetSituationFromTags(tags);
         const updateData: any = {
             ...(title !== undefined ? { title } : {}),
             ...(description !== undefined ? { description } : {}),
@@ -136,7 +145,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             ...(imageUrl !== undefined ? { imageUrl } : {}),
             ...(concept !== undefined ? { concept } : {}),
             ...(sub_title !== undefined ? { sub_title } : {}),
-            ...(target_situation !== undefined ? { target_situation } : {}),
+            ...(target_situation !== undefined || targetSituation ? { target_situation: targetSituation || target_situation } : {}),
+            ...(target_situation !== undefined || targetSituation ? { target_audience: targetSituation || null } : {}),
             ...(is_editor_pick !== undefined ? { is_editor_pick } : {}),
             ...(grade !== undefined ? { grade } : {}),
             ...(isPublic !== undefined ? { isPublic } : {}),
@@ -149,6 +159,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             // tags.mood → mood 컬럼 (배열)
             if (Array.isArray(tags.mood)) {
                 updateData.mood = tags.mood;
+            }
+
+            // tags.target → target 컬럼 (배열)
+            if (Array.isArray(tags.target)) {
+                updateData.target = tags.target;
             }
 
             // tags.goal → goal 컬럼 (문자열)

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { Home, Search, ArrowLeft, MapPin } from "lucide-react";
-import Footer from "@/components/Footer";
+import { useLocale } from "@/context/LocaleContext";
 
 export default function NotFound() {
+    const { t } = useLocale();
     return (
         <div className="min-h-screen bg-white dark:bg-[#0f1710] flex flex-col">
             {/* 메인 콘텐츠 - Footer 공간을 고려한 패딩 */}
@@ -29,13 +30,14 @@ export default function NotFound() {
                             </span>
                         </div>
                         <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
-                            원하시는 코스를
+                            {t("notFound.titleLine1")}
                             <br />
-                            찾지 못했어요
+                            {t("notFound.titleLine2")}
                         </h2>
                         <p className="text-gray-500 dark:text-gray-400 text-[13px] leading-relaxed break-keep">
-                            길을 잃어도 괜찮아요.
-                            <br />더 멋진 데이트 코스가 기다리고 있으니까요.
+                            {t("notFound.descLine1")}
+                            <br />
+                            {t("notFound.descLine2")}
                         </p>
                     </div>
 
@@ -46,7 +48,7 @@ export default function NotFound() {
                             className="w-full h-12 bg-[#10b981] text-white rounded-2xl font-bold text-[15px] shadow-[0_6px_12px_rgba(16,185,129,0.2)] active:scale-[0.97] transition-all flex items-center justify-center gap-2"
                         >
                             <Home className="w-4 h-4" />
-                            홈으로 돌아가기
+                            {t("notFound.home")}
                         </Link>
 
                         <Link
@@ -54,7 +56,7 @@ export default function NotFound() {
                             className="w-full h-12 bg-white dark:bg-[#1a241b] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-2xl font-bold text-[15px] active:scale-[0.97] transition-all flex items-center justify-center gap-2"
                         >
                             <Search className="w-4 h-4" />
-                            코스 둘러보기
+                            {t("notFound.browseCourses")}
                         </Link>
 
                         <button
@@ -62,7 +64,7 @@ export default function NotFound() {
                             className="w-full py-1.5 text-gray-400 dark:text-gray-600 font-semibold text-xs hover:text-gray-600 flex items-center justify-center gap-1"
                         >
                             <ArrowLeft className="w-3.5 h-3.5" />
-                            이전 페이지로
+                            {t("notFound.back")}
                         </button>
                     </div>
                 </div>

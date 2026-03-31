@@ -102,23 +102,26 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     // =================================================================
     // API 저장 로직
     // =================================================================
-    const savePreferences = useCallback(async (prefsToSave: UserPreferences & { companion?: string }, silent = true) => {
-        if (isSavingRef.current) return;
-        try {
-            // 🟢 쿠키 기반 인증: authenticatedFetch 사용
-            const { authenticatedFetch } = await import("@/lib/authClient");
-            isSavingRef.current = true;
-            await authenticatedFetch("/api/users/preferences", {
-                method: "POST",
-                body: JSON.stringify({ preferences: prefsToSave }),
-            });
-            if (!silent) console.log("Saved.");
-        } catch (error) {
-            console.error("Save failed:", error);
-        } finally {
-            isSavingRef.current = false;
-        }
-    }, []);
+    const savePreferences = useCallback(
+        async (prefsToSave: UserPreferences & { companion?: string }, silent = true) => {
+            if (isSavingRef.current) return;
+            try {
+                // 🟢 쿠키 기반 인증: authenticatedFetch 사용
+                const { authenticatedFetch } = await import("@/lib/authClient");
+                isSavingRef.current = true;
+                await authenticatedFetch("/api/users/preferences", {
+                    method: "POST",
+                    body: JSON.stringify({ preferences: prefsToSave }),
+                });
+                if (!silent) console.log("Saved.");
+            } catch (error) {
+                console.error("Save failed:", error);
+            } finally {
+                isSavingRef.current = false;
+            }
+        },
+        [],
+    );
 
     // =================================================================
     // 🔥 [핵심] 이어하기 & 초기화 로직 개선
@@ -396,37 +399,37 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                 {/* 무거운 외부 이미지 대신 가벼운 그라디언트 배경 사용 */}
                 <div className="absolute inset-0 z-0 bg-linear-to-br from-black via-gray-900 to-black" />
 
-                <div className="relative z-10 w-full h-full max-w-[480px] mx-auto flex flex-col justify-between p-8 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] animate-fadeIn">
-                    {/* AI DONA / 타이틀 영역 */}
-                    <div className="flex flex-col items-start text-left space-y-6">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/30 bg-white/10 backdrop-blur-md text-white/90 text-xs font-medium tracking-wider uppercase">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div className="relative z-10 w-full h-full max-w-[480px] mx-auto flex flex-col px-7 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] animate-fadeIn">
+                    {/* 상단 한 줄: AI DONA 배지(좌) + 닫기(우) — 모바일 앱과 동일 */}
+                    <div className="flex shrink-0 items-center justify-between gap-3">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white/90 backdrop-blur-md">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
                             AI DONA
                         </div>
-                        <h1 className="text-4xl font-light text-white leading-[1.15] tracking-tight">
+                        <button
+                            type="button"
+                            onClick={handleClose}
+                            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/10 text-white/85 transition-all hover:bg-white/20"
+                            aria-label={t("common.close")}
+                        >
+                            <X size={22} strokeWidth={2} />
+                        </button>
+                    </div>
+
+                    {/* 메인 카피 — 가운데 정렬 */}
+                    <div className="flex min-h-0 flex-1 flex-col justify-center text-left">
+                        <h1 className="text-4xl font-light leading-[1.15] tracking-tight text-white">
                             {t("onboarding.titleLine1")}
                             <br />
                             <span className="font-bold">{t("onboarding.titleLine2")}</span>
                         </h1>
-                        <p className="text-white/70 text-base font-light leading-relaxed max-w-[80%] whitespace-pre-line">
+                        <p className="mt-6 max-w-[88%] text-base font-light leading-relaxed text-white/70 whitespace-pre-line">
                             {t("onboarding.subtitle")}
                         </p>
                     </div>
 
-                    {/* X 버튼: 타이틀 아래·시작 버튼 위 영역 */}
-                    <div className="flex flex-col items-end -mt-4 shrink-0">
-                        <button
-                            onClick={handleClose}
-                            className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/80 hover:bg-white/20 transition-all border border-white/10 group relative"
-                        >
-                            <X size={20} />
-                            <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 text-white/80 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                다음에 하기
-                            </span>
-                        </button>
-                    </div>
-
                     <button
+                        type="button"
                         onClick={handleStart}
                         className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-between px-6 group shrink-0"
                     >
@@ -443,24 +446,38 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
     // 결과 화면
     if (showResult) {
-        // (기존 코드와 동일, 생략 가능하지만 문맥상 유지)
         return (
-            <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-                {/* ...결과 UI 코드... */}
-                <div className="bg-white dark:bg-[#1a241b] w-full max-w-sm rounded-xl border border-gray-100 dark:border-gray-800 p-6 text-center relative overflow-hidden">
+            <div className="fixed inset-0 z-50 flex flex-col justify-end animate-fadeIn">
+                <div
+                    className="absolute inset-0 bg-black/55 dark:bg-black/55 backdrop-blur-[2px]"
+                    aria-hidden
+                />
+                <div
+                    className="relative z-10 flex w-full max-w-[480px] flex-col rounded-t-[22px] border border-b-0 border-gray-100 bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl dark:border-gray-800 dark:bg-[#1a241b] sm:mx-auto"
+                    style={{ animation: "slideUp 0.35s ease-out forwards" }}
+                >
+                    <div className="flex justify-center pb-2 pt-2">
+                        <div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" />
+                    </div>
                     <button
+                        type="button"
                         onClick={completeOnboarding}
-                        className="absolute top-4 right-4 text-gray-400 dark:text-gray-500"
+                        className="absolute right-3 top-3 rounded-full p-2 text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-600 dark:hover:bg-white/10 dark:hover:text-gray-300"
+                        aria-label={t("common.close")}
                     >
                         <X size={24} />
                     </button>
-                    {/* ... (생략된 내용) ... */}
-                    <div className="mt-8">
-                        <h2 className="text-gray-900 dark:text-white text-2xl font-bold mb-2">{t("onboarding.analysisDone")}</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mb-6">{t("onboarding.dnaExtracted")}</p>
+                    <div className="mt-8 text-center">
+                        <h2 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">
+                            {t("onboarding.analysisDone")}
+                        </h2>
+                        <p className="mb-6 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                            {t("onboarding.dnaExtracted")}
+                        </p>
                         <button
+                            type="button"
                             onClick={completeOnboarding}
-                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform"
+                            className="w-full rounded-xl bg-emerald-600 py-4 text-lg font-bold text-white transition-transform hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.99] dark:bg-emerald-600 dark:hover:bg-emerald-700"
                         >
                             {t("onboarding.viewCourses")}
                         </button>
@@ -481,46 +498,56 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     }
 
     // =================================================================
-    // 메인 온보딩 UI (Step 1~4)
+    // 메인 온보딩 UI (Step 1~4) — 하단 시트 + 딤 (모바일 앱과 동일한 패턴)
     // =================================================================
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm">
-            {/* ... 배경 이미지 및 컨테이너 ... */}
-            <div className="relative z-10 w-full h-full max-w-[480px] bg-white dark:bg-[#1a241b] sm:h-[85vh] sm:rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col bg-linear-to-br from-emerald-50/50 to-white dark:from-[#0f1710] dark:to-[#1a241b]">
-                {/* 닫기 버튼 */}
-                <div className="absolute top-4 right-4 z-50">
-                    <button
-                        onClick={handleClose}
-                        className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all text-gray-700 dark:text-gray-300 shadow-sm hover:scale-110 active:scale-95"
-                    >
-                        <X size={20} />
-                    </button>
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <button
+                type="button"
+                onClick={handleClose}
+                className="absolute inset-0 bg-black/70 backdrop-blur-[2px] dark:bg-black/72"
+                aria-label={t("common.close")}
+            />
+            <div
+                className="relative z-10 flex h-[min(80dvh,100dvh)] w-full max-w-[480px] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-gray-200 bg-linear-to-br from-emerald-50/50 to-white shadow-2xl dark:border-gray-800 dark:from-[#0f1710] dark:to-[#1a241b] sm:mx-auto"
+                style={{ animation: "slideUp 0.35s ease-out forwards" }}
+            >
+                {/* 핸들 + 닫기 (앱 시트와 동일) */}
+                <div className="flex shrink-0 justify-center pt-2.5 pb-1">
+                    <div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" />
                 </div>
+                <button
+                    type="button"
+                    onClick={handleClose}
+                    className="absolute right-3.5 top-2.5 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-sm backdrop-blur-sm transition-colors hover:bg-white dark:bg-gray-800/90 dark:text-gray-200 dark:hover:bg-gray-700"
+                    aria-label={t("common.close")}
+                >
+                    <X size={22} />
+                </button>
 
-                {/* Progress Bar */}
-                <div className="px-4 pt-16 pb-2 shrink-0">
-                    <div className="h-1.5 w-full bg-gray-200/80 dark:bg-gray-800/80 rounded-full overflow-hidden">
+                {/* Progress — 닫기와 겹치지 않도록 상단 패딩 */}
+                <div className="shrink-0 px-5 pb-2 pt-9">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200/90 dark:bg-gray-800/90">
                         <div
-                            className="h-full bg-linear-to-r from-[#7aa06f] to-emerald-500 dark:from-emerald-600 dark:to-emerald-400 rounded-full transition-all duration-500"
+                            className="h-full rounded-full bg-linear-to-r from-[#7aa06f] to-emerald-500 transition-all duration-500 dark:from-emerald-600 dark:to-emerald-400"
                             style={{ width: `${Math.min(((currentStep - 1) / (totalSteps - 1)) * 100, 100)}%` }}
                         />
                     </div>
                 </div>
 
-                {/* 질문 컨텐츠 (기존 로직 유지) */}
-                <div className="flex-1 flex flex-col px-5 w-full mx-auto overflow-hidden relative">
+                <div className="relative flex min-h-0 flex-1 flex-col px-5">
                     {currentStep === 1 && (
-                        /* Step 1: 분위기 (VIBE) */
-                        <div className="animate-slideUp flex flex-col h-full overflow-y-auto scrollbar-hide">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 mt-4 leading-tight shrink-0 tracking-tight">
+                        <div className="flex h-full min-h-0 flex-col overflow-y-auto scrollbar-hide">
+                            <h1 className="mb-2 mt-1 shrink-0 text-[22px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white">
                                 {t("onboarding.qVibe")}
                             </h1>
                             <div className="grid grid-cols-2 gap-3 pb-6">
                                 {VIBE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.id}
+                                        type="button"
                                         onClick={() => handleVibeSelect(opt)}
-                                        className="relative group overflow-hidden rounded-xl aspect-square border border-gray-100 dark:border-gray-800"
+                                        className="group relative aspect-square overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800"
                                     >
                                         <Image
                                             src={opt.img}
@@ -530,7 +557,8 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                             className="object-cover"
                                             priority
                                         />
-                                        <span className="absolute bottom-4 left-4 text-white font-bold text-sm drop-shadow whitespace-pre-line">
+                                        <span className="absolute inset-0 bg-black/35" aria-hidden />
+                                        <span className="absolute bottom-3 left-3 right-2 text-left text-sm font-semibold text-white drop-shadow-md whitespace-pre-line">
                                             {t(`onboarding.vibe.${opt.id}` as TranslationKeys)}
                                         </span>
                                     </button>
@@ -538,91 +566,87 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             </div>
                         </div>
                     )}
-                    {/* Step 2: 동행자 선택 */}
+
                     {currentStep === 2 && (
-                        <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 tracking-tight">
+                        <div className="flex h-full min-h-0 flex-col overflow-y-auto pb-4 scrollbar-hide">
+                            <h1 className="mb-4 mt-1 shrink-0 text-[22px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white">
                                 {t("onboarding.qCompanion")}
                             </h1>
-                            <div className="flex flex-col gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 {CREW_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.value}
+                                        type="button"
                                         onClick={() => handleCompanionSelect(opt.value)}
-                                        className={`w-full bg-white dark:bg-[#0f1710] p-5 rounded-xl border transition-all active:scale-95 flex flex-col items-start gap-1 text-left group ${
+                                        className={`flex min-h-[96px] flex-col items-start justify-center gap-1 rounded-[14px] border p-3 text-left transition-all active:scale-[0.98] ${
                                             selectedCompanion === opt.value
-                                                ? "border-[#7aa06f] dark:border-emerald-600 ring-2 ring-[#7aa06f] dark:ring-emerald-600"
-                                                : "border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+                                                ? "border-[#7aa06f] bg-white ring-2 ring-[#7aa06f] dark:border-emerald-600 dark:bg-[#0f1710] dark:ring-emerald-600"
+                                                : "border-gray-100 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-[#0f1710] dark:hover:border-gray-700"
                                         }`}
                                     >
-                                        <span className="text-lg font-bold text-gray-800 dark:text-white">{opt.label}</span>
-                                        {opt.sub && (
-                                            <span className="text-sm text-gray-500 dark:text-gray-400">{opt.sub}</span>
-                                        )}
+                                        <span className="text-base font-semibold text-gray-900 dark:text-white">
+                                            {t(`onboarding.crew.${opt.id}.label` as TranslationKeys)}
+                                        </span>
+                                        <span className="text-xs leading-4 text-gray-500 dark:text-gray-400">
+                                            {t(`onboarding.crew.${opt.id}.sub` as TranslationKeys)}
+                                        </span>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     )}
-                    {/* Step 3: 가치관 선택 */}
+
                     {currentStep === 3 && (
-                        <div className="animate-slideUp flex flex-col h-full justify-center pb-12">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                        <div className="flex h-full min-h-0 flex-col overflow-y-auto pb-4 scrollbar-hide">
+                            <h1 className="mb-1 mt-1 shrink-0 text-[22px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white">
                                 {t("onboarding.qValue")}
                             </h1>
-                            <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">
-                                {t("onboarding.step2Desc")}
-                            </p>
-                            <div className="flex flex-col gap-4">
+                            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">{t("onboarding.step2Desc")}</p>
+                            <div className="grid grid-cols-2 gap-3">
                                 {VALUE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.id}
+                                        type="button"
                                         onClick={() => handleValueSelect(opt)}
-                                        className={`w-full bg-white dark:bg-[#0f1710] p-5 rounded-xl border transition-all active:scale-95 flex items-center gap-4 text-left group ${
+                                        className={`flex min-h-[168px] flex-col items-center rounded-[14px] border px-2.5 py-4 text-center transition-all active:scale-[0.98] ${
                                             selectedValueId === opt.id
-                                                ? "border-[#7aa06f] dark:border-emerald-600 ring-2 ring-[#7aa06f] dark:ring-emerald-600"
-                                                : "border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+                                                ? "border-[#7aa06f] bg-white ring-2 ring-[#7aa06f] dark:border-emerald-600 dark:bg-[#0f1710] dark:ring-emerald-600"
+                                                : "border-gray-100 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-[#0f1710] dark:hover:border-gray-700"
                                         }`}
                                     >
-                                        <span className="text-3xl bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl group-hover:scale-110 transition-transform">
+                                        <span className="flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-gray-50 text-[26px] dark:bg-gray-800/50">
                                             {opt.icon}
                                         </span>
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg whitespace-pre-wrap leading-snug tracking-tight">
-                                                {t(`onboarding.value.${opt.id}` as TranslationKeys)}
-                                            </h3>
-                                        </div>
+                                        <h3 className="mt-2.5 text-sm font-semibold leading-snug tracking-tight text-gray-900 dark:text-white whitespace-pre-wrap">
+                                            {t(`onboarding.value.${opt.id}` as TranslationKeys)}
+                                        </h3>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {/* Step 4: 지역 선택 */}
                     {currentStep === 4 && (
-                        <div className="animate-slideUp flex flex-col h-full px-1">
-                            {/* 헤더 섹션: 가이드 텍스트 추가 */}
-                            <div className="mb-8 mt-4">
-                                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">
+                        <div className="flex h-full min-h-0 flex-col px-0.5">
+                            <div className="mb-4 mt-1 shrink-0">
+                                <h1 className="mb-1 text-[22px] font-semibold text-gray-900 dark:text-white">
                                     {t("onboarding.step3Title")}
                                 </h1>
-                                <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                                    {t("onboarding.step3Desc")}
-                                </p>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("onboarding.step3Desc")}</p>
                             </div>
 
-                            {/* 지역 선택 그리드: 고정 2열 그리드로 정밀 정렬 */}
-                            <div className="flex-1 grid grid-cols-2 gap-3 content-start overflow-y-auto pb-4 scrollbar-hide">
+                            <div className="min-h-0 flex-1 grid grid-cols-2 gap-3 content-start overflow-y-auto pb-4 scrollbar-hide">
                                 {REGION_GROUPS.map((group) => {
                                     const isSelected = preferences.regions.includes(group.dbValues[0]);
                                     return (
                                         <button
                                             key={group.id}
+                                            type="button"
                                             onClick={() => handleRegionSelect(group)}
-                                            className={`group relative flex items-center justify-center ml-1 mr-1 px-4 py-4 rounded-2xl text-sm font-bold transition-all duration-200 shadow-sm border ${
+                                            className={`relative flex min-h-[72px] items-center justify-center rounded-2xl border px-3 py-3.5 text-center text-sm font-bold shadow-sm transition-all duration-200 ${
                                                 isSelected
-                                                    ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 dark:border-emerald-600 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500 dark:ring-emerald-600"
-                                                    : "bg-white dark:bg-[#0f1710] border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500 dark:border-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-600"
+                                                    : "border-gray-100 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-[#0f1710] dark:text-gray-400 dark:hover:border-gray-700 dark:hover:bg-gray-800/50"
                                             }`}
                                         >
                                             <span className={`${isSelected ? "scale-105" : ""} transition-transform`}>
@@ -633,15 +657,15 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                                 })}
                             </div>
 
-                            {/* 하단 고정 버튼 섹션: 그라데이션 및 그림자 추가 */}
-                            <div className="shrink-0 mt-auto pb-8 pt-4  dark:bg-[#1a241b]">
+                            <div className="shrink-0 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                                 <button
+                                    type="button"
                                     onClick={nextStep}
                                     disabled={preferences.regions.length === 0}
-                                    className={`w-full py-4.5 rounded-2xl font-extrabold text-[16px] tracking-tight transition-all shadow-lg ${
+                                    className={`w-full rounded-2xl py-4 text-base font-extrabold tracking-tight shadow-lg transition-all ${
                                         preferences.regions.length > 0
-                                            ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white active:scale-[0.98]"
-                                            : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                                            ? "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                                            : "cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
                                     }`}
                                 >
                                     {t("onboarding.analyzeButton")}
@@ -651,12 +675,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                     )}
                 </div>
 
-                {/* 이전 버튼 */}
                 {currentStep > 1 && !isAnalyzing && !showResult && (
-                    <div className="px-6 pb-6 pt-2 shrink-0">
+                    <div className="shrink-0 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1">
                         <button
+                            type="button"
                             onClick={prevStep}
-                            className="text-gray-400 dark:text-gray-500 text-sm flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-400"
+                            className="text-sm text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
                         >
                             {t("onboarding.prevStep")}
                         </button>
@@ -666,5 +690,4 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         </div>
     );
 };
-
 export default AIOnboarding;

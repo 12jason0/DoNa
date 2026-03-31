@@ -98,3 +98,4 @@ mobile/.expo-shared/
 mobile/dist/
 mobile/build/
 mobile/keys/
+mobile/node_modules/

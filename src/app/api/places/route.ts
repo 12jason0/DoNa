@@ -57,6 +57,9 @@ export async function GET(request: NextRequest) {
                     id: true,
                     name: true,
                     address: true,
+                    address_en: true,
+                    address_ja: true,
+                    address_zh: true,
                     description: true,
                     category: true,
                     avg_cost_range: true,
@@ -118,8 +121,8 @@ export async function GET(request: NextRequest) {
 
         // 장소 데이터를 Place 인터페이스에 맞게 변환
         const transformedPlaces = places.map((place) => {
-            // 혼잡도 계산 (랜덤)
-            const crowdLevels = ["여유", "보통", "혼잡", "매우 혼잡"];
+            // 혼잡도 계산 (랜덤) — i18n 키 반환, 프론트에서 t("crowdLevel.EASY") 등으로 번역
+            const crowdLevels = ["EASY", "NORMAL", "BUSY", "VERY_BUSY"] as const;
             const crowdLevel = crowdLevels[Math.floor(Math.random() * crowdLevels.length)];
 
             // 거리 계산 (실제 좌표 기반)
@@ -201,6 +204,9 @@ export async function POST(request: NextRequest) {
         const {
             name,
             address,
+            address_en,
+            address_ja,
+            address_zh,
             description,
             category,
             avg_cost_range,
@@ -246,6 +252,9 @@ export async function POST(request: NextRequest) {
             data: {
                 name,
                 address: address || null,
+                address_en: address_en || null,
+                address_ja: address_ja || null,
+                address_zh: address_zh || null,
                 description: description || null,
                 category: category || null,
                 avg_cost_range: avg_cost_range || null,

@@ -322,7 +322,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                 // 🟢 콘텐츠를 즉시 준비 상태로 전환 (스플래시 무시)
                 setContentReady(true);
             } catch (e) {
-                console.error("로그인 후 처리 오류:", e);
+                console.error("Post-login handling error:", e);
                 // 에러가 나도 콘텐츠는 준비 상태로
                 setContentReady(true);
                 setShowSplash(false);
@@ -473,13 +473,11 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
                                         {/* 2. 메인 슬로건 */}
                                         <h2 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900">
-                                            오늘 데이트, 고민 없이 바로 시작하세요
+                                            {t("webLanding.heroTitle")}
                                         </h2>
 
                                         {/* 3. 부가 설명 */}
-                                        <div className="text-xl font-bold text-gray-800">
-                                            실패 없는 데이트 코스를 지금 무료로 확인해보세요.
-                                        </div>
+                                        <div className="text-xl font-bold text-gray-800">{t("webLanding.heroSubtitle")}</div>
 
                                         {/* 4. 앱 다운로드 버튼 */}
                                         <div className="space-y-5">
@@ -488,15 +486,17 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     href="https://apps.apple.com/kr/app/dona/id6756777886"
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    aria-label="App Store"
+                                                    aria-label={t("webLanding.downloadAppStore")}
                                                 >
                                                     <span className="inline-flex items-center justify-center text-black shadow-md rounded-md">
+                                                        <span className="sr-only">{t("webLanding.downloadAppStore")}</span>
                                                         <Image
                                                             src="/images/Download_on_the_App_Store_Badge_KR_RGB_blk_100317.svg"
-                                                            alt="App Store"
+                                                            alt=""
                                                             width={135}
                                                             height={40}
                                                             className="h-9 lg:h-11 w-auto object-contain"
+                                                            aria-hidden
                                                         />
                                                     </span>
                                                 </a>
@@ -504,15 +504,17 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                     href="https://play.google.com/store/apps/details?id=kr.io.dona.dona"
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    aria-label="Google Play"
+                                                    aria-label={t("webLanding.downloadGooglePlay")}
                                                 >
                                                     <span className="inline-flex items-center justify-center bg-transparent rounded-md">
+                                                        <span className="sr-only">{t("webLanding.downloadGooglePlay")}</span>
                                                         <Image
                                                             src="/images/GetItOnGooglePlay_Badge_Web_color_Korean.png"
-                                                            alt="Google Play"
+                                                            alt=""
                                                             width={200}
                                                             height={60}
                                                             className="h-14 lg:h-[72px] w-auto object-contain"
+                                                            aria-hidden
                                                         />
                                                     </span>
                                                 </a>
@@ -548,7 +550,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 className="w-full flex items-center justify-between py-2 text-left hover:opacity-80 transition-opacity"
                                                 aria-expanded={businessInfoOpen}
                                             >
-                                                <h3 className="text-lg font-bold text-gray-900">사업자 정보</h3>
+                                                <h3 className="text-lg font-bold text-gray-900">{t("mypage.profileTab.businessInfo")}</h3>
                                                 <svg
                                                     className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${businessInfoOpen ? "rotate-180" : ""}`}
                                                     fill="none"
@@ -571,25 +573,26 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                                 }`}
                                             >
                                                 <p>
-                                                    <strong>상호:</strong> (주)두나 (DoNa)
+                                                    <strong>{t("webLanding.businessLabelTrade")}</strong> {t("webLanding.businessValueTrade")}
                                                 </p>
                                                 <p>
-                                                    <strong>대표자명:</strong> 오승용
+                                                    <strong>{t("webLanding.businessLabelCeo")}</strong> {t("webLanding.businessValueCeo")}
                                                 </p>
                                                 <p>
-                                                    <strong>사업자등록번호:</strong> 166-10-03081
+                                                    <strong>{t("webLanding.businessLabelReg")}</strong> {t("webLanding.businessValueReg")}
                                                 </p>
                                                 <p>
-                                                    <strong>통신판매업 신고번호:</strong> 제 2025-충남홍성-0193 호
+                                                    <strong>{t("webLanding.businessLabelMailOrder")}</strong>{" "}
+                                                    {t("webLanding.businessValueMailOrder")}
                                                 </p>
                                                 <p>
-                                                    <strong>문의:</strong> 12jason@donacouse.com
+                                                    <strong>{t("webLanding.businessLabelInquiry")}</strong> {t("webLanding.businessValueInquiry")}
                                                 </p>
                                                 <p>
-                                                    <strong>고객센터:</strong> 010-2481-9824
+                                                    <strong>{t("webLanding.businessLabelPhone")}</strong> {t("webLanding.businessValuePhone")}
                                                 </p>
                                                 <p>
-                                                    <strong>주소:</strong> 충청남도 홍성군 홍북읍 신대로 33
+                                                    <strong>{t("webLanding.businessLabelAddress")}</strong> {t("webLanding.businessValueAddress")}
                                                 </p>
                                             </div>
                                         </div>

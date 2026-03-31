@@ -152,6 +152,7 @@ model Course {
   
   // 🔥 기존 JSON → 컬럼으로 변환
   mood                 String[]            @default([])                      // tags.mood → 배열 컬럼
+  target               String[]            @default([])                      // tags.target → 배열 컬럼
   goal                 String?             @db.VarChar(50)                   // tags.goal → 컬럼
   
   // 🔥 신규 Context-Aware 필드
@@ -185,7 +186,6 @@ model Course {
   courseDetail         CourseDetail?
   courseNotices        CourseNotice[]
   coursePlaces         CoursePlace[]
-  courseTags           CourseTagRelation[]
   unlockedUsers        CourseUnlock[]
   user                 User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
   highlights           Highlight[]
@@ -203,6 +203,7 @@ model Course {
   @@index([budget_level])
   @@index([route_difficulty])
   @@index([mood])
+  @@index([target])
   @@index([scene, budget_level, route_difficulty])
   @@index([concept])
   @@index([region])
@@ -219,6 +220,9 @@ model Place {
   name_ja              String?          @map("name_ja")
   name_zh              String?          @map("name_zh")
   address              String?          @db.VarChar(500)
+  address_en           String?          @map("address_en") @db.VarChar(500)
+  address_ja           String?          @map("address_ja") @db.VarChar(500)
+  address_zh           String?          @map("address_zh") @db.VarChar(500)
   description          String?
   description_en       String?          @map("description_en")
   description_ja       String?          @map("description_ja")
@@ -257,7 +261,10 @@ model CoursePlace {
   recommended_time   String?  @db.VarChar(100)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-  tips              String?  @map("tips")   // 통합 팁 (JSON 배열)
+  tips              String?  @map("tips")   // 통합 팁 (JSON 배열, 기본 한국어)
+  tips_en           String?  @map("tips_en") @db.Text
+  tips_ja           String?  @map("tips_ja") @db.Text
+  tips_zh           String?  @map("tips_zh") @db.Text
   course             Course   @relation(fields: [course_id], references: [id])
   place              Place    @relation(fields: [place_id], references: [id])
 
@@ -447,14 +454,6 @@ model CourseDetail {
   @@map("course_details")
 }
 
-model CourseTag {
-  id        Int                 @id @default(autoincrement())
-  name      String              @unique @db.VarChar(100)
-  createdAt DateTime            @default(now())
-  courses   CourseTagRelation[]
-
-  @@map("course_tags")
-}
 
 model StoryUI {
   id          Int      @id @default(autoincrement())
@@ -751,16 +750,6 @@ model CompletedEscape {
   @@map("CompletedEscapes")
 }
 
-model CourseTagRelation {
-  courseId Int
-  tagId    Int
-  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  tag      CourseTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([courseId, tagId])
-  @@index([tagId])
-  @@map("course_tags_relation")
-}
 
 model GridCode {
   id          Int    @id @default(autoincrement())

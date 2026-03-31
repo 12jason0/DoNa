@@ -27,7 +27,7 @@ export default function AdSenseScript() {
             dangerouslySetInnerHTML={{
                 __html: `(function(){
                     var s=document.createElement('script');
-                    s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1305222191440436';
+                    s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}';
                     s.setAttribute('data-page-level-ads','false');
                     s.crossOrigin='anonymous';
                     s.async=true;

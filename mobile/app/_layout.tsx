@@ -1,6 +1,6 @@
 import "react-native-gesture-handler";
 import { useEffect, useState } from "react";
-import { Platform, Text } from "react-native";
+import { Platform } from "react-native";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -15,6 +15,9 @@ import { migrateFromAsyncStorage } from "../src/lib/mmkv";
 import { AppSettingsProvider } from "../src/context/AppSettingsContext";
 import RootStatusBar from "../src/components/RootStatusBar";
 import DonaSplashAnimation from "../src/components/DonaSplashAnimation";
+import SyncTextFontToLocale from "../src/components/SyncTextFontToLocale";
+import { loadLocalePreference } from "../src/lib/appSettingsStorage";
+import { applyDefaultTextFontForLocale } from "../src/lib/textDefaultFont";
 
 // ─── 스플래시 화면 유지 (초기화 완료 전까지) ─────────────────────────────────
 SplashScreen.preventAutoHideAsync();
@@ -46,21 +49,19 @@ Notifications.setNotificationHandler({
 
 // ─── Root Layout ──────────────────────────────────────────────────────────────
 
-// ─── LINE Seed KR 전역 기본 폰트 설정 ────────────────────────────────────────
-// 모든 Text 컴포넌트에 LINE Seed Rg를 기본 적용
-// (bold 계열은 명시적으로 fontFamily: 'LINESeedKR-Bd' 설정 필요)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(Text as any).defaultProps.style = { fontFamily: "LINESeedKR-Rg" };
+// RN: locale별 단일 폰트. ko: Cafe24Dongdong / en: Kalam* / ja: HachiMaruPop / zh: ZCOOLKuaiLe
+applyDefaultTextFontForLocale(loadLocalePreference());
 
 export default function RootLayout() {
     const [showSplash, setShowSplash] = useState(true);
 
     const [fontsLoaded, fontError] = useFonts({
-        "LINESeedKR-Th": require("../assets/fonts/LINESeedKR-Th.ttf"),
-        "LINESeedKR-Rg": require("../assets/fonts/LINESeedKR-Rg.ttf"),
-        "LINESeedKR-Bd": require("../assets/fonts/LINESeedKR-Bd.ttf"),
+        Cafe24Dongdong: require("../assets/fonts/Cafe24DongdongRegular.otf"),
+        KalamLight: require("../assets/fonts/Kalam-Light.ttf"),
+        KalamRegular: require("../assets/fonts/Kalam-Regular.ttf"),
+        KalamBold: require("../assets/fonts/Kalam-Bold.ttf"),
+        HachiMaruPop: require("../assets/fonts/HachiMaruPop-Regular.ttf"),
+        ZCOOLKuaiLe: require("../assets/fonts/ZCOOLKuaiLe-Regular.ttf"),
     });
 
     // 폰트 로드 완료 후 네이티브 스플래시 숨김 → 그 전까지 DonaSplashAnimation이 이미 렌더링된 상태
@@ -97,6 +98,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={styles.root}>
             <SafeAreaProvider>
                 <AppSettingsProvider>
+                    <SyncTextFontToLocale />
                     <QueryClientProvider client={queryClient}>
                         <RootStatusBar />
                         <Stack

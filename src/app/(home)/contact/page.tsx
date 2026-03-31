@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useLocale } from "@/context/LocaleContext";
 
 const ContactPage = () => {
+    const { t } = useLocale();
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -19,15 +21,16 @@ const ContactPage = () => {
         const trimmedSubject = subject.trim();
         const trimmedMessage = message.trim();
         if (!trimmedName || !trimmedEmail || !trimmedSubject || !trimmedMessage) {
-            alert("이름, 이메일, 제목, 문의 내용을 모두 입력해주세요.");
+            alert(t("contact.validationAlert"));
             return;
         }
 
-        const mailto = `mailto:12jason@donacouse.com?subject=${encodeURIComponent(
-            trimmedSubject
-        )}&body=${encodeURIComponent(
-            `이름: ${trimmedName}\n이메일: ${trimmedEmail}\n\n문의 내용:\n${trimmedMessage}`
-        )}`;
+        const body = t("contact.mailBody", {
+            name: trimmedName,
+            email: trimmedEmail,
+            message: trimmedMessage,
+        });
+        const mailto = `mailto:12jason@donacouse.com?subject=${encodeURIComponent(trimmedSubject)}&body=${encodeURIComponent(body)}`;
         window.location.href = mailto;
     };
 
@@ -35,52 +38,49 @@ const ContactPage = () => {
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
             <main className="grow container mx-auto px-4 py-8 bg-white dark:bg-[#0f1710]">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">문의하기</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">{t("contact.pageTitle")}</h1>
 
                     <div className="mb-8">
-                        <p className="text-lg text-gray-700 dark:text-white mb-4">
-                            DoNa 서비스에 대해 궁금한 점이 있으시거나, 도움이 필요하신가요?
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            언제든지 아래 연락처로 문의해 주시면 신속하게 답변해 드리겠습니다.
-                        </p>
+                        <p className="text-lg text-gray-700 dark:text-white mb-4">{t("contact.introLead")}</p>
+                        <p className="text-gray-600 dark:text-gray-400">{t("contact.introSub")}</p>
                     </div>
 
-                    {/* 연락처 정보 */}
-                    <div className="grid md:grid-cols-2 gap-8 mb-12">
+                    <div className="flex flex-col gap-8 mb-12">
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">이메일 문의</h2>
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                                {t("contact.emailInquiryTitle")}
+                            </h2>
                             <p className="text-blue-600 dark:text-blue-400 font-medium">12jason@donacouse.com</p>
                         </div>
 
                         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-6">
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">고객센터 운영 시간</h2>
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                                {t("contact.customerHoursTitle")}
+                            </h2>
                             <div className="space-y-2 text-gray-700 dark:text-white">
-                                <p>평일 오전 10:00 ~ 오후 6:00 (주말 및 공휴일 제외)</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">점심시간: 오후 12:30 ~ 1:30</p>
+                                <p>{t("contact.hoursWeekday")}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{t("contact.hoursLunch")}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* 자주 묻는 질문 안내 */}
                     <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6 mb-8">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">자주 묻는 질문 (FAQ)</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t("contact.faqTitle")}</h2>
                         <p className="text-gray-700 dark:text-white">
-                            먼저{" "}
+                            {t("contact.faqBefore")}
                             <Link href="/help" className="text-blue-600 dark:text-blue-400 hover:underline" prefetch>
-                                자주 묻는 질문 페이지
+                                {t("contact.faqLinkLabel")}
                             </Link>
-                            를 확인하시면 더 빠르게 답변을 찾으실 수 있습니다.
+                            {t("contact.faqAfter")}
                         </p>
                     </div>
 
-                    {/* 문의 폼 */}
                     <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-8">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">문의 양식</h2>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">{t("contact.formTitle")}</h2>
                         <form className="space-y-6" onSubmit={handleSubmit}>
                             <div>
                                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    이름
+                                    {t("contact.labelName")}
                                 </label>
                                 <input
                                     type="text"
@@ -88,13 +88,13 @@ const ContactPage = () => {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-800 dark:border-gray-700 text-gray-800 dark:text-white dark:bg-[#1a241b] rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent"
-                                    placeholder="이름을 입력해주세요"
+                                    placeholder={t("contact.placeholderName")}
                                 />
                             </div>
 
                             <div>
                                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    이메일
+                                    {t("contact.labelEmail")}
                                 </label>
                                 <input
                                     type="email"
@@ -102,13 +102,13 @@ const ContactPage = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 text-gray-800 dark:text-white dark:bg-[#1a241b] focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent"
-                                    placeholder="이메일을 입력해주세요"
+                                    placeholder={t("contact.placeholderEmail")}
                                 />
                             </div>
 
                             <div>
                                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    제목
+                                    {t("contact.labelSubject")}
                                 </label>
                                 <input
                                     type="text"
@@ -116,13 +116,13 @@ const ContactPage = () => {
                                     value={subject}
                                     onChange={(e) => setSubject(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 text-gray-800 dark:text-white dark:bg-[#1a241b] focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent"
-                                    placeholder="문의 제목을 입력해주세요"
+                                    placeholder={t("contact.placeholderSubject")}
                                 />
                             </div>
 
                             <div>
                                 <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    문의 내용
+                                    {t("contact.labelMessage")}
                                 </label>
                                 <textarea
                                     id="message"
@@ -130,7 +130,7 @@ const ContactPage = () => {
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 text-gray-800 dark:text-white dark:bg-[#1a241b] focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent"
-                                    placeholder="문의 내용을 자세히 입력해주세요"
+                                    placeholder={t("contact.placeholderMessage")}
                                 ></textarea>
                             </div>
 
@@ -138,7 +138,7 @@ const ContactPage = () => {
                                 type="submit"
                                 className="w-full bg-blue-600 dark:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
                             >
-                                문의하기
+                                {t("contact.submitButton")}
                             </button>
                         </form>
                     </div>

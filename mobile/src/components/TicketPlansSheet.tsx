@@ -425,7 +425,7 @@ export default function TicketPlansSheet({
                                         {/* 좌측: 이름·설명·가격 */}
                                         <View style={styles.planCardLeft}>
                                             <View style={styles.planNameRow}>
-                                                <Text style={[styles.planName, { color: disabled ? sectionLabelColor : t.text, fontFamily: "LINESeedKR-Bd" }]}>
+                                                <Text style={[styles.planName, { color: disabled ? sectionLabelColor : t.text, fontWeight: "400" }]}>
                                                     {i18n(`ticketPlans.plans.${plan.id}.name`)}
                                                 </Text>
                                                 {selected && !disabled && (
@@ -438,7 +438,7 @@ export default function TicketPlansSheet({
                                                     : i18n(`ticketPlans.plans.${plan.id}.desc`)}
                                             </Text>
                                             <View style={styles.priceRow}>
-                                                <Text style={[styles.price, { color: disabled ? sectionLabelColor : t.text, fontFamily: "LINESeedKR-Bd" }]}>
+                                                <Text style={[styles.price, { color: disabled ? sectionLabelColor : t.text, fontWeight: "400" }]}>
                                                     {priceStr(plan)}
                                                 </Text>
                                                 {"originalPrice" in plan && !disabled && (
@@ -530,13 +530,13 @@ export default function TicketPlansSheet({
                                                 ]} />
                                                 <Text style={[
                                                     styles.ticketName,
-                                                    { color: disabled ? sectionLabelColor : t.text, fontFamily: "LINESeedKR-Bd" },
+                                                    { color: disabled ? sectionLabelColor : t.text, fontWeight: "400" },
                                                 ]}>
                                                     {i18n(`ticketPlans.plans.${plan.id}.name`)}
                                                 </Text>
                                                 <Text style={[
                                                     styles.ticketPrice,
-                                                    { color: disabled ? sectionLabelColor : t.text, fontFamily: "LINESeedKR-Bd" },
+                                                    { color: disabled ? sectionLabelColor : t.text, fontWeight: "400" },
                                                 ]}>
                                                     {priceStr(plan)}
                                                 </Text>
@@ -613,13 +613,13 @@ export default function TicketPlansSheet({
                             {loading ? (
                                 <>
                                     <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-                                    <Text style={[styles.payBtnText, { fontFamily: "LINESeedKR-Bd" }]}>
+                                    <Text style={[styles.payBtnText, { fontWeight: "400" }]}>
                                         {i18n("ticketPlans.loadingPayment")}
                                     </Text>
                                 </>
                             ) : (
                                 <>
-                                    <Text style={[styles.payBtnText, { fontFamily: "LINESeedKR-Bd" }]}>
+                                    <Text style={[styles.payBtnText, { fontWeight: "400" }]}>
                                         {i18n("ticketPlans.startPlan", {
                                             name: i18n(`ticketPlans.plans.${selectedPlan?.id ?? "sub_basic"}.name`),
                                         })}
@@ -660,8 +660,8 @@ const styles = StyleSheet.create({
         paddingBottom: 12,
     },
     headerLeft: { flex: 1 },
-    headerTitle: { fontSize: 20, lineHeight: 26, fontFamily: "LINESeedKR-Bd" },
-    headerHighlight: { color: "#10b981", fontSize: 20, fontFamily: "LINESeedKR-Bd" },
+    headerTitle: { fontSize: 20, lineHeight: 26, fontWeight: "400" },
+    headerHighlight: { color: "#10b981", fontSize: 20, fontWeight: "400" },
     headerSub: { fontSize: 12, marginTop: 2 },
     closeBtn: {
         width: 28,
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     // 섹션 레이블: text-xs font-bold uppercase tracking-widest
     sectionLabel: {
         fontSize: 10,
-        fontFamily: "LINESeedKR-Bd",
+        fontWeight: "400",
         letterSpacing: 1.5,
         textTransform: "uppercase",
         marginBottom: 10,
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
     badgeInline: { top: -9 },
-    badgeText: { color: "#fff", fontSize: 9, fontFamily: "LINESeedKR-Bd", letterSpacing: 0.3 },
+    badgeText: { color: "#fff", fontSize: 9, fontWeight: "400", letterSpacing: 0.3 },
 
     planCardBody: { flexDirection: "row", gap: 10, marginTop: 4 },
     planCardLeft: { flex: 1 },
@@ -745,16 +745,16 @@ const styles = StyleSheet.create({
 
     // 법적 안내: pt-6 border-t space-y-4
     legalSection: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 20, marginTop: 4, gap: 8 },
-    legalTitle: { fontSize: 10, fontFamily: "LINESeedKR-Bd", textDecorationLine: "underline", textAlign: "center" },
+    legalTitle: { fontSize: 10, fontWeight: "400", textDecorationLine: "underline", textAlign: "center" },
     legalLinks: { flexDirection: "row", justifyContent: "center", gap: 16, flexWrap: "wrap" },
     legalLink: { fontSize: 11, color: "#10b981", textDecorationLine: "underline" },
     legalText: { fontSize: 10, lineHeight: 16, textAlign: "center" },
 
     // 사업자 정보 박스: bg-gray-50 p-4 rounded-2xl text-[9px] text-center
     businessBox: { borderRadius: 16, padding: 14, gap: 2, alignItems: "center" },
-    businessTitle: { fontSize: 9, fontFamily: "LINESeedKR-Bd", marginBottom: 4 },
+    businessTitle: { fontSize: 9, fontWeight: "400", marginBottom: 4 },
     businessText: { fontSize: 9, lineHeight: 14 },
-    businessCenter: { fontSize: 9, color: "#10b981", fontFamily: "LINESeedKR-Bd", marginTop: 4 },
+    businessCenter: { fontSize: 9, color: "#10b981", fontWeight: "400", marginTop: 4 },
 
     // 하단 버튼: bg-gray-900 rounded-xl py-3.5
     footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },

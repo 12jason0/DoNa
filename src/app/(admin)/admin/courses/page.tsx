@@ -7,10 +7,12 @@ import type { Place } from "@/types/map";
 import {
     parseTipsFromDb,
     tipsToJson,
-    TIP_CATEGORIES,
+    TIP_CATEGORY_VALUES,
+    getTipCategoryLabel,
     type TipItem,
     type TipCategory,
 } from "@/types/tip";
+import { useLocale } from "@/context/LocaleContext";
 
 // --- 1. 선택지 상수 정의 ---
 // 11개 컨셉 + 조건 태그 (중복 제거: 맛집→맛집탐방, 주점→술자리, 카페→카페투어, 전시/공연→공연·전시)
@@ -47,6 +49,25 @@ const MOOD_OPTIONS: MoodTag[] = [
 const TARGET_OPTIONS: TargetTag[] = ["연인", "썸", "친구", "가족", "혼자"];
 
 const BUDGET_OPTIONS: BudgetTag[] = ["3만원 이하", "3~6만원", "6~10만원", "10~20만원", "20만원 이상"];
+const REGION_OPTIONS = [
+    "성수",
+    "홍대",
+    "연남",
+    "종로",
+    "을지로",
+    "강남",
+    "용산",
+    "이태원",
+    "잠실",
+    "여의도",
+    "영등포",
+    "한남",
+    "서촌",
+    "안국",
+    "합정",
+    "건대",
+];
+const DURATION_OPTIONS = ["2시간", "3시간", "4시간", "5시간", "6시간+"];
 
 // 선택형 코스용 세그먼트 (브런치/저녁 등 유저가 고를 구간)
 const SEGMENT_OPTIONS = [
@@ -69,6 +90,7 @@ function TipItemEditor({
     onChange: (tips: TipItem[]) => void;
     label: string;
 }) {
+    const { t } = useLocale();
     const addTip = () =>
         onChange([
             ...tips,
@@ -88,21 +110,21 @@ function TipItemEditor({
         <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">{label}</label>
             <div className="space-y-2 border rounded p-2 bg-gray-50">
-                {tips.map((t, i) => (
+                {tips.map((tipRow, i) => (
                     <div key={i} className="flex gap-2 items-start">
                         <select
-                            value={t.category}
+                            value={tipRow.category}
                             onChange={(e) => updateTip(i, "category", e.target.value)}
                             className="border p-1.5 rounded text-xs w-32 shrink-0"
                         >
-                            {TIP_CATEGORIES.map((c, idx) => (
-                                <option key={`${c.value}-${idx}`} value={c.value}>
-                                    {c.label}
+                            {TIP_CATEGORY_VALUES.map((c, idx) => (
+                                <option key={`${c}-${idx}`} value={c}>
+                                    {getTipCategoryLabel(c, t)}
                                 </option>
                             ))}
                         </select>
                         <textarea
-                            value={t.content}
+                            value={tipRow.content}
                             onChange={(e) => updateTip(i, "content", e.target.value)}
                             className="flex-1 border p-1.5 rounded text-sm resize-none min-h-[60px]"
                             placeholder="예: 주차 정보, 시그니처 메뉴, 포토존 등"
@@ -150,6 +172,9 @@ type LinkedPlace = {
     estimated_duration?: number;
     recommended_time?: string;
     tips?: string;
+    tips_en?: string | null;
+    tips_ja?: string | null;
+    tips_zh?: string | null;
 };
 
 // 단순 장소 선택용 (드롭다운)
@@ -231,6 +256,13 @@ export default function AdminCoursesPage() {
     const [addRecTime, setAddRecTime] = useState<string>(""); // recommended_time
     const [addTips, setAddTips] = useState<TipItem[]>([]);
 
+    const regionOptions = useMemo(() => {
+        const fromCourses = courses
+            .map((c) => (c.region || "").trim())
+            .filter((v): v is string => Boolean(v));
+        return Array.from(new Set([...REGION_OPTIONS, ...fromCourses])).sort((a, b) => a.localeCompare(b, "ko"));
+    }, [courses]);
+
     // 장소 검색용 State
     const [placeSearchQuery, setPlaceSearchQuery] = useState<string>("");
     const [placeSearchResults, setPlaceSearchResults] = useState<SimplePlace[]>([]);
@@ -246,6 +278,9 @@ export default function AdminCoursesPage() {
         estimated_duration?: number | "";
         recommended_time?: string;
         tips: TipItem[];
+        tips_en: TipItem[];
+        tips_ja: TipItem[];
+        tips_zh: TipItem[];
     } | null>(null);
 
     // --- 데이터 불러오기 ---
@@ -608,7 +643,12 @@ export default function AdminCoursesPage() {
             const method = editingId ? "PATCH" : "POST";
 
             // places는 별도 API로 관리하므로 body에서 제외
-            const { places, ...bodyData } = formData;
+            const { places, ...restBodyData } = formData;
+            const bodyData = {
+                ...restBodyData,
+                // target_situation은 직접 입력 대신 Target 태그 선택값으로만 저장한다.
+                target_situation: (formData.tags?.target || []).join(", "),
+            };
 
             const res = await fetch(url, {
                 method: method,
@@ -740,6 +780,9 @@ export default function AdminCoursesPage() {
             estimated_duration: place.estimated_duration ?? "",
             recommended_time: place.recommended_time ?? "",
             tips: parseTipsFromDb(place.tips),
+            tips_en: parseTipsFromDb((place as LinkedPlace).tips_en),
+            tips_ja: parseTipsFromDb((place as LinkedPlace).tips_ja),
+            tips_zh: parseTipsFromDb((place as LinkedPlace).tips_zh),
         });
     };
 
@@ -770,6 +813,9 @@ export default function AdminCoursesPage() {
                         editingPlaceData.estimated_duration === "" ? null : editingPlaceData.estimated_duration,
                     recommended_time: editingPlaceData.recommended_time || null,
                     tips: tipsToJson(editingPlaceData.tips) ?? null,
+                    tips_en: tipsToJson(editingPlaceData.tips_en) ?? null,
+                    tips_ja: tipsToJson(editingPlaceData.tips_ja) ?? null,
+                    tips_zh: tipsToJson(editingPlaceData.tips_zh) ?? null,
                 }),
             });
 
@@ -956,26 +1002,20 @@ export default function AdminCoursesPage() {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-600">
-                                    타겟 상황 (Target Situation)
-                                </label>
-                                <input
-                                    name="target_situation"
-                                    placeholder="예: 썸 탈출, 기념일"
-                                    value={formData.target_situation || ""}
-                                    onChange={handleInputChange}
-                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                />
-                            </div>
-                            <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-600">지역</label>
                                 <input
                                     name="region"
-                                    placeholder="예: 성수, 홍대"
+                                    list="admin-course-region-options"
                                     value={formData.region || ""}
                                     onChange={handleInputChange}
+                                    placeholder="예: 홍대, 홍대/신촌, 마포"
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                                 />
+                                <datalist id="admin-course-region-options">
+                                    {regionOptions.map((region) => (
+                                        <option key={region} value={region} />
+                                    ))}
+                                </datalist>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-600">컨셉 (Concept)</label>
@@ -989,13 +1029,19 @@ export default function AdminCoursesPage() {
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-600">소요시간</label>
-                                <input
+                                <select
                                     name="duration"
-                                    placeholder="예: 3시간"
                                     value={formData.duration || ""}
                                     onChange={handleInputChange}
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                />
+                                >
+                                    <option value="">선택 안 함</option>
+                                    {DURATION_OPTIONS.map((duration) => (
+                                        <option key={duration} value={duration}>
+                                            {duration}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
@@ -1046,6 +1092,9 @@ export default function AdminCoursesPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-blue-700">Target</label>
+                                <p className="text-xs text-gray-500">
+                                    target_situation 저장값: {(formData.tags?.target || []).join(", ") || "-"}
+                                </p>
                                 <div className="flex flex-wrap gap-2">
                                     {TARGET_OPTIONS.map((tag) => (
                                         <button
@@ -1440,12 +1489,42 @@ export default function AdminCoursesPage() {
                                                                         </div>
                                                                     </div>
                                                                     <TipItemEditor
-                                                                        label="팁"
+                                                                        label="팁 (한국어)"
                                                                         tips={editData.tips}
                                                                         onChange={(tips) =>
                                                                             setEditingPlaceData({
                                                                                 ...editData,
                                                                                 tips,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                    <TipItemEditor
+                                                                        label="팁 (English)"
+                                                                        tips={editData.tips_en}
+                                                                        onChange={(tips_en) =>
+                                                                            setEditingPlaceData({
+                                                                                ...editData,
+                                                                                tips_en,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                    <TipItemEditor
+                                                                        label="팁 (日本語)"
+                                                                        tips={editData.tips_ja}
+                                                                        onChange={(tips_ja) =>
+                                                                            setEditingPlaceData({
+                                                                                ...editData,
+                                                                                tips_ja,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                    <TipItemEditor
+                                                                        label="팁 (中文)"
+                                                                        tips={editData.tips_zh}
+                                                                        onChange={(tips_zh) =>
+                                                                            setEditingPlaceData({
+                                                                                ...editData,
+                                                                                tips_zh,
                                                                             })
                                                                         }
                                                                     />
@@ -1831,7 +1910,7 @@ export default function AdminCoursesPage() {
                                 }}
                                 className="absolute top-4 right-4 bg-black/30 backdrop-blur-md text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/50 transition-colors text-xl font-bold"
                             >
-                                ×
+                                <span className="symbol-ko-font">×</span>
                             </button>
                             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
                             <div className="absolute bottom-6 left-6 text-white">

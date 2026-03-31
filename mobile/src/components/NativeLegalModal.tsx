@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
     headerBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-    headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "700" },
+    headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "500" },
     scroll: { flex: 1 },
     scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
 });

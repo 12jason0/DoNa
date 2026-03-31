@@ -4,11 +4,13 @@ import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useLocale } from "@/context/LocaleContext";
 
 // 결제 실패 처리 로직 컴포넌트
 function PaymentFailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { t } = useLocale();
 
     // URL 파라미터에서 정보 추출
     const code = searchParams.get("code");
@@ -21,9 +23,9 @@ function PaymentFailContent() {
     // 코드에 따른 메시지 결정
     const getTitle = () => {
         if (code === "PAY_PROCESS_CANCELED") {
-            return "결제 취소";
+            return t("payment.failTitleCanceled");
         }
-        return "결제 실패";
+        return t("payment.failTitleFailed");
     };
 
     const getDescription = () => {
@@ -31,9 +33,9 @@ function PaymentFailContent() {
             return decodedMessage;
         }
         if (code === "PAY_PROCESS_CANCELED") {
-            return "결제가 취소되었습니다.";
+            return t("payment.failDescCanceled");
         }
-        return "결제가 실패했어요. 다시 시도해 주세요.";
+        return t("payment.failDescRetry");
     };
 
     return (
@@ -45,14 +47,14 @@ function PaymentFailContent() {
             <h1 className="text-2xl font-bold mb-2 text-gray-900">{getTitle()}</h1>
             <p className="text-gray-700 mb-2">{getDescription()}</p>
 
-            {orderId && <p className="text-xs text-gray-400 mb-6">주문번호: {orderId}</p>}
+            {orderId && <p className="text-xs text-gray-400 mb-6">{t("payment.orderNumber", { orderId })}</p>}
 
             <div className="flex flex-col gap-3">
                 <Link
                     href="/"
                     className="w-full px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all active:scale-95"
                 >
-                    홈으로 돌아가기
+                    {t("payment.homeBack")}
                 </Link>
             </div>
         </div>
@@ -61,13 +63,14 @@ function PaymentFailContent() {
 
 // 메인 페이지 컴포넌트 (Suspense 래핑)
 export default function PayFailPage() {
+    const { t } = useLocale();
     return (
         <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
             <Suspense
                 fallback={
                     <div className="text-center">
                         <Loader2 className="w-10 h-10 text-gray-300 animate-spin mx-auto mb-4" />
-                        <p className="text-gray-400">결제 정보를 불러오는 중...</p>
+                        <p className="text-gray-400">{t("payment.loading")}</p>
                     </div>
                 }
             >

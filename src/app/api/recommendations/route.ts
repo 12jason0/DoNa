@@ -293,6 +293,44 @@ function calculateGoalMatch(
     return Math.min(score, 1.0);
 }
 
+/** target 매칭 (연인/썸/친구/혼자) */
+function calculateTargetMatch(courseTarget: string[], companionToday: string, longTermCompanion: string): number {
+    if (!courseTarget || courseTarget.length === 0) return 0.5;
+    const companion = companionToday || longTermCompanion;
+    if (!companion) return 0.5;
+
+    const companionTargetMap: Record<string, string[]> = {
+        연인: ["연인"],
+        썸: ["썸", "연인"],
+        "소개팅 상대": ["소개팅", "썸", "연인"],
+        소개팅: ["소개팅", "썸", "연인"],
+        친구: ["친구"],
+        혼자: ["혼자"],
+        가족: ["가족"],
+    };
+    const targets = companionTargetMap[companion] || [companion];
+    return targets.some((t) => courseTarget.some((ct) => ct.includes(t) || t.includes(ct))) ? 1.0 : 0.2;
+}
+
+function parseCourseTargetAudience(targetAudience: unknown): string[] {
+    if (!targetAudience) return [];
+    if (Array.isArray(targetAudience)) {
+        return targetAudience.map((v) => String(v).trim()).filter(Boolean);
+    }
+    return String(targetAudience)
+        .split(/[,\u00B7/]/)
+        .map((v) => v.trim())
+        .filter(Boolean);
+}
+
+function getPatternFrequencyScore(pattern: unknown, key: string): number {
+    if (!pattern || typeof pattern !== "object") return 0;
+    const raw = (pattern as Record<string, unknown>)[key];
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return n;
+}
+
 /** VALUE(분위기파 vs 실속파) 별도 가중치 */
 function calculateValueMatch(course: any, userValue: string | null): number {
     if (!userValue) return 0.5;
@@ -352,6 +390,7 @@ function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayC
         mood: 0.22,
         region: 0.18,
         goal: 0.23,
+        target: 0.09,
         value: 0.1,
         budget: 0.05,
         time: 0.0, // 시간대: todayContext.timeOfDay 있을 때만 활성화
@@ -396,13 +435,25 @@ function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayC
         activeWeightTotal += WEIGHTS.goal;
     }
 
-    // 5-1. VALUE(분위기파/실속파) 별도 가중치
+    // 5-1. 타겟(연인/썸/친구/가족/혼자) 매칭
+    const courseTargets = parseCourseTargetAudience(course.target_audience);
+    if (courseTargets.length > 0 && (todayContext.companion_today || longTermPrefs?.companion)) {
+        weightedScoreSum +=
+            calculateTargetMatch(
+                courseTargets,
+                todayContext.companion_today || "",
+                String(longTermPrefs?.companion || ""),
+            ) * WEIGHTS.target;
+        activeWeightTotal += WEIGHTS.target;
+    }
+
+    // 5-2. VALUE(분위기파/실속파) 별도 가중치
     if (todayContext.value) {
         weightedScoreSum += calculateValueMatch(course, todayContext.value) * WEIGHTS.value;
         activeWeightTotal += WEIGHTS.value;
     }
 
-    // 5-2. 예산 매칭 (VALUE에서 추론 가능)
+    // 5-3. 예산 매칭 (VALUE에서 추론 가능)
     const effectiveBudget = todayContext.budget || (todayContext.value ? "infer" : null);
     if (effectiveBudget || todayContext.value) {
         weightedScoreSum +=
@@ -411,7 +462,7 @@ function calculateNewRecommendationScore(course: any, longTermPrefs: any, todayC
         activeWeightTotal += WEIGHTS.budget;
     }
 
-    // 5-3. 시간대 매칭
+    // 5-4. 시간대 매칭
     if (todayContext.timeOfDay) {
         const timeWeight = 0.08;
         weightedScoreSum += calculateTimeMatch(course, todayContext.timeOfDay) * timeWeight;
@@ -445,6 +496,7 @@ function calculateWeekendRecommendationScore(
         mood: 0.21,
         region: 0.17,
         goal: 0.22,
+        target: 0.08,
         value: 0.1,
         budget: 0.05,
         time: 0.04,
@@ -485,6 +537,16 @@ function calculateWeekendRecommendationScore(
                 todayContext.companion_today || "",
             ) * WEIGHTS.goal;
         activeWeightTotal += WEIGHTS.goal;
+    }
+    const courseTargets = parseCourseTargetAudience(course.target_audience);
+    if (courseTargets.length > 0 && (todayContext.companion_today || longTermPrefs?.companion)) {
+        weightedScoreSum +=
+            calculateTargetMatch(
+                courseTargets,
+                todayContext.companion_today || "",
+                String(longTermPrefs?.companion || ""),
+            ) * WEIGHTS.target;
+        activeWeightTotal += WEIGHTS.target;
     }
     if (todayContext.value) {
         weightedScoreSum += calculateValueMatch(course, todayContext.value) * WEIGHTS.value;
@@ -638,8 +700,12 @@ export async function GET(req: NextRequest) {
 
         // 🟢 [Fixed]: 개별 처리로 TypeScript 타입 추론 에러(18047, 2339) 해결
         let savedCourseIds: number[] = []; // 🟢 이미 저장한 코스 ID 목록
+        let completedCourseIds: number[] = []; // 🟢 완료한 코스 ID 목록
+        let cooldownCourseIds: number[] = []; // 🟢 최근 노출(피드백 기준) 쿨다운 코스 ID
+        let feedbackPenaltyMap = new Map<number, number>(); // BAD/OK 피드백 감점
+        let behaviorPatternLatest: any = null; // 최신 장기 패턴
         if (userId) {
-            const [prefsData, interactionData, savedCourses] = await Promise.all([
+            const [prefsData, interactionData, savedCourses, completedCourses, feedbackRows, behaviorPatternRow] = await Promise.all([
                 prisma.userPreference
                     .findUnique({
                         where: { userId },
@@ -673,6 +739,37 @@ export async function GET(req: NextRequest) {
                           })
                           .catch(() => [])
                     : Promise.resolve([]),
+                (prisma as any).completedCourse
+                    .findMany({
+                        where: { userId, courseId: { not: null } },
+                        select: { courseId: true },
+                        take: 500,
+                    })
+                    .catch(() => []),
+                (prisma as any).recommendationFeedback
+                    .findMany({
+                        where: {
+                            userId,
+                            context: "AI_RECOMMENDATION",
+                            rating: { in: ["BAD", "OK", "GOOD"] },
+                        },
+                        orderBy: { createdAt: "desc" },
+                        take: 200,
+                        select: { courseId: true, rating: true, createdAt: true },
+                    })
+                    .catch(() => []),
+                (prisma as any).userBehaviorPattern
+                    .findFirst({
+                        where: { userId },
+                        orderBy: { createdAt: "desc" },
+                        select: {
+                            conceptPattern: true,
+                            regionPattern: true,
+                            moodPattern: true,
+                            goalPattern: true,
+                        },
+                    })
+                    .catch(() => null),
             ]);
 
             if (prefsData?.preferences) {
@@ -758,6 +855,31 @@ export async function GET(req: NextRequest) {
             }
 
             savedCourseIds = Array.isArray(savedCourses) ? savedCourses.map((sc: any) => sc.courseId) : [];
+            completedCourseIds = Array.isArray(completedCourses)
+                ? completedCourses.map((cc: any) => Number(cc.courseId)).filter((id: number) => Number.isFinite(id))
+                : [];
+            behaviorPatternLatest = behaviorPatternRow;
+
+            const feedbackWeights: Record<string, number> = {
+                BAD: -0.15,
+                OK: -0.08,
+                GOOD: 0.04,
+            };
+            if (Array.isArray(feedbackRows)) {
+                const cooldownCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+                const cooldownSet = new Set<number>();
+                feedbackRows.forEach((row: any) => {
+                    const cid = Number(row?.courseId);
+                    if (!Number.isFinite(cid)) return;
+                    if (row?.createdAt && new Date(row.createdAt) >= cooldownCutoff) {
+                        cooldownSet.add(cid);
+                    }
+                    if (feedbackPenaltyMap.has(cid)) return; // 최신 1개만 반영
+                    const delta = feedbackWeights[String(row?.rating || "").toUpperCase()] || 0;
+                    if (delta !== 0) feedbackPenaltyMap.set(cid, delta);
+                });
+                cooldownCourseIds = Array.from(cooldownSet);
+            }
         }
 
         const whereConditions: any = { isPublic: true };
@@ -783,14 +905,26 @@ export async function GET(req: NextRequest) {
             usedStrictRegion = true;
         }
 
-        // 🟢 [주석처리] 이미 저장한 코스 제외 - BASIC+PREMIUM 2개 추천을 위해 제외하지 않음
-        // if (mode === "ai" && savedCourseIds.length > 0) {
-        //     whereConditions.id = { notIn: savedCourseIds };
-        // }
+        // AI 모드: 완료 코스 + 최근 3일 재노출 쿨다운 코스 제외
+        if (mode === "ai") {
+            const aiExcludedIds = Array.from(
+                new Set(
+                    [...completedCourseIds, ...cooldownCourseIds]
+                        .map((id) => Number(id))
+                        .filter((id) => Number.isFinite(id)),
+                ),
+            );
+            if (aiExcludedIds.length > 0) {
+                whereConditions.id = { notIn: aiExcludedIds };
+            }
+        }
 
         const courseSelect = {
             id: true,
             title: true,
+            title_en: true,
+            title_ja: true,
+            title_zh: true,
             sub_title: true,
             description: true,
             imageUrl: true,
@@ -1030,11 +1164,32 @@ export async function GET(req: NextRequest) {
 
             const goalFreq = course.goal ? recentBehaviorData.goals.filter((g: string) => g === course.goal).length : 0;
 
+            const patternConceptFreq = getPatternFrequencyScore(behaviorPatternLatest?.conceptPattern, String(course.concept || ""));
+            const patternRegionFreq = getPatternFrequencyScore(behaviorPatternLatest?.regionPattern, String(course.region || ""));
+            const patternMoodFreq =
+                course.mood && Array.isArray(course.mood)
+                    ? course.mood.reduce(
+                          (sum: number, m: string) =>
+                              sum + getPatternFrequencyScore(behaviorPatternLatest?.moodPattern, String(m)),
+                          0,
+                      )
+                    : 0;
+            const patternGoalFreq = course.goal
+                ? getPatternFrequencyScore(behaviorPatternLatest?.goalPattern, String(course.goal))
+                : 0;
+
             // 빈도를 정규화해서 보너스 계산 (최대 50회 = 1.0 가중치로 가정)
             bonus += Math.min((conceptFreq / 50) * 0.15, 0.15); // concept: 최대 0.15
             bonus += Math.min((regionFreq / 50) * 0.1, 0.1); // region: 최대 0.1
             bonus += Math.min((moodFreq / 50) * 0.1, 0.1); // mood: 최대 0.1
             bonus += Math.min((goalFreq / 50) * 0.1, 0.1); // goal: 최대 0.1
+            bonus += Math.min((patternConceptFreq / 80) * 0.08, 0.08);
+            bonus += Math.min((patternRegionFreq / 80) * 0.06, 0.06);
+            bonus += Math.min((patternMoodFreq / 80) * 0.06, 0.06);
+            bonus += Math.min((patternGoalFreq / 80) * 0.06, 0.06);
+
+            // 사용자 피드백 반영: BAD 감점, GOOD 소폭 가점
+            bonus += feedbackPenaltyMap.get(Number(course.id)) || 0;
 
             const finalScore = Math.min(baseScore + bonus, 1.0);
 

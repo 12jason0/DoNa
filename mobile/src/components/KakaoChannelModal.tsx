@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     },
     heroCaps: {
         fontSize: 11,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#059669",
         letterSpacing: 1.2,
     },
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 22,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#111827",
         textAlign: "center",
         lineHeight: 30,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     },
     kakaoBtnText: {
         fontSize: 16,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#371D1E",
     },
     laterBtn: {

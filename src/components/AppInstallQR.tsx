@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useLocale } from "@/context/LocaleContext";
 
 type StoreKind = "apple" | "google";
 
@@ -13,6 +14,7 @@ export default function AppInstallQR({
     googleUrl?: string;
     onClose?: () => void;
 }) {
+    const { t } = useLocale();
     const [selected, setSelected] = useState<StoreKind>("apple");
 
     const qrSrc = (url: string) =>
@@ -24,7 +26,7 @@ export default function AppInstallQR({
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-6 w-full max-w-md">
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 tracking-tight">앱 설치 QR 코드</h3>
+                <h3 className="text-lg font-semibold text-gray-900 tracking-tight">{t("appInstallQR.title")}</h3>
 
                 {/* 탭 버튼 */}
                 <div className="grid grid-cols-2 gap-2">
@@ -72,7 +74,7 @@ export default function AppInstallQR({
                     className=" mt-2 w-full py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 hover:cursor-pointer tracking-tight"
                     onClick={() => onClose?.()}
                 >
-                    닫기
+                    {t("common.close")}
                 </button>
             </div>
         </div>

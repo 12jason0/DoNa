@@ -22,7 +22,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { login as kakaoNativeLogin } from '@react-native-kakao/user';
 import { useQueryClient } from '@tanstack/react-query';
 import Purchases from 'react-native-purchases';
 
@@ -34,6 +33,14 @@ import AppHeader from '../../src/components/AppHeader';
 import StandaloneTabBar from '../../src/components/StandaloneTabBar';
 import { AppleMark, KakaoMark, SOCIAL_MARK_SIZE } from '../../src/components/auth/SocialLoginMarks';
 import { MODAL_ANDROID_PROPS } from '../../src/constants/modalAndroidProps';
+
+let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
+try {
+    const kakaoUserModule = require('@react-native-kakao/user');
+    kakaoNativeLogin = kakaoUserModule.login ?? null;
+} catch {
+    kakaoNativeLogin = null;
+}
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -89,7 +96,23 @@ export default function SignupScreen() {
         setLoading(true);
         setError('');
         try {
-            if (Platform.OS === 'android') {
+            const runKakaoWebOAuth = async () => {
+                const result = await WebBrowser.openAuthSessionAsync(
+                    `${BASE_URL}/api/auth/kakao?next=mobile`,
+                    'duna://success',
+                );
+                if (result.type === 'success' && result.url) {
+                    const urlObj = new URL(result.url);
+                    const token = urlObj.searchParams.get('token');
+                    const userIdStr = urlObj.searchParams.get('userId');
+                    if (token) saveAuthToken(token);
+                    if (userIdStr) saveUserId(userIdStr);
+                    const uid = userIdStr ? parseInt(userIdStr, 10) : undefined;
+                    await handleSocialSuccess(Number.isFinite(uid as number) ? uid : undefined, token ?? undefined);
+                }
+            };
+
+            if (Platform.OS === 'android' && kakaoNativeLogin) {
                 const kakaoToken = await kakaoNativeLogin();
                 const data = await api.post<{ user?: { id: number }; token?: string; error?: string }>(
                     '/api/auth/kakao/native',
@@ -101,13 +124,7 @@ export default function SignupScreen() {
                     setError(data.error || '카카오 로그인에 실패했습니다.');
                 }
             } else {
-                const result = await WebBrowser.openAuthSessionAsync(
-                    `${BASE_URL}/api/auth/kakao?next=mobile`,
-                    'duna://success',
-                );
-                if (result.type === 'success') {
-                    await handleSocialSuccess();
-                }
+                await runKakaoWebOAuth();
             }
         } catch (e: any) {
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
@@ -510,7 +527,7 @@ const styles = StyleSheet.create({
     },
     brandTitle: {
         fontSize: FontSize['3xl'],
-        fontWeight: '800',
+        fontWeight: '600',
         color: Colors.gray900,
         letterSpacing: -1,
     },
@@ -535,7 +552,7 @@ const styles = StyleSheet.create({
     },
     msgErrorText: {
         fontSize: FontSize.sm,
-        fontWeight: '700',
+        fontWeight: '500',
         color: Colors.red600,
     },
 
@@ -544,22 +561,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 20,
+        gap: 28,
         marginBottom: Spacing[6],
     },
     socialCircleKakao: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         backgroundColor: '#FEE500',
         alignItems: 'center',
         justifyContent: 'center',
         ...Shadow.sm,
     },
     socialCircleApple: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         backgroundColor: '#000000',
         alignItems: 'center',
         justifyContent: 'center',
@@ -589,7 +606,7 @@ const styles = StyleSheet.create({
     fieldGroup: {},
     label: {
         fontSize: FontSize.sm,
-        fontWeight: '700',
+        fontWeight: '500',
         color: Colors.gray700,
         marginBottom: 6,
         marginLeft: 2,
@@ -650,7 +667,7 @@ const styles = StyleSheet.create({
     btnSubmitText: {
         color: Colors.white,
         fontSize: FontSize.base,
-        fontWeight: '700',
+        fontWeight: '500',
         letterSpacing: -0.3,
     },
     btnDisabled: { opacity: 0.5 },
@@ -664,7 +681,7 @@ const styles = StyleSheet.create({
     loginLink: {
         fontSize: FontSize.sm,
         color: Colors.emerald600,
-        fontWeight: '700',
+        fontWeight: '500',
     },
 
     // ── 선택 모달 ──────────────────────────────────────────────────────────────
@@ -691,7 +708,7 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         fontSize: FontSize.md,
-        fontWeight: '700',
+        fontWeight: '500',
         color: Colors.gray900,
         marginBottom: Spacing[3],
         paddingHorizontal: Spacing[2],
@@ -713,11 +730,11 @@ const styles = StyleSheet.create({
     },
     optionTextActive: {
         color: Colors.emerald600,
-        fontWeight: '600',
+        fontWeight: '500',
     },
     checkmark: {
         color: Colors.emerald600,
         fontSize: FontSize.md,
-        fontWeight: '700',
+        fontWeight: '500',
     },
 });

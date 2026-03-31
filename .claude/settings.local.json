@@ -33,7 +33,22 @@
       "Bash(grep -l \"registerForPushNotificationsAsync\\\\|notifications\" /c/Users/12jas/stylemap/mobile/src/lib/*.ts)",
       "Bash(grep -n \"mapModal\\\\|MapModal\\\\|showMap\\\\|mapVisible\\\\|mapSheet\\\\|MapSheet\\\\|NaverMapView\\\\|mapOpen\" /c/Users/12jas/stylemap/mobile/app/courses/[id]/index.tsx)",
       "Bash(grep -n \"normalizedPlacesAll\\\\|normalizedPlaces\" /c/Users/12jas/stylemap/mobile/app/courses/[id]/index.tsx)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(eas build:*)",
+      "Bash(python3:*)",
+      "Bash(find /c/Users/12jas/stylemap/src/app/api -name \"*.ts\" -exec grep -l \"response\\\\|json\\\\|return\" {})",
+      "Bash(printf:*)",
+      "Bash(grep -n \"t\\(\"\"\" /c/Users/12jas/stylemap/src/app/\\\\\\(home\\\\\\)/[id]/PlaceDetailView.tsx)",
+      "Bash(grep -n \"{coursePlace.place.category}\\\\|{place.category}\\\\|{course.concept}\" /c/Users/12jas/stylemap/src/app/\\\\\\(home\\\\\\)/courses/[id]/CourseDetailClient.tsx)",
+      "Bash(head -20 grep -n \"crowdLevel\\\\|crowd\" src/i18n/messages/ko/translation.json)",
+      "Bash(ls src/app/\\\\\\(home\\\\\\)/suggest/)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//c/Users/12jas/stylemap/**)",
+      "Bash(done)",
+      "Bash(find /c/Users/12jas/stylemap/src -type f \\\\\\(-name *i18n* -o -name *translation* -o -name *messages* \\\\\\))",
+      "Bash(ls -la \"/c/Users/12jas/stylemap/src/app/\\(home\\)/\")"
     ]
   }
 }

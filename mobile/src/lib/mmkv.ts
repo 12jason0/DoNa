@@ -38,6 +38,22 @@ export function loadUserId(): string | null {
     return storage.getString(USER_ID_KEY) ?? null;
 }
 
+// ─── Benefit consent modal (웹 localStorage 키와 동일) ─────────────────────────
+
+const BENEFIT_CONSENT_HIDE_UNTIL_KEY = 'benefitConsentModalHideUntil';
+
+export function getBenefitConsentHideUntil(): string | null {
+    return storage.getString(BENEFIT_CONSENT_HIDE_UNTIL_KEY) ?? null;
+}
+
+export function setBenefitConsentHideUntil(iso: string | null): void {
+    if (iso) {
+        storage.set(BENEFIT_CONSENT_HIDE_UNTIL_KEY, iso);
+    } else {
+        storage.delete(BENEFIT_CONSENT_HIDE_UNTIL_KEY);
+    }
+}
+
 // ─── 기존 AsyncStorage → MMKV 마이그레이션 헬퍼 ────────────────────────────
 // Phase 1 로그인 화면 작업 시 호출. 기존 사용자 데이터를 MMKV로 이전.
 

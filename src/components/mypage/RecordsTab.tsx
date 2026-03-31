@@ -19,6 +19,7 @@ const CourseImageLoader = ({
     courseId: number | string;
     onImageLoaded: (url: string) => void;
 }) => {
+    const { t } = useLocale();
     const [loadedImageUrl, setLoadedImageUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -38,7 +39,7 @@ const CourseImageLoader = ({
                     }
                 }
             } catch (error) {
-                console.error("코스 이미지 로드 실패:", error);
+            console.error("Failed to load course image:", error);
             }
         };
         loadImage();
@@ -61,7 +62,7 @@ const CourseImageLoader = ({
 
     return (
         <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-sm">
-            이미지 없음
+            {t("common.imagePlaceholder")}
         </div>
     );
 };
@@ -240,8 +241,8 @@ const RecordsTab = ({
                                     <path d="M9 11v2"/>
                                 </svg>
                             </div>
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">아직 오늘의 데이트 추천 코스가 없어요</h4>
-                            <p className="text-gray-600 dark:text-gray-400 mb-4">나에게 딱 맞는 코스를 추천받아보세요!</p>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t("mypage.recordsTab.noSavedYet")}</h4>
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">{t("mypage.recordsTab.savedHint")}</p>
                             <button
                                 onClick={() => router.push("/personalized-home")}
                                 className="px-6 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer tracking-tight"

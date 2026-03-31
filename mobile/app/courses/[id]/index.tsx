@@ -18,6 +18,7 @@ import {
     Dimensions,
     Platform,
     KeyboardAvoidingView,
+    BackHandler,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
@@ -950,15 +951,18 @@ function CourseMapModal({
             });
     }, [visible, safeIndex, effectiveRouteMode, places]);
 
-    return (
-        <Modal
-            visible={visible}
-            transparent={Platform.OS !== 'android'}
-            animationType="slide"
-            onRequestClose={onClose}
-            {...MODAL_ANDROID_PROPS}
-        >
-            <View style={[s.courseMapModalRoot, Platform.OS === 'android' && { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+    // Android: Modal + NaverMapView/WebView(Surface) 조합에서 네이티브 크래시 가능 → 전체 화면 오버레이만 사용
+    useEffect(() => {
+        if (Platform.OS !== "android" || !visible) return;
+        const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+            onClose();
+            return true;
+        });
+        return () => sub.remove();
+    }, [visible, onClose]);
+
+    const mapChrome = (
+            <View style={[s.courseMapModalRoot, Platform.OS === "android" && { backgroundColor: "rgba(0,0,0,0.6)" }]}>
                 <Pressable
                     style={s.courseMapBackdropWeb}
                     onPress={onClose}
@@ -1158,6 +1162,23 @@ function CourseMapModal({
                     </View>
                 </View>
             </View>
+    );
+
+    if (Platform.OS === "android") {
+        if (!visible) return null;
+        return (
+            <View
+                style={[StyleSheet.absoluteFillObject, s.courseMapAndroidOverlay]}
+                pointerEvents="box-none"
+            >
+                {mapChrome}
+            </View>
+        );
+    }
+
+    return (
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            {mapChrome}
         </Modal>
     );
 }
@@ -1694,7 +1715,7 @@ export default function CourseDetailScreen() {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={["top"]}>
                 <TouchableOpacity style={{ marginTop: insets.top + 12, padding: 16 }} onPress={() => router.back()}>
-                    <Text style={{ color: Colors.brandGreen, fontWeight: "600" }}>← 뒤로</Text>
+                    <Text style={{ color: Colors.brandGreen, fontWeight: "500" }}>← 뒤로</Text>
                 </TouchableOpacity>
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ color: t.textMuted }}>코스를 불러올 수 없습니다</Text>
@@ -1904,7 +1925,7 @@ export default function CourseDetailScreen() {
                                                                         )}
                                                                         {isChosen && (
                                                                             <View style={s.candidateCheckBadge}>
-                                                                                <Text style={{ fontSize: 10, color: "#fff", fontWeight: "700" }}>✓</Text>
+                                                                                <Text style={{ fontSize: 10, color: "#fff", fontWeight: "500" }}>✓</Text>
                                                                             </View>
                                                                         )}
                                                                     </View>
@@ -2369,7 +2390,7 @@ export default function CourseDetailScreen() {
                         {/* 코스 이름 박스 */}
                         <View style={[s.reviewCourseName, { backgroundColor: t.surface }]}>
                             <Text style={{ fontSize: 11, color: t.textMuted, marginBottom: 2 }}>리뷰 대상</Text>
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: t.text }} numberOfLines={1}>{course.title}</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: t.text }} numberOfLines={1}>{course.title}</Text>
                         </View>
                         <View style={s.reviewRatingRow}>
                             {[1, 2, 3, 4, 5].map((star) => (
@@ -2513,10 +2534,10 @@ const s = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         borderColor: "rgba(55,65,81,0.9)",
     },
-    heroChipDarkText: { fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.3 },
+    heroChipDarkText: { fontSize: 11, fontWeight: "500", color: "#fff", letterSpacing: 0.3 },
     heroTitle: {
         fontSize: 20,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#fff",
         marginBottom: 6,
         lineHeight: 28,
@@ -2534,7 +2555,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.4)",
     },
-    heroMetaPillText: { fontSize: 13, fontWeight: "600", color: "#fff" },
+    heroMetaPillText: { fontSize: 13, fontWeight: "500", color: "#fff" },
 
     // 메인 카드 (웹: mt-4 rounded-2xl bg-white shadow-sm border border-gray-100)
     mainOuter: { marginTop: 16, paddingHorizontal: 20, marginBottom: 0, zIndex: 2 },
@@ -2572,16 +2593,16 @@ const s = StyleSheet.create({
         flexShrink: 0,
         marginTop: 16, // 카드 padding과 맞춤
     },
-    placeNumText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    placeNumText: { color: "#fff", fontSize: 14, fontWeight: "500" },
     // 웹: font-bold text-sm (14px)
-    placeName: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
+    placeName: { fontSize: 14, fontWeight: "500", marginBottom: 2 },
     placeSubText: { fontSize: 12, marginBottom: 6 },
     placeBadgeRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 4 },
-    catText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.3 },
+    catText: { fontSize: 10, fontWeight: "500", letterSpacing: 0.3 },
     catBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
-    catBadgeText: { fontSize: 10, fontWeight: "600" },
+    catBadgeText: { fontSize: 10, fontWeight: "500" },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-    statusBadgeText: { fontSize: 10, fontWeight: "700" },
+    statusBadgeText: { fontSize: 10, fontWeight: "500" },
     // 예약 버튼 (웹: bg-emerald-500 text-white text-[11px] px-3 py-1.5 rounded-md)
     reserveBtn: { alignSelf: "flex-start", marginTop: 4 },
     reserveBtnInner: {
@@ -2590,12 +2611,12 @@ const s = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
     },
-    reserveBtnText: { fontSize: 11, color: "#fff", fontWeight: "700" },
+    reserveBtnText: { fontSize: 11, color: "#fff", fontWeight: "500" },
     // 웹: w-20 h-20 = 80px
     placeThumb: { width: 80, height: 80, borderRadius: 8, flexShrink: 0 },
     // 꿀팁 (웹: ✨ 꿀팁 헤더 + 칩)
     tipRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" },
-    tipLabel: { fontSize: 11, fontWeight: "700", color: "#4b5563" },
+    tipLabel: { fontSize: 11, fontWeight: "500", color: "#4b5563" },
     tipChip: {
         paddingHorizontal: 8,
         paddingVertical: 3,
@@ -2604,7 +2625,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#d1fae5",
     },
-    tipChipText: { fontSize: 11, fontWeight: "600", color: "#059669" },
+    tipChipText: { fontSize: 11, fontWeight: "500", color: "#059669" },
     mapFabFixed: {
         position: "absolute",
         right: 16,
@@ -2697,18 +2718,18 @@ const s = StyleSheet.create({
     },
     detailImgNameWeb: {
         fontSize: 18,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#fff",
         letterSpacing: -0.2,
         textShadowColor: "rgba(0,0,0,0.5)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
     },
-    detailScrollTitle: { fontSize: 20, fontWeight: "800", marginBottom: 8, letterSpacing: -0.3 },
+    detailScrollTitle: { fontSize: 20, fontWeight: "600", marginBottom: 8, letterSpacing: -0.3 },
     detailAddressWeb: { fontSize: 13, fontWeight: "500", marginBottom: 12 },
     detailDescWeb: { fontSize: 14, lineHeight: 22, marginBottom: 16 },
     placeTipSection: { borderRadius: 12, padding: 14, borderWidth: 1, marginBottom: 12 },
-    placeTipSectionLabel: { fontSize: 12, fontWeight: "800", marginBottom: 8 },
+    placeTipSectionLabel: { fontSize: 12, fontWeight: "600", marginBottom: 8 },
     placeTipSectionBody: { fontSize: 14, lineHeight: 21, fontWeight: "500" },
     detailReserveBtnWeb: {
         flexDirection: "row",
@@ -2721,7 +2742,7 @@ const s = StyleSheet.create({
         marginBottom: 8,
         marginTop: 4,
     },
-    detailReserveBtnWebText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+    detailReserveBtnWebText: { color: "#fff", fontSize: 14, fontWeight: "500" },
     detailCloseTextWeb: { fontSize: 13, fontWeight: "500", textAlign: "center" },
     detailImgOverlay: {
         position: "absolute",
@@ -2735,21 +2756,21 @@ const s = StyleSheet.create({
     },
     detailImgCategory: {
         fontSize: 10,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "rgba(255,255,255,0.75)",
         letterSpacing: 0.5,
         marginBottom: 4,
     },
     detailImgName: {
         fontSize: 22,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#fff",
         letterSpacing: -0.3,
         textShadowColor: "rgba(0,0,0,0.4)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
     },
-    detailName: { fontSize: 20, fontWeight: "800", marginBottom: 8, letterSpacing: -0.3 },
+    detailName: { fontSize: 20, fontWeight: "600", marginBottom: 8, letterSpacing: -0.3 },
     detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginBottom: 8 },
     detailRowText: { fontSize: 13, flex: 1, lineHeight: 18 },
     detailDesc: {
@@ -2759,7 +2780,7 @@ const s = StyleSheet.create({
         marginTop: 4,
     },
     detailStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginLeft: 6, alignSelf: "flex-start" },
-    detailStatusText: { fontSize: 11, fontWeight: "700" },
+    detailStatusText: { fontSize: 11, fontWeight: "500" },
     detailTipBanner: {
         flexDirection: "row",
         alignItems: "center",
@@ -2772,7 +2793,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
     },
     detailTipLockIcon: { fontSize: 20 },
-    detailTipBannerTitle: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
+    detailTipBannerTitle: { fontSize: 13, fontWeight: "500", marginBottom: 2 },
     detailTipBannerSub: { fontSize: 12 },
     detailFooter: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
     detailReserveBtn: {
@@ -2782,7 +2803,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         marginBottom: 8,
     },
-    detailReserveBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    detailReserveBtnText: { color: "#fff", fontSize: 15, fontWeight: "500" },
     detailCloseTextBtn: { paddingVertical: 10, alignItems: "center" },
     detailCloseText: { fontSize: 14, fontWeight: "500" },
     reserveWebHeader: {
@@ -2793,7 +2814,7 @@ const s = StyleSheet.create({
         borderBottomWidth: 1,
     },
     reserveWebBackBtn: { width: 36, alignItems: "center" },
-    reserveWebTitle: { flex: 1, fontSize: 15, fontWeight: "600", textAlign: "center" },
+    reserveWebTitle: { flex: 1, fontSize: 15, fontWeight: "500", textAlign: "center" },
     screenReserveOverlay: {
         flex: 1,
         justifyContent: "flex-end",
@@ -2812,7 +2833,7 @@ const s = StyleSheet.create({
         padding: 24,
         paddingBottom: 36,
     },
-    tipModalTitle: { fontSize: 18, fontWeight: "800", marginBottom: 16 },
+    tipModalTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16 },
     tipModalContent: { fontSize: 15, lineHeight: 24 },
     tipBox: { backgroundColor: "#fef9c3", borderRadius: 10, padding: 12, marginBottom: 12 },
     tipText: { fontSize: 13, color: "#92400e", lineHeight: 19 },
@@ -2827,7 +2848,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         gap: 6,
     },
-    mapBtnText: { fontSize: 13, fontWeight: "600" },
+    mapBtnText: { fontSize: 13, fontWeight: "500" },
     closeBtn: {
         margin: 16,
         borderRadius: 12,
@@ -2835,7 +2856,7 @@ const s = StyleSheet.create({
         paddingVertical: 14,
         alignItems: "center",
     },
-    closeBtnText: { fontSize: 15, fontWeight: "600" },
+    closeBtnText: { fontSize: 15, fontWeight: "500" },
     mapModalWrap: {
         height: "62%",
         borderTopLeftRadius: 20,
@@ -2850,10 +2871,14 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
     },
-    mapModalTitle: { fontSize: 15, fontWeight: "700", maxWidth: "60%" },
-    mapModalCloseText: { fontSize: 14, fontWeight: "600" },
-    mapModalOpenText: { fontSize: 14, color: Colors.brandGreen, fontWeight: "700" },
+    mapModalTitle: { fontSize: 15, fontWeight: "500", maxWidth: "60%" },
+    mapModalCloseText: { fontSize: 14, fontWeight: "500" },
+    mapModalOpenText: { fontSize: 14, color: Colors.brandGreen, fontWeight: "500" },
     courseMapModalRoot: { flex: 1 },
+    courseMapAndroidOverlay: {
+        zIndex: 60000,
+        elevation: 60000,
+    },
     courseMapBackdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "rgba(0,0,0,0.45)",
@@ -2936,14 +2961,14 @@ const s = StyleSheet.create({
         shadowRadius: 6,
         elevation: 4,
     },
-    mapStepText: { color: "#fff", fontWeight: "700" },
-    mapStepTextWeb: { color: "#fff", fontWeight: "800", fontSize: 13 },
+    mapStepText: { color: "#fff", fontWeight: "500" },
+    mapStepTextWeb: { color: "#fff", fontWeight: "600", fontSize: 13 },
     mapStepCircleSelected: {
         backgroundColor: "#ffffff",
         borderWidth: 3,
         borderColor: "#22c55e",
     },
-    mapStepTextSelected: { color: "#16a34a", fontWeight: "700" },
+    mapStepTextSelected: { color: "#16a34a", fontWeight: "500" },
     mapStepArrow: { marginHorizontal: 6, color: "#9ca3af", fontSize: 22, lineHeight: 24 },
     mapAllRouteBtn: {
         paddingHorizontal: 10,
@@ -2956,7 +2981,7 @@ const s = StyleSheet.create({
         borderColor: "#22c55e",
         backgroundColor: "#f0fdf4",
     },
-    mapAllRouteBtnText: { fontSize: 12, fontWeight: "700" },
+    mapAllRouteBtnText: { fontSize: 12, fontWeight: "500" },
     mapBottomSheet: {
         position: "absolute",
         bottom: 0,
@@ -2973,7 +2998,7 @@ const s = StyleSheet.create({
     },
     mapBottomTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
     mapBottomThumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: "#e5e7eb" },
-    mapBottomTitle: { fontSize: 16, fontWeight: "800" },
+    mapBottomTitle: { fontSize: 16, fontWeight: "600" },
     mapBottomSub: { fontSize: 12, marginTop: 2 },
     mapBottomAddr: { fontSize: 12, marginTop: 2 },
     mapPrimaryBtn: {
@@ -2985,7 +3010,7 @@ const s = StyleSheet.create({
         gap: 6,
         marginBottom: 10,
     },
-    mapPrimaryBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    mapPrimaryBtnText: { color: "#fff", fontSize: 13, fontWeight: "500" },
     mapActionRow: { flexDirection: "row", gap: 10 },
     mapDarkBtn: {
         height: 46,
@@ -2994,7 +3019,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    mapDarkBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    mapDarkBtnText: { color: "#fff", fontSize: 16, fontWeight: "500" },
     mapLightBtn: {
         height: 46,
         borderRadius: 10,
@@ -3002,7 +3027,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    mapLightBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    mapLightBtnText: { color: "#fff", fontSize: 16, fontWeight: "500" },
 
     // Bottom CTA bar
     ctaBar: {
@@ -3027,7 +3052,7 @@ const s = StyleSheet.create({
         borderRadius: 0,
         borderWidth: 0,
     },
-    ctaIconLabel: { fontSize: 10, fontWeight: "600" },
+    ctaIconLabel: { fontSize: 10, fontWeight: "500" },
     ctaMainBtn: {
         flex: 1,
         backgroundColor: Colors.brandGreenLight,
@@ -3042,18 +3067,18 @@ const s = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
     },
-    ctaMainBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    ctaMainBtnText: { color: "#fff", fontSize: 16, fontWeight: "500" },
     ctaStatusText: { fontSize: 11, marginBottom: 4, textAlign: "center" },
 
     // Ticket modal
     modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-    modalTitle: { fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 8 },
+    modalTitle: { fontSize: 20, fontWeight: "600", textAlign: "center", marginBottom: 8 },
     modalSubtitle: { fontSize: 13, textAlign: "center", lineHeight: 22, marginBottom: 24 },
     planCard: { borderRadius: 12, padding: 16, marginBottom: 10, borderWidth: 1 },
     planRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-    planName: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+    planName: { fontSize: 15, fontWeight: "500", marginBottom: 2 },
     planDesc: { fontSize: 13 },
-    planPrice: { fontSize: 17, fontWeight: "800" },
+    planPrice: { fontSize: 17, fontWeight: "600" },
     planCardPremium: {
         backgroundColor: "#fef3c7",
         borderRadius: 12,
@@ -3062,15 +3087,15 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#fde68a",
     },
-    planNamePremium: { fontSize: 15, fontWeight: "700", color: "#92400e", marginBottom: 2 },
+    planNamePremium: { fontSize: 15, fontWeight: "500", color: "#92400e", marginBottom: 2 },
     planDescPremium: { fontSize: 13, color: "#92400e" },
-    planPricePremium: { fontSize: 13, fontWeight: "700", color: "#92400e" },
-    planCtaPremium: { fontSize: 13, fontWeight: "700", color: "#92400e", textAlign: "right" },
+    planPricePremium: { fontSize: 13, fontWeight: "500", color: "#92400e" },
+    planCtaPremium: { fontSize: 13, fontWeight: "500", color: "#92400e", textAlign: "right" },
     ticketBtn: { backgroundColor: Colors.brandGreen, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-    ticketBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    ticketBtnText: { color: "#fff", fontSize: 13, fontWeight: "500" },
     ticketPlanCard: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 2, position: "relative", paddingTop: 32 },
     ticketPlanBadge: { position: "absolute", top: -10, left: 16, backgroundColor: "#10b981", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-    ticketPlanBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
+    ticketPlanBadgeText: { color: "#fff", fontSize: 11, fontWeight: "600", letterSpacing: 0.5 },
     cancelBtn: { paddingVertical: 12, alignItems: "center" },
     cancelBtnText: { color: "#9ca3af", fontSize: 13 },
     // 리뷰 섹션 (웹: 별도 rounded-2xl bg-gray-50 border border-gray-200 p-6)
@@ -3083,7 +3108,7 @@ const s = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 24,
     },
-    reviewSectionTitle: { fontSize: 18, fontWeight: "700" },
+    reviewSectionTitle: { fontSize: 18, fontWeight: "500" },
     reviewHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
     reviewWriteBtn: {
         backgroundColor: "#ecfdf5",
@@ -3093,19 +3118,19 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#d1fae5",
     },
-    reviewWriteBtnText: { color: "#047857", fontSize: 13, fontWeight: "700" },
+    reviewWriteBtnText: { color: "#047857", fontSize: 13, fontWeight: "500" },
     reviewEmpty: { fontSize: 13, marginBottom: 8 },
     // 웹: bg-gray-50 p-5 rounded-2xl
     reviewCard: { borderRadius: 16, padding: 20 },
     reviewAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
     reviewTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-    reviewUser: { fontSize: 14, fontWeight: "700" },
+    reviewUser: { fontSize: 14, fontWeight: "500" },
     reviewDate: { fontSize: 12 },
     reviewStars: { color: "#f59e0b", marginBottom: 6 },
     reviewContent: { fontSize: 15, lineHeight: 24 },
     reviewRatingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10, justifyContent: "center" },
     reviewStarBtn: { fontSize: 30, lineHeight: 34 },
-    reviewRatingCount: { fontSize: 14, fontWeight: "600", marginLeft: 4 },
+    reviewRatingCount: { fontSize: 14, fontWeight: "500", marginLeft: 4 },
     reviewCharCount: { fontSize: 12, textAlign: "right", marginBottom: 10, marginTop: -6 },
     reviewInput: {
         borderWidth: 1,
@@ -3126,7 +3151,7 @@ const s = StyleSheet.create({
         justifyContent: "center",
         gap: 6,
     },
-    reviewImagePickText: { fontSize: 13, fontWeight: "600" },
+    reviewImagePickText: { fontSize: 13, fontWeight: "500" },
     reviewImagePreviewWrap: { width: 40, height: 40, borderRadius: 8, overflow: "hidden", position: "relative" },
     reviewImagePreview: { width: "100%", height: "100%" },
     reviewImageRemoveBtn: {
@@ -3151,7 +3176,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         marginTop: 4,
     },
-    reviewMoreBtnText: { fontSize: 13, fontWeight: "600" },
+    reviewMoreBtnText: { fontSize: 13, fontWeight: "500" },
     reviewImgGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -3192,7 +3217,7 @@ const s = StyleSheet.create({
     reviewPreviewCounter: {
         color: "#fff",
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
     },
     reviewPreviewClose: {
         position: "absolute",
@@ -3224,13 +3249,13 @@ const s = StyleSheet.create({
         elevation: 8,
         position: "relative",
     },
-loginModalTitle: { fontSize: 22, fontWeight: "900", textAlign: "center", marginBottom: 8, letterSpacing: -0.5, lineHeight: 30 },
+loginModalTitle: { fontSize: 22, fontWeight: "700", textAlign: "center", marginBottom: 8, letterSpacing: -0.5, lineHeight: 30 },
     loginModalSub: { fontSize: 14, textAlign: "center", marginBottom: 20, lineHeight: 20 },
     loginBenefitBox: { borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1 },
-    loginBenefitLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 },
+    loginBenefitLabel: { fontSize: 11, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 },
     loginBenefitRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
     loginCheckCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    loginBenefitText: { fontSize: 14, fontWeight: "600" },
+    loginBenefitText: { fontSize: 14, fontWeight: "500" },
     loginCTABtn: {
         borderRadius: 999,
         paddingVertical: 14,
@@ -3243,7 +3268,7 @@ loginModalTitle: { fontSize: 22, fontWeight: "900", textAlign: "center", marginB
         elevation: 6,
         backgroundColor: "#059669",
     },
-    loginCTAText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    loginCTAText: { color: "#fff", fontSize: 15, fontWeight: "500" },
 
     // Toast
     toast: {
@@ -3261,7 +3286,7 @@ loginModalTitle: { fontSize: 22, fontWeight: "900", textAlign: "center", marginB
         zIndex: 100,
     },
     toastIcon: { fontSize: 18 },
-    toastText: { color: "#fff", fontSize: 14, fontWeight: "600", flex: 1 },
+    toastText: { color: "#fff", fontSize: 14, fontWeight: "500", flex: 1 },
 
     // ── 선택형 코스 스타일 ──────────────────────────────────────────────────────
     selStepRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 4 },
@@ -3271,15 +3296,15 @@ loginModalTitle: { fontSize: 22, fontWeight: "900", textAlign: "center", marginB
         alignItems: "center", justifyContent: "center",
         marginTop: 4, flexShrink: 0,
     },
-    selStepNumText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    selStepNumText: { color: "#fff", fontWeight: "500", fontSize: 14 },
     confirmedBadge: {
         marginTop: 6, alignSelf: "flex-start",
         flexDirection: "row", alignItems: "center",
         paddingHorizontal: 8, paddingVertical: 3,
         borderRadius: 20, backgroundColor: "#dcfce7",
     },
-    confirmedBadgeText: { fontSize: 11, fontWeight: "700", color: "#16a34a" },
-    selSegLabel: { fontSize: 15, fontWeight: "700", color: "#111827", marginBottom: 2 },
+    confirmedBadgeText: { fontSize: 11, fontWeight: "500", color: "#16a34a" },
+    selSegLabel: { fontSize: 15, fontWeight: "500", color: "#111827", marginBottom: 2 },
     selSegPrompt: { fontSize: 13, marginBottom: 10 },
     selCandidateScroll: { paddingRight: 16, gap: 10, flexDirection: "row" },
     candidateCard: {
@@ -3294,14 +3319,14 @@ loginModalTitle: { fontSize: 22, fontWeight: "900", textAlign: "center", marginB
         alignItems: "center", justifyContent: "center",
     },
     candidateInfo: { padding: 8, paddingBottom: 4 },
-    candidateName: { fontSize: 13, fontWeight: "700", marginBottom: 2, lineHeight: 17 },
+    candidateName: { fontSize: 13, fontWeight: "500", marginBottom: 2, lineHeight: 17 },
     candidateSub: { fontSize: 11, lineHeight: 15 },
     candidateInfoBtn: {
         paddingVertical: 7, paddingHorizontal: 8,
         borderTopWidth: StyleSheet.hairlineWidth,
         alignItems: "center", justifyContent: "center",
     },
-    candidateInfoBtnText: { fontSize: 11, fontWeight: "700", color: "#059669" },
+    candidateInfoBtnText: { fontSize: 11, fontWeight: "500", color: "#059669" },
     editSelectionBtn: { alignSelf: "flex-end", paddingVertical: 4, paddingHorizontal: 2, marginBottom: 4 },
-    editSelectionBtnText: { fontSize: 13, fontWeight: "600", color: "#10b981" },
+    editSelectionBtnText: { fontSize: 13, fontWeight: "500", color: "#10b981" },
 });

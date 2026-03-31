@@ -4,8 +4,13 @@ Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV ?? "development",
 
-    // 프로덕션에서는 10% 트레이스 샘플링, 개발에서는 전부
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+    // 프로덕션: 10% 트레이스. 개발: 기본 0(터미널 스팬·Sentry 로그 최소화), 필요 시 SENTRY_DEBUG_TRACE=1
+    tracesSampleRate:
+        process.env.NODE_ENV === "production"
+            ? 0.1
+            : process.env.SENTRY_DEBUG_TRACE === "1"
+              ? 1.0
+              : 0,
 
     // 에러 샘플링: 프로덕션 100% (에러는 전부 수집)
     sampleRate: 1.0,
@@ -22,6 +27,6 @@ Sentry.init({
         return event;
     },
 
-    // 개발 환경에서는 콘솔 출력
-    debug: process.env.NODE_ENV === "development",
+    // SDK 내부 로그: 기본 끔. 디버깅 시에만 SENTRY_DEBUG=true
+    debug: process.env.SENTRY_DEBUG === "true",
 });

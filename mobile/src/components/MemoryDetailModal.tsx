@@ -271,7 +271,7 @@ const ms = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "rgba(255,255,255,0.2)",
     },
-    regionText: { fontSize: 13, fontWeight: "600", color: "#fff" },
+    regionText: { fontSize: 13, fontWeight: "500", color: "#fff" },
     closeBtn: { padding: 4 },
     closeX: { fontSize: 22, color: "#fff", fontWeight: "300" },
     photoArea: { backgroundColor: "#000" },
@@ -291,5 +291,5 @@ const ms = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "rgba(255,255,255,0.15)",
     },
-    tagText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+    tagText: { color: "#fff", fontSize: 12, fontWeight: "500" },
 });

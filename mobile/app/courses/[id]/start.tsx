@@ -510,7 +510,7 @@ const s = StyleSheet.create({
         backgroundColor: "rgba(255,255,255,0.85)",
         borderRadius: 16,
     },
-    closeBtnText: { fontSize: 14, color: "#374151", fontWeight: "600" },
+    closeBtnText: { fontSize: 14, color: "#374151", fontWeight: "500" },
 
     // 인트로
     introCardWrap: { flex: 1, justifyContent: "flex-end", alignItems: "center", paddingHorizontal: 24 },
@@ -519,7 +519,7 @@ const s = StyleSheet.create({
         backgroundColor: "rgba(255,255,255,0.92)",
         shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 24, shadowOffset: { width: 0, height: 8 },
     },
-    introTitle: { fontSize: 22, fontWeight: "800", color: "#111827", textAlign: "center", marginBottom: 8, letterSpacing: -0.3 },
+    introTitle: { fontSize: 22, fontWeight: "600", color: "#111827", textAlign: "center", marginBottom: 8, letterSpacing: -0.3 },
     introDate: { fontSize: 16, color: "#4b5563", marginTop: 4 },
     introHint: { fontSize: 13, color: "#9ca3af", marginTop: 24 },
 
@@ -540,7 +540,7 @@ const s = StyleSheet.create({
         paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    sheetTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, marginBottom: 2 },
+    sheetTitle: { fontSize: 20, fontWeight: "600", letterSpacing: -0.3, marginBottom: 2 },
     sheetCourseName: { fontSize: 12, marginBottom: 4 },
     sheetDate: { fontSize: 13 },
     pageIndicator: { flexDirection: "row", gap: 6, marginTop: 10 },
@@ -550,7 +550,7 @@ const s = StyleSheet.create({
     scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
 
     // 사진
-    label: { fontSize: 13, fontWeight: "700", marginBottom: 10 },
+    label: { fontSize: 13, fontWeight: "500", marginBottom: 10 },
     uploadingRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
     uploadingText: { fontSize: 12 },
     photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -565,17 +565,17 @@ const s = StyleSheet.create({
         borderWidth: 1.5, borderStyle: "dashed",
         alignItems: "center", justifyContent: "center", gap: 4,
     },
-    photoAddText: { fontSize: 11, fontWeight: "600" },
+    photoAddText: { fontSize: 11, fontWeight: "500" },
 
     // 별점 & 태그
-    sectionTitle: { fontSize: 16, fontWeight: "800", marginBottom: 12, letterSpacing: -0.3 },
+    sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 12, letterSpacing: -0.3 },
     ratingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 20 },
     ratingStar: { fontSize: 28 },
-    ratingCount: { fontSize: 13, fontWeight: "600", marginLeft: 4 },
+    ratingCount: { fontSize: 13, fontWeight: "500", marginLeft: 4 },
     tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
     tag: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: "#f3f4f6", borderWidth: 1, borderColor: "#e5e7eb" },
     tagActive: { backgroundColor: "#d1fae5", borderColor: "#6ee7b7" },
-    tagText: { fontSize: 13, fontWeight: "600", color: "#6b7280" },
+    tagText: { fontSize: 13, fontWeight: "500", color: "#6b7280" },
     tagTextActive: { color: "#059669" },
     selectedTagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
     selectedTag: {
@@ -583,14 +583,14 @@ const s = StyleSheet.create({
         paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
         backgroundColor: "#ecfdf5", borderWidth: 1, borderColor: "#a7f3d0",
     },
-    selectedTagText: { fontSize: 12, fontWeight: "700", color: "#059669" },
+    selectedTagText: { fontSize: 12, fontWeight: "500", color: "#059669" },
     tagInputRow: {
         flexDirection: "row", alignItems: "center",
         borderWidth: 1, borderRadius: 10, paddingLeft: 12, paddingRight: 4, marginBottom: 16, height: 44,
     },
     tagInputField: { flex: 1, fontSize: 14 },
     tagInputBtn: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.brandGreen, borderRadius: 8 },
-    tagInputBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+    tagInputBtnText: { fontSize: 13, fontWeight: "500", color: "#fff" },
     descInput: { borderWidth: 1, borderRadius: 12, minHeight: 100, padding: 12, fontSize: 14, marginBottom: 4 },
     charCount: { fontSize: 12, textAlign: "right", marginBottom: 16 },
 
@@ -604,15 +604,15 @@ const s = StyleSheet.create({
     },
     primaryBtn: { backgroundColor: Colors.brandGreen, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
     primaryBtnFlex: { flex: 1 },
-    primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "500" },
     btnDisabled: { opacity: 0.5 },
 
     // 성공 모달
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
     successCard: { borderRadius: 24, padding: 32, width: "100%", alignItems: "center" },
     successEmoji: { fontSize: 56, marginBottom: 16 },
-    successTitle: { fontSize: 22, fontWeight: "800", marginBottom: 8, letterSpacing: -0.3 },
+    successTitle: { fontSize: 22, fontWeight: "600", marginBottom: 8, letterSpacing: -0.3 },
     successSub: { fontSize: 14, marginBottom: 28, textAlign: "center" },
     successBtn: { borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 },
-    successBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    successBtnText: { color: "#fff", fontSize: 15, fontWeight: "500" },
 });

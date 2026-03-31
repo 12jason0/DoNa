@@ -632,7 +632,7 @@ const s = StyleSheet.create({
         borderRadius: 99,
         borderWidth: 1,
     },
-    regionChipText: { fontSize: 14, fontWeight: "600" },
+    regionChipText: { fontSize: 14, fontWeight: "500" },
 
     tagModalOverlay: {
         flex: 1,
@@ -656,15 +656,15 @@ const s = StyleSheet.create({
     },
     tagModalTitle: {
         fontSize: 20,
-        fontWeight: "800",
+        fontWeight: "600",
         letterSpacing: -0.4,
         marginBottom: 12,
     },
     tagModalBody: { paddingBottom: 18 },
-    tagSectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 12, letterSpacing: -0.3 },
+    tagSectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 12, letterSpacing: -0.3 },
     tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     tagChip: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 8 },
-    tagChipText: { fontSize: 14, fontWeight: "600" },
+    tagChipText: { fontSize: 14, fontWeight: "500" },
     tagModalActions: {
         flexDirection: "row",
         gap: 12,
@@ -679,7 +679,7 @@ const s = StyleSheet.create({
         justifyContent: "center",
         minHeight: 48,
     },
-    tagResetText: { fontSize: 16, fontWeight: "700" },
+    tagResetText: { fontSize: 16, fontWeight: "500" },
     tagApplyBtn: {
         flex: 2,
         backgroundColor: "#0b1738",
@@ -688,7 +688,7 @@ const s = StyleSheet.create({
         justifyContent: "center",
         minHeight: 48,
     },
-    tagApplyText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+    tagApplyText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 
     // + 버튼
     plusArea: {
@@ -729,7 +729,7 @@ const s = StyleSheet.create({
         paddingVertical: 14,
         borderTopWidth: StyleSheet.hairlineWidth,
     },
-    listHeaderTitle: { fontSize: 16, fontWeight: "800", letterSpacing: -0.3 },
+    listHeaderTitle: { fontSize: 16, fontWeight: "600", letterSpacing: -0.3 },
     listHeaderCount: { fontSize: 13 },
     listContent: { paddingBottom: 120 },
 
@@ -757,7 +757,7 @@ const s = StyleSheet.create({
         backgroundColor: "rgba(0,0,0,0.45)",
         borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
     },
-    conceptBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+    conceptBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
     reserveBadge: {
         backgroundColor: "#0ea68b",
         borderRadius: 10,
@@ -769,7 +769,7 @@ const s = StyleSheet.create({
     reserveBadgeText: {
         color: "#fff",
         fontSize: 11,
-        fontWeight: "800",
+        fontWeight: "600",
         letterSpacing: -0.1,
     },
     tierBadge: {
@@ -783,14 +783,14 @@ const s = StyleSheet.create({
     tierBadgeText: {
         color: "#fff",
         fontSize: 11,
-        fontWeight: "900",
+        fontWeight: "700",
         letterSpacing: 0.2,
     },
     newBadge: {
         backgroundColor: "#059669",
         borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
     },
-    newBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+    newBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
     favBtn: {
         position: "absolute", top: 12, right: 12,
         width: 36, height: 36, borderRadius: 18,
@@ -805,11 +805,11 @@ const s = StyleSheet.create({
         justifyContent: "center",
     },
     lockBox: { alignItems: "center", gap: 6 },
-    lockText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+    lockText: { color: "#fff", fontSize: 14, fontWeight: "600" },
     lockSub: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "500" },
 
     cardBody: { paddingTop: 12, paddingHorizontal: 2 },
-    cardTitle: { fontSize: 16, fontWeight: "800", letterSpacing: -0.3, marginBottom: 6, lineHeight: 22 },
+    cardTitle: { fontSize: 16, fontWeight: "600", letterSpacing: -0.3, marginBottom: 6, lineHeight: 22 },
     metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4, marginBottom: 4 },
     metaText: { fontSize: 12, fontWeight: "500" },
     metaDot: { width: 3, height: 3, borderRadius: 1.5 },
@@ -818,5 +818,5 @@ const s = StyleSheet.create({
     // 기타
     footerLoader: { paddingVertical: 24, alignItems: "center" },
     empty: { alignItems: "center", paddingVertical: 60 },
-    emptyText: { fontSize: 15, fontWeight: "600" },
+    emptyText: { fontSize: 15, fontWeight: "500" },
 });

@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: FontSize['2xl'],
-        fontWeight: '900',
+        fontWeight: '700',
         textAlign: 'center',
         letterSpacing: -0.5,
         lineHeight: 32,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     },
     benefitLabel: {
         fontSize: FontSize.xs,
-        fontWeight: '800',
+        fontWeight: '600',
         letterSpacing: 1,
         textTransform: 'uppercase',
         marginBottom: 12,
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     },
     benefitText: {
         fontSize: FontSize.sm,
-        fontWeight: '600',
+        fontWeight: '500',
     },
     ctaBtn: {
         flexDirection: 'row',
@@ -283,6 +283,6 @@ const styles = StyleSheet.create({
     ctaText: {
         color: Colors.white,
         fontSize: FontSize.base,
-        fontWeight: '700',
+        fontWeight: '500',
     },
 });

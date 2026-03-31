@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: "800",
+        fontWeight: "600",
         letterSpacing: -0.4,
         marginBottom: 8,
         textAlign: "center",
@@ -181,6 +181,6 @@ const styles = StyleSheet.create({
     ctaText: {
         color: "#fff",
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
     },
 });

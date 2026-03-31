@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import LoginModal from "./LoginModal";
+import { useLocale } from "@/context/LocaleContext";
 
 type Props = {
     onStart: () => void;
 };
 
 export default function OnboardingSection({ onStart }: Props) {
+    const { t } = useLocale();
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -66,10 +68,10 @@ export default function OnboardingSection({ onStart }: Props) {
 
                         <div className="text-left">
                             <h3 className="text-[17px] font-bold leading-tight tracking-tight text-[#99c08e] dark:text-[#99c08e]">
-                                {isLoggedIn ? "코스 고민은 DoNa에게" : "오늘 데이트, 두나에게 맡겨요"}
+                                {isLoggedIn ? t("onboardingSection.loggedInTitle") : t("onboardingSection.loggedOutTitle")}
                             </h3>
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                                {isLoggedIn ? "추천을 더 정확하게 받고 싶다면" : ""}
+                                {isLoggedIn ? t("onboardingSection.loggedInSubtitle") : ""}
                             </p>
                         </div>
                     </div>

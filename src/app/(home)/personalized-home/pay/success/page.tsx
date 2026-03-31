@@ -3,9 +3,11 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useLocale } from "@/context/LocaleContext";
 
 // 결제 처리 로직 컴포넌트
 function PaymentSuccessContent() {
+    const { t } = useLocale();
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
@@ -70,7 +72,7 @@ function PaymentSuccessContent() {
                     userId: !!userId,
                 });
                 setStatus("error");
-                setErrorMessage("필수 결제 정보나 사용자 인증 정보가 누락되었습니다.");
+                setErrorMessage(t("payment.missingInfoOrAuth"));
                 return;
             }
 
@@ -127,7 +129,7 @@ function PaymentSuccessContent() {
                 } else {
                     setStatus("error");
                     // 더 자세한 에러 메시지 표시
-                    const errorMsg = data.message || data.error || "서버에서 결제 승인을 거절했습니다.";
+                    const errorMsg = data.message || data.error || t("payment.serverRejected");
                     console.error("[결제 확인 실패] 상세 정보:", {
                         status: res.status,
                         error: data.error,
@@ -140,12 +142,12 @@ function PaymentSuccessContent() {
             } catch (error) {
                 console.error("Payment Confirmation Error:", error);
                 setStatus("error");
-                setErrorMessage("네트워크 연결에 문제가 발생했습니다.");
+                setErrorMessage(t("payment.networkError"));
             }
         };
 
         confirmPayment();
-    }, [searchParams, router]);
+    }, [searchParams, router, t]);
 
     return (
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border border-gray-100">
@@ -153,11 +155,11 @@ function PaymentSuccessContent() {
             {status === "processing" && (
                 <>
                     <Loader2 className="w-16 h-16 text-emerald-500 animate-spin mx-auto mb-6" />
-                    <h2 className="text-2xl font-bold mb-2 text-gray-900">결제 확인 중...</h2>
+                    <h2 className="text-2xl font-bold mb-2 text-gray-900">{t("payment.confirmProcessingTitle")}</h2>
                     <p className="text-gray-500 leading-relaxed">
-                        잠시만 기다려주세요.
+                        {t("payment.confirmProcessingHint")}
                         <br />
-                        서버에서 결제를 안전하게 확인하고 있습니다.
+                        {t("payment.confirmProcessingServer")}
                     </p>
                 </>
             )}
@@ -168,21 +170,21 @@ function PaymentSuccessContent() {
                     <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <CheckCircle className="w-10 h-10 text-emerald-600" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-2 text-emerald-600">결제 성공! 🎉</h2>
+                    <h2 className="text-2xl font-bold mb-2 text-emerald-600">{t("payment.paymentSuccessTitle")}</h2>
                     <p className="text-gray-600 mb-8 leading-relaxed">
-                        상품 결제가 정상적으로 완료되었습니다.
+                        {t("payment.productPaidSuccess")}
                         <br />
                         <span className="font-semibold text-emerald-500 text-sm">
                             {successRedirectPath.startsWith("/courses/")
-                                ? "곧 코스 페이지로 이동합니다."
-                                : "3초 후 메인으로 자동 이동합니다."}
+                                ? t("payment.redirectToCourseSoon")
+                                : t("payment.redirectMainSoon")}
                         </span>
                     </p>
                     <button
                         onClick={() => router.replace(successRedirectPath)}
                         className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-emerald-200 active:scale-95"
                     >
-                        지금 바로 이용하기
+                        {t("payment.useNow")}
                     </button>
                 </>
             )}
@@ -193,17 +195,27 @@ function PaymentSuccessContent() {
                     <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <XCircle className="w-10 h-10 text-red-500" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-2 text-red-500">결제 처리 실패</h2>
+                    <h2 className="text-2xl font-bold mb-2 text-red-500">{t("payment.processingFailedTitle")}</h2>
                     <p className="text-gray-600 mb-2">{errorMessage}</p>
-                    <p className="text-xs text-gray-400 mb-8">오류가 반복되면 고객센터로 문의해주세요.</p>
+                    <p className="text-xs text-gray-400 mb-8">{t("payment.contactSupport")}</p>
                     <button
                         onClick={() => window.history.back()}
                         className="w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold transition-all active:scale-95"
                     >
-                        뒤로 가기
+                        {t("payment.goBack")}
                     </button>
                 </>
             )}
+        </div>
+    );
+}
+
+function PaymentSuccessLoading() {
+    const { t } = useLocale();
+    return (
+        <div className="text-center">
+            <Loader2 className="w-10 h-10 text-gray-300 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">{t("payment.loading")}</p>
         </div>
     );
 }
@@ -212,14 +224,7 @@ function PaymentSuccessContent() {
 export default function PaymentSuccessPage() {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
-            <Suspense
-                fallback={
-                    <div className="text-center">
-                        <Loader2 className="w-10 h-10 text-gray-300 animate-spin mx-auto mb-4" />
-                        <p className="text-gray-400">결제 정보를 불러오는 중...</p>
-                    </div>
-                }
-            >
+            <Suspense fallback={<PaymentSuccessLoading />}>
                 <PaymentSuccessContent />
             </Suspense>
         </div>

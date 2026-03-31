@@ -848,7 +848,7 @@ function PostLoadClockSplash({ text = "시간을 거슬러 이동 중..." }: { t
                     width: 100%;
                     text-align: center;
                     color: #c8aa64;
-                    font-family: "Noto Serif KR", serif;
+                    font-family: "Cafe24Dongdong", sans-serif;
                     font-weight: 700;
                     letter-spacing: 1px;
                     text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
@@ -1195,7 +1195,7 @@ const DialogueFlow = ({
             .filter(Boolean);
         return (
             <div className="fixed inset-0 z-1400 bg-linear-to-b from-black/60 to-black/20 flex items-end justify-center p-4 animate-fade-in">
-                <div className="w-full max-w-3xl bg-[#fffef8]/95 rounded-t-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-t border-amber-100 font-['Gowun_Dodum']">
+                <div className="w-full max-w-3xl bg-[#fffef8]/95 rounded-t-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.15)] border-t border-amber-100 font-sans">
                     <div className="max-h-[46vh] overflow-y-auto space-y-4 pr-1 pb-3">
                         {parts.map((t, i) => (
                             <div

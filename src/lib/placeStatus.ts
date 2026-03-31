@@ -4,6 +4,10 @@
 
 export type PlaceStatus = "영업중" | "곧 마감" | "곧 브레이크" | "브레이크 중" | "오픈 준비중" | "휴무" | "영업종료" | "정보 없음";
 
+/** UI/비즈니스 로직에서 `getPlaceStatus().status`와 비교할 때 사용 (문자열 리터럴 분산 방지) */
+export const PLACE_STATUS_CLOSED = "휴무" as const satisfies PlaceStatus;
+export const PLACE_STATUS_NO_INFO = "정보 없음" as const satisfies PlaceStatus;
+
 export interface PlaceStatusInfo {
     status: PlaceStatus;
     message: string;

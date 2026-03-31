@@ -36,6 +36,7 @@ import { fetchMyPrivateStories } from "../../src/lib/personalStories";
 import { useAuth, AUTH_QUERY_KEY, logout } from "../../src/hooks/useAuth";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
+import { translateCourseConcept } from "../../../src/lib/courseTranslate";
 import { resolveImageUrl } from "../../src/lib/imageUrl";
 import { KAKAO_CHANNEL_CHAT_URL } from "../../src/config";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
@@ -628,20 +629,24 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
             {/* ── 2. 취향 정보 ── */}
             <View style={[s.card, { backgroundColor: t.card, borderColor: t.border }]}>
                 <View style={s.cardHeaderRow}>
-                    <Text style={[s.cardTitle, { color: t.text }]}>내 여행 취향</Text>
+                    <Text style={[s.cardTitle, { color: t.text }]}>{i18n("mypage.profileTab.myTravelPreferences")}</Text>
                     <TouchableOpacity style={s.darkBtn} onPress={() => router.push("/(auth)/onboarding" as any)}>
-                        <Text style={s.darkBtnText}>{prefs ? "수정" : "설정하기"}</Text>
+                        <Text style={s.darkBtnText}>
+                            {prefs ? i18n("mypage.profileTab.edit") : i18n("mypage.profileTab.preferencesSetupButton")}
+                        </Text>
                     </TouchableOpacity>
                 </View>
                 {prefs ? (
                     <View style={{ gap: 10 }}>
                         {(prefs.concept?.length ?? 0) > 0 && (
                             <View style={[s.prefSection, { backgroundColor: t.surface, borderColor: t.border }]}>
-                                <Text style={s.prefLabel}>선호 콘셉트</Text>
+                                <Text style={s.prefLabel}>{i18n("mypage.profileTab.preferredConceptLabel")}</Text>
                                 <View style={s.prefChipRow}>
                                     {prefs.concept.map((item, i) => (
                                         <View key={i} style={s.chipEmerald}>
-                                            <Text style={s.chipEmeraldText}>#{item}</Text>
+                                            <Text style={s.chipEmeraldText}>
+                                                #{translateCourseConcept(item, i18n)}
+                                            </Text>
                                         </View>
                                     ))}
                                 </View>
@@ -649,11 +654,13 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         )}
                         {(prefs.mood?.length ?? 0) > 0 && (
                             <View style={[s.prefSection, { backgroundColor: t.surface, borderColor: t.border }]}>
-                                <Text style={s.prefLabel}>선호 분위기</Text>
+                                <Text style={s.prefLabel}>{i18n("mypage.profileTab.preferredMoodLabel")}</Text>
                                 <View style={s.prefChipRow}>
                                     {prefs.mood.map((item, i) => (
                                         <View key={i} style={s.chipOrange}>
-                                            <Text style={s.chipOrangeText}>#{item}</Text>
+                                            <Text style={s.chipOrangeText}>
+                                                #{translateCourseConcept(item, i18n)}
+                                            </Text>
                                         </View>
                                     ))}
                                 </View>
@@ -661,7 +668,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         )}
                         {(prefs.regions?.length ?? 0) > 0 && (
                             <View style={[s.prefSection, { backgroundColor: t.surface, borderColor: t.border }]}>
-                                <Text style={s.prefLabel}>관심 지역</Text>
+                                <Text style={s.prefLabel}>{i18n("mypage.profileTab.interestedRegionsLabel")}</Text>
                                 <View style={s.prefChipRow}>
                                     {prefs.regions.map((item, i) => (
                                         <View key={i} style={s.chipBlue}>
@@ -675,9 +682,9 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                 ) : (
                     <EmptyState
                         emoji="✨"
-                        title="아직 등록된 취향 정보가 없어요"
-                        sub="나만의 여행 취향을 설정해보세요"
-                        ctaLabel="지금 설정하러 가기"
+                        title={i18n("mypage.profileTab.preferencesEmptyTitle")}
+                        sub={i18n("mypage.profileTab.preferencesEmptySub")}
+                        ctaLabel={i18n("mypage.profileTab.preferencesEmptyCta")}
                         onCta={() => router.push("/(auth)/onboarding" as any)}
                         t={t}
                     />
@@ -921,32 +928,28 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
             {/* ── 사업자 정보 + 링크 ── */}
             <View style={[s.footerInfoBox, { borderTopColor: t.border }]}>
-                <Text style={[s.footerInfoTitle, { color: t.text }]}>사업자 정보</Text>
+                <Text style={[s.footerInfoTitle, { color: t.text }]}>{i18n("mypage.profileTab.businessInfo")}</Text>
                 <View style={{ gap: 3 }}>
-                    <Text style={[s.footerInfoLine, { color: t.textMuted, fontWeight: "600" }]}>(주)두나 (DoNa)</Text>
-                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>
-                        대표: 오승용 | 사업자등록번호: 166-10-03081
+                    <Text style={[s.footerInfoLine, { color: t.textMuted, fontWeight: "500" }]}>
+                        {i18n("mypage.profileTab.businessCompanyName")}
                     </Text>
-                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>
-                        통신판매업 신고번호: 제 2025-충남홍성-0193 호
-                    </Text>
-                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>
-                        주소: 충청남도 홍성군 홍북읍 신대로 33
-                    </Text>
-                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>문의: 12jason@donacouse.com</Text>
-                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>고객센터: 010-2481-9824</Text>
+                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>{i18n("mypage.profileTab.businessLineCeoReg")}</Text>
+                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>{i18n("mypage.profileTab.businessLineMailOrder")}</Text>
+                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>{i18n("mypage.profileTab.businessLineAddress")}</Text>
+                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>{i18n("mypage.profileTab.businessLineInquiry")}</Text>
+                    <Text style={[s.footerInfoLine, { color: t.textMuted }]}>{i18n("mypage.profileTab.businessLineCustomerCenter")}</Text>
                 </View>
                 <View style={[s.footerLinkGrid, { paddingBottom: 35 }]}>
                     {(
                         [
-                            { label: "서비스 소개", page: "about" as const },
-                            { label: "이용 안내", page: "help" as const },
-                            { label: "개인정보처리방침", page: "privacy" as const },
-                            { label: "이용약관", page: "terms" as const },
+                            { labelKey: "mypage.profileTab.footerServiceIntro", page: "about" as const },
+                            { labelKey: "mypage.profileTab.footerUsage", page: "help" as const },
+                            { labelKey: "mypage.profileTab.footerPrivacy", page: "privacy" as const },
+                            { labelKey: "mypage.profileTab.footerTerms", page: "terms" as const },
                         ] as const
-                    ).map(({ label, page }) => (
+                    ).map(({ labelKey, page }) => (
                         <Pressable
-                            key={label}
+                            key={labelKey}
                             onPress={() => setLegalPage(page)}
                             style={({ pressed }) => [
                                 s.footerLinkItem,
@@ -954,9 +957,20 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                             ]}
                             android_ripple={{ color: "rgba(0,0,0,0.08)", borderless: false }}
                         >
-                            <Text style={[s.footerLinkText, { color: t.textMuted }]}>{label}</Text>
+                            <Text style={[s.footerLinkText, { color: t.textMuted }]}>{i18n(labelKey)}</Text>
                         </Pressable>
                     ))}
+                    <Pressable
+                        onPress={() => router.push("/contact")}
+                        style={({ pressed }) => [
+                            s.footerLinkItem,
+                            { width: "100%" },
+                            pressed && { opacity: 0.72 },
+                        ]}
+                        android_ripple={{ color: "rgba(0,0,0,0.08)", borderless: false }}
+                    >
+                        <Text style={[s.footerLinkText, { color: t.textMuted }]}>{i18n("mypage.profileTab.footerContact")}</Text>
+                    </Pressable>
                 </View>
             </View>
 
@@ -1098,7 +1112,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                     style={[s.editModalBtnCancel, { borderColor: t.border }]}
                                     onPress={() => setEditVisible(false)}
                                 >
-                                    <Text style={[{ fontSize: 15, fontWeight: "600" }, { color: t.text }]}>취소</Text>
+                                    <Text style={[{ fontSize: 15, fontWeight: "500" }, { color: t.text }]}>취소</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[s.editModalBtnSave, editMutation.isPending && { opacity: 0.5 }]}
@@ -1107,7 +1121,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                 >
                                     {editMutation.isPending
                                         ? <ActivityIndicator size="small" color="#fff" />
-                                        : <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>저장</Text>
+                                        : <Text style={{ fontSize: 15, fontWeight: "500", color: "#fff" }}>저장</Text>
                                     }
                                 </TouchableOpacity>
                             </View>
@@ -1434,7 +1448,7 @@ function FootprintTab({
                                                     {
                                                         color: !day.current ? t.border : isWeekend ? "#ef4444" : t.text,
                                                     },
-                                                    (isToday || isSelected) && { color: "#059669", fontWeight: "800" },
+                                                    (isToday || isSelected) && { color: "#059669", fontWeight: "600" },
                                                 ]}
                                             >
                                                 {dt}
@@ -2426,7 +2440,7 @@ const s = StyleSheet.create({
     // 헤더 + 탭바 wrapper (sticky)
     tabBarWrapper: { paddingBottom: 4 },
     pageHeaderCenter: { alignItems: "center", paddingTop: 16, paddingBottom: 10 },
-    pageTitle: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginBottom: 3 },
+    pageTitle: { fontSize: 26, fontWeight: "600", letterSpacing: -0.5, marginBottom: 3 },
     pageSubtitle: { fontSize: 13 },
 
     // 탭 카드 (웹 동일 스타일 — full width, 균등 분배)
@@ -2466,7 +2480,7 @@ const s = StyleSheet.create({
     // 발자취 헤더 카드
     footprintHeaderCard: { borderRadius: 22, borderWidth: 1, padding: 14, marginBottom: 12 },
     footprintHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-    footprintTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3 },
+    footprintTitle: { fontSize: 18, fontWeight: "600", letterSpacing: -0.3 },
     footprintDivider: { height: 1, marginTop: 12, marginBottom: 12 },
     footprintSubText: { fontSize: 14, lineHeight: 21 },
 
@@ -2474,19 +2488,19 @@ const s = StyleSheet.create({
     subTabBar: { flexGrow: 0, borderRadius: 18, borderWidth: 1, marginBottom: 14 },
     subTabBarContent: { padding: 4, gap: 6, flexDirection: "row" },
     subTabBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
-    subTabText: { fontSize: 15, fontWeight: "600" },
+    subTabText: { fontSize: 15, fontWeight: "500" },
 
     // 섹션 카드
     sectionCard: { borderRadius: 20, borderWidth: 1, padding: 16 },
-    sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 14, letterSpacing: -0.3 },
+    sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 14, letterSpacing: -0.3 },
 
     // 코스 카드 (기록용 · 가로형 레거시 — 케이스파일 등에서 참조 시 유지)
     courseCard: { flexDirection: "row", borderRadius: 12, borderWidth: 1, overflow: "hidden", marginBottom: 0 },
     courseCardImg: { width: 80, height: 80, position: "relative", flexShrink: 0, backgroundColor: "#e5e7eb" },
     gradeBadge: { position: "absolute", bottom: 4, left: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    gradeBadgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },
+    gradeBadgeText: { fontSize: 9, fontWeight: "600", letterSpacing: 0.3 },
     courseCardBody: { flex: 1, padding: 12, justifyContent: "center" },
-    courseCardTitle: { fontSize: 14, fontWeight: "700", marginBottom: 3 },
+    courseCardTitle: { fontSize: 14, fontWeight: "500", marginBottom: 3 },
     courseCardSub: { fontSize: 12, marginBottom: 2 },
     courseCardDate: { fontSize: 11 },
     removeBtn: { padding: 12, alignSelf: "center" },
@@ -2516,14 +2530,14 @@ const s = StyleSheet.create({
         maxWidth: "78%",
     },
     courseCardGradePill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-    courseCardGradePillText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.4 },
+    courseCardGradePillText: { fontSize: 10, fontWeight: "600", letterSpacing: 0.4 },
     courseCardConceptPill: {
         backgroundColor: "rgba(15,23,42,0.72)",
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 999,
     },
-    courseCardConceptPillText: { fontSize: 10, fontWeight: "700", color: "#fff" },
+    courseCardConceptPillText: { fontSize: 10, fontWeight: "500", color: "#fff" },
     courseCardHeartBtn: {
         position: "absolute",
         top: 8,
@@ -2537,14 +2551,14 @@ const s = StyleSheet.create({
         ...Shadow.sm,
     },
     courseCardBodyBelow: { paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
-    courseCardTitleBelow: { fontSize: 16, fontWeight: "800", letterSpacing: -0.3, lineHeight: 22 },
+    courseCardTitleBelow: { fontSize: 16, fontWeight: "600", letterSpacing: -0.3, lineHeight: 22 },
     courseCardSubBelow: { fontSize: 13 },
     courseCardDateBelow: { fontSize: 12 },
 
     // 빈 상태
     emptyState: { alignItems: "center", paddingVertical: 40, gap: 6 },
     emptyEmoji: { fontSize: 44, marginBottom: 4 },
-    emptyTitle: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3 },
+    emptyTitle: { fontSize: 16, fontWeight: "500", letterSpacing: -0.3 },
     emptySub: { fontSize: 13, textAlign: "center" },
     emptyCTA: {
         marginTop: 12,
@@ -2553,13 +2567,13 @@ const s = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 999,
     },
-    emptyCTAText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    emptyCTAText: { color: "#fff", fontSize: 13, fontWeight: "500" },
 
     // ── 카드 공통 ──
     card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
     cardHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-    cardTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3 },
-    cardTitleDark: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3, color: "#1e2a1a" },
+    cardTitle: { fontSize: 18, fontWeight: "600", letterSpacing: -0.3 },
+    cardTitleDark: { fontSize: 18, fontWeight: "600", letterSpacing: -0.3, color: "#1e2a1a" },
 
     // ── 프로필 카드 ──
     profileCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
@@ -2570,7 +2584,7 @@ const s = StyleSheet.create({
         marginBottom: 16,
     },
     tierBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-    tierBadgeText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.3 },
+    tierBadgeText: { fontSize: 11, fontWeight: "600", letterSpacing: 0.3 },
     editProfileBtn: {
         flexDirection: "row",
         alignItems: "center",
@@ -2580,7 +2594,7 @@ const s = StyleSheet.create({
         backgroundColor: "#ecfdf5",
         borderRadius: 8,
     },
-    editProfileBtnText: { fontSize: 13, fontWeight: "700", color: "#059669" },
+    editProfileBtnText: { fontSize: 13, fontWeight: "500", color: "#059669" },
     profileRow: { flexDirection: "row", alignItems: "center", gap: 14 },
     avatarRing: {
         width: 84,
@@ -2606,12 +2620,12 @@ const s = StyleSheet.create({
         borderColor: "#fff",
     },
     avatarImg: { width: "100%", height: "100%" },
-    avatarInitial: { fontSize: 28, fontWeight: "700", color: "#fff" },
-    profileName: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4, marginBottom: 3 },
+    avatarInitial: { fontSize: 28, fontWeight: "500", color: "#fff" },
+    profileName: { fontSize: 20, fontWeight: "600", letterSpacing: -0.4, marginBottom: 3 },
     profileEmail: { fontSize: 13, marginBottom: 8 },
     profileTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
     tagChip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-    tagChipText: { fontSize: 11, fontWeight: "600" },
+    tagChipText: { fontSize: 11, fontWeight: "500" },
     tagChipAmber: {
         backgroundColor: "#fffbeb",
         borderRadius: 8,
@@ -2620,15 +2634,15 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#fde68a",
     },
-    tagChipAmberText: { fontSize: 11, fontWeight: "700", color: "#b45309" },
+    tagChipAmberText: { fontSize: 11, fontWeight: "500", color: "#b45309" },
 
     // ── 취향 정보 ──
     darkBtn: { backgroundColor: "#1f2937", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-    darkBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+    darkBtnText: { fontSize: 13, fontWeight: "500", color: "#fff" },
     prefSection: { borderRadius: 12, borderWidth: 1, padding: 12 },
     prefLabel: {
         fontSize: 10,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#9ca3af",
         letterSpacing: 1,
         textTransform: "uppercase",
@@ -2643,7 +2657,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#a7f3d0",
     },
-    chipEmeraldText: { fontSize: 12, fontWeight: "700", color: "#065f46" },
+    chipEmeraldText: { fontSize: 12, fontWeight: "500", color: "#065f46" },
     chipOrange: {
         backgroundColor: "#ffedd5",
         borderRadius: 8,
@@ -2652,7 +2666,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#fed7aa",
     },
-    chipOrangeText: { fontSize: 12, fontWeight: "700", color: "#c2410c" },
+    chipOrangeText: { fontSize: 12, fontWeight: "500", color: "#c2410c" },
     chipBlue: {
         backgroundColor: "#dbeafe",
         borderRadius: 8,
@@ -2661,7 +2675,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#bfdbfe",
     },
-    chipBlueText: { fontSize: 12, fontWeight: "700", color: "#1e40af" },
+    chipBlueText: { fontSize: 12, fontWeight: "500", color: "#1e40af" },
 
     // ── 멤버십 카드 ──
     memberCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
@@ -2682,11 +2696,11 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    memberSubLabel: { fontSize: 10, fontWeight: "800", color: "#059669", letterSpacing: 0.5, marginBottom: 2 },
-    memberTierText: { fontSize: 15, fontWeight: "800", letterSpacing: -0.3, color: "#1e2a1a" },
+    memberSubLabel: { fontSize: 10, fontWeight: "600", color: "#059669", letterSpacing: 0.5, marginBottom: 2 },
+    memberTierText: { fontSize: 15, fontWeight: "600", letterSpacing: -0.3, color: "#1e2a1a" },
     memberDescText: { fontSize: 11, marginTop: 1, color: "#4b5563" },
     memberBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-    memberBtnText: { fontSize: 12, fontWeight: "700" },
+    memberBtnText: { fontSize: 12, fontWeight: "500" },
 
     // ── 계정 관리 ──
     settingRow: {
@@ -2698,7 +2712,7 @@ const s = StyleSheet.create({
     },
     settingIconBox: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
     settingIconBoxOn: { backgroundColor: "#ecfdf5" },
-    settingRowText: { fontSize: 15, fontWeight: "600" },
+    settingRowText: { fontSize: 15, fontWeight: "500" },
     withdrawalBtn: { alignItems: "center", paddingVertical: 12, marginBottom: 8 },
     withdrawalBtnText: { fontSize: 13, color: "#9ca3af" },
     actionSheetDim: {
@@ -2738,7 +2752,7 @@ const s = StyleSheet.create({
     },
     actionSheetTitle: {
         fontSize: 22,
-        fontWeight: "800",
+        fontWeight: "600",
         textAlign: "center",
         marginBottom: 6,
     },
@@ -2759,7 +2773,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    actionSheetGhostBtnText: { fontSize: 15, fontWeight: "700" },
+    actionSheetGhostBtnText: { fontSize: 15, fontWeight: "500" },
     actionSheetPrimaryBtn: {
         flex: 1,
         height: 48,
@@ -2768,7 +2782,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    actionSheetPrimaryBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+    actionSheetPrimaryBtnText: { fontSize: 15, fontWeight: "500", color: "#fff" },
     withdrawSheetCard: {
         maxHeight: "86%",
     },
@@ -2789,7 +2803,7 @@ const s = StyleSheet.create({
         padding: 12,
         marginBottom: 12,
     },
-    withdrawNoticeTitle: { fontSize: 14, fontWeight: "800", marginBottom: 6 },
+    withdrawNoticeTitle: { fontSize: 14, fontWeight: "600", marginBottom: 6 },
     withdrawNoticeLine: { fontSize: 12, lineHeight: 18 },
     withdrawReasonBox: {
         borderWidth: 1,
@@ -2810,7 +2824,7 @@ const s = StyleSheet.create({
     },
     reasonRadioOuterOn: { borderColor: "#10b981" },
     reasonRadioInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#10b981" },
-    reasonRowText: { fontSize: 13, fontWeight: "600" },
+    reasonRowText: { fontSize: 13, fontWeight: "500" },
     withdrawEtcInput: {
         borderWidth: 1,
         borderRadius: 10,
@@ -2842,7 +2856,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    withdrawDangerBtnText: { fontSize: 14, fontWeight: "700", color: "#ef4444" },
+    withdrawDangerBtnText: { fontSize: 14, fontWeight: "500", color: "#ef4444" },
 
     footerInfoBox: {
         marginTop: 8,
@@ -2853,7 +2867,7 @@ const s = StyleSheet.create({
     },
     footerInfoTitle: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: "500",
         marginBottom: 4,
     },
     footerInfoLine: {
@@ -2889,8 +2903,8 @@ const s = StyleSheet.create({
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    modalHeaderTitle: { fontSize: 16, fontWeight: "700" },
-    modalSaveText: { fontSize: 15, fontWeight: "700", color: "#059669" },
+    modalHeaderTitle: { fontSize: 16, fontWeight: "500" },
+    modalSaveText: { fontSize: 15, fontWeight: "500", color: "#059669" },
     modalContent: { padding: 16, paddingBottom: 40 },
     editError: {
         backgroundColor: "#fef2f2",
@@ -2902,11 +2916,11 @@ const s = StyleSheet.create({
     },
     editErrorText: { fontSize: 13, color: "#dc2626" },
     editField: { marginBottom: 20 },
-    editLabel: { fontSize: 13, fontWeight: "700", marginBottom: 10 },
+    editLabel: { fontSize: 13, fontWeight: "500", marginBottom: 10 },
     editInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15 },
     editChipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     editChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, borderWidth: 1 },
-    editChipText: { fontSize: 13, fontWeight: "600" },
+    editChipText: { fontSize: 13, fontWeight: "500" },
     editModalBackdrop: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.45)",
@@ -2928,7 +2942,7 @@ const s = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 16,
     },
-    editModalTitle: { fontSize: 22, fontWeight: "800", letterSpacing: -0.4 },
+    editModalTitle: { fontSize: 22, fontWeight: "600", letterSpacing: -0.4 },
     editModalScroll: { paddingHorizontal: 24, paddingBottom: 40 },
     editModalBtnRow: { flexDirection: "row", gap: 12, marginTop: 8 },
     editModalBtnCancel: {
@@ -2960,10 +2974,10 @@ const s = StyleSheet.create({
     // 캘린더
     calCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 0 },
     calNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-    calNavYear: { fontSize: 11, fontWeight: "600", letterSpacing: 0.2, marginBottom: 2 },
-    calNavTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+    calNavYear: { fontSize: 11, fontWeight: "500", letterSpacing: 0.2, marginBottom: 2 },
+    calNavTitle: { fontSize: 20, fontWeight: "600", letterSpacing: -0.4 },
     calDayNames: { flexDirection: "row", marginBottom: 4 },
-    calDayName: { flex: 1, textAlign: "center", fontSize: 11, fontWeight: "600", paddingBottom: 6 },
+    calDayName: { flex: 1, textAlign: "center", fontSize: 11, fontWeight: "500", paddingBottom: 6 },
     calGrid: { width: "100%" },
     calRow: { flexDirection: "row", width: "100%", marginBottom: 2 },
     calCell: { flex: 1, alignItems: "center", paddingVertical: 4 },
@@ -2986,7 +3000,7 @@ const s = StyleSheet.create({
     calDayCircleToday: { borderColor: "#34d399", borderWidth: 1.5 },
     calDayCircleMuted: { opacity: 0.35 },
     calDayThumb: { width: "100%", height: "100%" },
-    calDateInCircle: { fontSize: 13, fontWeight: "600" },
+    calDateInCircle: { fontSize: 13, fontWeight: "500" },
     calCompletedCornerDot: {
         position: "absolute",
         bottom: 3,
@@ -3031,7 +3045,7 @@ const s = StyleSheet.create({
         paddingHorizontal: 3,
         alignItems: "center",
     },
-    calItemCountText: { color: "#fff", fontSize: 8, fontWeight: "800" },
+    calItemCountText: { color: "#fff", fontSize: 8, fontWeight: "600" },
     calStats: { flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, marginTop: 10 },
     calStatsAbove: {
         borderTopWidth: 0,
@@ -3044,7 +3058,7 @@ const s = StyleSheet.create({
     calStat: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
     calStatDiv: { width: StyleSheet.hairlineWidth, marginVertical: 2 },
     calStatLabel: { fontSize: 12 },
-    calStatVal: { fontSize: 14, fontWeight: "800", color: "#059669" },
+    calStatVal: { fontSize: 14, fontWeight: "600", color: "#059669" },
 
     coursePreviewRoot: {
         flex: 1,
@@ -3101,7 +3115,7 @@ const s = StyleSheet.create({
     coursePreviewBadgeAiText: {
         color: "#fff",
         fontSize: 10,
-        fontWeight: "900",
+        fontWeight: "700",
         letterSpacing: 0.3,
     },
     coursePreviewBadgeDone: {
@@ -3116,7 +3130,7 @@ const s = StyleSheet.create({
     coursePreviewBadgeDoneText: {
         color: "#fff",
         fontSize: 10,
-        fontWeight: "900",
+        fontWeight: "700",
         letterSpacing: 0.3,
     },
     coursePreviewBody: {
@@ -3127,13 +3141,13 @@ const s = StyleSheet.create({
     },
     coursePreviewKicker: {
         fontSize: 9,
-        fontWeight: "900",
+        fontWeight: "700",
         letterSpacing: 2,
         marginBottom: 6,
     },
     coursePreviewTitle: {
         fontSize: 20,
-        fontWeight: "900",
+        fontWeight: "700",
         letterSpacing: -0.5,
         lineHeight: 26,
         marginBottom: 10,
@@ -3163,11 +3177,11 @@ const s = StyleSheet.create({
     },
     coursePreviewMetaLabel: {
         fontSize: 9,
-        fontWeight: "700",
+        fontWeight: "500",
     },
     coursePreviewMetaVal: {
         fontSize: 12,
-        fontWeight: "900",
+        fontWeight: "700",
     },
     coursePreviewCta: {
         flexDirection: "row",
@@ -3180,7 +3194,7 @@ const s = StyleSheet.create({
     coursePreviewCtaText: {
         color: "#fff",
         fontSize: 14,
-        fontWeight: "900",
+        fontWeight: "700",
     },
     coursePreviewSwipeHint: {
         position: "absolute",
@@ -3189,7 +3203,7 @@ const s = StyleSheet.create({
         textAlign: "center",
         color: "rgba(255,255,255,0.55)",
         fontSize: 12,
-        fontWeight: "700",
+        fontWeight: "500",
     },
 
     // 추억 카드
@@ -3197,10 +3211,10 @@ const s = StyleSheet.create({
     memImg: { width: "100%", height: 180 },
     memBody: { padding: 14 },
     memDate: { fontSize: 11, marginBottom: 4 },
-    memCourse: { fontSize: 15, fontWeight: "700", marginBottom: 8, letterSpacing: -0.3 },
+    memCourse: { fontSize: 15, fontWeight: "500", marginBottom: 8, letterSpacing: -0.3 },
     memTagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 },
     memTag: { backgroundColor: "#dcfce7", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-    memTagText: { fontSize: 11, fontWeight: "600", color: "#166534" },
+    memTagText: { fontSize: 11, fontWeight: "500", color: "#166534" },
 
     // 날짜 바텀시트
     sheetOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
@@ -3213,7 +3227,7 @@ const s = StyleSheet.create({
         maxHeight: "60%",
     },
     sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 14 },
-    sheetTitle: { fontSize: 17, fontWeight: "800", marginBottom: 14, letterSpacing: -0.3 },
+    sheetTitle: { fontSize: 17, fontWeight: "600", marginBottom: 14, letterSpacing: -0.3 },
     sheetRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -3230,7 +3244,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    sheetRowTitle: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
+    sheetRowTitle: { fontSize: 14, fontWeight: "500", marginBottom: 2 },
     sheetRowSub: { fontSize: 12 },
 
     // 케이스파일
@@ -3238,7 +3252,7 @@ const s = StyleSheet.create({
     caseImgWrap: { width: "100%", height: 200, position: "relative" },
     caseOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
     caseTextWrap: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14 },
-    caseTitle: { color: "#fff", fontSize: 16, fontWeight: "800", marginBottom: 4, lineHeight: 22 },
+    caseTitle: { color: "#fff", fontSize: 16, fontWeight: "600", marginBottom: 4, lineHeight: 22 },
     caseMeta: { flexDirection: "row", gap: 8 },
     caseMetaText: { color: "rgba(255,255,255,0.8)", fontSize: 11 },
     caseBadge: {
@@ -3250,7 +3264,7 @@ const s = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
     },
-    caseBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+    caseBadgeText: { color: "#fff", fontSize: 11, fontWeight: "600" },
 
     // 뱃지 그리드
     badgeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
@@ -3265,7 +3279,7 @@ const s = StyleSheet.create({
         marginBottom: 4,
     },
     badgeImg: { width: 60, height: 60 },
-    badgeName: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+    badgeName: { fontSize: 13, fontWeight: "500", textAlign: "center" },
     badgeDate: { fontSize: 10, textAlign: "center" },
 
     // 보상 행
@@ -3275,7 +3289,7 @@ const s = StyleSheet.create({
         paddingVertical: 14,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    rewardLabel: { fontSize: 14, fontWeight: "600", marginBottom: 3 },
+    rewardLabel: { fontSize: 14, fontWeight: "500", marginBottom: 3 },
     rewardDate: { fontSize: 11 },
     rewardBadge: {
         backgroundColor: "#ecfdf5",
@@ -3285,7 +3299,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#d1fae5",
     },
-    rewardBadgeText: { fontSize: 13, fontWeight: "800", color: "#065f46" },
+    rewardBadgeText: { fontSize: 13, fontWeight: "600", color: "#065f46" },
 
     // 결제 카드
     payCard: { borderRadius: 14, borderWidth: 1, padding: 14 },
@@ -3293,17 +3307,17 @@ const s = StyleSheet.create({
     payBadgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 6 },
     payBadgeTicket: { backgroundColor: "#fef9c3", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
     payBadgeSub: { backgroundColor: "#f3e8ff", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-    payBadgeText: { fontSize: 11, fontWeight: "700", color: "#92400e" },
+    payBadgeText: { fontSize: 11, fontWeight: "500", color: "#92400e" },
     payBadgeRefund: { backgroundColor: "#f3f4f6", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-    payStatusText: { fontSize: 11, fontWeight: "600", color: "#6b7280" },
+    payStatusText: { fontSize: 11, fontWeight: "500", color: "#6b7280" },
     payBadgePaid: { backgroundColor: "#ecfdf5", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-    payStatusTextGreen: { fontSize: 11, fontWeight: "600", color: "#059669" },
-    payOrder: { fontSize: 15, fontWeight: "700", marginBottom: 4, letterSpacing: -0.3 },
+    payStatusTextGreen: { fontSize: 11, fontWeight: "500", color: "#059669" },
+    payOrder: { fontSize: 15, fontWeight: "500", marginBottom: 4, letterSpacing: -0.3 },
     payDate: { fontSize: 12, marginBottom: 2 },
     payMethod: { fontSize: 11 },
-    payAmount: { fontSize: 18, fontWeight: "800", marginLeft: 10 },
+    payAmount: { fontSize: 18, fontWeight: "600", marginLeft: 10 },
     refundBtn: { marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, alignItems: "center" },
-    refundBtnText: { fontSize: 14, fontWeight: "600" },
+    refundBtnText: { fontSize: 14, fontWeight: "500" },
 
     // 뱃지 상세 모달
     badgeModalBg: {
@@ -3324,15 +3338,15 @@ const s = StyleSheet.create({
         marginBottom: 16,
     },
     badgeModalImg: { width: 80, height: 80 },
-    badgeModalName: { fontSize: 20, fontWeight: "800", color: "#111", marginBottom: 8, textAlign: "center" },
+    badgeModalName: { fontSize: 20, fontWeight: "600", color: "#111", marginBottom: 8, textAlign: "center" },
     badgeModalDesc: { fontSize: 14, color: "#6b7280", textAlign: "center", marginBottom: 8, lineHeight: 20 },
     badgeModalDateText: { fontSize: 12, color: "#9ca3af", marginBottom: 20 },
     badgeModalCloseBtn: { backgroundColor: "#f3f4f6", borderRadius: 10, paddingVertical: 12, paddingHorizontal: 32 },
-    badgeModalCloseTxt: { fontSize: 14, fontWeight: "700", color: "#374151" },
+    badgeModalCloseTxt: { fontSize: 14, fontWeight: "500", color: "#374151" },
 
     // 로그인 CTA
     loginCTA: { backgroundColor: "#059669", borderRadius: 999, paddingHorizontal: 24, paddingVertical: 14 },
-    loginCTAText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    loginCTAText: { color: "#fff", fontSize: 15, fontWeight: "500" },
 
     // 로그아웃 모달
     logoutSheet: {
@@ -3348,7 +3362,7 @@ const s = StyleSheet.create({
     },
     logoutTitle: {
         fontSize: 18,
-        fontWeight: "800",
+        fontWeight: "600",
         textAlign: "center",
         marginBottom: 6,
         letterSpacing: -0.3,
@@ -3372,7 +3386,7 @@ const s = StyleSheet.create({
     },
     logoutBtnGrayText: {
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
     },
     logoutBtnDark: {
         flex: 1,
@@ -3384,7 +3398,7 @@ const s = StyleSheet.create({
     logoutBtnDarkText: {
         color: "#fff",
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
     },
 
     // 회원탈퇴 모달 (센터 다이얼로그)
@@ -3430,7 +3444,7 @@ const s = StyleSheet.create({
     },
     withdrawDialogTitle: {
         fontSize: 18,
-        fontWeight: "800",
+        fontWeight: "600",
         textAlign: "center",
         letterSpacing: -0.3,
         marginBottom: 18,
@@ -3451,7 +3465,7 @@ const s = StyleSheet.create({
     },
     withdrawWarnTitle: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: "500",
         marginBottom: 4,
     },
     withdrawWarnDesc: {
@@ -3466,7 +3480,7 @@ const s = StyleSheet.create({
     },
     withdrawReasonTitle: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: "500",
         marginBottom: 10,
     },
     withdrawDialogBtns: {
@@ -3487,7 +3501,7 @@ const s = StyleSheet.create({
     withdrawStayBtnText: {
         color: "#fff",
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
     },
     withdrawDangerTextBtn: {
         flex: 1,
@@ -3498,7 +3512,7 @@ const s = StyleSheet.create({
     },
     withdrawDangerTextBtnText: {
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
         color: "#ef4444",
     },
 });

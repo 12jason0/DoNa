@@ -8,6 +8,9 @@ type Place = {
     id: number;
     name: string;
     address?: string | null;
+    address_en?: string | null;
+    address_ja?: string | null;
+    address_zh?: string | null;
     description?: string | null;
     category?: string | null;
     avg_cost_range?: string | null;
@@ -176,6 +179,9 @@ function buildOpeningHoursFromGroups(groups: OpeningHourGroup[]): string {
 const INITIAL_PLACE: Omit<Place, "id"> = {
     name: "",
     address: "",
+    address_en: "",
+    address_ja: "",
+    address_zh: "",
     description: "",
     category: "",
     avg_cost_range: "",
@@ -279,6 +285,9 @@ export default function AdminPlacesPage() {
         setFormData({
             name: place.name || "",
             address: place.address || "",
+            address_en: (place as Place).address_en || "",
+            address_ja: (place as Place).address_ja || "",
+            address_zh: (place as Place).address_zh || "",
             description: place.description || "",
             category: place.category || "",
             avg_cost_range: place.avg_cost_range || "",
@@ -486,11 +495,38 @@ export default function AdminPlacesPage() {
                             />
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                            <label className="text-sm font-medium text-gray-600">주소</label>
+                            <label className="text-sm font-medium text-gray-600">주소 (한국어)</label>
                             <input
                                 name="address"
                                 placeholder="도로명 주소"
                                 value={formData.address || ""}
+                                onChange={handleInputChange}
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="text-sm font-medium text-gray-600">주소 (English)</label>
+                            <input
+                                name="address_en"
+                                value={formData.address_en || ""}
+                                onChange={handleInputChange}
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="text-sm font-medium text-gray-600">주소 (日本語)</label>
+                            <input
+                                name="address_ja"
+                                value={formData.address_ja || ""}
+                                onChange={handleInputChange}
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="text-sm font-medium text-gray-600">주소 (中文)</label>
+                            <input
+                                name="address_zh"
+                                value={formData.address_zh || ""}
                                 onChange={handleInputChange}
                                 className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                             />

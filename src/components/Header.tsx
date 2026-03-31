@@ -245,7 +245,7 @@ const Header = memo(() => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t("common.settings")}</h3>
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t("common.settings")}</h3>
                             <button
                                 type="button"
                                 onClick={() => setShowSettingsModal(false)}
@@ -256,8 +256,8 @@ const Header = memo(() => {
                             </button>
                         </div>
                         <div className="p-4 pb-8">
-                            {/* 언어 선택: 한국어, English, 日本語, 中文 */}
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                            {/* 언어 선택: language.* (日本語·中文 자국어 표기, 웹은 폰트 스택 폴백) */}
+                            <p className="text-sm font-normal text-gray-600 dark:text-gray-400 mb-3">
                                 {t("language.label")}
                             </p>
                             <div className="flex gap-2 mb-6">
@@ -270,7 +270,7 @@ const Header = memo(() => {
                                             setLocaleSafe(loc);
                                             setShowSettingsModal(false);
                                         }}
-                                        className={`flex-1 min-w-0 flex items-center justify-center py-2.5 rounded-xl border-2 transition-colors text-sm font-medium disabled:opacity-60 disabled:pointer-events-none ${
+                                        className={`flex-1 min-w-0 flex items-center justify-center py-2.5 rounded-xl border-2 transition-colors text-sm font-normal disabled:opacity-60 disabled:pointer-events-none ${
                                             locale === loc
                                                 ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
                                                 : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
@@ -280,7 +280,7 @@ const Header = memo(() => {
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                            <p className="text-sm font-normal text-gray-600 dark:text-gray-400 mb-3">
                                 {t("theme.label")}
                             </p>
                             <div className="flex gap-2">
@@ -318,7 +318,7 @@ const Header = memo(() => {
                                         <path d="m6.34 17.66-1.41 1.41" />
                                         <path d="m19.07 4.93-1.41 1.41" />
                                     </svg>
-                                    <span className="font-bold text-sm">{t("theme.light")}</span>
+                                    <span className="font-medium text-sm">{t("theme.light")}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -346,7 +346,7 @@ const Header = memo(() => {
                                     >
                                         <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
                                     </svg>
-                                    <span className="font-bold text-sm">{t("theme.dark")}</span>
+                                    <span className="font-medium text-sm">{t("theme.dark")}</span>
                                 </button>
                             </div>
                         </div>

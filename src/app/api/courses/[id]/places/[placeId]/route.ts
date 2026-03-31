@@ -52,7 +52,17 @@ export async function PATCH(
         }
 
         const body = await request.json();
-        const { order_index, segment, order_in_segment, estimated_duration, recommended_time, tips } = body || {};
+        const {
+            order_index,
+            segment,
+            order_in_segment,
+            estimated_duration,
+            recommended_time,
+            tips,
+            tips_en,
+            tips_ja,
+            tips_zh,
+        } = body || {};
 
         // course_place가 해당 course에 속하는지 확인
         const existing = await (prisma as any).coursePlace.findFirst({
@@ -78,6 +88,15 @@ export async function PATCH(
                     : {}),
                 ...(recommended_time !== undefined ? { recommended_time: recommended_time || null } : {}),
                 ...(tips !== undefined ? { tips: tips && String(tips).trim() ? String(tips).trim() : null } : {}),
+                ...(tips_en !== undefined
+                    ? { tips_en: tips_en != null && String(tips_en).trim() ? String(tips_en).trim() : null }
+                    : {}),
+                ...(tips_ja !== undefined
+                    ? { tips_ja: tips_ja != null && String(tips_ja).trim() ? String(tips_ja).trim() : null }
+                    : {}),
+                ...(tips_zh !== undefined
+                    ? { tips_zh: tips_zh != null && String(tips_zh).trim() ? String(tips_zh).trim() : null }
+                    : {}),
             },
             include: {
                 place: {

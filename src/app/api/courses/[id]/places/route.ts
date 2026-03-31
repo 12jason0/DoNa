@@ -52,6 +52,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
             tips: getMergedTipsFromRow(cp),
+            tips_en: cp.tips_en ?? null,
+            tips_ja: cp.tips_ja ?? null,
+            tips_zh: cp.tips_zh ?? null,
             place: {
                 id: cp.place_id,
                 name: cp.place?.name ?? "",
@@ -95,7 +98,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const { id: courseIdParam } = await params;
         const course_id = Number(courseIdParam);
         const body = await request.json();
-        const { place_id, order_index, segment, order_in_segment, estimated_duration, recommended_time, tips } = body || {};
+        const {
+            place_id,
+            order_index,
+            segment,
+            order_in_segment,
+            estimated_duration,
+            recommended_time,
+            tips,
+            tips_en,
+            tips_ja,
+            tips_zh,
+        } = body || {};
 
         if (!course_id || !place_id || !order_index) {
             return NextResponse.json({ error: "course_id, place_id, order_index는 필수입니다." }, { status: 400 });
@@ -111,6 +125,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 estimated_duration: typeof estimated_duration === "number" ? estimated_duration : null,
                 recommended_time: recommended_time || null,
                 tips: tips && String(tips).trim() ? String(tips).trim() : null,
+                tips_en: tips_en !== undefined && tips_en != null && String(tips_en).trim() ? String(tips_en).trim() : null,
+                tips_ja: tips_ja !== undefined && tips_ja != null && String(tips_ja).trim() ? String(tips_ja).trim() : null,
+                tips_zh: tips_zh !== undefined && tips_zh != null && String(tips_zh).trim() ? String(tips_zh).trim() : null,
             },
         });
 

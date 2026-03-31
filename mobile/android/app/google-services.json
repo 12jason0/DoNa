@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "444477084274",
+    "project_id": "dona-69db1",
+    "storage_bucket": "dona-69db1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:444477084274:android:bcb859a0fa34528267a8eb",
+        "android_client_info": {
+          "package_name": "kr.io.dona.dona"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKbHnrpTe9k6TDYpHMnkREVdbabS9_vbo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

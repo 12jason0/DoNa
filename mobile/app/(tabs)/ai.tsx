@@ -148,7 +148,7 @@ const ls = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: "800",
+        fontWeight: "600",
         textAlign: "center",
         marginBottom: 10,
         letterSpacing: -0.3,
@@ -169,7 +169,7 @@ const ls = StyleSheet.create({
     upgradeBtnText: {
         color: "#fff",
         fontSize: 15,
-        fontWeight: "700",
+        fontWeight: "500",
     },
     closeBtn: {
         paddingVertical: 12,
@@ -177,7 +177,7 @@ const ls = StyleSheet.create({
     },
     closeBtnText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "500",
     },
 });
 
@@ -962,7 +962,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                                     </View>
                                                     <View style={{ flex: 1, minWidth: 0 }}>
                                                         <Text
-                                                            style={[{ fontSize: 14, fontWeight: "600", color: t.text }]}
+                                                            style={[{ fontSize: 14, fontWeight: "500", color: t.text }]}
                                                             numberOfLines={1}
                                                         >
                                                             {cp.place?.name ?? "장소"}
@@ -1039,7 +1039,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                             </View>
                             <Text style={[s.confirmTitle, { color: t.text }]}>이 코스로 결정할까요?</Text>
                             <Text style={[s.confirmDesc, { color: t.textMuted }]}>
-                                <Text style={{ color: "#059669", fontWeight: "700" }}>"{confirmCourse.title}"</Text>
+                                <Text style={{ color: "#059669", fontWeight: "500" }}>"{confirmCourse.title}"</Text>
                                 {"\n"}
                                 선택하신 코스는 마이페이지에 보관됩니다.
                             </Text>
@@ -1281,9 +1281,9 @@ const s = StyleSheet.create({
         elevation: 2,
     },
     profileCardLeft: { flex: 1, gap: 4 },
-    profileCardHint: { fontSize: 11, fontWeight: "600", letterSpacing: 0.2 },
-    profileCardGreeting: { fontSize: 17, fontWeight: "800", lineHeight: 24, letterSpacing: -0.3 },
-    profileCardName: { color: "#059669", fontWeight: "800" },
+    profileCardHint: { fontSize: 11, fontWeight: "500", letterSpacing: 0.2 },
+    profileCardGreeting: { fontSize: 17, fontWeight: "600", lineHeight: 24, letterSpacing: -0.3 },
+    profileCardName: { color: "#059669", fontWeight: "600" },
     loginHintBtn: {
         marginTop: 6,
         alignSelf: "flex-start",
@@ -1294,7 +1294,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#a7f3d0",
     },
-    loginHintText: { fontSize: 11, fontWeight: "700", color: "#047857" },
+    loginHintText: { fontSize: 11, fontWeight: "500", color: "#047857" },
     profileAvatar: {
         width: 44,
         height: 44,
@@ -1343,7 +1343,7 @@ const s = StyleSheet.create({
     },
     heroTitle: {
         fontSize: 22,
-        fontWeight: "800",
+        fontWeight: "600",
         textAlign: "center",
         lineHeight: 30,
         letterSpacing: -0.5,
@@ -1373,10 +1373,10 @@ const s = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
     },
-    ctaBtnText: { fontSize: 16, fontWeight: "700", color: "#fff", letterSpacing: -0.3 },
+    ctaBtnText: { fontSize: 16, fontWeight: "500", color: "#fff", letterSpacing: -0.3 },
     heroHintRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
     heroHintDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#10b981" },
-    heroHintText: { fontSize: 11, fontWeight: "600" },
+    heroHintText: { fontSize: 11, fontWeight: "500" },
 
     // 배지
     badgesRow: { flexDirection: "row", gap: 8 },
@@ -1391,7 +1391,7 @@ const s = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
     },
-    badgeText: { fontSize: 11, fontWeight: "600" },
+    badgeText: { fontSize: 11, fontWeight: "500" },
 
     // 채팅 모달
     chatModal: { flex: 1 },
@@ -1410,10 +1410,10 @@ const s = StyleSheet.create({
         borderRadius: 20,
         overflow: "hidden",
     },
-    botName: { fontSize: 15, fontWeight: "700" },
+    botName: { fontSize: 15, fontWeight: "500" },
     liveRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
     liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#10b981" },
-    liveText: { fontSize: 11, color: "#059669", fontWeight: "600" },
+    liveText: { fontSize: 11, color: "#059669", fontWeight: "500" },
     closeBtn: {
         width: 36,
         height: 36,
@@ -1458,7 +1458,7 @@ const s = StyleSheet.create({
 
     // 결과
     results: { gap: 12 },
-    resultsTitle: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3, marginTop: 8 },
+    resultsTitle: { fontSize: 17, fontWeight: "500", letterSpacing: -0.3, marginTop: 8 },
     resultCard: {
         borderRadius: 20,
         overflow: "hidden",
@@ -1476,8 +1476,8 @@ const s = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
     },
-    matchBadgeText: { fontSize: 11, fontWeight: "800" },
-    resultTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.5, marginBottom: 8 },
+    matchBadgeText: { fontSize: 11, fontWeight: "600" },
+    resultTitle: { fontSize: 20, fontWeight: "500", letterSpacing: -0.5, marginBottom: 8 },
     resultDesc: { fontSize: 13, lineHeight: 19, marginBottom: 10 },
     matchChips: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 14 },
     matchChip: {
@@ -1486,7 +1486,7 @@ const s = StyleSheet.create({
         borderRadius: 999,
         borderWidth: 1,
     },
-    matchChipText: { fontSize: 11, fontWeight: "600" },
+    matchChipText: { fontSize: 11, fontWeight: "500" },
     resultMetaGrid: { flexDirection: "row", gap: 10, marginBottom: 20 },
     resultMetaBox: {
         flex: 1,
@@ -1497,16 +1497,16 @@ const s = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 12,
     },
-    resultMetaBoxText: { fontSize: 12, fontWeight: "700", flex: 1 },
+    resultMetaBoxText: { fontSize: 12, fontWeight: "500", flex: 1 },
     resultBtn: {
         backgroundColor: "#059669",
         paddingVertical: 14,
         borderRadius: 16,
         alignItems: "center",
     },
-    resultBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+    resultBtnText: { fontSize: 14, fontWeight: "500", color: "#fff" },
     resultBtnSecondary: { paddingVertical: 14, borderRadius: 16, alignItems: "center" },
-    resultBtnSecondaryText: { fontSize: 14, fontWeight: "700" },
+    resultBtnSecondaryText: { fontSize: 14, fontWeight: "500" },
 
     // 상세 바텀시트
     modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.6)" },
@@ -1525,7 +1525,7 @@ const s = StyleSheet.create({
         marginTop: 10,
         marginBottom: 14,
     },
-    detailTitle: { fontSize: 18, fontWeight: "700", letterSpacing: -0.3 },
+    detailTitle: { fontSize: 18, fontWeight: "500", letterSpacing: -0.3 },
     detailMetaBar: {
         flexDirection: "row",
         alignItems: "center",
@@ -1535,7 +1535,7 @@ const s = StyleSheet.create({
         borderRadius: 14,
         marginTop: 4,
     },
-    detailMetaBarText: { fontSize: 12, fontWeight: "600", flexShrink: 1 },
+    detailMetaBarText: { fontSize: 12, fontWeight: "500", flexShrink: 1 },
     placeRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1 },
     placeNum: {
         width: 28,
@@ -1545,7 +1545,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    placeNumText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+    placeNumText: { fontSize: 12, fontWeight: "500", color: "#fff" },
     placeThumb: { width: 52, height: 52, borderRadius: 10 },
     detailCta: { padding: 16, borderTopWidth: 1 },
     detailCtaBtn: {
@@ -1557,7 +1557,7 @@ const s = StyleSheet.create({
         justifyContent: "center",
         gap: 6,
     },
-    detailCtaBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+    detailCtaBtnText: { fontSize: 15, fontWeight: "500", color: "#fff" },
 
     // 선택 확인 모달
     centeredOverlay: {
@@ -1579,7 +1579,7 @@ const s = StyleSheet.create({
         marginTop: 32,
         marginBottom: 16,
     },
-    confirmTitle: { fontSize: 20, fontWeight: "800", textAlign: "center", paddingHorizontal: 24 },
+    confirmTitle: { fontSize: 20, fontWeight: "600", textAlign: "center", paddingHorizontal: 24 },
     confirmDesc: {
         fontSize: 14,
         textAlign: "center",
@@ -1590,13 +1590,13 @@ const s = StyleSheet.create({
     },
     confirmBtns: { flexDirection: "row", borderTopWidth: 1 },
     confirmCancel: { flex: 1, paddingVertical: 20, alignItems: "center" },
-    confirmCancelText: { fontSize: 15, fontWeight: "600" },
+    confirmCancelText: { fontSize: 15, fontWeight: "500" },
     confirmOk: { flex: 1, paddingVertical: 20, alignItems: "center", backgroundColor: "#059669" },
-    confirmOkText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+    confirmOkText: { fontSize: 15, fontWeight: "500", color: "#fff" },
 
     // 피드백 모달
     feedbackBox: { width: "100%", borderRadius: 28, padding: 28 },
-    feedbackTitle: { fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 20 },
+    feedbackTitle: { fontSize: 20, fontWeight: "600", textAlign: "center", marginBottom: 20 },
     feedbackBtn: {
         flexDirection: "row",
         alignItems: "center",
@@ -1606,13 +1606,13 @@ const s = StyleSheet.create({
         borderRadius: 16,
         marginBottom: 10,
     },
-    feedbackBtnText: { fontSize: 15, fontWeight: "600" },
+    feedbackBtnText: { fontSize: 15, fontWeight: "500" },
 
     // 빈 결과
     empty: { alignItems: "center", paddingVertical: 40, gap: 12 },
     emptyText: { fontSize: 14, textAlign: "center" },
     retryBtn: { backgroundColor: "#059669", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
-    retryText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+    retryText: { fontSize: 13, fontWeight: "500", color: "#fff" },
 
     // 옵션 영역
     optionsWrap: { borderTopWidth: StyleSheet.hairlineWidth, maxHeight: 220 },
@@ -1620,7 +1620,7 @@ const s = StyleSheet.create({
     optionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
     optBtn: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
     optBtnPrimary: { backgroundColor: "#059669", borderColor: "#059669" },
-    optText: { fontSize: 14, fontWeight: "600" },
+    optText: { fontSize: 14, fontWeight: "500" },
     optTextPrimary: { color: "#fff" },
 
     // 완료 바
@@ -1634,7 +1634,7 @@ const s = StyleSheet.create({
         borderRadius: 16,
         paddingVertical: 14,
     },
-    doneBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+    doneBtnText: { fontSize: 15, fontWeight: "500", color: "#fff" },
 
     // 분석 오버레이 (웹 UI 동일: 회전 링 + Zap 아이콘)
     overlay: {
@@ -1674,7 +1674,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    overlayTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
+    overlayTitle: { fontSize: 20, fontWeight: "500", color: "#fff" },
     overlayBar: { width: 160, height: 4, backgroundColor: "#374151", borderRadius: 2, overflow: "hidden" },
     overlayBarFill: { height: 4, width: "100%", backgroundColor: "#10b981" },
 
@@ -1723,14 +1723,14 @@ const s = StyleSheet.create({
     },
     flipFrontLabel: {
         fontSize: 10,
-        fontWeight: "900",
+        fontWeight: "700",
         letterSpacing: 3,
         color: "#34d399",
         marginBottom: 8,
     },
     flipFrontTitle: {
         fontSize: 22,
-        fontWeight: "800",
+        fontWeight: "600",
         color: "#fff",
         textAlign: "center",
         lineHeight: 28,
@@ -1749,7 +1749,7 @@ const s = StyleSheet.create({
     },
     flipFrontHintText: {
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#9ca3af",
     },
     flipFrontBottomLine: {

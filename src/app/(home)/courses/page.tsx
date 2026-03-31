@@ -11,6 +11,9 @@ import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 type HeroSliderItem = {
     id: string;
     title: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     imageUrl: string;
     location: string;
     concept: string;
@@ -19,6 +22,9 @@ type HeroSliderItem = {
 function mapRowToHeroItem(c: {
     id: number;
     title: string | null;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     region: string | null;
     imageUrl: string | null;
     concept: string | null;
@@ -27,6 +33,9 @@ function mapRowToHeroItem(c: {
     return {
         id: String(c.id),
         title: c.title || "",
+        title_en: c.title_en || null,
+        title_ja: c.title_ja || null,
+        title_zh: c.title_zh || null,
         imageUrl: c.imageUrl || c.coursePlaces?.[0]?.place?.imageUrl || "",
         location: c.region || "",
         concept: c.concept || "",
@@ -43,6 +52,9 @@ async function getHeroCourses(): Promise<HeroSliderItem[]> {
             select: {
                 id: true,
                 title: true,
+                title_en: true,
+                title_ja: true,
+                title_zh: true,
                 region: true,
                 imageUrl: true,
                 concept: true,
@@ -67,6 +79,9 @@ function heroFromInitialCourses(courses: any[]): HeroSliderItem[] {
     return courses.slice(0, 5).map((c) => ({
         id: String(c.id),
         title: c.title || "",
+        title_en: c.title_en || null,
+        title_ja: c.title_ja || null,
+        title_zh: c.title_zh || null,
         imageUrl: c.imageUrl || "",
         location: c.location || "",
         concept: c.concept || "",
@@ -81,7 +96,13 @@ export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐�
 const courseSelectOptions = {
     id: true,
     title: true,
+    title_en: true,
+    title_ja: true,
+    title_zh: true,
     description: true,
+    description_en: true,
+    description_ja: true,
+    description_zh: true,
     duration: true,
     region: true,
     imageUrl: true,
@@ -144,7 +165,13 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
             return {
                 id: String(course.id),
                 title: course.title || "",
+                title_en: course.title_en || null,
+                title_ja: course.title_ja || null,
+                title_zh: course.title_zh || null,
                 description: course.description || "",
+                description_en: course.description_en || null,
+                description_ja: course.description_ja || null,
+                description_zh: course.description_zh || null,
                 duration: course.duration || "",
                 location: course.region || "",
                 imageUrl: course.imageUrl || course.coursePlaces?.[0]?.place?.imageUrl || "",

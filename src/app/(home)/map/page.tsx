@@ -10,6 +10,8 @@ import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch, fetchSession } from "@/lib/authClient";
 import { isMobileApp } from "@/lib/platform";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
+import { pickPlaceAddress } from "@/lib/placeLocalized";
 
 // --- 타입 정의 ---
 interface Place {
@@ -265,7 +267,7 @@ function createUserLocationIcon() {
     };
 }
 
-const LoadingSpinner = ({ text = "로딩 중..." }: { text?: string }) => (
+const LoadingSpinner = ({ text }: { text: string }) => (
     <div className="flex flex-col justify-center items-center h-full gap-3">
         <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-emerald-100 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-400" />
         <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{text}</p>
@@ -277,6 +279,8 @@ function MapPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { iosIgnoreSafeAreaBottom } = useAppLayout();
+    const { t, locale } = useLocale();
+    const defaultSearchKeyword = t("map.defaultSearchKeyword");
     const [mapsReady, setMapsReady] = useState(false);
     const mapRef = useRef<any>(null);
 
@@ -340,7 +344,7 @@ function MapPageInner() {
     // 🟢 구독 변경 이벤트 리스너 (환불 후 실시간 업데이트)
     useEffect(() => {
         const handleSubscriptionChanged = () => {
-            console.log("[MapPage] 구독 변경 감지 - 사용자 등급 갱신");
+            console.log("[MapPage] Subscription changed - refreshing user tier");
             fetchUserTier();
         };
         window.addEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
@@ -497,7 +501,7 @@ function MapPageInner() {
                 courses.find((c) => c.id === routeCourseId) ??
                 ({
                     id: routeCourseId,
-                    title: "데이트 코스",
+                    title: t("map.courseFallbackTitle"),
                     description: "",
                     distance: 0,
                 } as Course);
@@ -532,6 +536,7 @@ function MapPageInner() {
         incomingRouteMode,
         courses,
         fetchCourseDetailToCache,
+        t,
     ]);
 
     /** 코스 탭 → 장소 탭 전환 시 선택 코스·리스트·로딩 초기화 */
@@ -557,7 +562,7 @@ function MapPageInner() {
             });
         } catch (e) {
             if (process.env.NODE_ENV === "development") {
-                console.warn("[MapPage] 코스 루트 fitBounds 실패:", e);
+                console.warn("[MapPage] Failed to fit course route bounds:", e);
             }
         }
     }, [selectedCourseForRoute?.id, courseRoutePath, navermaps]);
@@ -568,10 +573,10 @@ function MapPageInner() {
 
         const dlat = Number(place.latitude);
         const dlng = Number(place.longitude);
-        const destination = place.name || place.address || "목적지";
+        const destination = place.name || place.address || t("map.destinationFallback");
 
         if (Number.isNaN(dlat) || Number.isNaN(dlng)) {
-            showToast("해당 장소의 위치 정보가 없어요.");
+            showToast(t("map.toastNoPlaceCoords"));
             return;
         }
 
@@ -587,7 +592,7 @@ function MapPageInner() {
                 (pos) => {
                     const slng = pos.coords.longitude;
                     const slat = pos.coords.latitude;
-                    const directionsUrl = `https://map.naver.com/index.nhn?slng=${slng}&slat=${slat}&stext=${encodeURIComponent("현재 위치")}&elng=${dlng}&elat=${dlat}&etext=${encodeURIComponent(destination)}&menu=route`;
+                    const directionsUrl = `https://map.naver.com/index.nhn?slng=${slng}&slat=${slat}&stext=${encodeURIComponent(t("map.currentLocation"))}&elng=${dlng}&elat=${dlat}&etext=${encodeURIComponent(destination)}&menu=route`;
                     window.open(directionsUrl, "_blank", "noopener,noreferrer");
                 },
                 () => {
@@ -609,7 +614,7 @@ function MapPageInner() {
         } else {
             openWebDirections();
         }
-    }, []);
+    }, [t]);
 
     // 1. 네이버 지도 SDK 로드
     useEffect(() => {
@@ -694,8 +699,8 @@ function MapPageInner() {
                     fetch(myDataUrl, { signal: aborter.signal }).then((res) => res.json()),
                 ];
 
-                // 카카오 API 호출 (keyword가 있으면 keyword 사용, 없으면 기본 "맛집")
-                const effectiveKeyword = keyword && keyword.trim() ? keyword : "맛집";
+                // 카카오 API 호출 (keyword가 있으면 keyword 사용, 없으면 기본 검색어)
+                const effectiveKeyword = keyword && keyword.trim() ? keyword : defaultSearchKeyword;
                 let radius = 2000; // 기본 2km
 
                 if (bounds) {
@@ -790,12 +795,12 @@ function MapPageInner() {
                 }
             }
         },
-        [prefetchCourseDetail],
+        [prefetchCourseDetail, defaultSearchKeyword],
     );
 
     const moveToCurrentLocation = useCallback(async () => {
         if (!navigator.geolocation) {
-            showToast("위치 정보를 사용할 수 없습니다.");
+            showToast(t("map.toastNoLocation"));
             return;
         }
 
@@ -805,12 +810,12 @@ function MapPageInner() {
             window.location.protocol === "http:" &&
             !window.location.hostname.includes("localhost")
         ) {
-            showToast("HTTPS 환경에서만 위치 정보를 사용할 수 있습니다.");
+            showToast(t("map.toastHttpsOnly"));
             // 현재 중심점 기준으로 데이터 로드
             try {
                 await fetchAllData(center);
             } catch (error) {
-                console.error("데이터 로드 오류:", error);
+                console.error("Data load error:", error);
             }
             return;
         }
@@ -820,7 +825,7 @@ function MapPageInner() {
         // 타임아웃 설정 (20초 후 자동 해제 - 더 여유있게)
         const timeoutId = setTimeout(() => {
             setLoading(false);
-            showToast("위치 정보를 가져오는 데 시간이 걸리고 있어요.");
+            showToast(t("map.toastLocationSlow"));
         }, 20000);
 
         navigator.geolocation.getCurrentPosition(
@@ -833,8 +838,8 @@ function MapPageInner() {
                     setZoom(16);
                     await fetchAllData(loc);
                 } catch (error) {
-                    console.error("위치 이동 중 오류:", error);
-                    showToast("데이터를 불러오는 중 오류가 발생했습니다.");
+                    console.error("Error while moving to current location:", error);
+                    showToast(t("map.toastLoadDataError"));
                 } finally {
                     setLoading(false);
                 }
@@ -842,22 +847,22 @@ function MapPageInner() {
             (err) => {
                 clearTimeout(timeoutId);
                 setLoading(false);
-                console.error("위치 정보 가져오기 실패:", err);
+                console.error("Failed to get location info:", err);
 
                 // 🟢 에러 코드별 구체적인 메시지 표시
                 const errorMsgs: { [key: number]: string } = {
-                    1: "위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.",
-                    2: "위치를 확인할 수 없습니다. GPS 신호를 확인해주세요.",
-                    3: "시간이 초과되었습니다. 네트워크 연결을 확인해주세요.",
+                    1: t("map.toastPermissionDenied"),
+                    2: t("map.toastPositionUnavailable"),
+                    3: t("map.toastTimeout"),
                 };
-                const errorMsg = errorMsgs[err.code] || "위치를 가져올 수 없습니다.";
+                const errorMsg = errorMsgs[err.code] || t("map.toastPositionFailed");
                 showToast(errorMsg);
 
                 // 현재 중심점 기준으로 데이터 로드
                 try {
                     fetchAllData(center);
                 } catch (error) {
-                    console.error("데이터 로드 오류:", error);
+                    console.error("Data load error:", error);
                 }
             },
             {
@@ -867,7 +872,7 @@ function MapPageInner() {
                 maximumAge: 0, // 항상 최신 위치를 가져오도록 캐시 끔
             },
         );
-    }, [fetchAllData, center]);
+    }, [fetchAllData, center, t]);
 
     // 초기 로드 시 한 번만 현재 지도 중심 기준으로 데이터 로드 → 코스 탭에서 루트 표시 가능
     const initialFetchDone = useRef(false);
@@ -892,14 +897,14 @@ function MapPageInner() {
                 setShowMapSearchButton(false);
                 setSearchInput("");
             } else {
-                showToast("검색 결과가 없습니다.");
+                showToast(t("map.toastNoSearchResults"));
             }
         } catch (e) {
-            showToast("검색 중 오류가 발생했습니다.");
+            showToast(t("map.toastSearchError"));
         } finally {
             setLoading(false);
         }
-    }, [searchInput, fetchAllData]);
+    }, [searchInput, fetchAllData, t]);
 
     const handleMapSearch = async () => {
         if (!mapRef.current) return;
@@ -921,8 +926,7 @@ function MapPageInner() {
             const radius = Math.max(latDiff * 111000, lngDiff * 88800); // 위도 1도 ≈ 111km, 경도 1도 ≈ 88.8km (서울 기준)
 
             const myDataUrl = `/api/map?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}`;
-            // 카카오 API는 중심점과 반경으로 호출 (keyword 없이 기본 "맛집" 검색)
-            const kakaoUrl = `/api/places/search-kakao?lat=${centerLat}&lng=${centerLng}&radius=${Math.round(radius)}`;
+            const kakaoUrl = `/api/places/search-kakao?lat=${centerLat}&lng=${centerLng}&radius=${Math.round(radius)}&keyword=${encodeURIComponent(defaultSearchKeyword)}`;
 
             // 병렬 요청 (DB는 빠르고, 카카오는 느릴 수 있으므로 함께 호출)
             const [myData, kakaoData] = await Promise.all([
@@ -986,8 +990,8 @@ function MapPageInner() {
             setShowMapSearchButton(false);
             setPanelState("default");
         } catch (e: any) {
-            console.error("현 지도 검색 오류:", e);
-            showToast("검색 중 오류가 발생했습니다.");
+            console.error("Search in current map area failed:", e);
+            showToast(t("map.toastSearchError"));
         } finally {
             setLoading(false);
         }
@@ -1054,7 +1058,7 @@ function MapPageInner() {
     if (!mapsReady || !navermaps)
         return (
             <div className="h-screen flex items-center justify-center">
-                <LoadingSpinner />
+                <LoadingSpinner text={t("map.loading")} />
             </div>
         );
 
@@ -1068,7 +1072,7 @@ function MapPageInner() {
                         type="button"
                         onClick={() => router.back()}
                         className="shrink-0 h-8 w-8 rounded-lg bg-white dark:bg-gray-800 shadow-md flex items-center justify-center text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all"
-                        aria-label="뒤로 가기"
+                        aria-label={t("map.backAria")}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1100,7 +1104,7 @@ function MapPageInner() {
                         </div>
                         <input
                             type="text"
-                            placeholder="장소, 맛집, 코스 검색"
+                            placeholder={t("map.searchPlaceholder")}
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -1134,7 +1138,7 @@ function MapPageInner() {
                                     activeTab === "places" ? "text-white font-bold" : "text-gray-500 dark:text-gray-400"
                                 }
                             >
-                                장소
+                                {t("map.tabPlaces")}
                             </span>
                         </button>
                         <button
@@ -1152,7 +1156,7 @@ function MapPageInner() {
                                         : "text-gray-500 dark:text-gray-400"
                                 }
                             >
-                                코스
+                                {t("map.tabCourses")}
                             </span>
                         </button>
                     </div>
@@ -1173,7 +1177,7 @@ function MapPageInner() {
                                     clipRule="evenodd"
                                 />
                             </svg>
-                            현 지도 검색
+                            {t("map.searchThisArea")}
                         </button>
                     )}
                 </div>
@@ -1332,7 +1336,7 @@ function MapPageInner() {
                                 <h2 className="font-bold text-lg text-gray-900 dark:text-white leading-tight flex items-center gap-1.5">
                                     {activeTab === "places" ? (
                                         <>
-                                            내 주변 장소
+                                            {t("map.panelTitleMyPlaces")}
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 width="20"
@@ -1366,7 +1370,7 @@ function MapPageInner() {
                                         </>
                                     ) : (
                                         <>
-                                            추천 데이트 코스
+                                            {t("map.panelTitleRecommendedCourses")}
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 width="20"
@@ -1386,10 +1390,10 @@ function MapPageInner() {
                                 </h2>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                                     {activeTab === "places"
-                                        ? `지도에 ${places.length}개의 장소가 있어요`
+                                        ? t("map.placeCountOnMap", { n: places.length })
                                         : selectedCourseForRoute
-                                          ? selectedCourseForRoute.description || "코스에 포함된 장소예요"
-                                          : "엄선된 코스를 확인해보세요"}
+                                          ? selectedCourseForRoute.description || t("map.coursePlacesSubtitle")
+                                          : t("map.coursesEmptyHint")}
                                 </p>
                             </TapFeedback>
                         </div>
@@ -1403,7 +1407,7 @@ function MapPageInner() {
                                         setCoursePlacesList([]);
                                     }}
                                     className="shrink-0 w-12 h-12 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                                    aria-label="뒤로 가기"
+                                    aria-label={t("map.backAria")}
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -1425,17 +1429,17 @@ function MapPageInner() {
 
                 <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1a241b] scrollbar-hide">
                     {loading ? (
-                        <LoadingSpinner text="정보를 불러오고 있어요..." />
+                        <LoadingSpinner text={t("map.loadingInfo")} />
                     ) : activeTab === "courses" && selectedCourseForRoute && coursePlacesLoading ? (
                         <div className="flex flex-col items-center justify-center py-16">
-                            <LoadingSpinner text="장소 불러오는 중..." />
+                            <LoadingSpinner text={t("map.loadingPlaces")} />
                         </div>
                     ) : selectedPlace ? (
                         <div className="px-5 pt-0 animate-fadeIn">
                             {/* 상세 정보 뷰 (생략 없이 유지) */}
                             <div className="flex justify-between items-start mb-2 mt-1">
                                 <span className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-800/50">
-                                    {selectedPlace.category || "추천 장소"}
+                                    {selectedPlace.category || t("courseDetail.recommendedPlaceFallback")}
                                 </span>
                                 <button
                                     onClick={() => setSelectedPlace(null)}
@@ -1459,7 +1463,7 @@ function MapPageInner() {
                                 {selectedPlace.name}
                             </h2>
                             <div className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex items-start gap-1">
-                                <span className="leading-snug">{selectedPlace.address}</span>
+                                <span className="leading-snug">{pickPlaceAddress(selectedPlace, locale)}</span>
                             </div>
                             {/* ✅ 수정된 버튼 영역 (안전장치 추가됨) */}
                             <div className="flex gap-2.5 mb-6 h-11">
@@ -1468,10 +1472,10 @@ function MapPageInner() {
                                     onClick={() =>
                                         selectedPlace?.phone
                                             ? (window.location.href = `tel:${selectedPlace.phone}`)
-                                            : showToast("전화번호 정보가 없어요 🥲")
+                                            : showToast(t("map.phoneMissing"))
                                     }
                                     className="w-11 h-full flex items-center justify-center bg-white dark:bg-[#1a241b] text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 rounded-lg hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 active:scale-95 transition-all"
-                                    aria-label="전화하기"
+                                    aria-label={t("map.callPhone")}
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -1493,7 +1497,7 @@ function MapPageInner() {
                                     onClick={() => handleFindWay(selectedPlace)}
                                     className="flex-1 h-full flex items-center justify-center gap-1.5 bg-[#6bb88a] dark:bg-[#6bb88a] text-white rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-95 transition-all"
                                 >
-                                    <span>길찾기</span>
+                                    <span>{t("map.directions")}</span>
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
                                         viewBox="0 0 24 24"
@@ -1517,12 +1521,12 @@ function MapPageInner() {
                                     <div className="text-4xl mb-2">🤔</div>
                                     <p className="text-gray-500 dark:text-gray-400 font-medium">
                                         {activeTab === "courses" && selectedCourseForRoute
-                                            ? "이 코스에 등록된 장소가 없어요."
-                                            : "이 근처에는 아직 정보가 없어요."}
+                                            ? t("map.emptyNoPlacesInCourse")
+                                            : t("map.emptyNoNearby")}
                                         <br />
                                         {activeTab === "courses" && selectedCourseForRoute
                                             ? ""
-                                            : "지도를 조금만 이동해볼까요?"}
+                                            : t("map.emptyMoveMapHint")}
                                     </p>
                                 </div>
                             ) : (
@@ -1561,7 +1565,9 @@ function MapPageInner() {
                                                                 : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50"
                                                         }`}
                                                     >
-                                                        {isCourse ? "추천 코스" : item.category || "장소"}
+                                                        {isCourse
+                                                            ? t("map.badgeRecommendedCourse")
+                                                            : item.category || t("map.badgePlace")}
                                                     </span>
                                                     {isCourse && selectedCourseForRoute?.id === item.id && (
                                                         <button
@@ -1572,7 +1578,7 @@ function MapPageInner() {
                                                             }}
                                                             className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
                                                         >
-                                                            상세 보기
+                                                            {t("map.viewDetail")}
                                                         </button>
                                                     )}
                                                 </div>
@@ -1621,13 +1627,20 @@ function MapPageInner() {
     );
 }
 
+function MapSuspenseFallback() {
+    const { t } = useLocale();
+    return (
+        <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0f1710]">
+            <LoadingSpinner text={t("map.loading")} />
+        </div>
+    );
+}
+
 export default function MapPage() {
     return (
         <Suspense
             fallback={
-                <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0f1710]">
-                    <LoadingSpinner />
-                </div>
+                <MapSuspenseFallback />
             }
         >
             <MapPageInner />

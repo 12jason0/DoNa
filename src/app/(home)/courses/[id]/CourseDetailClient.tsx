@@ -14,7 +14,10 @@ import { getS3StaticUrl } from "@/lib/s3Static";
 import { useAuth } from "@/context/AuthContext";
 import TapFeedback from "@/components/TapFeedback";
 import { TipSection, TipCategoryIcon } from "@/components/TipSection";
-import { parseTipsFromDb, TIP_CATEGORIES } from "@/types/tip";
+import { parseTipsFromDbForLocale, getTipCategoryLabel } from "@/types/tip";
+import { pickPlaceAddress, pickPlaceDescription, pickPlaceName, translatePlaceCategory } from "@/lib/placeLocalized";
+import { pickCourseTitle } from "@/lib/courseLocalized";
+import { translateCourseConcept, translateCourseRegion } from "@/lib/courseTranslate";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
@@ -22,6 +25,51 @@ import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
 import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
+import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
+import type { TranslationKeys } from "@/types/i18n";
+import {
+    PLACE_STATUS_CLOSED,
+    PLACE_STATUS_NO_INFO,
+    type PlaceStatus,
+} from "@/lib/placeStatus";
+import {
+    placeStatusBadgeClass,
+    placeStatusTranslationKey,
+} from "@/lib/placeStatusUi";
+
+function resolveCourseDefault(
+    value: string,
+    field: keyof typeof COURSE_DETAIL_SENTINELS,
+    t: (key: TranslationKeys, params?: Record<string, string | number>) => string,
+): string {
+    if (value === COURSE_DETAIL_SENTINELS[field]) {
+        return t(`courseDetail.defaults.${field}` as TranslationKeys);
+    }
+    return value;
+}
+
+function translateDurationChip(raw: string, locale: "ko" | "en" | "ja" | "zh"): string {
+    const v = (raw || "").trim();
+    if (!v || locale === "ko") return v;
+    const map: Record<string, { en: string; ja: string; zh: string }> = {
+        "2시간": { en: "2 hours", ja: "2時間", zh: "2小时" },
+        "3시간": { en: "3 hours", ja: "3時間", zh: "3小时" },
+        "4시간": { en: "4 hours", ja: "4時間", zh: "4小时" },
+        "5시간": { en: "5 hours", ja: "5時間", zh: "5小时" },
+        "6시간+": { en: "6+ hours", ja: "6時間以上", zh: "6小时以上" },
+    };
+    const hit = map[v];
+    if (hit) return hit[locale];
+
+    const m = v.match(/^(\d+)\s*시간$/);
+    if (m) {
+        const n = m[1];
+        if (locale === "en") return `${n} hours`;
+        if (locale === "ja") return `${n}時間`;
+        return `${n}小时`;
+    }
+    return v;
+}
 
 // 🟢 [Optimization] API 요청 중복 방지 전역 변수
 let globalFavoritesPromise: Promise<any[] | null> | null = null;
@@ -189,8 +237,17 @@ export interface PlaceClosedDay {
 export interface Place {
     id: number;
     name: string;
+    name_en?: string | null;
+    name_ja?: string | null;
+    name_zh?: string | null;
     address: string;
+    address_en?: string | null;
+    address_ja?: string | null;
+    address_zh?: string | null;
     description: string;
+    description_en?: string | null;
+    description_ja?: string | null;
+    description_zh?: string | null;
     category: string;
     avg_cost_range: string;
     opening_hours: string;
@@ -214,6 +271,9 @@ export interface CoursePlace {
     estimated_duration: number;
     recommended_time: string;
     tips?: string | null;
+    tips_en?: string | null;
+    tips_ja?: string | null;
+    tips_zh?: string | null;
     place: Place;
 }
 
@@ -221,6 +281,9 @@ export interface CoursePlace {
 export interface CourseData {
     id: string;
     title: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     description: string;
     region?: string | null;
     sub_title?: string | null;
@@ -264,14 +327,6 @@ export interface Review {
 
 // 선택형 코스 세그먼트 순서·라벨 (Admin과 동일)
 const SEGMENT_ORDER = ["brunch", "lunch", "cafe", "dinner", "bar", "date"];
-const SEGMENT_LABELS: Record<string, string> = {
-    brunch: "브런치",
-    lunch: "점심",
-    cafe: "카페",
-    dinner: "저녁",
-    bar: "바",
-    date: "데이트",
-};
 // 세그먼트별 섹션 헤더 아이콘(이모지) - 이미지 레이아웃용
 const SEGMENT_ICONS: Record<string, string> = {
     brunch: "🥐",
@@ -338,7 +393,57 @@ export default function CourseDetailClient({
 }: CourseDetailClientProps) {
     const router = useRouter();
     const { t, locale } = useLocale();
-    const translatedTitle = useTranslatedTitle(courseData?.title, locale);
+    const hasTitleDbTranslation = locale === "ko"
+        || (locale === "en" && !!courseData?.title_en?.trim())
+        || (locale === "ja" && !!courseData?.title_ja?.trim())
+        || (locale === "zh" && !!courseData?.title_zh?.trim());
+    const apiTitle = useTranslatedTitle(hasTitleDbTranslation ? null : courseData?.title, locale);
+    const translatedTitle = hasTitleDbTranslation
+        ? (courseData ? pickCourseTitle(courseData, locale) : "")
+        : (apiTitle || courseData?.title || "");
+    const translatedRegion = translateCourseRegion(courseData?.region || "", t as (k: string) => string);
+    const translatedTargetSituation = useMemo(() => {
+        const raw = (courseData?.target_situation || "").trim();
+        if (!raw) return "";
+        return raw
+            .split(",")
+            .map((v) => v.trim())
+            .filter(Boolean)
+            .map((v) =>
+                v === "SOME" ? t("courseDetail.someEscape") : translateCourseConcept(v, t as (k: string) => string),
+            )
+            .join(" · ");
+    }, [courseData?.target_situation, t]);
+    const translatedBudgetRange = useMemo(() => {
+        const raw = (courseData?.budget_range || "").trim();
+        if (!raw) return "";
+        if (locale === "ko") return raw;
+        const map: Record<string, string> =
+            locale === "ja"
+                ? {
+                      "3만원 이하": "3万ウォン以下",
+                      "3~6만원": "3〜6万ウォン",
+                      "6~10만원": "6〜10万ウォン",
+                      "10~20만원": "10〜20万ウォン",
+                      "20만원 이상": "20万ウォン以上",
+                  }
+                : locale === "zh"
+                  ? {
+                        "3만원 이하": "3万韩元以下",
+                        "3~6만원": "3~6万韩元",
+                        "6~10만원": "6~10万韩元",
+                        "10~20만원": "10~20万韩元",
+                        "20만원 이상": "20万韩元以上",
+                    }
+                  : {
+                        "3만원 이하": "Up to KRW 30,000",
+                        "3~6만원": "KRW 30,000 - 60,000",
+                        "6~10만원": "KRW 60,000 - 100,000",
+                        "10~20만원": "KRW 100,000 - 200,000",
+                        "20만원 이상": "KRW 200,000+",
+                    };
+        return map[raw] || raw;
+    }, [courseData?.budget_range, locale]);
     const translatedSubTitle = useTranslatedTitle(courseData?.sub_title || "", locale);
     // 🟢 [Fix]: 로그인 확인 중이거나 데이터가 유실된 경우를 대비한 가드 클로즈(Guard Clause)
     if (!courseData) {
@@ -747,7 +852,7 @@ export default function CourseDetailClient({
         const geoOptions = { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }; // 🟢 성능 최적화: 정확도 낮춤, 타임아웃 단축
         navigator.geolocation.getCurrentPosition(
             (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            (err) => console.warn("위치 정보 요청 실패:", err.message),
+            (err) => console.warn("Failed to request location:", err.message),
             geoOptions,
         );
     }, [userLocation]);
@@ -985,7 +1090,11 @@ export default function CourseDetailClient({
         for (const cp of list) {
             const seg = (cp as CoursePlace).segment ?? "";
             const segmentKey = seg || "fixed";
-            const label = seg ? (SEGMENT_LABELS[seg] ?? seg) : "코스";
+            const label = seg
+                ? SEGMENT_ORDER.includes(seg)
+                    ? t(`courseDetail.segment.${seg}` as TranslationKeys)
+                    : seg
+                : t("courseDetail.segmentCourseFallback");
             const icon = seg ? (SEGMENT_ICONS[seg] ?? "📍") : "📍";
             if (segmentKey !== currentSegment) {
                 currentSegment = segmentKey;
@@ -995,11 +1104,11 @@ export default function CourseDetailClient({
             currentSection!.places.push(cp);
         }
         return sections;
-    }, [displayCoursePlaces]);
+    }, [displayCoursePlaces, t]);
 
     // 🟢 getPlaceStatus 결과 메모이제이션 (3번째 장소 이후 렉 감소)
     const placeStatusMap = useMemo(() => {
-        const m = new Map<number, string>();
+        const m = new Map<number, PlaceStatus>();
         for (const cp of displayCoursePlaces) {
             if (cp?.place?.id != null) {
                 m.set(
@@ -1018,15 +1127,15 @@ export default function CourseDetailClient({
         const toZeroBased = minOrder >= 1; // 1-based면 -1, 0-based면 그대로
         return list.map((cp) => ({
             id: cp.place.id,
-            name: cp.place.name,
+            name: pickPlaceName(cp.place, locale),
             latitude: cp.place.latitude,
             longitude: cp.place.longitude,
-            address: cp.place.address,
+            address: pickPlaceAddress(cp.place, locale),
             imageUrl: cp.place.imageUrl,
-            description: cp.place.description,
+            description: pickPlaceDescription(cp.place, locale) ?? cp.place.description ?? undefined,
             orderIndex: toZeroBased ? Math.max(0, (cp.order_index ?? 1) - 1) : (cp.order_index ?? 0),
         }));
-    }, [displayCoursePlaces]);
+    }, [displayCoursePlaces, locale]);
 
     // 선택형 코스 선택 모드: 고정(녹색) + 선택된 후보(녹색) + 미선택 후보(흐린 회색), 같은 스텝은 동일 번호
     const selectionMapPlaces = useMemo(() => {
@@ -1042,12 +1151,12 @@ export default function CourseDetailClient({
                 const p = step.coursePlace.place;
                 result.push({
                     id: p.id,
-                    name: p.name,
+                    name: pickPlaceName(p, locale),
                     latitude: p.latitude,
                     longitude: p.longitude,
-                    address: p.address,
+                    address: pickPlaceAddress(p, locale),
                     imageUrl: p.imageUrl,
-                    description: p.description,
+                    description: pickPlaceDescription(p, locale) ?? p.description ?? undefined,
                     orderIndex: orderIdx++,
                     markerVariant: "confirmed",
                 });
@@ -1057,12 +1166,12 @@ export default function CourseDetailClient({
                 for (const cp of step.options) {
                     result.push({
                         id: cp.place.id,
-                        name: cp.place.name,
+                        name: pickPlaceName(cp.place, locale),
                         latitude: cp.place.latitude,
                         longitude: cp.place.longitude,
-                        address: cp.place.address,
+                        address: pickPlaceAddress(cp.place, locale),
                         imageUrl: cp.place.imageUrl,
-                        description: cp.place.description,
+                        description: pickPlaceDescription(cp.place, locale) ?? cp.place.description ?? undefined,
                         orderIndex: stepOrder,
                         markerVariant: Number(cp.place_id) === Number(selectedId) ? "candidate-selected" : "candidate",
                         segmentKey: step.segment,
@@ -1071,7 +1180,7 @@ export default function CourseDetailClient({
             }
         }
         return result;
-    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
+    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment, locale]);
 
     // 선택 모드: 메인 경로(실선) = 고정 + 선택된 후보 순서
     const selectionPathPlaces = useMemo(() => {
@@ -1084,33 +1193,34 @@ export default function CourseDetailClient({
                 const p = step.coursePlace.place;
                 path.push({
                     id: p.id,
-                    name: p.name,
+                    name: pickPlaceName(p, locale),
                     latitude: p.latitude,
                     longitude: p.longitude,
-                    address: p.address,
+                    address: pickPlaceAddress(p, locale),
                     imageUrl: p.imageUrl,
-                    description: p.description,
+                    description: pickPlaceDescription(p, locale) ?? p.description ?? undefined,
                     orderIndex: orderIdx++,
                 });
             } else {
                 const selectedId = selectedBySegment[step.segment];
                 const selected = step.options.find((o) => Number(o.place_id) === Number(selectedId));
                 if (selected) {
+                    const sp = selected.place;
                     path.push({
-                        id: selected.place.id,
-                        name: selected.place.name,
-                        latitude: selected.place.latitude,
-                        longitude: selected.place.longitude,
-                        address: selected.place.address,
-                        imageUrl: selected.place.imageUrl,
-                        description: selected.place.description,
+                        id: sp.id,
+                        name: pickPlaceName(sp, locale),
+                        latitude: sp.latitude,
+                        longitude: sp.longitude,
+                        address: pickPlaceAddress(sp, locale),
+                        imageUrl: sp.imageUrl,
+                        description: pickPlaceDescription(sp, locale) ?? sp.description ?? undefined,
                         orderIndex: orderIdx++,
                     });
                 }
             }
         }
         return path;
-    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
+    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment, locale]);
 
     // 🟢 선택 모드: 비선택 장소 클릭 시 해당 장소 기준 경로 임시 표시 (경로↔모달 일치)
     const effectivePathPlaces = useMemo(() => {
@@ -1151,14 +1261,15 @@ export default function CourseDetailClient({
         let prevPlace: MapPlace | null = null;
         for (const step of selectionOrderedSteps) {
             if (step.type === "fixed") {
+                const fp = step.coursePlace.place;
                 prevPlace = {
-                    id: step.coursePlace.place.id,
-                    name: step.coursePlace.place.name,
-                    latitude: step.coursePlace.place.latitude,
-                    longitude: step.coursePlace.place.longitude,
-                    address: step.coursePlace.place.address,
-                    imageUrl: step.coursePlace.place.imageUrl,
-                    description: step.coursePlace.place.description,
+                    id: fp.id,
+                    name: pickPlaceName(fp, locale),
+                    latitude: fp.latitude,
+                    longitude: fp.longitude,
+                    address: pickPlaceAddress(fp, locale),
+                    imageUrl: fp.imageUrl,
+                    description: pickPlaceDescription(fp, locale) ?? fp.description ?? undefined,
                 };
             } else {
                 const selectedId = selectedBySegment[step.segment];
@@ -1169,31 +1280,31 @@ export default function CourseDetailClient({
                             from: fromPlace,
                             to: {
                                 id: cp.place.id,
-                                name: cp.place.name,
+                                name: pickPlaceName(cp.place, locale),
                                 latitude: cp.place.latitude,
                                 longitude: cp.place.longitude,
-                                address: cp.place.address,
+                                address: pickPlaceAddress(cp.place, locale),
                                 imageUrl: cp.place.imageUrl,
-                                description: cp.place.description,
+                                description: pickPlaceDescription(cp.place, locale) ?? cp.place.description ?? undefined,
                             },
                         });
                     }
                     if (Number(cp.place_id) === Number(selectedId)) {
                         prevPlace = {
                             id: cp.place.id,
-                            name: cp.place.name,
+                            name: pickPlaceName(cp.place, locale),
                             latitude: cp.place.latitude,
                             longitude: cp.place.longitude,
-                            address: cp.place.address,
+                            address: pickPlaceAddress(cp.place, locale),
                             imageUrl: cp.place.imageUrl,
-                            description: cp.place.description,
+                            description: pickPlaceDescription(cp.place, locale) ?? cp.place.description ?? undefined,
                         };
                     }
                 }
             }
         }
         return segments;
-    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment]);
+    }, [courseData?.isSelectionType, mySelection, showSelectionUI, selectionOrderedSteps, selectedBySegment, locale]);
 
     const showMapButtonAndModal =
         !!courseData &&
@@ -1294,7 +1405,7 @@ export default function CourseDetailClient({
             });
             const data = await response.json().catch(() => null);
             if (!response.ok) {
-                console.error("[리뷰 조회 실패]", response.status, url, data);
+                console.error("[Review fetch failed]", response.status, url, data);
                 return;
             }
             if (Array.isArray(data)) {
@@ -1309,10 +1420,10 @@ export default function CourseDetailClient({
                     })),
                 );
             } else {
-                console.warn("[리뷰 조회] 배열이 아님", typeof data, data);
+                console.warn("[Review fetch] Response is not an array", typeof data, data);
             }
         } catch (e) {
-            console.error("[리뷰 조회 오류]", e);
+            console.error("[Review fetch error]", e);
         }
     }, [courseId]);
 
@@ -1407,7 +1518,7 @@ export default function CourseDetailClient({
             .map((step) => (step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment]))
             .filter((id): id is number => id != null && id > 0);
         if (selectedPlaceIds.length !== selectionOrderedSteps.length) {
-            setToast({ message: "각 구간에서 장소를 선택해주세요.", type: "info" });
+            setToast({ message: t("courseDetail.selectEachSegment"), type: "info" });
             return;
         }
         setSelectionLoading(true);
@@ -1434,7 +1545,7 @@ export default function CourseDetailClient({
                     courseTitle: courseData?.title ?? "",
                     hasMemory: false,
                 });
-                setToast({ message: "코스가 저장되었어요.", type: "success" });
+                setToast({ message: t("courseDetail.courseSavedToast"), type: "success" });
                 handleMapActivation();
             } else {
                 setToast({ message: t("courseDetail.startFailed"), type: "error" });
@@ -1467,13 +1578,13 @@ export default function CourseDetailClient({
                     process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY ||
                     process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
                 if (!jsKey) {
-                    console.warn("Kakao JS Key가 설정되지 않았습니다.");
+                    console.warn("Kakao JS Key is not configured.");
                     return Kakao;
                 }
                 Kakao.init(jsKey);
             }
         } catch (error) {
-            console.error("Kakao SDK 초기화 실패:", error);
+            console.error("Failed to initialize Kakao SDK:", error);
         }
         return Kakao || null;
     };
@@ -1509,7 +1620,7 @@ export default function CourseDetailClient({
     const handleKakaoShare = async () => {
         try {
             const cleanShareUrl = await getShareUrl();
-            console.log("[카카오 공유] 공유 주소:", cleanShareUrl);
+            console.log("[Kakao share] URL:", cleanShareUrl);
 
             const Kakao = await ensureKakaoSdk();
             if (!Kakao) {
@@ -1564,9 +1675,9 @@ export default function CourseDetailClient({
 
             setShowShareModal(false);
         } catch (error: any) {
-            console.error("[카카오 공유] 실패:", error);
-            if (error?.message) console.error("[카카오 공유] 에러 메시지:", error.message);
-            if (error?.code) console.error("[카카오 공유] 에러 코드:", error.code);
+            console.error("[Kakao share] failed:", error);
+            if (error?.message) console.error("[Kakao share] message:", error.message);
+            if (error?.code) console.error("[Kakao share] code:", error.code);
             try {
                 const fallbackUrl = await getShareUrl();
                 await navigator.clipboard.writeText(fallbackUrl);
@@ -1644,17 +1755,14 @@ export default function CourseDetailClient({
                         <div className="absolute bottom-0 left-0 w-full p-6 pb-20 text-white z-10">
                             {/* 🔥 Row 1: 핵심 정보 (불투명 태그) + 가격 칩 */}
                             <div className="flex flex-wrap gap-2.5 mb-4">
-                                {courseData.target_situation && (
+                                {translatedTargetSituation && (
                                     <span className="px-2.5 py-1 text-[11px] font-bold text-white bg-gray-900 border border-gray-700 rounded-lg tracking-wide">
-                                        #
-                                        {courseData.target_situation === "SOME"
-                                            ? t("courseDetail.someEscape")
-                                            : courseData.target_situation}
+                                        #{translatedTargetSituation}
                                     </span>
                                 )}
-                                {courseData.budget_range && (
+                                {translatedBudgetRange && (
                                     <span className="px-2.5 py-1 text-[11px] font-bold text-white bg-gray-900 border border-gray-700 rounded-lg tracking-wide">
-                                        💸 {courseData.budget_range}
+                                        💸 {translatedBudgetRange}
                                     </span>
                                 )}
                             </div>
@@ -1667,7 +1775,7 @@ export default function CourseDetailClient({
                             {/* 🔥 Row 2: 메타 정보 (칩 형태, 살짝 테두리) */}
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-3 text-[13px] font-medium drop-shadow-md mt-2">
                                 <span className="px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/40">
-                                    📍 {courseData.region || t("courses.regionSeoul")}
+                                    📍 {translatedRegion || t("courses.regionSeoul")}
                                 </span>
                                 <span className="px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/40">
                                     👣{" "}
@@ -1677,7 +1785,11 @@ export default function CourseDetailClient({
                                     {t("courseDetail.spots")}
                                 </span>
                                 <span className="px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/40">
-                                    ⏳ {courseData.duration}
+                                    ⏳{" "}
+                                    {translateDurationChip(
+                                        resolveCourseDefault(courseData.duration, "duration", t),
+                                        locale,
+                                    )}
                                 </span>
                                 {courseData.rating > 0 && (
                                     <span className="px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/40">
@@ -1803,17 +1915,17 @@ export default function CourseDetailClient({
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
                                                                             <span className="text-[10px] font-bold text-gray-400 uppercase">
-                                                                                {coursePlace.place.category}
+                                                                                {translatePlaceCategory(coursePlace.place.category, t)}
                                                                             </span>
                                                                             <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate mt-1">
-                                                                                {coursePlace.place.name}
+                                                                                {pickPlaceName(coursePlace.place, locale)}
                                                                             </h3>
                                                                             <p className="text-xs text-gray-500 truncate">
-                                                                                {coursePlace.place.address}
+                                                                                {pickPlaceAddress(coursePlace.place, locale)}
                                                                             </p>
                                                                             <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
                                                                                 <Icons.Bulb className="w-3.5 h-3.5" />
-                                                                                확정됨
+                                                                                {t("courseDetail.confirmed")}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -1896,12 +2008,12 @@ export default function CourseDetailClient({
                                                                                 </div>
                                                                                 <div className="flex-1 min-w-0 p-2 flex flex-col justify-start">
                                                                                     <h4 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-2 leading-tight">
-                                                                                        {cp.place.name}
+                                                                                        {pickPlaceName(cp.place, locale)}
                                                                                     </h4>
                                                                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
                                                                                         {(cp as CoursePlace)
                                                                                             .recommended_time ||
-                                                                                            cp.place.address}
+                                                                                            pickPlaceAddress(cp.place, locale)}
                                                                                     </p>
                                                                                 </div>
                                                                             </div>
@@ -1927,7 +2039,7 @@ export default function CourseDetailClient({
                                                                                         d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                                                                                     />
                                                                                 </svg>
-                                                                                정보
+                                                                                {t("courseDetail.infoShort")}
                                                                             </button>
                                                                         </div>
                                                                     );
@@ -1951,7 +2063,7 @@ export default function CourseDetailClient({
                                                         onClick={() => setShowSelectionUI(true)}
                                                         className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
                                                     >
-                                                        코스 수정
+                                                        {t("courseDetail.editCourse")}
                                                     </button>
                                                 </div>
                                             )}
@@ -2040,7 +2152,7 @@ export default function CourseDetailClient({
                                                                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                                                     <div className="flex items-center gap-2 mb-1">
                                                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">
-                                                                                            {coursePlace.place.category}
+                                                                                            {translatePlaceCategory(coursePlace.place.category, t)}
                                                                                         </span>
                                                                                         {(() => {
                                                                                             const status =
@@ -2049,72 +2161,28 @@ export default function CourseDetailClient({
                                                                                                         coursePlace.place
                                                                                                             .id,
                                                                                                     ),
-                                                                                                ) ?? "정보 없음";
-                                                                                            const statusStyles: Record<
-                                                                                                string,
-                                                                                                string
-                                                                                            > = {
-                                                                                                영업중: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
-                                                                                                "곧 마감":
-                                                                                                    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                                "곧 브레이크":
-                                                                                                    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                                "브레이크 중":
-                                                                                                    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-                                                                                                "오픈 준비중":
-                                                                                                    "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-                                                                                                휴무: "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
-                                                                                                영업종료:
-                                                                                                    "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300",
-                                                                                                "정보 없음":
-                                                                                                    "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-                                                                                            };
-                                                                                            const statusKeyMap: Record<
-                                                                                                string,
-                                                                                                string
-                                                                                            > = {
-                                                                                                영업중: "courseDetail.placeStatusOpen",
-                                                                                                "곧 마감":
-                                                                                                    "courseDetail.placeStatusClosingSoon",
-                                                                                                "곧 브레이크":
-                                                                                                    "courseDetail.placeStatusBreakSoon",
-                                                                                                "브레이크 중":
-                                                                                                    "courseDetail.placeStatusOnBreak",
-                                                                                                "오픈 준비중":
-                                                                                                    "courseDetail.placeStatusOpeningSoon",
-                                                                                                휴무: "courseDetail.placeStatusClosed",
-                                                                                                영업종료:
-                                                                                                    "courseDetail.placeStatusClosedToday",
-                                                                                                "정보 없음":
-                                                                                                    "courseDetail.placeStatusNoInfo",
-                                                                                            };
+                                                                                                ) ?? PLACE_STATUS_NO_INFO;
                                                                                             return (
                                                                                                 <span
-                                                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
-                                                                                                        statusStyles[
-                                                                                                            status
-                                                                                                        ] ??
-                                                                                                        statusStyles[
-                                                                                                            "정보 없음"
-                                                                                                        ]
-                                                                                                    }`}
+                                                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${placeStatusBadgeClass(
+                                                                                                        status,
+                                                                                                    )}`}
                                                                                                 >
                                                                                                     {t(
-                                                                                                        (statusKeyMap[
-                                                                                                            status
-                                                                                                        ] ??
-                                                                                                            "courseDetail.placeStatusNoInfo") as "courseDetail.placeStatusOpen",
+                                                                                                        placeStatusTranslationKey(
+                                                                                                            status,
+                                                                                                        ) as TranslationKeys,
                                                                                                     )}
                                                                                                 </span>
                                                                                             );
                                                                                         })()}
                                                                                     </div>
                                                                                     <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate mb-0.5">
-                                                                                        {coursePlace.place.name}
+                                                                                        {pickPlaceName(coursePlace.place, locale)}
                                                                                     </h4>
                                                                                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">
                                                                                         {coursePlace.recommended_time ||
-                                                                                            coursePlace.place.address}
+                                                                                            pickPlaceAddress(coursePlace.place, locale)}
                                                                                     </p>
                                                                                     {/* 🟢 예약 버튼 - 하단 시트로 열기 (선택형 코스에서는 숨김) */}
                                                                                     {!courseData?.isSelectionType &&
@@ -2160,8 +2228,8 @@ export default function CourseDetailClient({
                                                                                                         coursePlace.place
                                                                                                             .id,
                                                                                                     ),
-                                                                                                ) ?? "정보 없음") ===
-                                                                                                "휴무"
+                                                                                                ) ?? PLACE_STATUS_NO_INFO) ===
+                                                                                                PLACE_STATUS_CLOSED
                                                                                                     ? t(
                                                                                                           "courses.reserveInAdvance",
                                                                                                       )
@@ -2174,12 +2242,11 @@ export default function CourseDetailClient({
                                                                             </div>
                                                                             {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
                                                                             {(() => {
-                                                                                const allTips = parseTipsFromDb(coursePlace.tips);
+                                                                                const allTips = parseTipsFromDbForLocale(coursePlace, locale);
                                                                                 if (allTips.length === 0) return null;
 
                                                                                 const getCategoryLabel = (cat: string) =>
-                                                                                    TIP_CATEGORIES.find((c) => c.value === cat)?.label ??
-                                                                                    t("courseDetail.etc");
+                                                                                    getTipCategoryLabel(cat, t);
 
                                                                                 const categories = [...new Set(allTips.map((t) => t.category))];
                                                                                 const displayCategories = categories.slice(0, 3);
@@ -2291,7 +2358,9 @@ export default function CourseDetailClient({
                                                         >
                                                             <Image
                                                                 src={imageUrl}
-                                                                alt={`후기 이미지 ${idx + 1}`}
+                                                                alt={t("courseDetail.reviewImageAltNumbered", {
+                                                                    n: idx + 1,
+                                                                })}
                                                                 fill
                                                                 className="object-cover"
                                                                 loading="lazy"
@@ -2359,7 +2428,9 @@ export default function CourseDetailClient({
                                         disabled={selectionLoading}
                                         className="w-full h-14 bg-[#99c08e] text-white rounded-lg font-bold text-[16px] shadow-lg hover:bg-[#85ad78] flex items-center justify-center disabled:opacity-60"
                                     >
-                                        {selectionLoading ? "확정 중..." : "이 코스로 확정"}
+                                        {selectionLoading
+                                            ? t("courseDetail.confirming")
+                                            : t("courseDetail.confirmThisCourse")}
                                     </button>
                                 </TapFeedback>
                             ) : activeCourse && activeCourse.courseId === Number(courseId) ? (
@@ -2417,7 +2488,7 @@ export default function CourseDetailClient({
                             ) : activeCourse && activeCourse.courseId !== Number(courseId) ? (
                                 <>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                                        오늘 이미 다른 코스를 시작했어요.
+                                        {t("courseDetail.alreadyOtherCourse")}
                                     </p>
                                     <TapFeedback className="w-full">
                                         <button
@@ -2562,8 +2633,9 @@ export default function CourseDetailClient({
                                     {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 안내 텍스트 숨김 */}
                                     {platform === "web" && (
                                         <p className="text-white/80 text-sm">
-                                            {courseData.grade === "BASIC" ? "BASIC" : "PREMIUM"} 등급 이상만 이용
-                                            가능합니다
+                                            {t("courseDetail.gradeUnlock", {
+                                                grade: courseData.grade === "BASIC" ? "BASIC" : "PREMIUM",
+                                            })}
                                         </p>
                                     )}
                                 </div>
@@ -2756,7 +2828,7 @@ export default function CourseDetailClient({
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="font-bold text-gray-900 dark:text-white">
-                                                            {modalSelectedPlace.name}
+                                                            {pickPlaceName(modalSelectedPlace, locale)}
                                                         </h4>
                                                         {/* 🟢 2→3 도보 20분: 크고 진하게, 거리 위로, 주소 아래로 */}
                                                         {(() => {
@@ -2840,19 +2912,14 @@ export default function CourseDetailClient({
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            const dname = modalSelectedPlace.name;
                                                             const dlat = modalSelectedPlace.latitude ?? 0;
                                                             const dlng = modalSelectedPlace.longitude ?? 0;
                                                             const destination =
-                                                                dname ||
+                                                                pickPlaceName(modalSelectedPlace, locale) ||
                                                                 (modalSelectedPlace as { address?: string }).address ||
-                                                                "목적지";
+                                                                t("courseDetail.destinationFallback");
                                                             if (Number.isNaN(dlat) || Number.isNaN(dlng)) {
-                                                                showToast(
-                                                                    t("courseDetail.errorRetry") ||
-                                                                        "위치 정보가 없어요.",
-                                                                    "error",
-                                                                );
+                                                                showToast(t("courseDetail.noLocationInfo"), "error");
                                                                 return;
                                                             }
                                                             const appname = encodeURIComponent(
@@ -2874,7 +2941,7 @@ export default function CourseDetailClient({
                                                                     (pos) => {
                                                                         const slng = pos.coords.longitude;
                                                                         const slat = pos.coords.latitude;
-                                                                        const directionsUrl = `https://map.naver.com/index.nhn?slng=${slng}&slat=${slat}&stext=${encodeURIComponent("현재 위치")}&elng=${dlng}&elat=${dlat}&etext=${encodeURIComponent(destination)}&menu=route`;
+                                                                        const directionsUrl = `https://map.naver.com/index.nhn?slng=${slng}&slat=${slat}&stext=${encodeURIComponent(t("courseDetail.currentLocationLabel"))}&elng=${dlng}&elat=${dlat}&etext=${encodeURIComponent(destination)}&menu=route`;
                                                                         window.open(
                                                                             directionsUrl,
                                                                             "_blank",
@@ -2939,7 +3006,7 @@ export default function CourseDetailClient({
                                                             }}
                                                             className="flex-1 py-2.5 rounded-lg bg-gray-900 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-bold text-xs hover:bg-gray-800 active:scale-95 transition-all"
                                                         >
-                                                            상세보기
+                                                            {t("courseDetail.viewDetail")}
                                                         </button>
                                                         {(() => {
                                                             const fullPlace = sortedCoursePlaces.find(
@@ -2948,7 +3015,7 @@ export default function CourseDetailClient({
                                                             const isClosedToday =
                                                                 fullPlace &&
                                                                 (placeStatusMap.get(Number(fullPlace.id)) ??
-                                                                    "정보 없음") === "휴무";
+                                                                    PLACE_STATUS_NO_INFO) === PLACE_STATUS_CLOSED;
                                                             return !courseData?.isSelectionType &&
                                                                 fullPlace?.reservationUrl ? (
                                                                 <button
@@ -3238,7 +3305,7 @@ export default function CourseDetailClient({
                                         {selectedPlace.imageUrl && (
                                             <Image
                                                 src={selectedPlace.imageUrl}
-                                                alt={selectedPlace.name}
+                                                alt={pickPlaceName(selectedPlace, locale)}
                                                 fill
                                                 className="object-cover pointer-events-none"
                                                 priority
@@ -3251,7 +3318,7 @@ export default function CourseDetailClient({
                                         {/* 이미지 위 장소 이름 오버레이 */}
                                         <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent pt-12 pb-4 px-4 z-1">
                                             <h3 className="text-lg font-bold text-white drop-shadow-md">
-                                                {selectedPlace.name}
+                                                {pickPlaceName(selectedPlace, locale)}
                                             </h3>
                                         </div>
                                         {/* 이미지 전체 영역: 잡고 내리면 모달 닫힘 */}
@@ -3269,7 +3336,9 @@ export default function CourseDetailClient({
                                         ref={placeModalScrollRef}
                                         className="p-5 text-black dark:text-white flex-1 min-h-0 overflow-y-auto scrollbar-hide"
                                     >
-                                        <h3 className="text-xl font-bold mb-2 dark:text-white">{selectedPlace.name}</h3>
+                                        <h3 className="text-xl font-bold mb-2 dark:text-white">
+                                            {pickPlaceName(selectedPlace, locale)}
+                                        </h3>
                                         <div className="mb-3">
                                             <PlaceStatusBadge
                                                 place={{
@@ -3282,17 +3351,18 @@ export default function CourseDetailClient({
                                             />
                                         </div>
                                         <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 font-medium truncate">
-                                            {selectedPlace.address}
+                                            {pickPlaceAddress(selectedPlace, locale)}
                                         </p>
                                         <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">
-                                            {selectedPlace.description || "상세 설명이 없습니다."}
+                                            {pickPlaceDescription(selectedPlace, locale) ||
+                                                t("courseDetail.noDescription")}
                                         </p>
                                         {/* 팁: 통합 표시 (권한 있으면 전체) */}
                                         {(() => {
                                             const coursePlace = sortedCoursePlaces.find(
                                                 (cp) => cp.place.id === selectedPlace.id,
                                             );
-                                            const tips = parseTipsFromDb(coursePlace?.tips);
+                                            const tips = parseTipsFromDbForLocale(coursePlace ?? {}, locale);
                                             if (tips.length === 0) return null;
                                             return (
                                                 <div className="mb-4 flex flex-col gap-2">
@@ -3320,7 +3390,7 @@ export default function CourseDetailClient({
                                                 >
                                                     <Icons.ExternalLink className="w-4 h-4" />
                                                     {(placeStatusMap.get(Number(selectedPlace.id)) ??
-                                                        "정보 없음") === "휴무"
+                                                        PLACE_STATUS_NO_INFO) === PLACE_STATUS_CLOSED
                                                         ? t("courses.reserveOtherDay")
                                                         : t("courses.reserve")}
                                                 </button>
@@ -3333,7 +3403,7 @@ export default function CourseDetailClient({
                                                     setTimeout(() => setShowPlaceModal(false), 300);
                                                 }}
                                             >
-                                                그냥 닫기
+                                                {t("courseDetail.justClose")}
                                             </button>
                                         </div>
                                     </div>
@@ -3385,7 +3455,7 @@ export default function CourseDetailClient({
                                     {isDirections ? (
                                         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
                                             <p className="text-base font-medium text-gray-800 dark:text-gray-100 mb-1">
-                                                네이버 지도로 길찾기
+                                                {t("courseDetail.naverDirectionsTitle")}
                                             </p>
                                             {webSheetPlaceName && (
                                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
@@ -3400,16 +3470,16 @@ export default function CourseDetailClient({
                                                 className="w-full max-w-[280px] py-3 rounded-xl bg-[#03C75A] text-white font-bold text-base hover:bg-[#02b351] active:scale-95 transition-all flex items-center justify-center gap-2"
                                             >
                                                 <Icons.Map className="w-5 h-5" />
-                                                네이버 지도 앱으로 열기
+                                                {t("courseDetail.openNaverMapApp")}
                                             </button>
                                         </div>
                                     ) : /naver\.com|map\.naver|place\.naver|catchtable\.co\.kr/i.test(webSheetUrl || "") ? (
                                         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
                                             <p className="text-base font-medium text-gray-800 dark:text-gray-100 mb-1">
-                                                예약 페이지
+                                                {t("courseDetail.reservationPageTitle")}
                                             </p>
                                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
-                                                예약 페이지는 새 탭에서 열면 더 빠르게 이용할 수 있어요.
+                                                {t("courseDetail.reservationPageHint")}
                                             </p>
                                             <button
                                                 type="button"
@@ -3420,7 +3490,7 @@ export default function CourseDetailClient({
                                                 className="w-full max-w-[280px] py-3 rounded-xl bg-[#03C75A] text-white font-bold text-base hover:bg-[#02b351] active:scale-95 transition-all flex items-center justify-center gap-2"
                                             >
                                                 <Icons.ExternalLink className="w-5 h-5" />
-                                                예약 페이지 열기
+                                                {t("courseDetail.openReservationPage")}
                                             </button>
                                         </div>
                                     ) : (
@@ -3428,12 +3498,14 @@ export default function CourseDetailClient({
                                             {!webSheetIframeLoaded && (
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900/50 z-10">
                                                     <div className="w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-                                                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">로딩 중...</p>
+                                                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                                        {t("courseDetail.sheetLoading")}
+                                                    </p>
                                                 </div>
                                             )}
                                             <iframe
                                                 src={webSheetUrl}
-                                                title="예약 / 지도"
+                                                title={t("courseDetail.reservationMap")}
                                                 className={`flex-1 w-full min-h-0 border-0 transition-opacity duration-300 ${webSheetIframeLoaded ? "opacity-100" : "opacity-0"}`}
                                                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
                                                 onLoad={() => setWebSheetIframeLoaded(true)}

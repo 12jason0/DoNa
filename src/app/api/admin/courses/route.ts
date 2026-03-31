@@ -40,6 +40,13 @@ function parseBudget(budgetString: string | undefined) {
     return null;
 }
 
+function buildTargetSituationFromTags(tags: unknown): string {
+    if (!tags || typeof tags !== "object") return "";
+    const target = (tags as { target?: unknown }).target;
+    if (!Array.isArray(target)) return "";
+    return target.map((v) => String(v).trim()).filter(Boolean).join(", ");
+}
+
 export async function GET() {
     try {
         const courses = await prisma.course.findMany({
@@ -64,6 +71,7 @@ export async function GET() {
             const tagsForAdmin = {
                 ...(course.tags || {}),
                 mood: course.mood || [],
+                target: course.target || [],
                 goal: course.goal || undefined,
                 budget: course.budget_range || undefined,
             };
@@ -126,6 +134,7 @@ export async function POST(req: NextRequest) {
         let moodValue: string[] = [];
         let goalValue: string | null = null;
         let budgetData = null;
+        const targetSituation = buildTargetSituationFromTags(tags);
 
         if (tags && typeof tags === "object") {
             // tags.mood → mood 컬럼 (배열)
@@ -144,6 +153,8 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        const targetValue: string[] = Array.isArray(tags?.target) ? tags.target : [];
+
         const created = await (prisma as any).course.create({
             data: {
                 title: title || "",
@@ -153,7 +164,8 @@ export async function POST(req: NextRequest) {
                 imageUrl: imageUrl || "",
                 concept: concept || "",
                 sub_title: sub_title || "",
-                target_situation: target_situation || "",
+                target_situation: targetSituation || target_situation || "",
+                target_audience: targetSituation || null,
                 is_editor_pick: is_editor_pick || false,
                 grade: grade || "FREE",
                 isPublic: isPublic ?? true,
@@ -161,13 +173,13 @@ export async function POST(req: NextRequest) {
 
                 // 🔥 새 컬럼에 저장
                 mood: moodValue,
+                target: targetValue,
                 goal: goalValue,
                 budget_min: budgetData?.min || null,
                 budget_max: budgetData?.max || null,
                 budget_range: budgetData?.range || null,
                 budget_level: budgetData?.level || null,
 
-                // tags는 나머지 정보만 저장 (선택적)
                 tags: tags || {},
             },
             select: {

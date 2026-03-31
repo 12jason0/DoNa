@@ -130,7 +130,7 @@ const db = StyleSheet.create({
     bubbleAi: {},
     bubbleText: { fontSize: 14, lineHeight: 21 },
     systemWrap: { alignSelf: "center", backgroundColor: "rgba(5,150,105,0.1)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, marginBottom: 10 },
-    systemText: { fontSize: 12, color: "#059669", fontWeight: "600", textAlign: "center" },
+    systemText: { fontSize: 12, color: "#059669", fontWeight: "500", textAlign: "center" },
 });
 
 // ─── 장소 선택 카드 ───────────────────────────────────────────────────────────
@@ -173,8 +173,8 @@ const pc = StyleSheet.create({
     card: { flexDirection: "row", borderRadius: 14, overflow: "hidden", borderWidth: 1, marginBottom: 10 },
     img: { width: 80, height: 80 },
     body: { flex: 1, padding: 10, justifyContent: "center" },
-    name: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
-    sig: { fontSize: 12, fontWeight: "600", marginBottom: 2 },
+    name: { fontSize: 15, fontWeight: "500", marginBottom: 2 },
+    sig: { fontSize: 12, fontWeight: "500", marginBottom: 2 },
     addr: { fontSize: 11, marginBottom: 2 },
     desc: { fontSize: 12, lineHeight: 17 },
 });
@@ -394,7 +394,7 @@ export default function EscapePlayScreen() {
                     {chapters[chapterIdx + 1] && (
                         <View style={[s.nextChapterCard, { backgroundColor: t.card, borderColor: t.border }]}>
                             <Text style={[{ fontSize: 12, color: t.textMuted }]}>다음 챕터</Text>
-                            <Text style={[{ fontSize: 16, fontWeight: "700", color: t.text, marginTop: 4 }]}>
+                            <Text style={[{ fontSize: 16, fontWeight: "500", color: t.text, marginTop: 4 }]}>
                                 {chapters[chapterIdx + 1].title}
                             </Text>
                             {chapters[chapterIdx + 1].location_name && (
@@ -579,35 +579,35 @@ const s = StyleSheet.create({
     progressBar: { height: 4, borderRadius: 2, overflow: "hidden", marginBottom: 2 },
     progressFill: { height: "100%", backgroundColor: "#059669", borderRadius: 2 },
     progressLabel: { fontSize: 11 },
-    chapterTag: { fontSize: 12, fontWeight: "700", maxWidth: 100 },
+    chapterTag: { fontSize: 12, fontWeight: "500", maxWidth: 100 },
     // 대화
     dialogueBar: { padding: 16, borderTopWidth: 1 },
     tapNextBtn: { backgroundColor: "#059669", borderRadius: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
-    tapNextText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+    tapNextText: { fontSize: 15, fontWeight: "500", color: "#fff" },
     // 장소
-    sectionTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.4, marginBottom: 4 },
+    sectionTitle: { fontSize: 18, fontWeight: "600", letterSpacing: -0.4, marginBottom: 4 },
     sectionSub: { fontSize: 13, marginBottom: 16 },
     // 미션
     placeSummary: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
-    placeSummaryText: { fontSize: 14, fontWeight: "600" },
-    missionTitle: { fontSize: 13, fontWeight: "700", color: "#059669", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
-    missionQ: { fontSize: 17, fontWeight: "700", lineHeight: 25, marginBottom: 14 },
+    placeSummaryText: { fontSize: 14, fontWeight: "500" },
+    missionTitle: { fontSize: 13, fontWeight: "500", color: "#059669", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+    missionQ: { fontSize: 17, fontWeight: "500", lineHeight: 25, marginBottom: 14 },
     hintBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12, borderRadius: 10, marginBottom: 12 },
     wrongBox: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
     answerInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, marginBottom: 16 },
     photoPicker: { width: "100%", height: 200, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center", marginBottom: 16, borderStyle: "dashed" },
     submitBtn: { backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16, alignItems: "center", marginTop: 8 },
-    submitBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+    submitBtnText: { fontSize: 16, fontWeight: "500", color: "#fff" },
     // 챕터 사이
     betweenIconWrap: { width: 88, height: 88, borderRadius: 44, backgroundColor: "#ecfdf5", alignItems: "center", justifyContent: "center", marginBottom: 20 },
-    betweenTitle: { fontSize: 24, fontWeight: "800", marginBottom: 8 },
+    betweenTitle: { fontSize: 24, fontWeight: "600", marginBottom: 8 },
     betweenSub: { fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 24 },
     nextChapterCard: { width: "100%", padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 24 },
     nextBtn: { backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32, alignItems: "center" },
-    nextBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+    nextBtnText: { fontSize: 16, fontWeight: "500", color: "#fff" },
     // 완료
-    completeTitle: { fontSize: 28, fontWeight: "800", marginBottom: 10 },
+    completeTitle: { fontSize: 28, fontWeight: "600", marginBottom: 10 },
     completeSub: { fontSize: 15, textAlign: "center", lineHeight: 23 },
     completeBtn: { backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32 },
-    completeBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+    completeBtnText: { fontSize: 16, fontWeight: "500", color: "#fff" },
 });

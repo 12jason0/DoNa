@@ -801,7 +801,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                         <div className="px-6 py-4 border-b border-[#c8aa64]/30 text-center">
                                             <span
                                                 className="text-[#c8aa64] font-bold tracking-widest"
-                                                style={{ fontFamily: "'Eulyoo1945', serif" }}
+                                                style={{ fontFamily: "'Cafe24Dongdong', sans-serif" }}
                                             >
                                                 {t("jongroClearedModal.title")}
                                             </span>
@@ -818,7 +818,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                             <button
                                                 onClick={() => setShowClearedModal(false)}
                                                 className="w-full py-3 rounded-lg bg-linear-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] font-extrabold tracking-widest border border-[#f5e6d3]/20 active:scale-95"
-                                                style={{ fontFamily: "'Eulyoo1945', serif" }}
+                                                style={{ fontFamily: "'Cafe24Dongdong', sans-serif" }}
                                             >
                                                 {t("jongroClearedModal.confirm")}
                                             </button>
@@ -957,7 +957,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                             }
                                                                             className="absolute left-1/2 bottom-0 translate-x-[-50%] translate-y-[50%] z-20 flex items-center gap-2 px-5 py-2 rounded-full bg-[#1a1814] border border-[#c8aa64] text-[#c8aa64] text-sm font-bold tracking-widest shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:bg-[#c8aa64] hover:text-[#1a1814] transition-all active:scale-95 whitespace-nowrap"
                                                                             style={{
-                                                                                fontFamily: "'Eulyoo1945', serif",
+                                                                                fontFamily: "'Cafe24Dongdong', sans-serif",
                                                                             }}
                                                                         >
                                                                             <svg
@@ -1015,7 +1015,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                     {/* 모달 박스 */}
                                                     <div
                                                         className="w-full max-w-[350px] bg-[#1a1814] rounded-2xl border border-[#c8aa64] shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col relative max-h-[92vh]"
-                                                        style={{ fontFamily: "'RIDIBatang', 'Noto Serif KR', serif" }}
+                                                        style={{ fontFamily: "'Cafe24Dongdong', sans-serif" }}
                                                     >
                                                         {/* 1. 헤더 */}
                                                         <div className="relative pt-6 pb-2 px-5 flex items-center justify-center shrink-0 z-10">
@@ -1025,7 +1025,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                 </span>
                                                                 <span
                                                                     className="text-[#c8aa64] font-bold text-xl tracking-[0.2em]"
-                                                                    style={{ fontFamily: "'Eulyoo1945', serif" }}
+                                                                    style={{ fontFamily: "'Cafe24Dongdong', sans-serif" }}
                                                                 >
                                                                     MISSION
                                                                 </span>
@@ -1174,7 +1174,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                         }}
                                                                         placeholder="정답을 입력하세요"
                                                                         className="w-full bg-transparent border-b border-[#c8aa64]/50 px-4 py-3 text-[#eaddcf] placeholder-[#5a5450] text-center text-xl focus:outline-none focus:border-[#c8aa64] transition-colors"
-                                                                        style={{ fontFamily: "'RIDIBatang', serif" }}
+                                                                        style={{ fontFamily: "'Cafe24Dongdong', sans-serif" }}
                                                                     />
                                                                 </div>
                                                             )}
@@ -1208,7 +1208,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                         ? "bg-[#3a3530] text-[#5a5450] opacity-60"
                                                                         : "bg-linear-to-r from-[#d4af37] to-[#bfa048] text-[#1a1814] hover:brightness-110 active:scale-95"
                                                                 }`}
-                                                                style={{ fontFamily: "'Eulyoo1945', serif" }}
+                                                                style={{ fontFamily: "'Cafe24Dongdong', sans-serif" }}
                                                             >
                                                                 {isSubmitting ? (
                                                                     <span className="animate-spin">⏳</span>
@@ -1298,30 +1298,8 @@ export default function JongroMapFinalExact({ data }: Props) {
             )}
 
             <style>{`
-    /* 1. 구글 폰트(@import)는 보안 정책상 막혔으므로 제거하고, 아래의 'cdn.jsdelivr.net' 폰트만 사용합니다. */
-    /* 지도 배경 이미지 URL: ${defaultMapUrl} */
-    
-    /* component-local fonts */
-    @font-face {
-        font-family: 'Eulyoo1945';
-        /* ✅ 수정됨: fastly -> cdn 으로 변경 (보안 정책 허용 도메인 사용) */
-        src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10-21@1.0/Eulyoo1945-Regular.woff') format('woff');
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-    }
-    
-    @font-face {
-        font-family: 'RIDIBatang';
-        /* ✅ 수정됨: fastly -> cdn 으로 변경 */
-        src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/RIDIBatang.woff') format('woff');
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-    }
-
-    /* 2. 기본 폰트 설정도 로드 가능한 폰트로 변경 */
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'RIDIBatang', serif; }
+    /* 지도 배경 이미지 URL: ${defaultMapUrl} — 전역과 동일하게 Cafe24Dongdong만 사용 */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cafe24Dongdong', sans-serif; }
     
     .jongro-exact-container { max-width: 500px; margin: 0 auto; background-color: #1a1814; min-height: 100vh; }
 
@@ -1339,8 +1317,8 @@ export default function JongroMapFinalExact({ data }: Props) {
     .story-header-exact { text-align: center; margin-bottom: 50px; padding-top: 30px; padding-bottom: 25px; border-bottom: 1px solid #8b8070; position: relative; }
     .story-header-exact::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 60px; height: 5px; background-color: #2a2620; border-left: 1px solid #8b8070; border-right: 1px solid #8b8070; }
     
-    .main-title-exact { font-family: 'Eulyoo1945', serif; font-size: 2.4rem; color: #c8aa64; letter-spacing: 4px; font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5); }
-    .sub-title-exact { font-family: 'Eulyoo1945', serif; font-size: 0.95rem; color: #8b8070; letter-spacing: 2px; margin-top: 8px; font-weight: 600; text-transform: uppercase; }
+    .main-title-exact { font-family: 'Cafe24Dongdong', sans-serif; font-size: 2.4rem; color: #c8aa64; letter-spacing: 4px; font-weight: 600; text-shadow: 2px 2px 0px rgba(0,0,0,0.5); }
+    .sub-title-exact { font-family: 'Cafe24Dongdong', sans-serif; font-size: 0.95rem; color: #8b8070; letter-spacing: 2px; margin-top: 8px; font-weight: 400; text-transform: uppercase; }
     
     .header-divider-exact { width: 40px; height: 2px; background: #c8aa64; margin: 15px auto 0; opacity: 0.5; }
 
@@ -1355,11 +1333,11 @@ export default function JongroMapFinalExact({ data }: Props) {
 
     /* 대화 말풍선 (착붙 그림자) */
     .message-wrapper-exact { display: flex; width: 100%; animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both ; }
-    .message-bubble-exact { position: relative; max-width: 82%; padding: 12px 16px; border-radius: 2px; line-height: 1.6; font-size: 0.98rem; box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1) inset; word-break: keep-all; font-family: 'RIDIBatang', serif; }
+    .message-bubble-exact { position: relative; max-width: 82%; padding: 12px 16px; border-radius: 2px; line-height: 1.6; font-size: 0.98rem; box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1) inset; word-break: keep-all; font-family: 'Cafe24Dongdong', sans-serif; }
 
     /* NPC (왼쪽): 낡은 서류 종이 */
     .wrapper-npc { flex-direction: column; align-items: flex-start; padding-left: 0; padding-top: 10px; padding-bottom: 10px;}
-    .wrapper-npc .text-xs { color: #c8aa64; font-weight: 700; font-size: 0.8rem; margin-bottom: 2px; margin-left: 4px; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); opacity: 0.9; }
+    .wrapper-npc .text-xs { color: #c8aa64; font-weight: 600; font-size: 0.8rem; margin-bottom: 2px; margin-left: 4px; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); opacity: 0.9; }
     .message-bubble-exact.type-npc { background-color: #e8dfd1; color: #2a2620; border: 1px solid #9d8e7e; margin-left: 8px; border-top-left-radius: 0; }
     .message-bubble-exact.type-npc::before { content: ''; position: absolute; top: -1px; left: -6px; width: 0; height: 0; border-style: solid; border-width: 0 6px 8px 0; border-color: transparent #e8dfd1 transparent transparent; filter: drop-shadow(-1px 0px 0px #9d8e7e); }
 
@@ -1382,7 +1360,7 @@ export default function JongroMapFinalExact({ data }: Props) {
         border-radius: 4px; /* 살짝 둥글게 */
     }
     .system-notificationbox-exact::before { display: none; }
-    .system-content-exact { font-family: 'RIDIBatang', serif; color: #c8aa64; font-weight: 600; font-size: 0.9rem; letter-spacing: 1px; }
+    .system-content-exact { font-family: 'Cafe24Dongdong', sans-serif; color: #c8aa64; font-weight: 400; font-size: 0.9rem; letter-spacing: 1px; }
 
     /* ---------------------------------------------------------------- */
     /* [수정됨] 인트로 '다음' 버튼 */
@@ -1396,10 +1374,10 @@ export default function JongroMapFinalExact({ data }: Props) {
           width: 100%;
         max-width: 200px;
         padding: 14px;
-        font-family: 'Noto Serif KR', serif;
+        font-family: 'Cafe24Dongdong', sans-serif;
         background: linear-gradient(to bottom, #d4af37, #bfa048);
         color: #1a1814;
-        font-weight: 800;
+        font-weight: 600;
         font-size: 1.1rem;
         letter-spacing: 2px;
         border: 1px solid #f5e6d3;
@@ -1422,10 +1400,10 @@ export default function JongroMapFinalExact({ data }: Props) {
     /* 기타 버튼들 */
     .card-button-exact,
     .detail-button-exact {
-        font-family: 'Noto Serif KR', serif;
+        font-family: 'Cafe24Dongdong', sans-serif;
         background: linear-gradient(to bottom, #d4af37, #bfa048);
         color: #1a1814;
-        font-weight: 800;
+        font-weight: 600;
         border: 1px solid #f5e6d3;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4);
         text-shadow: 0 1px 0 rgba(255,255,255,0.3);
@@ -1467,23 +1445,23 @@ export default function JongroMapFinalExact({ data }: Props) {
         .marker-lantern-exact::before { top: -2px; }
         .marker-lantern-exact::after { bottom: -2px; }
     .lantern-ring { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 8px; height: 8px; border: 2px solid #8d6e63; border-radius: 50%; }
-        .marker-label-exact { color: #c8aa64; font-family: 'Noto Serif KR', serif; font-size: 0.75rem; font-weight: 700; text-shadow: 0 0 4px rgba(0, 0, 0, 0.9); letter-spacing: 0.5px; background: rgba(0, 0, 0, 0.6); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(200, 170, 100, 0.3); }
+        .marker-label-exact { color: #c8aa64; font-family: 'Cafe24Dongdong', sans-serif; font-size: 0.75rem; font-weight: 500; text-shadow: 0 0 4px rgba(0, 0, 0, 0.9); letter-spacing: 0.5px; background: rgba(0, 0, 0, 0.6); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(200, 170, 100, 0.3); }
 
         .popup-card-exact { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; max-width: 360px; background: linear-gradient(135deg, #3a3530 0%, #4a4440 100%); border: 4px solid #c8aa64; border-radius: 12px; padding: 0; z-index: 60; box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 0 80px rgba(200, 170, 100, 0.5), inset 0 1px 0 rgba(200, 170, 100, 0.25); animation: cardSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden; }
         .popup-card-exact.detail-exact { max-width: 330px; }
         .popup-close-exact { position: absolute; top: 15px; right: 15px; background: rgba(0, 0, 0, 0.3); border: 1px solid #c8aa64; color: #c8aa64; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: all 0.3s ease; z-index: 70; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         .popup-close-exact:hover { background: rgba(200, 170, 100, 0.2); transform: rotate(90deg); }
-        .popup-back-exact { background: none; border: none; color: #c8aa64; font-family: 'Noto Serif KR', serif; cursor: pointer; font-size: 0.9rem; padding: 15px 25px; transition: all 0.3s ease; display: block; }
+        .popup-back-exact { background: none; border: none; color: #c8aa64; font-family: 'Cafe24Dongdong', sans-serif; cursor: pointer; font-size: 0.9rem; padding: 15px 25px; transition: all 0.3s ease; display: block; }
         .popup-back-exact:hover { color: #ff6b35; }
         .card-frame-exact { padding: 25px; display: flex; flex-direction: column; gap: 15px; }
         .card-frame-exact::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 2px solid #c8aa64; border-radius: 8px; pointer-events: none; margin: 15px; opacity: 0.5; }
-        .card-title-exact { font-family: 'Noto Serif KR', serif; font-size: 1.6rem; color: #c8aa64; text-align: center; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 10px; }
+        .card-title-exact { font-family: 'Cafe24Dongdong', sans-serif; font-size: 1.6rem; color: #c8aa64; text-align: center; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 10px; }
         .card-image-exact { margin: 6px auto 10px; width: 92%; border: 2px solid #c8aa64; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
         .card-image-tag-exact { display: block; width: 100%; height: auto; }
         .detail-frame-exact { padding: 25px; display: flex; flex-direction: column; gap: 15px; }
-        .detail-title-exact { font-family: 'Noto Serif KR', serif; font-size: 1.4rem; color: #c8aa64; text-align: center; }
-        .detail-desc-exact { font-family: 'Noto Sans KR', sans-serif; font-size: 0.9rem; color: #8b8070; text-align: center; }
-        .detail-story-exact { background: rgba(200, 170, 100, 0.1); padding: 15px; border-left: 3px solid #c8aa64; border-radius: 4px; font-size: 0.85rem; color: #c8aa64; line-height: 1.8; font-family: 'Noto Sans KR', sans-serif; }
+        .detail-title-exact { font-family: 'Cafe24Dongdong', sans-serif; font-size: 1.4rem; color: #c8aa64; text-align: center; }
+        .detail-desc-exact { font-family: 'Cafe24Dongdong', sans-serif; font-size: 0.9rem; color: #8b8070; text-align: center; }
+        .detail-story-exact { background: rgba(200, 170, 100, 0.1); padding: 15px; border-left: 3px solid #c8aa64; border-radius: 4px; font-size: 0.85rem; color: #c8aa64; line-height: 1.8; font-family: 'Cafe24Dongdong', sans-serif; }
         /* 스크롤바 숨김 */
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .hide-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }

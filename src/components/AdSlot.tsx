@@ -120,7 +120,7 @@ const AdSlot = memo(({ slotId = "", format = "auto", layoutKey = "", rounded = t
                 ref={insRef}
                 className="adsbygoogle"
                 style={{ display: "block", minWidth: 250 }}
-                data-ad-client="ca-pub-1305222191440436"
+                data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_ID}
                 data-ad-slot={slotId}
                 data-ad-format={isFluid ? "fluid" : "auto"}
                 {...(isFluid ? { "data-ad-layout-key": layoutKey } : { "data-full-width-responsive": "true" })}

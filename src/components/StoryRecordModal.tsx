@@ -279,7 +279,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                                         onClick={() => removeTag(key)}
                                         className="text-gray-400 hover:text-gray-600 text-sm leading-none"
                                     >
-                                        ✕
+                                        <span className="symbol-ko-font">✕</span>
                                     </button>
                                 </div>
                             ))}
@@ -315,7 +315,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                                         onClick={() => deletePhoto(idx + 1)}
                                         className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70 transition-colors"
                                     >
-                                        ✕
+                                        <span className="symbol-ko-font">✕</span>
                                     </button>
                                 </div>
                             ))}
@@ -329,7 +329,7 @@ export default function StoryRecordModal({ isOpen, onClose, courseId, courseName
                                         onChange={handlePhotoUpload}
                                         style={{ display: "none" }}
                                     />
-                                    <span className="text-2xl text-gray-400">+</span>
+                                    <span className="text-2xl text-gray-400 symbol-ko-font">+</span>
                                 </label>
                             )}
                         </div>

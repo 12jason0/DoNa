@@ -43,7 +43,7 @@ const CourseImageLoader = ({
                     }
                 }
             } catch (error) {
-                console.error("코스 이미지 로드 실패:", error);
+                console.error("Failed to load course image:", error);
             }
         };
         loadImage();
@@ -130,11 +130,11 @@ const FootprintTab = ({
     casefiles,
     completed,
     aiRecommendations = [],
-    userName: userNameProp = "회원",
+    userName: userNameProp,
     personalStories = [],
 }: FootprintTabProps) => {
     const { t } = useLocale();
-    const userName = userNameProp === "회원" ? t("mypage.footprintTab.defaultUser") : userNameProp;
+    const userName = userNameProp || t("mypage.footprintTab.defaultUser");
     const router = useRouter();
     const searchParams = useSearchParams();
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -455,7 +455,7 @@ const FootprintTab = ({
                     }
                 }
             } catch (error) {
-                console.error("코스 이미지 조회 실패:", error);
+                console.error("Failed to fetch course image:", error);
             }
             return "";
         },
@@ -497,7 +497,7 @@ const FootprintTab = ({
         async (courseId: number | string) => {
             // 🟢 courseId 유효성 검사
             if (!courseId) {
-                console.error("[FootprintTab] 코스 ID가 없습니다.");
+                console.error("[FootprintTab] Missing course ID.");
                 return;
             }
 
@@ -578,11 +578,11 @@ const FootprintTab = ({
                         concept: prev?.concept || data.concept || "",
                     }));
                 } else {
-                    console.error("[FootprintTab] 코스 상세 조회 실패:", response.status);
+                    console.error("[FootprintTab] Course detail fetch failed:", response.status);
                     // 🟢 API 호출 실패 시 기본 정보라도 유지
                 }
             } catch (error) {
-                console.error("[FootprintTab] 코스 상세 조회 오류:", error);
+                console.error("[FootprintTab] Course detail fetch error:", error);
                 // 🟢 에러 발생 시에도 기본 정보는 유지
             } finally {
                 setLoadingDetail(false);
@@ -1426,7 +1426,7 @@ const FootprintTab = ({
                                                 setShowCourseModal(false);
                                                 router.push(`/courses/${courseDetail.id}`);
                                             } else {
-                                                console.error("[FootprintTab] 코스 ID가 없어 이동할 수 없습니다.");
+                                                console.error("[FootprintTab] Cannot navigate without course ID.");
                                                 alert(t("mypage.footprintTab.alertLoadFailed"));
                                             }
                                         }}

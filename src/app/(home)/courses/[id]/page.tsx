@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
+import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -53,6 +54,9 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
                 select: {
                     id: true,
                     title: true,
+                    title_en: true,
+                    title_ja: true,
+                    title_zh: true,
                     description: true,
                     region: true,
                     sub_title: true,
@@ -85,12 +89,24 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
                             estimated_duration: true,
                             recommended_time: true,
                             tips: true,
+                            tips_en: true,
+                            tips_ja: true,
+                            tips_zh: true,
                             place: {
                                 select: {
                                     id: true,
                                     name: true,
+                                    name_en: true,
+                                    name_ja: true,
+                                    name_zh: true,
                                     address: true,
+                                    address_en: true,
+                                    address_ja: true,
+                                    address_zh: true,
                                     description: true,
+                                    description_en: true,
+                                    description_ja: true,
+                                    description_zh: true,
                                     category: true,
                                     avg_cost_range: true,
                                     opening_hours: true,
@@ -130,12 +146,15 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
         return {
             id: String(course.id),
             title: course.title,
+            title_en: course.title_en || null,
+            title_ja: course.title_ja || null,
+            title_zh: course.title_zh || null,
             description: course.description || "",
             region: course.region || null,
             sub_title: course.sub_title || null,
             target_situation: course.target_situation || null,
             budget_range: course.budget_range || null,
-            duration: course.duration || "시간 미정",
+            duration: course.duration || COURSE_DETAIL_SENTINELS.duration,
             price: "",
             imageUrl: course.imageUrl || "",
             concept: course.concept || "",
@@ -143,10 +162,11 @@ async function fetchCourseFromDb(id: string): Promise<CourseData | null> {
             isPopular: course.isPopular,
             grade: course.grade || "FREE",
             isSelectionType: !!course.isSelectionType,
-            recommended_start_time: courseDetail?.recommended_start_time || "오후 2시",
-            season: courseDetail?.season || "사계절",
-            courseType: courseDetail?.course_type || "데이트",
-            transportation: courseDetail?.transportation || "도보",
+            recommended_start_time:
+                courseDetail?.recommended_start_time || COURSE_DETAIL_SENTINELS.recommended_start_time,
+            season: courseDetail?.season || COURSE_DETAIL_SENTINELS.season,
+            courseType: courseDetail?.course_type || COURSE_DETAIL_SENTINELS.courseType,
+            transportation: courseDetail?.transportation || COURSE_DETAIL_SENTINELS.transportation,
             reservationRequired: coursePlaces.some((cp: any) => cp.place?.reservation_required) || false,
             createdAt: course.createdAt.toISOString(),
             updatedAt: course.updatedAt.toISOString(),
@@ -275,8 +295,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         (currentUserTier === "BASIC" && courseGrade === "BASIC") || // 3. BASIC 유저의 BASIC 코스인가?
         currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
 
-    // 🔒 팁 표시 권한: BASIC/PREMIUM 유저 또는 열람권으로 구매한 경우만 팁 표시
-    const hasTipAccess = currentUserTier === "BASIC" || currentUserTier === "PREMIUM" || hasUnlocked === true;
+    // 코스 접근 권한이 있으면 장소 팁도 표시
+    const hasTipAccess = canAccess;
 
     const isLocked = !canAccess;
     const secureCourseData = (() => {
@@ -291,10 +311,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                   description: "",
                   sub_title: null,
                   highlights: [],
-                  recommended_start_time: "오후 2시",
-                  season: "사계절",
-                  courseType: "데이트",
-                  transportation: "도보",
+                  recommended_start_time: COURSE_DETAIL_SENTINELS.recommended_start_time,
+                  season: COURSE_DETAIL_SENTINELS.season,
+                  courseType: COURSE_DETAIL_SENTINELS.courseType,
+                  transportation: COURSE_DETAIL_SENTINELS.transportation,
                   coursePlaces:
                       courseData.coursePlaces?.map((cp: any) => ({
                           ...cp,

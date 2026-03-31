@@ -94,18 +94,12 @@ export async function GET(request: NextRequest) {
                 title: true,
                 sub_title: true,
                 region: true,
-                tags: true,
                 concept: true,
+                mood: true,
+                target: true,
                 duration: true,
                 rating: true,
                 view_count: true,
-                courseTags: {
-                    include: {
-                        tag: {
-                            select: { name: true },
-                        },
-                    },
-                },
             },
         });
         const courseById = new Map(courseList.map((c) => [c.id, c]));
@@ -115,17 +109,11 @@ export async function GET(request: NextRequest) {
                 const course = courseById.get(stat.courseId);
                 if (!course) return null;
 
-                let tagNames: string[] = [];
-                if (course.tags && typeof course.tags === "object") {
-                    const tagsObj = course.tags as any;
-                    if (tagsObj.concept && Array.isArray(tagsObj.concept)) tagNames.push(...tagsObj.concept);
-                    if (tagsObj.mood && Array.isArray(tagsObj.mood)) tagNames.push(...tagsObj.mood);
-                }
-                if (course.courseTags?.length) {
-                    course.courseTags.forEach((ct) => {
-                        if (ct.tag && !tagNames.includes(ct.tag.name)) tagNames.push(ct.tag.name);
-                    });
-                }
+                const tagNames: string[] = Array.from(new Set([
+                    ...(course.concept ? [course.concept] : []),
+                    ...(Array.isArray((course as any).mood) ? (course as any).mood : []),
+                    ...(Array.isArray((course as any).target) ? (course as any).target : []),
+                ]));
 
                 return {
                     courseId: course.id,

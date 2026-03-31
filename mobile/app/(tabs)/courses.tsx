@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
     View,
     Text,
@@ -22,7 +22,8 @@ import { resolveImageUrl } from "../../src/lib/imageUrl";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
-import type { Course, UserProfile } from "../../src/types/api";
+import type { LocalePreference } from "../../src/lib/appSettingsStorage";
+import type { Course } from "../../src/types/api";
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -50,6 +51,23 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
     BASIC: { bg: "#dbeafe", text: "#1d4ed8" },
     PREMIUM: { bg: "#fef3c7", text: "#d97706" },
 };
+
+/** 조회수 축약 (locale별 단위) — 문장은 courses.viewsWatching 에서 조합 */
+function formatViewsCompact(views: number, locale: LocalePreference): string {
+    if (views >= 10000) {
+        const n = (views / 10000).toFixed(views % 10000 ? 1 : 0);
+        if (locale === "ko") return `${n}만`;
+        if (locale === "ja" || locale === "zh") return `${n}万`;
+        return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}k`;
+    }
+    if (views >= 1000) {
+        const n = (views / 1000).toFixed(views % 1000 ? 1 : 0);
+        if (locale === "ko") return `${n}천`;
+        if (locale === "ja" || locale === "zh") return `${n}千`;
+        return `${n}k`;
+    }
+    return String(views);
+}
 
 // ─── 히어로 슬라이더 ──────────────────────────────────────────────────────────
 
@@ -147,8 +165,8 @@ const heroStyles = StyleSheet.create({
         paddingVertical: 4,
         marginBottom: 8,
     },
-    conceptText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-    title: { color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 6, letterSpacing: -0.4, lineHeight: 24 },
+    conceptText: { color: "#fff", fontSize: 11, fontWeight: "500" },
+    title: { color: "#fff", fontSize: 18, fontWeight: "500", marginBottom: 6, letterSpacing: 0, lineHeight: 24 },
     metaRow: { flexDirection: "row", gap: 10 },
     meta: { color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "500" },
     dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 12 },
@@ -157,12 +175,6 @@ const heroStyles = StyleSheet.create({
 });
 
 // ─── 코스 카드 (웹 CourseCard와 동일) ─────────────────────────────────────────
-
-function formatViewCount(views: number): string {
-    if (views >= 10000) return `${(views / 10000).toFixed(views % 10000 ? 1 : 0)}만`;
-    if (views >= 1000) return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}천`;
-    return `${views}`;
-}
 
 function CourseCard({
     course,
@@ -173,7 +185,8 @@ function CourseCard({
     isFav: boolean;
     onFavToggle: (id: number) => void;
 }) {
-    const t = useThemeColors();
+    const themeColors = useThemeColors();
+    const { t: lt, locale } = useLocale();
     const isNew = (course as any).reviewCount === 0;
     const placesCount = (course as any).placesCount ?? (course as any).coursePlaces?.length ?? 0;
     const views = Number((course as any).viewCount ?? 0);
@@ -181,10 +194,12 @@ function CourseCard({
     const rating = Number((course as any).rating ?? 0);
     const hasReservation = !!((course as any).coursePlaces?.some((cp: any) => cp?.place?.reservationUrl));
 
-    // 웹과 동일: 조회수 1000+ 이면 👀, 아니면 별점
-    const infoLine = views >= 1000
-        ? `👀 ${formatViewCount(views)}명이 보는 중`
-        : (reviewCount > 0 ? `★ ${rating.toFixed(1)} (${reviewCount})` : null);
+    const infoLine =
+        views >= 1000
+            ? lt("courses.viewsWatching", { compact: formatViewsCompact(views, locale) })
+            : reviewCount > 0
+              ? `★ ${rating.toFixed(1)} (${reviewCount})`
+              : null;
 
     return (
         <TouchableOpacity
@@ -193,7 +208,7 @@ function CourseCard({
             activeOpacity={0.88}
         >
             {/* 이미지 영역 */}
-            <View style={[styles.cardImgWrap, { borderColor: t.isDark ? 'transparent' : '#f3f4f6' }]}>
+            <View style={[styles.cardImgWrap, { borderColor: themeColors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {course.imageUrl ? (
                     <Image source={{ uri: resolveImageUrl(course.imageUrl) }} style={styles.cardImg} />
                 ) : (
@@ -214,7 +229,7 @@ function CourseCard({
                 <View style={styles.badges} pointerEvents="none">
                     {hasReservation && (
                         <View style={styles.reserveBadge}>
-                            <Text style={styles.reserveBadgeText}>예약가능</Text>
+                            <Text style={styles.reserveBadgeText}>{lt("courses.badgeReservable")}</Text>
                         </View>
                     )}
                     {course.concept && (
@@ -224,7 +239,7 @@ function CourseCard({
                     )}
                     {isNew && (
                         <View style={styles.newBadge}>
-                            <Text style={styles.newBadgeText}>NEW</Text>
+                            <Text style={styles.newBadgeText}>{lt("courses.badgeNew")}</Text>
                         </View>
                     )}
                 </View>
@@ -245,20 +260,32 @@ function CourseCard({
 
             {/* 정보 영역 */}
             <View style={styles.cardBody}>
-                <Text style={[styles.cardTitle, { color: t.text }]} numberOfLines={2}>
+                <Text style={[styles.cardTitle, { color: themeColors.text }]} numberOfLines={2}>
                     {course.title}
                 </Text>
                 <View style={styles.metaRow}>
                     {(course.location || (course as any).region) && (
-                        <Text style={[styles.metaText, { color: t.textMuted }]}>📍 {(course as any).location ?? (course as any).region}</Text>
+                        <Text style={[styles.metaText, { color: themeColors.textMuted }]}>
+                            📍 {(course as any).location ?? (course as any).region}
+                        </Text>
                     )}
-                    {((course as any).location || (course as any).region) && placesCount > 0 && <View style={[styles.metaDot, { backgroundColor: t.textMuted }]} />}
-                    {placesCount > 0 && <Text style={[styles.metaText, { color: t.textMuted }]}>👣 {placesCount} 스팟</Text>}
-                    {placesCount > 0 && course.duration && <View style={[styles.metaDot, { backgroundColor: t.textMuted }]} />}
-                    {course.duration && <Text style={[styles.metaText, { color: t.textMuted }]}>⏳ {course.duration}</Text>}
+                    {((course as any).location || (course as any).region) && placesCount > 0 && (
+                        <View style={[styles.metaDot, { backgroundColor: themeColors.textMuted }]} />
+                    )}
+                    {placesCount > 0 && (
+                        <Text style={[styles.metaText, { color: themeColors.textMuted }]}>
+                            {lt("courses.metaSpots", { count: placesCount, spots: lt("courseDetail.spots") })}
+                        </Text>
+                    )}
+                    {placesCount > 0 && course.duration && (
+                        <View style={[styles.metaDot, { backgroundColor: themeColors.textMuted }]} />
+                    )}
+                    {course.duration && (
+                        <Text style={[styles.metaText, { color: themeColors.textMuted }]}>⏳ {course.duration}</Text>
+                    )}
                 </View>
                 {infoLine && (
-                    <Text style={[styles.infoLine, { color: t.textMuted }]} numberOfLines={1}>
+                    <Text style={[styles.infoLine, { color: themeColors.textMuted }]} numberOfLines={1}>
                         {infoLine}
                     </Text>
                 )}
@@ -274,15 +301,11 @@ export default function CoursesScreen() {
     const { t: translate } = useLocale();
     const [activeConcept, setActiveConcept] = useState("");
 
-    // 번역된 컨셉 라벨 목록
-    const CONCEPTS = CONCEPT_ITEMS.map((c) => ({ ...c, label: translate(c.tKey) }));
+    const CONCEPTS = useMemo(
+        () => CONCEPT_ITEMS.map((c) => ({ ...c, label: translate(c.tKey) })),
+        [translate],
+    );
     const queryClient = useQueryClient();
-
-    const { data: profile } = useQuery<UserProfile>({
-        queryKey: ["profile"],
-        queryFn: () => api.get<UserProfile>(endpoints.profile),
-        retry: false,
-    });
 
     // 히어로 슬라이더용 인기 코스
     const { data: heroData } = useQuery<Course[]>({
@@ -354,10 +377,13 @@ export default function CoursesScreen() {
         [favMutation, favIds],
     );
 
+    const listHeaderTitleText = activeConcept
+        ? CONCEPTS.find((c) => c.value === activeConcept)?.label ?? translate("courses.allCourses")
+        : translate("courses.allCourses");
+
     const renderHeader = useCallback(
         () => (
             <>
-                {/* 히어로 슬라이더 */}
                 {heroData && heroData.length > 0 && !activeConcept && (
                     <View
                         style={[
@@ -365,23 +391,26 @@ export default function CoursesScreen() {
                             { backgroundColor: t.isDark ? "rgba(18,35,27,0.95)" : "#f3faf6" },
                         ]}
                     >
-                        <Text style={[styles.sectionTitle, { color: t.text }]}>지금 많이 선택한 코스</Text>
+                        <Text style={[styles.sectionTitle, { color: t.text }]}>{translate("courses.heroTitle")}</Text>
                         <HeroSlider courses={heroData} />
                     </View>
                 )}
-                {/* 전체 코스 타이틀 */}
                 <View
                     style={[
                         styles.listHeader,
                         { backgroundColor: t.isDark ? "rgba(13,23,18,0.98)" : "#ffffff", borderTopColor: t.border },
                     ]}
                 >
-                    <Text style={[styles.listHeaderTitle, { color: t.text }]}>{activeConcept ? activeConcept : translate("courses.allCourses")}</Text>
-                    <Text style={[styles.listHeaderCount, { color: t.textMuted }]}>{courses.length}개</Text>
+                    <Text style={[styles.listHeaderTitle, { color: t.text }]} numberOfLines={2}>
+                        {listHeaderTitleText}
+                    </Text>
+                    <Text style={[styles.listHeaderCount, { color: t.textMuted }]} numberOfLines={1}>
+                        {translate("courses.listCount", { count: courses.length })}
+                    </Text>
                 </View>
             </>
         ),
-        [heroData, activeConcept, courses.length, t],
+        [heroData, activeConcept, courses.length, t, translate, listHeaderTitleText],
     );
 
     return (
@@ -401,7 +430,9 @@ export default function CoursesScreen() {
                         <View style={[styles.categoryCircle, { borderColor: t.border, backgroundColor: t.surface }, !activeConcept && styles.categoryCircleActive]}>
                             <Ionicons name="grid" size={18} color={!activeConcept ? "#059669" : t.textMuted} />
                         </View>
-                        <Text style={[styles.categoryLabel, { color: t.textMuted }, !activeConcept && styles.categoryLabelActive]}>전체</Text>
+                        <Text style={[styles.categoryLabel, { color: t.textMuted }, !activeConcept && styles.categoryLabelActive]}>
+                            {translate("courses.all")}
+                        </Text>
                     </TouchableOpacity>
 
                     {CONCEPTS.map((c) => {
@@ -455,7 +486,7 @@ export default function CoursesScreen() {
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <Text style={{ fontSize: 40, marginBottom: 12 }}>🏝️</Text>
-                            <Text style={[styles.emptyText, { color: t.textMuted }]}>코스가 없습니다</Text>
+                            <Text style={[styles.emptyText, { color: t.textMuted }]}>{translate("courses.listEmpty")}</Text>
                         </View>
                     }
                 />
@@ -508,7 +539,7 @@ const styles = StyleSheet.create({
     categoryIcon: { width: 32, height: 32 },
     categoryLabel: {
         fontSize: 11,
-        fontWeight: "600",
+        fontWeight: "500",
         color: "#6b7280",
         textAlign: "center",
     },
@@ -522,17 +553,18 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 19,
-        fontWeight: "800",
+        fontWeight: "500",
         color: "#111827",
         paddingHorizontal: 16,
         paddingBottom: 10,
         marginBottom: 12,
-        letterSpacing: -0.4,
+        letterSpacing: 0,
     },
     listHeader: {
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "space-between",
+        gap: 12,
         paddingHorizontal: 16,
         paddingTop: 16,
         paddingBottom: 8,
@@ -540,8 +572,15 @@ const styles = StyleSheet.create({
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: "#e5e7eb",
     },
-    listHeaderTitle: { fontSize: 19, fontWeight: "800", color: "#111827", letterSpacing: -0.4, paddingBottom: 10 },
-    listHeaderCount: { fontSize: 13, color: "#9ca3af", fontWeight: "500" },
+    listHeaderTitle: {
+        flex: 1,
+        fontSize: 19,
+        fontWeight: "500",
+        color: "#111827",
+        letterSpacing: 0,
+        paddingBottom: 10,
+    },
+    listHeaderCount: { flexShrink: 0, fontSize: 13, color: "#9ca3af", fontWeight: "500", paddingTop: 2 },
     listContent: { paddingBottom: 130, backgroundColor: "#fff" },
 
     // ─── 카드 ────────────────────────────────────────────────────────────────────
@@ -580,7 +619,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 7,
         paddingVertical: 3,
     },
-    reserveBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+    reserveBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
     infoLine: { fontSize: 12, marginTop: 2 },
     conceptBadge: {
         backgroundColor: "#111827",
@@ -590,14 +629,14 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#374151",
     },
-    conceptBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+    conceptBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
     newBadge: {
         backgroundColor: "#7aa06f",
         borderRadius: 6,
         paddingHorizontal: 7,
         paddingVertical: 3,
     },
-    newBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+    newBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
     favBtn: {
         position: "absolute",
         top: 12,
@@ -614,11 +653,11 @@ const styles = StyleSheet.create({
     cardBody: { paddingHorizontal: 4 },
     cardTitle: {
         fontSize: 17,
-        fontWeight: "700",
+        fontWeight: "400",
         color: "#111827",
         lineHeight: 24,
         marginBottom: 6,
-        letterSpacing: -0.3,
+        letterSpacing: 0,
     },
     metaRow: {
         flexDirection: "row",

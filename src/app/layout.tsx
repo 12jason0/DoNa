@@ -1,6 +1,5 @@
 // src/app/layout.tsx
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Script from "next/script";
@@ -8,29 +7,6 @@ import ClientStyleManager from "@/components/ClientStyleManager";
 // import AdSenseScript from "@/components/AdSenseScript"; // 🟢 AdMob/AdSense 비활성화
 import KakaoScript from "@/components/KakaoScript";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-
-const lineSeed = localFont({
-    src: [
-        {
-            path: "../../public/fonts/LINESeedKR-Th.woff2",
-            weight: "100",
-            style: "normal",
-        },
-        {
-            path: "../../public/fonts/LINESeedKR-Rg.woff2",
-            weight: "400",
-            style: "normal",
-        },
-        {
-            path: "../../public/fonts/LINESeedKR-Bd.woff2",
-            weight: "700",
-            style: "normal",
-        },
-    ],
-    variable: "--font-line-seed",
-    display: "swap",
-    preload: false,
-});
 
 // ✅ 1. 페이지 정보 상자 (메타데이터)
 export const metadata: Metadata = {
@@ -53,12 +29,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="ko" className={lineSeed.variable} suppressHydrationWarning>
+        <html lang="ko" suppressHydrationWarning>
             <head>
                 {/* 예약 사이트(캐치테이블 등) 사전 연결으로 로딩 속도 개선 */}
                 <link rel="preconnect" href="https://www.catchtable.co.kr" crossOrigin="" />
             </head>
-            <body className={`${lineSeed.className} font-sans antialiased`} style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
+            <body className="antialiased" style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
                 {/* Google Tag Manager (noscript) - body 바로 뒤 */}
                 <noscript>
                     <iframe

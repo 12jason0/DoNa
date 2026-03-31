@@ -25,7 +25,8 @@ import { isIOS } from "@/lib/platform";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
 import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
-import type { TranslationKeys } from "@/types/i18n";
+import { localeToBcp47 } from "@/lib/localeBcp47";
+import { translateCourseRegion } from "@/lib/courseTranslate";
 
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
 const MemoizedPersonalizedSection = memo(PersonalizedSection);
@@ -42,7 +43,7 @@ function runAfterPaint(fn: () => void) {
 
 export default function HomeClient() {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const { containInPhone, modalContainerRef } = useAppLayout();
     const [showWelcome, setShowWelcome] = useState(false);
     const [loginProvider, setLoginProvider] = useState<"apple" | "kakao" | null>(null);
@@ -505,35 +506,51 @@ export default function HomeClient() {
         <>
             {errorMessage && <div className="mx-4 my-3 bg-red-50 p-4 rounded-xl text-sm">{errorMessage}</div>}
             <BenefitConsentModal isOpen={showBenefitConsentModal} onClose={() => setShowBenefitConsentModal(false)} />
-            {/* 🟢 21시 이후 기록 유도 모달 */}
+            {/* 🟢 21시 이후 기록 유도 — 하단 바텀시트 */}
             {showMemoryReminderModal && activeCourse && (
                 <div
-                    className="fixed inset-0 z-6000 bg-black/50 flex items-center justify-center p-4"
-                    onClick={() => setShowMemoryReminderModal(false)}
+                    className="fixed inset-0 z-6000 flex items-end justify-center animate-in fade-in duration-200"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="memory-reminder-title"
                 >
+                    <button
+                        type="button"
+                        className="absolute inset-0 bg-black/50 dark:bg-black/60"
+                        aria-label={t("common.close")}
+                        onClick={() => setShowMemoryReminderModal(false)}
+                    />
                     <div
-                        className="bg-white dark:bg-[#1a241b] rounded-2xl p-6 max-w-sm w-full shadow-xl"
+                        className="relative w-full max-w-lg bg-white dark:bg-[#1a241b] rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-t border-x border-gray-100 dark:border-gray-800 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-300"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <p className="text-center text-gray-900 dark:text-white text-base font-medium mb-2">
+                        <div className="flex justify-center mb-3">
+                            <div className="h-1 w-10 rounded-full bg-gray-200 dark:bg-gray-600" aria-hidden />
+                        </div>
+                        <p
+                            id="memory-reminder-title"
+                            className="text-center text-gray-900 dark:text-white text-base font-medium mb-2 px-1"
+                        >
                             {t("home.memoryReminder.title", { course: activeCourse.courseTitle })}
                         </p>
-                        <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-6">
+                        <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-5">
                             {t("home.memoryReminder.subtitle")}
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col gap-3">
                             <button
+                                type="button"
                                 onClick={() => setShowMemoryReminderModal(false)}
-                                className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium"
+                                className="w-full py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium"
                             >
                                 {t("home.memoryReminder.later")}
                             </button>
                             <button
+                                type="button"
                                 onClick={() => {
                                     setShowMemoryReminderModal(false);
                                     router.push(`/courses/${activeCourse.courseId}/start`);
                                 }}
-                                className="flex-1 py-3 rounded-xl bg-[#99c08e] text-white font-bold"
+                                className="w-full py-3.5 rounded-xl bg-[#99c08e] text-white font-bold"
                             >
                                 {t("home.memoryReminder.goTo")}
                             </button>
@@ -589,7 +606,7 @@ export default function HomeClient() {
                                             className="flex items-center gap-1 px-3 py-1.5 bg-[#7FCC9F] hover:bg-[#6bb88a] text-white text-xs font-bold rounded-2xl transition-colors active:scale-95 shrink-0"
                                         >
                                             {t("home.activeCourse.continue")}
-                                            <span className="text-white">→</span>
+                                            <span className="text-white symbol-ko-font">→</span>
                                         </button>
                                     </TapFeedback>
                                 </div>
@@ -617,7 +634,7 @@ export default function HomeClient() {
                                         {t("home.personalizedHomeCtaSub")}
                                     </div>
                                 </div>
-                                <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-medium text-sm">→</span>
+                                <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-medium text-sm symbol-ko-font">→</span>
                             </button>
                         </TapFeedback>
                     </section>
@@ -709,7 +726,7 @@ export default function HomeClient() {
                                 {selectedMemory.course?.region && (
                                     <div className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full z-20">
                                         <span className="text-sm font-medium text-white dark:text-gray-300">
-                                            {selectedMemory.course.region}
+                                            {translateCourseRegion(selectedMemory.course.region, t as (k: string) => string)}
                                         </span>
                                     </div>
                                 )}
@@ -860,11 +877,12 @@ export default function HomeClient() {
                                 <div className="text-white text-sm font-medium mb-2">
                                     {(() => {
                                         const date = new Date(selectedMemory.createdAt);
-                                        const dayKey = `home.dayOfWeek.${date.getDay()}` as TranslationKeys;
-                                        const dayOfWeek = t(dayKey);
-                                        return `${date.getFullYear()}년 ${
-                                            date.getMonth() + 1
-                                        }월 ${date.getDate()}일 (${dayOfWeek})`;
+                                        return new Intl.DateTimeFormat(localeToBcp47(locale), {
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                            weekday: "short",
+                                        }).format(date);
                                     })()}
                                 </div>
 

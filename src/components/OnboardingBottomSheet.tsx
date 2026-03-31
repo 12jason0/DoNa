@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { useAppLayout } from "@/context/AppLayoutContext";
+import { useLocale } from "@/context/LocaleContext";
 
 interface OnboardingBottomSheetProps {
     isOpen: boolean;
@@ -19,6 +20,7 @@ interface OnboardingBottomSheetProps {
  */
 export default function OnboardingBottomSheet({ isOpen, onClose, onboardingUrl }: OnboardingBottomSheetProps) {
     const router = useRouter();
+    const { t } = useLocale();
     const { iosIgnoreSafeAreaBottom } = useAppLayout();
     const [mounted, setMounted] = useState(false);
 
@@ -56,23 +58,23 @@ export default function OnboardingBottomSheet({ isOpen, onClose, onboardingUrl }
                         </div>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
-                        취향을 알려주시면
+                        {t("onboardingSheet.title")}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6 leading-relaxed">
-                        더 정확한 데이트 코스 추천을 받을 수 있어요
+                        {t("onboardingSheet.desc")}
                     </p>
                     <div className="flex flex-col gap-3">
                         <button
                             onClick={handleGoToOnboarding}
                             className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors active:scale-[0.98]"
                         >
-                            취향 등록하러 가기
+                            {t("onboardingSheet.cta")}
                         </button>
                         <button
                             onClick={onClose}
                             className="w-full py-3 px-4 rounded-xl text-gray-500 dark:text-gray-400 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
-                            다음에 할게요
+                            {t("onboardingSheet.later")}
                         </button>
                     </div>
                 </div>

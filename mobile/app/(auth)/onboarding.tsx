@@ -356,7 +356,12 @@ export default function OnboardingScreen() {
                     <View style={styles.introBg} />
                     <Animated.View style={[styles.introInner, { opacity: introOpacity }]}>
                         <SafeAreaView style={styles.introSafe} edges={["top", "bottom"]}>
-                            <View style={styles.introCloseRow}>
+                            {/* 상단 한 줄: 배지(좌) + 닫기(우) — 웹 인트로와 동일한 우선순위 */}
+                            <View style={styles.introHeaderRow}>
+                                <View style={styles.introBadge}>
+                                    <View style={styles.introPulse} />
+                                    <Text style={styles.introBadgeText}>AI DONA</Text>
+                                </View>
                                 <Pressable
                                     onPress={handleClose}
                                     style={({ pressed }) => [styles.introCloseBtn, pressed && { opacity: 0.85 }]}
@@ -367,18 +372,12 @@ export default function OnboardingScreen() {
                             </View>
 
                             <View style={styles.introMiddle}>
-                                <View style={styles.introTop}>
-                                    <View style={styles.introBadge}>
-                                        <View style={styles.introPulse} />
-                                        <Text style={styles.introBadgeText}>AI DONA</Text>
-                                    </View>
-                                    <Text style={styles.introTitle}>
-                                        {tr("onboarding.titleLine1")}
-                                        {"\n"}
-                                        <Text style={styles.introTitleBold}>{tr("onboarding.titleLine2")}</Text>
-                                    </Text>
-                                    <Text style={styles.introSub}>{tr("onboarding.subtitle")}</Text>
-                                </View>
+                                <Text style={styles.introTitle}>
+                                    {tr("onboarding.titleLine1")}
+                                    {"\n"}
+                                    <Text style={styles.introTitleBold}>{tr("onboarding.titleLine2")}</Text>
+                                </Text>
+                                <Text style={styles.introSub}>{tr("onboarding.subtitle")}</Text>
                             </View>
 
                             <Pressable
@@ -506,12 +505,12 @@ export default function OnboardingScreen() {
                                                             },
                                                         ]}
                                                     >
-                                                        <Text style={[styles.crewLabel, { color: textMain }]}>{opt.label}</Text>
-                                                        {!!opt.sub && (
-                                                            <Text style={[styles.crewSub, { color: textMuted }]} numberOfLines={2}>
-                                                                {opt.sub}
-                                                            </Text>
-                                                        )}
+                                                        <Text style={[styles.crewLabel, { color: textMain }]}>
+                                                            {tr(`onboarding.crew.${opt.id}.label`)}
+                                                        </Text>
+                                                        <Text style={[styles.crewSub, { color: textMuted }]} numberOfLines={2}>
+                                                            {tr(`onboarding.crew.${opt.id}.sub`)}
+                                                        </Text>
                                                     </Pressable>
                                                 );
                                             })}
@@ -673,7 +672,13 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     introMiddle: { flex: 1, justifyContent: "center", minHeight: 0 },
-    introTop: { marginTop: 0 },
+    introHeaderRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        alignSelf: "stretch",
+        marginBottom: 8,
+    },
     introBadge: {
         flexDirection: "row",
         alignItems: "center",
@@ -685,7 +690,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.25)",
         backgroundColor: "rgba(255,255,255,0.08)",
-        marginBottom: 22,
+        marginBottom: 0,
     },
     introPulse: {
         width: 6,
@@ -693,7 +698,7 @@ const styles = StyleSheet.create({
         borderRadius: 3,
         backgroundColor: "#34d399",
     },
-    introBadgeText: { color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+    introBadgeText: { color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: "500", letterSpacing: 1.2 },
     introTitle: {
         color: "#fff",
         fontSize: 34,
@@ -702,7 +707,7 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
         marginBottom: 16,
     },
-    introTitleBold: { fontWeight: "800" },
+    introTitleBold: { fontWeight: "600" },
     introSub: {
         color: "rgba(255,255,255,0.7)",
         fontSize: 16,
@@ -710,7 +715,6 @@ const styles = StyleSheet.create({
         fontWeight: "300",
         maxWidth: "88%",
     },
-    introCloseRow: { alignItems: "flex-end", alignSelf: "stretch", marginTop: 4 },
     introCloseBtn: {
         width: 48,
         height: 48,
@@ -731,7 +735,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginBottom: 8,
     },
-    introStartText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+    introStartText: { color: "#fff", fontSize: 18, fontWeight: "600" },
 
     modalRoot: { flex: 1, justifyContent: "flex-end" },
     modalDim: { ...StyleSheet.absoluteFillObject },
@@ -765,7 +769,7 @@ const styles = StyleSheet.create({
     cardScroll: { flex: 1, minHeight: 0 },
     cardScrollContent: { paddingBottom: 24 },
 
-    qTitle: { fontSize: 22, fontWeight: "800", marginTop: 4, marginBottom: 8, letterSpacing: -0.3 },
+    qTitle: { fontSize: 22, fontWeight: "600", marginTop: 4, marginBottom: 8, letterSpacing: -0.3 },
     qDesc: { fontSize: 14, marginBottom: 12, lineHeight: 20 },
 
     grid2x2: {
@@ -792,7 +796,7 @@ const styles = StyleSheet.create({
         right: 8,
         color: "#fff",
         fontSize: 13,
-        fontWeight: "800",
+        fontWeight: "600",
         textShadowColor: "rgba(0,0,0,0.45)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
@@ -805,7 +809,7 @@ const styles = StyleSheet.create({
         minHeight: 96,
         justifyContent: "center",
     },
-    crewLabel: { fontSize: 16, fontWeight: "800", marginBottom: 4 },
+    crewLabel: { fontSize: 16, fontWeight: "600", marginBottom: 4 },
     crewSub: { fontSize: 12, lineHeight: 16 },
 
     valueRow: {
@@ -832,7 +836,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     valueEmoji: { fontSize: 26 },
-    valueTitleCol: { fontSize: 14, fontWeight: "800", lineHeight: 20, textAlign: "center", marginTop: 10 },
+    valueTitleCol: { fontSize: 14, fontWeight: "600", lineHeight: 20, textAlign: "center", marginTop: 10 },
 
     regionCell: {
         paddingVertical: 14,
@@ -843,7 +847,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         minHeight: 72,
     },
-    regionCellText: { fontSize: 13, fontWeight: "800", textAlign: "center" },
+    regionCellText: { fontSize: 13, fontWeight: "600", textAlign: "center" },
 
     analyzeBtn: {
         backgroundColor: "#059669",
@@ -853,7 +857,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 8,
     },
-    analyzeBtnText: { color: "#fff", fontSize: 16, fontWeight: "900" },
+    analyzeBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 
     prevRow: { paddingHorizontal: 20, paddingVertical: 12, paddingBottom: 16 },
     prevText: { fontSize: 14 },
@@ -864,7 +868,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    analyzeTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
+    analyzeTitle: { color: "#fff", fontSize: 18, fontWeight: "600" },
 
     resultOverlay: {
         flex: 1,
@@ -882,7 +886,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     resultX: { position: "absolute", top: 12, right: 12 },
-    resultTitle: { fontSize: 22, fontWeight: "800", marginTop: 16, marginBottom: 8 },
+    resultTitle: { fontSize: 22, fontWeight: "600", marginTop: 16, marginBottom: 8 },
     resultSub: { fontSize: 14, textAlign: "center", marginBottom: 22, lineHeight: 20 },
     resultCta: {
         width: "100%",
@@ -891,5 +895,5 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: "center",
     },
-    resultCtaText: { color: "#fff", fontSize: 17, fontWeight: "800" },
+    resultCtaText: { color: "#fff", fontSize: 17, fontWeight: "600" },
 });

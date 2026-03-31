@@ -517,11 +517,11 @@ const MyPage = () => {
                     })
                 );
             } else {
-                console.error("[MyPage] 완료 코스 조회 실패");
+                console.error("[MyPage] Failed to fetch completed courses");
                 setCompleted([]);
             }
         } catch (error) {
-            console.error("[MyPage] 완료 코스 조회 오류:", error);
+            console.error("[MyPage] Completed courses fetch error:", error);
             setCompleted([]);
         }
     };
@@ -575,7 +575,7 @@ const MyPage = () => {
                 setPersonalStories([]);
             }
         } catch (error) {
-            console.error("[MyPage] 개인 추억 조회 오류:", error);
+            console.error("[MyPage] Personal memories fetch error:", error);
             setPersonalStories([]);
         }
     };
@@ -614,7 +614,7 @@ const MyPage = () => {
                     await fetchSession();
                     // fetchUserInfo에서 캐시를 무시하도록 플래그가 이미 설정되어 있음
                 } catch (error) {
-                    console.error("[MyPage] 세션 재확인 실패:", error);
+                    console.error("[MyPage] Session revalidation failed:", error);
                 }
             }
         };
@@ -698,7 +698,7 @@ const MyPage = () => {
                     // 우선순위 데이터 먼저 로드
                     if (priorityData.length > 0) {
                         Promise.all(priorityData).catch((error) => {
-                            console.error("[MyPage] 우선순위 데이터 로드 실패:", error);
+                            console.error("[MyPage] Priority data load failed:", error);
                         });
                     }
 
@@ -706,7 +706,7 @@ const MyPage = () => {
                     setTimeout(() => {
                         if (deferredData.length > 0) {
                             Promise.all(deferredData).catch((error) => {
-                                console.error("[MyPage] 지연 데이터 로드 실패:", error);
+                                console.error("[MyPage] Deferred data load failed:", error);
                             });
                         }
                     }, 100); // 🟢 100ms로 단축하여 더 빠른 로딩
@@ -723,7 +723,7 @@ const MyPage = () => {
                 }
             }
         }).catch((error) => {
-            console.error("[MyPage] 초기 데이터 로드 실패:", error);
+            console.error("[MyPage] Initial data load failed:", error);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // 🟢 초기 마운트 시에만 실행
@@ -751,14 +751,14 @@ const MyPage = () => {
     // 🟢 결제 완료 이벤트 리스너 (구매 내역 즉시 업데이트)
     useEffect(() => {
         const handlePaymentSuccess = () => {
-            console.log("[마이페이지] 결제 완료 감지 - 구매 내역 및 사용자 정보 갱신");
+            console.log("[MyPage] Payment success detected - refreshing purchase and user data");
             // 🟢 캐시 무시하여 최신 정보 가져오기
             (window as any).__forceRefreshUserInfo = true;
             Promise.all([
                 fetchUserInfo(),
                 fetchPayments()
             ]).catch((err) => {
-                console.error("[마이페이지] 결제 완료 후 데이터 갱신 실패:", err);
+                console.error("[MyPage] Failed to refresh after payment:", err);
             });
         };
         window.addEventListener("paymentSuccess", handlePaymentSuccess as EventListener);
@@ -768,7 +768,7 @@ const MyPage = () => {
     // 🟢 환불 완료 이벤트 리스너 (환불 후 구독/열람권 정보 실시간 업데이트)
     useEffect(() => {
         const handleRefundSuccess = (event: any) => {
-            console.log("[마이페이지] 환불 완료 감지 - 사용자 정보 갱신", event.detail);
+            console.log("[MyPage] Refund completed - refreshing user data", event.detail);
             // 🟢 캐시 무시 플래그 설정
             (window as any).__forceRefreshUserInfo = true;
             // 🟢 환불 완료 시 사용자 정보와 구매 내역 모두 갱신 (구독/열람권 정보 실시간 반영)
@@ -776,7 +776,7 @@ const MyPage = () => {
                 fetchUserInfo(),
                 fetchPayments()
             ]).catch((err) => {
-                console.error("[마이페이지] 환불 완료 후 데이터 갱신 실패:", err);
+                console.error("[MyPage] Failed to refresh after refund:", err);
             });
         };
         window.addEventListener("refundSuccess", handleRefundSuccess as EventListener);
@@ -786,12 +786,12 @@ const MyPage = () => {
     // 🟢 구독 변경 이벤트 리스너 (구독 변경 시 즉시 데이터 갱신)
     useEffect(() => {
         const handleSubscriptionChanged = () => {
-            console.log("[마이페이지] 구독 변경 감지 - 사용자 정보 갱신");
+            console.log("[MyPage] Subscription change detected - refreshing user data");
             // 🟢 캐시 무시 플래그 설정
             (window as any).__forceRefreshUserInfo = true;
             // 🟢 구독 변경 시 사용자 정보 갱신
             fetchUserInfo().catch((err) => {
-                console.error("[마이페이지] 구독 변경 후 데이터 갱신 실패:", err);
+                console.error("[MyPage] Failed to refresh after subscription change:", err);
             });
         };
         window.addEventListener("subscriptionChanged", handleSubscriptionChanged as EventListener);
@@ -873,7 +873,7 @@ const MyPage = () => {
             const { logout } = await import("@/lib/authClient");
             await logout();
         } catch (error) {
-            console.error("로그아웃 처리 중 오류 발생:", error);
+            console.error("Error during logout handling:", error);
             setIsLoggingOut(false);
             // 에러 발생 시에도 메인으로 이동
             if (typeof window !== "undefined") {
@@ -1272,7 +1272,7 @@ const MyPage = () => {
                     </button>
                     <img
                         src={fullImageUrl}
-                        alt="full"
+                        alt={t("mypage.fullImageAlt")}
                         className="max-h-[90vh] max-w-[96vw] object-contain rounded"
                         onClick={(e) => e.stopPropagation()}
                     />
@@ -1311,7 +1311,7 @@ const MyPage = () => {
                                             <div className="bg-[#f8f5ef] dark:bg-gray-700 rounded-lg p-2 border-2 border-[#704a23] dark:border-gray-600">
                                                 <img
                                                     src={u}
-                                                    alt={`upload-${i}`}
+                                                    alt={t("mypage.caseModalPhotoAlt", { n: i + 1 })}
                                                     className="w-full h-full object-cover rounded cursor-zoom-in"
                                                 />
                                             </div>
@@ -1381,7 +1381,7 @@ const MyPage = () => {
                                     setPwStep("verify");
                                 }}
                             >
-                                ×
+                                <span className="symbol-ko-font">×</span>
                             </button>
                         </div>
                         {pwError && (
@@ -1497,7 +1497,7 @@ const MyPage = () => {
                                 onClick={() => setShowEditModal(false)}
                                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                             >
-                                ×
+                                <span className="symbol-ko-font">×</span>
                             </button>
                         </div>
                         <form onSubmit={handleEditSubmit} className="space-y-6">
@@ -1534,7 +1534,7 @@ const MyPage = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    MBTI
+                                    {t("mypage.mbtiLabel")}
                                 </label>
                                 <select
                                     name="mbti"
@@ -1611,7 +1611,7 @@ const MyPage = () => {
                                     required
                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#0f1710] text-gray-900 dark:text-white"
                                 >
-                                    <option value="">{t("mypage.selectAgeRange")}</option>
+                                    <option value="">{t("mypage.selectGender")}</option>
                                     <option value="M">{t("mypage.genderMale")}</option>
                                     <option value="F">{t("mypage.genderFemale")}</option>
                                 </select>
@@ -1652,7 +1652,7 @@ const MyPage = () => {
                                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
                                 onClick={() => setSelectedBadge(null)}
                             >
-                                ×
+                                <span className="symbol-ko-font">×</span>
                             </button>
                         </div>
                         <div className="flex flex-col items-center text-center">

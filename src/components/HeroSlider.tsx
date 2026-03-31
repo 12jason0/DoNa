@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useLocale } from "@/context/LocaleContext";
 import { useHorizontalWheelScroll } from "@/hooks/useHorizontalWheelScroll";
+import { pickCourseTitle } from "@/lib/courseLocalized";
 
 const CARD_GAP = 12;
 const PEEK_RATIO = 0.88; // 88% 카드 너비 → 12% 다음 카드 노출
@@ -19,6 +20,9 @@ export type SliderItem = {
     conceptIcon?: string;
     tags?: string[];
     title?: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
 };
 
 type HeroSliderProps = {
@@ -59,6 +63,7 @@ const SliderItemComponent = memo(
         currentSlotIndex: number;
         displayTitle?: string;
     }) => {
+        const { t } = useLocale();
         const hasPriority = idx === 0;
         return (
             <Link
@@ -73,7 +78,7 @@ const SliderItemComponent = memo(
                     {item.imageUrl ? (
                         <Image
                             src={item.imageUrl}
-                            alt={item.location || "Course Image"}
+                            alt={item.location || t("courses.heroSliderCourseAlt")}
                             fill
                             className="object-cover"
                             priority={hasPriority}
@@ -82,7 +87,7 @@ const SliderItemComponent = memo(
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
-                            No Image
+                            {t("common.imagePlaceholder")}
                         </div>
                     )}
                     <div className="absolute inset-0 bg-linear-to-b from-black/5 via-transparent to-black/80" />
@@ -126,7 +131,7 @@ const HERO_SLIDER_MAX = 5; // 최대 5개 코스만 사용
 const REPEAT_COUNT = 15; // 5개 코스가 끊김 없이 계속 반복되도록 여러 번 복제
 
 export default function HeroSlider({ items }: HeroSliderProps) {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const limitedItems = useMemo(() => items.slice(0, HERO_SLIDER_MAX), [items]);
     const realLength = limitedItems.length;
     const totalSlots = realLength;
@@ -339,6 +344,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 {renderItems.map((slot, idx) => {
                     const it = slot as SliderItem;
                     const displayTitle =
+                        pickCourseTitle(it, locale) ||
                         it.title ||
                         t("commonFallback.placeCharm", {
                             place: it.location || t("commonFallback.placeHere"),

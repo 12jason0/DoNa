@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "@/components/ImageFallback";
-import { getPlaceStatus } from "@/lib/placeStatus";
+import { getPlaceStatus, PLACE_STATUS_CLOSED } from "@/lib/placeStatus";
+import { useLocale } from "@/context/LocaleContext";
+import { translateCourseConcept } from "@/lib/courseTranslate";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CONCEPTS } from "@/constants/onboardingData";
 import CourseLockOverlay from "@/components/CourseLockOverlay";
@@ -17,22 +19,32 @@ import TapFeedback from "@/components/TapFeedback";
 import { isIOS, isMobileApp } from "@/lib/platform";
 import CourseReportBanner from "@/components/CourseReportBanner";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
+import type { TranslationKeys } from "@/types/i18n";
+import { normalizeNearbyRegionToSlug } from "@/constants/nearbyRegionSlug";
 
-const activities = [
-    { key: CONCEPTS.UNIQUE, label: `✨ ${CONCEPTS.UNIQUE}` },
-    { key: CONCEPTS.EMOTIONAL, label: `💕 ${CONCEPTS.EMOTIONAL}` },
-    { key: CONCEPTS.NIGHT_VIEW, label: `🌃 ${CONCEPTS.NIGHT_VIEW}` },
-    { key: CONCEPTS.HEALING, label: `🌿 ${CONCEPTS.HEALING}` },
-    { key: CONCEPTS.COST_EFFECTIVE, label: `💰 ${CONCEPTS.COST_EFFECTIVE}` },
-    { key: CONCEPTS.PHOTO, label: `📸 ${CONCEPTS.PHOTO}` },
-    { key: CONCEPTS.FOOD_TOUR, label: `🍜 ${CONCEPTS.FOOD_TOUR}` },
-    { key: CONCEPTS.CAFE, label: `☕ ${CONCEPTS.CAFE}` },
-    { key: CONCEPTS.DRINKING, label: `🍺 ${CONCEPTS.DRINKING}` },
-    { key: CONCEPTS.INDOOR, label: `🏠 ${CONCEPTS.INDOOR}` },
-    { key: CONCEPTS.EXHIBITION, label: `🎭 ${CONCEPTS.EXHIBITION}` },
-];
+const ACTIVITY_ICONS: Record<string, string> = {
+    [CONCEPTS.UNIQUE]: "✨",
+    [CONCEPTS.EMOTIONAL]: "💕",
+    [CONCEPTS.NIGHT_VIEW]: "🌃",
+    [CONCEPTS.HEALING]: "🌿",
+    [CONCEPTS.COST_EFFECTIVE]: "💰",
+    [CONCEPTS.PHOTO]: "📸",
+    [CONCEPTS.FOOD_TOUR]: "🍜",
+    [CONCEPTS.CAFE]: "☕",
+    [CONCEPTS.DRINKING]: "🍺",
+    [CONCEPTS.INDOOR]: "🏠",
+    [CONCEPTS.EXHIBITION]: "🎭",
+};
 
-const regions = ["강남", "성수", "홍대", "종로", "연남", "영등포"];
+/** URL·상태는 영문 슬러그, 서버 필터는 `resolveNearbyRegionParam`으로 한글 토큰 변환 */
+const REGION_DEFS = [
+    { slug: "gangnam" },
+    { slug: "seongsu" },
+    { slug: "hongdae" },
+    { slug: "jongno" },
+    { slug: "yeonnam" },
+    { slug: "yeongdeungpo" },
+] as const;
 
 const SkeletonLoader = () => (
     <div className="space-y-8 animate-pulse">
@@ -70,6 +82,28 @@ interface NearbyClientProps {
 export default function NearbyClient({ initialCourses, initialKeyword }: NearbyClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { t } = useLocale();
+
+    const activities = useMemo(() => {
+        const fn = (k: string) => t(k as TranslationKeys);
+        const keys = [
+            CONCEPTS.UNIQUE,
+            CONCEPTS.EMOTIONAL,
+            CONCEPTS.NIGHT_VIEW,
+            CONCEPTS.HEALING,
+            CONCEPTS.COST_EFFECTIVE,
+            CONCEPTS.PHOTO,
+            CONCEPTS.FOOD_TOUR,
+            CONCEPTS.CAFE,
+            CONCEPTS.DRINKING,
+            CONCEPTS.INDOOR,
+            CONCEPTS.EXHIBITION,
+        ] as const;
+        return keys.map((key) => ({
+            key,
+            label: `${ACTIVITY_ICONS[key] ?? "✨"} ${translateCourseConcept(key, fn)}`,
+        }));
+    }, [t]);
 
     const [mounted, setMounted] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -83,7 +117,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
     });
     const [selectedRegions, setSelectedRegions] = useState<string[]>(() => {
         const r = (searchParams.get("region") || "").trim();
-        return r ? [r] : [];
+        return r ? [normalizeNearbyRegionToSlug(r)] : [];
     });
 
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -143,6 +177,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             .filter((n) => Number.isFinite(n) && n > 0);
         const conceptFromUrl = (searchParams.get("concept") || "").trim();
         const regionFromUrl = (searchParams.get("region") || "").trim();
+        const regionSlugFromUrl = regionFromUrl ? normalizeNearbyRegionToSlug(regionFromUrl) : "";
         const qFromUrl = (searchParams.get("q") || "").trim();
 
         // 무한 루프 방지를 위해 조건부 업데이트만 수행
@@ -159,9 +194,11 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
             setSelectedActivities(conceptFromUrl ? [conceptFromUrl] : []);
         }
 
-        const regionChanged = regionFromUrl ? !selectedRegions.includes(regionFromUrl) : selectedRegions.length > 0;
+        const regionChanged = regionSlugFromUrl
+            ? selectedRegions[0] !== regionSlugFromUrl
+            : selectedRegions.length > 0;
         if (regionChanged) {
-            setSelectedRegions(regionFromUrl ? [regionFromUrl] : []);
+            setSelectedRegions(regionSlugFromUrl ? [regionSlugFromUrl] : []);
         }
 
         if (qFromUrl !== searchInput) {
@@ -391,17 +428,20 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         if (searchInput.trim()) return searchInput;
         const queryTerm = searchParams.get("q");
         if (queryTerm) return queryTerm;
-        if (selectedRegions.length > 0) return selectedRegions[0];
+        if (selectedRegions.length > 0) {
+            const slug = selectedRegions[0];
+            return t(`nearby.regions.${slug}` as TranslationKeys);
+        }
         if (selectedActivities.length > 0) {
             const act = activities.find((a) => a.key === selectedActivities[0]);
             return act ? act.label : selectedActivities[0];
         }
         if (selectedTagIds.length > 0 && tagIdToNameMap.size > 0) {
             const firstTagName = tagIdToNameMap.get(selectedTagIds[0]);
-            return firstTagName ? `#${firstTagName}` : "선택한 태그";
+            return firstTagName ? `#${firstTagName}` : t("nearby.selectedTagFallback");
         }
         return null;
-    }, [searchInput, searchParams, selectedRegions, selectedActivities, selectedTagIds, tagIdToNameMap]);
+    }, [searchInput, searchParams, selectedRegions, selectedActivities, selectedTagIds, tagIdToNameMap, t, activities]);
 
     // 🟢 hasClosedPlace는 useCourseFilter에서 제공됨
 
@@ -410,7 +450,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         return course.coursePlaces.filter((cp) => {
             const place = cp.place;
             if (!place) return false;
-            return getPlaceStatus(place.opening_hours || null, place.closed_days || []).status === "휴무";
+            return getPlaceStatus(place.opening_hours || null, place.closed_days || []).status === PLACE_STATUS_CLOSED;
         }).length;
     };
 
@@ -435,7 +475,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                     liked ? next.add(idNum) : next.delete(idNum);
                     return next;
                 });
-                if (confirm("로그인이 필요합니다.")) router.push("/login");
+                if (confirm(t("courses.loginRequired"))) router.push("/login");
             }
         } catch {}
     };
@@ -446,8 +486,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
         pushUrlFromState({ activities: next, q: "" });
     };
 
-    const toggleRegionSingle = (value: string) => {
-        const next = selectedRegions.includes(value) ? [] : [value];
+    const toggleRegionSingle = (slug: string) => {
+        const next = selectedRegions.includes(slug) ? [] : [slug];
         setSelectedRegions(next);
         // 🟢 [Performance]: requestAnimationFrame으로 부드러운 전환
         requestAnimationFrame(() => {
@@ -597,8 +637,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     });
                                 }
                             }}
-                            placeholder="성수동 힙한 카페 어디지?"
-                            className="w-full bg-gray-50 dark:bg-[#1a241b] rounded-xl py-3.5 pl-12 pr-[3.75rem] text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700 focus:bg-white dark:focus:bg-[#1a241b] transition-all tracking-tight"
+                            placeholder={t("nearby.searchPlaceholder")}
+                            className="w-full bg-gray-50 dark:bg-[#1a241b] rounded-xl py-3.5 pl-12 pr-3.75rem text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700 focus:bg-white dark:focus:bg-[#1a241b] transition-all tracking-tight"
                         />
                         {/* 태그 필터 버튼 */}
                         <button
@@ -607,7 +647,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 setShowCategoryModal(true);
                             }}
                             className="absolute inset-y-0 right-1.5 flex items-center justify-center my-1.5"
-                            aria-label="태그 필터"
+                            aria-label={t("nearby.tagFilterAria")}
                         >
                             <div className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
                                 selectedFilterLabels.length > 0
@@ -618,7 +658,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
                                         d="M3 4h18M7 12h10M11 20h2" />
                                 </svg>
-                                <span>태그</span>
+                                <span>{t("nearby.tagButton")}</span>
                                 {selectedFilterLabels.length > 0 && (
                                     <span className="bg-white text-emerald-700 text-[11px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
                                         {selectedFilterLabels.length}
@@ -653,17 +693,17 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                     <div className="w-px h-4 bg-gray-200 mx-1 shrink-0" />
                                 </>
                             )}
-                            {regions.map((r) => (
-                                <TapFeedback key={r}>
+                            {REGION_DEFS.map(({ slug }) => (
+                                <TapFeedback key={slug}>
                                     <button
-                                        onClick={() => toggleRegionSingle(r)}
+                                        onClick={() => toggleRegionSingle(slug)}
                                         className={`shrink-0 px-4 py-2 rounded-full text-[14px] font-semibold transition-all border whitespace-nowrap ${
-                                            selectedRegions.includes(r)
+                                            selectedRegions.includes(slug)
                                                 ? "bg-emerald-600 text-white border-emerald-600"
                                                 : "bg-white dark:bg-[#1a241b] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700"
                                         }`}
                                     >
-                                        {r}
+                                        {t(`nearby.regions.${slug}` as TranslationKeys)}
                                     </button>
                                 </TapFeedback>
                             ))}
@@ -673,7 +713,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                         {selectedFilterLabels.length > 0 && (
                             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5 scroll-smooth flex-nowrap">
                                 <div className="text-[12px] text-gray-500 dark:text-gray-400 font-medium shrink-0 mr-1 whitespace-nowrap">
-                                    필터:
+                                    {t("nearby.filterPrefix")}:
                                 </div>
                                 {selectedFilterLabels.map((label) => (
                                     <TapFeedback key={label}>
@@ -683,7 +723,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                         >
                                             {label}
                                             <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">
-                                                ✕
+                                                <span className="symbol-ko-font">✕</span>
                                             </span>
                                         </button>
                                     </TapFeedback>
@@ -702,18 +742,19 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] px-10">
                                     <div className="text-center">
                                         <p className="text-gray-400 dark:text-gray-500 text-[14px] font-medium mb-2">
-                                            SEARCH RESULTS 0
+                                            {t("nearby.searchResultsZero")}
                                         </p>
                                         <h3 className="text-[22px] font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
-                                            준비된{" "}
-                                            <span className="text-emerald-600">'{displayKeyword || "해당 필터"}'</span>{" "}
-                                            코스가 없나요?
+                                            {t("nearby.emptyTitle", {
+                                                filter: displayKeyword || t("nearby.emptyFilterFallback"),
+                                            })}
                                         </h3>
                                         <p className="text-gray-500 dark:text-gray-400 text-[15px] mb-8 leading-relaxed">
-                                            현재 해당 필터에 맞는 코스를 제작 중입니다.
+                                            {t("nearby.emptyBody1")}
                                             <br />
-                                            대신 <span className="font-semibold">두나가 엄선한 인기 코스</span>를
-                                            확인해보세요!
+                                            {t("nearby.emptyBody2Prefix")}
+                                            <span className="font-semibold">{t("nearby.emptyBody2Highlight")}</span>
+                                            {t("nearby.emptyBody2Suffix")}
                                         </p>
                                         <TapFeedback className="block">
                                             <button
@@ -722,7 +763,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                                 }}
                                                 className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-transform"
                                             >
-                                                전체 코스 탐색하기
+                                                {t("nearby.exploreAllCourses")}
                                             </button>
                                         </TapFeedback>
                                     </div>
@@ -733,12 +774,13 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                             {isRecommendation && displayCourses.length > 0 && (
                                 <div className="mb-8 border-b border-gray-100 pb-6">
                                     <div className="inline-block px-2 py-1 bg-slate-100 text-slate-600 text-[11px] font-bold rounded mb-3">
-                                        AD / RECOMMENDATION
+                                        {t("nearby.recommendationBadge")}
                                     </div>
                                     <h3 className="text-[20px] font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
-                                        찾으시는 결과가 없어서
+                                        {t("nearby.recommendationLine1")}
                                         <br />
-                                        <span className="text-emerald-600">요즘 뜨는 코스</span>를 준비했어요
+                                        <span className="text-emerald-600">{t("nearby.recommendationLine2")}</span>
+                                        {t("nearby.recommendationLine3")}
                                     </h3>
                                 </div>
                             )}
@@ -781,11 +823,12 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                 {loadingMore && (
                                     <div className="text-center py-8">
                                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">{t("courses.loadingMore")}</p>
                                     </div>
                                 )}
                                 {!hasMore && displayCourses.length > 0 && (
                                     <div className="text-center py-8 text-gray-400 text-sm">
-                                        모든 코스를 불러왔습니다.
+                                        {t("courses.allLoaded")}
                                     </div>
                                 )}
                                 {/* 🟢 [Performance]: IntersectionObserver용 센티넬 */}
@@ -801,7 +844,7 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                         }}
                                         className="mt-10 w-full py-4 bg-slate-900 text-white text-[15px] font-bold rounded-xl shadow-lg transition-all"
                                     >
-                                        전체 코스 탐색하기
+                                        {t("nearby.exploreAllCourses")}
                                     </button>
                                 </TapFeedback>
                             )}

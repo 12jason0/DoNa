@@ -170,7 +170,7 @@ export default function LegalHelpBody({ tr, theme }: Props) {
                 </Text>
                 <Text style={[styles.moreText, { color: theme.isDark ? "#93c5fd" : "#1d4ed8" }]}>
                     {tr("help.moreHelpText")}{" "}
-                    <Text style={{ fontWeight: "800" }}>{CONTACT_EMAIL}</Text>
+                    <Text style={{ fontWeight: "600" }}>{CONTACT_EMAIL}</Text>
                 </Text>
                 <TouchableOpacity
                     style={styles.moreBtn}
@@ -185,7 +185,7 @@ export default function LegalHelpBody({ tr, theme }: Props) {
 }
 
 const styles = StyleSheet.create({
-    title: { fontSize: 28, fontWeight: "700", textAlign: "center", marginBottom: 24 },
+    title: { fontSize: 28, fontWeight: "500", textAlign: "center", marginBottom: 24 },
     searchWrap: {
         flexDirection: "row",
         alignItems: "center",
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         justifyContent: "center",
     },
-    catChipText: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+    catChipText: { fontSize: 13, fontWeight: "500", textAlign: "center" },
     faqOuter: { borderWidth: 1, borderRadius: 10, marginBottom: 14, overflow: "hidden" },
     faqHead: {
         flexDirection: "row",
@@ -217,15 +217,15 @@ const styles = StyleSheet.create({
     },
     faqHeadLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 8 },
     badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-    badgeText: { fontSize: 12, fontWeight: "700" },
-    faqQ: { fontSize: 15, fontWeight: "600" },
+    badgeText: { fontSize: 12, fontWeight: "500" },
+    faqQ: { fontSize: 15, fontWeight: "500" },
     chevron: { fontSize: 12, color: "#9ca3af" },
     chevronOpen: { transform: [{ rotate: "180deg" }] },
     faqBody: { paddingHorizontal: 18, paddingBottom: 16, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
     faqA: { fontSize: 15, lineHeight: 22 },
     empty: { alignItems: "center", paddingVertical: 40 },
     emptyEmoji: { fontSize: 48, marginBottom: 12 },
-    emptyTitle: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
+    emptyTitle: { fontSize: 20, fontWeight: "500", marginBottom: 8 },
     emptyDesc: { fontSize: 15, textAlign: "center" },
     moreBox: {
         marginTop: 28,
@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         alignItems: "center",
     },
-    moreTitle: { fontSize: 17, fontWeight: "700", marginBottom: 8, textAlign: "center" },
+    moreTitle: { fontSize: 17, fontWeight: "500", marginBottom: 8, textAlign: "center" },
     moreText: { fontSize: 15, lineHeight: 22, textAlign: "center", marginBottom: 16 },
     moreBtn: { backgroundColor: "#2563eb", paddingHorizontal: 22, paddingVertical: 10, borderRadius: 10 },
-    moreBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    moreBtnText: { color: "#fff", fontSize: 15, fontWeight: "500" },
 });

@@ -1,9 +1,13 @@
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
+import koMessages from "@/i18n/messages/ko/translation.json";
 
 export default function Head() {
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://dona.local") + "/map";
-    const title = "지도 검색 - DoNa";
-    const description = "지도에서 주변 장소와 추천 코스를 찾아보세요. 현재 위치 기반 가까운 맛집·카페·명소 탐색.";
+    const mapMeta = (koMessages as { map?: { metaTitle?: string; metaDescription?: string } }).map;
+    const title = mapMeta?.metaTitle ?? "Map search - DoNa";
+    const description =
+        mapMeta?.metaDescription ??
+        "Find nearby places and recommended courses on the map.";
     const image = getS3StaticUrlForMetadata("logo/donalogo_512.png");
     return (
         <>

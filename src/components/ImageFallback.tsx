@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import NextImage, { type ImageProps as NextImageProps } from "next/image";
+import { useLocale } from "@/context/LocaleContext";
 
 export type ImageFallbackProps = NextImageProps & {
     fallbackClassName?: string;
@@ -9,6 +10,7 @@ export type ImageFallbackProps = NextImageProps & {
 };
 
 export default function ImageFallback(props: ImageFallbackProps) {
+    const { t } = useLocale();
     const { src, onError, className, fallbackClassName, fallbackContent, fill, width, height, alt, ...rest } = props;
     const [errored, setErrored] = useState(false);
 
@@ -35,7 +37,7 @@ export default function ImageFallback(props: ImageFallbackProps) {
                 aria-label={typeof alt === "string" ? alt : "image"}
                 role="img"
             >
-                {fallbackContent ?? <span style={{ fontSize: 12 }}>이미지 없음</span>}
+                {fallbackContent ?? <span style={{ fontSize: 12 }}>{t("common.imagePlaceholder")}</span>}
             </div>
         );
     }

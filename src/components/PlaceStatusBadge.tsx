@@ -1,7 +1,9 @@
 "use client";
 
 import { getPlaceStatus, PlaceStatusInfo } from "@/lib/placeStatus";
+import { placeStatusTranslationKey } from "@/lib/placeStatusUi";
 import { useLocale } from "@/context/LocaleContext";
+import type { TranslationKeys } from "@/types/i18n";
 
 interface PlaceClosedDay {
     day_of_week: number | null;
@@ -24,17 +26,6 @@ interface PlaceStatusBadgeProps {
 /**
  * 장소 영업 상태 배지 컴포넌트
  */
-const STATUS_TO_KEY: Record<PlaceStatusInfo["status"], string> = {
-    영업중: "courseDetail.placeStatusOpen",
-    "곧 마감": "courseDetail.placeStatusClosingSoon",
-    "곧 브레이크": "courseDetail.placeStatusBreakSoon",
-    "브레이크 중": "courseDetail.placeStatusOnBreak",
-    "오픈 준비중": "courseDetail.placeStatusOpeningSoon",
-    휴무: "courseDetail.placeStatusClosed",
-    영업종료: "courseDetail.placeStatusClosedToday",
-    "정보 없음": "courseDetail.placeStatusNoInfo",
-};
-
 export default function PlaceStatusBadge({
     place,
     closedDays = [],
@@ -104,7 +95,9 @@ export default function PlaceStatusBadge({
                 className={`inline-flex items-center gap-2 ${sizeClasses[size]} ${style.bg} ${style.text} rounded-full font-medium`}
             >
                 <span className={`w-2 h-2 rounded-full ${style.dot} animate-pulse`}></span>
-                <span>{t(STATUS_TO_KEY[statusInfo.status] as any)}</span>
+                <span>
+                    {t(placeStatusTranslationKey(statusInfo.status) as TranslationKeys)}
+                </span>
             </div>
 
             {/* 영업시간 정보 */}

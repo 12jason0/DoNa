@@ -272,7 +272,7 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                                             d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
                                                         />
                                                     </svg>
-                                                    환불 신청하기
+                                                    {t("mypage.activityTab.requestRefund")}
                                                 </Link>
                                             </div>
                                         )}
@@ -288,13 +288,13 @@ const ActivityTab = ({ badges, rewards, payments = [], onSelectBadge, initialSub
                                     <line x1="2" x2="22" y1="10" y2="10"/>
                                 </svg>
                             </div>
-                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">구매 내역이 없습니다</div>
-                            <div className="text-gray-600 dark:text-gray-400 mb-4">열람권이나 구독권을 구매하시면 여기에 표시됩니다.</div>
+                            <div className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("mypage.activityTab.noPayments")}</div>
+                            <div className="text-gray-600 dark:text-gray-400 mb-4">{t("mypage.activityTab.noPaymentsHint")}</div>
                             <Link
                                 href="/refund"
                                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-all"
                             >
-                                <span>결제 내역 및 환불 페이지로 이동</span>
+                                <span>{t("mypage.activityTab.goToRefundPage")}</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
