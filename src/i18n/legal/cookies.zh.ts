@@ -27,7 +27,7 @@ const cookiesZh: CookiesStrings = {
     personalTitle: "个性化",
     personalDesc: "根据用户偏好推荐个性化旅行路线。",
     photoTitle: "照片数据使用范围",
-    photoDesc: "用户上传的照片数据仅用于站内"回忆相框"功能，不用于推荐算法训练、广告定向或外部提供。",
+    photoDesc: "用户上传的照片数据仅用于站内「回忆相框」功能，不用于推荐算法训练、广告定向或外部提供。",
 
     typesTitle: "使用的 Cookie 类型",
 
