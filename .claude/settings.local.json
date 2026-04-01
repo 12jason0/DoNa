@@ -48,7 +48,13 @@
       "Read(//c/Users/12jas/stylemap/**)",
       "Bash(done)",
       "Bash(find /c/Users/12jas/stylemap/src -type f \\\\\\(-name *i18n* -o -name *translation* -o -name *messages* \\\\\\))",
-      "Bash(ls -la \"/c/Users/12jas/stylemap/src/app/\\(home\\)/\")"
+      "Bash(ls -la \"/c/Users/12jas/stylemap/src/app/\\(home\\)/\")",
+      "Bash(npx eslint:*)",
+      "Bash(head -5 \"src/app/\\(home\\)/courses/page.tsx\" \"src/app/\\(home\\)/courses/[id]/page.tsx\" \"src/app/\\(home\\)/escape/page.tsx\")",
+      "Bash(wc -l src/app/\\\\\\(home\\\\\\)/nearby/page.tsx)",
+      "Bash(wc -l src/app/\\\\\\(home\\\\\\)/suggest/page.tsx)",
+      "Bash(wc -l src/app/\\\\\\(home\\\\\\)/ticketplan/page.tsx)",
+      "Bash(head -15 \"src/app/\\(home\\)/courses/[id]/page.tsx\")"
     ]
   }
 }

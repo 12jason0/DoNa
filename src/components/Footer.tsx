@@ -161,9 +161,11 @@ export default function Footer({ isApp = false, plusButton }: FooterProps) {
                                 }, 400);
                             }}
                             aria-label={t("nav.openMenu")}
-                            className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] border-2 border-white/50 dark:border-[#1a241b]/50 flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#7FCC9F] hover:bg-[#6bb88a] text-3xl font-light"
+                            className="w-12 h-12 rounded-full text-white shadow-[0_8px_30px_rgb(0,0,0,0.2)] border-2 border-white/50 dark:border-[#1a241b]/50 flex items-center justify-center transition-all duration-200 ease-out pointer-events-auto hover:scale-110 active:scale-95 bg-[#7FCC9F] hover:bg-[#6bb88a]"
                         >
-                            +
+                            <span className="symbol-ko-font inline-flex items-center justify-center text-3xl font-light leading-none select-none -translate-y-px">
+                                +
+                            </span>
                         </button>
                     </div>
                 )}

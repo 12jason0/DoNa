@@ -582,48 +582,98 @@ function calculateWeekendRecommendationScore(
     return Math.max(0, Math.min(finalBaseScore, 1.0));
 }
 
-/** 매칭 이유 라벨 생성 (설명 없이 근거 키워드만) — 칩 UI용 */
+/** 배열에서 최빈값 1개 반환 */
+function topFrequent(arr: string[]): string | null {
+    if (!arr || arr.length === 0) return null;
+    const freq: Record<string, number> = {};
+    for (const v of arr) freq[v] = (freq[v] || 0) + 1;
+    return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+/** 매칭 이유 라벨 생성 — 칩 UI용 */
 function getMatchReason(
     course: any,
     longTermPrefs: any,
     todayContext: { goal?: string; goal_detail?: string; mood_today?: string; region_today?: string },
     hasLongTermPreferences: boolean,
+    recentBehaviorData?: { concepts: string[]; regions: string[]; moods: string[]; goals: string[] },
 ): string {
     const isAnniversary =
         todayContext.goal === "ANNIVERSARY" || ["100일", "생일", "연말"].includes(todayContext.goal_detail || "");
+    const courseConcept = course.concept || "";
+    const courseMoods = Array.isArray(course.mood) ? course.mood : [];
+    const courseRegion = course.region || "";
+
+    // 최근 행동 패턴 (최근 7일 가중치가 높아서 topFrequent가 최근 것을 반영)
+    const recentTopConcept = recentBehaviorData ? topFrequent(recentBehaviorData.concepts) : null;
+    const recentTopRegion = recentBehaviorData ? topFrequent(recentBehaviorData.regions) : null;
+    const recentTopMood = recentBehaviorData ? topFrequent(recentBehaviorData.moods) : null;
+
+    // 최근 행동이 코스와 일치하면 "최근 관심" 레이블 우선
+    if (recentTopConcept && courseConcept && courseConcept.includes(recentTopConcept)) {
+        return `최근 관심 · ${recentTopConcept}`;
+    }
+    if (recentTopMood && courseMoods.some((m: string) => m.includes(recentTopMood))) {
+        return `최근 관심 · ${recentTopMood}`;
+    }
+    if (recentTopRegion && courseRegion && courseRegion.includes(recentTopRegion)) {
+        return `최근 관심 · ${recentTopRegion}`;
+    }
 
     if (hasLongTermPreferences) {
         const userConcepts = longTermPrefs.concept || [];
         const userMoods = longTermPrefs.mood || [];
         const userRegions = longTermPrefs.regions || [];
-        const courseConcept = course.concept || "";
-        const courseMoods = Array.isArray(course.mood) ? course.mood : [];
-        const courseRegion = course.region || "";
 
         if (userConcepts.length > 0 && courseConcept && userConcepts.some((c: string) => courseConcept.includes(c))) {
             const matched = userConcepts.find((c: string) => courseConcept.includes(c));
-            return `취향: ${matched || courseConcept}`;
+            return `취향 · ${matched || courseConcept}`;
         }
         if (userMoods.length > 0 && courseMoods.some((m: string) => userMoods.includes(m))) {
             const matched = courseMoods.find((m: string) => userMoods.includes(m));
-            return `무드: ${matched}`;
+            return `무드 · ${matched}`;
         }
         if (userRegions.length > 0 && courseRegion) {
             const regionGroup = REGION_GROUPS.find((g) => g.dbValues.some((v) => courseRegion.includes(v)));
             if (regionGroup && userRegions.some((r: string) => (regionGroup.dbValues as readonly string[]).includes(r))) {
-                return `지역: ${regionGroup.label}`;
+                return `지역 · ${regionGroup.label}`;
             }
         }
-        if (userConcepts[0]) return `취향: ${userConcepts[0]}`;
-        if (userMoods[0]) return `무드: ${userMoods[0]}`;
-        if (userRegions[0]) return `지역: ${courseRegion || "근처"}`;
+        if (userConcepts[0]) return `취향 · ${userConcepts[0]}`;
+        if (userMoods[0]) return `무드 · ${userMoods[0]}`;
+        if (userRegions[0]) return `지역 · ${courseRegion || "근처"}`;
     }
+
     const { mood_today, region_today, goal_detail } = todayContext;
-    const prefix = isAnniversary ? (goal_detail || "기준") : "오늘";
-    if (region_today && mood_today) return `${prefix}: ${region_today} · ${mood_today}`;
-    if (region_today) return `${prefix}: ${region_today}`;
-    if (mood_today) return `${prefix}: ${mood_today}`;
-    return isAnniversary ? `${goal_detail || "기준"} 기준` : "오늘 기준";
+    if (isAnniversary) {
+        const label = goal_detail || "기념일";
+        if (region_today) return `${label} · ${region_today}`;
+        return `${label} 추천`;
+    }
+    if (region_today && mood_today) return `오늘 · ${region_today} · ${mood_today}`;
+    if (region_today) return `오늘 · ${region_today}`;
+    if (mood_today) return `오늘 · ${mood_today}`;
+    return "오늘 기준";
+}
+
+/** 지역/컨셉 다양성 제어: 같은 지역·컨셉이 연속으로 MAX개 이상 나오지 않도록 후순위로 밀어냄 */
+function diversifyCourses(courses: any[], maxPerRegion: number, maxPerConcept: number): any[] {
+    const regionCount: Record<string, number> = {};
+    const conceptCount: Record<string, number> = {};
+    const primary: any[] = [];
+    const deferred: any[] = [];
+    for (const c of courses) {
+        const r = c.region || "__none__";
+        const con = c.concept || "__none__";
+        if ((regionCount[r] || 0) >= maxPerRegion || (conceptCount[con] || 0) >= maxPerConcept) {
+            deferred.push(c);
+        } else {
+            regionCount[r] = (regionCount[r] || 0) + 1;
+            conceptCount[con] = (conceptCount[con] || 0) + 1;
+            primary.push(c);
+        }
+    }
+    return [...primary, ...deferred];
 }
 
 // ---------------------------------------------
@@ -656,7 +706,7 @@ export async function GET(req: NextRequest) {
         const dayTypeParam = searchParams.get("dayType") as "today" | "weekend" | null;
 
         let longTermPrefs: any = {};
-        let recentBehaviorData: any = { concepts: [], regions: [], moods: [], goals: [] };
+        const recentBehaviorData: any = { concepts: [], regions: [], moods: [], goals: [] };
 
         // 🟢 유저 등급 조회 (메인 추천·오늘의 데이트 모두 등급별 필터에 사용)
         let userTier: "FREE" | "BASIC" | "PREMIUM" = "FREE";
@@ -702,7 +752,9 @@ export async function GET(req: NextRequest) {
         let savedCourseIds: number[] = []; // 🟢 이미 저장한 코스 ID 목록
         let completedCourseIds: number[] = []; // 🟢 완료한 코스 ID 목록
         let cooldownCourseIds: number[] = []; // 🟢 최근 노출(피드백 기준) 쿨다운 코스 ID
-        let feedbackPenaltyMap = new Map<number, number>(); // BAD/OK 피드백 감점
+        const feedbackPenaltyMap = new Map<number, number>(); // BAD/OK 피드백 감점 (코스별)
+        const badConceptCount = new Map<string, number>(); // BAD 누른 코스의 컨셉 빈도
+        const badMoodCount = new Map<string, number>(); // BAD 누른 코스의 무드 빈도
         let behaviorPatternLatest: any = null; // 최신 장기 패턴
         if (userId) {
             const [prefsData, interactionData, savedCourses, completedCourses, feedbackRows, behaviorPatternRow] = await Promise.all([
@@ -718,7 +770,8 @@ export async function GET(req: NextRequest) {
                         orderBy: { createdAt: "desc" },
                         take: 50,
                         select: {
-                            action: true, // 🔥 행동 유형 추가
+                            action: true,
+                            createdAt: true,
                             course: {
                                 select: {
                                     concept: true,
@@ -755,7 +808,12 @@ export async function GET(req: NextRequest) {
                         },
                         orderBy: { createdAt: "desc" },
                         take: 200,
-                        select: { courseId: true, rating: true, createdAt: true },
+                        select: {
+                            courseId: true,
+                            rating: true,
+                            createdAt: true,
+                            course: { select: { concept: true, mood: true } },
+                        },
                     })
                     .catch(() => []),
                 (prisma as any).userBehaviorPattern
@@ -785,22 +843,27 @@ export async function GET(req: NextRequest) {
                 complete: 1.5,
             };
 
+            const cutoff7d = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
             interactionData.forEach((interaction: any) => {
                 const weight = ACTION_WEIGHTS[interaction.action] || 0.3;
+                const interactedAt = interaction.createdAt ? new Date(interaction.createdAt).getTime() : 0;
+                const recencyMult = interactedAt >= cutoff7d ? 2.0 : interactedAt >= cutoff30d ? 1.0 : 0.5;
+                const effectiveWeight = weight * recencyMult;
                 const course = interaction.course;
 
                 if (!course) return;
 
                 // Concept
                 if (course.concept) {
-                    for (let i = 0; i < weight * 10; i++) {
+                    for (let i = 0; i < effectiveWeight * 10; i++) {
                         recentBehaviorData.concepts.push(course.concept);
                     }
                 }
 
                 // Region
                 if (course.region) {
-                    for (let i = 0; i < weight * 10; i++) {
+                    for (let i = 0; i < effectiveWeight * 10; i++) {
                         recentBehaviorData.regions.push(course.region);
                     }
                 }
@@ -808,7 +871,7 @@ export async function GET(req: NextRequest) {
                 // Mood (배열이므로 각각 추가)
                 if (course.mood && Array.isArray(course.mood)) {
                     course.mood.forEach((m: string) => {
-                        for (let i = 0; i < weight * 10; i++) {
+                        for (let i = 0; i < effectiveWeight * 10; i++) {
                             recentBehaviorData.moods.push(m);
                         }
                     });
@@ -816,7 +879,7 @@ export async function GET(req: NextRequest) {
 
                 // Goal (컬럼에서 추출)
                 if (course.goal) {
-                    for (let i = 0; i < weight * 10; i++) {
+                    for (let i = 0; i < effectiveWeight * 10; i++) {
                         recentBehaviorData.goals.push(course.goal);
                     }
                 }
@@ -875,8 +938,19 @@ export async function GET(req: NextRequest) {
                         cooldownSet.add(cid);
                     }
                     if (feedbackPenaltyMap.has(cid)) return; // 최신 1개만 반영
-                    const delta = feedbackWeights[String(row?.rating || "").toUpperCase()] || 0;
+                    const rating = String(row?.rating || "").toUpperCase();
+                    const delta = feedbackWeights[rating] || 0;
                     if (delta !== 0) feedbackPenaltyMap.set(cid, delta);
+
+                    // BAD 피드백 → 해당 코스의 컨셉/무드 카테고리 카운트
+                    if (rating === "BAD" && row?.course) {
+                        const concept = row.course.concept;
+                        if (concept) badConceptCount.set(concept, (badConceptCount.get(concept) || 0) + 1);
+                        const moods = Array.isArray(row.course.mood) ? row.course.mood : [];
+                        moods.forEach((m: string) => {
+                            if (m) badMoodCount.set(m, (badMoodCount.get(m) || 0) + 1);
+                        });
+                    }
                 });
                 cooldownCourseIds = Array.from(cooldownSet);
             }
@@ -1188,8 +1262,19 @@ export async function GET(req: NextRequest) {
             bonus += Math.min((patternMoodFreq / 80) * 0.06, 0.06);
             bonus += Math.min((patternGoalFreq / 80) * 0.06, 0.06);
 
-            // 사용자 피드백 반영: BAD 감점, GOOD 소폭 가점
+            // 코스별 피드백 감점 (BAD/OK/GOOD)
             bonus += feedbackPenaltyMap.get(Number(course.id)) || 0;
+
+            // 카테고리 학습: BAD 누른 코스들의 컨셉/무드와 같은 카테고리면 소폭 감점
+            // BAD 1회: -0.03, 2회: -0.06, 3회+: -0.10 (최대)
+            const cBadCount = badConceptCount.get(course.concept || "") || 0;
+            if (cBadCount > 0) bonus -= Math.min(cBadCount * 0.03, 0.10);
+            const courseMoodArr = Array.isArray(course.mood) ? course.mood : [];
+            const mBadCount = courseMoodArr.reduce(
+                (sum: number, m: string) => sum + (badMoodCount.get(m) || 0),
+                0,
+            );
+            if (mBadCount > 0) bonus -= Math.min(mBadCount * 0.02, 0.08);
 
             const finalScore = Math.min(baseScore + bonus, 1.0);
 
@@ -1219,12 +1304,14 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const sorted = candidates.sort((a: any, b: any) => {
+        const rawSorted = candidates.sort((a: any, b: any) => {
             if (a.matchScore === null && b.matchScore === null) return 0;
             if (a.matchScore === null) return 1;
             if (b.matchScore === null) return -1;
             return b.matchScore - a.matchScore;
         });
+        // 지역·컨셉 다양성 제어: 같은 지역 2개, 같은 컨셉 2개 초과 시 후순위로
+        const sorted = diversifyCourses(rawSorted, 2, 2);
 
         // 🟢 AI 모드: 이미 저장한 코스 제외 (이전 추천에서 저장한 코스는 다시 추천하지 않음)
         const excludeIds =
@@ -1309,7 +1396,7 @@ export async function GET(req: NextRequest) {
                 chipContext,
                 3,
             ),
-            matchReason: getMatchReason(c, longTermPrefs, todayContext, hasLongTermPreferences),
+            matchReason: getMatchReason(c, longTermPrefs, todayContext, hasLongTermPreferences, recentBehaviorData),
         }));
 
         // 🟢 AI 추천 사용 로그 기록 (등급별 한도용)

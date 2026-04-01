@@ -263,6 +263,13 @@ export default function AdminCoursesPage() {
         return Array.from(new Set([...REGION_OPTIONS, ...fromCourses])).sort((a, b) => a.localeCompare(b, "ko"));
     }, [courses]);
 
+    const conceptOptions = useMemo(() => {
+        const fromCourses = courses
+            .map((c) => (c.concept || "").trim())
+            .filter((v): v is string => Boolean(v));
+        return Array.from(new Set([...CONCEPT_OPTIONS, ...fromCourses])).sort((a, b) => a.localeCompare(b, "ko"));
+    }, [courses]);
+
     // 장소 검색용 State
     const [placeSearchQuery, setPlaceSearchQuery] = useState<string>("");
     const [placeSearchResults, setPlaceSearchResults] = useState<SimplePlace[]>([]);
@@ -531,6 +538,23 @@ export default function AdminCoursesPage() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    /** 컨셉: course.concept + tags.concept 단일 소스 (대표 1개) */
+    const handleConceptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        const trimmed = value.trim();
+        setFormData((prev) => {
+            const currentTags = prev.tags || INITIAL_TAGS;
+            return {
+                ...prev,
+                concept: value,
+                tags: {
+                    ...currentTags,
+                    concept: trimmed ? ([trimmed] as ConceptTag[]) : [],
+                },
+            };
+        });
+    };
+
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
         setFormData((prev) => ({ ...prev, [name]: checked }));
@@ -571,6 +595,8 @@ export default function AdminCoursesPage() {
 
             // 받아온 최신 상세 정보로 폼 채우기
             const safeTags = { ...INITIAL_TAGS, ...(courseDetail.tags || {}) };
+            const conceptFromColumn = (courseDetail.concept || "").trim();
+            safeTags.concept = conceptFromColumn ? ([conceptFromColumn] as ConceptTag[]) : [];
 
             setFormData({
                 title: courseDetail.title || "",
@@ -643,7 +669,13 @@ export default function AdminCoursesPage() {
             const method = editingId ? "PATCH" : "POST";
 
             // places는 별도 API로 관리하므로 body에서 제외
-            const { places, ...restBodyData } = formData;
+            const conceptTrimmed = (formData.concept || "").trim();
+            const tagsSynced = {
+                ...(formData.tags || INITIAL_TAGS),
+                concept: conceptTrimmed ? ([conceptTrimmed] as ConceptTag[]) : [],
+            };
+            const { places, ...rest } = formData;
+            const restBodyData = { ...rest, concept: conceptTrimmed, tags: tagsSynced };
             const bodyData = {
                 ...restBodyData,
                 // target_situation은 직접 입력 대신 Target 태그 선택값으로만 저장한다.
@@ -1021,11 +1053,20 @@ export default function AdminCoursesPage() {
                                 <label className="text-sm font-medium text-gray-600">컨셉 (Concept)</label>
                                 <input
                                     name="concept"
-                                    placeholder="예: 데이트, 힐링"
+                                    list="admin-course-concept-options"
+                                    placeholder="목록에서 고르거나 직접 입력 (저장 시 태그와 동기화)"
                                     value={formData.concept || ""}
-                                    onChange={handleInputChange}
+                                    onChange={handleConceptChange}
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                                 />
+                                <datalist id="admin-course-concept-options">
+                                    {conceptOptions.map((c) => (
+                                        <option key={c} value={c} />
+                                    ))}
+                                </datalist>
+                                <p className="text-xs text-gray-500">
+                                    저장 시 <code className="text-[11px]">tags.concept</code>도 동일 값 1개로 맞춥니다.
+                                </p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-600">소요시간</label>
@@ -1050,26 +1091,9 @@ export default function AdminCoursesPage() {
                         {/* 2. 태그 선택 섹션 */}
                         <div className="space-y-6">
                             <h3 className="font-bold text-gray-800">🏷️ 태그 선택</h3>
-                            {/* Concept */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-green-700">Concept</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {CONCEPT_OPTIONS.map((tag) => (
-                                        <button
-                                            type="button"
-                                            key={tag}
-                                            onClick={() => toggleArrayTag("concept", tag)}
-                                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                                                formData.tags?.concept?.includes(tag)
-                                                    ? "bg-green-600 text-white border-green-600"
-                                                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                                            }`}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            <p className="text-xs text-gray-500 -mt-4 mb-2">
+                                컨셉은 위쪽 &quot;컨셉 (Concept)&quot; 입력란에서 선택·입력합니다.
+                            </p>
                             {/* Mood, Target, Budget (생략 없이 위와 동일한 패턴으로 구현됨) */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-purple-700">Mood</label>
@@ -1800,9 +1824,10 @@ export default function AdminCoursesPage() {
 
                                                     <td className="p-3 border-b text-gray-500">
                                                         {/* 아까 수정한 태그 표시 방식 적용 */}
-                                                        {c.tags && c.tags.concept
-                                                            ? c.tags.concept.slice(0, 3).join(", ")
-                                                            : "-"}
+                                                        {(c.concept || "").trim() ||
+                                                            (c.tags?.concept?.length
+                                                                ? c.tags.concept.slice(0, 3).join(", ")
+                                                                : "-")}
                                                     </td>
 
                                                     <td className="p-3 border-b text-right space-x-2">
