@@ -21,19 +21,7 @@ import { router } from "expo-router";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useAuth } from "../hooks/useAuth";
 import { api, ApiError } from "../lib/api";
-
-const COPY = {
-    title: "오픈 준비 중이에요",
-    desc: "새로운 실외 방탈출 코스를\n열심히 만들고 있어요.",
-    cta: "오픈 알림 받기",
-    completed: "알림 신청 완료",
-    submitting: "처리 중...",
-    loginRequired: "로그인이 필요합니다.",
-    success: "오픈 알림이 신청되었습니다! 🔔",
-    fail: "알림 신청에 실패했습니다.",
-    error: "알림 신청 중 오류가 발생했습니다.",
-    close: "닫기",
-} as const;
+import { useLocale } from "../lib/useLocale";
 
 const SHEET_MAX = 560;
 
@@ -44,6 +32,7 @@ type Props = {
 
 export default function ComingSoonBottomSheet({ visible, onClose }: Props) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const { isAuthenticated } = useAuth();
     const slide = useRef(new Animated.Value(SHEET_MAX)).current;
@@ -123,10 +112,10 @@ export default function ComingSoonBottomSheet({ visible, onClose }: Props) {
 
     const handleNotify = async () => {
         if (!isAuthenticated) {
-            Alert.alert("알림", COPY.loginRequired, [
-                { text: "취소", style: "cancel" },
+            Alert.alert(i18n("comingSoonModal.alertNoticeTitle"), i18n("comingSoonModal.alertLoginRequired"), [
+                { text: i18n("common.cancel"), style: "cancel" },
                 {
-                    text: "로그인",
+                    text: i18n("nav.login"),
                     onPress: () => {
                         dismiss();
                         router.push("/(auth)/login" as any);
@@ -139,14 +128,14 @@ export default function ComingSoonBottomSheet({ visible, onClose }: Props) {
         try {
             await api.post("/api/users/notifications/consent", { topics: ["NEW_ESCAPE"] });
             setHasNotification(true);
-            Alert.alert("완료", COPY.success);
+            Alert.alert(i18n("comingSoonModal.alertDoneTitle"), i18n("comingSoonModal.alertSuccess"));
             dismiss();
         } catch (e) {
             const msg =
                 e instanceof ApiError && typeof e.data === "object" && e.data && "error" in e.data
-                    ? String((e.data as { error?: string }).error ?? COPY.fail)
-                    : COPY.error;
-            Alert.alert("알림", e instanceof ApiError ? msg : COPY.error);
+                    ? String((e.data as { error?: string }).error ?? i18n("comingSoonModal.alertFail"))
+                    : i18n("comingSoonModal.alertError");
+            Alert.alert(i18n("comingSoonModal.alertNoticeTitle"), e instanceof ApiError ? msg : i18n("comingSoonModal.alertError"));
         } finally {
             setSubmitting(false);
         }
@@ -199,8 +188,8 @@ export default function ComingSoonBottomSheet({ visible, onClose }: Props) {
                                 <Ionicons name="lock-closed-outline" size={28} color="#7aa06f" />
                             </View>
 
-                            <Text style={[styles.title, { color: t.text }]}>{COPY.title}</Text>
-                            <Text style={[styles.desc, { color: t.textMuted }]}>{COPY.desc}</Text>
+                            <Text style={[styles.title, { color: t.text }]}>{i18n("comingSoonModal.title")}</Text>
+                            <Text style={[styles.desc, { color: t.textMuted }]}>{i18n("comingSoonModal.desc")}</Text>
 
                             <View style={styles.actions}>
                                 {!hasNotification ? (
@@ -213,7 +202,7 @@ export default function ComingSoonBottomSheet({ visible, onClose }: Props) {
                                         <View style={styles.ctaRow}>
                                             <Ionicons name="notifications-outline" size={18} color="#fff" />
                                             <Text style={styles.ctaText}>
-                                                {submitting ? COPY.submitting : COPY.cta}
+                                                {submitting ? i18n("comingSoonModal.submitting") : i18n("comingSoonModal.cta")}
                                             </Text>
                                         </View>
                                     </TouchableOpacity>
@@ -228,12 +217,12 @@ export default function ComingSoonBottomSheet({ visible, onClose }: Props) {
                                         ]}
                                     >
                                         <Ionicons name="checkmark-circle" size={20} color="#059669" />
-                                        <Text style={styles.doneText}>{COPY.completed}</Text>
+                                        <Text style={styles.doneText}>{i18n("comingSoonModal.completed")}</Text>
                                     </View>
                                 )}
 
                                 <TouchableOpacity onPress={dismiss} style={styles.closeLink} activeOpacity={0.7}>
-                                    <Text style={[styles.closeLinkText, { color: t.textMuted }]}>{COPY.close}</Text>
+                                    <Text style={[styles.closeLinkText, { color: t.textMuted }]}>{i18n("common.close")}</Text>
                                 </TouchableOpacity>
                             </View>
                         </>

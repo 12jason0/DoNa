@@ -22,16 +22,7 @@ import { useSlideModalAnimation } from "../hooks/useSlideModalAnimation";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
-
-const COPY = {
-    badge: "신규 회원 한정 혜택",
-    titleLine1: "지금 가입하면",
-    titleHighlight: "맞춤 데이트 코스",
-    titleLine2: "를 받아보세요",
-    desc: "오늘의 데이트 추천 하루 1회 무료,\n취향에 딱 맞는 코스를 추천해드려요!",
-    cta: "시작하기",
-    later: "다음에 할게요",
-};
+import { useLocale } from "../lib/useLocale";
 
 type Props = {
     visible: boolean;
@@ -89,7 +80,7 @@ export default function NotificationPromoModal({ visible, onClose }: Props) {
                         </View>
 
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>✨ {COPY.badge}</Text>
+                            <Text style={styles.badgeText}>✨ {i18n("notificationModal.badge")}</Text>
                         </View>
 
                         <View style={styles.iconBlock}>
@@ -100,23 +91,23 @@ export default function NotificationPromoModal({ visible, onClose }: Props) {
                         </View>
 
                         <Text style={[styles.title, { color: t.text }]}>
-                            {COPY.titleLine1}
+                            {i18n("notificationModal.titleLine1")}
                             {"\n"}
-                            <Text style={styles.titleAccent}>{COPY.titleHighlight}</Text>
-                            {COPY.titleLine2}
+                            <Text style={styles.titleAccent}>{i18n("notificationModal.titleHighlight")}</Text>
+                            {i18n("notificationModal.titleLine2")}
                         </Text>
 
                         <View style={styles.descBox}>
-                            <Text style={[styles.desc, { color: t.text }]}>{COPY.desc}</Text>
+                            <Text style={[styles.desc, { color: t.text }]}>{i18n("notificationModal.desc")}</Text>
                         </View>
 
                         <TouchableOpacity style={styles.cta} onPress={goLogin} activeOpacity={0.88}>
-                            <Text style={styles.ctaText}>{COPY.cta}</Text>
+                            <Text style={styles.ctaText}>{i18n("notificationModal.cta")}</Text>
                             <Ionicons name="chevron-forward" size={18} color="#fff" style={styles.ctaChevron} />
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={onClose} style={styles.laterBtn}>
-                            <Text style={[styles.laterText, { color: t.textMuted }]}>{COPY.later}</Text>
+                            <Text style={[styles.laterText, { color: t.textMuted }]}>{i18n("notificationModal.later")}</Text>
                         </TouchableOpacity>
                     </Pressable>
                 </Animated.View>

@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/send-memory-reminder",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/send-daily-recommendation",
+      "schedule": "30 2 * * *"
     }
   ]
 }

@@ -22,17 +22,7 @@ import { useThemeColors } from "../hooks/useThemeColors";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
 import { KAKAO_CHANNEL_CHAT_URL } from "../config";
-
-const COPY = {
-    eventPromotion: "이벤트 프로모션",
-    reportTitle: "숨겨진 맛집 제보하고",
-    starbucksCoffee: "스타벅스 커피",
-    receive: "받기",
-    shareDesc: "나만 아는 데이트 장소를 공유해주세요.",
-    lotteryDesc: "매달 추첨을 통해 선물을 드립니다.",
-    reportViaKakao: "카카오톡으로 제보하기",
-    participateLater: "다음에 참여할게요",
-};
+import { useLocale } from "../lib/useLocale";
 
 type Props = {
     visible: boolean;
@@ -41,6 +31,7 @@ type Props = {
 
 export default function KakaoChannelModal({ visible, onClose }: Props) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.88, height - insets.top - 24);
@@ -85,7 +76,7 @@ export default function KakaoChannelModal({ visible, onClose }: Props) {
                         <View style={[styles.hero, { backgroundColor: t.surface }]}>
                             <View style={styles.heroInner}>
                                 <Text style={styles.heroEmoji}>☕️</Text>
-                                <Text style={styles.heroCaps}>{COPY.eventPromotion}</Text>
+                                <Text style={styles.heroCaps}>{i18n("kakaoChannel.eventPromotion")}</Text>
                             </View>
                             <TouchableOpacity style={styles.heroClose} onPress={onClose} hitSlop={12}>
                                 <Ionicons name="close" size={22} color={t.textMuted} />
@@ -94,23 +85,24 @@ export default function KakaoChannelModal({ visible, onClose }: Props) {
 
                         <View style={styles.body}>
                             <Text style={[styles.title, { color: t.text }]}>
-                                {COPY.reportTitle}
+                                {i18n("kakaoChannel.reportTitle")}
                                 {"\n"}
-                                <Text style={styles.titleAccent}>{COPY.starbucksCoffee}</Text> {COPY.receive}
+                                <Text style={styles.titleAccent}>{i18n("kakaoChannel.starbucksCoffee")}</Text>{" "}
+                                {i18n("kakaoChannel.receive")}
                             </Text>
                             <Text style={[styles.desc, { color: t.textMuted }]}>
-                                {COPY.shareDesc}
+                                {i18n("kakaoChannel.shareDesc")}
                                 {"\n"}
-                                {COPY.lotteryDesc}
+                                {i18n("kakaoChannel.lotteryDesc")}
                             </Text>
 
                             <TouchableOpacity style={styles.kakaoBtn} onPress={openKakao} activeOpacity={0.9}>
                                 <Text style={styles.kakaoMark}>💬</Text>
-                                <Text style={styles.kakaoBtnText}>{COPY.reportViaKakao}</Text>
+                                <Text style={styles.kakaoBtnText}>{i18n("kakaoChannel.reportViaKakao")}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={onClose} style={styles.laterBtn}>
-                                <Text style={[styles.laterText, { color: t.textMuted }]}>{COPY.participateLater}</Text>
+                                <Text style={[styles.laterText, { color: t.textMuted }]}>{i18n("kakaoChannel.participateLater")}</Text>
                             </TouchableOpacity>
                         </View>
                     </Pressable>

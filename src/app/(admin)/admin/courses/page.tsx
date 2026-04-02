@@ -69,6 +69,8 @@ const REGION_OPTIONS = [
 ];
 const DURATION_OPTIONS = ["2시간", "3시간", "4시간", "5시간", "6시간+"];
 
+const MAX_CONCEPT_COUNT = 5;
+
 // 선택형 코스용 세그먼트 (브런치/저녁 등 유저가 고를 구간)
 const SEGMENT_OPTIONS = [
     { value: "", label: "— 없음 (고정 코스)" },
@@ -208,6 +210,26 @@ type Course = {
     placesCount?: number;
 };
 
+type AdminSuggestion = {
+    id: number;
+    placeName: string;
+    placeAddress?: string | null;
+    note?: string | null;
+    description?: string | null;
+    concept?: string | null;
+    status: "PENDING" | "PUBLISHED" | "REJECTED";
+    createdAt: string;
+    user?: {
+        id: number;
+        nickname?: string | null;
+        email?: string | null;
+    } | null;
+    course?: {
+        id: number;
+        title: string;
+    } | null;
+};
+
 const INITIAL_TAGS: DoNaCourseTags = {
     concept: [],
     mood: [],
@@ -239,6 +261,8 @@ export default function AdminCoursesPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [suggestions, setSuggestions] = useState<AdminSuggestion[]>([]);
+    const [suggestionsLoading, setSuggestionsLoading] = useState(false);
     const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null); // 지도 확장용
     const [selectedPlaceForModal, setSelectedPlaceForModal] = useState<Place | null>(null); // 모달용 선택된 장소
     const [showPlaceModal, setShowPlaceModal] = useState(false); // 모달 표시 여부
@@ -314,6 +338,23 @@ export default function AdminCoursesPage() {
         }
     };
 
+    const fetchSuggestions = async () => {
+        try {
+            setSuggestionsLoading(true);
+            const res = await fetch("/api/admin/course-suggestions", {
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("제보 목록 조회 실패");
+            const data = await res.json();
+            setSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+        } catch (e) {
+            console.error("제보 목록 로딩 실패:", e);
+            setSuggestions([]);
+        } finally {
+            setSuggestionsLoading(false);
+        }
+    };
+
     // 검색어 변경 시 debounce 검색
     useEffect(() => {
         if (!placeSearchQuery.trim()) {
@@ -365,6 +406,7 @@ export default function AdminCoursesPage() {
     useEffect(() => {
         fetchCourses();
         fetchAllPlaces();
+        fetchSuggestions();
     }, []);
 
     // 모든 places 데이터를 지도용 Place[]로 변환 (새 코스 추가 모드용)
@@ -538,18 +580,30 @@ export default function AdminCoursesPage() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    /** 컨셉: course.concept + tags.concept 단일 소스 (대표 1개) */
+    const parseConcepts = (raw: string): string[] => {
+        return Array.from(
+            new Set(
+                raw
+                    .split(/[,\n/|]/)
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+            ),
+        ).slice(0, MAX_CONCEPT_COUNT);
+    };
+
+    /** 컨셉: 입력/선택 모두 최대 5개. course.concept는 첫 번째를 대표값으로 저장 */
     const handleConceptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        const trimmed = value.trim();
+        const concepts = parseConcepts(value);
+        const normalizedInput = concepts.join(", ");
         setFormData((prev) => {
             const currentTags = prev.tags || INITIAL_TAGS;
             return {
                 ...prev,
-                concept: value,
+                concept: normalizedInput,
                 tags: {
                     ...currentTags,
-                    concept: trimmed ? ([trimmed] as ConceptTag[]) : [],
+                    concept: concepts as ConceptTag[],
                 },
             };
         });
@@ -595,15 +649,24 @@ export default function AdminCoursesPage() {
 
             // 받아온 최신 상세 정보로 폼 채우기
             const safeTags = { ...INITIAL_TAGS, ...(courseDetail.tags || {}) };
-            const conceptFromColumn = (courseDetail.concept || "").trim();
-            safeTags.concept = conceptFromColumn ? ([conceptFromColumn] as ConceptTag[]) : [];
+            const rawTagConcepts = Array.isArray(courseDetail.tags?.concept)
+                ? (courseDetail.tags.concept as string[])
+                : [];
+            const mergedConcepts = Array.from(
+                new Set(
+                    [...rawTagConcepts, (courseDetail.concept || "").trim()]
+                        .map((v) => String(v || "").trim())
+                        .filter(Boolean),
+                ),
+            ).slice(0, MAX_CONCEPT_COUNT);
+            safeTags.concept = mergedConcepts as ConceptTag[];
 
             setFormData({
                 title: courseDetail.title || "",
                 sub_title: courseDetail.sub_title || "",
                 description: courseDetail.description || "",
                 target_situation: courseDetail.target_situation || "",
-                concept: courseDetail.concept || "",
+                concept: mergedConcepts.join(", "),
                 region: courseDetail.region || "",
                 duration: courseDetail.duration || "",
                 imageUrl: courseDetail.imageUrl || "",
@@ -669,13 +732,13 @@ export default function AdminCoursesPage() {
             const method = editingId ? "PATCH" : "POST";
 
             // places는 별도 API로 관리하므로 body에서 제외
-            const conceptTrimmed = (formData.concept || "").trim();
+            const conceptList = parseConcepts(formData.concept || "");
             const tagsSynced = {
                 ...(formData.tags || INITIAL_TAGS),
-                concept: conceptTrimmed ? ([conceptTrimmed] as ConceptTag[]) : [],
+                concept: conceptList as ConceptTag[],
             };
             const { places, ...rest } = formData;
-            const restBodyData = { ...rest, concept: conceptTrimmed, tags: tagsSynced };
+            const restBodyData = { ...rest, concept: conceptList[0] || "", tags: tagsSynced };
             const bodyData = {
                 ...restBodyData,
                 // target_situation은 직접 입력 대신 Target 태그 선택값으로만 저장한다.
@@ -995,6 +1058,91 @@ export default function AdminCoursesPage() {
         <div className="space-y-12 pb-20">
             <h1 className="text-2xl font-bold text-gray-800">코스 데이터 관리</h1>
 
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-700">📍 장소 제보 목록</h2>
+                    <button
+                        type="button"
+                        onClick={fetchSuggestions}
+                        className="text-sm text-green-700 hover:text-green-800 underline"
+                    >
+                        새로고침
+                    </button>
+                </div>
+                {suggestionsLoading ? (
+                    <p className="text-sm text-gray-500">불러오는 중...</p>
+                ) : suggestions.length === 0 ? (
+                    <p className="text-sm text-gray-500">접수된 제보가 없습니다.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-separate border-spacing-y-2">
+                            <thead>
+                                <tr className="text-left text-gray-500">
+                                    <th className="py-1 pr-3">상태</th>
+                                    <th className="py-1 pr-3">장소</th>
+                                    <th className="py-1 pr-3">설명</th>
+                                    <th className="py-1 pr-3">제보자</th>
+                                    <th className="py-1 pr-3">생성 코스</th>
+                                    <th className="py-1">접수일</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {suggestions.map((s) => {
+                                    const badgeClass =
+                                        s.status === "PUBLISHED"
+                                            ? "bg-emerald-100 text-emerald-700"
+                                            : s.status === "PENDING"
+                                              ? "bg-amber-100 text-amber-700"
+                                              : "bg-slate-100 text-slate-600";
+                                    return (
+                                        <tr key={s.id} className="bg-gray-50 rounded-xl">
+                                            <td className="py-2 pr-3">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${badgeClass}`}>
+                                                    {s.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                                <div className="font-medium text-gray-800">{s.placeName}</div>
+                                                {s.placeAddress && (
+                                                    <div className="text-xs text-gray-500">{s.placeAddress}</div>
+                                                )}
+                                            </td>
+                                            <td className="py-2 pr-3 max-w-[280px]">
+                                                <div className="line-clamp-2 text-gray-700">
+                                                    {s.description || s.note || "-"}
+                                                </div>
+                                                {s.concept && (
+                                                    <div className="text-xs text-gray-500 mt-1">컨셉: {s.concept}</div>
+                                                )}
+                                            </td>
+                                            <td className="py-2 pr-3 text-gray-700">
+                                                {s.user?.nickname || s.user?.email || `#${s.user?.id ?? "-"}`}
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                                {s.course?.id ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => startEdit({ id: s.course!.id } as Course)}
+                                                        className="text-green-700 hover:underline"
+                                                    >
+                                                        {s.course.title}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="py-2 text-gray-500">
+                                                {new Date(s.createdAt).toLocaleDateString()}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
             {/* --- 입력 폼 --- */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-6">
@@ -1054,7 +1202,7 @@ export default function AdminCoursesPage() {
                                 <input
                                     name="concept"
                                     list="admin-course-concept-options"
-                                    placeholder="목록에서 고르거나 직접 입력 (저장 시 태그와 동기화)"
+                                    placeholder="쉼표(,)로 최대 5개 입력 (예: 감성데이트, 야경, 힐링)"
                                     value={formData.concept || ""}
                                     onChange={handleConceptChange}
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
@@ -1065,7 +1213,9 @@ export default function AdminCoursesPage() {
                                     ))}
                                 </datalist>
                                 <p className="text-xs text-gray-500">
-                                    저장 시 <code className="text-[11px]">tags.concept</code>도 동일 값 1개로 맞춥니다.
+                                    최대 {MAX_CONCEPT_COUNT}개까지 저장됩니다. 첫 번째 값이 대표{" "}
+                                    <code className="text-[11px]">course.concept</code>로 저장되고, 전체는{" "}
+                                    <code className="text-[11px]">tags.concept</code>에 저장됩니다.
                                 </p>
                             </div>
                             <div className="space-y-1">

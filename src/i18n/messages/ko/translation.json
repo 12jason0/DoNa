@@ -4,7 +4,8 @@
         "closeSettingsModal": "설정 모달 닫기",
         "search": "검색",
         "closeSearchModal": "검색 모달 닫기",
-        "notification": "알림"
+        "notification": "알림",
+        "suggestPlace": "장소 제보"
     },
     "common": {
         "settings": "설정",
@@ -62,7 +63,19 @@
         "memoryPhotoAlt": "추억 사진 {n}",
         "dayOfWeek": ["일", "월", "화", "수", "목", "금", "토"],
         "personalizedHomeCta": "이번 주말·기념일 코스",
-        "personalizedHomeCtaSub": "상황에 맞는 데이트 코스를 만들어드려요"
+        "personalizedHomeCtaSub": "상황에 맞는 데이트 코스를 만들어드려요",
+        "myReportedCourses": {
+            "title": "내가 제보한 코스",
+            "subtitle": "내 제보로 만들어진 코스예요",
+            "emptyTitle": "아직 제보한 장소가 없어요",
+            "emptySubtitle": "장소를 알려주시면 DoNa가 코스로 만들어드려요",
+            "suggestBtn": "장소 제보하기",
+            "status": {
+                "PENDING": "검토 중",
+                "PUBLISHED": "등록 완료",
+                "REJECTED": "미선정"
+            }
+        }
     },
     "memory": {
         "notLoggedIn": {
@@ -203,7 +216,36 @@
         "saveError": "저장 중 오류가 발생했습니다.",
         "resultMessage": "짜잔! 🎉 {nickname}님을 위한 시크릿 코스를 찾았습니다.\n카드를 터치해서 확인해보세요!",
         "resultNetError": "네트워크 오류로 추천을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.",
-        "resultNoMatch": "조건에 맞는 코스를 찾지 못했어요. 다른 조건으로 다시 시도해볼까요?"
+        "resultNoMatch": "조건에 맞는 코스를 찾지 못했어요. 다른 조건으로 다시 시도해볼까요?",
+        "mobileChatGreeting": "안녕하세요! 오늘도 두나와 함께 특별한 데이트를 만들어볼까요? 🌿",
+        "mobileChatLoginBlock": "코스 추천을 보려면 로그인이 필요해요 🔐\n마이페이지에서 로그인해주세요!",
+        "mobileChatFoundTpl": "{region} 지역의 {goal} 코스를 찾았어요! 🎉",
+        "mobileResultsCount": "추천 코스 {count}개 🎉",
+        "mobileSelectArrow": "선택하기 →",
+        "mobileRecommendAgain": "다른 코스 추천받기",
+        "mobileAnalysis1": "취향 분석 중...",
+        "mobileAnalysis2": "최적의 코스 탐색 중...",
+        "mobileAnalysis3": "코스를 조합하는 중...",
+        "mobileAnalysis4": "거의 다 됐어요!",
+        "mobileGuest": "게스트",
+        "mobileTouchOpen": "터치해서 열어보기",
+        "mobileDurationApprox": "약 4~5시간",
+        "mobileMatchPerfect": "완벽히 맞아요",
+        "mobileMatchGood": "잘 맞아요",
+        "mobileMatchSoft": "좋아요",
+        "mobileMatchNeutral": "오늘의 추천",
+        "mobileMatchShort": "추천",
+        "mobileFlipAiLabel": "AI Analysis Result",
+        "mobileDetailView": "상세 보기",
+        "mobileChatWho": "누구와 함께하나요?",
+        "mobileChatWhere": "어느 지역이 좋으세요?",
+        "mobileCompanionSomeLabel": "썸 상대",
+        "mobileCompanionBlindLabel": "소개팅 상대",
+        "mobileHelloLogged": "안녕하세요,\n{nickname}님 👋",
+        "mobileProfileGuestLine": "로그인하고\n맞춤 추천 받기 👋",
+        "mobileLoginHintChip": "✨ 로그인 시 개인 맞춤 추천 제공",
+        "mobileHeroBlurb": "AI DoNa가\n오늘의 코스를 추천해드릴게요",
+        "mobileHeroFooter": "AI 분석 · 무료 제공"
     },
     "onboarding": {
         "titleLine1": "어디로 떠날지",
@@ -453,6 +495,13 @@
             "bar": "바",
             "date": "데이트"
         },
+        "recommendedTime": {
+            "morning": "오전",
+            "afternoon": "오후",
+            "breakfast": "아침",
+            "night": "밤",
+            "lateNight": "야간"
+        },
         "segmentCourseFallback": "코스",
         "selectEachSegment": "각 구간에서 장소를 선택해주세요.",
         "courseSavedToast": "코스가 저장되었어요.",
@@ -474,7 +523,10 @@
         "openReservationPage": "예약 페이지 열기",
         "sheetLoading": "로딩 중...",
         "reviewImageAltNumbered": "후기 이미지 {n}",
-        "recommendedPlaceFallback": "추천 장소"
+        "recommendedPlaceFallback": "추천 장소",
+        "unnamedPlace": "장소 {n}",
+        "routeOriginFallback": "출발",
+        "routeDestinationFallback": "도착"
     },
     "courseStart": {
         "errorCourseNotFound": "코스를 찾을 수 없습니다.",
@@ -541,7 +593,30 @@
         "saveSuccessTitle": "추억이 저장되었습니다!",
         "saveSuccessLine1": "오늘의 소중한 한 장이",
         "saveSuccessLine2": "DoNa의 '{name} 스토리'에 남았어요.",
-        "saveSuccessFooter": "소중한 추억이 잘 저장되었어요!"
+        "saveSuccessFooter": "소중한 추억이 잘 저장되었어요!",
+        "alertNotice": "알림",
+        "permissionRequiredTitle": "권한 필요",
+        "permissionPhotosBody": "사진 접근 권한이 필요합니다.",
+        "imagePickerBuildOnly": "이미지 선택은 앱 빌드에서만 사용 가능합니다.",
+        "uploadWait": "사진 업로드 중입니다. 잠시 기다려주세요.",
+        "waitPhotoUpload": "사진 업로드를 기다려주세요.",
+        "memorySaveLimitTitle": "저장 한도 초과",
+        "memorySaveLimitBody": "나만의 추억 저장 한도에 도달했어요. 구독을 업그레이드하면 더 저장할 수 있어요.",
+        "viewSubscription": "구독 보기",
+        "saveFailedTitle": "저장 실패",
+        "tagSelect": "태그 선택",
+        "todayDateFeel": "오늘 데이트 어땠어요?",
+        "memoryOneLine": "한 줄 추억",
+        "memoryOneLinePlaceholder": "오늘 데이트를 한 줄로 기록해요 (선택)",
+        "tagInputMax10": "태그 직접 입력 (최대 10자)",
+        "nextWithArrow": "다음 →",
+        "saveMemorySparkle": "추억 저장하기 ✨",
+        "memorySavedShort": "추억이 저장됐어요!",
+        "memorySavedMyPageHint": "마이페이지에서 다시 볼 수 있어요",
+        "goHomeBack": "홈으로 돌아가기",
+        "presignUrlError": "업로드 URL을 받지 못했습니다.",
+        "imageUploadPutError": "이미지 업로드에 실패했습니다.",
+        "uploadFailedTitle": "업로드 실패"
     },
     "map": {
         "loading": "로딩 중...",
@@ -706,7 +781,9 @@
         "alertLoginRequired": "로그인이 필요합니다.",
         "alertSuccess": "오픈 알림이 신청되었습니다! 🔔",
         "alertFail": "알림 신청에 실패했습니다.",
-        "alertError": "알림 신청 중 오류가 발생했습니다."
+        "alertError": "알림 신청 중 오류가 발생했습니다.",
+        "alertNoticeTitle": "알림",
+        "alertDoneTitle": "완료"
     },
     "logoutModal": {
         "title": "잠깐만요!",
@@ -729,6 +806,7 @@
         "placesClosed": "{n}곳 휴무"
     },
     "loading": {
+        "pageOverlay": "코스를 찾고 있어요...",
         "findingCourses": "두나가 코스를 찾고 있어요...",
         "courses": "코스를 불러오고 있어요...",
         "nearby": "주변 코스를 찾고 있어요...",
@@ -742,6 +820,9 @@
     },
     "loginModal": {
         "close": "닫기",
+        "sheetDefaultDesc": "로그인하면 코스 저장, 지도, 추천까지 모두 이용할 수 있어요",
+        "sheetHeroBefore": "로그인하고\n",
+        "sheetHeroAfter": "를 즐겨보세요",
         "titleLine1": "오늘 데이트 코스,",
         "titleHighlight": "3초 만에",
         "titleLine2": " 받아볼까요?",
@@ -890,7 +971,9 @@
         "submitting": "처리 중...",
         "alertAgree": "안내사항을 확인하고 동의해주세요.",
         "confirmSubscription": "현재 유료 구독 중입니다. 탈퇴 시 환불이 어려울 수 있습니다. 정말 탈퇴하시겠습니까?",
-        "alertError": "탈퇴 처리 중 오류가 발생했습니다."
+        "alertError": "탈퇴 처리 중 오류가 발생했습니다.",
+        "alertSelectReason": "탈퇴 사유를 선택해주세요.",
+        "alertEnterOtherReason": "기타 사유를 입력해주세요."
     },
     "albumLimitModal": {
         "upgradeTitle": "추억을 무제한으로 저장하고 싶다면?",
@@ -915,6 +998,15 @@
         "deleteError": "계정 삭제 중 오류가 발생했습니다."
     },
     "mypage": {
+        "appGuestTitle": "로그인이 필요해요",
+        "appGuestSub": "마이페이지를 이용하려면\n로그인해주세요",
+        "appGuestCta": "로그인하기",
+        "appPageSubtitle": "나의 정보와 활동을 확인하세요",
+        "alertErrorTitle": "오류",
+        "alertInfoTitle": "안내",
+        "defaultMemberName": "두나 회원",
+        "favRemoveFailed": "찜 해제에 실패했습니다.",
+        "currencyWon": "원",
         "pageTitle": "마이페이지",
         "pageSubtitle": "내 정보와 활동을 관리해보세요",
         "tabProfile": "내 정보",
@@ -1022,7 +1114,22 @@
             "businessLineAddress": "주소: 충청남도 홍성군 홍북읍 신대로 33",
             "businessLineInquiry": "문의: 12jason@donacouse.com",
             "businessLineCustomerCenter": "고객센터: 010-2481-9824",
-            "footerContact": "문의·사업자 정보"
+            "footerContact": "문의·사업자 정보",
+            "planSectionTitle": "내 구독 플랜",
+            "planNamePremium": "프리미엄 플랜",
+            "planNameBasic": "베이직 플랜",
+            "planNameFree": "무료 플랜",
+            "planDescFree": "기본 플랜 • 무료",
+            "planDescBasic": "BASIC 플랜",
+            "planDescPremium": "PREMIUM 플랜 • 모든 기능 이용",
+            "planCtaManage": "플랜 관리",
+            "profileSectionTitle": "프로필",
+            "joinedOnPrefix": "가입",
+            "nicknamePlaceholderShort": "닉네임 입력",
+            "editModalTitle": "프로필 수정",
+            "accountSettingsTitle": "계정 관리",
+            "kakaoChannelRow": "카카오 채널 문의",
+            "withdrawMember": "회원 탈퇴"
         },
         "recordsTab": {
             "favorites": "보관함",
@@ -1050,6 +1157,7 @@
             "collectBadgesHint": "스토리를 완료하고 배지를 모아보세요!",
             "rewardsTitle": "보상 지급 내역",
             "noRewards": "보상 내역이 없습니다.",
+            "noRewardsHint": "미션을 완료하고 보상을 받아보세요",
             "paymentsTitle": "구매 내역",
             "refundManage": "환불 관리",
             "reward7dayCheckin": "7일 연속 출석 완료",
@@ -1072,7 +1180,9 @@
             "requestRefund": "환불 신청하기",
             "noPayments": "구매 내역이 없습니다",
             "noPaymentsHint": "열람권이나 구독권을 구매하시면 여기에 표시됩니다.",
-            "goToRefundPage": "결제 내역 및 환불 페이지로 이동"
+            "goToRefundPage": "결제 내역 및 환불 페이지로 이동",
+            "rewardCourseCompletion": "코스 완료 보상",
+            "rewardTicketsPlus": "+{n} 티켓"
         },
         "footprintTab": {
             "defaultUser": "회원",
@@ -1113,12 +1223,18 @@
             "myFootprint": "내 발자취",
             "calendar": "달력",
             "memories": "추억",
+            "suggestions": "제보",
             "footprintCalendarHint": "AI 추천으로 확인한 오늘의 데이트 코스가 자동으로 기록돼요",
             "footprintMemoriesHint": "오늘의 순간들을 확인해보세요",
+            "footprintSuggestionsHint": "내가 제보한 장소 상태를 확인해보세요",
             "completedCourses": "완료 코스",
             "todayDate": "오늘의 데이트",
             "recommendedDate": "추천 데이트",
-            "yearSuffix": "년"
+            "yearSuffix": "년",
+            "memoryEmptyTitle": "아직 기록된 추억이 없어요",
+            "memoryEmptySub": "코스를 시작하고 나만의 추억을 기록해보세요",
+            "courseRecordFallback": "코스 기록",
+            "casefileFallbackTitle": "케이스파일"
         }
     },
     "commonFallback": {
@@ -1233,8 +1349,128 @@
         "whatToDoToday": "오늘 뭐하지?",
         "coupleMissionGame": "커플 미션 게임",
         "donaShop": "두나샵",
+        "suggestCourse": "코스 제안하기",
         "openMenu": "메뉴 열기",
         "main": "메인"
+    },
+    "mobile": {
+        "map": {
+            "fallbackTitle": "지도는 앱 빌드에서 사용 가능합니다",
+            "fallbackSub": "EAS dev build 후 이용해주세요",
+            "toastLocationDevBuild": "위치 기능은 새 dev build 설치 후 사용할 수 있어요",
+            "toastLocationDenied": "위치 권한이 거부되었어요",
+            "toastLocationFail": "위치를 가져올 수 없어요",
+            "toastSearchEmpty": "검색 결과가 없어요",
+            "toastSearchError": "검색 중 오류가 발생했어요",
+            "searchPlaceholder": "장소, 맛집, 코스 검색",
+            "tabPlaces": "장소",
+            "tabCourses": "코스",
+            "areaSearch": "현 지도 검색",
+            "panelPlacesTitle": "내 주변 장소",
+            "panelCoursesTitle": "추천 데이트 코스",
+            "panelPlacesCount": "지도에 {count}개의 장소가 있어요",
+            "panelCourseSpotsHint": "코스에 포함된 장소예요",
+            "panelCoursesSub": "엄선된 코스를 확인해보세요",
+            "loadingInfo": "정보를 불러오고 있어요...",
+            "loadingPlaces": "장소 불러오는 중...",
+            "categoryFallback": "추천 장소",
+            "phoneMissing": "전화번호 정보가 없어요",
+            "directions": "길찾기",
+            "emptyCoursePlaces": "이 코스에 등록된 장소가 없어요.",
+            "emptyArea": "이 근처에는 아직 정보가 없어요.\n지도를 조금만 이동해볼까요?",
+            "badgeRecommendedCourse": "추천 코스",
+            "badgePlace": "장소",
+            "viewDetail": "상세 보기"
+        },
+        "escape": {
+            "badgeEarnable": "{name} 획득 가능",
+            "startCta": "시작하기",
+            "headerTitle": "커플 미션 게임",
+            "headerSub": "실외 방탈출 코스",
+            "emptyTitle": "스토리를 준비 중이에요",
+            "emptySub": "곧 새로운 미션 코스가 오픈됩니다!",
+            "bannerText": "실제 장소를 돌아다니며 미션을 완수해보세요"
+        },
+        "nearby": {
+            "searchPlaceholderShort": "지역, 코스명 검색",
+            "headerRegionCourses": "{region} 코스",
+            "headerSearchResults": "\"{q}\" 검색 결과",
+            "resetChip": "초기화 ✕",
+            "filterSheetTitle": "필터 설정",
+            "emptyNoMatch": "해당하는 코스가 없어요",
+            "emptyLoading": "코스를 불러오는 중이에요",
+            "lockSubscribe": "구독하고 열람하기",
+            "lockTierCourse": "{tier} 코스",
+            "viewRatingLine": "★ {rating} ({count})"
+        },
+        "shop": {
+            "headerTitle": "DoNa 샵",
+            "heroTitle": "DoNa 샵",
+            "comingSoon": "준비 중이에요\n이스케이프 키트, 키링 등\n곧 만나보세요!",
+            "sheetKitDesc": "더 완벽한 키트를 위해 준비 중이에요.\n조금만 기다려주세요 🎁"
+        },
+        "courseScreen": {
+            "tipsLoginTitle": "로그인하면 꿀팁을 볼 수 있어요",
+            "tipsLoginSub": "멤버십·열람권에 따라 표시됩니다",
+            "tipSectionLabel": "✨ 꿀팁",
+            "tipViewInfo": "정보 보기",
+            "mapFullRoute": "전체 경로",
+            "mapSegmentRoute": "구간 경로",
+            "mapSegmentWalk": "{from}→{to} 도보 {minutes}분",
+            "placeFallback": "장소",
+            "mapFabA11y": "지도에서 전체 경로 보기",
+            "closeA11y": "닫기",
+            "shareMessage": "{title} - DoNa 데이트 코스\n{url}",
+            "startCourseFailed": "코스 시작에 실패했어요. 다시 시도해 주세요.",
+            "favAdded": "찜 목록에 담았어요",
+            "favRemoved": "찜을 해제했어요",
+            "switchCourseTitle": "코스 변경",
+            "switchCourseMessage": "현재 진행 중인 코스를 이 코스로 변경할까요?",
+            "cancel": "취소",
+            "switchCourseConfirm": "변경하기",
+            "switchCourseFailed": "코스 변경에 실패했어요.",
+            "reviewMinLength": "리뷰는 5자 이상 입력해주세요.",
+            "reviewPosted": "리뷰가 등록됐어요",
+            "reviewSubmitFailTitle": "리뷰 등록 실패",
+            "tryAgainLater": "잠시 후 다시 시도해주세요.",
+            "permRequired": "권한 필요",
+            "permPhotos": "사진 접근 권한이 필요합니다.",
+            "imageUploadFailTitle": "이미지 업로드 실패",
+            "imagePickerBuildOnly": "이미지 선택은 앱 빌드에서만 사용 가능합니다.",
+            "loadingCourse": "코스 불러오는 중...",
+            "backArrow": "← 뒤로",
+            "courseLoadError": "코스를 불러올 수 없습니다",
+            "targetSome": "썸탈 때",
+            "metaSpotsCount": "👣 {count} 스팟",
+            "saveSelection": "선택 저장하기",
+            "memoryLimitTitleLine1": "추억 저장",
+            "memoryLimitHighlight": "한도에 도달했어요",
+            "memoryLimitSub": "구독을 업그레이드하면 더 많은 추억을 저장할 수 있어요",
+            "subBenefitsTitle": "구독 혜택",
+            "benefitUnlimitedMemories": "무제한 추억 기록 저장",
+            "benefitPremiumCourses": "모든 프리미엄 코스 이용",
+            "benefitNoAds": "광고 없는 깔끔한 경험",
+            "subscribeSaveMore": "구독으로 더 저장하기",
+            "reviewModalTitle": "리뷰 작성",
+            "reviewTargetLabel": "리뷰 대상",
+            "attachImage": "이미지 첨부",
+            "changeImage": "이미지 변경",
+            "reviewPlaceholder": "코스 어땠는지 알려주세요 (5자 이상)",
+            "submitReview": "등록",
+            "segmentChoose": "{label} 선택",
+            "inProgressThisCourse": "오늘 이 코스를 진행 중이에요",
+            "memoryRecordPersonal": "나만의 추억 기록하기",
+            "alreadyOtherCourse": "오늘 이미 다른 코스를 시작했어요",
+            "switchOtherCourse": "다른 코스로 변경",
+            "reviewsLoading": "리뷰를 불러오는 중...",
+            "reviewWrite": "리뷰 작성",
+            "reviewsHeading": "리뷰",
+            "showMoreReviews": "더보기 ({n}개 남음)",
+            "reserveWithName": "{name} 예약",
+            "anonymous": "익명",
+            "saveFailedToast": "저장에 실패했어요.",
+            "alertNotice": "알림"
+        }
     },
     "authPage": {
         "login": {
@@ -1254,6 +1490,7 @@
             "kakaoSubmit": "카카오톡으로 로그인",
             "kakaoSubmitting": "카카오톡 인증 중...",
             "errorLoginFailed": "로그인에 실패했습니다.",
+            "errorEmailPasswordRequired": "이메일과 비밀번호를 입력해주세요.",
             "errorGeneric": "로그인 중 오류가 발생했습니다.",
             "errorKakaoClientId": "카카오 클라이언트 ID가 설정되지 않았습니다.",
             "errorPopupBlocked": "팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.",
@@ -1294,7 +1531,21 @@
             "errorPasswordMismatch": "비밀번호가 일치하지 않습니다.",
             "errorSignupFailed": "회원가입에 실패했습니다.",
             "errorConnection": "서버와의 연결이 원활하지 않습니다. 주소를 확인해주세요.",
-            "errorAppleAuth": "Apple 인증 실패"
+            "errorAppleAuth": "Apple 인증 실패",
+            "genderOther": "기타",
+            "errorInvalidEmail": "유효한 이메일을 입력해주세요.",
+            "errorGenericRetry": "오류가 발생했습니다. 다시 시도해주세요.",
+            "appleSignUpA11y": "Apple로 가입",
+            "kakaoSignUpA11y": "카카오로 시작하기",
+            "pickAgeTitle": "연령대 선택",
+            "pickGenderTitle": "성별 선택",
+            "nicknameMinPlaceholder": "2자 이상 입력",
+            "emailShortPlaceholder": "이메일 주소",
+            "passwordMinPlaceholder": "6자 이상",
+            "optionalInParens": "(선택)",
+            "pickPlaceholder": "선택",
+            "previewPurposeLead": "어떤 분위기의 코스를 원하세요? 먼저 목적을 알려주세요 😊",
+            "previewStartCta": "코스 추천 시작하기 →"
         }
     },
     "terms": {
@@ -1414,8 +1665,8 @@
         "courseLocFallback": "서울"
     },
     "suggest": {
-        "pageTitle": "나만의 코스 제안하기",
-        "pageSubtitle": "여러분의 멋진 코스를 공유해 주세요. 운영팀이 검토 후 소개합니다.",
+        "pageTitle": "장소 제보하기",
+        "pageSubtitle": "가고 싶은 장소를 알려주세요. 검토 후 코스로 만들어드려요.",
         "labelTitle": "코스 제목",
         "labelLocation": "지역",
         "labelBudget": "예산 (원)",
@@ -1434,12 +1685,29 @@
         "submit": "제안 제출",
         "submitting": "제출 중...",
         "validationAlert": "제목과 장소 한 개 이상은 필수입니다.",
-        "successAlert": "제안이 접수되었습니다! 검토 후 반영하겠습니다.",
+        "successAlert": "제안이 접수되었습니다! 검토 후 코스로 만들어드릴게요.",
         "errorFallback": "제출 실패",
         "placeholderTitle": "예) 혜화 연극 + 낙산공원 야경",
         "placeholderLocation": "예) 홍대",
         "placeholderOptional": "선택사항",
-        "placeholderPlaceN": "장소 {{num}}"
+        "placeholderPlaceN": "장소 {{num}}",
+        "loginRequired": "코스 제보는 로그인이 필요해요.",
+        "labelPlaceNameSimple": "장소 이름",
+        "placeholderPlaceNameSimple": "예) 을지로 카페, 성수동 갤러리",
+        "placeholderNoteSimple": "예) 특이한 인테리어가 있어요 (선택)",
+        "labelPhoto": "사진",
+        "addPhoto": "사진 추가",
+        "labelDescriptionSimple": "설명",
+        "placeholderDescriptionSimple": "이 장소만의 특별한 점을 알려주세요",
+        "labelConceptSimple": "원하는 컨셉 (선택)",
+        "placeholderConceptSimple": "예) 감성 카페, 뷰 맛집, 조용한 분위기",
+        "uploadingPhoto": "사진 업로드 중...",
+        "photoError": "사진 업로드에 실패했어요. 다시 시도해주세요.",
+        "modalStatusHint": {
+            "PENDING": "제보를 받아 검토 중이에요",
+            "PUBLISHED": "코스로 만들어 앱에 공개됐어요",
+            "REJECTED": "이번엔 아쉽지만 다음에 또 제보해 주세요"
+        }
     },
     "onboardingSheet": {
         "title": "취향을 알려주시면",

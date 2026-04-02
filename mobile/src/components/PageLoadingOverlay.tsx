@@ -5,13 +5,16 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, Animated, StyleSheet, Easing } from "react-native";
 
+import { useLocale } from "../lib/useLocale";
+
 type Props = {
     message?: string;
     /** true면 전체화면 절대위치 오버레이, false면 인라인(flex 1) */
     overlay?: boolean;
 };
 
-export default function PageLoadingOverlay({ message = "코스를 찾고 있어요...", overlay = true }: Props) {
+export default function PageLoadingOverlay({ message, overlay = true }: Props) {
+    const { t: i18n } = useLocale();
     const spinAnim = useRef(new Animated.Value(0)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -67,7 +70,7 @@ export default function PageLoadingOverlay({ message = "코스를 찾고 있어�
                 <View style={styles.textWrap}>
                     <Text style={styles.brand}>DoNa</Text>
                     <Animated.Text style={[styles.message, { opacity: pulseAnim }]}>
-                        {message}
+                        {message ?? i18n("loading.pageOverlay")}
                     </Animated.Text>
                 </View>
             </View>

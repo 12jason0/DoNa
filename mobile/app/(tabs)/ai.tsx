@@ -3,7 +3,7 @@
  * 웹 src/app/(home)/personalized-home/page.tsx 기반
  * — 랜딩 히어로 + 채팅 전체화면 모달
  */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
     View,
     Text,
@@ -28,6 +28,80 @@ import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import TicketPlansSheet from "../../src/components/TicketPlansSheet";
 import type { Course } from "../../src/types/api";
+import { useLocale } from "../../src/lib/useLocale";
+
+type TI18n = (key: string, params?: Record<string, string | number>) => string;
+
+type FlowOption = { text: string; value: string; next: string };
+type Question = { id: string; text: string; options: FlowOption[] };
+
+const ANALYSIS_KEY_CYCLE = [
+    "mobileAnalysis1",
+    "mobileAnalysis2",
+    "mobileAnalysis3",
+    "mobileAnalysis4",
+] as const;
+
+function buildChatFlow(i18n: TI18n): Question[] {
+    const T = (k: string) => i18n(`personalizedHome.${k}`);
+    return [
+        {
+            id: "greeting",
+            text: T("mobileChatGreeting"),
+            options: [
+                { text: `✨ ${T("heroCta")}`, value: "start", next: "purpose_today" },
+                { text: `👀 ${T("qGreetingPreview")}`, value: "preview", next: "preview" },
+            ],
+        },
+        {
+            id: "preview",
+            text: i18n("authPage.signup.previewPurposeLead"),
+            options: [{ text: i18n("authPage.signup.previewStartCta"), value: "start", next: "purpose_today" }],
+        },
+        {
+            id: "purpose_today",
+            text: T("qPurpose"),
+            options: [
+                { text: `🎉 ${T("qGoalAnniversary")}`, value: "기념일", next: "goal_detail" },
+                { text: `😊 ${T("qGoalNormal")}`, value: "무난", next: "companion_today" },
+                { text: `🌙 ${T("qGoalEmotional")}`, value: "감성", next: "companion_today" },
+                { text: `🏃 ${T("qGoalActive")}`, value: "활동", next: "companion_today" },
+                { text: `✨ ${T("qPurposeTrendy")}`, value: "트렌디", next: "companion_today" },
+            ],
+        },
+        {
+            id: "goal_detail",
+            text: T("qGoalDetail"),
+            options: [
+                { text: `💑 ${T("qGoalDetail100")}`, value: "100일", next: "companion_today" },
+                { text: `🎂 ${T("qGoalDetailBirthday")}`, value: "생일", next: "companion_today" },
+                { text: `🎄 ${T("qGoalDetailYearEnd")}`, value: "연말", next: "companion_today" },
+            ],
+        },
+        {
+            id: "companion_today",
+            text: T("mobileChatWho"),
+            options: [
+                { text: `💑 ${T("qCompanionLover")}`, value: "연인", next: "region_today" },
+                { text: `💌 ${T("mobileCompanionSomeLabel")}`, value: "썸 상대", next: "region_today" },
+                { text: `🤝 ${T("mobileCompanionBlindLabel")}`, value: "소개팅 상대", next: "region_today" },
+                { text: `👯 ${T("qCompanionFriend")}`, value: "친구", next: "region_today" },
+                { text: `🚶 ${T("qCompanionAlone")}`, value: "혼자", next: "region_today" },
+            ],
+        },
+        {
+            id: "region_today",
+            text: T("mobileChatWhere"),
+            options: [
+                { text: `🏭 ${T("qRegionMulla")}`, value: "문래·영등포", next: "complete" },
+                { text: `🌉 ${T("qRegionHapjeong")}`, value: "합정·용산", next: "complete" },
+                { text: `🏛️ ${T("qRegionAnguk")}`, value: "안국·서촌", next: "complete" },
+                { text: `🏙️ ${T("qRegionEuljiro")}`, value: "을지로", next: "complete" },
+                { text: `🌸 ${T("qRegionYeouido")}`, value: "여의도", next: "complete" },
+            ],
+        },
+    ];
+}
 
 // ─── 한도 초과 바텀시트 ────────────────────────────────────────────────────────
 
@@ -45,6 +119,7 @@ function LimitExceededSheet({
     onUpgrade: () => void;
 }) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const slideAnim = useRef(new Animated.Value(400)).current;
 
@@ -64,11 +139,11 @@ function LimitExceededSheet({
     if (!visible || !ctx) return null;
 
     const isBasic = ctx.tier === "BASIC";
-    const title = isBasic ? "오늘 5번 모두 사용했어요" : "오늘의 추천을 이미 사용했어요";
+    const title = isBasic ? i18n("personalizedHome.alreadyUsedBasic") : i18n("personalizedHome.alreadyUsedFree");
     const desc = isBasic
-        ? "베이직은 하루 5번까지 가능해요.\n프리미엄으로 업그레이드하면 무제한이에요."
-        : "무료는 하루 1번만 가능해요.\n베이직으로 업그레이드하면 하루 5번까지 이용할 수 있어요.";
-    const btnLabel = isBasic ? "프리미엄으로 업그레이드 (무제한)" : "베이직으로 업그레이드 (하루 5번)";
+        ? `${i18n("personalizedHome.basicLimit")}\n${i18n("personalizedHome.basicUpgradeHint")}`
+        : `${i18n("personalizedHome.freeLimit")}\n${i18n("personalizedHome.freeUpgradeHint")}`;
+    const btnLabel = isBasic ? i18n("personalizedHome.upgradeToPremium") : i18n("personalizedHome.upgradeToBasic");
 
     return (
         <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -101,7 +176,7 @@ function LimitExceededSheet({
                     <Text style={ls.upgradeBtnText}>{btnLabel}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ls.closeBtn} onPress={onClose} activeOpacity={0.7}>
-                    <Text style={[ls.closeBtnText, { color: t.textMuted }]}>닫기</Text>
+                    <Text style={[ls.closeBtnText, { color: t.textMuted }]}>{i18n("personalizedHome.closeAria")}</Text>
                 </TouchableOpacity>
             </Animated.View>
         </Modal>
@@ -184,73 +259,8 @@ const ls = StyleSheet.create({
 const DONA_LOGO = "https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512.png";
 const DEFAULT_PROFILE = "https://d13xx6k6chk2in.cloudfront.net/profileLogo.png";
 
-// ─── 질문 플로우 ──────────────────────────────────────────────────────────────
-
-type Option = { text: string; value: string; next: string };
-type Question = { id: string; text: string; options: Option[] };
-
-const FLOW: Question[] = [
-    {
-        id: "greeting",
-        text: "안녕하세요! 오늘도 두나와 함께 특별한 데이트를 만들어볼까요? 🌿",
-        options: [
-            { text: "✨ 코스 추천받기", value: "start", next: "purpose_today" },
-            { text: "👀 코스 미리보기", value: "preview", next: "preview" },
-        ],
-    },
-    {
-        id: "preview",
-        text: "어떤 분위기의 코스를 원하세요? 먼저 목적을 알려주세요 😊",
-        options: [{ text: "코스 추천 시작하기 →", value: "start", next: "purpose_today" }],
-    },
-    {
-        id: "purpose_today",
-        text: "오늘 데이트의 목적은 무엇인가요?",
-        options: [
-            { text: "🎉 기념일", value: "기념일", next: "goal_detail" },
-            { text: "😊 무난한 데이트", value: "무난", next: "companion_today" },
-            { text: "🌙 감성적인 데이트", value: "감성", next: "companion_today" },
-            { text: "🏃 활동적인 데이트", value: "활동", next: "companion_today" },
-            { text: "✨ 트렌디한 데이트", value: "트렌디", next: "companion_today" },
-        ],
-    },
-    {
-        id: "goal_detail",
-        text: "어떤 기념일인가요?",
-        options: [
-            { text: "💑 100일·연애기념일", value: "100일", next: "companion_today" },
-            { text: "🎂 생일", value: "생일", next: "companion_today" },
-            { text: "🎄 연말·특별한 날", value: "연말", next: "companion_today" },
-        ],
-    },
-    {
-        id: "companion_today",
-        text: "누구와 함께하나요?",
-        options: [
-            { text: "💑 연인", value: "연인", next: "region_today" },
-            { text: "💌 썸 상대", value: "썸 상대", next: "region_today" },
-            { text: "🤝 소개팅 상대", value: "소개팅 상대", next: "region_today" },
-            { text: "👯 친구", value: "친구", next: "region_today" },
-            { text: "🚶 혼자", value: "혼자", next: "region_today" },
-        ],
-    },
-    {
-        id: "region_today",
-        text: "어느 지역이 좋으세요?",
-        options: [
-            { text: "🏭 문래·영등포", value: "문래·영등포", next: "complete" },
-            { text: "🌉 합정·용산", value: "합정·용산", next: "complete" },
-            { text: "🏛️ 안국·서촌", value: "안국·서촌", next: "complete" },
-            { text: "🏙️ 을지로", value: "을지로", next: "complete" },
-            { text: "🌸 여의도", value: "여의도", next: "complete" },
-        ],
-    },
-];
-
 type Message = { type: "ai" | "user"; text: string };
 type Answers = Record<string, string>;
-
-const ANALYSIS_TEXTS = ["취향 분석 중...", "최적의 코스 탐색 중...", "코스를 조합하는 중...", "거의 다 됐어요!"];
 
 // ─── 취향분석 오버레이 (웹 UI 동일) ────────────────────────────────────────────
 
@@ -315,15 +325,19 @@ function parseMatchReasonChips(raw: string): string[] {
         .filter(Boolean);
 }
 
-function getMatchBadge(matchScore: number | null | undefined): {
+function getMatchBadge(
+    i18n: TI18n,
+    matchScore: number | null | undefined,
+): {
     text: string;
     tone: "strong" | "good" | "soft" | "neutral";
 } {
-    if (matchScore == null) return { text: "오늘의 추천", tone: "neutral" };
-    if (matchScore >= 0.9) return { text: "완벽히 맞아요", tone: "strong" };
-    if (matchScore >= 0.75) return { text: "잘 맞아요", tone: "good" };
-    if (matchScore >= 0.6) return { text: "좋아요", tone: "soft" };
-    return { text: "추천", tone: "neutral" };
+    const T = (k: string) => i18n(`personalizedHome.${k}`);
+    if (matchScore == null) return { text: T("mobileMatchNeutral"), tone: "neutral" };
+    if (matchScore >= 0.9) return { text: T("mobileMatchPerfect"), tone: "strong" };
+    if (matchScore >= 0.75) return { text: T("mobileMatchGood"), tone: "good" };
+    if (matchScore >= 0.6) return { text: T("mobileMatchSoft"), tone: "soft" };
+    return { text: T("mobileMatchShort"), tone: "neutral" };
 }
 
 function ResultCard({
@@ -333,6 +347,7 @@ function ResultCard({
     onReveal,
     onDetail,
     onSelect,
+    i18n,
 }: {
     course: Course;
     nickname: string;
@@ -340,8 +355,10 @@ function ResultCard({
     onReveal: () => void;
     onDetail: (c: Course) => void;
     onSelect: (c: Course) => void;
+    i18n: TI18n;
 }) {
     const t = useThemeColors();
+    const T = (k: string, p?: Record<string, string | number>) => i18n(`personalizedHome.${k}`, p);
 
     if (!isRevealed) {
         return (
@@ -354,13 +371,14 @@ function ResultCard({
                             <Ionicons name="sparkles" size={48} color="#fff" />
                         </View>
                     </View>
-                    <Text style={s.flipFrontLabel}>AI Analysis Result</Text>
+                    <Text style={s.flipFrontLabel}>{T("mobileFlipAiLabel")}</Text>
                     <Text style={s.flipFrontTitle}>
-                        {nickname || "게스트"}님만을 위한{"\n"}
-                        <Text style={s.flipFrontTitleAccent}>맞춤 코스</Text>
+                        {T("cardForNickname", { nickname: nickname || T("mobileGuest") })}
+                        {"\n"}
+                        <Text style={s.flipFrontTitleAccent}>{T("cardCustomCourse")}</Text>
                     </Text>
                     <View style={s.flipFrontHint}>
-                        <Text style={s.flipFrontHintText}>터치해서 열어보기</Text>
+                        <Text style={s.flipFrontHintText}>{T("mobileTouchOpen")}</Text>
                     </View>
                 </View>
                 <View style={s.flipFrontBottomLine} />
@@ -368,7 +386,7 @@ function ResultCard({
         );
     }
 
-    const badge = getMatchBadge(course.matchScore);
+    const badge = getMatchBadge(i18n, course.matchScore);
     const chips = course.matchReason ? parseMatchReasonChips(course.matchReason) : [];
     const badgeStyle =
         badge.tone === "strong" || badge.tone === "good"
@@ -451,7 +469,7 @@ function ResultCard({
                     <View style={[s.resultMetaBox, { backgroundColor: t.isDark ? "#1f2937" : "#f9fafb" }]}>
                         <Ionicons name="time-outline" size={14} color={t.isDark ? "#34d399" : "#059669"} />
                         <Text style={[s.resultMetaBoxText, { color: t.isDark ? "#d1d5db" : "#374151" }]}>
-                            {course.duration ?? "약 4~5시간"}
+                            {course.duration ?? T("mobileDurationApprox")}
                         </Text>
                     </View>
                 </View>
@@ -464,7 +482,7 @@ function ResultCard({
                         activeOpacity={0.8}
                     >
                         <Text style={[s.resultBtnSecondaryText, { color: t.isDark ? "#d1d5db" : "#374151" }]}>
-                            상세 보기
+                            {T("mobileDetailView")}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -472,7 +490,7 @@ function ResultCard({
                         onPress={() => onSelect(course)}
                         activeOpacity={0.85}
                     >
-                        <Text style={s.resultBtnText}>선택하기 →</Text>
+                        <Text style={s.resultBtnText}>{T("mobileSelectArrow")}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -489,17 +507,22 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
     user: any;
 }) {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
+    const flow = useMemo(() => buildChatFlow(i18n), [i18n, locale]);
     const insets = useSafeAreaInsets();
     const scrollRef = useRef<ScrollView>(null);
-    const nickname = (user as any)?.nickname || (user as any)?.name || "게스트";
+    const nickname =
+        (user as any)?.nickname || (user as any)?.name || i18n("personalizedHome.mobileGuest");
 
     const [messages, setMessages] = useState<Message[]>([]);
-    const [currentQ, setCurrentQ] = useState<Question>(FLOW[0]);
+    const [currentQ, setCurrentQ] = useState<Question>(() => flow[0]);
     const [answers, setAnswers] = useState<Answers>({});
     const [isTyping, setIsTyping] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [analysisText, setAnalysisText] = useState(ANALYSIS_TEXTS[0]);
+    const [analysisText, setAnalysisText] = useState(() =>
+        i18n(`personalizedHome.${ANALYSIS_KEY_CYCLE[0]}`),
+    );
     const [courses, setCourses] = useState<Course[]>([]);
     const [progress, setProgress] = useState(0);
     const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({});
@@ -512,13 +535,13 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
     useEffect(() => {
         if (!isAnalyzing) return;
         let i = 0;
-        setAnalysisText(ANALYSIS_TEXTS[0]);
+        setAnalysisText(i18n(`personalizedHome.${ANALYSIS_KEY_CYCLE[0]}`));
         const timer = setInterval(() => {
-            i = (i + 1) % ANALYSIS_TEXTS.length;
-            setAnalysisText(ANALYSIS_TEXTS[i]);
+            i = (i + 1) % ANALYSIS_KEY_CYCLE.length;
+            setAnalysisText(i18n(`personalizedHome.${ANALYSIS_KEY_CYCLE[i]}`));
         }, 1000);
         return () => clearInterval(timer);
-    }, [isAnalyzing]);
+    }, [isAnalyzing, i18n]);
 
     // 모달 열릴 때 초기화
     useEffect(() => {
@@ -528,13 +551,13 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
         setIsComplete(false);
         setCourses([]);
         setRevealedCards({});
-        setCurrentQ(FLOW[0]);
+        setCurrentQ(flow[0]);
         setProgress(0);
         setDetailCourse(null);
         setConfirmCourse(null);
         setFeedbackCourseId(null);
-        setTimeout(() => addAiMsg(FLOW[0].text), 200);
-    }, [visible]);
+        setTimeout(() => addAiMsg(flow[0].text), 200);
+    }, [visible, flow]);
 
     function addAiMsg(text: string) {
         setIsTyping(true);
@@ -549,7 +572,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
 
-    async function handleOption(option: Option) {
+    async function handleOption(option: FlowOption) {
         setMessages((prev) => [...prev, { type: "user", text: option.text }]);
         const newAnswers = { ...answers, [currentQ.id]: option.value };
         setAnswers(newAnswers);
@@ -566,7 +589,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                         ...prev,
                         {
                             type: "ai",
-                            text: "코스 추천을 보려면 로그인이 필요해요 🔐\n마이페이지에서 로그인해주세요!",
+                            text: i18n("personalizedHome.mobileChatLoginBlock"),
                         },
                     ]);
                     scrollToEnd();
@@ -630,14 +653,17 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                 setProgress(100);
                 if (fetchedCourses.length > 0) {
                     addAiMsg(
-                        `${newAnswers.region_today ?? ""} 지역의 ${newAnswers.purpose_today ?? ""} 코스를 찾았어요! 🎉`,
+                        i18n("personalizedHome.mobileChatFoundTpl", {
+                            region: newAnswers.region_today ?? "",
+                            goal: newAnswers.purpose_today ?? "",
+                        }),
                     );
                 } else {
-                    addAiMsg("조건에 맞는 코스를 찾지 못했어요. 다른 조건으로 다시 시도해볼까요? 😢");
+                    addAiMsg(i18n("personalizedHome.resultNoMatch"));
                 }
             }
         } else {
-            const nextQ = FLOW.find((q) => q.id === option.next);
+            const nextQ = flow.find((q) => q.id === option.next);
             if (nextQ) {
                 setCurrentQ(nextQ);
                 addAiMsg(nextQ.text);
@@ -651,9 +677,9 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
         setIsComplete(false);
         setCourses([]);
         setRevealedCards({});
-        setCurrentQ(FLOW[0]);
+        setCurrentQ(flow[0]);
         setProgress(0);
-        addAiMsg(FLOW[0].text);
+        addAiMsg(flow[0].text);
     }
 
     return (
@@ -664,10 +690,10 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                     <View style={s.chatHeaderLeft}>
                         <Image source={{ uri: DONA_LOGO }} style={s.botAvatar} resizeMode="cover" />
                         <View>
-                            <Text style={[s.botName, { color: t.text }]}>AI DoNa</Text>
+                            <Text style={[s.botName, { color: t.text }]}>{i18n("personalizedHome.aiDoNa")}</Text>
                             <View style={s.liveRow}>
                                 <View style={s.liveDot} />
-                                <Text style={s.liveText}>분석 중</Text>
+                                <Text style={s.liveText}>{i18n("personalizedHome.analyzingLive")}</Text>
                             </View>
                         </View>
                     </View>
@@ -728,7 +754,9 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
 
                     {isComplete && courses.length > 0 && (
                         <View style={s.results}>
-                            <Text style={[s.resultsTitle, { color: t.text }]}>추천 코스 {courses.length}개 🎉</Text>
+                            <Text style={[s.resultsTitle, { color: t.text }]}>
+                                {i18n("personalizedHome.mobileResultsCount", { count: courses.length })}
+                            </Text>
                             {courses.map((c) => (
                                 <ResultCard
                                     key={c.id}
@@ -738,6 +766,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     onReveal={() => setRevealedCards((prev) => ({ ...prev, [String(c.id)]: true }))}
                                     onDetail={(course) => setDetailCourse(course)}
                                     onSelect={(course) => setConfirmCourse(course)}
+                                    i18n={i18n}
                                 />
                             ))}
                         </View>
@@ -747,10 +776,10 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                         <View style={s.empty}>
                             <Text style={{ fontSize: 48 }}>🗺️</Text>
                             <Text style={[s.emptyText, { color: t.textMuted }]}>
-                                해당 조건에 맞는 코스를 찾지 못했어요.
+                                {i18n("personalizedHome.noCourses")}
                             </Text>
                             <TouchableOpacity style={s.retryBtn} onPress={handleReset}>
-                                <Text style={s.retryText}>다시 추천받기</Text>
+                                <Text style={s.retryText}>{i18n("personalizedHome.retryBtn")}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -803,7 +832,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                     >
                         <TouchableOpacity style={s.doneBtn} onPress={handleReset} activeOpacity={0.85}>
                             <Ionicons name="refresh" size={16} color="#fff" />
-                            <Text style={s.doneBtnText}>다른 코스 추천받기</Text>
+                            <Text style={s.doneBtnText}>{i18n("personalizedHome.mobileRecommendAgain")}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -932,12 +961,12 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     <Ionicons name="chevron-forward" size={13} color={t.textMuted} />
                                     <Ionicons name="time-outline" size={15} color="#059669" />
                                     <Text style={[s.detailMetaBarText, { color: t.isDark ? "#d1d5db" : "#374151" }]}>
-                                        {detailCourse.duration ?? "약 4~5시간"}
+                                        {detailCourse.duration ?? i18n("personalizedHome.mobileDurationApprox")}
                                     </Text>
                                     <Ionicons name="chevron-forward" size={13} color={t.textMuted} />
                                     <Ionicons name="walk-outline" size={15} color="#059669" />
                                     <Text style={[s.detailMetaBarText, { color: t.isDark ? "#d1d5db" : "#374151" }]}>
-                                        도보 중심
+                                        {i18n("personalizedHome.walkingCentered")}
                                     </Text>
                                 </View>
 
@@ -965,15 +994,15 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                                             style={[{ fontSize: 14, fontWeight: "500", color: t.text }]}
                                                             numberOfLines={1}
                                                         >
-                                                            {cp.place?.name ?? "장소"}
+                                                            {cp.place?.name ?? i18n("personalizedHome.placeFallback")}
                                                         </Text>
                                                         <Text
                                                             style={[{ fontSize: 11, color: t.textMuted, marginTop: 2 }]}
                                                             numberOfLines={1}
                                                         >
                                                             {cp.place?.category
-                                                                ? `${cp.place.category} · ${idx + 1}번째 스팟`
-                                                                : `${idx + 1}번째 스팟`}
+                                                                ? `${cp.place.category} · ${i18n("personalizedHome.spotNth", { n: idx + 1 })}`
+                                                                : i18n("personalizedHome.spotNth", { n: idx + 1 })}
                                                         </Text>
                                                     </View>
                                                     {cp.place?.imageUrl ? (
@@ -1014,7 +1043,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                         setConfirmCourse(detailCourse);
                                     }}
                                 >
-                                    <Text style={s.detailCtaBtnText}>코스 시작하기</Text>
+                                    <Text style={s.detailCtaBtnText}>{i18n("personalizedHome.courseStart")}</Text>
                                     <Ionicons name="chevron-forward" size={18} color="#fff" />
                                 </TouchableOpacity>
                             </View>
@@ -1037,15 +1066,15 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                             <View style={s.confirmIcon}>
                                 <Ionicons name="navigate" size={28} color="#059669" />
                             </View>
-                            <Text style={[s.confirmTitle, { color: t.text }]}>이 코스로 결정할까요?</Text>
+                            <Text style={[s.confirmTitle, { color: t.text }]}>{i18n("personalizedHome.confirmModalTitle")}</Text>
                             <Text style={[s.confirmDesc, { color: t.textMuted }]}>
                                 <Text style={{ color: "#059669", fontWeight: "500" }}>"{confirmCourse.title}"</Text>
                                 {"\n"}
-                                선택하신 코스는 마이페이지에 보관됩니다.
+                                {i18n("personalizedHome.confirmModalSaved")}
                             </Text>
                             <View style={[s.confirmBtns, { borderTopColor: t.border }]}>
                                 <TouchableOpacity style={s.confirmCancel} onPress={() => setConfirmCourse(null)}>
-                                    <Text style={[s.confirmCancelText, { color: t.textMuted }]}>취소</Text>
+                                    <Text style={[s.confirmCancelText, { color: t.textMuted }]}>{i18n("common.cancel")}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[s.confirmOk, isSelecting && { opacity: 0.5 }]}
@@ -1064,7 +1093,9 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                         setConfirmCourse(null);
                                     }}
                                 >
-                                    <Text style={s.confirmOkText}>{isSelecting ? "저장 중..." : "저장하기"}</Text>
+                                    <Text style={s.confirmOkText}>
+                                        {isSelecting ? i18n("personalizedHome.saving") : i18n("personalizedHome.saveBtn")}
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -1081,11 +1112,11 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
             >
                 <View style={s.centeredOverlay}>
                     <View style={[s.feedbackBox, { backgroundColor: t.card }]}>
-                        <Text style={[s.feedbackTitle, { color: t.text }]}>이 추천 어땠나요?</Text>
+                        <Text style={[s.feedbackTitle, { color: t.text }]}>{i18n("personalizedHome.feedbackTitle")}</Text>
                         {[
-                            { label: "마음에 들어요", value: "GOOD", emoji: "👍" },
-                            { label: "보통이에요", value: "OK", emoji: "😐" },
-                            { label: "별로예요", value: "BAD", emoji: "👎" },
+                            { label: i18n("personalizedHome.feedbackGood"), value: "GOOD", emoji: "👍" },
+                            { label: i18n("personalizedHome.feedbackOk"), value: "OK", emoji: "😐" },
+                            { label: i18n("personalizedHome.feedbackBad"), value: "BAD", emoji: "👎" },
                         ].map((opt) => (
                             <TouchableOpacity
                                 key={opt.value}
@@ -1122,6 +1153,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
 
 export default function AiScreen() {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const { user } = useAuth();
     const [chatOpen, setChatOpen] = useState(false);
     const [showLimitSheet, setShowLimitSheet] = useState(false);
@@ -1165,7 +1197,8 @@ export default function AiScreen() {
         setChatOpen(true);
     }
 
-    const nickname = (user as any)?.nickname || (user as any)?.name || "게스트";
+    const nickname =
+        (user as any)?.nickname || (user as any)?.name || i18n("personalizedHome.mobileGuest");
 
     return (
         <SafeAreaView style={[s.root, { backgroundColor: t.bg }]} edges={["top"]}>
@@ -1175,18 +1208,27 @@ export default function AiScreen() {
                 {/* 유저 프로필 카드 */}
                 <View style={[s.profileCard, { backgroundColor: t.card, borderColor: t.border }]}>
                     <View style={s.profileCardLeft}>
-                        <Text style={[s.profileCardHint, { color: t.textMuted }]}>오늘 어떤 하루를?</Text>
+                        <Text style={[s.profileCardHint, { color: t.textMuted }]}>
+                            {i18n("personalizedHome.whatKindOfDay")}
+                        </Text>
                         <Text style={[s.profileCardGreeting, { color: t.text }]}>
                             {user ? (
                                 <>
-                                    안녕하세요{"\n"}
-                                    <Text style={s.profileCardName}>{nickname}님</Text> 👋
+                                    {(() => {
+                                        const raw = i18n("personalizedHome.mobileHelloLogged", { nickname });
+                                        const idx = raw.indexOf(nickname);
+                                        if (idx < 0) return <>{raw}</>;
+                                        return (
+                                            <>
+                                                {raw.slice(0, idx)}
+                                                <Text style={s.profileCardName}>{nickname}</Text>
+                                                {raw.slice(idx + nickname.length)}
+                                            </>
+                                        );
+                                    })()}
                                 </>
                             ) : (
-                                <>
-                                    로그인하고{"\n"}
-                                    <Text style={s.profileCardName}>맞춤 추천</Text> 받기 👋
-                                </>
+                                i18n("personalizedHome.mobileProfileGuestLine")
                             )}
                         </Text>
                         {!user && (
@@ -1195,7 +1237,7 @@ export default function AiScreen() {
                                 onPress={() => router.push("/(auth)/login" as any)}
                                 activeOpacity={0.85}
                             >
-                                <Text style={s.loginHintText}>✨ 로그인 시 개인 맞춤 추천 제공</Text>
+                                <Text style={s.loginHintText}>{i18n("personalizedHome.mobileLoginHintChip")}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -1220,21 +1262,36 @@ export default function AiScreen() {
 
                     {/* 타이포그래피 */}
                     <Text style={s.heroTitle}>
-                        <Text style={s.heroTitleGreen}>AI DoNa</Text>가{"\n"}오늘의 코스를 추천해드릴게요
+                        {(() => {
+                            const lines = i18n("personalizedHome.mobileHeroBlurb").split("\n");
+                            return (
+                                <>
+                                    <Text style={s.heroTitleGreen}>{lines[0]}</Text>
+                                    {lines[1] ? (
+                                        <>
+                                            {"\n"}
+                                            {lines.slice(1).join("\n")}
+                                        </>
+                                    ) : null}
+                                </>
+                            );
+                        })()}
                     </Text>
                     <Text style={[s.heroSubtitle, { color: t.textMuted }]}>
-                        몇 가지 질문에 답하면{"\n"}취향에 딱 맞는 데이트 코스를 찾아드려요
+                        {i18n("personalizedHome.heroSubtitle")}
                     </Text>
 
                     {/* CTA 버튼 */}
                     <TouchableOpacity style={s.ctaBtn} onPress={handleOpenChat} activeOpacity={0.88}>
-                        <Text style={s.ctaBtnText}>데이트 코스 추천받기</Text>
+                        <Text style={s.ctaBtnText}>{i18n("personalizedHome.heroCta")}</Text>
                         <Ionicons name="chevron-forward" size={18} color="#fff" />
                     </TouchableOpacity>
 
                     <View style={s.heroHintRow}>
                         <View style={s.heroHintDot} />
-                        <Text style={[s.heroHintText, { color: t.textMuted }]}>AI 분석 · 무료 제공</Text>
+                        <Text style={[s.heroHintText, { color: t.textMuted }]}>
+                            {i18n("personalizedHome.mobileHeroFooter")}
+                        </Text>
                     </View>
                 </View>
             </ScrollView>

@@ -14,6 +14,7 @@ const RecordsTab = lazy(() => import("@/components/mypage/RecordsTab"));
 const ActivityTab = lazy(() => import("@/components/mypage/ActivityTab"));
 import TicketPlans from "@/components/TicketPlans";
 import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
+import type { ReportedSuggestion } from "@/components/ReportedCoursesCTA";
 import {
     UserInfo,
     UserPreferences,
@@ -44,6 +45,7 @@ const MyPage = () => {
     const [payments, setPayments] = useState<any[]>([]);
     // 🟢 개인 추억 (isPublic: false인 리뷰)
     const [personalStories, setPersonalStories] = useState<any[]>([]);
+    const [reportedSuggestions, setReportedSuggestions] = useState<ReportedSuggestion[]>([]);
 
     const [activeTab, setActiveTab] = useState("profile");
 
@@ -56,7 +58,13 @@ const MyPage = () => {
 
                 // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
                 if (tab === "footprint" && completed.length === 0 && casefiles.length === 0) {
-                    Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories()]).catch(() => {});
+                    Promise.all([
+                        fetchCompleted(),
+                        fetchCasefiles(),
+                        fetchSavedCourses(),
+                        fetchPersonalStories(),
+                        fetchReportedSuggestions(),
+                    ]).catch(() => {});
                 } else if (tab === "records" && favorites.length === 0 && savedCourses.length === 0) {
                     Promise.all([fetchFavorites(), fetchSavedCourses(), fetchCompleted(), fetchCasefiles()]).catch(
                         () => {}
@@ -580,6 +588,24 @@ const MyPage = () => {
         }
     };
 
+    const fetchReportedSuggestions = async () => {
+        try {
+            const { apiFetch } = await import("@/lib/authClient");
+            const { data, response } = await apiFetch<any>("/api/course-suggestions/my", {
+                cache: "no-store",
+            });
+            if (response.status === 401) return;
+            if (response.ok && Array.isArray(data?.suggestions)) {
+                setReportedSuggestions(data.suggestions as ReportedSuggestion[]);
+            } else {
+                setReportedSuggestions([]);
+            }
+        } catch (error) {
+            console.error("[MyPage] Reported suggestions fetch error:", error);
+            setReportedSuggestions([]);
+        }
+    };
+
     // 🟢 Data Fetching Logic (성능 최적화: 우선순위 기반 로딩)
     useEffect(() => {
         // 🟢 URL 파라미터에서 초기 탭 읽기
@@ -665,11 +691,18 @@ const MyPage = () => {
                             fetchBadges(),
                             fetchCompleted(),
                             fetchCasefiles(),
+                            fetchReportedSuggestions(),
                             fetchRewards(),
                             fetchPayments()
                         );
                     } else if (initialTab === "footprint") {
-                        priorityData.push(fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories());
+                        priorityData.push(
+                            fetchCompleted(),
+                            fetchCasefiles(),
+                            fetchSavedCourses(),
+                            fetchPersonalStories(),
+                            fetchReportedSuggestions(),
+                        );
                         deferredData.push(
                             fetchFavorites(),
                             fetchBadges(),
@@ -742,6 +775,7 @@ const MyPage = () => {
             setCasefiles([]);
             setSavedCourses([]);
             setPersonalStories([]);
+            setReportedSuggestions([]);
         };
 
         window.addEventListener("authLogout", handleAuthLogout as EventListener);
@@ -825,7 +859,13 @@ const MyPage = () => {
 
             // 🟢 탭 변경 시 필요한 데이터가 없으면 로드
             if (id === "footprint" && (completed.length === 0 || casefiles.length === 0 || savedCourses.length === 0)) {
-                Promise.all([fetchCompleted(), fetchCasefiles(), fetchSavedCourses(), fetchPersonalStories()]).catch(() => {});
+                Promise.all([
+                    fetchCompleted(),
+                    fetchCasefiles(),
+                    fetchSavedCourses(),
+                    fetchPersonalStories(),
+                    fetchReportedSuggestions(),
+                ]).catch(() => {});
             } else if (
                 id === "records" &&
                 (favorites.length === 0 ||
@@ -1202,6 +1242,7 @@ const MyPage = () => {
                                 aiRecommendations={savedCourses}
                                 userName={userInfo?.name || ""}
                                 personalStories={personalStories}
+                                reportedSuggestions={reportedSuggestions}
                             />
                         </Suspense>
                     )

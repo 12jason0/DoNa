@@ -32,6 +32,7 @@ import { AUTH_QUERY_KEY } from '../../src/hooks/useAuth';
 import AppHeader from '../../src/components/AppHeader';
 import StandaloneTabBar from '../../src/components/StandaloneTabBar';
 import { AppleMark, KakaoMark, SOCIAL_MARK_SIZE } from '../../src/components/auth/SocialLoginMarks';
+import { useLocale } from '../../src/lib/useLocale';
 
 // @react-native-kakao/user — 네이티브 모듈, 정적 import 시 일부 빌드에서 크래시 가능 → 동적 require
 let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
@@ -54,6 +55,7 @@ type LoginResponse = {
 
 export default function LoginScreen() {
     const queryClient = useQueryClient();
+    const { t: i18n } = useLocale();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -82,7 +84,7 @@ export default function LoginScreen() {
     async function handleEmailLogin() {
         if (loading) return;
         if (!email.trim() || !password) {
-            setError('이메일과 비밀번호를 입력해주세요.');
+            setError(i18n('authPage.login.errorEmailPasswordRequired'));
             return;
         }
         setLoading(true);
@@ -92,13 +94,13 @@ export default function LoginScreen() {
         try {
             const data = await api.post<LoginResponse>(endpoints.login, { email, password });
             if (data.user) {
-                setMessage('로그인 중...');
+                setMessage(i18n('authPage.login.submitting'));
                 await handleLoginSuccess(data.user, data.token);
             } else {
-                setError(data.error || '로그인에 실패했습니다.');
+                setError(data.error || i18n('authPage.login.errorLoginFailed'));
             }
         } catch (e: any) {
-            setError(e.message || '로그인 중 오류가 발생했습니다.');
+            setError(e.message || i18n('authPage.login.errorGeneric'));
         } finally {
             setLoading(false);
         }
@@ -136,10 +138,10 @@ export default function LoginScreen() {
                     accessToken: kakaoToken.accessToken,
                 });
                 if (data.user) {
-                    setMessage('로그인 중...');
+                    setMessage(i18n('authPage.login.submitting'));
                     await handleLoginSuccess(data.user, data.token);
                 } else {
-                    setError(data.error || '카카오 로그인에 실패했습니다.');
+                    setError(data.error || i18n('authPage.login.errorKakaoCanceled'));
                 }
             } else {
                 // iOS 또는 안드로이드에서 네이티브 모듈 없을 때: 웹 OAuth
@@ -148,7 +150,7 @@ export default function LoginScreen() {
         } catch (e: any) {
             // 사용자가 직접 취소한 경우 에러 표시 안 함
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
-                setError('카카오 로그인 중 오류가 발생했습니다.');
+                setError(i18n('authPage.login.errorGeneric'));
             }
         } finally {
             setLoading(false);
@@ -180,13 +182,13 @@ export default function LoginScreen() {
             if (data.user) {
                 await handleLoginSuccess(data.user, data.token);
             } else {
-                throw new Error(data.error || 'Apple 로그인에 실패했습니다.');
+                throw new Error(data.error || i18n('authPage.login.errorAppleFailed'));
             }
         } catch (e: any) {
             if (e.code === 'ERR_REQUEST_CANCELED') {
                 // 사용자가 취소 — 에러 표시 안 함
             } else {
-                setError(e.message || 'Apple 로그인 중 오류가 발생했습니다.');
+                setError(e.message || i18n('authPage.login.errorGeneric'));
             }
         } finally {
             setLoading(false);
@@ -215,8 +217,8 @@ export default function LoginScreen() {
                             <View style={styles.iconBox}>
                                 <Text style={styles.iconEmoji}>🌿</Text>
                             </View>
-                            <Text style={styles.title}>로그인</Text>
-                            <Text style={styles.subtitle}>두나에 오신 것을 환영합니다</Text>
+                            <Text style={styles.title}>{i18n('authPage.login.title')}</Text>
+                            <Text style={styles.subtitle}>{i18n('authPage.login.welcome')}</Text>
                         </View>
 
                         {/* 메시지 */}
@@ -233,10 +235,10 @@ export default function LoginScreen() {
 
                         {/* 이메일 */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>이메일</Text>
+                            <Text style={styles.label}>{i18n('authPage.login.email')}</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="이메일을 입력하세요"
+                                placeholder={i18n('authPage.login.emailPlaceholder')}
                                 placeholderTextColor={Colors.gray400}
                                 value={email}
                                 onChangeText={setEmail}
@@ -250,11 +252,11 @@ export default function LoginScreen() {
 
                         {/* 비밀번호 */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>비밀번호</Text>
+                            <Text style={styles.label}>{i18n('authPage.login.password')}</Text>
                             <View style={styles.passwordRow}>
                                 <TextInput
                                     style={[styles.input, styles.passwordInput]}
-                                    placeholder="비밀번호를 입력하세요"
+                                    placeholder={i18n('authPage.login.passwordPlaceholder')}
                                     placeholderTextColor={Colors.gray400}
                                     value={password}
                                     onChangeText={setPassword}
@@ -283,22 +285,22 @@ export default function LoginScreen() {
                             {loading ? (
                                 <ActivityIndicator color={Colors.white} size="small" />
                             ) : (
-                                <Text style={styles.btnSubmitText}>로그인</Text>
+                                <Text style={styles.btnSubmitText}>{i18n('authPage.login.submit')}</Text>
                             )}
                         </TouchableOpacity>
 
                         {/* 회원가입 링크 */}
                         <View style={styles.signupRow}>
-                            <Text style={styles.signupText}>계정이 없으신가요? </Text>
+                            <Text style={styles.signupText}>{i18n('authPage.login.noAccount')} </Text>
                             <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                                <Text style={styles.signupLink}>회원가입</Text>
+                                <Text style={styles.signupLink}>{i18n('authPage.login.signup')}</Text>
                             </TouchableOpacity>
                         </View>
 
                         {/* 구분선 */}
                         <View style={styles.dividerRow}>
                             <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>또는</Text>
+                            <Text style={styles.dividerText}>{i18n('authPage.login.or')}</Text>
                             <View style={styles.dividerLine} />
                         </View>
 
@@ -311,7 +313,7 @@ export default function LoginScreen() {
                                     disabled={loading}
                                     activeOpacity={0.85}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Apple로 로그인"
+                                    accessibilityLabel={i18n('authPage.login.appleSubmit')}
                                 >
                                     <AppleMark size={SOCIAL_MARK_SIZE} />
                                 </TouchableOpacity>
@@ -322,7 +324,7 @@ export default function LoginScreen() {
                                 disabled={loading}
                                 activeOpacity={0.85}
                                 accessibilityRole="button"
-                                accessibilityLabel="카카오로 로그인"
+                                accessibilityLabel={i18n('authPage.login.kakaoSubmit')}
                             >
                                 <KakaoMark size={SOCIAL_MARK_SIZE} />
                             </TouchableOpacity>

@@ -4,24 +4,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { TouchableOpacity } from "react-native";
 import { useThemeColors } from "../src/hooks/useThemeColors";
-import { Colors, FontSize, Spacing } from "../src/constants/theme";
+import { useLocale } from "../src/lib/useLocale";
+import { FontSize, Spacing } from "../src/constants/theme";
 
 export default function ShopScreen() {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={["top"]}>
             <View style={[styles.header, { borderBottomColor: t.border }]}>
                 <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                     <Text style={[styles.backBtn, { color: t.text }]}>←</Text>
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: t.text }]}>DoNa 샵</Text>
+                <Text style={[styles.headerTitle, { color: t.text }]}>{i18n("mobile.shop.headerTitle")}</Text>
                 <View style={{ width: 32 }} />
             </View>
 
             <View style={styles.body}>
                 <Text style={styles.icon}>🛍️</Text>
-                <Text style={[styles.title, { color: t.text }]}>DoNa 샵</Text>
-                <Text style={[styles.sub, { color: t.textMuted }]}>준비 중이에요{"\n"}이스케이프 키트, 키링 등{"\n"}곧 만나보세요!</Text>
+                <Text style={[styles.title, { color: t.text }]}>{i18n("mobile.shop.heroTitle")}</Text>
+                <Text style={[styles.sub, { color: t.textMuted }]}>{i18n("mobile.shop.comingSoon")}</Text>
             </View>
         </SafeAreaView>
     );

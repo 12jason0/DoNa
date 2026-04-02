@@ -21,6 +21,11 @@ const MemoryCTA = dynamic(() => import("@/components/MemoryCTA").then((m) => m.d
     ssr: false,
 });
 
+const ReportedCoursesCTA = dynamic(() => import("@/components/ReportedCoursesCTA"), {
+    loading: () => null,
+    ssr: false,
+});
+
 import { isIOS } from "@/lib/platform";
 import TranslatedCourseTitle from "@/components/TranslatedCourseTitle";
 import { useLocale } from "@/context/LocaleContext";
@@ -67,6 +72,8 @@ export default function HomeClient() {
     const [latestMemory, setLatestMemory] = useState<MemoryPreview | null>(null);
     const [memories, setMemories] = useState<MemoryPreview[]>([]);
     const [memoriesLoading, setMemoriesLoading] = useState(false);
+    const [reportedSuggestions, setReportedSuggestions] = useState<any[]>([]);
+    const [reportedSuggestionsLoading, setReportedSuggestionsLoading] = useState(false);
     // 🟢 추억 모달 상태
     const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
     const [showMemoryModal, setShowMemoryModal] = useState(false);
@@ -365,6 +372,27 @@ export default function HomeClient() {
         }
     }, [isAuthenticated, t]);
 
+    // 🟢 내가 제보한 코스 데이터 가져오기
+    const fetchReportedSuggestions = useCallback(async () => {
+        if (!isAuthenticated) {
+            setReportedSuggestions([]);
+            return;
+        }
+        setReportedSuggestionsLoading(true);
+        try {
+            const { data, response } = await apiFetch<any>("/api/course-suggestions/my", { cache: "no-store" });
+            if (response.ok && Array.isArray(data?.suggestions)) {
+                setReportedSuggestions(data.suggestions);
+            } else {
+                setReportedSuggestions([]);
+            }
+        } catch {
+            setReportedSuggestions([]);
+        } finally {
+            setReportedSuggestionsLoading(false);
+        }
+    }, [isAuthenticated]);
+
     // 🟢 active-course 한 번 조회 후 정규화하여 state 설정
     const fetchActiveCourse = useCallback(async () => {
         try {
@@ -474,6 +502,11 @@ export default function HomeClient() {
         runAfterPaint(fetchPersonalMemories);
     }, [fetchPersonalMemories]);
 
+    // 🟢 내가 제보한 코스 로드
+    useEffect(() => {
+        runAfterPaint(fetchReportedSuggestions);
+    }, [fetchReportedSuggestions]);
+
     // 🟢 마운트 후에만 CTA 블록 렌더 (hydration mismatch 방지)
     useEffect(() => setHasMounted(true), []);
 
@@ -501,6 +534,9 @@ export default function HomeClient() {
     // 🟢 personalized-home CTA 표시: 로그인한 사용자에게만 표시 (FREE이고 오늘 사용 완료면 숨김)
     const showPersonalizedHomeCta =
         isAuthenticated && canUseRecommendation !== false;
+    const publishedSuggestions = reportedSuggestions.filter(
+        (s: any) => s?.status === "PUBLISHED" && Number.isFinite(Number(s?.course?.id)),
+    );
 
     return (
         <>
@@ -675,6 +711,14 @@ export default function HomeClient() {
                         }}
                     />
                 </section>
+                )}
+
+                {/* 🟢 내가 제보한 코스 - 로그인한 사용자에게만 표시 */}
+                {isAuthenticated && (reportedSuggestionsLoading || publishedSuggestions.length > 0) && (
+                    <ReportedCoursesCTA
+                        suggestions={publishedSuggestions}
+                        isLoading={reportedSuggestionsLoading}
+                    />
                 )}
             </main>
 

@@ -27,6 +27,7 @@ import { useRouter } from "expo-router";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import Svg, { Path, Circle } from "react-native-svg";
 import { BASE_URL } from "../../src/lib/api";
+import { useLocale } from "../../src/lib/useLocale";
 
 // 네이버 지도 — EAS dev build 필요
 let NaverMapView: any = null;
@@ -202,6 +203,7 @@ const PANEL_MINIMIZED = 100;
 export default function ExploreScreen() {
     const insets = useSafeAreaInsets();
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const router = useRouter();
 
     // --- 지도 상태 ---
@@ -425,14 +427,14 @@ export default function ExploreScreen() {
         setLoading(true);
         try {
             if (!ExpoLocation) {
-                showToast("위치 기능은 새 dev build 설치 후 사용할 수 있어요");
+                showToast(i18n("mobile.map.toastLocationDevBuild"));
                 await fetchData(center.latitude, center.longitude);
                 return;
             }
 
             const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
             if (status !== "granted") {
-                showToast("위치 권한이 거부되었어요");
+                showToast(i18n("mobile.map.toastLocationDenied"));
                 await fetchData(center.latitude, center.longitude);
                 return;
             }
@@ -446,12 +448,12 @@ export default function ExploreScreen() {
             mapRef.current?.animateCameraTo({ latitude: loc.latitude, longitude: loc.longitude, zoom: 16 });
             await fetchData(loc.latitude, loc.longitude);
         } catch {
-            showToast("위치를 가져올 수 없어요");
+            showToast(i18n("mobile.map.toastLocationFail"));
             await fetchData(center.latitude, center.longitude);
         } finally {
             setLoading(false);
         }
-    }, [fetchData, center, showToast]);
+    }, [fetchData, center, showToast, i18n]);
 
     // 검색
     const handleSearch = useCallback(async () => {
@@ -469,10 +471,10 @@ export default function ExploreScreen() {
                 setShowSearchBtn(false);
                 setSearchInput("");
                 snapPanel("default");
-            } else { showToast("검색 결과가 없어요"); }
-        } catch { showToast("검색 중 오류가 발생했어요"); }
+            } else { showToast(i18n("mobile.map.toastSearchEmpty")); }
+        } catch { showToast(i18n("mobile.map.toastSearchError")); }
         finally { setLoading(false); }
-    }, [searchInput, fetchData, showToast, snapPanel]);
+    }, [searchInput, fetchData, showToast, snapPanel, i18n]);
 
     // 장소 클릭
     const handlePlaceClick = useCallback((place: Place) => {
@@ -506,8 +508,8 @@ export default function ExploreScreen() {
             <View style={[styles.root, { backgroundColor: t.bg }]}>
                 <View style={styles.fallback}>
                     <Text style={styles.fallbackEmoji}>🗺️</Text>
-                    <Text style={[styles.fallbackTitle, { color: t.text }]}>지도는 앱 빌드에서 사용 가능합니다</Text>
-                    <Text style={[styles.fallbackSub, { color: t.textMuted }]}>EAS dev build 후 이용해주세요</Text>
+                    <Text style={[styles.fallbackTitle, { color: t.text }]}>{i18n("mobile.map.fallbackTitle")}</Text>
+                    <Text style={[styles.fallbackSub, { color: t.textMuted }]}>{i18n("mobile.map.fallbackSub")}</Text>
                 </View>
             </View>
         );
@@ -631,7 +633,7 @@ export default function ExploreScreen() {
                         </Svg>
                         <TextInput
                             style={[styles.searchInput, { color: t.text }]}
-                            placeholder="장소, 맛집, 코스 검색"
+                            placeholder={i18n("mobile.map.searchPlaceholder")}
                             placeholderTextColor={t.textMuted}
                             value={searchInput}
                             onChangeText={setSearchInput}
@@ -649,7 +651,7 @@ export default function ExploreScreen() {
                             style={styles.tabBtn}
                             onPress={() => { setActiveTab("places"); setSelectedPlace(null); snapPanel("default"); }}
                         >
-                            <Text style={[styles.tabText, activeTab === "places" ? styles.tabTextActive : { color: t.textMuted }]}>장소</Text>
+                            <Text style={[styles.tabText, activeTab === "places" ? styles.tabTextActive : { color: t.textMuted }]}>{i18n("mobile.map.tabPlaces")}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.tabBtn}
@@ -660,12 +662,12 @@ export default function ExploreScreen() {
                                 fetchData(latitude, longitude);
                             }}
                         >
-                            <Text style={[styles.tabText, activeTab === "courses" ? styles.tabTextActive : { color: t.textMuted }]}>코스</Text>
+                            <Text style={[styles.tabText, activeTab === "courses" ? styles.tabTextActive : { color: t.textMuted }]}>{i18n("mobile.map.tabCourses")}</Text>
                         </TouchableOpacity>
                     </View>
                     {showSearchBtn && (
                         <TouchableOpacity style={[styles.areaSearchBtn, { backgroundColor: t.card }]} onPress={fetchAreaSearch}>
-                            <Text style={styles.areaSearchText}>현 지도 검색</Text>
+                            <Text style={styles.areaSearchText}>{i18n("mobile.map.areaSearch")}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -727,15 +729,17 @@ export default function ExploreScreen() {
                                 </TouchableOpacity>
                             ) : (
                                 <Text style={[styles.panelTitle, { color: t.text }]}>
-                                    {activeTab === "places" ? "내 주변 장소" : "추천 데이트 코스"}
+                                    {activeTab === "places"
+                                        ? i18n("mobile.map.panelPlacesTitle")
+                                        : i18n("mobile.map.panelCoursesTitle")}
                                 </Text>
                             )}
                             <Text style={[styles.panelSub, { color: t.textMuted }]}>
                                 {activeTab === "places"
-                                    ? `지도에 ${places.length}개의 장소가 있어요`
+                                    ? i18n("mobile.map.panelPlacesCount", { count: places.length })
                                     : selectedCourse
-                                        ? selectedCourse.description || "코스에 포함된 장소예요"
-                                        : "엄선된 코스를 확인해보세요"}
+                                        ? selectedCourse.description || i18n("mobile.map.panelCourseSpotsHint")
+                                        : i18n("mobile.map.panelCoursesSub")}
                             </Text>
                         </View>
                         {activeTab === "courses" && selectedCourse && (
@@ -761,7 +765,7 @@ export default function ExploreScreen() {
                     {loading ? (
                         <View style={styles.loadingBox}>
                             <ActivityIndicator size="large" color="#6bb88a" />
-                            <Text style={[styles.loadingText, { color: t.textMuted }]}>정보를 불러오고 있어요...</Text>
+                            <Text style={[styles.loadingText, { color: t.textMuted }]}>{i18n("mobile.map.loadingInfo")}</Text>
                         </View>
                     ) : selectedPlace ? (
                         // 장소 상세
@@ -769,7 +773,7 @@ export default function ExploreScreen() {
                             <View style={styles.detailHeader}>
                                 <View style={[styles.categoryBadge, { backgroundColor: t.isDark ? "rgba(107,184,138,0.15)" : "#f0fdf4" }]}>
                                     <Text style={[styles.categoryBadgeText, { color: "#6bb88a" }]}>
-                                        {selectedPlace.category || "추천 장소"}
+                                        {selectedPlace.category || i18n("mobile.map.categoryFallback")}
                                     </Text>
                                 </View>
                                 <TouchableOpacity
@@ -788,7 +792,7 @@ export default function ExploreScreen() {
                                     style={[styles.phoneBtn, { borderColor, backgroundColor: t.card }]}
                                     onPress={() => selectedPlace.phone
                                         ? Linking.openURL(`tel:${selectedPlace.phone}`)
-                                        : showToast("전화번호 정보가 없어요")}
+                                        : showToast(i18n("mobile.map.phoneMissing"))}
                                 >
                                     <Svg width={20} height={20} viewBox="0 0 24 24" fill={t.textMuted}>
                                         <Path fillRule="evenodd" clipRule="evenodd" d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" />
@@ -798,7 +802,7 @@ export default function ExploreScreen() {
                                     style={styles.dirBtn}
                                     onPress={() => handleFindWay(selectedPlace)}
                                 >
-                                    <Text style={styles.dirBtnText}>길찾기</Text>
+                                    <Text style={styles.dirBtnText}>{i18n("mobile.map.directions")}</Text>
                                     <Svg width={16} height={16} viewBox="0 0 24 24" fill="#fff">
                                         <Path fillRule="evenodd" clipRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" />
                                     </Svg>
@@ -808,7 +812,7 @@ export default function ExploreScreen() {
                     ) : activeTab === "courses" && selectedCourse && courseLoading ? (
                         <View style={styles.loadingBox}>
                             <ActivityIndicator size="small" color="#6bb88a" />
-                            <Text style={[styles.loadingText, { color: t.textMuted }]}>장소 불러오는 중...</Text>
+                            <Text style={[styles.loadingText, { color: t.textMuted }]}>{i18n("mobile.map.loadingPlaces")}</Text>
                         </View>
                     ) : (
                         // 목록
@@ -818,8 +822,8 @@ export default function ExploreScreen() {
                                     <Text style={{ fontSize: 36 }}>🤔</Text>
                                     <Text style={[styles.emptyText, { color: t.textMuted }]}>
                                         {activeTab === "courses" && selectedCourse
-                                            ? "이 코스에 등록된 장소가 없어요."
-                                            : "이 근처에는 아직 정보가 없어요.\n지도를 조금만 이동해볼까요?"}
+                                            ? i18n("mobile.map.emptyCoursePlaces")
+                                            : i18n("mobile.map.emptyArea")}
                                     </Text>
                                 </View>
                             ) : (
@@ -858,12 +862,14 @@ export default function ExploreScreen() {
                                                             : { backgroundColor: t.isDark ? "rgba(107,184,138,0.15)" : "#f0fdf4", borderColor: t.isDark ? "rgba(107,184,138,0.3)" : "#dcfce7" }
                                                     ]}>
                                                         <Text style={[styles.badgeText, { color: isCourse ? (t.isDark ? "#818cf8" : "#4f46e5") : "#6bb88a" }]}>
-                                                            {isCourse ? "추천 코스" : item.category || "장소"}
+                                                            {isCourse
+                                                                ? i18n("mobile.map.badgeRecommendedCourse")
+                                                                : item.category || i18n("mobile.map.badgePlace")}
                                                         </Text>
                                                     </View>
                                                     {isCourse && isSelectedCourse && (
                                                         <TouchableOpacity onPress={(e) => { router.push(`/courses/${item.id.replace("c-", "")}`); }}>
-                                                            <Text style={{ fontSize: 11, fontWeight: "500", color: "#6bb88a" }}>상세 보기</Text>
+                                                            <Text style={{ fontSize: 11, fontWeight: "500", color: "#6bb88a" }}>{i18n("mobile.map.viewDetail")}</Text>
                                                         </TouchableOpacity>
                                                     )}
                                                 </View>

@@ -16,12 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemeColors } from "../hooks/useThemeColors";
-
-const COPY = {
-    title: "두나샵",
-    desc: "더 완벽한 키트를 위해 준비 중이에요.\n조금만 기다려주세요 🎁",
-    confirm: "확인",
-} as const;
+import { useLocale } from "../lib/useLocale";
 
 const SHEET_MAX = 520;
 
@@ -32,6 +27,7 @@ type Props = {
 
 export default function ShopBottomSheet({ visible, onClose }: Props) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const slide = useRef(new Animated.Value(SHEET_MAX)).current;
     const backdrop = useRef(new Animated.Value(0)).current;
@@ -118,11 +114,11 @@ export default function ShopBottomSheet({ visible, onClose }: Props) {
                         <Ionicons name="bag-handle-outline" size={28} color="#7aa06f" />
                     </View>
 
-                    <Text style={[styles.title, { color: t.text }]}>{COPY.title}</Text>
-                    <Text style={[styles.desc, { color: t.textMuted }]}>{COPY.desc}</Text>
+                    <Text style={[styles.title, { color: t.text }]}>{i18n("mobile.shop.headerTitle")}</Text>
+                    <Text style={[styles.desc, { color: t.textMuted }]}>{i18n("mobile.shop.sheetKitDesc")}</Text>
 
                     <TouchableOpacity style={styles.cta} onPress={dismiss} activeOpacity={0.9}>
-                        <Text style={styles.ctaText}>{COPY.confirm}</Text>
+                        <Text style={styles.ctaText}>{i18n("common.confirm")}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </View>

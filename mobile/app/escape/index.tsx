@@ -22,6 +22,7 @@ import { resolveImageUrl } from "../../src/lib/imageUrl";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useAuth } from "../../src/hooks/useAuth";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
+import { useLocale } from "../../src/lib/useLocale";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,15 @@ function LevelStars({ level }: { level: number | null }) {
 
 // ─── 스토리 카드 ──────────────────────────────────────────────────────────────
 
-function StoryCard({ story, onPress }: { story: Story; onPress: () => void }) {
+function StoryCard({
+    story,
+    onPress,
+    i18n,
+}: {
+    story: Story;
+    onPress: () => void;
+    i18n: (k: string, p?: Record<string, string | number>) => string;
+}) {
     const t = useThemeColors();
     const imgUri = resolveImageUrl(story.imageUrl);
 
@@ -81,7 +90,9 @@ function StoryCard({ story, onPress }: { story: Story; onPress: () => void }) {
                 {story.badge && (
                     <View style={[s.badgeRow, { borderColor: t.border }]}>
                         <Ionicons name="ribbon-outline" size={13} color="#f59e0b" />
-                        <Text style={[s.badgeText, { color: t.textMuted }]}>{story.badge.name} 획득 가능</Text>
+                        <Text style={[s.badgeText, { color: t.textMuted }]}>
+                            {i18n("mobile.escape.badgeEarnable", { name: story.badge.name })}
+                        </Text>
                     </View>
                 )}
             </View>
@@ -96,11 +107,13 @@ function StoryDetailModal({
     visible,
     onClose,
     onStart,
+    i18n,
 }: {
     story: Story | null;
     visible: boolean;
     onClose: () => void;
     onStart: (id: number) => void;
+    i18n: (k: string, p?: Record<string, string | number>) => string;
 }) {
     const t = useThemeColors();
     const insets = useSafeAreaInsets();
@@ -164,7 +177,7 @@ function StoryDetailModal({
                             }}
                         >
                             <Ionicons name="play" size={18} color="#fff" />
-                            <Text style={s.startBtnText}>시작하기</Text>
+                            <Text style={s.startBtnText}>{i18n("mobile.escape.startCta")}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -177,6 +190,7 @@ function StoryDetailModal({
 
 export default function EscapeScreen() {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const { isAuthenticated } = useAuth();
     const [selectedStory, setSelectedStory] = useState<Story | null>(null);
@@ -189,7 +203,7 @@ export default function EscapeScreen() {
     });
 
     return (
-        <SafeAreaView style={[s.root, { backgroundColor: t.background }]} edges={["top"]}>
+        <SafeAreaView style={[s.root, { backgroundColor: t.bg }]} edges={["top"]}>
             <AppHeaderWithModals />
 
             {/* 헤더 */}
@@ -198,8 +212,8 @@ export default function EscapeScreen() {
                     <Ionicons name="arrow-back" size={22} color={t.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={[s.headerTitle, { color: t.text }]}>커플 미션 게임</Text>
-                    <Text style={[s.headerSub, { color: t.textMuted }]}>실외 방탈출 코스</Text>
+                    <Text style={[s.headerTitle, { color: t.text }]}>{i18n("mobile.escape.headerTitle")}</Text>
+                    <Text style={[s.headerSub, { color: t.textMuted }]}>{i18n("mobile.escape.headerSub")}</Text>
                 </View>
                 <Ionicons name="compass-outline" size={24} color="#059669" />
             </View>
@@ -211,8 +225,8 @@ export default function EscapeScreen() {
             ) : stories.length === 0 ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
                     <Text style={{ fontSize: 48 }}>🗺️</Text>
-                    <Text style={[{ fontSize: 16, fontWeight: "500", color: t.text }]}>스토리를 준비 중이에요</Text>
-                    <Text style={[{ fontSize: 14, color: t.textMuted, textAlign: "center" }]}>곧 새로운 미션 코스가 오픈됩니다!</Text>
+                    <Text style={[{ fontSize: 16, fontWeight: "500", color: t.text }]}>{i18n("mobile.escape.emptyTitle")}</Text>
+                    <Text style={[{ fontSize: 14, color: t.textMuted, textAlign: "center" }]}>{i18n("mobile.escape.emptySub")}</Text>
                 </View>
             ) : (
                 <ScrollView
@@ -223,7 +237,7 @@ export default function EscapeScreen() {
                     <View style={[s.banner, { backgroundColor: t.isDark ? "#0d2818" : "#ecfdf5" }]}>
                         <Ionicons name="location" size={20} color="#059669" />
                         <Text style={[s.bannerText, { color: t.isDark ? "#6ee7b7" : "#047857" }]}>
-                            실제 장소를 돌아다니며 미션을 완수해보세요
+                            {i18n("mobile.escape.bannerText")}
                         </Text>
                     </View>
 
@@ -231,6 +245,7 @@ export default function EscapeScreen() {
                         <StoryCard
                             key={story.id}
                             story={story}
+                            i18n={i18n}
                             onPress={() => {
                                 setSelectedStory(story);
                                 setDetailVisible(true);
@@ -245,6 +260,7 @@ export default function EscapeScreen() {
                 visible={detailVisible}
                 onClose={() => setDetailVisible(false)}
                 onStart={(id) => router.push(`/escape/${id}` as any)}
+                i18n={i18n}
             />
         </SafeAreaView>
     );

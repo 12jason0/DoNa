@@ -33,7 +33,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Colors } from "../../src/constants/theme";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
-import { api } from "../../src/lib/api";
+import { api, apiFetch } from "../../src/lib/api";
 import { fetchMyPrivateStories } from "../../src/lib/personalStories";
 import { useAuth } from "../../src/hooks/useAuth";
 import { resolveImageUrl } from "../../src/lib/imageUrl";
@@ -424,6 +424,23 @@ export default function HomeScreen() {
         staleTime: 1000 * 60 * 5,
     });
 
+    type ReportedSuggestion = {
+        id: number;
+        placeName: string;
+        placeAddress?: string | null;
+        status: "PENDING" | "PUBLISHED" | "REJECTED";
+        course?: { id: number; title: string; imageUrl?: string | null; region?: string | null; duration?: string | null } | null;
+    };
+    const { data: suggestionsData } = useQuery<{ suggestions: ReportedSuggestion[] }>({
+        queryKey: ["users", "course-suggestions"],
+        queryFn: () => apiFetch<{ suggestions: ReportedSuggestion[] }>("/api/course-suggestions/my"),
+        enabled: !!user,
+        staleTime: 1000 * 60 * 5,
+    });
+    const publishedSuggestions = (suggestionsData?.suggestions ?? []).filter(
+        (s) => s.status === "PUBLISHED" && Number.isFinite(Number(s.course?.id)),
+    );
+
     useEffect(() => {
         if (!user || !userProfile || userProfile.hasSeenConsentModal !== false) return;
         const hideUntil = getBenefitConsentHideUntil();
@@ -512,6 +529,57 @@ export default function HomeScreen() {
                 </View>
 
                 {/* ── 나만의 데이트 앨범 (로그인 시만) ─────────────────── */}
+                {/* ── 내가 제보한 코스 (등록 완료된 것만, 로그인 시) ─────────── */}
+                {user && publishedSuggestions.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.reportedHeader}>
+                            <Text style={[styles.reportedTitle, { color: t.text }]}>
+                                {translate("home.myReportedCourses.title")}
+                            </Text>
+                            <TouchableOpacity onPress={() => router.push("/suggest" as any)} activeOpacity={0.7}>
+                                <Text style={styles.reportedCtaLink}>{translate("home.myReportedCourses.suggestBtn")}</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.reportedSubtitle, { color: t.textMuted }]}>
+                            {translate("home.myReportedCourses.subtitle")}
+                        </Text>
+                        {publishedSuggestions.map((s) => (
+                            <TouchableOpacity
+                                key={s.id}
+                                style={[styles.reportedRow, { backgroundColor: t.card, borderColor: t.border }]}
+                                onPress={() => s.course && router.push(`/courses/${s.course.id}` as any)}
+                                activeOpacity={0.88}
+                                disabled={!s.course}
+                            >
+                                <View style={[styles.reportedThumb, { backgroundColor: t.surface }]}>
+                                    {s.course?.imageUrl ? (
+                                        <Image
+                                            source={{ uri: s.course.imageUrl }}
+                                            style={StyleSheet.absoluteFill}
+                                            resizeMode="cover"
+                                        />
+                                    ) : (
+                                        <Text style={styles.reportedThumbEmoji}>📍</Text>
+                                    )}
+                                </View>
+                                <View style={styles.reportedInfo}>
+                                    <Text style={[styles.reportedCourseName, { color: t.text }]} numberOfLines={1}>
+                                        {s.course?.title ?? s.placeName}
+                                    </Text>
+                                    <Text style={[styles.reportedCourseMeta, { color: t.textMuted }]} numberOfLines={1}>
+                                        {[s.course?.region, s.course?.duration].filter(Boolean).join(" · ")}
+                                    </Text>
+                                </View>
+                                <View style={styles.reportedBadge}>
+                                    <Text style={styles.reportedBadgeText}>
+                                        {translate("home.myReportedCourses.status.PUBLISHED")}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
                 {user && (
                     <View style={styles.section}>
                         <View
@@ -1057,6 +1125,42 @@ const styles = StyleSheet.create({
     sheetTabTextInactive: {
         color: "#6b7280",
     },
+
+    // 내가 제보한 코스
+    reportedHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+    reportedTitle: { fontSize: 14, fontWeight: "700" },
+    reportedCtaLink: { fontSize: 12, fontWeight: "600", color: "#7FCC9F" },
+    reportedSubtitle: { fontSize: 12, marginBottom: 10 },
+    reportedRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: StyleSheet.hairlineWidth,
+        marginBottom: 8,
+        overflow: "hidden",
+    },
+    reportedThumb: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        flexShrink: 0,
+    },
+    reportedThumbEmoji: { fontSize: 20 },
+    reportedInfo: { flex: 1, minWidth: 0 },
+    reportedCourseName: { fontSize: 13, fontWeight: "600" },
+    reportedCourseMeta: { fontSize: 11, marginTop: 2 },
+    reportedBadge: {
+        backgroundColor: "#d1fae5",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 20,
+    },
+    reportedBadgeText: { fontSize: 11, fontWeight: "600", color: "#065f46" },
 
     // 나만의 데이트 앨범
     memoryAlbumWrap: {

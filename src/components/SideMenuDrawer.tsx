@@ -171,6 +171,36 @@ export default function SideMenuDrawer({
                                 {t("nav.whatToDoToday")}
                             </span>
                         </Link>
+                        <Link
+                            href="/suggest"
+                            prefetch={true}
+                            className="flex flex-row-reverse items-center justify-end gap-2.5 px-3 w-fit ml-auto py-2.5 rounded-lg text-sm font-medium text-violet-700 hover:bg-violet-50/80 transition-colors dark:text-violet-200 dark:hover:bg-violet-900/20"
+                            onClick={onClose}
+                        >
+                            <span
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 transition-all duration-200 ease-out dark:bg-violet-900/40 dark:text-violet-400 ${
+                                    animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
+                                }`}
+                                style={{ transitionDelay: "50ms" }}
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                </svg>
+                            </span>
+                            <span
+                                className={`transition-all duration-200 ease-out ${
+                                    animateUp ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
+                                }`}
+                                style={{ transitionDelay: "50ms" }}
+                            >
+                                {t("nav.suggestCourse")}
+                            </span>
+                        </Link>
                         <button
                             type="button"
                             onClick={() => {

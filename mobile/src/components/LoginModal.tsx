@@ -24,12 +24,7 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { modalBottomPadding } from '../utils/modalSafePadding';
 import { MODAL_ANDROID_PROPS } from '../constants/modalAndroidProps';
 import { Colors, FontSize, BorderRadius } from '../constants/theme';
-
-const DEFAULT_BENEFITS = [
-    '코스 상세/지도/팁을 볼 수 있어요',
-    '원하는 코스를 저장할 수 있어요',
-    '내 취향 기준 추천도 받을 수 있어요',
-];
+import { useLocale } from '../lib/useLocale';
 
 type Props = {
     visible: boolean;
@@ -46,16 +41,23 @@ export default function LoginModal({
     title,
     description,
     benefits,
-    ctaText = '로그인하고 계속 보기',
+    ctaText,
 }: Props) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.92, height - insets.top - 16);
     const { rendered, translateY, backdropOpacity } = useSlideModalAnimation(visible);
     const bottomPad = modalBottomPadding(insets.bottom);
 
-    const benefitList = benefits ?? DEFAULT_BENEFITS;
+    const benefitList =
+        benefits ??
+        [
+            i18n('loginModal.presets.courseDetail.benefit0'),
+            i18n('loginModal.presets.courseDetail.benefit1'),
+            i18n('loginModal.presets.courseDetail.benefit2'),
+        ];
 
     function handleLogin() {
         onClose();
@@ -108,21 +110,21 @@ export default function LoginModal({
                         <Text style={[styles.title, { color: t.text }]}>
                             {title ?? (
                                 <>
-                                    {'로그인하고\n'}
-                                    <Text style={styles.titleHighlight}>두나</Text>
-                                    {'를 즐겨보세요'}
+                                    {i18n('loginModal.sheetHeroBefore')}
+                                    <Text style={styles.titleHighlight}>{i18n('commonFallback.dona')}</Text>
+                                    {i18n('loginModal.sheetHeroAfter')}
                                 </>
                             )}
                         </Text>
 
                         {/* 설명 */}
                         <Text style={[styles.desc, { color: t.textMuted }]}>
-                            {description ?? '로그인하면 코스 저장, 지도, 추천까지 모두 이용할 수 있어요'}
+                            {description ?? i18n('loginModal.sheetDefaultDesc')}
                         </Text>
 
                         {/* 혜택 리스트 */}
                         <View style={[styles.benefitBox, { backgroundColor: t.isDark ? 'rgba(31,41,55,0.5)' : Colors.gray50, borderColor: t.border }]}>
-                            <Text style={[styles.benefitLabel, { color: t.textMuted }]}>로그인 혜택</Text>
+                            <Text style={[styles.benefitLabel, { color: t.textMuted }]}>{i18n('loginModal.benefitsTitle')}</Text>
                             {benefitList.map((b, i) => (
                                 <View key={i} style={styles.benefitRow}>
                                     <View style={[styles.checkCircle, { backgroundColor: t.isDark ? 'rgba(16,185,129,0.2)' : Colors.emerald100 }]}>
@@ -139,7 +141,7 @@ export default function LoginModal({
                             onPress={handleLogin}
                             activeOpacity={0.88}
                         >
-                            <Text style={styles.ctaText}>{ctaText}</Text>
+                            <Text style={styles.ctaText}>{ctaText ?? i18n('loginModal.cta')}</Text>
                             <Ionicons name="sparkles" size={15} color={Colors.white} style={{ marginLeft: 6 }} />
                         </TouchableOpacity>
                     </ScrollView>

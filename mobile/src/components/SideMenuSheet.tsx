@@ -19,17 +19,9 @@ import { router } from "expo-router";
 
 import { useAuth } from "../hooks/useAuth";
 import { useThemeColors } from "../hooks/useThemeColors";
+import { useLocale } from "../lib/useLocale";
 import TicketPlansSheet from "./TicketPlansSheet";
 import ComingSoonBottomSheet from "./ComingSoonBottomSheet";
-
-const LABELS = {
-    whatToDoToday: "오늘 뭐하지?",
-    coupleMission: "커플 미션 게임",
-    donaShop: "두나샵",
-    myPage: "마이페이지",
-    login: "로그인",
-    signup: "회원가입",
-} as const;
 
 type Props = {
     visible: boolean;
@@ -41,6 +33,7 @@ const SLIDE_FROM = 96;
 export default function SideMenuSheet({ visible, onClose }: Props) {
     const insets = useSafeAreaInsets();
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const { isAuthenticated } = useAuth();
     /** 탭바(+ 버튼) 기준보다 살짝 위로 올림 */
     const panelBottom = insets.bottom + 8 + 46 + 12 + 28;
@@ -112,6 +105,7 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
     const goLogin = () => handleDismiss(() => router.push("/(auth)/login" as any));
     const goSignup = () => handleDismiss(() => router.push("/(auth)/signup" as any));
     const onEscape = () => handleDismiss(() => router.push("/escape" as any));
+    const goSuggest = () => handleDismiss(() => router.push("/suggest" as any));
 
     return (
         <>
@@ -146,21 +140,28 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
                     >
                         <View style={styles.colReverse}>
                             <TouchableOpacity style={styles.row} onPress={goNearby} activeOpacity={0.85}>
-                                <Text style={[styles.label, { color: "#3f6212" }]}>{LABELS.whatToDoToday}</Text>
+                                <Text style={[styles.label, { color: "#3f6212" }]}>{i18n("nav.whatToDoToday")}</Text>
                                 <View style={[styles.iconCircle, { backgroundColor: "#ecfccb" }]}>
                                     <Ionicons name="grid-outline" size={20} color="#4d7c0f" />
                                 </View>
                             </TouchableOpacity>
 
+                            <TouchableOpacity style={styles.row} onPress={goSuggest} activeOpacity={0.85}>
+                                <Text style={[styles.label, { color: "#d97706" }]}>{i18n("header.suggestPlace")}</Text>
+                                <View style={[styles.iconCircle, { backgroundColor: "#fef3c7" }]}>
+                                    <Ionicons name="bulb-outline" size={20} color="#d97706" />
+                                </View>
+                            </TouchableOpacity>
+
                             <TouchableOpacity style={styles.row} onPress={onEscape} activeOpacity={0.85}>
-                                <Text style={[styles.label, { color: "#1d4ed8" }]}>{LABELS.coupleMission}</Text>
+                                <Text style={[styles.label, { color: "#1d4ed8" }]}>{i18n("nav.coupleMissionGame")}</Text>
                                 <View style={[styles.iconCircle, { backgroundColor: "#dbeafe" }]}>
                                     <Ionicons name="flag-outline" size={20} color="#2563eb" />
                                 </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.row} onPress={goShop} activeOpacity={0.85}>
-                                <Text style={[styles.label, { color: "#059669" }]}>{LABELS.donaShop}</Text>
+                                <Text style={[styles.label, { color: "#059669" }]}>{i18n("nav.donaShop")}</Text>
                                 <View style={[styles.iconCircle, { backgroundColor: "#d1fae5" }]}>
                                     <Ionicons name="bag-handle-outline" size={20} color="#059669" />
                                 </View>
@@ -168,7 +169,7 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
 
                             {isAuthenticated ? (
                                 <TouchableOpacity style={styles.row} onPress={goMypage} activeOpacity={0.85}>
-                                    <Text style={[styles.label, { color: t.text }]}>{LABELS.myPage}</Text>
+                                    <Text style={[styles.label, { color: t.text }]}>{i18n("nav.myPage")}</Text>
                                     <View style={[styles.iconCircle, { backgroundColor: "#334155" }]}>
                                         <Ionicons name="person" size={20} color="#fff" />
                                     </View>
@@ -176,13 +177,13 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
                             ) : (
                                 <>
                                     <TouchableOpacity style={styles.row} onPress={goLogin} activeOpacity={0.85}>
-                                        <Text style={[styles.label, { color: t.text }]}>{LABELS.login}</Text>
+                                        <Text style={[styles.label, { color: t.text }]}>{i18n("nav.login")}</Text>
                                         <View style={[styles.iconCircle, { backgroundColor: "#334155" }]}>
                                             <Ionicons name="log-in-outline" size={20} color="#fff" />
                                         </View>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.row} onPress={goSignup} activeOpacity={0.85}>
-                                        <Text style={[styles.label, { color: "#0284c7" }]}>{LABELS.signup}</Text>
+                                        <Text style={[styles.label, { color: "#0284c7" }]}>{i18n("nav.signup")}</Text>
                                         <View style={[styles.iconCircle, { backgroundColor: "#e0f2fe" }]}>
                                             <Ionicons name="person-add-outline" size={20} color="#0284c7" />
                                         </View>

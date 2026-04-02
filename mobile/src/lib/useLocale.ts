@@ -7,17 +7,17 @@ import { useCallback, useMemo } from "react";
 import { useAppSettings } from "../context/AppSettingsContext";
 import type { LocalePreference } from "./appSettingsStorage";
 
-// ko는 번들에 포함 (초기 로딩 최적화)
-import koMessages from "../i18n/messages/ko/translation.json";
+// ko는 번들에 포함 (초기 로딩 최적화) — 웹과 동일 파일 단일 소스
+import koMessages from "../../../src/i18n/messages/ko/translation.json";
 
 type Messages = Record<string, unknown>;
 
 const cache: Partial<Record<LocalePreference, Messages>> = { ko: koMessages as Messages };
 
 const loaders: Record<Exclude<LocalePreference, "ko">, () => Promise<Messages>> = {
-    en: () => import("../i18n/messages/en/translation.json").then((m) => m.default as Messages),
-    ja: () => import("../i18n/messages/ja/translation.json").then((m) => m.default as Messages),
-    zh: () => import("../i18n/messages/zh/translation.json").then((m) => m.default as Messages),
+    en: () => import("../../../src/i18n/messages/en/translation.json").then((m) => m.default as Messages),
+    ja: () => import("../../../src/i18n/messages/ja/translation.json").then((m) => m.default as Messages),
+    zh: () => import("../../../src/i18n/messages/zh/translation.json").then((m) => m.default as Messages),
 };
 
 // 비동기 사전로딩 (앱 시작 시 한 번)

@@ -548,7 +548,20 @@ export default function AdminDashboard() {
                         </div>
                     </Link>
 
-                    {/* 4. 방탈출 스토리 */}
+                    {/* 4. 장소 제보 검토 */}
+                    <Link href="/admin/suggest" className="block group">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
+                            <div className="text-3xl mb-4">📨</div>
+                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600">
+                                장소 제보 검토
+                            </h3>
+                            <p className="text-gray-500 mt-2 text-sm">
+                                유저가 보낸 제보를 검토하고 주소/설명 보강 및 상태를 관리합니다.
+                            </p>
+                        </div>
+                    </Link>
+
+                    {/* 5. 방탈출 스토리 */}
                     <Link href="/admin/escape-stories" className="block group">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
                             <div className="text-3xl mb-4">🕵️‍♀️</div>
@@ -559,7 +572,7 @@ export default function AdminDashboard() {
                         </div>
                     </Link>
 
-                    {/* 5. 환불 관리 */}
+                    {/* 6. 환불 관리 */}
                     <Link href="/admin/refunds" className="block group">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
                             <div className="text-3xl mb-4">💰</div>

@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { CasefileItem, CompletedCourse } from "@/types/user";
+import type { ReportedSuggestion } from "@/components/ReportedCoursesCTA";
 // 🟢 [Fix]: 누락된 아이콘 컴포넌트 임포트 추가
 import { CheckCircle, Sparkles, MapPin, Zap, ChevronRight } from "lucide-react";
 
@@ -124,6 +125,7 @@ interface FootprintTabProps {
     aiRecommendations?: any[]; // 🟢 오늘의 데이트 추천 코스 (savedCourses)
     userName?: string; // 🟢 사용자 이름
     personalStories?: any[]; // 🟢 개인 추억 (isPublic: false인 리뷰)
+    reportedSuggestions?: ReportedSuggestion[];
 }
 
 const FootprintTab = ({
@@ -132,6 +134,7 @@ const FootprintTab = ({
     aiRecommendations = [],
     userName: userNameProp,
     personalStories = [],
+    reportedSuggestions = [],
 }: FootprintTabProps) => {
     const { t } = useLocale();
     const userName = userNameProp || t("mypage.footprintTab.defaultUser");
@@ -149,10 +152,13 @@ const FootprintTab = ({
     // 🟢 각 코스의 이미지 URL을 저장 (코스 ID -> 이미지 URL)
     const [courseImages, setCourseImages] = useState<Record<number | string, string>>({});
     // 🟢 서브 탭 상태 (달력, 추억) - URL 파라미터에 따라 초기값 설정
-    const [activeView, setActiveView] = useState<"calendar" | "memories">(() => {
+    const [activeView, setActiveView] = useState<"calendar" | "memories" | "suggestions">(() => {
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
-            return params.get("view") === "memories" ? "memories" : "calendar";
+            const view = params.get("view");
+            if (view === "memories") return "memories";
+            if (view === "suggestions") return "suggestions";
+            return "calendar";
         }
         return "calendar";
     });
@@ -168,7 +174,7 @@ const FootprintTab = ({
         const viewParam = searchParams.get("view");
         const memoryIdParam = searchParams.get("id");
 
-        // view=memories가 있으면 추억 탭으로 전환
+        // view 파라미터가 있으면 해당 서브 탭으로 전환
         if (viewParam === "memories") {
             setActiveView("memories");
 
@@ -190,6 +196,8 @@ const FootprintTab = ({
                     router.replace(newUrl, { scroll: false });
                 }
             }
+        } else if (viewParam === "suggestions") {
+            setActiveView("suggestions");
         }
     }, [searchParams, personalStories, router]);
 
@@ -316,10 +324,12 @@ const FootprintTab = ({
     const hasData = useMemo(() => {
         if (activeView === "calendar") {
             return completed.length > 0 || aiRecommendations.length > 0;
+        } else if (activeView === "suggestions") {
+            return reportedSuggestions.length > 0;
         } else {
             return personalStories.length > 0;
         }
-    }, [completed, aiRecommendations, personalStories, activeView]);
+    }, [completed, aiRecommendations, personalStories, reportedSuggestions.length, activeView]);
 
     const monthNames = useMemo(
         () =>
@@ -622,6 +632,16 @@ const FootprintTab = ({
                             >
                                 {t("mypage.footprintTab.memories")}
                             </button>
+                            <button
+                                onClick={() => setActiveView("suggestions")}
+                                className={`px-4 py-2 rounded-full font-medium text-sm transition-all whitespace-nowrap ${
+                                    activeView === "suggestions"
+                                        ? "bg-gray-900 dark:bg-gray-800 text-white"
+                                        : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
+                                }`}
+                            >
+                                {t("mypage.footprintTab.suggestions")}
+                            </button>
                         </div>
                     </div>
                     <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"></div>
@@ -635,10 +655,15 @@ const FootprintTab = ({
                             {t("mypage.footprintTab.footprintMemoriesHint")}
                         </p>
                     )}
+                    {activeView === "suggestions" && (
+                        <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium">
+                            {t("mypage.footprintTab.footprintSuggestionsHint")}
+                        </p>
+                    )}
                 </div>
 
                 {/* 🟢 달력 영역 또는 추억 영역 */}
-                {activeView === "calendar" ? (
+                {activeView === "calendar" && (
                     <div
                         className="p-4 md:p-6"
                         onTouchStart={handleTouchStart}
@@ -963,7 +988,8 @@ const FootprintTab = ({
                             })}
                         </div>
                     </div>
-                ) : (
+                )}
+                {activeView === "memories" && (
                     /* 🟢 추억 영역 - 타임라인 형식 */
                     <div className="p-4 md:p-6">
                         {personalStories.length === 0 ? (
@@ -1119,6 +1145,65 @@ const FootprintTab = ({
                                         </div>
                                     ));
                                 })()}
+                            </div>
+                        )}
+                    </div>
+                )}
+                {activeView === "suggestions" && (
+                    <div className="p-4 md:p-6">
+                        {reportedSuggestions.length === 0 ? (
+                            <div className="text-center py-16">
+                                <div className="mb-4 flex items-center justify-center text-5xl">📍</div>
+                                <p className="text-base text-gray-500 dark:text-gray-400 font-medium">
+                                    {t("home.myReportedCourses.emptyTitle")}
+                                </p>
+                                <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                                    {t("home.myReportedCourses.emptySubtitle")}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/suggest")}
+                                    className="mt-5 px-5 py-2.5 rounded-full bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors"
+                                >
+                                    {t("home.myReportedCourses.suggestBtn")}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3">
+                                {reportedSuggestions.map((item) => {
+                                    const statusClass =
+                                        item.status === "PUBLISHED"
+                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                            : item.status === "PENDING"
+                                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400";
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => {
+                                                if (item.course?.id) router.push(`/courses/${item.course.id}`);
+                                            }}
+                                            disabled={!item.course?.id}
+                                            className="relative text-left rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 min-h-[148px] disabled:cursor-default"
+                                        >
+                                            <span
+                                                className={`absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusClass}`}
+                                            >
+                                                {t(`home.myReportedCourses.status.${item.status}`)}
+                                            </span>
+                                            <div className="text-sm font-bold text-gray-900 dark:text-white pr-12 line-clamp-2">
+                                                {item.placeName}
+                                            </div>
+                                            <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">
+                                                {item.placeAddress || item.description || item.note || t("suggest.pageSubtitle")}
+                                            </div>
+                                            <div className="mt-3 text-[10px] text-gray-400 dark:text-gray-500">
+                                                {new Date(item.createdAt).toLocaleDateString()}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

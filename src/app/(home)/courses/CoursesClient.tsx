@@ -3,7 +3,6 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from "react"; // 🟢 useDeferredValue 추가
 import CourseCard from "@/components/CourseCard";
-import CourseReportBanner from "@/components/CourseReportBanner";
 import HeroSlider from "@/components/HeroSlider";
 import TapFeedback from "@/components/TapFeedback";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
@@ -466,15 +465,8 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
                     {isNavigating && <CourseLoadingOverlay />}
                     {/* 🟢 [Optimization 3] 반복되는 컴포넌트 렌더링 최적화 */}
                     {visibleCourses.map((course, i) => {
-                        // 🟢 코스 5개마다 제보 유도 배너 삽입
-                        const shouldShowBanner = i > 0 && i % 5 === 0;
                         return (
                             <div key={course.id}>
-                                {shouldShowBanner && (
-                                    <div className="mb-6">
-                                        <CourseReportBanner />
-                                    </div>
-                                )}
                                 <TapFeedback className="block w-full">
                                     <CourseCard
                                         course={course}

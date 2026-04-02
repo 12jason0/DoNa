@@ -4,7 +4,8 @@
     "closeSettingsModal": "关闭设置弹窗",
     "search": "搜索",
     "closeSearchModal": "关闭搜索弹窗",
-    "notification": "通知"
+    "notification": "通知",
+    "suggestPlace": "地点投稿"
   },
   "common": {
     "settings": "设置",
@@ -70,7 +71,19 @@
       "六"
     ],
     "personalizedHomeCta": "本週末·紀念日路線",
-    "personalizedHomeCtaSub": "為你打造符合情境的約會路線"
+    "personalizedHomeCtaSub": "為你打造符合情境的約會路線",
+    "myReportedCourses": {
+      "title": "我报告的路线",
+      "subtitle": "由您提报创建的路线",
+      "emptyTitle": "还没有报告过的地点",
+      "emptySubtitle": "告诉我们一个地点，DoNa会为您创建路线",
+      "suggestBtn": "提报地点",
+      "status": {
+        "PENDING": "审核中",
+        "PUBLISHED": "已发布",
+        "REJECTED": "未选定"
+      }
+    }
   },
   "memory": {
     "notLoggedIn": {
@@ -211,7 +224,36 @@
     "saveError": "保存时出错。",
     "resultMessage": "找到了！🎉 为 {nickname} 找到秘密路线。\n点击卡片查看吧！",
     "resultNetError": "因网络错误无法获取推荐，请稍后再试。",
-    "resultNoMatch": "未找到符合条件的路线，换个条件再试？"
+    "resultNoMatch": "未找到符合条件的路线，换个条件再试？",
+    "mobileChatGreeting": "你好！今天也和 DoNa 一起策划一场特别约会吧 🌿",
+    "mobileChatLoginBlock": "查看路线推荐需要先登录 🔐\n请在「我的」页面登录。",
+    "mobileChatFoundTpl": "在 {region} 区域找到了适合「{goal}」的路线！🎉",
+    "mobileResultsCount": "{count} 条推荐路线 🎉",
+    "mobileSelectArrow": "选择 →",
+    "mobileRecommendAgain": "换一批推荐",
+    "mobileAnalysis1": "正在分析喜好…",
+    "mobileAnalysis2": "正在寻找最佳路线…",
+    "mobileAnalysis3": "正在组合路线…",
+    "mobileAnalysis4": "快完成了！",
+    "mobileGuest": "访客",
+    "mobileTouchOpen": "点按打开",
+    "mobileDurationApprox": "约 4–5 小时",
+    "mobileMatchPerfect": "非常契合",
+    "mobileMatchGood": "很合适",
+    "mobileMatchSoft": "不错",
+    "mobileMatchNeutral": "今日推荐",
+    "mobileMatchShort": "推荐",
+    "mobileFlipAiLabel": "AI Analysis Result",
+    "mobileDetailView": "查看详情",
+    "mobileChatWho": "和谁一起去？",
+    "mobileChatWhere": "更想去哪个区域？",
+    "mobileCompanionSomeLabel": "暧昧对象",
+    "mobileCompanionBlindLabel": "相亲对象",
+    "mobileHelloLogged": "你好，\n{nickname} 👋",
+    "mobileProfileGuestLine": "登录获取\n专属推荐 👋",
+    "mobileLoginHintChip": "✨ 登录可享个性化推荐",
+    "mobileHeroBlurb": "AI DoNa 为你\n推荐今天的路线",
+    "mobileHeroFooter": "AI 分析 · 免费"
   },
   "onboarding": {
     "titleLine1": "不知道去哪？",
@@ -494,6 +536,13 @@
       "bar": "酒吧",
       "date": "约会"
     },
+    "recommendedTime": {
+      "morning": "上午",
+      "afternoon": "下午",
+      "breakfast": "早餐",
+      "night": "晚上",
+      "lateNight": "夜间"
+    },
     "segmentCourseFallback": "路线",
     "selectEachSegment": "请在每一段中选择一个地点。",
     "courseSavedToast": "路线已保存。",
@@ -515,7 +564,10 @@
     "openReservationPage": "打开预约页面",
     "sheetLoading": "加载中...",
     "reviewImageAltNumbered": "评价图片 {n}",
-    "recommendedPlaceFallback": "推荐地点"
+    "recommendedPlaceFallback": "推荐地点",
+    "unnamedPlace": "地点 {n}",
+    "routeOriginFallback": "出发",
+    "routeDestinationFallback": "到达"
   },
   "courseStart": {
     "errorCourseNotFound": "找不到该路线。",
@@ -582,7 +634,30 @@
     "saveSuccessTitle": "已保存！",
     "saveSuccessLine1": "今天的珍贵一瞬已写入",
     "saveSuccessLine2": "DoNa 的「{name}故事」。",
-    "saveSuccessFooter": "回忆已安全保存。"
+    "saveSuccessFooter": "回忆已安全保存。",
+    "alertNotice": "提示",
+    "permissionRequiredTitle": "需要权限",
+    "permissionPhotosBody": "需要相册访问权限。",
+    "imagePickerBuildOnly": "仅在本机应用构建中可选择图片。",
+    "uploadWait": "照片上传中，请稍候。",
+    "waitPhotoUpload": "请等待上传完成。",
+    "memorySaveLimitTitle": "已达保存上限",
+    "memorySaveLimitBody": "私密回忆保存已达上限。升级订阅可保存更多。",
+    "viewSubscription": "查看方案",
+    "saveFailedTitle": "保存失败",
+    "tagSelect": "选择标签",
+    "todayDateFeel": "今天的约会怎么样？",
+    "memoryOneLine": "一句话回忆",
+    "memoryOneLinePlaceholder": "用一句话记录今天的约会（可选）",
+    "tagInputMax10": "输入标签（最多10字）",
+    "nextWithArrow": "下一步 →",
+    "saveMemorySparkle": "保存回忆 ✨",
+    "memorySavedShort": "回忆已保存！",
+    "memorySavedMyPageHint": "可在我的页面再次查看",
+    "goHomeBack": "返回首页",
+    "presignUrlError": "无法获取上传地址。",
+    "imageUploadPutError": "图片上传失败。",
+    "uploadFailedTitle": "上传失败"
   },
   "map": {
     "loading": "加载中...",
@@ -747,7 +822,9 @@
     "alertLoginRequired": "需要登录。",
     "alertSuccess": "已注册上线通知！🔔",
     "alertFail": "注册通知失败。",
-    "alertError": "注册时发生错误。"
+    "alertError": "注册时发生错误。",
+    "alertNoticeTitle": "提示",
+    "alertDoneTitle": "完成"
   },
   "logoutModal": {
     "title": "等等！",
@@ -770,6 +847,7 @@
     "placesClosed": "{n}处休息"
   },
   "loading": {
+    "pageOverlay": "正在查找课程...",
     "findingCourses": "DoNa正在寻找课程...",
     "courses": "正在加载课程...",
     "nearby": "正在寻找周边课程...",
@@ -783,6 +861,9 @@
   },
   "loginModal": {
     "close": "关闭",
+    "sheetDefaultDesc": "登录后可保存课程、使用地图并获得推荐。",
+    "sheetHeroBefore": "登录并与 ",
+    "sheetHeroAfter": " 一起探索",
     "titleLine1": "获取今天的约会课程",
     "titleHighlight": "只需3秒",
     "titleLine2": "？",
@@ -931,7 +1012,9 @@
     "submitting": "处理中...",
     "alertAgree": "请阅读并同意说明。",
     "confirmSubscription": "您当前有付费订阅。退出后可能难以退款。确定要退出吗？",
-    "alertError": "退出时发生错误。"
+    "alertError": "退出时发生错误。",
+    "alertSelectReason": "请选择退出原因。",
+    "alertEnterOtherReason": "请填写其他原因。"
   },
   "albumLimitModal": {
     "upgradeTitle": "想无限保存回忆？",
@@ -956,6 +1039,15 @@
     "deleteError": "删除账户时发生错误。"
   },
   "mypage": {
+    "appGuestTitle": "需要登录",
+    "appGuestSub": "使用我的页面\n请先登录",
+    "appGuestCta": "登录",
+    "appPageSubtitle": "查看您的信息与动态",
+    "alertErrorTitle": "错误",
+    "alertInfoTitle": "提示",
+    "defaultMemberName": "DoNa会员",
+    "favRemoveFailed": "取消收藏失败。",
+    "currencyWon": "韩元",
     "pageTitle": "我的页面",
     "pageSubtitle": "管理您的个人信息和活动",
     "tabProfile": "个人资料",
@@ -1063,7 +1155,22 @@
       "businessLineAddress": "地址：忠清南道洪城郡洪北邑新大路33",
       "businessLineInquiry": "咨询：12jason@donacouse.com",
       "businessLineCustomerCenter": "客服：010-2481-9824",
-      "footerContact": "联系与经营者信息"
+      "footerContact": "联系与经营者信息",
+      "planSectionTitle": "我的方案",
+      "planNamePremium": "高级方案",
+      "planNameBasic": "基础方案",
+      "planNameFree": "免费方案",
+      "planDescFree": "基础方案 • 免费",
+      "planDescBasic": "BASIC方案",
+      "planDescPremium": "PREMIUM方案 • 全功能",
+      "planCtaManage": "管理方案",
+      "profileSectionTitle": "个人资料",
+      "joinedOnPrefix": "加入",
+      "nicknamePlaceholderShort": "输入昵称",
+      "editModalTitle": "编辑资料",
+      "accountSettingsTitle": "账户管理",
+      "kakaoChannelRow": "Kakao频道",
+      "withdrawMember": "注销会员"
     },
     "recordsTab": {
       "favorites": "收藏",
@@ -1091,6 +1198,7 @@
       "collectBadgesHint": "完成故事收集徽章吧！",
       "rewardsTitle": "奖励记录",
       "noRewards": "暂无奖励。",
+      "noRewardsHint": "完成任务即可获得奖励",
       "paymentsTitle": "购买记录",
       "refundManage": "退款管理",
       "reward7dayCheckin": "7日连续签到",
@@ -1113,7 +1221,9 @@
       "requestRefund": "申请退款",
       "noPayments": "暂无购买记录",
       "noPaymentsHint": "购买阅览券或订阅后会显示在这里。",
-      "goToRefundPage": "前往支付与退款页面"
+      "goToRefundPage": "前往支付与退款页面",
+      "rewardCourseCompletion": "路线完成奖励",
+      "rewardTicketsPlus": "+{n}张券"
     },
     "footprintTab": {
       "defaultUser": "会员",
@@ -1154,12 +1264,18 @@
       "myFootprint": "我的足迹",
       "calendar": "日历",
       "memories": "回忆",
+      "suggestions": "投稿",
       "footprintCalendarHint": "AI推荐的约会路线会自动记录",
       "footprintMemoriesHint": "查看您的今日瞬间",
+      "footprintSuggestionsHint": "查看你投稿地点的状态",
       "completedCourses": "已完成",
       "todayDate": "今日约会",
       "recommendedDate": "推荐",
-      "yearSuffix": "年"
+      "yearSuffix": "年",
+      "memoryEmptyTitle": "还没有记录回忆",
+      "memoryEmptySub": "开始路线并记录专属回忆吧",
+      "courseRecordFallback": "路线记录",
+      "casefileFallbackTitle": "案件档案"
     }
   },
   "commonFallback": {
@@ -1274,8 +1390,128 @@
     "whatToDoToday": "今天做什么？",
     "coupleMissionGame": "情侣任务游戏",
     "donaShop": "DoNa商店",
+    "suggestCourse": "推荐路线",
     "openMenu": "打开菜单",
     "main": "首页"
+  },
+  "mobile": {
+    "map": {
+      "fallbackTitle": "地图需在应用构建版本中使用",
+      "fallbackSub": "请使用 EAS dev 构建版本",
+      "toastLocationDevBuild": "定位功能需要安装新版 dev 构建",
+      "toastLocationDenied": "已拒绝位置权限",
+      "toastLocationFail": "无法获取位置",
+      "toastSearchEmpty": "没有搜索结果",
+      "toastSearchError": "搜索时出错",
+      "searchPlaceholder": "搜索地点、美食、路线",
+      "tabPlaces": "地点",
+      "tabCourses": "路线",
+      "areaSearch": "搜索当前地图区域",
+      "panelPlacesTitle": "周边地点",
+      "panelCoursesTitle": "精选约会路线",
+      "panelPlacesCount": "地图上有 {count} 个地点",
+      "panelCourseSpotsHint": "此路线包含的地点",
+      "panelCoursesSub": "浏览精选路线",
+      "loadingInfo": "正在加载…",
+      "loadingPlaces": "正在加载地点…",
+      "categoryFallback": "推荐地点",
+      "phoneMissing": "暂无电话",
+      "directions": "导航",
+      "emptyCoursePlaces": "该路线暂无登记地点。",
+      "emptyArea": "这里还没有信息。\n试试稍微移动地图？",
+      "badgeRecommendedCourse": "推荐路线",
+      "badgePlace": "地点",
+      "viewDetail": "查看详情"
+    },
+    "escape": {
+      "badgeEarnable": "可获得 {name}",
+      "startCta": "开始",
+      "headerTitle": "情侣任务游戏",
+      "headerSub": "户外实景逃脱类路线",
+      "emptyTitle": "故事筹备中",
+      "emptySub": "新的任务路线即将上线！",
+      "bannerText": "前往真实地点完成任务吧"
+    },
+    "nearby": {
+      "searchPlaceholderShort": "搜索区域或路线名称",
+      "headerRegionCourses": "{region} 路线",
+      "headerSearchResults": "「{q}」的搜索结果",
+      "resetChip": "重置 ×",
+      "filterSheetTitle": "筛选",
+      "emptyNoMatch": "没有符合条件的路线",
+      "emptyLoading": "正在加载路线…",
+      "lockSubscribe": "订阅后查看",
+      "lockTierCourse": "{tier} 路线",
+      "viewRatingLine": "★ {rating}（{count}）"
+    },
+    "shop": {
+      "headerTitle": "DoNa商店",
+      "heroTitle": "DoNa商店",
+      "comingSoon": "即将上线\n密室套件、钥匙扣等\n敬请期待！",
+      "sheetKitDesc": "我们正在准备更完美的套装。\n请稍候 🎁"
+    },
+    "courseScreen": {
+      "tipsLoginTitle": "登录后可查看独家贴士",
+      "tipsLoginSub": "根据会员与门票显示",
+      "tipSectionLabel": "✨ 贴士",
+      "tipViewInfo": "查看详情",
+      "mapFullRoute": "全程路线",
+      "mapSegmentRoute": "区间路线",
+      "mapSegmentWalk": "{from}→{to} 步行 {minutes} 分钟",
+      "placeFallback": "地点",
+      "mapFabA11y": "在地图查看全程路线",
+      "closeA11y": "关闭",
+      "shareMessage": "{title} - DoNa 约会路线\n{url}",
+      "startCourseFailed": "无法开始此路线，请重试。",
+      "favAdded": "已加入收藏",
+      "favRemoved": "已取消收藏",
+      "switchCourseTitle": "更换路线",
+      "switchCourseMessage": "将正在进行的路线换成这条吗？",
+      "cancel": "取消",
+      "switchCourseConfirm": "更换",
+      "switchCourseFailed": "更换路线失败。",
+      "reviewMinLength": "评论至少输入 5 个字。",
+      "reviewPosted": "评论已发布",
+      "reviewSubmitFailTitle": "评论发布失败",
+      "tryAgainLater": "请稍后再试。",
+      "permRequired": "需要权限",
+      "permPhotos": "需要相册访问权限。",
+      "imageUploadFailTitle": "图片上传失败",
+      "imagePickerBuildOnly": "仅在本机应用构建中可选择图片。",
+      "loadingCourse": "加载路线中...",
+      "backArrow": "← 返回",
+      "courseLoadError": "无法加载此路线",
+      "targetSome": "暧昧期",
+      "metaSpotsCount": "👣 {count} 个地点",
+      "saveSelection": "保存选择",
+      "memoryLimitTitleLine1": "保存回忆",
+      "memoryLimitHighlight": "已达上限",
+      "memoryLimitSub": "升级订阅可保存更多回忆",
+      "subBenefitsTitle": "订阅权益",
+      "benefitUnlimitedMemories": "无限保存私密回忆",
+      "benefitPremiumCourses": "全部高级路线",
+      "benefitNoAds": "无广告体验",
+      "subscribeSaveMore": "订阅以保存更多",
+      "reviewModalTitle": "写评论",
+      "reviewTargetLabel": "评论对象",
+      "attachImage": "添加图片",
+      "changeImage": "更换图片",
+      "reviewPlaceholder": "说说这条路线怎么样（至少5字）",
+      "submitReview": "提交",
+      "segmentChoose": "选择{label}",
+      "inProgressThisCourse": "今天正在进行此路线",
+      "memoryRecordPersonal": "记录我的回忆",
+      "alreadyOtherCourse": "今天已开始另一条路线",
+      "switchOtherCourse": "更换其他路线",
+      "reviewsLoading": "加载评论中...",
+      "reviewWrite": "写评论",
+      "reviewsHeading": "评论",
+      "showMoreReviews": "更多（还剩 {n} 条）",
+      "reserveWithName": "预约 {name}",
+      "anonymous": "匿名",
+      "saveFailedToast": "保存失败。",
+      "alertNotice": "提示"
+    }
   },
   "authPage": {
     "login": {
@@ -1295,6 +1531,7 @@
       "kakaoSubmit": "使用KakaoTalk登录",
       "kakaoSubmitting": "KakaoTalk认证中...",
       "errorLoginFailed": "登录失败。",
+      "errorEmailPasswordRequired": "请输入邮箱和密码。",
       "errorGeneric": "登录时发生错误。",
       "errorKakaoClientId": "未配置Kakao客户端ID。",
       "errorPopupBlocked": "弹窗被阻止，请在浏览器设置中允许弹窗。",
@@ -1335,7 +1572,21 @@
       "errorPasswordMismatch": "密码不一致。",
       "errorSignupFailed": "注册失败。",
       "errorConnection": "服务器连接异常，请检查地址。",
-      "errorAppleAuth": "Apple认证失败。"
+      "errorAppleAuth": "Apple认证失败。",
+      "genderOther": "其他",
+      "errorInvalidEmail": "请输入有效的邮箱地址。",
+      "errorGenericRetry": "出错了，请重试。",
+      "appleSignUpA11y": "使用 Apple 注册",
+      "kakaoSignUpA11y": "使用 Kakao 开始",
+      "pickAgeTitle": "选择年龄段",
+      "pickGenderTitle": "选择性别",
+      "nicknameMinPlaceholder": "至少 2 个字",
+      "emailShortPlaceholder": "邮箱地址",
+      "passwordMinPlaceholder": "至少 6 位",
+      "optionalInParens": "（可选）",
+      "pickPlaceholder": "请选择",
+      "previewPurposeLead": "想要什么氛围的路线？先说说目的吧 😊",
+      "previewStartCta": "开始获取推荐 →"
     }
   },
   "terms": {
@@ -1572,8 +1823,8 @@
     "ETC": "其他"
   },
   "suggest": {
-    "pageTitle": "推荐路线",
-    "pageSubtitle": "分享您喜欢的约会路线，运营团队审核后将予以展示。",
+    "pageTitle": "提报地点",
+    "pageSubtitle": "告诉我们您想去的地方，审核后将为您制作路线。",
     "labelTitle": "路线标题",
     "labelLocation": "地区",
     "labelBudget": "预算（韩元）",
@@ -1597,6 +1848,23 @@
     "placeholderTitle": "例）惠化话剧 + 骆山公园夜景",
     "placeholderLocation": "例）弘大",
     "placeholderOptional": "可选",
-    "placeholderPlaceN": "地点 {{num}}"
+    "placeholderPlaceN": "地点 {{num}}",
+    "loginRequired": "提报地点需要登录。",
+    "labelPlaceNameSimple": "地点名称",
+    "placeholderPlaceNameSimple": "例）乙支路咖啡馆、圣水洞画廊",
+    "placeholderNoteSimple": "例）有独特的装潢（可选）",
+    "labelPhoto": "照片",
+    "addPhoto": "添加照片",
+    "labelDescriptionSimple": "说明",
+    "placeholderDescriptionSimple": "请告诉我们这个地方的特别之处",
+    "labelConceptSimple": "希望的概念（可选）",
+    "placeholderConceptSimple": "例）感性咖啡厅、绝景餐厅、安静氛围",
+    "uploadingPhoto": "正在上传照片...",
+    "photoError": "照片上传失败，请重试。",
+    "modalStatusHint": {
+      "PENDING": "我们已收到投稿，正在审核。",
+      "PUBLISHED": "已制作成路线并在应用中上线。",
+      "REJECTED": "本次未入选，欢迎下次再投稿。"
+    }
   }
 }

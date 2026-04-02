@@ -4,7 +4,8 @@
     "closeSettingsModal": "設定モーダルを閉じる",
     "search": "検索",
     "closeSearchModal": "検索モーダルを閉じる",
-    "notification": "通知"
+    "notification": "通知",
+    "suggestPlace": "スポットを提案"
   },
   "common": {
     "settings": "設定",
@@ -70,7 +71,19 @@
       "土"
     ],
     "personalizedHomeCta": "今週末・記念日コース",
-    "personalizedHomeCtaSub": "状況に合ったデートコースをお作りします"
+    "personalizedHomeCtaSub": "状況に合ったデートコースをお作りします",
+    "myReportedCourses": {
+      "title": "私が提案したコース",
+      "subtitle": "あなたの提案から生まれたコースです",
+      "emptyTitle": "まだ提案した場所はありません",
+      "emptySubtitle": "場所を教えていただければDoNaがコースを作ります",
+      "suggestBtn": "場所を提案する",
+      "status": {
+        "PENDING": "審査中",
+        "PUBLISHED": "公開済み",
+        "REJECTED": "非選定"
+      }
+    }
   },
   "memory": {
     "notLoggedIn": {
@@ -211,7 +224,36 @@
     "saveError": "保存中にエラーが発生しました。",
     "resultMessage": "ジャジャーン！🎉 {nickname}さんのためのシークレットコースを見つけました。\nカードをタッチして確認してください！",
     "resultNetError": "ネットワークエラーのためおすすめを取得できませんでした。しばらくしてからもう一度お試しください。",
-    "resultNoMatch": "条件に合うコースが見つかりませんでした。別の条件で再度お試しになりますか？"
+    "resultNoMatch": "条件に合うコースが見つかりませんでした。別の条件で再度お試しになりますか？",
+    "mobileChatGreeting": "こんにちは！今日もDoNaと特別なデートを計画しましょう 🌿",
+    "mobileChatLoginBlock": "コース推薦を見るにはログインが必要です 🔐\nマイページからログインしてください。",
+    "mobileChatFoundTpl": "{region}エリアの{goal}向けコースを見つけました！🎉",
+    "mobileResultsCount": "おすすめコース {count}件 🎉",
+    "mobileSelectArrow": "選ぶ →",
+    "mobileRecommendAgain": "別のコースを推薦してもらう",
+    "mobileAnalysis1": "好みを分析中...",
+    "mobileAnalysis2": "最適なコースを検索中...",
+    "mobileAnalysis3": "コースを組み合わせ中...",
+    "mobileAnalysis4": "もうすぐ完了です！",
+    "mobileGuest": "ゲスト",
+    "mobileTouchOpen": "タップして開く",
+    "mobileDurationApprox": "約4〜5時間",
+    "mobileMatchPerfect": "ぴったりです",
+    "mobileMatchGood": "とても合います",
+    "mobileMatchSoft": "いい感じ",
+    "mobileMatchNeutral": "今日のおすすめ",
+    "mobileMatchShort": "おすすめ",
+    "mobileFlipAiLabel": "AI Analysis Result",
+    "mobileDetailView": "詳細を見る",
+    "mobileChatWho": "誰と行きますか？",
+    "mobileChatWhere": "どのエリアがいいですか？",
+    "mobileCompanionSomeLabel": "気になる相手と",
+    "mobileCompanionBlindLabel": "合コン・見合い相手と",
+    "mobileHelloLogged": "こんにちは、\n{nickname}さん 👋",
+    "mobileProfileGuestLine": "ログインして\nおすすめを受け取る 👋",
+    "mobileLoginHintChip": "✨ ログインでパーソナルおすすめ",
+    "mobileHeroBlurb": "AI DoNaが\n今日のコースを提案します",
+    "mobileHeroFooter": "AI分析 · 無料"
   },
   "onboarding": {
     "titleLine1": "どこに行くか",
@@ -494,6 +536,13 @@
       "bar": "バー",
       "date": "デート"
     },
+    "recommendedTime": {
+      "morning": "午前",
+      "afternoon": "午後",
+      "breakfast": "朝",
+      "night": "夜",
+      "lateNight": "夜間"
+    },
     "segmentCourseFallback": "コース",
     "selectEachSegment": "各区間で場所を選んでください。",
     "courseSavedToast": "コースを保存しました。",
@@ -515,7 +564,10 @@
     "openReservationPage": "予約ページを開く",
     "sheetLoading": "読み込み中...",
     "reviewImageAltNumbered": "レビュー画像 {n}",
-    "recommendedPlaceFallback": "おすすめスポット"
+    "recommendedPlaceFallback": "おすすめスポット",
+    "unnamedPlace": "スポット {n}",
+    "routeOriginFallback": "出発",
+    "routeDestinationFallback": "到着"
   },
   "courseStart": {
     "errorCourseNotFound": "コースが見つかりません。",
@@ -582,7 +634,30 @@
     "saveSuccessTitle": "保存しました！",
     "saveSuccessLine1": "今日の大切な一枚が",
     "saveSuccessLine2": "DoNaの「{name}ストーリー」に残りました。",
-    "saveSuccessFooter": "大切な思い出がしっかり保存されました。"
+    "saveSuccessFooter": "大切な思い出がしっかり保存されました。",
+    "alertNotice": "お知らせ",
+    "permissionRequiredTitle": "権限が必要です",
+    "permissionPhotosBody": "写真へのアクセス権限が必要です。",
+    "imagePickerBuildOnly": "画像の選択はアプリビルドでのみ利用できます。",
+    "uploadWait": "写真をアップロード中です。しばらくお待ちください。",
+    "waitPhotoUpload": "アップロードの完了をお待ちください。",
+    "memorySaveLimitTitle": "保存上限に達しました",
+    "memorySaveLimitBody": "思い出の保存上限に達しました。プランをアップグレードするとさらに保存できます。",
+    "viewSubscription": "プランを見る",
+    "saveFailedTitle": "保存に失敗しました",
+    "tagSelect": "タグを選ぶ",
+    "todayDateFeel": "今日のデートはどうでしたか？",
+    "memoryOneLine": "ひとことメモ",
+    "memoryOneLinePlaceholder": "今日のデートを一行で（任意）",
+    "tagInputMax10": "タグを入力（最大10文字）",
+    "nextWithArrow": "次へ →",
+    "saveMemorySparkle": "思い出を保存 ✨",
+    "memorySavedShort": "思い出を保存しました！",
+    "memorySavedMyPageHint": "マイページで再度見られます",
+    "goHomeBack": "ホームに戻る",
+    "presignUrlError": "アップロードURLを取得できませんでした。",
+    "imageUploadPutError": "画像のアップロードに失敗しました。",
+    "uploadFailedTitle": "アップロード失敗"
   },
   "map": {
     "loading": "読み込み中...",
@@ -747,7 +822,9 @@
     "alertLoginRequired": "ログインが必要です。",
     "alertSuccess": "公開お知らせが登録されました！🔔",
     "alertFail": "お知らせの登録に失敗しました。",
-    "alertError": "登録中にエラーが発生しました。"
+    "alertError": "登録中にエラーが発生しました。",
+    "alertNoticeTitle": "お知らせ",
+    "alertDoneTitle": "完了"
   },
   "logoutModal": {
     "title": "ちょっと待って！",
@@ -770,6 +847,7 @@
     "placesClosed": "{n}件休業"
   },
   "loading": {
+    "pageOverlay": "コースを検索中...",
     "findingCourses": "DoNaがコースを検索中...",
     "courses": "コースを読み込み中...",
     "nearby": "周辺のコースを検索中...",
@@ -783,6 +861,9 @@
   },
   "loginModal": {
     "close": "閉じる",
+    "sheetDefaultDesc": "ログインするとコース保存・地図・おすすめまでまとめて使えます",
+    "sheetHeroBefore": "ログインして\n",
+    "sheetHeroAfter": "を楽しもう",
     "titleLine1": "デートコースを",
     "titleHighlight": "3秒で",
     "titleLine2": "受け取りませんか？",
@@ -931,7 +1012,9 @@
     "submitting": "処理中...",
     "alertAgree": "お知らせを確認して同意してください。",
     "confirmSubscription": "有料プラン契約中です。退会時の返金は難しい場合があります。本当に退会しますか？",
-    "alertError": "退会処理中にエラーが発生しました。"
+    "alertError": "退会処理中にエラーが発生しました。",
+    "alertSelectReason": "退会理由を選択してください。",
+    "alertEnterOtherReason": "その他の理由を入力してください。"
   },
   "albumLimitModal": {
     "upgradeTitle": "思い出を無制限に保存したい？",
@@ -956,6 +1039,15 @@
     "deleteError": "アカウント削除中にエラーが発生しました。"
   },
   "mypage": {
+    "appGuestTitle": "ログインが必要です",
+    "appGuestSub": "マイページを使うには\nログインしてください",
+    "appGuestCta": "ログイン",
+    "appPageSubtitle": "あなたの情報と活動を確認",
+    "alertErrorTitle": "エラー",
+    "alertInfoTitle": "お知らせ",
+    "defaultMemberName": "DoNa会員",
+    "favRemoveFailed": "お気に入り解除に失敗しました。",
+    "currencyWon": "ウォン",
     "pageTitle": "マイページ",
     "pageSubtitle": "プロフィールと活動を管理",
     "tabProfile": "プロフィール",
@@ -1063,7 +1155,22 @@
       "businessLineAddress": "住所: 忠清南道 洪城郡 洪北邑 新大路33",
       "businessLineInquiry": "お問い合わせ: 12jason@donacouse.com",
       "businessLineCustomerCenter": "カスタマーセンター: 010-2481-9824",
-      "footerContact": "お問い合わせ・事業者情報"
+      "footerContact": "お問い合わせ・事業者情報",
+      "planSectionTitle": "マイプラン",
+      "planNamePremium": "プレミアムプラン",
+      "planNameBasic": "ベーシックプラン",
+      "planNameFree": "無料プラン",
+      "planDescFree": "基本プラン • 無料",
+      "planDescBasic": "BASICプラン",
+      "planDescPremium": "PREMIUMプラン • 全機能",
+      "planCtaManage": "プラン管理",
+      "profileSectionTitle": "プロフィール",
+      "joinedOnPrefix": "登録",
+      "nicknamePlaceholderShort": "ニックネームを入力",
+      "editModalTitle": "プロフィール編集",
+      "accountSettingsTitle": "アカウント管理",
+      "kakaoChannelRow": "Kakaoチャンネル",
+      "withdrawMember": "会員退会"
     },
     "recordsTab": {
       "favorites": "保存済み",
@@ -1091,6 +1198,7 @@
       "collectBadgesHint": "ストーリーを完了してバッジを集めよう！",
       "rewardsTitle": "報酬履歴",
       "noRewards": "報酬はまだありません。",
+      "noRewardsHint": "ミッションを達成して報酬を受け取りましょう",
       "paymentsTitle": "購入履歴",
       "refundManage": "返金管理",
       "reward7dayCheckin": "7日連続チェックイン",
@@ -1113,7 +1221,9 @@
       "requestRefund": "返金申請",
       "noPayments": "購入履歴がありません",
       "noPaymentsHint": "閲覧券またはサブスクを購入するとここに表示されます。",
-      "goToRefundPage": "決済・返金ページへ移動"
+      "goToRefundPage": "決済・返金ページへ移動",
+      "rewardCourseCompletion": "コース完了報酬",
+      "rewardTicketsPlus": "+{n}チケット"
     },
     "footprintTab": {
       "defaultUser": "会員",
@@ -1154,12 +1264,18 @@
       "myFootprint": "私の足跡",
       "calendar": "カレンダー",
       "memories": "思い出",
+      "suggestions": "提案",
       "footprintCalendarHint": "AIおすすめのデートコースが自動で記録されます",
       "footprintMemoriesHint": "今日の瞬間を確認しましょう",
+      "footprintSuggestionsHint": "提案した場所のステータスを確認できます",
       "completedCourses": "完了コース",
       "todayDate": "今日のデート",
       "recommendedDate": "おすすめ",
-      "yearSuffix": "年"
+      "yearSuffix": "年",
+      "memoryEmptyTitle": "まだ思い出がありません",
+      "memoryEmptySub": "コースを始めて思い出を残しましょう",
+      "courseRecordFallback": "コース記録",
+      "casefileFallbackTitle": "事件ファイル"
     }
   },
   "commonFallback": {
@@ -1274,8 +1390,128 @@
     "whatToDoToday": "今日何しよう？",
     "coupleMissionGame": "カップルミッションゲーム",
     "donaShop": "ドゥナショップ",
+    "suggestCourse": "コースを提案する",
     "openMenu": "メニューを開く",
     "main": "メイン"
+  },
+  "mobile": {
+    "map": {
+      "fallbackTitle": "地図はアプリビルドで利用できます",
+      "fallbackSub": "EAS devビルドをご利用ください",
+      "toastLocationDevBuild": "位置情報は新しいdevビルドが必要です",
+      "toastLocationDenied": "位置情報の許可が拒否されました",
+      "toastLocationFail": "位置を取得できませんでした",
+      "toastSearchEmpty": "検索結果がありません",
+      "toastSearchError": "検索中にエラーが発生しました",
+      "searchPlaceholder": "場所・グルメ・コースを検索",
+      "tabPlaces": "スポット",
+      "tabCourses": "コース",
+      "areaSearch": "このエリアを検索",
+      "panelPlacesTitle": "周辺のスポット",
+      "panelCoursesTitle": "おすすめデートコース",
+      "panelPlacesCount": "地図上に{count}件のスポット",
+      "panelCourseSpotsHint": "このコースに含まれるスポット",
+      "panelCoursesSub": "厳選コースをチェック",
+      "loadingInfo": "読み込み中...",
+      "loadingPlaces": "スポットを読み込み中...",
+      "categoryFallback": "おすすめスポット",
+      "phoneMissing": "電話番号がありません",
+      "directions": "道順",
+      "emptyCoursePlaces": "このコースに登録されたスポットはありません。",
+      "emptyArea": "まだ情報がありません。\n地図を少し動かしてみましょう。",
+      "badgeRecommendedCourse": "おすすめコース",
+      "badgePlace": "スポット",
+      "viewDetail": "詳細を見る"
+    },
+    "escape": {
+      "badgeEarnable": "{name}を獲得可能",
+      "startCta": "はじめる",
+      "headerTitle": "カップルミッションゲーム",
+      "headerSub": "屋外脱出型コース",
+      "emptyTitle": "ストーリー準備中",
+      "emptySub": "新しいミッションコースがまもなく公開されます！",
+      "bannerText": "実際の場所を巡ってミッションをクリアしよう"
+    },
+    "nearby": {
+      "searchPlaceholderShort": "エリア・コース名で検索",
+      "headerRegionCourses": "{region}のコース",
+      "headerSearchResults": "「{q}」の検索結果",
+      "resetChip": "リセット ×",
+      "filterSheetTitle": "フィルター",
+      "emptyNoMatch": "該当するコースがありません",
+      "emptyLoading": "コースを読み込み中…",
+      "lockSubscribe": "購読して閲覧",
+      "lockTierCourse": "{tier}コース",
+      "viewRatingLine": "★ {rating}（{count}）"
+    },
+    "shop": {
+      "headerTitle": "DoNaショップ",
+      "heroTitle": "DoNaショップ",
+      "comingSoon": "準備中です\nエスケープキットやキーホルダーなど\n近日公開！",
+      "sheetKitDesc": "より完璧なキットのため準備中です。\nもう少しお待ちください 🎁"
+    },
+    "courseScreen": {
+      "tipsLoginTitle": "ログインすると裏ワザが見られます",
+      "tipsLoginSub": "会員・チケットにより表示が異なります",
+      "tipSectionLabel": "✨ ヒント",
+      "tipViewInfo": "詳細を見る",
+      "mapFullRoute": "全体ルート",
+      "mapSegmentRoute": "区間ルート",
+      "mapSegmentWalk": "{from}→{to} 徒歩 {minutes}分",
+      "placeFallback": "スポット",
+      "mapFabA11y": "地図で全体ルートを見る",
+      "closeA11y": "閉じる",
+      "shareMessage": "{title} - DoNaデートコース\n{url}",
+      "startCourseFailed": "コースを開始できませんでした。もう一度お試しください。",
+      "favAdded": "お気に入りに追加しました",
+      "favRemoved": "お気に入りを解除しました",
+      "switchCourseTitle": "コースを変更",
+      "switchCourseMessage": "進行中のコースをこのコースに切り替えますか？",
+      "cancel": "キャンセル",
+      "switchCourseConfirm": "変更する",
+      "switchCourseFailed": "コースの変更に失敗しました。",
+      "reviewMinLength": "レビューは5文字以上入力してください。",
+      "reviewPosted": "レビューを投稿しました",
+      "reviewSubmitFailTitle": "レビュー投稿に失敗",
+      "tryAgainLater": "しばらくしてから再度お試しください。",
+      "permRequired": "権限が必要です",
+      "permPhotos": "写真へのアクセス権限が必要です。",
+      "imageUploadFailTitle": "画像のアップロードに失敗",
+      "imagePickerBuildOnly": "画像の選択はアプリビルドでのみ利用できます。",
+      "loadingCourse": "コースを読み込み中...",
+      "backArrow": "← 戻る",
+      "courseLoadError": "コースを読み込めませんでした",
+      "targetSome": "ソムのとき",
+      "metaSpotsCount": "👣 {count}スポット",
+      "saveSelection": "選択を保存",
+      "memoryLimitTitleLine1": "思い出を保存",
+      "memoryLimitHighlight": "上限に達しました",
+      "memoryLimitSub": "サブスクをアップグレードすると、もっと保存できます",
+      "subBenefitsTitle": "サブスク特典",
+      "benefitUnlimitedMemories": "思い出の保存が無制限",
+      "benefitPremiumCourses": "全プレミアムコース",
+      "benefitNoAds": "広告なしの体験",
+      "subscribeSaveMore": "サブスクでもっと保存",
+      "reviewModalTitle": "レビューを書く",
+      "reviewTargetLabel": "レビュー対象",
+      "attachImage": "画像を添付",
+      "changeImage": "画像を変更",
+      "reviewPlaceholder": "コースの感想をどうぞ（5文字以上）",
+      "submitReview": "投稿",
+      "segmentChoose": "{label}を選ぶ",
+      "inProgressThisCourse": "今日はこのコースを進行中です",
+      "memoryRecordPersonal": "思い出を記録",
+      "alreadyOtherCourse": "今日はすでに別のコースを開始しています",
+      "switchOtherCourse": "別のコースに変更",
+      "reviewsLoading": "レビューを読み込み中...",
+      "reviewWrite": "レビューを書く",
+      "reviewsHeading": "レビュー",
+      "showMoreReviews": "もっと見る（あと{n}件）",
+      "reserveWithName": "{name}を予約",
+      "anonymous": "匿名",
+      "saveFailedToast": "保存に失敗しました。",
+      "alertNotice": "お知らせ"
+    }
   },
   "authPage": {
     "login": {
@@ -1295,6 +1531,7 @@
       "kakaoSubmit": "カカオトークでログイン",
       "kakaoSubmitting": "カカオトーク認証中...",
       "errorLoginFailed": "ログインに失敗しました。",
+      "errorEmailPasswordRequired": "メールアドレスとパスワードを入力してください。",
       "errorGeneric": "ログイン中にエラーが発生しました。",
       "errorKakaoClientId": "カカオクライアントIDが設定されていません。",
       "errorPopupBlocked": "ポップアップがブロックされました。ブラウザ設定でポップアップを許可してください。",
@@ -1335,7 +1572,21 @@
       "errorPasswordMismatch": "パスワードが一致しません。",
       "errorSignupFailed": "会員登録に失敗しました。",
       "errorConnection": "サーバーとの接続が不安定です。アドレスを確認してください。",
-      "errorAppleAuth": "Apple認証に失敗しました。"
+      "errorAppleAuth": "Apple認証に失敗しました。",
+      "genderOther": "その他",
+      "errorInvalidEmail": "有効なメールアドレスを入力してください。",
+      "errorGenericRetry": "エラーが発生しました。もう一度お試しください。",
+      "appleSignUpA11y": "Appleで登録",
+      "kakaoSignUpA11y": "カカオではじめる",
+      "pickAgeTitle": "年代を選択",
+      "pickGenderTitle": "性別を選択",
+      "nicknameMinPlaceholder": "2文字以上",
+      "emailShortPlaceholder": "メールアドレス",
+      "passwordMinPlaceholder": "6文字以上",
+      "optionalInParens": "（任意）",
+      "pickPlaceholder": "選択",
+      "previewPurposeLead": "どんな雰囲気のコースがいいですか？まず目的を教えてください 😊",
+      "previewStartCta": "コース推薦を始める →"
     }
   },
   "terms": {
@@ -1597,6 +1848,23 @@
     "placeholderTitle": "例）恵化 演劇 + 駱山公園 夜景",
     "placeholderLocation": "例）弘大",
     "placeholderOptional": "任意",
-    "placeholderPlaceN": "場所 {{num}}"
+    "placeholderPlaceN": "場所 {{num}}",
+    "loginRequired": "場所を提案するにはログインが必要です。",
+    "labelPlaceNameSimple": "場所の名前",
+    "placeholderPlaceNameSimple": "例）乙支路カフェ、聖水洞ギャラリー",
+    "placeholderNoteSimple": "例）ユニークな内装があります（任意）",
+    "labelPhoto": "写真",
+    "addPhoto": "写真を追加",
+    "labelDescriptionSimple": "説明",
+    "placeholderDescriptionSimple": "この場所ならではの特別な点を教えてください",
+    "labelConceptSimple": "希望のコンセプト（任意）",
+    "placeholderConceptSimple": "例）おしゃれカフェ、絶景スポット、静かな雰囲気",
+    "uploadingPhoto": "写真をアップロード中...",
+    "photoError": "写真のアップロードに失敗しました。もう一度お試しください。",
+    "modalStatusHint": {
+      "PENDING": "提案を受け取り、審査中です。",
+      "PUBLISHED": "コースとしてアプリに公開されました。",
+      "REJECTED": "今回は見送りでした。またのご提案をお待ちしています。"
+    }
   }
 }

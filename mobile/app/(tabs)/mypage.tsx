@@ -130,18 +130,32 @@ interface UserPreferences {
     regions: string[];
 }
 
+function localeTag(locale: string): string {
+    if (locale === "en") return "en-US";
+    if (locale === "ja") return "ja-JP";
+    if (locale === "zh") return "zh-CN";
+    return "ko-KR";
+}
+
+function rewardTypeLabel(type: string, tr: (k: string, params?: Record<string, string | number>) => string): string {
+    const k = String(type ?? "").toLowerCase();
+    const pathMap: Record<string, string> = {
+        checkin: "mypage.activityTab.reward7dayCheckin",
+        escape_place_clear: "mypage.activityTab.rewardMissionClear",
+        signup: "mypage.activityTab.rewardSignup",
+        ad_watch: "mypage.activityTab.rewardAdWatch",
+        purchase: "mypage.activityTab.rewardPurchase",
+        event: "mypage.activityTab.rewardEvent",
+        personal_memory_milestone: "mypage.activityTab.rewardMemory10",
+        course_completion_milestone: "mypage.activityTab.rewardCourseCompletion",
+    };
+    const path = pathMap[k];
+    return path ? tr(path) : type;
+}
+
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
-const TABS = [
-    { id: "profile", label: "프로필", icon: "person-outline" as const },
-    { id: "footprint", label: "발자취", icon: "footsteps-outline" as const },
-    { id: "records", label: "기록", icon: "bookmark-outline" as const },
-    { id: "activity", label: "활동", icon: "trophy-outline" as const },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
-
-const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+type TabId = "profile" | "footprint" | "records" | "activity";
 /** 원 크기: tabContent(16×2) + calCard(14×2) 제외한 너비 기준 */
 const CAL_CIRCLE = Math.min(Math.floor((SW - 60) / 7) - 4, 44);
 
@@ -173,17 +187,6 @@ type DateCoursePreviewRow = {
         concept?: string | null;
     };
     isAI: boolean;
-};
-
-const REWARD_LABELS: Record<string, string> = {
-    checkin: "7일 체크인 보상",
-    escape_place_clear: "미션 클리어 보상",
-    signup: "회원가입 보너스",
-    ad_watch: "광고 시청 보상",
-    purchase: "구매 보상",
-    event: "이벤트 보상",
-    personal_memory_milestone: "추억 10개 달성 보상",
-    course_completion_milestone: "코스 완료 보상",
 };
 
 function gradeBg(g: string) {
@@ -259,6 +262,7 @@ function CourseListCard({
     onRemove?: () => void;
     t: ReturnType<typeof useThemeColors>;
 }) {
+    const { locale } = useLocale();
     const uri = resolveImageUrl(imageUrl);
     const g = (grade ?? "FREE").toUpperCase();
     return (
@@ -307,7 +311,7 @@ function CourseListCard({
                 {region ? <Text style={[s.courseCardSubBelow, { color: t.textMuted }]}>📍 {region}</Text> : null}
                 {date ? (
                     <Text style={[s.courseCardDateBelow, { color: t.textMuted }]}>
-                        {new Date(date).toLocaleDateString("ko-KR")}
+                        {new Date(date).toLocaleDateString(localeTag(locale))}
                     </Text>
                 ) : null}
             </View>
@@ -350,7 +354,8 @@ function EmptyState({
 
 function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: SubscriptionTier; refetch: () => void }) {
     const t = useThemeColors();
-    const { t: i18n } = useLocale();
+    const { t: i18n, locale } = useLocale();
+    const dateLoc = localeTag(locale);
     const queryClient = useQueryClient();
     const insets = useSafeAreaInsets();
     const [editVisible, setEditVisible] = useState(false);
@@ -442,7 +447,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
             setEditVisible(false);
             refetch();
         },
-        onError: (e: any) => setEditError(e.message || "수정 실패"),
+        onError: (e: any) => setEditError(e.message || i18n("mypage.profileEditFailed")),
     });
 
     const deleteMutation = useMutation({
@@ -454,7 +459,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
             await logout(queryClient);
             router.replace("/(auth)/login");
         },
-        onError: (e: any) => Alert.alert("오류", e.message || "탈퇴 처리 중 오류가 발생했습니다."),
+        onError: (e: any) => Alert.alert(i18n("mypage.alertErrorTitle"), e.message || i18n("deleteUsersModal.alertError")),
     });
 
     async function handleLogoutConfirm() {
@@ -490,15 +495,15 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
             return;
         }
         if (!withdrawalReason) {
-            Alert.alert("안내", "탈퇴 사유를 선택해주세요.");
+            Alert.alert(i18n("mypage.alertInfoTitle"), i18n("deleteUsersModal.alertSelectReason"));
             return;
         }
         if (withdrawalReason === "reason5" && !withdrawalEtcReason.trim()) {
-            Alert.alert("안내", "기타 사유를 입력해주세요.");
+            Alert.alert(i18n("mypage.alertInfoTitle"), i18n("deleteUsersModal.alertEnterOtherReason"));
             return;
         }
         if (!withdrawalAgree) {
-            Alert.alert("안내", "안내사항을 확인하고 동의해 주세요.");
+            Alert.alert(i18n("mypage.alertInfoTitle"), i18n("deleteUsersModal.alertAgree"));
             return;
         }
         const reason = withdrawalReason === "reason5" ? withdrawalEtcReason.trim() : withdrawalReason;
@@ -506,40 +511,43 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
     }
 
     const profileImageUri = resolveImageUrl(profile.profileImage);
-    const nickname = profile.nickname ?? profile.name ?? "두나 회원";
+    const nickname = profile.nickname ?? profile.name ?? i18n("mypage.defaultMemberName");
 
-    const tierCfg = {
-        FREE: {
-            bg: "#f0fdf4",
-            border: "#bbf7d0",
-            emoji: "✨",
-            tierLabel: "FREE",
-            desc: "기본 플랜 • 무료",
-            cta: "업그레이드",
-            ctaBg: "#059669",
-            ctaColor: "#fff",
-        },
-        BASIC: {
-            bg: "#ecfdf5",
-            border: "#6ee7b7",
-            emoji: "✨",
-            tierLabel: "BASIC",
-            desc: "BASIC 플랜",
-            cta: "플랜 관리",
-            ctaBg: "#059669",
-            ctaColor: "#fff",
-        },
-        PREMIUM: {
-            bg: "#fffbeb",
-            border: "#fde68a",
-            emoji: "👑",
-            tierLabel: "PREMIUM",
-            desc: "PREMIUM 플랜 • 모든 기능 이용",
-            cta: "이용 중",
-            ctaBg: "#f3f4f6",
-            ctaColor: "#6b7280",
-        },
-    };
+    const tierCfg = useMemo(
+        () => ({
+            FREE: {
+                bg: "#f0fdf4",
+                border: "#bbf7d0",
+                emoji: "✨",
+                tierLabel: "FREE",
+                desc: i18n("mypage.profileTab.planDescFree"),
+                cta: i18n("mypage.profileTab.upgrade"),
+                ctaBg: "#059669",
+                ctaColor: "#fff",
+            },
+            BASIC: {
+                bg: "#ecfdf5",
+                border: "#6ee7b7",
+                emoji: "✨",
+                tierLabel: "BASIC",
+                desc: i18n("mypage.profileTab.planDescBasic"),
+                cta: i18n("mypage.profileTab.planCtaManage"),
+                ctaBg: "#059669",
+                ctaColor: "#fff",
+            },
+            PREMIUM: {
+                bg: "#fffbeb",
+                border: "#fde68a",
+                emoji: "👑",
+                tierLabel: "PREMIUM",
+                desc: i18n("mypage.profileTab.planDescPremium"),
+                cta: i18n("mypage.profileTab.inUse"),
+                ctaBg: "#f3f4f6",
+                ctaColor: "#6b7280",
+            },
+        }),
+        [i18n],
+    );
     const tc = tierCfg[tier] ?? tierCfg.FREE;
 
     const tierBadgeCfg = {
@@ -550,8 +558,28 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
     const tb = tierBadgeCfg[tier] ?? tierBadgeCfg.FREE;
 
     const MBTI_LIST = ["INTJ","INTP","ENTJ","ENTP","INFJ","INFP","ENFJ","ENFP","ISTJ","ISFJ","ESTJ","ESFJ","ISTP","ISFP","ESTP","ESFP"] as const;
-    const AGE_RANGES = ["10대","20대","30대","40대","50대 이상"] as const;
-    const GENDERS = [{ label: "남성", value: "M" }, { label: "여성", value: "F" }] as const;
+    /** API·DB는 한국어 값(10대 …)을 사용 — 표시만 locale별 번역 */
+    const AGE_RANGE_OPTIONS = useMemo(
+        () =>
+            [
+                { value: "10대", label: i18n("mypage.age10s") },
+                { value: "20대", label: i18n("mypage.age20s") },
+                { value: "30대", label: i18n("mypage.age30s") },
+                { value: "40대", label: i18n("mypage.age40s") },
+                { value: "50대 이상", label: i18n("mypage.age50s") },
+            ] as const,
+        [i18n],
+    );
+    const ageRangeDisplay = (value: string) =>
+        AGE_RANGE_OPTIONS.find((o) => o.value === value)?.label ?? value;
+    const GENDERS = useMemo(
+        () =>
+            [
+                { label: i18n("mypage.genderMale"), value: "M" },
+                { label: i18n("mypage.genderFemale"), value: "F" },
+            ] as const,
+        [i18n],
+    );
 
     return (
         <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
@@ -560,7 +588,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                 {/* 헤더 */}
                 <View style={s.profileCardHeader}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <Text style={[s.cardTitle, { color: t.text }]}>프로필</Text>
+                        <Text style={[s.cardTitle, { color: t.text }]}>{i18n("mypage.profileTab.profileSectionTitle")}</Text>
                         <View style={[s.tierBadge, { backgroundColor: tb.bg, borderColor: tb.border }]}>
                             <Text style={[s.tierBadgeText, { color: tb.color }]}>{tier}</Text>
                         </View>
@@ -579,7 +607,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         }}
                     >
                         <Ionicons name="create-outline" size={13} color="#059669" />
-                        <Text style={s.editProfileBtnText}>수정</Text>
+                        <Text style={s.editProfileBtnText}>{i18n("mypage.profileTab.edit")}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -602,7 +630,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         <View style={s.profileTagsRow}>
                             {!!profile.ageRange && (
                                 <View style={[s.tagChip, { backgroundColor: t.surface }]}>
-                                    <Text style={[s.tagChipText, { color: t.textMuted }]}>{profile.ageRange}</Text>
+                                    <Text style={[s.tagChipText, { color: t.textMuted }]}>{ageRangeDisplay(profile.ageRange)}</Text>
                                 </View>
                             )}
                             {!!profile.mbti && (
@@ -613,8 +641,8 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                             {!!profile.createdAt && (
                                 <View style={[s.tagChip, { backgroundColor: t.surface }]}>
                                     <Text style={[s.tagChipText, { color: t.textMuted }]}>
-                                        가입{" "}
-                                        {new Date(profile.createdAt).toLocaleDateString("ko-KR", {
+                                        {i18n("mypage.profileTab.joinedOnPrefix")}{" "}
+                                        {new Date(profile.createdAt).toLocaleDateString(dateLoc, {
                                             year: "numeric",
                                             month: "short",
                                         })}
@@ -695,7 +723,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
             <View style={[s.memberCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                     <View style={{ width: 6, height: 20, backgroundColor: "#7FCC9F", borderRadius: 3 }} />
-                    <Text style={[s.cardTitleDark, { color: t.text }]}>내 구독 플랜</Text>
+                    <Text style={[s.cardTitleDark, { color: t.text }]}>{i18n("mypage.profileTab.planSectionTitle")}</Text>
                 </View>
                 <View style={[s.memberInner, { backgroundColor: t.card, borderColor: t.border }]}>
                     <View style={s.memberLeft}>
@@ -707,7 +735,11 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         <View>
                             <Text style={s.memberSubLabel}>My Membership</Text>
                             <Text style={[s.memberTierText, { color: t.text }]}>
-                                {tier === "PREMIUM" ? "프리미엄 플랜" : tier === "BASIC" ? "베이직 플랜" : "무료 플랜"}
+                                {tier === "PREMIUM"
+                                    ? i18n("mypage.profileTab.planNamePremium")
+                                    : tier === "BASIC"
+                                      ? i18n("mypage.profileTab.planNameBasic")
+                                      : i18n("mypage.profileTab.planNameFree")}
                             </Text>
                             {(() => {
                                 const expiresAt = profile?.subscriptionExpiresAt ?? profile?.subscription_expires_at;
@@ -716,7 +748,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                 return (
                                     <Text style={[s.memberDescText, { color: t.textMuted }]}>
                                         {"~ " +
-                                            new Date(expiresAt!).toLocaleDateString("ko-KR", {
+                                            new Date(expiresAt!).toLocaleDateString(dateLoc, {
                                                 year: "numeric",
                                                 month: "long",
                                                 day: "numeric",
@@ -731,7 +763,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         onPress={() => setShopSheetVisible(true)}
                     >
                         <Text style={[s.memberBtnText, { color: tier === "PREMIUM" ? "#6b7280" : "#fff" }]}>
-                            {tier === "PREMIUM" ? "이용 중" : "업그레이드"}
+                            {tier === "PREMIUM" ? i18n("mypage.profileTab.inUse") : i18n("mypage.profileTab.upgrade")}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -739,7 +771,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
             {/* ── 4. 계정 관리 ── */}
             <View style={[s.card, { backgroundColor: t.card, borderColor: t.border }]}>
-                <Text style={[s.cardTitle, { color: t.text, marginBottom: 4 }]}>계정 관리</Text>
+                <Text style={[s.cardTitle, { color: t.text, marginBottom: 4 }]}>{i18n("mypage.profileTab.accountSettingsTitle")}</Text>
 
                 {/* 알림 설정 */}
                 <View style={[s.settingRow, { borderBottomColor: t.border }]}>
@@ -756,7 +788,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                 color={notifEnabled ? "#059669" : t.textMuted}
                             />
                         </View>
-                        <Text style={[s.settingRowText, { color: t.text }]}>알림 설정</Text>
+                        <Text style={[s.settingRowText, { color: t.text }]}>{i18n("mypage.profileTab.notificationSettings")}</Text>
                     </View>
                     <Switch
                         value={notifEnabled === true}
@@ -776,7 +808,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         <View style={[s.settingIconBox, { backgroundColor: t.surface }]}>
                             <Text style={{ fontSize: 18 }}>💬</Text>
                         </View>
-                        <Text style={[s.settingRowText, { color: t.text }]}>카카오 채널 문의</Text>
+                        <Text style={[s.settingRowText, { color: t.text }]}>{i18n("mypage.profileTab.kakaoChannelRow")}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={t.textMuted} />
                 </TouchableOpacity>
@@ -787,14 +819,14 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         <View style={[s.settingIconBox, { backgroundColor: "#fef2f2" }]}>
                             <Ionicons name="log-out-outline" size={18} color="#ef4444" />
                         </View>
-                        <Text style={[s.settingRowText, { color: "#ef4444" }]}>로그아웃</Text>
+                        <Text style={[s.settingRowText, { color: "#ef4444" }]}>{i18n("mypage.profileTab.logout")}</Text>
                     </View>
                 </TouchableOpacity>
             </View>
 
             {/* 회원 탈퇴 */}
             <TouchableOpacity style={s.withdrawalBtn} onPress={handleWithdrawal}>
-                <Text style={s.withdrawalBtnText}>회원 탈퇴</Text>
+                <Text style={s.withdrawalBtnText}>{i18n("mypage.profileTab.withdrawMember")}</Text>
             </TouchableOpacity>
 
             {/* 로그아웃 하단 시트 */}
@@ -1005,7 +1037,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
                         {/* 헤더 */}
                         <View style={s.editModalHeaderRow}>
-                            <Text style={[s.editModalTitle, { color: t.text }]}>프로필 수정</Text>
+                            <Text style={[s.editModalTitle, { color: t.text }]}>{i18n("mypage.profileTab.editModalTitle")}</Text>
                             <TouchableOpacity onPress={() => setEditVisible(false)} hitSlop={12}>
                                 <Ionicons name="close" size={22} color={t.textMuted} />
                             </TouchableOpacity>
@@ -1024,19 +1056,19 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
                             {/* 닉네임 */}
                             <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>닉네임</Text>
+                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.nickname")}</Text>
                                 <TextInput
                                     style={[s.editInput, { backgroundColor: t.surface, borderColor: t.border, color: t.text }]}
                                     value={form.nickname}
                                     onChangeText={(v) => setForm((p) => ({ ...p, nickname: v }))}
-                                    placeholder="닉네임 입력"
+                                    placeholder={i18n("mypage.profileTab.nicknamePlaceholderShort")}
                                     placeholderTextColor={t.textSubtle}
                                 />
                             </View>
 
                             {/* MBTI */}
                             <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>MBTI</Text>
+                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.mbtiLabel")}</Text>
                                 <View style={s.editChipsWrap}>
                                     {MBTI_LIST.map((m) => {
                                         const sel = form.mbti === m;
@@ -1060,9 +1092,9 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
                             {/* 연령대 */}
                             <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>연령대</Text>
+                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.ageRange")}</Text>
                                 <View style={s.editChipsWrap}>
-                                    {AGE_RANGES.map((a) => {
+                                    {AGE_RANGE_OPTIONS.map(({ value: a, label }) => {
                                         const sel = form.ageRange === a;
                                         return (
                                             <TouchableOpacity
@@ -1075,7 +1107,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                                         : { backgroundColor: t.surface, borderColor: t.border },
                                                 ]}
                                             >
-                                                <Text style={[s.editChipText, { color: sel ? "#fff" : t.text }]}>{a}</Text>
+                                                <Text style={[s.editChipText, { color: sel ? "#fff" : t.text }]}>{label}</Text>
                                             </TouchableOpacity>
                                         );
                                     })}
@@ -1084,7 +1116,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
                             {/* 성별 */}
                             <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>성별</Text>
+                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.gender")}</Text>
                                 <View style={s.editChipsWrap}>
                                     {GENDERS.map(({ label, value }) => {
                                         const sel = form.gender === value;
@@ -1112,7 +1144,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                     style={[s.editModalBtnCancel, { borderColor: t.border }]}
                                     onPress={() => setEditVisible(false)}
                                 >
-                                    <Text style={[{ fontSize: 15, fontWeight: "500" }, { color: t.text }]}>취소</Text>
+                                    <Text style={[{ fontSize: 15, fontWeight: "500" }, { color: t.text }]}>{i18n("common.cancel")}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[s.editModalBtnSave, editMutation.isPending && { opacity: 0.5 }]}
@@ -1121,7 +1153,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                                 >
                                     {editMutation.isPending
                                         ? <ActivityIndicator size="small" color="#fff" />
-                                        : <Text style={{ fontSize: 15, fontWeight: "500", color: "#fff" }}>저장</Text>
+                                        : <Text style={{ fontSize: 15, fontWeight: "500", color: "#fff" }}>{i18n("common.save")}</Text>
                                     }
                                 </TouchableOpacity>
                             </View>
@@ -1143,7 +1175,8 @@ function FootprintTab({
     initialView?: "calendar" | "memories";
 }) {
     const t = useThemeColors();
-    const { t: i18n } = useLocale();
+    const { t: i18n, locale } = useLocale();
+    const dateLoc = localeTag(locale);
     const insets = useSafeAreaInsets();
     const [view, setView] = useState<"calendar" | "memories">(initialView);
     const [currentMonth, setCurrentMonth] = useState(() => new Date());
@@ -1242,6 +1275,8 @@ function FootprintTab({
         return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
     })();
 
+    const dayNames = useMemo(() => [0, 1, 2, 3, 4, 5, 6].map((d) => i18n(`mypage.footprintTab.day${d}`)), [i18n]);
+
     if (loadingCompleted || loadingStories) {
         return <ActivityIndicator color={Colors.brandGreen} style={{ marginTop: 60 }} />;
     }
@@ -1251,7 +1286,7 @@ function FootprintTab({
             <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
             <View style={[s.footprintHeaderCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 <View style={s.footprintHeaderRow}>
-                    <Text style={[s.footprintTitle, { color: t.text }]}>내 발자취</Text>
+                    <Text style={[s.footprintTitle, { color: t.text }]}>{i18n("mypage.footprintTab.myFootprint")}</Text>
                     <View
                         style={[s.viewToggle, { backgroundColor: t.surface, borderColor: t.border, marginBottom: 0 }]}
                     >
@@ -1275,7 +1310,7 @@ function FootprintTab({
                                         },
                                     ]}
                                 >
-                                    {v === "calendar" ? "달력" : "추억"}
+                                    {v === "calendar" ? i18n("mypage.footprintTab.calendar") : i18n("mypage.footprintTab.memories")}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -1284,8 +1319,8 @@ function FootprintTab({
                 <View style={[s.footprintDivider, { backgroundColor: t.border }]} />
                 <Text style={[s.footprintSubText, { color: t.textMuted }]}>
                     {view === "calendar"
-                        ? "AI 추천으로 확인한 오늘의 데이트 코스가 자동으로 기록돼요"
-                        : "오늘의 순간들을 확인해보세요"}
+                        ? i18n("mypage.footprintTab.footprintCalendarHint")
+                        : i18n("mypage.footprintTab.footprintMemoriesHint")}
                 </Text>
             </View>
 
@@ -1301,10 +1336,13 @@ function FootprintTab({
                             <Ionicons name="chevron-back" size={22} color={t.text} />
                         </TouchableOpacity>
                         <View style={{ alignItems: "center", flex: 1, paddingHorizontal: 8 }}>
-                            <Text style={[s.calNavYear, { color: t.textMuted }]}>{currentMonth.getFullYear()}년</Text>
+                            <Text style={[s.calNavYear, { color: t.textMuted }]}>
+                                {currentMonth.getFullYear()}
+                                {i18n("mypage.footprintTab.yearSuffix")}
+                            </Text>
                             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
                                 <Text style={[s.calNavTitle, { color: t.text }]}>
-                                    {currentMonth.getMonth() + 1}월
+                                    {i18n(`mypage.footprintTab.month${currentMonth.getMonth() + 1}`)}
                                     {displayName.trim() ? ` ${displayName.trim()}` : ""}
                                 </Text>
                                 <Ionicons name="chevron-down" size={18} color={t.textMuted} />
@@ -1322,22 +1360,22 @@ function FootprintTab({
                     <View style={[s.calStats, s.calStatsAbove, { borderBottomColor: t.border }]}>
                         <View style={s.calStat}>
                             <Ionicons name="map-outline" size={15} color="#059669" />
-                            <Text style={[s.calStatLabel, { color: t.textMuted }]}>완료 코스</Text>
+                            <Text style={[s.calStatLabel, { color: t.textMuted }]}>{i18n("mypage.footprintTab.completedCourses")}</Text>
                             <Text style={s.calStatVal}>{completed.length}</Text>
                         </View>
                         <View style={[s.calStatDiv, { backgroundColor: t.border }]} />
                         <View style={s.calStat}>
                             <Ionicons name="sparkles-outline" size={15} color="#0f766e" />
-                            <Text style={[s.calStatLabel, { color: t.textMuted }]}>추천 데이트</Text>
+                            <Text style={[s.calStatLabel, { color: t.textMuted }]}>{i18n("mypage.footprintTab.recommendedDate")}</Text>
                             <Text style={[s.calStatVal, { color: "#0d9488" }]}>{aiSavedList.length}</Text>
                         </View>
                     </View>
 
                     {/* 요일 헤더 */}
                     <View style={s.calDayNames}>
-                        {DAY_NAMES.map((d, i) => (
+                        {dayNames.map((d, i) => (
                             <Text
-                                key={d}
+                                key={String(i)}
                                 style={[
                                     s.calDayName,
                                     { color: i === 0 || i === 6 ? "#ef4444" : t.textMuted },
@@ -1475,8 +1513,8 @@ function FootprintTab({
                 (stories.length === 0 ? (
                     <EmptyState
                         emoji="📷"
-                        title="아직 기록된 추억이 없어요"
-                        sub="코스를 시작하고 나만의 추억을 기록해보세요"
+                        title={i18n("mypage.footprintTab.memoryEmptyTitle")}
+                        sub={i18n("mypage.footprintTab.memoryEmptySub")}
                         t={t}
                     />
                 ) : (
@@ -1484,7 +1522,11 @@ function FootprintTab({
                         {stories.map((story, stIdx) => {
                             const imgUri = story.imageUrls?.[0] ? resolveImageUrl(story.imageUrls[0]) : null;
                             const d = new Date(story.createdAt);
-                            const dateStr = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+                            const dateStr = d.toLocaleDateString(dateLoc, {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                            });
                             return (
                                 <TouchableOpacity
                                     key={story.id}
@@ -1514,7 +1556,7 @@ function FootprintTab({
                                     <View style={s.memBody}>
                                         <Text style={[s.memDate, { color: t.textMuted }]}>{dateStr}</Text>
                                         <Text style={[s.memCourse, { color: t.text }]} numberOfLines={2}>
-                                            {story.course?.title ?? "코스 기록"}
+                                            {story.course?.title ?? i18n("mypage.footprintTab.courseRecordFallback")}
                                         </Text>
                                         {story.tags && story.tags.length > 0 && (
                                             <View style={s.memTagRow}>
@@ -1800,6 +1842,8 @@ function FootprintTab({
 
 function RecordsTab() {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
+    const dateLoc = localeTag(locale);
     const queryClient = useQueryClient();
     const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "casefiles">("favorites");
 
@@ -1842,14 +1886,18 @@ function RecordsTab() {
     const removeFav = useMutation({
         mutationFn: (courseId: number) => api.delete(`${endpoints.favorites}?courseId=${courseId}`),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users", "favorites"] }),
-        onError: () => Alert.alert("오류", "찜 해제에 실패했습니다."),
+        onError: () => Alert.alert(i18n("mypage.alertErrorTitle"), i18n("mypage.favRemoveFailed")),
     });
 
-    const subTabs = [
-        { id: "favorites" as const, label: "보관함", count: favorites.length },
-        { id: "saved" as const, label: "오늘의 데이트 추천", count: saved.length },
-        { id: "completed" as const, label: "완료 코스", count: completed.length },
-    ];
+    const subTabs = useMemo(
+        () => [
+            { id: "favorites" as const, label: i18n("mypage.recordsTab.favorites"), count: favorites.length },
+            { id: "saved" as const, label: i18n("mypage.recordsTab.todayRecommend"), count: saved.length },
+            { id: "completed" as const, label: i18n("mypage.recordsTab.completedCourses"), count: completed.length },
+            { id: "casefiles" as const, label: i18n("mypage.recordsTab.casefiles"), count: casefiles.length },
+        ],
+        [i18n, favorites.length, saved.length, completed.length, casefiles.length],
+    );
 
     const isLoading = loadFav || loadSaved || loadCompleted || loadCase;
 
@@ -1864,13 +1912,13 @@ function RecordsTab() {
                     {/* ── 찜하기 ── */}
                     {subTab === "favorites" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>내 보관함</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.recordsTab.myArchive")}</Text>
                             {favorites.length === 0 ? (
                                 <EmptyState
                                     emoji="💝"
-                                    title="아직 찜한 코스가 없어요"
-                                    sub="마음에 드는 코스를 찜해보세요"
-                                    ctaLabel="코스 둘러보기"
+                                    title={i18n("mypage.recordsTab.noFavorites")}
+                                    sub={i18n("mypage.recordsTab.favoritesHint")}
+                                    ctaLabel={i18n("mypage.recordsTab.browseCourses")}
                                     onCta={() => router.push("/(tabs)/courses" as any)}
                                     t={t}
                                 />
@@ -1899,13 +1947,13 @@ function RecordsTab() {
                     {/* ── AI 추천 저장 ── */}
                     {subTab === "saved" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>AI 추천 저장 코스</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.recordsTab.aiRecommendedCourses")}</Text>
                             {saved.length === 0 ? (
                                 <EmptyState
                                     emoji="🤖"
-                                    title="저장된 AI 추천 코스가 없어요"
-                                    sub="AI 맞춤 추천을 받아보세요"
-                                    ctaLabel="AI 추천 받기"
+                                    title={i18n("mypage.recordsTab.noSavedYet")}
+                                    sub={i18n("mypage.recordsTab.savedHint")}
+                                    ctaLabel={i18n("mypage.recordsTab.getRecommendation")}
                                     onCta={() => router.push("/(tabs)/ai" as any)}
                                     t={t}
                                 />
@@ -1936,12 +1984,12 @@ function RecordsTab() {
                     {/* ── 완료 코스 ── */}
                     {subTab === "completed" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>완료한 코스</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.recordsTab.completedCoursesTitle")}</Text>
                             {completed.length === 0 ? (
                                 <EmptyState
                                     emoji="🏁"
-                                    title="아직 완료한 코스가 없어요"
-                                    sub="코스를 시작하고 완료해보세요"
+                                    title={i18n("mypage.recordsTab.noCompletedYet")}
+                                    sub={i18n("mypage.recordsTab.completedHint")}
                                     t={t}
                                 />
                             ) : (
@@ -1967,12 +2015,12 @@ function RecordsTab() {
                     {/* ── 케이스파일 ── */}
                     {subTab === "casefiles" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>케이스파일</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.recordsTab.completedCasefiles")}</Text>
                             {casefiles.length === 0 ? (
                                 <EmptyState
                                     emoji="📁"
-                                    title="케이스파일이 없어요"
-                                    sub="스토리를 완료하면 케이스파일이 쌓여요"
+                                    title={i18n("mypage.recordsTab.noCompletedCasefiles")}
+                                    sub={i18n("mypage.recordsTab.completedCasefilesHint")}
                                     t={t}
                                 />
                             ) : (
@@ -2005,7 +2053,7 @@ function RecordsTab() {
                                                     <View style={s.caseOverlay} pointerEvents="none" />
                                                     <View style={s.caseTextWrap}>
                                                         <Text style={s.caseTitle} numberOfLines={2}>
-                                                            {item.title ?? "케이스파일"}
+                                                            {item.title ?? i18n("mypage.footprintTab.casefileFallbackTitle")}
                                                         </Text>
                                                         <View style={s.caseMeta}>
                                                             {item.region ? (
@@ -2013,9 +2061,7 @@ function RecordsTab() {
                                                             ) : null}
                                                             {item.completedAt ? (
                                                                 <Text style={s.caseMetaText}>
-                                                                    {new Date(item.completedAt).toLocaleDateString(
-                                                                        "ko-KR",
-                                                                    )}
+                                                                    {new Date(item.completedAt).toLocaleDateString(dateLoc)}
                                                                 </Text>
                                                             ) : null}
                                                         </View>
@@ -2043,6 +2089,8 @@ function RecordsTab() {
 
 function ActivityTab() {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
+    const dateLoc = localeTag(locale);
     const [subTab, setSubTab] = useState<"badges" | "rewards" | "payments">("badges");
     const [selBadge, setSelBadge] = useState<Badge | null>(null);
 
@@ -2073,11 +2121,14 @@ function ActivityTab() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const subTabs = [
-        { id: "badges" as const, label: "뱃지", count: badges.length },
-        { id: "rewards" as const, label: "보상 내역", count: rewards.length },
-        { id: "payments" as const, label: "결제 내역", count: payments.length },
-    ];
+    const subTabs = useMemo(
+        () => [
+            { id: "badges" as const, label: i18n("mypage.activityTab.badges"), count: badges.length },
+            { id: "rewards" as const, label: i18n("mypage.activityTab.rewards"), count: rewards.length },
+            { id: "payments" as const, label: i18n("mypage.activityTab.payments"), count: payments.length },
+        ],
+        [i18n, badges.length, rewards.length, payments.length],
+    );
 
     const isLoading = loadBadges || loadRewards || loadPayments;
 
@@ -2092,12 +2143,12 @@ function ActivityTab() {
                     {/* ── 뱃지 ── */}
                     {subTab === "badges" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>내 뱃지</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.activityTab.myBadges")}</Text>
                             {badges.length === 0 ? (
                                 <EmptyState
                                     emoji="🏅"
-                                    title="아직 획득한 뱃지가 없어요"
-                                    sub="코스를 완료하고 뱃지를 모아보세요"
+                                    title={i18n("mypage.activityTab.noBadgesYet")}
+                                    sub={i18n("mypage.activityTab.collectBadgesHint")}
                                     t={t}
                                 />
                             ) : (
@@ -2129,7 +2180,7 @@ function ActivityTab() {
                                                     {b.name}
                                                 </Text>
                                                 <Text style={[s.badgeDate, { color: t.textMuted }]}>
-                                                    {new Date(b.awarded_at).toLocaleDateString("ko-KR")}
+                                                    {new Date(b.awarded_at).toLocaleDateString(dateLoc)}
                                                 </Text>
                                             </TouchableOpacity>
                                         );
@@ -2142,12 +2193,12 @@ function ActivityTab() {
                     {/* ── 보상 내역 ── */}
                     {subTab === "rewards" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>보상 지급 내역</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.activityTab.rewardsTitle")}</Text>
                             {rewards.length === 0 ? (
                                 <EmptyState
                                     emoji="🎁"
-                                    title="보상 내역이 없어요"
-                                    sub="미션을 완료하고 보상을 받아보세요"
+                                    title={i18n("mypage.activityTab.noRewards")}
+                                    sub={i18n("mypage.activityTab.noRewardsHint")}
                                     t={t}
                                 />
                             ) : (
@@ -2155,10 +2206,10 @@ function ActivityTab() {
                                     <View key={r.id} style={[s.rewardRow, { borderBottomColor: t.border }]}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={[s.rewardLabel, { color: t.text }]}>
-                                                {REWARD_LABELS[String(r.type ?? "").toLowerCase()] ?? r.type}
+                                                {rewardTypeLabel(String(r.type ?? ""), i18n)}
                                             </Text>
                                             <Text style={[s.rewardDate, { color: t.textMuted }]}>
-                                                {new Date(r.createdAt).toLocaleString("ko-KR", {
+                                                {new Date(r.createdAt).toLocaleString(dateLoc, {
                                                     month: "long",
                                                     day: "numeric",
                                                     hour: "2-digit",
@@ -2167,7 +2218,9 @@ function ActivityTab() {
                                             </Text>
                                         </View>
                                         <View style={s.rewardBadge}>
-                                            <Text style={s.rewardBadgeText}>+{r.amount} 티켓</Text>
+                                            <Text style={s.rewardBadgeText}>
+                                                {i18n("mypage.activityTab.rewardTicketsPlus", { n: r.amount })}
+                                            </Text>
                                         </View>
                                     </View>
                                 ))
@@ -2178,12 +2231,12 @@ function ActivityTab() {
                     {/* ── 결제 내역 ── */}
                     {subTab === "payments" && (
                         <>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>결제 내역</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.activityTab.paymentsTitle")}</Text>
                             {payments.length === 0 ? (
                                 <EmptyState
                                     emoji="💳"
-                                    title="결제 내역이 없어요"
-                                    sub="구독·열람권 구매 시 여기에 표시됩니다"
+                                    title={i18n("mypage.activityTab.noPayments")}
+                                    sub={i18n("mypage.activityTab.noPaymentsHint")}
                                     t={t}
                                 />
                             ) : (
@@ -2209,21 +2262,21 @@ function ActivityTab() {
                                                         <View style={s.payBadgeRow}>
                                                             {isTicket && (
                                                                 <View style={s.payBadgeTicket}>
-                                                                    <Text style={s.payBadgeText}>티켓</Text>
+                                                                    <Text style={s.payBadgeText}>{i18n("mypage.activityTab.ticket")}</Text>
                                                                 </View>
                                                             )}
                                                             {isSub && (
                                                                 <View style={s.payBadgeSub}>
-                                                                    <Text style={s.payBadgeText}>구독권</Text>
+                                                                    <Text style={s.payBadgeText}>{i18n("mypage.activityTab.subscription")}</Text>
                                                                 </View>
                                                             )}
                                                             {isRefunded ? (
                                                                 <View style={s.payBadgeRefund}>
-                                                                    <Text style={s.payStatusText}>환불완료</Text>
+                                                                    <Text style={s.payStatusText}>{i18n("mypage.activityTab.refundDone")}</Text>
                                                                 </View>
                                                             ) : (
                                                                 <View style={s.payBadgePaid}>
-                                                                    <Text style={s.payStatusTextGreen}>결제완료</Text>
+                                                                    <Text style={s.payStatusTextGreen}>{i18n("mypage.activityTab.paymentDone")}</Text>
                                                                 </View>
                                                             )}
                                                         </View>
@@ -2231,7 +2284,7 @@ function ActivityTab() {
                                                             {p.orderName}
                                                         </Text>
                                                         <Text style={[s.payDate, { color: t.textMuted }]}>
-                                                            {new Date(p.approvedAt).toLocaleDateString("ko-KR", {
+                                                            {new Date(p.approvedAt).toLocaleDateString(dateLoc, {
                                                                 year: "numeric",
                                                                 month: "long",
                                                                 day: "numeric",
@@ -2239,7 +2292,8 @@ function ActivityTab() {
                                                         </Text>
                                                         {p.method ? (
                                                             <Text style={[s.payMethod, { color: t.textMuted }]}>
-                                                                결제수단: {p.method === "CARD" ? "카드" : p.method}
+                                                                {i18n("mypage.activityTab.paymentMethod")}:{" "}
+                                                                {p.method === "CARD" ? i18n("mypage.activityTab.card") : p.method}
                                                             </Text>
                                                         ) : null}
                                                     </View>
@@ -2254,7 +2308,7 @@ function ActivityTab() {
                                                             },
                                                         ]}
                                                     >
-                                                        {p.amount.toLocaleString("ko-KR")}원
+                                                        {p.amount.toLocaleString(dateLoc)} {i18n("mypage.currencyWon")}
                                                     </Text>
                                                 </View>
                                                 {!isRefunded && (
@@ -2263,7 +2317,7 @@ function ActivityTab() {
                                                         onPress={() => router.push("/refund" as any)}
                                                     >
                                                         <Text style={[s.refundBtnText, { color: t.textMuted }]}>
-                                                            환불 신청하기
+                                                            {i18n("mypage.activityTab.requestRefund")}
                                                         </Text>
                                                     </TouchableOpacity>
                                                 )}
@@ -2297,10 +2351,11 @@ function ActivityTab() {
                             <Text style={s.badgeModalName}>{selBadge.name}</Text>
                             {selBadge.description ? <Text style={s.badgeModalDesc}>{selBadge.description}</Text> : null}
                             <Text style={s.badgeModalDateText}>
-                                획득일: {new Date(selBadge.awarded_at).toLocaleDateString("ko-KR")}
+                                {i18n("mypage.badgeAcquiredDate")}:{" "}
+                                {new Date(selBadge.awarded_at).toLocaleDateString(dateLoc)}
                             </Text>
                             <TouchableOpacity style={s.badgeModalCloseBtn} onPress={() => setSelBadge(null)}>
-                                <Text style={s.badgeModalCloseTxt}>닫기</Text>
+                                <Text style={s.badgeModalCloseTxt}>{i18n("mypage.close")}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -2314,6 +2369,7 @@ function ActivityTab() {
 
 export default function MyPageScreen() {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const { user, isLoading: authLoading } = useAuth();
     const params = useLocalSearchParams<{ tab?: string; footprintView?: string }>();
     const [activeTab, setActiveTab] = useState<TabId>("profile");
@@ -2343,6 +2399,17 @@ export default function MyPageScreen() {
     const profile = profileData?.user ? { ...profileData, ...profileData.user } : profileData;
     const tier = (profile?.subscriptionTier ?? profile?.subscription_tier ?? "FREE") as SubscriptionTier;
 
+    const mainTabs = useMemo(
+        () =>
+            [
+                { id: "profile" as const, label: i18n("mypage.tabProfile"), icon: "person-outline" as const },
+                { id: "footprint" as const, label: i18n("mypage.tabFootprint"), icon: "footsteps-outline" as const },
+                { id: "records" as const, label: i18n("mypage.tabRecords"), icon: "bookmark-outline" as const },
+                { id: "activity" as const, label: i18n("mypage.tabActivity"), icon: "trophy-outline" as const },
+            ] as const,
+        [i18n],
+    );
+
     const isLoading = authLoading || profileLoading;
 
     if (isLoading) {
@@ -2360,12 +2427,12 @@ export default function MyPageScreen() {
                 <AppHeaderWithModals />
                 <View style={s.loginBlock}>
                     <Text style={{ fontSize: 40, marginBottom: 16 }}>👤</Text>
-                    <Text style={[s.pageTitle, { color: t.text, marginBottom: 8 }]}>로그인이 필요해요</Text>
+                    <Text style={[s.pageTitle, { color: t.text, marginBottom: 8 }]}>{i18n("mypage.appGuestTitle")}</Text>
                     <Text style={[s.pageSubtitle, { color: t.textMuted, marginBottom: 28, textAlign: "center" }]}>
-                        마이페이지를 이용하려면{"\n"}로그인해주세요
+                        {i18n("mypage.appGuestSub")}
                     </Text>
                     <TouchableOpacity style={s.emptyCTA} onPress={() => router.push("/(auth)/login" as any)}>
-                        <Text style={s.emptyCTAText}>로그인하기</Text>
+                        <Text style={s.emptyCTAText}>{i18n("mypage.appGuestCta")}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -2380,12 +2447,12 @@ export default function MyPageScreen() {
             {/* ── 페이지 제목 + 탭 카드 ── */}
             <View style={[s.tabBarWrapper, { backgroundColor: t.bg }]}>
                 <View style={s.pageHeaderCenter}>
-                    <Text style={[s.pageTitle, { color: t.text }]}>마이페이지</Text>
-                    <Text style={[s.pageSubtitle, { color: t.textMuted }]}>나의 정보와 활동을 확인하세요</Text>
+                    <Text style={[s.pageTitle, { color: t.text }]}>{i18n("mypage.pageTitle")}</Text>
+                    <Text style={[s.pageSubtitle, { color: t.textMuted }]}>{i18n("mypage.appPageSubtitle")}</Text>
                 </View>
 
                 <View style={[s.tabCard, { backgroundColor: t.card, borderColor: t.border }]}>
-                    {TABS.map((tab) => {
+                    {mainTabs.map((tab) => {
                         const active = activeTab === tab.id;
                         return (
                             <TouchableOpacity

@@ -33,6 +33,7 @@ import AppHeader from '../../src/components/AppHeader';
 import StandaloneTabBar from '../../src/components/StandaloneTabBar';
 import { AppleMark, KakaoMark, SOCIAL_MARK_SIZE } from '../../src/components/auth/SocialLoginMarks';
 import { MODAL_ANDROID_PROPS } from '../../src/constants/modalAndroidProps';
+import { useLocale } from '../../src/lib/useLocale';
 
 let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
 try {
@@ -45,10 +46,18 @@ try {
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
 const AGE_RANGES = ['10대', '20대', '30대', '40대', '50대'] as const;
+const AGE_TKEYS = ['age10s', 'age20s', 'age30s', 'age40s', 'age50s'] as const;
+const AGE_VALUE_TO_TKEY: Record<string, (typeof AGE_TKEYS)[number]> = {
+    '10대': 'age10s',
+    '20대': 'age20s',
+    '30대': 'age30s',
+    '40대': 'age40s',
+    '50대': 'age50s',
+};
 const GENDERS = [
-    { label: '남성', value: '남성' },
-    { label: '여성', value: '여성' },
-    { label: '기타', value: '기타' },
+    { labelKey: 'genderM' as const, value: '남성' },
+    { labelKey: 'genderF' as const, value: '여성' },
+    { labelKey: 'genderOther' as const, value: '기타' },
 ] as const;
 
 type PickerField = 'ageRange' | 'gender' | null;
@@ -58,6 +67,7 @@ type PickerField = 'ageRange' | 'gender' | null;
 export default function SignupScreen() {
     const queryClient = useQueryClient();
     const insets = useSafeAreaInsets();
+    const { t: i18n } = useLocale();
 
     const [form, setForm] = useState({
         nickname: '',
@@ -121,14 +131,14 @@ export default function SignupScreen() {
                 if (data.user) {
                     await handleSocialSuccess(data.user.id, data.token);
                 } else {
-                    setError(data.error || '카카오 로그인에 실패했습니다.');
+                    setError(data.error || i18n('authPage.login.errorKakaoCanceled'));
                 }
             } else {
                 await runKakaoWebOAuth();
             }
         } catch (e: any) {
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
-                setError('카카오 로그인 중 오류가 발생했습니다.');
+                setError(i18n('authPage.login.errorGeneric'));
             }
         } finally {
             setLoading(false);
@@ -157,11 +167,11 @@ export default function SignupScreen() {
                     email: credential.email,
                 },
             );
-            if (!data.user) throw new Error(data.error || 'Apple 로그인에 실패했습니다.');
+            if (!data.user) throw new Error(data.error || i18n('authPage.login.errorAppleFailed'));
             await handleSocialSuccess(data.user.id);
         } catch (e: any) {
             if (e.code !== 'ERR_REQUEST_CANCELED') {
-                setError(e.message || 'Apple 로그인 중 오류가 발생했습니다.');
+                setError(e.message || i18n('authPage.login.errorGeneric'));
             }
         } finally {
             setLoading(false);
@@ -175,19 +185,19 @@ export default function SignupScreen() {
 
         // 유효성 검사
         if (!form.nickname.trim() || form.nickname.length < 2) {
-            setError('닉네임은 2자 이상 입력해주세요.');
+            setError(i18n('authPage.signup.errorNicknameMin'));
             return;
         }
         if (!form.email.includes('@')) {
-            setError('유효한 이메일을 입력해주세요.');
+            setError(i18n('authPage.signup.errorInvalidEmail'));
             return;
         }
         if (form.password.length < 6) {
-            setError('비밀번호는 6자 이상 입력해주세요.');
+            setError(i18n('authPage.signup.errorPasswordMin'));
             return;
         }
         if (form.password !== form.confirmPassword) {
-            setError('비밀번호가 일치하지 않습니다.');
+            setError(i18n('authPage.signup.errorPasswordMismatch'));
             return;
         }
 
@@ -209,10 +219,10 @@ export default function SignupScreen() {
             if (data.user) {
                 await handleSocialSuccess(data.user.id);
             } else {
-                setError(data.error || '회원가입에 실패했습니다.');
+                setError(data.error || i18n('authPage.signup.errorSignupFailed'));
             }
         } catch (e: any) {
-            setError(e.message || '오류가 발생했습니다. 다시 시도해주세요.');
+            setError(e.message || i18n('authPage.signup.errorGenericRetry'));
         } finally {
             setLoading(false);
         }
@@ -239,7 +249,7 @@ export default function SignupScreen() {
                             <Text style={styles.brandTitle}>
                                 DoNa<Text style={styles.brandDot}>.</Text>
                             </Text>
-                            <Text style={styles.tagline}>특별한 데이트의 시작</Text>
+                            <Text style={styles.tagline}>{i18n('authPage.signup.tagline')}</Text>
                         </View>
 
                         {/* 에러 */}
@@ -258,7 +268,7 @@ export default function SignupScreen() {
                                     disabled={loading}
                                     activeOpacity={0.85}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Apple로 가입"
+                                    accessibilityLabel={i18n('authPage.signup.appleSignUpA11y')}
                                 >
                                     <AppleMark size={SOCIAL_MARK_SIZE} />
                                 </TouchableOpacity>
@@ -269,7 +279,7 @@ export default function SignupScreen() {
                                 disabled={loading}
                                 activeOpacity={0.85}
                                 accessibilityRole="button"
-                                accessibilityLabel="카카오로 시작하기"
+                                accessibilityLabel={i18n('authPage.signup.kakaoSignUpA11y')}
                             >
                                 <KakaoMark size={SOCIAL_MARK_SIZE} />
                             </TouchableOpacity>
@@ -278,16 +288,16 @@ export default function SignupScreen() {
                         {/* 구분선 */}
                         <View style={styles.dividerRow}>
                             <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>이메일로 가입</Text>
+                            <Text style={styles.dividerText}>{i18n('authPage.signup.orEmail')}</Text>
                             <View style={styles.dividerLine} />
                         </View>
 
                         {/* 폼 */}
                         <View style={styles.formGroup}>
-                            <Field label="닉네임" required>
+                            <Field label={i18n('authPage.signup.nickname')} required>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="2자 이상 입력"
+                                    placeholder={i18n('authPage.signup.nicknameMinPlaceholder')}
                                     placeholderTextColor={Colors.gray400}
                                     value={form.nickname}
                                     onChangeText={v => setField('nickname', v)}
@@ -295,10 +305,10 @@ export default function SignupScreen() {
                                 />
                             </Field>
 
-                            <Field label="이메일" required>
+                            <Field label={i18n('authPage.signup.email')} required>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="이메일 주소"
+                                    placeholder={i18n('authPage.signup.emailShortPlaceholder')}
                                     placeholderTextColor={Colors.gray400}
                                     value={form.email}
                                     onChangeText={v => setField('email', v)}
@@ -309,10 +319,10 @@ export default function SignupScreen() {
                                 />
                             </Field>
 
-                            <Field label="비밀번호" required>
+                            <Field label={i18n('authPage.signup.password')} required>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="6자 이상"
+                                    placeholder={i18n('authPage.signup.passwordMinPlaceholder')}
                                     placeholderTextColor={Colors.gray400}
                                     value={form.password}
                                     onChangeText={v => setField('password', v)}
@@ -322,10 +332,10 @@ export default function SignupScreen() {
                                 />
                             </Field>
 
-                            <Field label="비밀번호 확인" required>
+                            <Field label={i18n('authPage.signup.confirmPassword')} required>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="비밀번호 재입력"
+                                    placeholder={i18n('authPage.signup.confirmPasswordPlaceholder')}
                                     placeholderTextColor={Colors.gray400}
                                     value={form.confirmPassword}
                                     onChangeText={v => setField('confirmPassword', v)}
@@ -338,7 +348,8 @@ export default function SignupScreen() {
                             <View style={styles.twoCol}>
                                 <View style={styles.colItem}>
                                     <Text style={styles.label}>
-                                        연령대 <Text style={styles.optional}>(선택)</Text>
+                                        {i18n('authPage.signup.ageRange')}{' '}
+                                        <Text style={styles.optional}>{i18n('authPage.signup.optionalInParens')}</Text>
                                     </Text>
                                     <TouchableOpacity
                                         style={styles.selectBtn}
@@ -346,7 +357,9 @@ export default function SignupScreen() {
                                         disabled={loading}
                                     >
                                         <Text style={form.ageRange ? styles.selectValue : styles.selectPlaceholder}>
-                                            {form.ageRange || '선택'}
+                                            {form.ageRange && AGE_VALUE_TO_TKEY[form.ageRange]
+                                                ? i18n(`authPage.signup.${AGE_VALUE_TO_TKEY[form.ageRange]}`)
+                                                : i18n('authPage.signup.pickPlaceholder')}
                                         </Text>
                                         <Text style={styles.chevron}>▾</Text>
                                     </TouchableOpacity>
@@ -354,7 +367,8 @@ export default function SignupScreen() {
 
                                 <View style={styles.colItem}>
                                     <Text style={styles.label}>
-                                        성별 <Text style={styles.optional}>(선택)</Text>
+                                        {i18n('authPage.signup.gender')}{' '}
+                                        <Text style={styles.optional}>{i18n('authPage.signup.optionalInParens')}</Text>
                                     </Text>
                                     <TouchableOpacity
                                         style={styles.selectBtn}
@@ -362,7 +376,13 @@ export default function SignupScreen() {
                                         disabled={loading}
                                     >
                                         <Text style={form.gender ? styles.selectValue : styles.selectPlaceholder}>
-                                            {form.gender || '선택'}
+                                            {form.gender
+                                                ? i18n(
+                                                      `authPage.signup.${
+                                                          GENDERS.find((g) => g.value === form.gender)?.labelKey ?? 'genderM'
+                                                      }`,
+                                                  )
+                                                : i18n('authPage.signup.pickPlaceholder')}
                                         </Text>
                                         <Text style={styles.chevron}>▾</Text>
                                     </TouchableOpacity>
@@ -380,15 +400,15 @@ export default function SignupScreen() {
                             {loading ? (
                                 <ActivityIndicator color={Colors.white} size="small" />
                             ) : (
-                                <Text style={styles.btnSubmitText}>가입하기</Text>
+                                <Text style={styles.btnSubmitText}>{i18n('authPage.signup.submit')}</Text>
                             )}
                         </TouchableOpacity>
 
                         {/* 로그인 링크 */}
                         <View style={styles.loginRow}>
-                            <Text style={styles.loginText}>이미 계정이 있으신가요? </Text>
+                            <Text style={styles.loginText}>{i18n('authPage.signup.hasAccount')} </Text>
                             <TouchableOpacity onPress={() => router.back()}>
-                                <Text style={styles.loginLink}>로그인</Text>
+                                <Text style={styles.loginLink}>{i18n('authPage.signup.loginLink')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -411,7 +431,9 @@ export default function SignupScreen() {
                     <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 40) }]}>
                         <View style={styles.modalHandle} />
                         <Text style={styles.modalTitle}>
-                            {pickerField === 'ageRange' ? '연령대 선택' : '성별 선택'}
+                            {pickerField === 'ageRange'
+                                ? i18n('authPage.signup.pickAgeTitle')
+                                : i18n('authPage.signup.pickGenderTitle')}
                         </Text>
 
                         {pickerField === 'ageRange' &&
@@ -433,7 +455,7 @@ export default function SignupScreen() {
                                             form.ageRange === age && styles.optionTextActive,
                                         ]}
                                     >
-                                        {age}
+                                        {i18n(`authPage.signup.${AGE_VALUE_TO_TKEY[age]}`)}
                                     </Text>
                                     {form.ageRange === age && <Text style={styles.checkmark}>✓</Text>}
                                 </TouchableOpacity>
@@ -458,7 +480,7 @@ export default function SignupScreen() {
                                             form.gender === g.value && styles.optionTextActive,
                                         ]}
                                     >
-                                        {g.label}
+                                        {i18n(`authPage.signup.${g.labelKey}`)}
                                     </Text>
                                     {form.gender === g.value && (
                                         <Text style={styles.checkmark}>✓</Text>

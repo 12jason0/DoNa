@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from "react";
+import React, { useRef, useCallback, useEffect, useMemo } from "react";
 import {
     View,
     Text,
@@ -14,8 +14,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolveImageUrl } from "../lib/imageUrl";
+import { useLocale } from "../lib/useLocale";
 
 const SCREEN_W = Dimensions.get("window").width;
+
+function localeTag(locale: string): string {
+    if (locale === "en") return "en-US";
+    if (locale === "ja") return "ja-JP";
+    if (locale === "zh") return "zh-CN";
+    return "ko-KR";
+}
 const SCREEN_H = Dimensions.get("window").height;
 const STORY_TICK_MS = 50;
 const STORY_TOTAL_TICKS = 4000 / STORY_TICK_MS;
@@ -70,6 +78,7 @@ export default function MemoryDetailModal({
     onClose,
 }: Props) {
     const insets = useSafeAreaInsets();
+    const { locale } = useLocale();
 
     const progressAnim = useRef(new Animated.Value(0)).current;
     const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -128,17 +137,22 @@ export default function MemoryDetailModal({
         startTimer(ticksRef.current, currentIndex, total);
     }, [currentIndex, total, startTimer]);
 
+    const dateText = useMemo(() => {
+        if (!memory?.createdAt) return "";
+        const d = new Date(memory.createdAt);
+        return d.toLocaleDateString(localeTag(locale), {
+            weekday: "short",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+    }, [memory?.createdAt, locale]);
+
     if (!memory) return null;
 
     const TOP_H    = insets.top + 58;
     const BOTTOM_H = insets.bottom + 26;
     const PHOTO_H  = SCREEN_H - TOP_H - BOTTOM_H;
-
-    const dateText = (() => {
-        const d = new Date(memory.createdAt);
-        const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-        return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`;
-    })();
 
     return (
         <Modal

@@ -64,13 +64,10 @@ export default function RootLayout() {
         ZCOOLKuaiLe: require("../assets/fonts/ZCOOLKuaiLe-Regular.ttf"),
     });
 
-    // 폰트 로드 완료 후 네이티브 스플래시 숨김 → 그 전까지 DonaSplashAnimation이 이미 렌더링된 상태
-    // (mount 즉시 호출하면 폰트 미로드 상태에서 네이티브 스플래시가 사라져 탭 화면이 잠깐 노출됨)
+    // 네이티브 스플래시 즉시 숨김 → JS DonaSplashAnimation(4초)이 전체 스플래시를 담당
     useEffect(() => {
-        if (fontsLoaded || fontError) {
-            SplashScreen.hideAsync().catch(() => {});
-        }
-    }, [fontsLoaded, fontError]);
+        SplashScreen.hideAsync().catch(() => {});
+    }, []);
 
     useEffect(() => {
         (async () => {
@@ -105,6 +102,8 @@ export default function RootLayout() {
                             screenOptions={{
                                 headerShown: false,
                                 animation: "none",
+                                // Android: 전환 시 window 배경색(녹색) 비침 방지
+                                contentStyle: { backgroundColor: "#ffffff" },
                                 // Android: 레이아웃이 상태바 아래부터 시작하지 않도록 설정
                                 // (미설정 시 상태바 높이가 두 번 적용되어 헤더가 과도하게 내려감)
                                 statusBarTranslucent: Platform.OS === "android",

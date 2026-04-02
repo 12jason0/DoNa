@@ -2,7 +2,7 @@
  * 나만의 추억 기록하기 화면 (웹 UI 동일 버전)
  * 인트로(블러 배경 + 카드) → 사진 업로드 → 태그+설명+저장 → 성공 모달
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
     View,
     Text,
@@ -26,13 +26,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api, endpoints } from "../../../src/lib/api";
 import { useAuth } from "../../../src/hooks/useAuth";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
+import { useLocale } from "../../../src/lib/useLocale";
 import { Colors } from "../../../src/constants/theme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_PHOTOS = 10;
 const MAX_DESC = 1000;
-const SUGGESTED_TAGS = ["낭만적인", "감성", "조용한", "인생샷", "숨겨진", "데이트", "사진", "카페", "맛집"];
-
 type Course = {
     id: string;
     title: string;
@@ -41,7 +40,11 @@ type Course = {
     coursePlaces?: { order_index: number; place: { id: number; name?: string; imageUrl?: string } }[];
 };
 
-async function uploadImageViaPresign(uri: string, courseId: string): Promise<string> {
+async function uploadImageViaPresign(
+    uri: string,
+    courseId: string,
+    err: { presign: string; putFail: string },
+): Promise<string> {
     const filename = uri.split("/").pop() ?? "photo.jpg";
     const ext = filename.split(".").pop()?.toLowerCase() ?? "jpg";
     const contentType = ext === "png" ? "image/png" : "image/jpeg";
@@ -50,18 +53,19 @@ async function uploadImageViaPresign(uri: string, courseId: string): Promise<str
         "/api/upload/presign",
         { type: "memory", courseId: String(courseId), files: [{ filename, contentType, size: 0 }] },
     );
-    if (!presignRes.success || !presignRes.uploads?.[0]) throw new Error("업로드 URL을 받지 못했습니다.");
+    if (!presignRes.success || !presignRes.uploads?.[0]) throw new Error(err.presign);
 
     const { uploadUrl, publicUrl } = presignRes.uploads[0];
     const blobRes = await fetch(uri);
     const blob = await blobRes.blob();
     const putRes = await fetch(uploadUrl, { method: "PUT", body: blob, headers: { "Content-Type": contentType } });
-    if (!putRes.ok) throw new Error("이미지 업로드에 실패했습니다.");
+    if (!putRes.ok) throw new Error(err.putFail);
     return publicUrl;
 }
 
 export default function CourseStartMemoryScreen() {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
     const insets = useSafeAreaInsets();
     const { id } = useLocalSearchParams<{ id: string }>();
     const { user } = useAuth();
@@ -86,6 +90,11 @@ export default function CourseStartMemoryScreen() {
     const [submitting, setSubmitting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    const suggestedTags = useMemo(
+        () => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => i18n(`courseStart.suggestedTag${n}`)),
+        [i18n],
+    );
+
     // 코스 데이터 로드
     useEffect(() => {
         if (!id) return;
@@ -97,18 +106,20 @@ export default function CourseStartMemoryScreen() {
     const bgImageUrl = course?.imageUrl ?? course?.coursePlaces?.[0]?.place?.imageUrl;
     const userName = user?.name ?? user?.nickname ?? (user?.email ? user.email.split("@")[0] : null);
 
+    const dateLoc = locale === "en" ? "en-US" : locale === "ja" ? "ja-JP" : locale === "zh" ? "zh-CN" : "ko-KR";
     const formattedDate = new Date()
-        .toLocaleDateString("ko-KR", { year: "numeric", month: "numeric", day: "numeric" })
+        .toLocaleDateString(dateLoc, { year: "numeric", month: "numeric", day: "numeric" })
         .replace(/\s/g, "");
-    const fullDate = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+    const fullDate = new Date().toLocaleDateString(dateLoc, { year: "numeric", month: "long", day: "numeric" });
 
-    const headingText = userName && course?.region
-        ? `${userName}의 ${course.region} 데이트`
-        : userName
-        ? `${userName}의 데이트`
-        : course?.region
-        ? `${course.region} 데이트`
-        : "우리의 데이트";
+    const headingText =
+        userName && course?.region
+            ? i18n("courseStart.titleUserRegion", { user: userName, region: course.region })
+            : userName
+              ? i18n("courseStart.titleUserOnly", { user: userName })
+              : course?.region
+                ? i18n("courseStart.titleRegionOnly", { region: course.region })
+                : i18n("courseStart.titleOurDate");
 
     // 사진 선택 + 즉시 업로드
     const handlePickPhotos = useCallback(async () => {
@@ -116,12 +127,12 @@ export default function CourseStartMemoryScreen() {
         try {
             ImagePicker = require("expo-image-picker");
         } catch {
-            Alert.alert("알림", "이미지 선택은 앱 빌드에서만 사용 가능합니다.");
+            Alert.alert(i18n("courseStart.alertNotice"), i18n("courseStart.imagePickerBuildOnly"));
             return;
         }
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
-            Alert.alert("권한 필요", "사진 접근 권한이 필요합니다.");
+            Alert.alert(i18n("courseStart.permissionRequiredTitle"), i18n("courseStart.permissionPhotosBody"));
             return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -138,14 +149,21 @@ export default function CourseStartMemoryScreen() {
         if (!id) return;
         setUploading(true);
         try {
-            const newUrls = await Promise.all(newUris.map((uri) => uploadImageViaPresign(uri, id)));
+            const newUrls = await Promise.all(
+                newUris.map((uri) =>
+                    uploadImageViaPresign(uri, id, {
+                        presign: i18n("courseStart.presignUrlError"),
+                        putFail: i18n("courseStart.imageUploadPutError"),
+                    }),
+                ),
+            );
             setUploadedUrls((prev) => [...prev, ...newUrls].slice(0, MAX_PHOTOS));
         } catch (e: any) {
-            Alert.alert("업로드 실패", e?.message ?? "이미지 업로드에 실패했습니다.");
+            Alert.alert(i18n("courseStart.uploadFailedTitle"), e?.message ?? i18n("courseStart.imageUploadPutError"));
         } finally {
             setUploading(false);
         }
-    }, [localUris, id]);
+    }, [localUris, id, i18n]);
 
     const removePhoto = useCallback((index: number) => {
         setLocalUris((prev) => prev.filter((_, i) => i !== index));
@@ -179,20 +197,20 @@ export default function CourseStartMemoryScreen() {
 
     const handleNext = useCallback(() => {
         if (localUris.length < 1) {
-            Alert.alert("알림", "최소 1장 이상의 사진을 추가해주세요.");
+            Alert.alert(i18n("courseStart.alertNotice"), i18n("courseStart.alertMinPhotos"));
             return;
         }
         if (uploading) {
-            Alert.alert("알림", "사진 업로드 중입니다. 잠시 기다려주세요.");
+            Alert.alert(i18n("courseStart.alertNotice"), i18n("courseStart.uploadWait"));
             return;
         }
         setPageIndex(1);
-    }, [localUris, uploading]);
+    }, [localUris, uploading, i18n]);
 
     const handleSubmit = useCallback(async () => {
         if (!id) return;
         if (uploadedUrls.length < 1) {
-            Alert.alert("알림", "사진 업로드를 기다려주세요.");
+            Alert.alert(i18n("courseStart.alertNotice"), i18n("courseStart.waitPhotoUpload"));
             return;
         }
         setSubmitting(true);
@@ -212,21 +230,17 @@ export default function CourseStartMemoryScreen() {
         } catch (e: any) {
             const msg = e?.message ?? "";
             if (msg.includes("MEMORY_LIMIT") || msg.includes("한도") || msg.includes("업그레이드")) {
-                Alert.alert(
-                    "저장 한도 초과",
-                    "나만의 추억 저장 한도에 도달했어요. 구독을 업그레이드하면 더 저장할 수 있어요.",
-                    [
-                        { text: "닫기", style: "cancel" },
-                        { text: "구독 보기", onPress: () => router.push("/shop" as any) },
-                    ],
-                );
+                Alert.alert(i18n("courseStart.memorySaveLimitTitle"), i18n("courseStart.memorySaveLimitBody"), [
+                    { text: i18n("courseStart.close"), style: "cancel" },
+                    { text: i18n("courseStart.viewSubscription"), onPress: () => router.push("/shop" as any) },
+                ]);
             } else {
-                Alert.alert("저장 실패", msg || "추억 저장 중 오류가 발생했습니다.");
+                Alert.alert(i18n("courseStart.saveFailedTitle"), msg || i18n("courseStart.alertSaveError"));
             }
         } finally {
             setSubmitting(false);
         }
-    }, [id, rating, description, uploadedUrls, selectedTags]);
+    }, [id, rating, description, uploadedUrls, selectedTags, i18n]);
 
     // ─── 성공 모달 ────────────────────────────────────────────────────────────
     if (showSuccessModal) {
@@ -235,13 +249,13 @@ export default function CourseStartMemoryScreen() {
                 <View style={s.modalOverlay}>
                     <View style={[s.successCard, { backgroundColor: t.card }]}>
                         <Text style={s.successEmoji}>📸</Text>
-                        <Text style={[s.successTitle, { color: t.text }]}>추억이 저장됐어요!</Text>
-                        <Text style={[s.successSub, { color: t.textMuted }]}>마이페이지에서 다시 볼 수 있어요</Text>
+                        <Text style={[s.successTitle, { color: t.text }]}>{i18n("courseStart.memorySavedShort")}</Text>
+                        <Text style={[s.successSub, { color: t.textMuted }]}>{i18n("courseStart.memorySavedMyPageHint")}</Text>
                         <TouchableOpacity
                             style={[s.successBtn, { backgroundColor: Colors.brandGreen }]}
                             onPress={() => router.push("/(tabs)" as any)}
                         >
-                            <Text style={s.successBtnText}>홈으로 돌아가기</Text>
+                            <Text style={s.successBtnText}>{i18n("courseStart.goHomeBack")}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -273,7 +287,7 @@ export default function CourseStartMemoryScreen() {
                     <View style={s.introCard}>
                         <Text style={s.introTitle}>{headingText}</Text>
                         <Text style={s.introDate}>❤️ {formattedDate}</Text>
-                        <Text style={s.introHint}>화면을 터치하여 시작하기</Text>
+                        <Text style={s.introHint}>{i18n("courseStart.touchToStart")}</Text>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -340,11 +354,11 @@ export default function CourseStartMemoryScreen() {
                     {pageIndex === 0 ? (
                         /* 페이지 0: 사진 업로드 */
                         <View>
-                            <Text style={[s.label, { color: t.text }]}>📸 우리의 순간들</Text>
+                            <Text style={[s.label, { color: t.text }]}>{i18n("courseStart.photosSection")}</Text>
                             {uploading && (
                                 <View style={s.uploadingRow}>
                                     <ActivityIndicator size="small" color={Colors.brandGreen} />
-                                    <Text style={[s.uploadingText, { color: t.textMuted }]}>  업로드 중...</Text>
+                                    <Text style={[s.uploadingText, { color: t.textMuted }]}> {i18n("courseStart.uploading")}</Text>
                                 </View>
                             )}
                             <View style={s.photoGrid}>
@@ -372,7 +386,7 @@ export default function CourseStartMemoryScreen() {
                     ) : (
                         /* 페이지 1: 태그 + 별점 + 설명 */
                         <View>
-                            <Text style={[s.sectionTitle, { color: t.text }]}>오늘 데이트 어땠어요?</Text>
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("courseStart.todayDateFeel")}</Text>
                             <View style={s.ratingRow}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <TouchableOpacity
@@ -393,9 +407,9 @@ export default function CourseStartMemoryScreen() {
                                 <Text style={[s.ratingCount, { color: t.textMuted }]}>{rating} / 5</Text>
                             </View>
 
-                            <Text style={[s.label, { color: t.text }]}>태그 선택</Text>
+                            <Text style={[s.label, { color: t.text }]}>{i18n("courseStart.tagSelect")}</Text>
                             <View style={s.tagsWrap}>
-                                {SUGGESTED_TAGS.map((tag) => {
+                                {suggestedTags.map((tag) => {
                                     const active = selectedTags.includes(tag);
                                     return (
                                         <TouchableOpacity
@@ -426,7 +440,7 @@ export default function CourseStartMemoryScreen() {
                                 <TextInput
                                     value={tagInput}
                                     onChangeText={setTagInput}
-                                    placeholder="태그 직접 입력 (최대 10자)"
+                                    placeholder={i18n("courseStart.tagInputMax10")}
                                     placeholderTextColor={t.textSubtle}
                                     style={[s.tagInputField, { color: t.text }]}
                                     maxLength={10}
@@ -434,15 +448,15 @@ export default function CourseStartMemoryScreen() {
                                     onSubmitEditing={addCustomTag}
                                 />
                                 <TouchableOpacity onPress={addCustomTag} style={s.tagInputBtn}>
-                                    <Text style={s.tagInputBtnText}>추가</Text>
+                                    <Text style={s.tagInputBtnText}>{i18n("courseStart.addTag")}</Text>
                                 </TouchableOpacity>
                             </View>
 
-                            <Text style={[s.label, { color: t.text }]}>한 줄 추억</Text>
+                            <Text style={[s.label, { color: t.text }]}>{i18n("courseStart.memoryOneLine")}</Text>
                             <TextInput
                                 value={description}
                                 onChangeText={setDescription}
-                                placeholder="오늘 데이트를 한 줄로 기록해요 (선택)"
+                                placeholder={i18n("courseStart.memoryOneLinePlaceholder")}
                                 placeholderTextColor={t.textSubtle}
                                 multiline
                                 maxLength={MAX_DESC}
@@ -467,7 +481,7 @@ export default function CourseStartMemoryScreen() {
                             {uploading ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <Text style={s.primaryBtnText}>다음 →</Text>
+                                <Text style={s.primaryBtnText}>{i18n("courseStart.nextWithArrow")}</Text>
                             )}
                         </TouchableOpacity>
                     ) : (
@@ -486,7 +500,7 @@ export default function CourseStartMemoryScreen() {
                                 {submitting ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
-                                    <Text style={s.primaryBtnText}>추억 저장하기 ✨</Text>
+                                    <Text style={s.primaryBtnText}>{i18n("courseStart.saveMemorySparkle")}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>

@@ -17,7 +17,6 @@ import { useCourseFilter, type Course } from "@/hooks/useCourseFilter";
 import CategoryFilterModal from "@/components/nearby/CategoryFilterModal";
 import TapFeedback from "@/components/TapFeedback";
 import { isIOS, isMobileApp } from "@/lib/platform";
-import CourseReportBanner from "@/components/CourseReportBanner";
 import CourseLoadingOverlay from "@/components/CourseLoadingOverlay";
 import type { TranslationKeys } from "@/types/i18n";
 import { normalizeNearbyRegionToSlug } from "@/constants/nearbyRegionSlug";
@@ -800,15 +799,8 @@ export default function NearbyClient({ initialCourses, initialKeyword }: NearbyC
                                             return true;
                                         })
                                         .map((c, i) => {
-                                            // 🟢 코스 5개마다 제보 유도 배너 삽입 (완벽한 하루와 동일)
-                                            const shouldShowBanner = i > 0 && i % 5 === 0;
                                             return (
                                                 <div key={c.id}>
-                                                    {shouldShowBanner && (
-                                                        <div className="mb-6">
-                                                            <CourseReportBanner />
-                                                        </div>
-                                                    )}
                                                     <CourseCard
                                                         course={c}
                                                         isPriority={i < 10} // 🟢 첫 10개 카드 priority (LCP + 첫 화면 이미지 빠르게 표시)

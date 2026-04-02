@@ -2,19 +2,17 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search, Settings, X } from "lucide-react";
-import NotificationModal from "@/components/NotificationModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useLocale } from "@/context/LocaleContext";
 import ComingSoonModal from "@/components/ComingSoonModal";
-import KakaoChannelModal from "@/components/KakaoChannelModal";
 import LogoutModal from "@/components/LogoutModal";
+import SuggestNotificationModal from "@/components/SuggestNotificationModal";
 import LoginModal from "@/components/LoginModal";
 import TapFeedback from "@/components/TapFeedback";
-import { useAuth } from "@/context/AuthContext";
 import { useAppLayout, ANDROID_MODAL_BOTTOM } from "@/context/AppLayoutContext";
 import { useNativeModalNotify } from "@/hooks/useNativeModalNotify";
 
@@ -29,17 +27,14 @@ const LogoutOverlay = ({ message }: { message: string }) => (
 
 // 🟢 React.memo를 사용하여 Header의 자체 상태 변경이 부모 레이아웃 전체에 영향을 주지 않도록 격리
 const Header = memo(() => {
-    const { isAuthenticated } = useAuth();
     const { containInPhone, isAndroidApp, iosIgnoreSafeAreaBottom } = useAppLayout();
     const posClass = containInPhone ? "absolute" : "fixed";
     const { resolvedTheme, setTheme } = useTheme();
     const { locale, setLocaleSafe, isLocaleLoading, t } = useLocale();
-    const [hasFavorites, setHasFavorites] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false); // 🟢 새로 추가
     const [showComingSoon, setShowComingSoon] = useState<null | string>(null);
-    const [showNotiModal, setShowNotiModal] = useState(false);
-    const [showKakaoChannelModal, setShowKakaoChannelModal] = useState(false);
+    const [showSuggestModal, setShowSuggestModal] = useState(false);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -50,51 +45,15 @@ const Header = memo(() => {
         showSettingsModal ||
             showLogoutConfirm ||
             !!showComingSoon ||
-            showNotiModal ||
-            showKakaoChannelModal ||
-            showLoginModal,
+            showLoginModal ||
+            showSuggestModal,
     );
 
-    // 🟢 [찜 목록 요약 가져오기] - 불필요한 상태 업데이트 방지 로직 추가
-    const fetchFavoritesSummary = useCallback(async () => {
-        try {
-            const { authenticatedFetch } = await import("@/lib/authClient");
-            // shouldRedirect를 false로 설정하여 배경 요청 실패가 무한 새로고침을 유발하지 않게 함
-            const favorites = await authenticatedFetch<any[]>("/api/users/favorites", { cache: "no-store" }, false);
-            if (favorites) {
-                const newHasFav = Array.isArray(favorites) && favorites.length > 0;
-                // 이전 값과 같으면 업데이트를 건너뛰어 리렌더링 차단
-                setHasFavorites((prev) => (prev !== newHasFav ? newHasFav : prev));
-            }
-        } catch (e) {
-            console.error("Failed to fetch favorites summary", e);
-        }
-    }, []);
-
-    // 🟢 로그아웃 이벤트: 찜만 초기화 (로그인 상태는 AuthContext가 담당)
-    const handleAuthLogout = useCallback(() => {
-        setHasFavorites(false);
-        setIsLoggingOut(false);
-    }, []);
-
-    // 🟢 AuthContext 기준 찜 요약: 로그인 시에만 갱신, 이벤트 수신
     useEffect(() => {
-        if (isAuthenticated) {
-            fetchFavoritesSummary();
-        } else {
-            setHasFavorites(false);
-        }
-    }, [isAuthenticated, fetchFavoritesSummary]);
-
-    useEffect(() => {
-        const handleFavoritesChanged = () => fetchFavoritesSummary();
-        window.addEventListener("authLogout", handleAuthLogout);
-        window.addEventListener("favoritesChanged", handleFavoritesChanged);
-        return () => {
-            window.removeEventListener("authLogout", handleAuthLogout);
-            window.removeEventListener("favoritesChanged", handleFavoritesChanged);
-        };
-    }, [fetchFavoritesSummary, handleAuthLogout]);
+        const onAuthLogout = () => setIsLoggingOut(false);
+        window.addEventListener("authLogout", onAuthLogout);
+        return () => window.removeEventListener("authLogout", onAuthLogout);
+    }, []);
 
     // 🟢 메인 페이지 prefetch (성능 최적화)
     useEffect(() => {
@@ -109,7 +68,6 @@ const Header = memo(() => {
 
         // 🟢 1. 즉시 오버레이 표시 상태로 변경
         setIsLoggingOut(true);
-        setHasFavorites(false);
         setShowLogoutConfirm(false);
 
         try {
@@ -129,10 +87,6 @@ const Header = memo(() => {
             // 에러 발생 시에도 메인으로 이동
             window.location.replace("/");
         }
-    };
-
-    const openLogoutConfirm = () => {
-        setShowLogoutConfirm(true);
     };
 
     return (
@@ -167,14 +121,13 @@ const Header = memo(() => {
                                 </button>
                             </TapFeedback>
 
-                            {/* 알림 버튼 (종/알람) */}
+                            {/* 장소 제보 (종 아이콘 + 알림 뱃지) */}
                             <TapFeedback>
                                 <button
-                                    onClick={() => {
-                                        isAuthenticated ? setShowKakaoChannelModal(true) : setShowNotiModal(true);
-                                    }}
+                                    type="button"
+                                    onClick={() => setShowSuggestModal(true)}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
-                                    aria-label={t("header.notification")}
+                                    aria-label={t("header.suggestPlace")}
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -190,13 +143,10 @@ const Header = memo(() => {
                                             d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
                                         />
                                     </svg>
-                                    {hasFavorites && (
-                                        // 찜 목록이 있을 때만 뱃지 표시
-                                        <span className="absolute top-1.5 right-1.5 flex h-1.5 w-1.5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                                        </span>
-                                    )}
+                                    <span className="absolute top-1.5 right-1.5 flex h-1.5 w-1.5" aria-hidden>
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                                    </span>
                                 </button>
                             </TapFeedback>
 
@@ -220,11 +170,10 @@ const Header = memo(() => {
             {/* 모든 모달들 */}
             {showLogoutConfirm && <LogoutModal onClose={() => setShowLogoutConfirm(false)} onConfirm={handleLogout} />}
             {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(null)} />}
-            {!isAuthenticated && showNotiModal && <NotificationModal onClose={() => setShowNotiModal(false)} />}
-            {isAuthenticated && showKakaoChannelModal && (
-                <KakaoChannelModal onClose={() => setShowKakaoChannelModal(false)} />
-            )}
             {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} next={pathname} />}
+            {showSuggestModal && (
+                <SuggestNotificationModal onClose={() => setShowSuggestModal(false)} />
+            )}
 
             {/* 설정 모달 (다크/라이트 모드) - 아래에서 올라오는 바텀시트. Android는 네비 바로 위 */}
             {showSettingsModal && (

@@ -25,10 +25,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 import { api } from "../lib/api";
-import { SEARCH_COPY, CDN_CONCEPT_ICONS } from "../constants/searchModalCopy";
+import { CDN_CONCEPT_ICONS, SEARCH_THEME_TAGS, POPULAR_KEYWORD_COUNT } from "../constants/searchModalCopy";
 import { Colors } from "../constants/theme";
 import { useSlideModalAnimation } from "../hooks/useSlideModalAnimation";
 import { useThemeColors } from "../hooks/useThemeColors";
+import { useLocale } from "../lib/useLocale";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
 
@@ -200,7 +201,7 @@ export default function SearchModal({ visible, onClose }: Props) {
                             </View>
                             {/* 헤더 */}
                             <View style={styles.headRow}>
-                                <Text style={[styles.headTitle, { color: t.text }]}>{SEARCH_COPY.title}</Text>
+                                <Text style={[styles.headTitle, { color: t.text }]}>{i18n("header.search")}</Text>
                                 <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.iconHit}>
                                     <Ionicons name="close" size={26} color={t.textMuted} />
                                 </TouchableOpacity>
@@ -213,7 +214,7 @@ export default function SearchModal({ visible, onClose }: Props) {
                                     <TextInput
                                         ref={inputRef}
                                         style={[styles.input, { color: t.text }]}
-                                        placeholder={SEARCH_COPY.placeholder}
+                                        placeholder={i18n("search.placeholder")}
                                         placeholderTextColor={t.textMuted}
                                         value={query}
                                         onChangeText={setQuery}
@@ -249,15 +250,15 @@ export default function SearchModal({ visible, onClose }: Props) {
                                             <View style={styles.sectionHead}>
                                                 <View style={styles.sectionHeadLeft}>
                                                     <Ionicons name="time-outline" size={16} color={t.textMuted} />
-                                                    <Text style={[styles.sectionTitle, { color: t.text }]}>{SEARCH_COPY.recentSearches}</Text>
+                                                    <Text style={[styles.sectionTitle, { color: t.text }]}>{i18n("search.recentSearches")}</Text>
                                                 </View>
                                                 {isSearchHistoryEnabled ? (
                                                     <TouchableOpacity onPress={() => setShowDisableConfirm(true)}>
-                                                        <Text style={styles.linkMuted}>{SEARCH_COPY.disableHistory}</Text>
+                                                        <Text style={styles.linkMuted}>{i18n("search.disableHistory")}</Text>
                                                     </TouchableOpacity>
                                                 ) : (
                                                     <TouchableOpacity onPress={handleEnableSearchHistory}>
-                                                        <Text style={styles.linkGreen}>{SEARCH_COPY.enableHistory}</Text>
+                                                        <Text style={styles.linkGreen}>{i18n("search.enableHistory")}</Text>
                                                     </TouchableOpacity>
                                                 )}
                                             </View>
@@ -277,7 +278,7 @@ export default function SearchModal({ visible, onClose }: Props) {
                                                             <TouchableOpacity
                                                                 onPress={() => handleDeleteHistoryItem(item.id)}
                                                                 hitSlop={6}
-                                                                accessibilityLabel={SEARCH_COPY.deleteItem}
+                                                                accessibilityLabel={i18n("search.deleteItem")}
                                                             >
                                                                 <Ionicons name="close" size={14} color="#9ca3af" />
                                                             </TouchableOpacity>
@@ -291,41 +292,47 @@ export default function SearchModal({ visible, onClose }: Props) {
                                     <View style={styles.section}>
                                         <View style={[styles.sectionHeadLeft, styles.popularHeadRow]}>
                                             <Ionicons name="trending-up" size={16} color="#10b981" />
-                                            <Text style={[styles.sectionTitle, { color: t.text }]}>{SEARCH_COPY.popularTitle}</Text>
+                                            <Text style={[styles.sectionTitle, { color: t.text }]}>{i18n("search.popularTitle")}</Text>
                                         </View>
                                         <View style={styles.popularWrap}>
-                                            {SEARCH_COPY.popularKeywords.map((kw, i) => (
-                                                <TouchableOpacity
-                                                    key={i}
-                                                    style={[styles.popularChip, { backgroundColor: t.card, borderColor: t.border }]}
-                                                    onPress={() => handleSearch(kw)}
-                                                >
-                                                    <Text style={[styles.popularChipText, { color: t.text }]}>{kw}</Text>
-                                                </TouchableOpacity>
-                                            ))}
+                                            {Array.from({ length: POPULAR_KEYWORD_COUNT }, (_, i) => {
+                                                const kw = i18n(`search.popularKeyword${i}`);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={i}
+                                                        style={[styles.popularChip, { backgroundColor: t.card, borderColor: t.border }]}
+                                                        onPress={() => handleSearch(kw)}
+                                                    >
+                                                        <Text style={[styles.popularChipText, { color: t.text }]}>{kw}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
                                         </View>
                                     </View>
 
                                     <View style={[styles.section, { marginBottom: 24 }]}>
-                                        <Text style={[styles.sectionTitleStandalone, { color: t.text }]}>{SEARCH_COPY.suggestedThemes}</Text>
+                                        <Text style={[styles.sectionTitleStandalone, { color: t.text }]}>{i18n("search.suggestedThemes")}</Text>
                                         <View style={styles.themeGrid}>
-                                            {SEARCH_COPY.tags.map((tag) => (
-                                                <TouchableOpacity
-                                                    key={tag.id}
-                                                    style={[styles.themeCard, { backgroundColor: t.surface }]}
-                                                    onPress={() => handleSearch(tag.label)}
-                                                    activeOpacity={0.85}
-                                                >
-                                                    <View style={[styles.themeIconWrap, { backgroundColor: t.card }]}>
-                                                        <Image
-                                                            source={{ uri: `${CDN_CONCEPT_ICONS}/${tag.iconFile}` }}
-                                                            style={styles.themeIcon}
-                                                            resizeMode="contain"
-                                                        />
-                                                    </View>
-                                                    <Text style={[styles.themeLabel, { color: t.text }]}>{tag.label}</Text>
-                                                </TouchableOpacity>
-                                            ))}
+                                            {SEARCH_THEME_TAGS.map((tag) => {
+                                                const label = i18n(tag.labelKey);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={tag.id}
+                                                        style={[styles.themeCard, { backgroundColor: t.surface }]}
+                                                        onPress={() => handleSearch(label)}
+                                                        activeOpacity={0.85}
+                                                    >
+                                                        <View style={[styles.themeIconWrap, { backgroundColor: t.card }]}>
+                                                            <Image
+                                                                source={{ uri: `${CDN_CONCEPT_ICONS}/${tag.iconFile}` }}
+                                                                style={styles.themeIcon}
+                                                                resizeMode="contain"
+                                                            />
+                                                        </View>
+                                                        <Text style={[styles.themeLabel, { color: t.text }]}>{label}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
                                         </View>
                                     </View>
                                 </ScrollView>
@@ -367,20 +374,20 @@ export default function SearchModal({ visible, onClose }: Props) {
                                     ]}
                                     onPress={(e) => e.stopPropagation()}
                                 >
-                                    <Text style={[styles.confirmTitle, { color: t.text }]}>{SEARCH_COPY.disableConfirmTitle}</Text>
-                                    <Text style={[styles.confirmDesc, { color: t.textMuted }]}>{SEARCH_COPY.disableConfirmDesc}</Text>
+                                    <Text style={[styles.confirmTitle, { color: t.text }]}>{i18n("search.disableConfirmTitle")}</Text>
+                                    <Text style={[styles.confirmDesc, { color: t.textMuted }]}>{i18n("search.disableConfirmDesc")}</Text>
                                     <View style={styles.confirmRow}>
                                         <TouchableOpacity
                                             style={[styles.confirmBtnGhost, { borderColor: t.border }]}
                                             onPress={() => setShowDisableConfirm(false)}
                                         >
-                                            <Text style={[styles.confirmBtnGhostText, { color: t.text }]}>{SEARCH_COPY.keep}</Text>
+                                            <Text style={[styles.confirmBtnGhostText, { color: t.text }]}>{i18n("search.keep")}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.confirmBtnPrimary}
                                             onPress={handleConfirmDisableSearchHistory}
                                         >
-                                            <Text style={styles.confirmBtnPrimaryText}>{SEARCH_COPY.confirmDisable}</Text>
+                                            <Text style={styles.confirmBtnPrimaryText}>{i18n("search.confirmDisable")}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </Pressable>

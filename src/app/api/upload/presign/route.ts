@@ -49,6 +49,12 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+        if (type === "suggestion" && !userId) {
+            return NextResponse.json(
+                { message: "제보 업로드에는 로그인이 필요합니다." },
+                { status: 401 }
+            );
+        }
 
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         let userName: string | null = null;
@@ -102,6 +108,8 @@ export async function POST(request: NextRequest) {
                 key = `reviews/course_${courseId}/${dateStr}_${uniqueFileName}`;
             } else if (type === "escape" && userId && escapeId) {
                 key = `escape/user_${userId}/escape_${escapeId}/${dateStr}_${uniqueFileName}`;
+            } else if (type === "suggestion" && userId) {
+                key = `suggestions/user_${userId}/${dateStr}_${uniqueFileName}`;
             } else {
                 key = `uploads/${dateStr}/${uniqueFileName}`;
             }

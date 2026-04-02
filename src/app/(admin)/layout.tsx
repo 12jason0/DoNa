@@ -50,6 +50,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             📍 장소 관리
                         </Link>
                         <Link
+                            href="/admin/suggest"
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
+                        >
+                            📨 장소 제보 검토
+                        </Link>
+                        <Link
                             href="/admin/escape-stories"
                             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
                         >

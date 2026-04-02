@@ -39,14 +39,18 @@ export async function GET(request: NextRequest) {
         const startedAt = new Date(active.startedAt);
         if (startedAt < start || startedAt > end) return NextResponse.json(null);
 
-        // 해당 코스로 나만의 추억(Review isPublic:false) 존재 여부
+        // 해당 코스로 오늘(KST) 나만의 추억(Review isPublic:false) 존재 여부
         const memory = await prisma.review.findFirst({
             where: {
                 userId,
                 courseId: active.courseId ?? undefined,
                 isPublic: false,
+                createdAt: { gte: start, lte: end },
             },
         });
+
+        // 오늘 이 코스의 추억을 이미 남겼으면 배너 숨김
+        if (memory) return NextResponse.json(null);
 
         const course = active.course;
         // 🟢 오늘의 선택(recommendations)과 동일한 해상 로직 + fallback: 이미지 있는 첫 장소

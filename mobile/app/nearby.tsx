@@ -36,23 +36,44 @@ import AppHeaderWithModals from "../src/components/AppHeaderWithModals";
 import StandaloneTabBar from "../src/components/StandaloneTabBar";
 import SideMenuSheet from "../src/components/SideMenuSheet";
 import type { Course, UserProfile } from "../src/types/api";
+import { useLocale } from "../src/lib/useLocale";
+import type { LocalePreference } from "../src/lib/appSettingsStorage";
+import { translateCourseConcept } from "../../src/lib/courseTranslate";
 
 const SCREEN_W = Dimensions.get("window").width;
 
 // ─── 상수 ──────────────────────────────────────────────────────────────────────
 
 const REGIONS = ["강남", "성수", "홍대", "종로", "연남", "영등포"];
+const KO_REGION_TO_SLUG: Record<string, string> = {
+    강남: "gangnam",
+    성수: "seongsu",
+    홍대: "hongdae",
+    종로: "jongno",
+    연남: "yeonnam",
+    영등포: "yeongdeungpo",
+};
 const CONCEPT_TAGS = ["이색데이트", "감성데이트", "야경", "힐링", "가성비", "인생샷", "맛집탐방", "카페투어", "술자리", "실내데이트", "공연·전시"];
 const SITUATION_TAGS = ["썸탈 때", "소개팅", "기념일", "데이트", "친구와", "혼자"];
 const MOOD_TAGS = ["로맨틱", "힙한", "활기찬", "레트로", "고급스러운", "감성", "조용한", "이국적인"];
 
-// ─── 코스 카드 ─────────────────────────────────────────────────────────────────
-
-function formatViewCount(v: number) {
-    if (v >= 10000) return `${(v / 10000).toFixed(v % 10000 ? 1 : 0)}만`;
-    if (v >= 1000)  return `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}천`;
-    return String(v);
+function formatViewsCompact(views: number, locale: LocalePreference): string {
+    if (views >= 10000) {
+        const n = (views / 10000).toFixed(views % 10000 ? 1 : 0);
+        if (locale === "ko") return `${n}만`;
+        if (locale === "ja" || locale === "zh") return `${n}万`;
+        return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}k`;
+    }
+    if (views >= 1000) {
+        const n = (views / 1000).toFixed(views % 1000 ? 1 : 0);
+        if (locale === "ko") return `${n}천`;
+        if (locale === "ja" || locale === "zh") return `${n}千`;
+        return `${n}k`;
+    }
+    return String(views);
 }
+
+// ─── 코스 카드 ─────────────────────────────────────────────────────────────────
 
 function NearbyCard({
     course,
@@ -65,7 +86,8 @@ function NearbyCard({
     onFavToggle: (id: number) => void;
     userTier: string;
 }) {
-    const t = useThemeColors();
+    const colors = useThemeColors();
+    const { t: i18n, locale } = useLocale();
     const isNew = (course as any).reviewCount === 0;
     const placesCount = (course as any).placesCount ?? (course as any).coursePlaces?.length ?? 0;
     const views = Number((course as any).viewCount ?? 0);
@@ -90,11 +112,15 @@ function NearbyCard({
     const firstPlaceImg = (course as any).coursePlaces?.[0]?.place?.imageUrl;
     const displayImgUrl = firstPlaceImg || course.imageUrl;
 
-    const infoLine = views >= 1000
-        ? `👀 ${formatViewCount(views)}명이 보는 중`
-        : reviewCount > 0
-        ? `★ ${rating.toFixed(1)} (${reviewCount})`
-        : null;
+    const infoLine =
+        views >= 1000
+            ? i18n("courses.viewsWatching", { compact: formatViewsCompact(views, locale) })
+            : reviewCount > 0
+              ? i18n("mobile.nearby.viewRatingLine", {
+                    rating: rating.toFixed(1),
+                    count: reviewCount,
+                })
+              : null;
 
     return (
         <TouchableOpacity
@@ -106,7 +132,7 @@ function NearbyCard({
             activeOpacity={0.88}
         >
             {/* 이미지 */}
-            <View style={[s.cardImgWrap, { borderColor: t.isDark ? "transparent" : "#f3f4f6" }]}>
+            <View style={[s.cardImgWrap, { borderColor: colors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {displayImgUrl ? (
                     <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} />
                 ) : (
@@ -121,7 +147,7 @@ function NearbyCard({
                 <View style={s.badges} pointerEvents="none">
                     {hasRealtimeReservation && (
                         <View style={s.reserveBadge}>
-                            <Text style={s.reserveBadgeText}>실시간 예약</Text>
+                            <Text style={s.reserveBadgeText}>{i18n("courseDetail.realtimeReservation")}</Text>
                         </View>
                     )}
                     {grade !== "FREE" && (
@@ -131,10 +157,16 @@ function NearbyCard({
                     )}
                     {course.concept && (
                         <View style={s.conceptBadge}>
-                            <Text style={s.conceptBadgeText}>#{course.concept}</Text>
+                            <Text style={s.conceptBadgeText}>
+                                #{translateCourseConcept(course.concept, i18n)}
+                            </Text>
                         </View>
                     )}
-                    {isNew && <View style={s.newBadge}><Text style={s.newBadgeText}>NEW</Text></View>}
+                    {isNew && (
+                        <View style={s.newBadge}>
+                            <Text style={s.newBadgeText}>{i18n("courses.badgeNew")}</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* 찜 버튼 */}
@@ -152,9 +184,11 @@ function NearbyCard({
                         <View style={s.lockBox}>
                             <Ionicons name="lock-closed" size={24} color="#fff" />
                             <Text style={s.lockText}>
-                                {course.grade === "PREMIUM" ? "PREMIUM" : "BASIC"} 코스
+                                {i18n("mobile.nearby.lockTierCourse", {
+                                    tier: course.grade === "PREMIUM" ? "PREMIUM" : "BASIC",
+                                })}
                             </Text>
-                            <Text style={s.lockSub}>구독하고 열람하기</Text>
+                            <Text style={s.lockSub}>{i18n("mobile.nearby.lockSubscribe")}</Text>
                         </View>
                     </View>
                 )}
@@ -162,20 +196,37 @@ function NearbyCard({
 
             {/* 정보 */}
             <View style={s.cardBody}>
-                <Text style={[s.cardTitle, { color: t.text }]} numberOfLines={2}>{course.title}</Text>
+                <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={2}>
+                    {course.title}
+                </Text>
                 <View style={s.metaRow}>
                     {(course.location || (course as any).region) && (
-                        <Text style={[s.metaText, { color: t.textMuted }]}>
+                        <Text style={[s.metaText, { color: colors.textMuted }]}>
                             📍 {(course as any).location ?? (course as any).region}
                         </Text>
                     )}
-                    {placesCount > 0 && <View style={[s.metaDot, { backgroundColor: t.textMuted }]} />}
-                    {placesCount > 0 && <Text style={[s.metaText, { color: t.textMuted }]}>👣 {placesCount} 스팟</Text>}
-                    {course.duration && <View style={[s.metaDot, { backgroundColor: t.textMuted }]} />}
-                    {course.duration && <Text style={[s.metaText, { color: t.textMuted }]}>⏳ {course.duration}</Text>}
+                    {placesCount > 0 && (
+                        <View style={[s.metaDot, { backgroundColor: colors.textMuted }]} />
+                    )}
+                    {placesCount > 0 && (
+                        <Text style={[s.metaText, { color: colors.textMuted }]}>
+                            {i18n("courses.metaSpots", {
+                                count: placesCount,
+                                spots: i18n("courseDetail.spots"),
+                            })}
+                        </Text>
+                    )}
+                    {course.duration && (
+                        <View style={[s.metaDot, { backgroundColor: colors.textMuted }]} />
+                    )}
+                    {course.duration && (
+                        <Text style={[s.metaText, { color: colors.textMuted }]}>⏳ {course.duration}</Text>
+                    )}
                 </View>
                 {infoLine && (
-                    <Text style={[s.infoLine, { color: t.textMuted }]} numberOfLines={1}>{infoLine}</Text>
+                    <Text style={[s.infoLine, { color: colors.textMuted }]} numberOfLines={1}>
+                        {infoLine}
+                    </Text>
                 )}
             </View>
         </TouchableOpacity>
@@ -185,7 +236,8 @@ function NearbyCard({
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 export default function NearbyScreen() {
-    const t = useThemeColors();
+    const colors = useThemeColors();
+    const { t: i18n } = useLocale();
     const queryClient = useQueryClient();
     const { isAuthenticated } = useAuth();
     const insets = useSafeAreaInsets();
@@ -347,40 +399,45 @@ export default function NearbyScreen() {
         selectedSituations.length +
         selectedMoods.length;
 
-    const ListHeader = useCallback(() => (
-        <View>
-            <View style={[s.listHeader, { backgroundColor: t.card, borderTopColor: t.border }]}>
-                <Text style={[s.listHeaderTitle, { color: t.text }]}>
-                    {activeRegion
-                        ? `${activeRegion} 코스`
-                        : activeSearch
-                        ? `"${activeSearch}" 검색 결과`
-                        : "오늘 뭐하지?"}
-                </Text>
-                <Text style={[s.listHeaderCount, { color: t.textMuted }]}>{courses.length}개</Text>
+    const ListHeader = useCallback(() => {
+        const regionSlug = activeRegion ? KO_REGION_TO_SLUG[activeRegion] : "";
+        const regionLabel = regionSlug ? i18n(`nearby.regions.${regionSlug}`) : activeRegion;
+        const title = activeRegion
+            ? i18n("mobile.nearby.headerRegionCourses", { region: regionLabel })
+            : activeSearch
+              ? i18n("mobile.nearby.headerSearchResults", { q: activeSearch })
+              : i18n("nav.whatToDoToday");
+        return (
+            <View>
+                <View style={[s.listHeader, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+                    <Text style={[s.listHeaderTitle, { color: colors.text }]}>{title}</Text>
+                    <Text style={[s.listHeaderCount, { color: colors.textMuted }]}>
+                        {i18n("courses.listCount", { count: courses.length })}
+                    </Text>
+                </View>
             </View>
-        </View>
-    ), [activeRegion, activeSearch, courses.length, t]);
+        );
+    }, [activeRegion, activeSearch, courses.length, colors, i18n]);
 
     const plusBottom = insets.bottom + 8 + 46 + 12;
 
     return (
-        <SafeAreaView style={[s.container, { backgroundColor: t.bg }]} edges={["top"]}>
+        <SafeAreaView style={[s.container, { backgroundColor: colors.bg }]} edges={["top"]}>
             <SideMenuSheet visible={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
 
             {/* ── DoNa 헤더 ── */}
             <AppHeaderWithModals />
 
             {/* ── 검색창 + 지역 필터 ── */}
-            <View style={[s.filterBar, { backgroundColor: t.card, borderBottomColor: t.border }]}>
+            <View style={[s.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
                 {/* 검색창 */}
-                <View style={[s.searchBox, { backgroundColor: t.surface, borderColor: t.border }]}>
-                    <Ionicons name="search" size={18} color={t.textMuted} style={{ marginRight: 8 }} />
+                <View style={[s.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Ionicons name="search" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
                     <TextInput
                         ref={searchInputRef}
-                        style={[s.searchInput, { color: t.text }]}
-                        placeholder="지역, 코스명 검색"
-                        placeholderTextColor={t.textMuted}
+                        style={[s.searchInput, { color: colors.text }]}
+                        placeholder={i18n("mobile.nearby.searchPlaceholderShort")}
+                        placeholderTextColor={colors.textMuted}
                         value={searchInput}
                         onChangeText={setSearchInput}
                         returnKeyType="search"
@@ -390,11 +447,11 @@ export default function NearbyScreen() {
                     />
                     {searchInput.length > 0 && (
                         <TouchableOpacity onPress={handleClearSearch} hitSlop={8}>
-                            <Ionicons name="close-circle" size={18} color={t.textMuted} />
+                            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity style={s.filterIconBtn} onPress={openTagModal} hitSlop={8}>
-                        <Ionicons name="options-outline" size={20} color={t.textMuted} />
+                        <Ionicons name="options-outline" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                 </View>
 
@@ -415,7 +472,7 @@ export default function NearbyScreen() {
                             }}
                             activeOpacity={0.7}
                         >
-                            <Text style={[s.regionChipText, { color: "#ef4444" }]}>초기화 ✕</Text>
+                            <Text style={[s.regionChipText, { color: "#ef4444" }]}>{i18n("mobile.nearby.resetChip")}</Text>
                         </TouchableOpacity>
                     )}
                     {REGIONS.map((r) => {
@@ -423,11 +480,19 @@ export default function NearbyScreen() {
                         return (
                             <TouchableOpacity
                                 key={r}
-                                style={[s.regionChip, { borderColor: isActive ? "#059669" : t.border, backgroundColor: isActive ? "rgba(5,150,105,0.1)" : t.surface }]}
+                                style={[
+                                    s.regionChip,
+                                    {
+                                        borderColor: isActive ? "#059669" : colors.border,
+                                        backgroundColor: isActive ? "rgba(5,150,105,0.1)" : colors.surface,
+                                    },
+                                ]}
                                 onPress={() => toggleRegion(r)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[s.regionChipText, { color: isActive ? "#059669" : t.textMuted }]}>{r}</Text>
+                                <Text style={[s.regionChipText, { color: isActive ? "#059669" : colors.textMuted }]}>
+                                    {KO_REGION_TO_SLUG[r] ? i18n(`nearby.regions.${KO_REGION_TO_SLUG[r]}`) : r}
+                                </Text>
                             </TouchableOpacity>
                         );
                     })}
@@ -450,7 +515,7 @@ export default function NearbyScreen() {
                         />
                     )}
                     ListHeaderComponent={ListHeader}
-                    contentContainerStyle={[s.listContent, { backgroundColor: t.card }]}
+                    contentContainerStyle={[s.listContent, { backgroundColor: colors.card }]}
                     onEndReached={() => { if (hasNextPage) fetchNextPage(); }}
                     onEndReachedThreshold={0.4}
                     ListFooterComponent={
@@ -466,8 +531,10 @@ export default function NearbyScreen() {
                     ListEmptyComponent={
                         <View style={s.empty}>
                             <Text style={{ fontSize: 40, marginBottom: 12 }}>🏝️</Text>
-                            <Text style={[s.emptyText, { color: t.textMuted }]}>
-                                {activeFilterCount > 0 ? "해당하는 코스가 없어요" : "코스를 불러오는 중이에요"}
+                            <Text style={[s.emptyText, { color: colors.textMuted }]}>
+                                {activeFilterCount > 0
+                                    ? i18n("mobile.nearby.emptyNoMatch")
+                                    : i18n("mobile.nearby.emptyLoading")}
                             </Text>
                         </View>
                     }
@@ -483,7 +550,7 @@ export default function NearbyScreen() {
                         style={s.plusBtn}
                         onPress={() => setSideMenuOpen(true)}
                         activeOpacity={0.85}
-                        accessibilityLabel="메뉴 열기"
+                        accessibilityLabel={i18n("nav.openMenu")}
                     >
                         <Text style={s.plusText}>+</Text>
                     </TouchableOpacity>
@@ -496,14 +563,18 @@ export default function NearbyScreen() {
             <Modal visible={tagModalOpen} transparent animationType="slide" onRequestClose={() => setTagModalOpen(false)}>
                 <Pressable style={s.tagModalOverlay} onPress={() => setTagModalOpen(false)}>
                     <Pressable
-                        style={[s.tagModalSheet, { backgroundColor: t.card, borderColor: t.border }]}
+                        style={[s.tagModalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}
                         onPress={(e) => e.stopPropagation()}
                     >
-                        <View style={[s.tagModalGrab, { backgroundColor: t.border }]} />
-                        <Text style={[s.tagModalTitle, { color: t.text }]}>필터 설정</Text>
+                        <View style={[s.tagModalGrab, { backgroundColor: colors.border }]} />
+                        <Text style={[s.tagModalTitle, { color: colors.text }]}>
+                            {i18n("mobile.nearby.filterSheetTitle")}
+                        </Text>
 
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.tagModalBody}>
-                            <Text style={[s.tagSectionTitle, { color: t.text }]}>컨셉</Text>
+                            <Text style={[s.tagSectionTitle, { color: colors.text }]}>
+                                {i18n("nearby.filterModal.categoryConcept")}
+                            </Text>
                             <View style={s.tagWrap}>
                                 {CONCEPT_TAGS.map((tag) => {
                                     const active = draftConcepts.includes(tag);
@@ -512,18 +583,25 @@ export default function NearbyScreen() {
                                             key={`concept-${tag}`}
                                             style={[
                                                 s.tagChip,
-                                                { borderColor: active ? "#059669" : t.border, backgroundColor: active ? "rgba(5,150,105,0.1)" : t.surface },
+                                                {
+                                                    borderColor: active ? "#059669" : colors.border,
+                                                    backgroundColor: active ? "rgba(5,150,105,0.1)" : colors.surface,
+                                                },
                                             ]}
                                             onPress={() => toggleTag(draftConcepts, tag, setDraftConcepts)}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={[s.tagChipText, { color: active ? "#059669" : t.text }]}>{tag}</Text>
+                                            <Text style={[s.tagChipText, { color: active ? "#059669" : colors.text }]}>
+                                                {translateCourseConcept(tag, i18n)}
+                                            </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </View>
 
-                            <Text style={[s.tagSectionTitle, { color: t.text, marginTop: 20 }]}>상황 조건</Text>
+                            <Text style={[s.tagSectionTitle, { color: colors.text, marginTop: 20 }]}>
+                                {i18n("nearby.filterModal.categoryTarget")}
+                            </Text>
                             <View style={s.tagWrap}>
                                 {SITUATION_TAGS.map((tag) => {
                                     const active = draftSituations.includes(tag);
@@ -533,20 +611,24 @@ export default function NearbyScreen() {
                                             style={[
                                                 s.tagChip,
                                                 {
-                                                    borderColor: active ? "#059669" : t.border,
-                                                    backgroundColor: active ? "rgba(5,150,105,0.1)" : t.surface,
+                                                    borderColor: active ? "#059669" : colors.border,
+                                                    backgroundColor: active ? "rgba(5,150,105,0.1)" : colors.surface,
                                                 },
                                             ]}
                                             onPress={() => toggleTag(draftSituations, tag, setDraftSituations)}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={[s.tagChipText, { color: active ? "#059669" : t.text }]}>{tag}</Text>
+                                            <Text style={[s.tagChipText, { color: active ? "#059669" : colors.text }]}>
+                                                {translateCourseConcept(tag, i18n)}
+                                            </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </View>
 
-                            <Text style={[s.tagSectionTitle, { color: t.text, marginTop: 20 }]}>분위기</Text>
+                            <Text style={[s.tagSectionTitle, { color: colors.text, marginTop: 20 }]}>
+                                {i18n("nearby.filterModal.categoryMood")}
+                            </Text>
                             <View style={s.tagWrap}>
                                 {MOOD_TAGS.map((tag) => {
                                     const active = draftMoods.includes(tag);
@@ -555,12 +637,17 @@ export default function NearbyScreen() {
                                             key={`mood-${tag}`}
                                             style={[
                                                 s.tagChip,
-                                                { borderColor: active ? "#059669" : t.border, backgroundColor: active ? "rgba(5,150,105,0.1)" : t.surface },
+                                                {
+                                                    borderColor: active ? "#059669" : colors.border,
+                                                    backgroundColor: active ? "rgba(5,150,105,0.1)" : colors.surface,
+                                                },
                                             ]}
                                             onPress={() => toggleTag(draftMoods, tag, setDraftMoods)}
                                             activeOpacity={0.8}
                                         >
-                                            <Text style={[s.tagChipText, { color: active ? "#059669" : t.text }]}>{tag}</Text>
+                                            <Text style={[s.tagChipText, { color: active ? "#059669" : colors.text }]}>
+                                                {translateCourseConcept(tag, i18n)}
+                                            </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -569,17 +656,19 @@ export default function NearbyScreen() {
 
                         <View style={s.tagModalActions}>
                             <TouchableOpacity
-                                style={[s.tagResetBtn, { backgroundColor: t.surface, borderColor: t.border }]}
+                                style={[s.tagResetBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                 onPress={() => {
                                     setDraftConcepts([]);
                                     setDraftSituations([]);
                                     setDraftMoods([]);
                                 }}
                             >
-                                <Text style={[s.tagResetText, { color: t.textMuted }]}>초기화</Text>
+                                <Text style={[s.tagResetText, { color: colors.textMuted }]}>
+                                    {i18n("nearby.filterModal.reset")}
+                                </Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={s.tagApplyBtn} onPress={applyTagFilter}>
-                                <Text style={s.tagApplyText}>적용하기</Text>
+                                <Text style={s.tagApplyText}>{i18n("nearby.filterModal.apply")}</Text>
                 </TouchableOpacity>
                         </View>
                     </Pressable>

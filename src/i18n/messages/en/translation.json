@@ -4,7 +4,8 @@
     "closeSettingsModal": "Close settings modal",
     "search": "Search",
     "closeSearchModal": "Close search modal",
-    "notification": "Notifications"
+    "notification": "Notifications",
+    "suggestPlace": "Suggest a place"
   },
   "common": {
     "settings": "Settings",
@@ -70,7 +71,19 @@
       "Sat"
     ],
     "personalizedHomeCta": "Weekend & Anniversary Courses",
-    "personalizedHomeCtaSub": "We create date courses tailored to your situation"
+    "personalizedHomeCtaSub": "We create date courses tailored to your situation",
+    "myReportedCourses": {
+      "title": "Courses I Reported",
+      "subtitle": "Courses created from your tips",
+      "emptyTitle": "No reported places yet",
+      "emptySubtitle": "Share a place and DoNa will turn it into a course",
+      "suggestBtn": "Report a Place",
+      "status": {
+        "PENDING": "Under review",
+        "PUBLISHED": "Published",
+        "REJECTED": "Not selected"
+      }
+    }
   },
   "memory": {
     "notLoggedIn": {
@@ -211,7 +224,36 @@
     "saveError": "An error occurred while saving.",
     "resultMessage": "Ta-da! 🎉 Found a secret course for {nickname}.\nTap the card to check it out!",
     "resultNetError": "Couldn't load recommendations due to a network error. Please try again later.",
-    "resultNoMatch": "No matching courses found. Try different criteria?"
+    "resultNoMatch": "No matching courses found. Try different criteria?",
+    "mobileChatGreeting": "Hi! Ready to plan a special date with DoNa today? 🌿",
+    "mobileChatLoginBlock": "Please log in to see course recommendations 🔐\nYou can sign in from My Page.",
+    "mobileChatFoundTpl": "Found {goal} courses around {region}! 🎉",
+    "mobileResultsCount": "{count} recommended courses 🎉",
+    "mobileSelectArrow": "Choose →",
+    "mobileRecommendAgain": "Get other recommendations",
+    "mobileAnalysis1": "Analyzing your taste...",
+    "mobileAnalysis2": "Finding the best courses...",
+    "mobileAnalysis3": "Putting your route together...",
+    "mobileAnalysis4": "Almost there!",
+    "mobileGuest": "Guest",
+    "mobileTouchOpen": "Tap to open",
+    "mobileDurationApprox": "About 4–5 hours",
+    "mobileMatchPerfect": "Perfect match",
+    "mobileMatchGood": "Great fit",
+    "mobileMatchSoft": "Nice pick",
+    "mobileMatchNeutral": "Today’s pick",
+    "mobileMatchShort": "Recommended",
+    "mobileFlipAiLabel": "AI Analysis Result",
+    "mobileDetailView": "Details",
+    "mobileChatWho": "Who are you going with?",
+    "mobileChatWhere": "Which area do you prefer?",
+    "mobileCompanionSomeLabel": "Someone you're seeing",
+    "mobileCompanionBlindLabel": "Blind date",
+    "mobileHelloLogged": "Hi,\n{nickname} 👋",
+    "mobileProfileGuestLine": "Log in for\npersonalized picks 👋",
+    "mobileLoginHintChip": "✨ Log in for tailored recommendations",
+    "mobileHeroBlurb": "AI DoNa will\nrecommend today’s course",
+    "mobileHeroFooter": "AI analysis · Free"
   },
   "onboarding": {
     "titleLine1": "Not sure where to go?",
@@ -494,6 +536,13 @@
       "bar": "Bar",
       "date": "Date"
     },
+    "recommendedTime": {
+      "morning": "AM",
+      "afternoon": "PM",
+      "breakfast": "Breakfast",
+      "night": "night",
+      "lateNight": "late night"
+    },
     "segmentCourseFallback": "Course",
     "selectEachSegment": "Pick a place in each section.",
     "courseSavedToast": "Your course has been saved.",
@@ -515,7 +564,10 @@
     "openReservationPage": "Open reservation page",
     "sheetLoading": "Loading...",
     "reviewImageAltNumbered": "Review image {n}",
-    "recommendedPlaceFallback": "Recommended place"
+    "recommendedPlaceFallback": "Recommended place",
+    "unnamedPlace": "Place {n}",
+    "routeOriginFallback": "Start",
+    "routeDestinationFallback": "End"
   },
   "courseStart": {
     "errorCourseNotFound": "We couldn't find this course.",
@@ -582,7 +634,30 @@
     "saveSuccessTitle": "Saved!",
     "saveSuccessLine1": "Today's precious shot is now in",
     "saveSuccessLine2": "DoNa's {name} story.",
-    "saveSuccessFooter": "Your memory is safely stored."
+    "saveSuccessFooter": "Your memory is safely stored.",
+    "alertNotice": "Notice",
+    "permissionRequiredTitle": "Permission needed",
+    "permissionPhotosBody": "Photo library access is required.",
+    "imagePickerBuildOnly": "Image picking is only available in a native app build.",
+    "uploadWait": "Photos are uploading. Please wait.",
+    "waitPhotoUpload": "Please wait for uploads to finish.",
+    "memorySaveLimitTitle": "Save limit reached",
+    "memorySaveLimitBody": "You've reached your private memory save limit. Upgrade your subscription to save more.",
+    "viewSubscription": "View plans",
+    "saveFailedTitle": "Couldn't save",
+    "tagSelect": "Tags",
+    "todayDateFeel": "How was today's date?",
+    "memoryOneLine": "One-line memory",
+    "memoryOneLinePlaceholder": "Capture today's date in one line (optional)",
+    "tagInputMax10": "Add a tag (max 10 characters)",
+    "nextWithArrow": "Next →",
+    "saveMemorySparkle": "Save memory ✨",
+    "memorySavedShort": "Memory saved!",
+    "memorySavedMyPageHint": "You can view it again in My Page",
+    "goHomeBack": "Back to home",
+    "presignUrlError": "Couldn't get an upload URL.",
+    "imageUploadPutError": "Image upload failed.",
+    "uploadFailedTitle": "Upload failed"
   },
   "map": {
     "loading": "Loading...",
@@ -747,7 +822,9 @@
     "alertLoginRequired": "Login required.",
     "alertSuccess": "Opening notification registered! 🔔",
     "alertFail": "Failed to register notification.",
-    "alertError": "An error occurred while registering."
+    "alertError": "An error occurred while registering.",
+    "alertNoticeTitle": "Notice",
+    "alertDoneTitle": "Done"
   },
   "logoutModal": {
     "title": "Wait!",
@@ -770,6 +847,7 @@
     "placesClosed": "{n} closed"
   },
   "loading": {
+    "pageOverlay": "Finding courses...",
     "findingCourses": "DoNa is finding courses...",
     "courses": "Loading courses...",
     "nearby": "Finding nearby courses...",
@@ -783,6 +861,9 @@
   },
   "loginModal": {
     "close": "Close",
+    "sheetDefaultDesc": "Log in to save courses, use the map, and get recommendations.",
+    "sheetHeroBefore": "Sign in and enjoy ",
+    "sheetHeroAfter": "",
     "titleLine1": "Get your date course",
     "titleHighlight": "in 3 seconds",
     "titleLine2": "?",
@@ -931,7 +1012,9 @@
     "submitting": "Processing...",
     "alertAgree": "Please read and agree to the notice.",
     "confirmSubscription": "You have an active paid subscription. Refunds may be difficult. Are you sure you want to withdraw?",
-    "alertError": "An error occurred during withdrawal."
+    "alertError": "An error occurred during withdrawal.",
+    "alertSelectReason": "Please select a reason for leaving.",
+    "alertEnterOtherReason": "Please enter your other reason."
   },
   "albumLimitModal": {
     "upgradeTitle": "Want unlimited memory storage?",
@@ -956,6 +1039,15 @@
     "deleteError": "An error occurred while deleting your account."
   },
   "mypage": {
+    "appGuestTitle": "Sign in required",
+    "appGuestSub": "Sign in to use My Page",
+    "appGuestCta": "Sign in",
+    "appPageSubtitle": "View your info and activity",
+    "alertErrorTitle": "Error",
+    "alertInfoTitle": "Notice",
+    "defaultMemberName": "DoNa member",
+    "favRemoveFailed": "Couldn't remove from favorites.",
+    "currencyWon": "KRW",
     "pageTitle": "My Page",
     "pageSubtitle": "Manage your profile and activity",
     "tabProfile": "Profile",
@@ -1063,7 +1155,22 @@
       "businessLineAddress": "Address: 33 Sindaero, Hongbuk-eup, Hongseong-gun, Chungcheongnam-do, Republic of Korea",
       "businessLineInquiry": "Contact: 12jason@donacouse.com",
       "businessLineCustomerCenter": "Customer service: 010-2481-9824",
-      "footerContact": "Contact & business info"
+      "footerContact": "Contact & business info",
+      "planSectionTitle": "My plan",
+      "planNamePremium": "Premium plan",
+      "planNameBasic": "Basic plan",
+      "planNameFree": "Free plan",
+      "planDescFree": "Free • default plan",
+      "planDescBasic": "BASIC plan",
+      "planDescPremium": "PREMIUM plan • all features",
+      "planCtaManage": "Manage plan",
+      "profileSectionTitle": "Profile",
+      "joinedOnPrefix": "Joined",
+      "nicknamePlaceholderShort": "Enter nickname",
+      "editModalTitle": "Edit profile",
+      "accountSettingsTitle": "Account",
+      "kakaoChannelRow": "Kakao channel",
+      "withdrawMember": "Delete account"
     },
     "recordsTab": {
       "favorites": "Favorites",
@@ -1091,6 +1198,7 @@
       "collectBadgesHint": "Complete stories to collect badges!",
       "rewardsTitle": "Reward history",
       "noRewards": "No rewards yet.",
+      "noRewardsHint": "Complete missions to earn rewards.",
       "paymentsTitle": "Purchase history",
       "refundManage": "Refunds",
       "reward7dayCheckin": "7-day check-in bonus",
@@ -1113,7 +1221,9 @@
       "requestRefund": "Request refund",
       "noPayments": "No purchase history",
       "noPaymentsHint": "Ticket or subscription purchases will appear here.",
-      "goToRefundPage": "Go to payments & refunds"
+      "goToRefundPage": "Go to payments & refunds",
+      "rewardCourseCompletion": "Course completion reward",
+      "rewardTicketsPlus": "+{n} tickets"
     },
     "footprintTab": {
       "defaultUser": "Member",
@@ -1154,12 +1264,18 @@
       "myFootprint": "My footprint",
       "calendar": "Calendar",
       "memories": "Memories",
+      "suggestions": "Suggestions",
       "footprintCalendarHint": "AI-recommended date courses are auto-saved",
       "footprintMemoriesHint": "View your Today's Moments",
+      "footprintSuggestionsHint": "Check the status of places you suggested",
       "completedCourses": "Completed",
       "todayDate": "Today's date",
       "recommendedDate": "Recommended",
-      "yearSuffix": ""
+      "yearSuffix": "",
+      "memoryEmptyTitle": "No memories yet",
+      "memoryEmptySub": "Start a course and save your memories",
+      "courseRecordFallback": "Course record",
+      "casefileFallbackTitle": "Case file"
     }
   },
   "commonFallback": {
@@ -1274,8 +1390,128 @@
     "whatToDoToday": "What to do today?",
     "coupleMissionGame": "Couple Mission Game",
     "donaShop": "DoNa Shop",
+    "suggestCourse": "Suggest a Course",
     "openMenu": "Open menu",
     "main": "Main"
+  },
+  "mobile": {
+    "map": {
+      "fallbackTitle": "Map is available in the app build",
+      "fallbackSub": "Please use an EAS dev build",
+      "toastLocationDevBuild": "Location needs a newer dev build",
+      "toastLocationDenied": "Location permission denied",
+      "toastLocationFail": "Could not get your location",
+      "toastSearchEmpty": "No search results",
+      "toastSearchError": "Something went wrong while searching",
+      "searchPlaceholder": "Search places, food, courses",
+      "tabPlaces": "Places",
+      "tabCourses": "Courses",
+      "areaSearch": "Search this area",
+      "panelPlacesTitle": "Places nearby",
+      "panelCoursesTitle": "Date course picks",
+      "panelPlacesCount": "{count} places on the map",
+      "panelCourseSpotsHint": "Spots included in this course",
+      "panelCoursesSub": "Browse curated courses",
+      "loadingInfo": "Loading…",
+      "loadingPlaces": "Loading places…",
+      "categoryFallback": "Featured place",
+      "phoneMissing": "No phone number",
+      "directions": "Directions",
+      "emptyCoursePlaces": "No places listed for this course.",
+      "emptyArea": "Nothing here yet.\nTry moving the map a bit?",
+      "badgeRecommendedCourse": "Course pick",
+      "badgePlace": "Place",
+      "viewDetail": "View details"
+    },
+    "escape": {
+      "badgeEarnable": "Earn {name}",
+      "startCta": "Start",
+      "headerTitle": "Couple mission game",
+      "headerSub": "Outdoor escape-style courses",
+      "emptyTitle": "Stories coming soon",
+      "emptySub": "New mission courses will open soon!",
+      "bannerText": "Visit real locations and complete missions"
+    },
+    "nearby": {
+      "searchPlaceholderShort": "Search area or course",
+      "headerRegionCourses": "{region} courses",
+      "headerSearchResults": "\"{q}\" results",
+      "resetChip": "Reset ×",
+      "filterSheetTitle": "Filters",
+      "emptyNoMatch": "No courses match your filters",
+      "emptyLoading": "Loading courses…",
+      "lockSubscribe": "Subscribe to unlock",
+      "lockTierCourse": "{tier} course",
+      "viewRatingLine": "★ {rating} ({count})"
+    },
+    "shop": {
+      "headerTitle": "DoNa Shop",
+      "heroTitle": "DoNa Shop",
+      "comingSoon": "Coming soon\nEscape kits, keyrings, and more\nStay tuned!",
+      "sheetKitDesc": "We're preparing even better kits.\nThanks for waiting 🎁"
+    },
+    "courseScreen": {
+      "tipsLoginTitle": "Log in to see insider tips",
+      "tipsLoginSub": "Shown based on membership and tickets",
+      "tipSectionLabel": "✨ Tips",
+      "tipViewInfo": "View details",
+      "mapFullRoute": "Full route",
+      "mapSegmentRoute": "Segment route",
+      "mapSegmentWalk": "{from}→{to} walk {minutes} min",
+      "placeFallback": "Place",
+      "mapFabA11y": "View full route on map",
+      "closeA11y": "Close",
+      "shareMessage": "{title} - DoNa date course\n{url}",
+      "startCourseFailed": "Couldn't start this course. Please try again.",
+      "favAdded": "Added to favorites",
+      "favRemoved": "Removed from favorites",
+      "switchCourseTitle": "Switch course",
+      "switchCourseMessage": "Replace your in-progress course with this one?",
+      "cancel": "Cancel",
+      "switchCourseConfirm": "Switch",
+      "switchCourseFailed": "Couldn't switch the course.",
+      "reviewMinLength": "Please enter at least 5 characters.",
+      "reviewPosted": "Review posted",
+      "reviewSubmitFailTitle": "Couldn't post review",
+      "tryAgainLater": "Please try again later.",
+      "permRequired": "Permission needed",
+      "permPhotos": "Photo library access is required.",
+      "imageUploadFailTitle": "Image upload failed",
+      "imagePickerBuildOnly": "Image picking is only available in a native app build.",
+      "loadingCourse": "Loading course...",
+      "backArrow": "← Back",
+      "courseLoadError": "Couldn't load this course",
+      "targetSome": "Early dating",
+      "metaSpotsCount": "👣 {count} spots",
+      "saveSelection": "Save selection",
+      "memoryLimitTitleLine1": "Save memory",
+      "memoryLimitHighlight": "Limit reached",
+      "memoryLimitSub": "Upgrade your subscription to save more memories.",
+      "subBenefitsTitle": "Subscription perks",
+      "benefitUnlimitedMemories": "Unlimited private memories",
+      "benefitPremiumCourses": "All premium courses",
+      "benefitNoAds": "Ad-free experience",
+      "subscribeSaveMore": "Subscribe to save more",
+      "reviewModalTitle": "Write a review",
+      "reviewTargetLabel": "Reviewing",
+      "attachImage": "Attach image",
+      "changeImage": "Change image",
+      "reviewPlaceholder": "Tell us how the course was (5+ characters)",
+      "submitReview": "Submit",
+      "segmentChoose": "Choose {label}",
+      "inProgressThisCourse": "You're on this course today",
+      "memoryRecordPersonal": "Save your memory",
+      "alreadyOtherCourse": "You already started another course today",
+      "switchOtherCourse": "Switch to another course",
+      "reviewsLoading": "Loading reviews...",
+      "reviewWrite": "Write review",
+      "reviewsHeading": "Reviews",
+      "showMoreReviews": "More ({n} left)",
+      "reserveWithName": "Reserve {name}",
+      "anonymous": "Anonymous",
+      "saveFailedToast": "Couldn't save.",
+      "alertNotice": "Notice"
+    }
   },
   "authPage": {
     "login": {
@@ -1295,6 +1531,7 @@
       "kakaoSubmit": "Log in with KakaoTalk",
       "kakaoSubmitting": "Authenticating with KakaoTalk...",
       "errorLoginFailed": "Login failed.",
+      "errorEmailPasswordRequired": "Please enter your email and password.",
       "errorGeneric": "An error occurred while logging in.",
       "errorKakaoClientId": "Kakao client ID is not configured.",
       "errorPopupBlocked": "Popup was blocked. Please allow popups in your browser settings.",
@@ -1335,7 +1572,21 @@
       "errorPasswordMismatch": "Passwords do not match.",
       "errorSignupFailed": "Sign up failed.",
       "errorConnection": "Connection issue. Please check the URL.",
-      "errorAppleAuth": "Apple authentication failed."
+      "errorAppleAuth": "Apple authentication failed.",
+      "genderOther": "Other",
+      "errorInvalidEmail": "Please enter a valid email address.",
+      "errorGenericRetry": "Something went wrong. Please try again.",
+      "appleSignUpA11y": "Sign up with Apple",
+      "kakaoSignUpA11y": "Continue with Kakao",
+      "pickAgeTitle": "Choose age range",
+      "pickGenderTitle": "Choose gender",
+      "nicknameMinPlaceholder": "At least 2 characters",
+      "emailShortPlaceholder": "Email address",
+      "passwordMinPlaceholder": "At least 6 characters",
+      "optionalInParens": "(optional)",
+      "pickPlaceholder": "Select",
+      "previewPurposeLead": "What vibe are you going for? Tell us the purpose first 😊",
+      "previewStartCta": "Start recommendations →"
     }
   },
   "terms": {
@@ -1575,8 +1826,8 @@
     "ETC": "Other"
   },
   "suggest": {
-    "pageTitle": "Suggest a Course",
-    "pageSubtitle": "Share your favorite date course. Our team will review and feature it.",
+    "pageTitle": "Report a Place",
+    "pageSubtitle": "Tell us a place you'd like to visit. We'll review and turn it into a course.",
     "labelTitle": "Course Title",
     "labelLocation": "Area",
     "labelBudget": "Budget (KRW)",
@@ -1595,11 +1846,28 @@
     "submit": "Submit",
     "submitting": "Submitting...",
     "validationAlert": "Title and at least one place are required.",
-    "successAlert": "Your suggestion has been submitted! We will review and add it.",
+    "successAlert": "Submitted! We'll review and turn it into a course.",
     "errorFallback": "Submission failed",
     "placeholderTitle": "e.g. Hyehwa Theater + Naksan Park at Night",
     "placeholderLocation": "e.g. Hongdae",
     "placeholderOptional": "Optional",
-    "placeholderPlaceN": "Place {{num}}"
+    "placeholderPlaceN": "Place {{num}}",
+    "loginRequired": "You need to log in to report a place.",
+    "labelPlaceNameSimple": "Place Name",
+    "placeholderPlaceNameSimple": "e.g. Euljiro cafe, Seongsu gallery",
+    "placeholderNoteSimple": "e.g. Has a unique interior (optional)",
+    "labelPhoto": "Photo",
+    "addPhoto": "Add Photo",
+    "labelDescriptionSimple": "Description",
+    "placeholderDescriptionSimple": "Tell us what makes this place special",
+    "labelConceptSimple": "Desired concept (optional)",
+    "placeholderConceptSimple": "e.g. Cozy cafe, Great view, Quiet atmosphere",
+    "uploadingPhoto": "Uploading photo...",
+    "photoError": "Photo upload failed. Please try again.",
+    "modalStatusHint": {
+      "PENDING": "We're reviewing your submission.",
+      "PUBLISHED": "It's live as a course in the app.",
+      "REJECTED": "Not selected this time—feel free to try again."
+    }
   }
 }

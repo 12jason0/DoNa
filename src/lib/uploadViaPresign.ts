@@ -3,7 +3,7 @@
  * Vercel 4.5MB 요청 제한을 피해 대용량(최대 50MB/파일) 업로드 가능.
  */
 
-export type PresignUploadType = "review" | "memory" | "escape";
+export type PresignUploadType = "review" | "memory" | "escape" | "suggestion";
 
 export interface PresignUploadOptions {
     type?: PresignUploadType | null;

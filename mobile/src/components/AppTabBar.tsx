@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import SideMenuSheet from "./SideMenuSheet";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useAuth } from "../hooks/useAuth";
+import { useLocale } from "../lib/useLocale";
 import PersonalizedHomeNavIcon from "./icons/PersonalizedHomeNavIcon";
 
 type TabConfig = {
@@ -60,7 +61,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
                         style={styles.plusBtn}
                         onPress={() => setSideMenuOpen(true)}
                         activeOpacity={0.85}
-                        accessibilityLabel="메뉴 열기"
+                        accessibilityLabel={i18n("nav.openMenu")}
                     >
                         <Text style={styles.plusText}>+</Text>
                     </TouchableOpacity>

@@ -17,7 +17,13 @@ import { TipSection, TipCategoryIcon } from "@/components/TipSection";
 import { parseTipsFromDbForLocale, getTipCategoryLabel } from "@/types/tip";
 import { pickPlaceAddress, pickPlaceDescription, pickPlaceName, translatePlaceCategory } from "@/lib/placeLocalized";
 import { pickCourseTitle } from "@/lib/courseLocalized";
-import { translateCourseConcept, translateCourseRegion } from "@/lib/courseTranslate";
+import {
+    translateCourseConcept,
+    translateCourseRegion,
+    translateCourseFreeformKoText,
+    localizeParsedTipsForUi,
+    type CourseUiTranslate,
+} from "@/lib/courseTranslate";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
@@ -2011,9 +2017,13 @@ export default function CourseDetailClient({
                                                                                         {pickPlaceName(cp.place, locale)}
                                                                                     </h4>
                                                                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                                                                        {(cp as CoursePlace)
-                                                                                            .recommended_time ||
-                                                                                            pickPlaceAddress(cp.place, locale)}
+                                                                                        {(cp as CoursePlace).recommended_time?.trim()
+                                                                                            ? translateCourseFreeformKoText(
+                                                                                                  (cp as CoursePlace).recommended_time,
+                                                                                                  locale,
+                                                                                                  t as CourseUiTranslate,
+                                                                                              )
+                                                                                            : pickPlaceAddress(cp.place, locale)}
                                                                                     </p>
                                                                                 </div>
                                                                             </div>
@@ -2181,8 +2191,13 @@ export default function CourseDetailClient({
                                                                                         {pickPlaceName(coursePlace.place, locale)}
                                                                                     </h4>
                                                                                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">
-                                                                                        {coursePlace.recommended_time ||
-                                                                                            pickPlaceAddress(coursePlace.place, locale)}
+                                                                                        {coursePlace.recommended_time?.trim()
+                                                                                            ? translateCourseFreeformKoText(
+                                                                                                  coursePlace.recommended_time,
+                                                                                                  locale,
+                                                                                                  t as CourseUiTranslate,
+                                                                                              )
+                                                                                            : pickPlaceAddress(coursePlace.place, locale)}
                                                                                     </p>
                                                                                     {/* 🟢 예약 버튼 - 하단 시트로 열기 (선택형 코스에서는 숨김) */}
                                                                                     {!courseData?.isSelectionType &&
@@ -3362,7 +3377,11 @@ export default function CourseDetailClient({
                                             const coursePlace = sortedCoursePlaces.find(
                                                 (cp) => cp.place.id === selectedPlace.id,
                                             );
-                                            const tips = parseTipsFromDbForLocale(coursePlace ?? {}, locale);
+                                            const tips = localizeParsedTipsForUi(
+                                                parseTipsFromDbForLocale(coursePlace ?? {}, locale),
+                                                locale,
+                                                t as CourseUiTranslate,
+                                            );
                                             if (tips.length === 0) return null;
                                             return (
                                                 <div className="mb-4 flex flex-col gap-2">

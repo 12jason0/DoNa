@@ -84,6 +84,7 @@ model User {
   aiRecommendationUsages       AiRecommendationUsage[]
   recommendationFeedbacks      RecommendationFeedback[]
   userCourseSelections   UserCourseSelection[]
+  courseSuggestions      CourseSuggestion[]
 
   @@index([provider, socialId])
   @@index([deletedAt])
@@ -197,6 +198,7 @@ model Course {
   recommendationFeedbacks RecommendationFeedback[]
   userCourseSelections   UserCourseSelection[]
   sharedCourses          SharedCourse[]
+  suggestions            CourseSuggestion[]
 
   // 🔥 인덱스 추가 (빠른 검색)
   @@index([scene])
@@ -871,4 +873,31 @@ model RecommendationFeedback {
   @@index([userId])
   @@index([courseId])
   @@map("recommendation_feedbacks")
+}
+
+enum CourseSuggestionStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model CourseSuggestion {
+  id           Int                    @id @default(autoincrement())
+  userId       Int                    @map("user_id")
+  placeName    String                 @map("place_name") @db.VarChar(100)
+  placeAddress String?                @map("place_address") @db.VarChar(255)
+  description  String?                @db.VarChar(1000)
+  concept      String?                @db.VarChar(100)
+  imageUrl     String?                @map("image_url") @db.VarChar(500)
+  status       CourseSuggestionStatus @default(PENDING)
+  courseId     Int?                   @map("course_id")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course?                @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@map("course_suggestions")
 }

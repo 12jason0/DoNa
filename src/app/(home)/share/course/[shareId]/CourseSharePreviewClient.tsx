@@ -9,6 +9,7 @@ import { isIOS, isAndroid } from "@/lib/platform";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { TipSection } from "@/components/TipSection";
 import { parseTipsFromDbForLocale } from "@/types/tip";
+import { localizeParsedTipsForUi, type CourseUiTranslate } from "@/lib/courseTranslate";
 import { pickPlaceAddress, pickPlaceDescription, pickPlaceName } from "@/lib/placeLocalized";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { getPlaceStatus } from "@/lib/placeStatus";
@@ -787,7 +788,11 @@ export default function CourseSharePreviewClient({
                                 </p>
                                 {(() => {
                                     const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
-                                    const tips = parseTipsFromDbForLocale(cp ?? {}, locale);
+                                    const tips = localizeParsedTipsForUi(
+                                        parseTipsFromDbForLocale(cp ?? {}, locale),
+                                        locale,
+                                        t as CourseUiTranslate,
+                                    );
                                     if (tips.length === 0) return null;
                                     return (
                                         <div className="mb-4 flex flex-col gap-2">

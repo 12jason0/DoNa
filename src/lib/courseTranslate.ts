@@ -7,6 +7,9 @@
 
 type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
 
+/** 동적 i18n 키용 — 페이지의 `t`(TranslationKeys)는 호출부에서 이 타입으로 단언 */
+export type CourseUiTranslate = TranslateFn;
+
 /** DB concept/mood/target → courseConcept 번역 키 매핑 (표시용 한국어 canonical 이름) */
 const CONCEPT_MAP: Array<{ keyword: string; key: string }> = [
     // 컨셉
@@ -102,4 +105,115 @@ export function translateCourseConcept(concept: string | null | undefined, t: Tr
         }
     }
     return c;
+}
+
+/** 코스 UI(추천 시간·팁 본문 등)용 locale — 모바일·웹 공통 */
+export type CourseUiLocale = "ko" | "en" | "ja" | "zh";
+
+const KO_SNIPPET_TO_SEGMENT: [string, string][] = [
+    ["브런치", "brunch"],
+    ["점심", "lunch"],
+    ["저녁", "dinner"],
+    ["카페", "cafe"],
+    ["데이트", "date"],
+];
+KO_SNIPPET_TO_SEGMENT.sort((a, b) => b[0].length - a[0].length);
+
+/** 팁·추천시간에 자주 나오는 한글 동네 표기 → onboarding.region.* (긴 토큰 우선) */
+const KO_SNIPPET_TO_REGION_CODE: [string, string][] = [
+    ["을지로", "EULJIRO"],
+    ["여의도", "YEOUIDO"],
+    ["잠실", "JAMSIL"],
+    ["이태원", "YONGSAN"],
+    ["한남", "YONGSAN"],
+    ["압구정", "GANGNAM"],
+    ["신사", "GANGNAM"],
+    ["북촌", "JONGNO"],
+    ["서촌", "JONGNO"],
+    ["연남", "HONGDAE"],
+    ["합정", "MAPO"],
+    ["영등포", "YEOUIDO"],
+    ["송파", "JAMSIL"],
+    ["건대", "SEONGSU"],
+    ["성수", "SEONGSU"],
+    ["신촌", "HONGDAE"],
+    ["홍대", "HONGDAE"],
+    ["종로", "JONGNO"],
+    ["강남", "GANGNAM"],
+    ["용산", "YONGSAN"],
+    ["마포", "MAPO"],
+];
+KO_SNIPPET_TO_REGION_CODE.sort((a, b) => b[0].length - a[0].length);
+
+function tResolved(t: TranslateFn, key: string): string | null {
+    const out = t(key);
+    return out && out !== key ? out : null;
+}
+
+/**
+ * DB에 한글로만 적힌 추천 시간·팁 문장을 비한국어 UI에서 토큰 치환으로 현지화
+ * - tips_en 등이 있으면 그쪽이 우선(parseTipsFromDbForLocale)이고, 폴백 한글에만 적용하면 됨
+ */
+export function translateCourseFreeformKoText(
+    raw: string | null | undefined,
+    locale: CourseUiLocale,
+    t: TranslateFn,
+): string {
+    if (!raw?.trim()) return "";
+    const trimmed = raw.trim();
+    if (locale === "ko") return trimmed;
+    if (!/[가-힣]/.test(trimmed)) return trimmed;
+
+    let s = trimmed;
+
+    for (const [ko, code] of KO_SNIPPET_TO_REGION_CODE) {
+        if (!s.includes(ko)) continue;
+        const mapKey = REGION_KEY_MAP[code];
+        const label = tResolved(t, mapKey);
+        if (label) s = s.split(ko).join(label);
+    }
+
+    for (const [ko, seg] of KO_SNIPPET_TO_SEGMENT) {
+        if (!s.includes(ko)) continue;
+        const label = tResolved(t, `courseDetail.segment.${seg}`);
+        if (label) s = s.split(ko).join(label);
+    }
+
+    const morning = tResolved(t, "courseDetail.recommendedTime.morning");
+    if (morning && s.includes("오전")) s = s.split("오전").join(morning);
+    const afternoon = tResolved(t, "courseDetail.recommendedTime.afternoon");
+    if (afternoon && s.includes("오후")) s = s.split("오후").join(afternoon);
+    const breakfast = tResolved(t, "courseDetail.recommendedTime.breakfast");
+    if (breakfast && s.includes("아침")) s = s.split("아침").join(breakfast);
+    const lateNight = tResolved(t, "courseDetail.recommendedTime.lateNight");
+    if (lateNight && s.includes("야간")) s = s.split("야간").join(lateNight);
+    const night = tResolved(t, "courseDetail.recommendedTime.night");
+    if (night && s.includes("밤")) s = s.split("밤").join(night);
+
+    s = s.replace(/(\d{1,2})\s*시(?!간)/g, (_, n: string) => {
+        if (locale === "en") return `${n}:00`;
+        if (locale === "ja") return `${n}時`;
+        if (locale === "zh") return `${n}点`;
+        return `${n}시`;
+    });
+    s = s.replace(/(\d{1,2})\s*분(?!위)/g, (_, n: string) => {
+        if (locale === "en") return `${n} min`;
+        if (locale === "ja") return `${n}分`;
+        if (locale === "zh") return `${n}分钟`;
+        return `${n}분`;
+    });
+
+    return s;
+}
+
+export function localizeParsedTipsForUi<T extends { category: string; content: string }>(
+    tips: T[],
+    locale: CourseUiLocale,
+    t: TranslateFn,
+): T[] {
+    if (locale === "ko" || tips.length === 0) return tips;
+    return tips.map((row) => ({
+        ...row,
+        content: translateCourseFreeformKoText(row.content, locale, t),
+    }));
 }

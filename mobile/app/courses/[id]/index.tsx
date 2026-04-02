@@ -30,15 +30,22 @@ import { api, endpoints, BASE_URL } from "../../../src/lib/api";
 import { useAuth } from "../../../src/hooks/useAuth";
 import { Colors } from "../../../src/constants/theme";
 import { resolveImageUrl } from "../../../src/lib/imageUrl";
-import { getPlaceOpenStatus, STATUS_LABEL, STATUS_COLOR, STATUS_BG } from "../../../src/lib/placeStatus";
+import type { PlaceStatus } from "../../../src/lib/placeStatus";
+import { getPlaceOpenStatus, STATUS_COLOR, STATUS_BG } from "../../../src/lib/placeStatus";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
+import { useLocale } from "../../../src/lib/useLocale";
 import PageLoadingOverlay from "../../../src/components/PageLoadingOverlay";
 import LoginModal from "../../../src/components/LoginModal";
 import TicketPlansSheet from "../../../src/components/TicketPlansSheet";
 import AppHeaderWithModals from "../../../src/components/AppHeaderWithModals";
 import { MODAL_ANDROID_PROPS } from "../../../src/constants/modalAndroidProps";
 import type { Course, UserProfile, ActiveCourse } from "../../../src/types/api";
-
+import { parseTipsFromDbForLocale, type CoursePlaceTipsRow } from "../../../../src/types/tip";
+import {
+    translateCourseFreeformKoText,
+    localizeParsedTipsForUi,
+    type CourseUiLocale,
+} from "../../../../src/lib/courseTranslate";
 
 const MAP_PURPLE = "#5347AA";
 const NAVER_BTN_GRAY = "#9ca3af";
@@ -112,7 +119,20 @@ interface CoursePlace {
     recommended_time?: string;
     segment?: string | null;
     tips?: string | null;
+    tips_en?: string | null;
+    tips_ja?: string | null;
+    tips_zh?: string | null;
     place?: PlaceData;
+}
+
+function coursePlaceToTipsRow(cp?: CoursePlace | null): CoursePlaceTipsRow {
+    if (!cp) return { tips: null };
+    return {
+        tips: cp.tips ?? null,
+        tips_en: cp.tips_en ?? null,
+        tips_ja: cp.tips_ja ?? null,
+        tips_zh: cp.tips_zh ?? null,
+    };
 }
 
 interface CourseDetail extends Course {
@@ -144,8 +164,14 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
 };
 
 const SEGMENT_ORDER = ["brunch", "lunch", "dinner", "bar", "cafe"];
-const SEGMENT_LABELS: Record<string, string> = { brunch: "브런치", lunch: "점심", dinner: "저녁", bar: "바", cafe: "카페" };
 const SEGMENT_ICONS: Record<string, string> = { brunch: "🥐", lunch: "🍱", dinner: "🍽️", bar: "🍷", cafe: "☕" };
+
+function placeOpenStatusLabel(i18n: (key: string) => string, status: PlaceStatus): string {
+    if (status === "open") return i18n("courseDetail.placeStatusOpen");
+    if (status === "closingSoon") return i18n("courseDetail.placeStatusClosingSoon");
+    if (status === "closed") return i18n("courseDetail.placeStatusClosedToday");
+    return "";
+}
 
 // ─── 도보 시간 계산 ────────────────────────────────────────────────────────────
 
@@ -189,42 +215,16 @@ function getPlaceMapUrl(place?: PlaceData): string {
     return `https://map.naver.com/v5/search/${query}`;
 }
 
-function getRouteMapUrl(from?: PlaceData, to?: PlaceData): string {
+function getRouteMapUrl(from?: PlaceData, to?: PlaceData, routeNames?: { origin: string; dest: string }): string {
     if (!from || !to) return getPlaceMapUrl(to ?? from);
     const f = getPlaceLatLng(from);
     const t = getPlaceLatLng(to);
-    const fromName = encodeURIComponent(from.name || "출발");
-    const toName = encodeURIComponent(to.name || "도착");
+    const fromName = encodeURIComponent(from.name || routeNames?.origin || "");
+    const toName = encodeURIComponent(to.name || routeNames?.dest || "");
     if (f && t) {
         return `https://map.naver.com/index.nhn?slng=${f.lng}&slat=${f.lat}&stext=${fromName}&elng=${t.lng}&elat=${t.lat}&etext=${toName}&menu=route`;
     }
     return getPlaceMapUrl(to);
-}
-
-// ─── 팁 파싱 ──────────────────────────────────────────────────────────────────
-
-const LEGACY_CATEGORY_MAP: Record<string, string> = { MENU: "SIGNATURE_MENU", PRAISE: "BEST_SPOT" };
-const VALID_CATEGORIES = [
-    "PARKING","WALKING","SIGNATURE_MENU","RESTROOM","WAITING","PHOTO_ZONE",
-    "PARKING_LOT","BEST_SPOT","ROUTE","ATTIRE","GOOD_TO_KNOW","CAUTION","VIBE_CHECK","ETC",
-];
-
-function parseTipsFromDb(value?: string | null): { category: string; content: string }[] {
-    if (!value?.trim()) return [];
-    try {
-        const parsed = JSON.parse(value.trim());
-        if (Array.isArray(parsed)) {
-            return parsed
-                .filter((x) => x && typeof x.category === "string" && typeof x.content === "string")
-                .map((x) => {
-                    const cat = LEGACY_CATEGORY_MAP[x.category] || x.category;
-                    return { category: VALID_CATEGORIES.includes(cat) ? cat : "ETC", content: String(x.content || "").trim() };
-                })
-                .filter((x) => x.content.length > 0);
-        }
-    } catch {}
-    const trimmed = value.trim();
-    return trimmed ? [{ category: "ETC", content: trimmed }] : [];
 }
 
 const TIP_ICON_SIZE = 18;
@@ -261,47 +261,11 @@ function TipCategoryIcon({ category, color }: { category: string; color: string 
     }
 }
 
-function normalizeTipText(raw?: string | null): string {
-    if (!raw) return "";
-    const trimmed = String(raw).trim();
-    if (!trimmed) return "";
-
-    const parseJsonLike = (input: string): any | null => {
-        try {
-            return JSON.parse(input);
-        } catch {
-            return null;
-        }
-    };
-
-    // 1) 정상 JSON 객체/배열
-    const parsed = parseJsonLike(trimmed);
-    if (parsed) {
-        if (Array.isArray(parsed)) {
-            const joined = parsed
-                .map((item) => {
-                    if (typeof item === "string") return item.trim();
-                    if (item && typeof item === "object") return String(item.content ?? item.tip ?? "").trim();
-                    return "";
-                })
-                .filter(Boolean)
-                .join("\n");
-            if (joined) return joined;
-        } else if (typeof parsed === "object") {
-            const content = String((parsed as any).content ?? (parsed as any).tip ?? "").trim();
-            if (content) return content;
-        }
-    }
-
-    // 2) 따옴표가 깨진 JSON 문자열(예: {"categort":"PHOTO_ZONE,'content":"..."} )
-    const contentMatch = trimmed.match(/["']content["']\s*:\s*["']([\s\S]*?)["']\s*(?:,|}|$)/i);
-    if (contentMatch?.[1]) return contentMatch[1].replace(/\\"/g, '"').trim();
-
-    // 3) 마지막 fallback: 원문
-    return trimmed;
-}
-
-async function uploadImageViaPresign(uri: string, courseId: string): Promise<string> {
+async function uploadImageViaPresign(
+    uri: string,
+    courseId: string,
+    err: { presign: string; putFail: string },
+): Promise<string> {
     const filename = uri.split("/").pop() ?? "photo.jpg";
     const ext = filename.split(".").pop()?.toLowerCase() ?? "jpg";
     const contentType = ext === "png" ? "image/png" : "image/jpeg";
@@ -321,7 +285,7 @@ async function uploadImageViaPresign(uri: string, courseId: string): Promise<str
     }
 
     if (!presignRes.success || !presignRes.uploads?.[0]) {
-        throw new Error("업로드 URL을 받지 못했습니다.");
+        throw new Error(err.presign);
     }
 
     const { uploadUrl, publicUrl } = presignRes.uploads[0];
@@ -332,15 +296,15 @@ async function uploadImageViaPresign(uri: string, courseId: string): Promise<str
         body: blob,
         headers: { "Content-Type": contentType },
     });
-    if (!putRes.ok) throw new Error("이미지 업로드에 실패했습니다.");
+    if (!putRes.ok) throw new Error(err.putFail);
     return publicUrl;
 }
 
-function getNaverAppRouteUrl(place?: PlaceData): string | null {
+function getNaverAppRouteUrl(place?: PlaceData, destinationFallback?: string): string | null {
     if (!place) return null;
     const c = getPlaceLatLng(place);
     if (!c) return null;
-    const dname = encodeURIComponent(place.name || "목적지");
+    const dname = encodeURIComponent(place.name || destinationFallback || "");
     // 네이버 지도 앱 딥링크: 현재 위치 -> 목적지 빠른 길찾기
     return `nmap://route/public?dlat=${c.lat}&dlng=${c.lng}&dname=${dname}&appname=kr.io.dona`;
 }
@@ -395,21 +359,25 @@ function Toast({ message, icon, onHide }: { message: string; icon: string; onHid
 
 function PlaceDetailModal({
     place,
-    tips,
+    tipsRow,
     onClose,
     isLoggedIn,
 }: {
     place: PlaceData;
-    tips?: string | null;
+    tipsRow: CoursePlaceTipsRow;
     onClose: () => void;
     isLoggedIn: boolean;
 }) {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
     const [reservationWebUrl, setReservationWebUrl] = useState<string | null>(null);
     const imageUri = getPlaceImageUrl(place);
     const reservationUrl = getPlaceReservationUrl(place);
     const status = getPlaceOpenStatus(place.opening_hours);
-    const tipItems = parseTipsFromDb(tips);
+    const tipItems = useMemo(() => {
+        const base = parseTipsFromDbForLocale(tipsRow, locale as CourseUiLocale);
+        return localizeParsedTipsForUi(base, locale as CourseUiLocale, i18n);
+    }, [tipsRow, locale, i18n]);
     const hasTips = tipItems.length > 0;
     const screenH = Dimensions.get("window").height;
     const translateY = useRef(new Animated.Value(screenH)).current;
@@ -532,7 +500,7 @@ function PlaceDetailModal({
                             {status !== "unknown" ? (
                                 <View style={[s.detailStatusBadge, { backgroundColor: STATUS_BG[status] }]}>
                                     <Text style={[s.detailStatusText, { color: STATUS_COLOR[status] }]}>
-                                        {STATUS_LABEL[status]}
+                                        {placeOpenStatusLabel(i18n, status)}
                                     </Text>
                                 </View>
                             ) : null}
@@ -545,7 +513,7 @@ function PlaceDetailModal({
                         ) : null}
 
                         <Text style={[s.detailDescWeb, { color: t.isDark ? "#d1d5db" : "#4b5563" }]}>
-                            {place.description?.trim() ? place.description : "상세 설명이 없습니다."}
+                            {place.description?.trim() ? place.description : i18n("courseDetail.noDescription")}
                         </Text>
 
                         {isLoggedIn && hasTips ? (
@@ -594,10 +562,10 @@ function PlaceDetailModal({
                                 <Ionicons name="lock-closed-outline" size={20} color={t.textMuted} />
                                 <View style={{ flex: 1 }}>
                                     <Text style={[s.detailTipBannerTitle, { color: t.text }]}>
-                                        로그인하면 꿀팁을 볼 수 있어요
+                                        {i18n("mobile.courseScreen.tipsLoginTitle")}
                                     </Text>
                                     <Text style={[s.detailTipBannerSub, { color: t.textMuted }]}>
-                                        멤버십·열람권에 따라 표시됩니다
+                                        {i18n("mobile.courseScreen.tipsLoginSub")}
                                     </Text>
                                 </View>
                                 <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
@@ -612,13 +580,13 @@ function PlaceDetailModal({
                             >
                                 <Ionicons name="open-outline" size={18} color="#fff" />
                                 <Text style={s.detailReserveBtnWebText}>
-                                    {STATUS_LABEL[status] === "영업종료" ? "다른 날 예약하기" : "예약하기"}
+                                    {status === "closed" ? i18n("explore.reserveOtherDay") : i18n("explore.reserve")}
                                 </Text>
                             </TouchableOpacity>
                         ) : null}
 
                         <TouchableOpacity style={s.detailCloseTextBtn} onPress={onClose} hitSlop={{ top: 8, bottom: 8 }}>
-                            <Text style={[s.detailCloseTextWeb, { color: t.textMuted }]}>그냥 닫기</Text>
+                            <Text style={[s.detailCloseTextWeb, { color: t.textMuted }]}>{i18n("courseDetail.justClose")}</Text>
                         </TouchableOpacity>
                     </ScrollView>
 
@@ -644,7 +612,7 @@ function PlaceDetailModal({
                                     <Ionicons name="chevron-down" size={22} color={t.text} />
                                 </TouchableOpacity>
                                 <Text style={[s.reserveWebTitle, { color: t.text }]} numberOfLines={1}>
-                                    {place.name} 예약
+                                    {i18n("mobile.courseScreen.reserveWithName", { name: place.name || i18n("mobile.courseScreen.placeFallback") })}
                                 </Text>
                                 <TouchableOpacity
                                     onPress={() => Linking.openURL(reservationWebUrl)}
@@ -684,7 +652,13 @@ function PlaceDetailModal({
 
 const NAVER_MAP_CLIENT_ID = "4gfc00t72p";
 
-function buildNaverMapHtml(places: CoursePlace[], selectedIndex: number | null, routeMode: "full" | "segment", routeCoords?: { lat: number; lng: number }[]): string {
+function buildNaverMapHtml(
+    places: CoursePlace[],
+    selectedIndex: number | null,
+    routeMode: "full" | "segment",
+    routeCoords: { lat: number; lng: number }[] | undefined,
+    unnamedPlace: (index: number) => string,
+): string {
     const placeData = places.map((cp, i) => {
         const p = cp.place;
         if (!p) return { idx: i, name: "", lat: null, lng: null };
@@ -692,7 +666,7 @@ function buildNaverMapHtml(places: CoursePlace[], selectedIndex: number | null, 
         const lng = Number(p.longitude ?? p.lng);
         return {
             idx: i,
-            name: p.name || `장소 ${i + 1}`,
+            name: p.name || unnamedPlace(i + 1),
             lat: Number.isFinite(lat) ? lat : null,
             lng: Number.isFinite(lng) ? lng : null,
         };
@@ -850,10 +824,11 @@ function CourseMapModal({
     onSelectIndex: (idx: number) => void;
     onResetRoute: () => void;
     onClose: () => void;
-    onOpenDetail: (place: PlaceData, tips?: string | null) => void;
+    onOpenDetail: (place: PlaceData, tipsRow: CoursePlaceTipsRow) => void;
     onReserve: (url: string) => void;
 }) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const safeIndex =
         selectedIndex !== null ? Math.max(0, Math.min(selectedIndex, Math.max(0, places.length - 1))) : null;
     const current = safeIndex !== null ? places[safeIndex]?.place : null;
@@ -862,15 +837,20 @@ function CourseMapModal({
     const currentImage = getPlaceImageUrl(current ?? undefined);
     const routeLabel =
         effectiveRouteMode === "full"
-            ? "전체 경로"
+            ? i18n("mobile.courseScreen.mapFullRoute")
             : prev && current
-              ? `${safeIndex}→${(safeIndex ?? 0) + 1} 도보 ${(() => {
+              ? (() => {
                     const a = getPlaceLatLng(prev);
                     const b = getPlaceLatLng(current);
-                    if (!a || !b) return "-";
-                    return `${getWalkingMinutes(a.lat, a.lng, b.lat, b.lng)}분`;
-                })()}`
-              : "구간 경로";
+                    if (!a || !b) return i18n("mobile.courseScreen.mapSegmentRoute");
+                    const minutes = getWalkingMinutes(a.lat, a.lng, b.lat, b.lng);
+                    return i18n("mobile.courseScreen.mapSegmentWalk", {
+                        from: String(safeIndex),
+                        to: String((safeIndex ?? 0) + 1),
+                        minutes,
+                    });
+                })()
+              : i18n("mobile.courseScreen.mapSegmentRoute");
 
     const sheetH = Math.round(Dimensions.get("window").height * 0.75);
 
@@ -967,7 +947,7 @@ function CourseMapModal({
                     style={s.courseMapBackdropWeb}
                     onPress={onClose}
                     accessibilityRole="button"
-                    accessibilityLabel="닫기"
+                    accessibilityLabel={i18n("mobile.courseScreen.closeA11y")}
                 />
                 <View
                     style={[
@@ -1057,7 +1037,13 @@ function CourseMapModal({
                             <WebView
                                 key={safeIndex !== null ? `nmap-${safeIndex}-${effectiveRouteMode}` : "nmap-full"}
                                 source={{
-                                    html: buildNaverMapHtml(places, safeIndex, effectiveRouteMode, routeCoordsRaw.length >= 2 ? routeCoordsRaw : undefined),
+                                    html: buildNaverMapHtml(
+                                        places,
+                                        safeIndex,
+                                        effectiveRouteMode,
+                                        routeCoordsRaw.length >= 2 ? routeCoordsRaw : undefined,
+                                        (n) => i18n("courseDetail.unnamedPlace", { n }),
+                                    ),
                                     baseUrl: "https://dona.io.kr",
                                 }}
                                 style={s.courseMapWebView}
@@ -1099,7 +1085,7 @@ function CourseMapModal({
                                     )}
                                     <View style={{ flex: 1 }}>
                                         <Text style={[s.mapBottomTitle, { color: t.text }]} numberOfLines={1}>
-                                            {current.name || "장소"}
+                                            {current.name || i18n("mobile.courseScreen.placeFallback")}
                                         </Text>
                                         <Text style={[s.mapBottomSub, { color: t.textMuted }]} numberOfLines={1}>
                                             {routeLabel}
@@ -1120,7 +1106,7 @@ function CourseMapModal({
                                 <TouchableOpacity
                                     style={[s.mapPrimaryBtn, { backgroundColor: NAVER_BTN_GRAY }]}
                                     onPress={() => {
-                                        const appRoute = getNaverAppRouteUrl(current);
+                                        const appRoute = getNaverAppRouteUrl(current, i18n("courseDetail.destinationFallback"));
                                         const webUrl = getPlaceMapUrl(current);
                                         if (appRoute) {
                                             Linking.openURL(appRoute).catch(() => Linking.openURL(webUrl));
@@ -1131,7 +1117,7 @@ function CourseMapModal({
                                     activeOpacity={0.88}
                                 >
                                     <Ionicons name="map-outline" size={16} color="#fff" />
-                                    <Text style={s.mapPrimaryBtnText}>길찾기</Text>
+                                    <Text style={s.mapPrimaryBtnText}>{i18n("courseDetail.navigation")}</Text>
                                 </TouchableOpacity>
                                 <View style={s.mapActionRow}>
                                     <TouchableOpacity
@@ -1139,11 +1125,13 @@ function CourseMapModal({
                                         onPress={() =>
                                             onOpenDetail(
                                                 current,
-                                                safeIndex !== null ? places[safeIndex]?.tips : undefined,
+                                                safeIndex !== null
+                                                    ? coursePlaceToTipsRow(places[safeIndex])
+                                                    : { tips: null },
                                             )
                                         }
                                     >
-                                        <Text style={s.mapDarkBtnText}>상세보기</Text>
+                                        <Text style={s.mapDarkBtnText}>{i18n("courseDetail.viewDetail")}</Text>
                                     </TouchableOpacity>
                                     {getPlaceReservationUrl(current) ? (
                                         <TouchableOpacity
@@ -1153,7 +1141,7 @@ function CourseMapModal({
                                                 if (url) onReserve(url);
                                             }}
                                         >
-                                            <Text style={s.mapLightBtnText}>예약하기</Text>
+                                            <Text style={s.mapLightBtnText}>{i18n("explore.reserve")}</Text>
                                         </TouchableOpacity>
                                     ) : null}
                                 </View>
@@ -1199,13 +1187,23 @@ function PlaceCard({
     onReserve: (url: string) => void;
 }) {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
     const p = cp.place;
     if (!p) return null;
 
     const status = getPlaceOpenStatus(p.opening_hours);
     const imageUri = getPlaceImageUrl(p);
-    const subText = cp.recommended_time || p.address || null;
-    const hasTips = normalizeTipText(cp.tips).length > 0;
+    const rec = cp.recommended_time?.trim();
+    const subText = rec
+        ? translateCourseFreeformKoText(rec, locale as CourseUiLocale, i18n)
+        : p.address || null;
+    const tipsRow: CoursePlaceTipsRow = {
+        tips: cp.tips,
+        tips_en: cp.tips_en,
+        tips_ja: cp.tips_ja,
+        tips_zh: cp.tips_zh,
+    };
+    const hasTips = parseTipsFromDbForLocale(tipsRow, locale as CourseUiLocale).length > 0;
 
     return (
         // 웹: [number circle (외부)] [flex-1 content]
@@ -1252,7 +1250,7 @@ function PlaceCard({
                             {status !== "unknown" && (
                                 <View style={[s.statusBadge, { backgroundColor: STATUS_BG[status] }]}>
                                     <Text style={[s.statusBadgeText, { color: STATUS_COLOR[status] }]}>
-                                        {STATUS_LABEL[status]}
+                                        {placeOpenStatusLabel(i18n, status)}
                                     </Text>
                                 </View>
                             )}
@@ -1283,7 +1281,7 @@ function PlaceCard({
                             >
                                 <View style={s.reserveBtnInner}>
                                     <Text style={s.reserveBtnText}>
-                                        {STATUS_LABEL[status] === "영업종료" ? "미리 예약" : "예약하기"}
+                                        {status === "closed" ? i18n("explore.reserveInAdvance") : i18n("explore.reserve")}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
@@ -1294,9 +1292,9 @@ function PlaceCard({
                 {/* 꿀팁 (웹: ✨ 꿀팁 헤더 + 카테고리 칩) */}
                 {hasTips ? (
                     <View style={s.tipRow}>
-                        <Text style={s.tipLabel}>✨ 꿀팁</Text>
+                        <Text style={s.tipLabel}>{i18n("mobile.courseScreen.tipSectionLabel")}</Text>
                         <View style={s.tipChip}>
-                            <Text style={s.tipChipText}>정보 보기</Text>
+                            <Text style={s.tipChipText}>{i18n("mobile.courseScreen.tipViewInfo")}</Text>
                         </View>
                     </View>
                 ) : null}
@@ -1308,12 +1306,13 @@ function PlaceCard({
 // ─── 도보 커넥터 ───────────────────────────────────────────────────────────────
 
 function WalkingConnector({ minutes }: { minutes: number }) {
+    const { t: i18n } = useLocale();
     return (
         <View style={s.walkConnector}>
             <View style={s.walkLine} />
             <View style={s.walkBadge}>
                 <Ionicons name="walk-outline" size={11} color="#6b7280" />
-                <Text style={s.walkText}>도보 {minutes}분</Text>
+                <Text style={s.walkText}>{i18n("courseDetail.walkingMinutes", { minutes })}</Text>
             </View>
             <View style={s.walkLine} />
         </View>
@@ -1325,6 +1324,7 @@ function WalkingConnector({ minutes }: { minutes: number }) {
 
 export default function CourseDetailScreen() {
     const t = useThemeColors();
+    const { t: i18n, locale } = useLocale();
     const screenBg = t.isDark ? "#0f1710" : "#F8F9FA";
     const insets = useSafeAreaInsets();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -1334,7 +1334,10 @@ export default function CourseDetailScreen() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showTicketModal, setShowTicketModal] = useState(false);
     const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
-    const [selectedPlace, setSelectedPlace] = useState<{ place: PlaceData; tips?: string | null } | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<{
+        place: PlaceData;
+        tipsRow: CoursePlaceTipsRow;
+    } | null>(null);
     const [toast, setToast] = useState<{ message: string; icon: string; id: number } | null>(null);
     const toastIdRef = useRef(0);
     const showToast = useCallback((message: string, icon: string) => {
@@ -1407,7 +1410,7 @@ export default function CourseDetailScreen() {
                 rating: Number(r.rating ?? 0),
                 content: String(r.comment ?? ""),
                 createdAt: String(r.createdAt ?? ""),
-                userName: String(r.user?.nickname ?? "익명"),
+                userName: String(r.user?.nickname ?? ""),
                 profileImageUrl: String(r.user?.profileImageUrl ?? ""),
             }));
         },
@@ -1519,7 +1522,7 @@ export default function CourseDetailScreen() {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
             queryClient.invalidateQueries({ queryKey: ["users", "favorites"] });
             queryClient.invalidateQueries({ queryKey: ["users", "favorites", "header-badge"] });
-            showToast(adding ? "찜 목록에 담았어요" : "찜을 해제했어요", adding ? "❤️" : "✓");
+            showToast(adding ? i18n("mobile.courseScreen.favAdded") : i18n("mobile.courseScreen.favRemoved"), adding ? "❤️" : "✓");
         },
     });
 
@@ -1528,7 +1531,10 @@ export default function CourseDetailScreen() {
         if (!course || shareInFlightRef.current) return;
         shareInFlightRef.current = true;
         try {
-            const message = `${course.title} - DoNa 데이트 코스\n${BASE_URL}/courses/${id}/view`;
+            const message = i18n("mobile.courseScreen.shareMessage", {
+                title: course.title,
+                url: `${BASE_URL}/courses/${id}/view`,
+            });
             // iOS에서 message + url 동시 전달 시 링크가 두 번 붙는 경우가 있어 단일 필드만 사용
             await Share.share(
                 Platform.OS === "ios"
@@ -1542,7 +1548,7 @@ export default function CourseDetailScreen() {
                 shareInFlightRef.current = false;
             }, 800);
         }
-    }, [course, id]);
+    }, [course, id, i18n]);
 
     const handleStartCourse = useCallback(async () => {
         if (!isAuthenticated) {
@@ -1560,12 +1566,12 @@ export default function CourseDetailScreen() {
         try {
             await api.post(endpoints.activeCourse, { courseId: Number(id) });
         } catch {
-            Alert.alert("알림", "코스 시작에 실패했어요. 다시 시도해 주세요.");
+            Alert.alert(i18n("mobile.courseScreen.alertNotice"), i18n("mobile.courseScreen.startCourseFailed"));
             return;
         }
         await queryClient.invalidateQueries({ queryKey: ["users", "active-course"] });
         router.push("/(tabs)" as any);
-    }, [isAuthenticated, course, id, profile, queryClient]);
+    }, [isAuthenticated, course, id, profile, queryClient, i18n]);
 
     // 선택형 코스: 장소 선택 후 저장
     const handleStartSelectionCourse = useCallback(async () => {
@@ -1578,7 +1584,7 @@ export default function CourseDetailScreen() {
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);
         if (selectedPlaceIds.length !== selectionOrderedSteps.length) {
-            showToast("각 구간에서 장소를 선택해주세요.", "ℹ️");
+            showToast(i18n("courseDetail.selectEachSegment"), "ℹ️");
             return;
         }
         setSelectionLoading(true);
@@ -1592,17 +1598,17 @@ export default function CourseDetailScreen() {
                 setShowSelectionUI(false);
                 await api.post(endpoints.activeCourse, { courseId: Number(id) });
                 await queryClient.invalidateQueries({ queryKey: ["users", "active-course"] });
-                showToast("코스가 저장됐어요!", "✅");
+                showToast(i18n("courseDetail.courseSavedToast"), "✅");
                 router.push("/(tabs)" as any);
             } else {
-                showToast("저장에 실패했어요.", "❌");
+                showToast(i18n("mobile.courseScreen.saveFailedToast"), "❌");
             }
         } catch {
-            showToast("저장에 실패했어요.", "❌");
+            showToast(i18n("mobile.courseScreen.saveFailedToast"), "❌");
         } finally {
             setSelectionLoading(false);
         }
-    }, [isAuthenticated, course, id, profile, selectionOrderedSteps, selectedBySegment, showToast, queryClient]);
+    }, [isAuthenticated, course, id, profile, selectionOrderedSteps, selectedBySegment, showToast, queryClient, i18n]);
 
     const handleMemoryRecord = useCallback(async () => {
         if (!isAuthenticated) { setShowLoginModal(true); return; }
@@ -1618,17 +1624,17 @@ export default function CourseDetailScreen() {
 
     const handleSwitchCourse = useCallback(() => {
         Alert.alert(
-            "코스 변경",
-            "현재 진행 중인 코스를 이 코스로 변경할까요?",
+            i18n("mobile.courseScreen.switchCourseTitle"),
+            i18n("mobile.courseScreen.switchCourseMessage"),
             [
-                { text: "취소", style: "cancel" },
+                { text: i18n("mobile.courseScreen.cancel"), style: "cancel" },
                 {
-                    text: "변경하기",
+                    text: i18n("mobile.courseScreen.switchCourseConfirm"),
                     onPress: async () => {
                         try {
                             await api.post(endpoints.activeCourse, { courseId: Number(id) });
                         } catch {
-                            Alert.alert("알림", "코스 변경에 실패했어요.");
+                            Alert.alert(i18n("mobile.courseScreen.alertNotice"), i18n("mobile.courseScreen.switchCourseFailed"));
                             return;
                         }
                         await queryClient.invalidateQueries({ queryKey: ["users", "active-course"] });
@@ -1637,13 +1643,13 @@ export default function CourseDetailScreen() {
                 },
             ],
         );
-    }, [id, queryClient]);
+    }, [id, queryClient, i18n]);
 
     const handleSubmitReview = useCallback(async () => {
         if (!id) return;
         const content = reviewContent.trim();
         if (content.length < 5) {
-            Alert.alert("알림", "리뷰는 5자 이상 입력해주세요.");
+            Alert.alert(i18n("mobile.courseScreen.alertNotice"), i18n("mobile.courseScreen.reviewMinLength"));
             return;
         }
         setReviewSubmitting(true);
@@ -1660,14 +1666,14 @@ export default function CourseDetailScreen() {
             setReviewRating(5);
             setReviewImageLocalUri(null);
             setReviewImageUrl(null);
-            showToast("리뷰가 등록됐어요", "✅");
+            showToast(i18n("mobile.courseScreen.reviewPosted"), "✅");
             refetchReviews();
         } catch (e: any) {
-            Alert.alert("리뷰 등록 실패", e?.message ?? "잠시 후 다시 시도해주세요.");
+            Alert.alert(i18n("mobile.courseScreen.reviewSubmitFailTitle"), e?.message ?? i18n("mobile.courseScreen.tryAgainLater"));
         } finally {
             setReviewSubmitting(false);
         }
-    }, [id, reviewContent, reviewRating, reviewImageUrl, refetchReviews, showToast]);
+    }, [id, reviewContent, reviewRating, reviewImageUrl, refetchReviews, showToast, i18n]);
 
     const handlePickReviewImage = useCallback(async () => {
         if (!id) return;
@@ -1675,7 +1681,7 @@ export default function CourseDetailScreen() {
             const ImagePicker = require("expo-image-picker");
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert("권한 필요", "사진 접근 권한이 필요합니다.");
+                Alert.alert(i18n("mobile.courseScreen.permRequired"), i18n("mobile.courseScreen.permPhotos"));
                 return;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -1689,24 +1695,27 @@ export default function CourseDetailScreen() {
             setReviewImageLocalUri(localUri);
             setReviewUploadingImage(true);
             try {
-                const uploaded = await uploadImageViaPresign(localUri, String(id));
+                const uploaded = await uploadImageViaPresign(localUri, String(id), {
+                    presign: i18n("courseStart.presignUrlError"),
+                    putFail: i18n("courseStart.imageUploadPutError"),
+                });
                 setReviewImageUrl(uploaded);
             } catch (e: any) {
                 setReviewImageLocalUri(null);
                 setReviewImageUrl(null);
-                Alert.alert("이미지 업로드 실패", e?.message ?? "잠시 후 다시 시도해주세요.");
+                Alert.alert(i18n("mobile.courseScreen.imageUploadFailTitle"), e?.message ?? i18n("mobile.courseScreen.tryAgainLater"));
             } finally {
                 setReviewUploadingImage(false);
             }
         } catch {
-            Alert.alert("알림", "이미지 선택은 앱 빌드에서만 사용 가능합니다.");
+            Alert.alert(i18n("mobile.courseScreen.alertNotice"), i18n("mobile.courseScreen.imagePickerBuildOnly"));
         }
-    }, [id]);
+    }, [id, i18n]);
 
     if (isLoading) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={["top"]}>
-                <PageLoadingOverlay overlay={false} message="코스 불러오는 중..." />
+                <PageLoadingOverlay overlay={false} message={i18n("mobile.courseScreen.loadingCourse")} />
             </SafeAreaView>
         );
     }
@@ -1715,10 +1724,10 @@ export default function CourseDetailScreen() {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={["top"]}>
                 <TouchableOpacity style={{ marginTop: insets.top + 12, padding: 16 }} onPress={() => router.back()}>
-                    <Text style={{ color: Colors.brandGreen, fontWeight: "500" }}>← 뒤로</Text>
+                    <Text style={{ color: Colors.brandGreen, fontWeight: "500" }}>{i18n("mobile.courseScreen.backArrow")}</Text>
                 </TouchableOpacity>
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ color: t.textMuted }}>코스를 불러올 수 없습니다</Text>
+                    <Text style={{ color: t.textMuted }}>{i18n("mobile.courseScreen.courseLoadError")}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -1726,7 +1735,7 @@ export default function CourseDetailScreen() {
 
     const grade = GRADE_META[course.grade] ?? GRADE_META.FREE;
     const normalizedPlaces = normalizedPlacesAll;
-    const regionLabel = (course as any).location ?? course.region ?? "서울";
+    const regionLabel = (course as any).location ?? course.region ?? i18n("explore.regionSeoul");
     const heroImage = resolveImageUrl(course.imageUrl) ?? getPlaceImageUrl(normalizedPlaces[0]?.place);
     const openMapForIndex = (idx: number) => {
         setActivePlaceIndex(idx);
@@ -1769,7 +1778,7 @@ export default function CourseDetailScreen() {
                             {course.target_situation ? (
                                 <View style={s.heroChipDark}>
                                     <Text style={s.heroChipDarkText}>
-                                        #{course.target_situation === "SOME" ? "썸탈 때" : course.target_situation}
+                                        #{course.target_situation === "SOME" ? i18n("mobile.courseScreen.targetSome") : course.target_situation}
                                     </Text>
                                 </View>
                             ) : null}
@@ -1794,7 +1803,9 @@ export default function CourseDetailScreen() {
                                 <Text style={s.heroMetaPillText}>📍 {regionLabel}</Text>
                             </View>
                             <View style={s.heroMetaPill}>
-                                <Text style={s.heroMetaPillText}>👣 {normalizedPlaces.length} 스팟</Text>
+                                <Text style={s.heroMetaPillText}>
+                                    {i18n("mobile.courseScreen.metaSpotsCount", { count: normalizedPlaces.length })}
+                                </Text>
                             </View>
                             {course.duration ? (
                                 <View style={s.heroMetaPill}>
@@ -1856,12 +1867,12 @@ export default function CourseDetailScreen() {
                                                         <PlaceCard
                                                             cp={cp}
                                                             index={stepIdx}
-                                                            onPress={() => cp.place && setSelectedPlace({ place: cp.place, tips: cp.tips })}
+                                                            onPress={() => cp.place && setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) })}
                                                             isSelected={!!(selectedPlace?.place?.id === cp.place?.id)}
                                                             onReserve={(url) => setScreenReservationUrl(url)}
                                                         />
                                                         <View style={s.confirmedBadge}>
-                                                            <Text style={s.confirmedBadgeText}>✓ 확정됨</Text>
+                                                            <Text style={s.confirmedBadgeText}>✓ {i18n("courseDetail.confirmed")}</Text>
                                                         </View>
                                                     </View>
                                                 </View>
@@ -1886,10 +1897,12 @@ export default function CourseDetailScreen() {
                                                 </View>
                                                 <View style={{ flex: 1 }}>
                                                     <Text style={s.selSegLabel}>
-                                                        {SEGMENT_ICONS[seg] ?? "📍"} {SEGMENT_LABELS[seg] ?? seg} 선택
+                                                        {i18n("mobile.courseScreen.segmentChoose", {
+                                                            label: `${SEGMENT_ICONS[seg] ?? "📍"} ${i18n(`courseDetail.segment.${seg}`) || seg}`,
+                                                        })}
                                                     </Text>
                                                     <Text style={[s.selSegPrompt, { color: t.textMuted }]}>
-                                                        어디로 갈까요?
+                                                        {i18n("courseDetail.selectSegmentPrompt")}
                                                     </Text>
                                                     {/* 가로 스크롤 후보 카드 */}
                                                     <ScrollView
@@ -1933,16 +1946,22 @@ export default function CourseDetailScreen() {
                                                                     <View style={s.candidateInfo}>
                                                                         <Text style={[s.candidateName, { color: t.text }]} numberOfLines={2}>{cp.place?.name}</Text>
                                                                         <Text style={[s.candidateSub, { color: t.textMuted }]} numberOfLines={1}>
-                                                                            {cp.recommended_time || cp.place?.address}
+                                                                            {cp.recommended_time?.trim()
+                                                                                ? translateCourseFreeformKoText(
+                                                                                      cp.recommended_time,
+                                                                                      locale as CourseUiLocale,
+                                                                                      i18n,
+                                                                                  )
+                                                                                : cp.place?.address}
                                                                         </Text>
                                                                     </View>
                                                                     {/* 정보 버튼 */}
                                                                     <TouchableOpacity
                                                                         style={[s.candidateInfoBtn, { borderTopColor: t.isDark ? "#374151" : "#e5e7eb" }]}
-                                                                        onPress={() => cp.place && setSelectedPlace({ place: cp.place, tips: cp.tips })}
+                                                                        onPress={() => cp.place && setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) })}
                                                                         hitSlop={6}
                                                                     >
-                                                                        <Text style={s.candidateInfoBtnText}>💡 정보</Text>
+                                                                        <Text style={s.candidateInfoBtnText}>💡 {i18n("courseDetail.infoShort")}</Text>
                                                                     </TouchableOpacity>
                                                                 </TouchableOpacity>
                                                             );
@@ -1964,7 +1983,7 @@ export default function CourseDetailScreen() {
                                         onPress={() => setShowSelectionUI(true)}
                                         style={s.editSelectionBtn}
                                     >
-                                        <Text style={s.editSelectionBtnText}>코스 수정</Text>
+                                        <Text style={s.editSelectionBtnText}>{i18n("courseDetail.editCourse")}</Text>
                                     </TouchableOpacity>
                                 )}
                                 {displayPlaces.map((cp, i) => {
@@ -1979,7 +1998,7 @@ export default function CourseDetailScreen() {
                                             <PlaceCard
                                                 cp={cp}
                                                 index={i}
-                                                onPress={() => cp.place && setSelectedPlace({ place: cp.place, tips: cp.tips })}
+                                                onPress={() => cp.place && setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) })}
                                                 isSelected={!!(selectedPlace && selectedPlace.place?.id === cp.place?.id)}
                                                 onReserve={(url) => setScreenReservationUrl(url)}
                                             />
@@ -2003,17 +2022,17 @@ export default function CourseDetailScreen() {
                 >
                     <View style={s.reviewHeader}>
                         <Text style={[s.reviewSectionTitle, { color: t.text }]}>
-                            리뷰{" "}
+                            {i18n("mobile.courseScreen.reviewsHeading")}{" "}
                             {reviews.length > 0 ? (
                                 <Text style={{ color: "#10b981" }}>{reviews.length}</Text>
                             ) : null}
                         </Text>
                         <TouchableOpacity style={s.reviewWriteBtn} onPress={() => setShowReviewModal(true)}>
-                            <Text style={s.reviewWriteBtnText}>리뷰 작성</Text>
+                            <Text style={s.reviewWriteBtnText}>{i18n("mobile.courseScreen.reviewWrite")}</Text>
                         </TouchableOpacity>
                     </View>
                     {reviewsLoading ? (
-                        <Text style={[s.reviewEmpty, { color: t.textMuted }]}>리뷰를 불러오는 중...</Text>
+                        <Text style={[s.reviewEmpty, { color: t.textMuted }]}>{i18n("mobile.courseScreen.reviewsLoading")}</Text>
                     ) : reviews.length === 0 ? null : (
                         <View style={{ gap: 12 }}>
                             {reviews.slice(0, reviewShowCount).map((item) => (
@@ -2027,7 +2046,9 @@ export default function CourseDetailScreen() {
                                                 source={{ uri: item.profileImageUrl || "https://d13xx6k6chk2in.cloudfront.net/profileLogo.png" }}
                                                 style={s.reviewAvatar}
                                             />
-                                            <Text style={[s.reviewUser, { color: t.text }]}>{item.userName}</Text>
+                                            <Text style={[s.reviewUser, { color: t.text }]}>
+                                                {item.userName.trim() ? item.userName : i18n("mobile.courseScreen.anonymous")}
+                                            </Text>
                                         </View>
                                         <Text style={[s.reviewDate, { color: t.textMuted }]}>
                                             {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
@@ -2075,7 +2096,7 @@ export default function CourseDetailScreen() {
                                     style={[s.reviewMoreBtn, { borderColor: t.border }]}
                                 >
                                     <Text style={[s.reviewMoreBtnText, { color: t.textMuted }]}>
-                                        더보기 ({reviews.length - reviewShowCount}개 남음)
+                                        {i18n("mobile.courseScreen.showMoreReviews", { n: reviews.length - reviewShowCount })}
                                     </Text>
                                 </TouchableOpacity>
                             )}
@@ -2092,7 +2113,7 @@ export default function CourseDetailScreen() {
                     style={[s.mapFabFixed, { bottom: mapFabBottom }]}
                     onPress={openFullRouteMap}
                     activeOpacity={0.88}
-                    accessibilityLabel="지도에서 전체 경로 보기"
+                    accessibilityLabel={i18n("mobile.courseScreen.mapFabA11y")}
                 >
                     <Ionicons name="location" size={22} color="#fff" />
                 </TouchableOpacity>
@@ -2119,26 +2140,26 @@ export default function CourseDetailScreen() {
                         size={16}
                         color={isFav ? "#ef4444" : t.textMuted}
                     />
-                    <Text style={[s.ctaIconLabel, { color: isFav ? "#ef4444" : t.textMuted }]}>찜하기</Text>
+                    <Text style={[s.ctaIconLabel, { color: isFav ? "#ef4444" : t.textMuted }]}>{i18n("courseDetail.favorite")}</Text>
                 </TouchableOpacity>
                 {/* 공유하기 */}
                 <TouchableOpacity style={[s.ctaIconBtn, { borderColor: t.border }]} onPress={handleShare}>
                     <Ionicons name="share-outline" size={20} color={t.textMuted} />
-                    <Text style={[s.ctaIconLabel, { color: t.textMuted }]}>공유</Text>
+                    <Text style={[s.ctaIconLabel, { color: t.textMuted }]}>{i18n("courseDetail.share")}</Text>
                 </TouchableOpacity>
                 {/* 코스 CTA — 3가지 상태 */}
                 {isAuthenticated && activeCourse?.courseId === Number(id) ? (
                     <View style={{ flex: 1 }}>
-                        <Text style={[s.ctaStatusText, { color: t.textMuted }]}>오늘 이 코스를 진행 중이에요</Text>
+                        <Text style={[s.ctaStatusText, { color: t.textMuted }]}>{i18n("mobile.courseScreen.inProgressThisCourse")}</Text>
                         <TouchableOpacity style={[s.ctaMainBtn, { minHeight: 46, paddingVertical: 10 }]} onPress={handleMemoryRecord} activeOpacity={0.85}>
-                            <Text style={s.ctaMainBtnText}>나만의 추억 기록하기</Text>
+                            <Text style={s.ctaMainBtnText}>{i18n("mobile.courseScreen.memoryRecordPersonal")}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : isAuthenticated && activeCourse && activeCourse.courseId !== Number(id) ? (
                     <View style={{ flex: 1 }}>
-                        <Text style={[s.ctaStatusText, { color: t.textMuted }]}>오늘 이미 다른 코스를 시작했어요</Text>
+                        <Text style={[s.ctaStatusText, { color: t.textMuted }]}>{i18n("mobile.courseScreen.alreadyOtherCourse")}</Text>
                         <TouchableOpacity style={[s.ctaMainBtn, { minHeight: 46, paddingVertical: 10, backgroundColor: "#374151" }]} onPress={handleSwitchCourse} activeOpacity={0.85}>
-                            <Text style={s.ctaMainBtnText}>다른 코스로 변경</Text>
+                            <Text style={s.ctaMainBtnText}>{i18n("mobile.courseScreen.switchOtherCourse")}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : course?.isSelectionType && selectionOrderedSteps.length > 0 && (!mySelection || showSelectionUI) ? (
@@ -2151,12 +2172,16 @@ export default function CourseDetailScreen() {
                     >
                         {selectionLoading
                             ? <ActivityIndicator size="small" color="#fff" />
-                            : <Text style={s.ctaMainBtnText}>{mySelection ? "선택 저장하기" : "이 코스로 시작하기"}</Text>
+                            : (
+                                <Text style={s.ctaMainBtnText}>
+                                    {mySelection ? i18n("mobile.courseScreen.saveSelection") : i18n("courseDetail.startCourse")}
+                                </Text>
+                            )
                         }
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity style={s.ctaMainBtn} onPress={handleStartCourse} activeOpacity={0.85}>
-                        <Text style={s.ctaMainBtnText}>이 코스로 시작하기</Text>
+                        <Text style={s.ctaMainBtnText}>{i18n("courseDetail.startCourse")}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -2165,7 +2190,7 @@ export default function CourseDetailScreen() {
             {selectedPlace && (
                 <PlaceDetailModal
                     place={selectedPlace.place}
-                    tips={selectedPlace.tips}
+                    tipsRow={selectedPlace.tipsRow}
                     onClose={() => setSelectedPlace(null)}
                     isLoggedIn={!!profile}
                 />
@@ -2187,9 +2212,9 @@ export default function CourseDetailScreen() {
                     setActivePlaceIndex(null);
                 }}
                 onClose={() => setShowCourseMapModal(false)}
-                onOpenDetail={(place, tips) => {
+                onOpenDetail={(place, tipsRow) => {
                     setShowCourseMapModal(false);
-                    setSelectedPlace({ place, tips });
+                    setSelectedPlace({ place, tipsRow });
                 }}
                 onReserve={(url) => setScreenReservationUrl(url)}
             />
@@ -2214,7 +2239,7 @@ export default function CourseDetailScreen() {
                                 <Ionicons name="chevron-down" size={22} color="#111827" />
                             </TouchableOpacity>
                             <Text style={[s.reserveWebTitle, { color: "#111827" }]} numberOfLines={1}>
-                                예약하기
+                                {i18n("explore.reserve")}
                             </Text>
                             <TouchableOpacity
                                 onPress={() => screenReservationUrl && Linking.openURL(screenReservationUrl)}
@@ -2277,14 +2302,18 @@ export default function CourseDetailScreen() {
                             </View>
                         </View>
                         <Text style={[s.loginModalTitle, { color: t.text }]}>
-                            추억 저장{"\n"}<Text style={{ color: "#7c3aed" }}>한도에 도달했어요</Text>
+                            {i18n("mobile.courseScreen.memoryLimitTitleLine1")}
+                            {"\n"}
+                            <Text style={{ color: "#7c3aed" }}>{i18n("mobile.courseScreen.memoryLimitHighlight")}</Text>
                         </Text>
-                        <Text style={[s.loginModalSub, { color: t.textMuted }]}>
-                            구독을 업그레이드하면 더 많은 추억을 저장할 수 있어요
-                        </Text>
+                        <Text style={[s.loginModalSub, { color: t.textMuted }]}>{i18n("mobile.courseScreen.memoryLimitSub")}</Text>
                         <View style={[s.loginBenefitBox, { backgroundColor: t.surface, borderColor: t.border }]}>
-                            <Text style={[s.loginBenefitLabel, { color: t.textMuted }]}>구독 혜택</Text>
-                            {["무제한 추억 기록 저장", "모든 프리미엄 코스 이용", "광고 없는 깔끔한 경험"].map((b, i) => (
+                            <Text style={[s.loginBenefitLabel, { color: t.textMuted }]}>{i18n("mobile.courseScreen.subBenefitsTitle")}</Text>
+                            {[
+                                i18n("mobile.courseScreen.benefitUnlimitedMemories"),
+                                i18n("mobile.courseScreen.benefitPremiumCourses"),
+                                i18n("mobile.courseScreen.benefitNoAds"),
+                            ].map((b, i) => (
                                 <View key={i} style={s.loginBenefitRow}>
                                     <View style={[s.loginCheckCircle, { backgroundColor: "#ede9fe" }]}>
                                         <Ionicons name="checkmark" size={10} color="#7c3aed" />
@@ -2297,10 +2326,10 @@ export default function CourseDetailScreen() {
                             style={[s.loginCTABtn, { backgroundColor: "#7c3aed", shadowColor: "#7c3aed" }]}
                             onPress={() => { setShowMemoryLimitModal(false); router.push("/shop" as any); }}
                         >
-                            <Text style={s.loginCTAText}>구독으로 더 저장하기</Text>
+                            <Text style={s.loginCTAText}>{i18n("mobile.courseScreen.subscribeSaveMore")}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={s.cancelBtn} onPress={() => setShowMemoryLimitModal(false)}>
-                            <Text style={s.cancelBtnText}>닫기</Text>
+                            <Text style={s.cancelBtnText}>{i18n("courseStart.close")}</Text>
                         </TouchableOpacity>
                     </Pressable>
                 </Pressable>
@@ -2374,7 +2403,9 @@ export default function CourseDetailScreen() {
                         <View style={[s.handle, { backgroundColor: t.border }]} />
                         {/* 헤더: 타이틀 + X 버튼 */}
                         <View style={s.reviewModalHeader}>
-                            <Text style={[s.modalTitle, { color: t.text, textAlign: "left", marginBottom: 0 }]}>리뷰 작성</Text>
+                            <Text style={[s.modalTitle, { color: t.text, textAlign: "left", marginBottom: 0 }]}>
+                                {i18n("mobile.courseScreen.reviewModalTitle")}
+                            </Text>
                             <TouchableOpacity
                                 style={[s.loginModalClose, { backgroundColor: t.surface, position: "relative", top: 0, right: 0 }]}
                                 onPress={() => {
@@ -2389,7 +2420,7 @@ export default function CourseDetailScreen() {
                         </View>
                         {/* 코스 이름 박스 */}
                         <View style={[s.reviewCourseName, { backgroundColor: t.surface }]}>
-                            <Text style={{ fontSize: 11, color: t.textMuted, marginBottom: 2 }}>리뷰 대상</Text>
+                            <Text style={{ fontSize: 11, color: t.textMuted, marginBottom: 2 }}>{i18n("mobile.courseScreen.reviewTargetLabel")}</Text>
                             <Text style={{ fontSize: 14, fontWeight: "500", color: t.text }} numberOfLines={1}>{course.title}</Text>
                         </View>
                         <View style={s.reviewRatingRow}>
@@ -2423,7 +2454,7 @@ export default function CourseDetailScreen() {
                                     <>
                                         <Ionicons name="image-outline" size={16} color={t.textMuted} />
                                         <Text style={[s.reviewImagePickText, { color: t.textMuted }]}>
-                                            {reviewImageLocalUri ? "이미지 변경" : "이미지 첨부"}
+                                            {reviewImageLocalUri ? i18n("mobile.courseScreen.changeImage") : i18n("mobile.courseScreen.attachImage")}
                                         </Text>
                                     </>
                                 )}
@@ -2447,7 +2478,7 @@ export default function CourseDetailScreen() {
                         <TextInput
                             value={reviewContent}
                             onChangeText={setReviewContent}
-                            placeholder="코스 어땠는지 알려주세요 (5자 이상)"
+                            placeholder={i18n("mobile.courseScreen.reviewPlaceholder")}
                             placeholderTextColor={t.textSubtle}
                             multiline
                             maxLength={500}
@@ -2467,7 +2498,7 @@ export default function CourseDetailScreen() {
                                 }}
                                 disabled={reviewSubmitting}
                             >
-                                <Text style={s.cancelBtnText}>취소</Text>
+                                <Text style={s.cancelBtnText}>{i18n("mobile.courseScreen.cancel")}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[s.ticketBtn, { flex: 1 }, reviewSubmitting && { opacity: 0.6 }]}
@@ -2477,7 +2508,7 @@ export default function CourseDetailScreen() {
                                 {reviewSubmitting ? (
                                     <ActivityIndicator color="#fff" size="small" />
                                 ) : (
-                                    <Text style={s.ticketBtnText}>등록</Text>
+                                    <Text style={s.ticketBtnText}>{i18n("mobile.courseScreen.submitReview")}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
