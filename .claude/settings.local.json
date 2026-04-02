@@ -67,7 +67,8 @@
       "Bash(chmod +x /tmp/correct_analysis.sh)",
       "Bash(/tmp/correct_analysis.sh)",
       "Bash(head -10 grep -rn \"ADMIN_USER_ID\\\\|ADMIN_PUSH\" /c/Users/12jas/stylemap/.env*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx ts-node:*)"
     ]
   }
 }

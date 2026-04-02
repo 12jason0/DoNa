@@ -3,6 +3,7 @@
  * 인트로 → 4단계 질문 → 분석 오버레이 → 완료 모달
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import * as Notifications from "expo-notifications";
 import {
     View,
     Text,
@@ -95,6 +96,7 @@ export default function OnboardingScreen() {
     const sheetTranslateY = useRef(new Animated.Value(SH)).current;
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [showResult, setShowResult] = useState(false);
+    const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
     const [preferences, setPreferences] = useState<Prefs>({
         concept: [],
@@ -289,9 +291,14 @@ export default function OnboardingScreen() {
         clearOnboardingProgress();
     };
 
-    const completeOnboarding = () => {
+    const completeOnboarding = async () => {
         setShowResult(false);
-        router.back();
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status === "undetermined") {
+            setShowNotifPrompt(true);
+        } else {
+            router.back();
+        }
     };
 
     const handleClose = () => {
@@ -633,6 +640,35 @@ export default function OnboardingScreen() {
                 </View>
             </Modal>
 
+            {/* 알림 권한 요청 프롬프트 */}
+            <Modal visible={showNotifPrompt} transparent animationType="fade" onRequestClose={() => { setShowNotifPrompt(false); router.back(); }}>
+                <View style={styles.notifOverlay}>
+                    <View style={[styles.notifCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                        <Text style={styles.notifEmoji}>🔔</Text>
+                        <Text style={[styles.notifTitle, { color: textMain }]}>{tr("onboarding.notifTitle")}</Text>
+                        <Text style={[styles.notifSub, { color: textMuted }]}>{tr("onboarding.notifSub")}</Text>
+                        <TouchableOpacity
+                            style={styles.notifBtn}
+                            activeOpacity={0.85}
+                            onPress={async () => {
+                                await Notifications.requestPermissionsAsync();
+                                setShowNotifPrompt(false);
+                                router.back();
+                            }}
+                        >
+                            <Text style={styles.notifBtnText}>{tr("onboarding.notifAccept")}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => { setShowNotifPrompt(false); router.back(); }}
+                            hitSlop={12}
+                            style={{ marginTop: 12 }}
+                        >
+                            <Text style={[styles.notifSkip, { color: textMuted }]}>{tr("onboarding.notifSkip")}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             <Modal visible={showResult} transparent animationType="slide" onRequestClose={completeOnboarding}>
                 <View style={[styles.resultOverlay, { justifyContent: "flex-end", paddingBottom: 0 }]}>
                     <View style={[styles.resultSheet, { backgroundColor: cardBg, borderColor: cardBorder }]}>
@@ -656,6 +692,15 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
+    notifOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", alignItems: "center", paddingHorizontal: 28 },
+    notifCard: { width: "100%", borderRadius: 24, padding: 28, alignItems: "center", borderWidth: 1 },
+    notifEmoji: { fontSize: 40, marginBottom: 12 },
+    notifTitle: { fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: 8 },
+    notifSub: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+    notifBtn: { width: "100%", paddingVertical: 14, borderRadius: 14, backgroundColor: "#4ade80", alignItems: "center" },
+    notifBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    notifSkip: { fontSize: 14, textAlign: "center" },
+
     boot: { flex: 1, alignItems: "center", justifyContent: "center" },
     root: { flex: 1 },
 

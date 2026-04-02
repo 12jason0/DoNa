@@ -267,6 +267,10 @@
         "step3Desc": "최대 3개까지 선택할 수 있어요 📍",
         "analyzeButton": "분석 시작하기 ✨",
         "prevStep": "← 이전 단계",
+        "notifTitle": "매주 데이트 코스 알림 받기",
+        "notifSub": "목요일 저녁, 이번 주말 코스를 미리 추천해드려요",
+        "notifAccept": "알림 받기",
+        "notifSkip": "괜찮아요",
         "vibe": {
             "healing": "따스한 햇살 & 커피",
             "hipster": "힙한 네온사인 & 에너지",
@@ -616,7 +620,11 @@
         "goHomeBack": "홈으로 돌아가기",
         "presignUrlError": "업로드 URL을 받지 못했습니다.",
         "imageUploadPutError": "이미지 업로드에 실패했습니다.",
-        "uploadFailedTitle": "업로드 실패"
+        "uploadFailedTitle": "업로드 실패",
+        "notifTitle": "다음 데이트도 미리 알려드릴까요?",
+        "notifSub": "매주 목요일 저녁, 이번 주말 코스를 추천해드려요",
+        "notifAccept": "알림 받기",
+        "notifSkip": "괜찮아요"
     },
     "map": {
         "loading": "로딩 중...",

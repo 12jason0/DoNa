@@ -1,12 +1,11 @@
-# .easignore 수정본
+# EAS에 업로드하지 않을 항목 (용량·보안)
 node_modules/
 .git/
 .expo/
 dist/
 
-# 네이티브 폴더 자체는 올리되, 내부의 무거운 빌드 결과물만 제외합니다.
-android/.gradle/
-android/app/build/
-android/.cxx/
-ios/build/
-ios/Pods/
+# 네이티브 폴더 전체 제외 → EAS 빌드 시 `expo prebuild`로 서버에서 생성
+# (커밋된 android/ios와 node_modules 불일치로 Gradle "No matching variant" 나는 경우 완화)
+# 로컬만 쓰는 bare android/ios는 계속 저장소에 두되, EAS는 app.json+plugins 기준으로 새로 만듭니다.
+android/
+ios/

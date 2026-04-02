@@ -15,6 +15,7 @@ async function getSharedCourseData(shareId: string) {
                     sub_title: true,
                     imageUrl: true,
                     region: true,
+                    grade: true,
                     isSelectionType: true,
                     coursePlaces: {
                         orderBy: { order_index: "asc" },
@@ -66,7 +67,7 @@ async function getSharedCourseData(shareId: string) {
     const allPlaces = course?.coursePlaces ?? [];
     const selectedPlaceIds = shared.selectedPlaceIds ?? [];
     const byPlaceId = new Map(allPlaces.map((cp: any) => [cp.place_id, cp]));
-    const places =
+    const allResolved =
         selectedPlaceIds.length > 0
             ? selectedPlaceIds
                   .map((pid: number, idx: number) => {
@@ -76,6 +77,11 @@ async function getSharedCourseData(shareId: string) {
                   })
                   .filter(Boolean)
             : allPlaces;
+
+    const isPremium = course?.grade === "PREMIUM";
+    const totalPlaceCount = allResolved.length;
+    const places = allResolved.slice(0, 1);
+
     return {
         shareId: shared.id,
         templateCourseId: shared.templateCourseId,
@@ -86,6 +92,9 @@ async function getSharedCourseData(shareId: string) {
         sub_title: course?.sub_title ?? null,
         imageUrl: course?.imageUrl ?? null,
         region: course?.region ?? null,
+        isLocked: totalPlaceCount > 1,
+        isPremium,
+        totalPlaceCount,
         coursePlaces: places.map((cp: any) => ({
             id: cp.id,
             place_id: cp.place_id,

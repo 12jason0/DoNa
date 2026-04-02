@@ -98,6 +98,9 @@ interface CoursePlace {
 interface ShareData {
     shareId: string;
     templateCourseId: number;
+    isLocked?: boolean;
+    isPremium?: boolean;
+    totalPlaceCount?: number;
     isSelectionType: boolean;
     selectedPlaceIds: number[];
     title: string;
@@ -524,7 +527,8 @@ export default function CourseSharePreviewClient({
                         );
                     })
                 ) : (
-                    sortedPlaces.map((cp, idx) => {
+                    <>
+                    {sortedPlaces.map((cp, idx) => {
                         const prev = idx > 0 ? sortedPlaces[idx - 1] : null;
                         const walkingMin =
                             prev?.place?.latitude != null &&
@@ -582,7 +586,68 @@ export default function CourseSharePreviewClient({
                                 </div>
                             </div>
                         );
-                    })
+                    })}
+                    {data.isLocked && (
+                        <div className="relative mt-2">
+                            <div className="flex gap-4 p-4 rounded-xl bg-white dark:bg-[#1a241b] shadow-sm border border-gray-100 dark:border-gray-800 blur-sm pointer-events-none select-none">
+                                <div className="shrink-0 w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-700" />
+                                <div className="relative w-24 h-24 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0" />
+                                <div className="flex-1 space-y-2 pt-1">
+                                    <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                                    <div className="h-4 w-32 bg-gray-300 dark:bg-gray-600 rounded" />
+                                    <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+                                </div>
+                            </div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/40">
+                                <Icons.Lock className="w-6 h-6 text-white mb-1" />
+                                <p className="text-white text-sm font-bold">
+                                    +{(data.totalPlaceCount ?? 2) - 1}개 장소 더 보기
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    {data.isLocked && (
+                        <div className="mt-4 rounded-2xl bg-white dark:bg-[#1a241b] border border-[#85ad78]/40 shadow-sm overflow-hidden">
+                            <div className="px-5 pt-5 pb-4 text-center border-b border-gray-100 dark:border-gray-800">
+                                <p className="text-base font-bold text-gray-900 dark:text-white">
+                                    나머지 {(data.totalPlaceCount ?? 2) - 1}개 장소 확인하기
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    전체 코스를 보려면 아래 단계를 완료하세요
+                                </p>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div className="p-4 rounded-xl bg-[#85ad78]/10 border border-[#85ad78]/20">
+                                    <p className="text-[10px] font-bold text-[#85ad78] uppercase tracking-wider mb-1.5">Step 1</p>
+                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">
+                                        DoNa 앱을 다운로드하고 로그인하세요
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenInApp}
+                                        className="w-full py-2.5 rounded-lg bg-[#85ad78] text-white font-bold text-sm"
+                                    >
+                                        앱 다운로드 &amp; 로그인
+                                    </button>
+                                </div>
+                                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40">
+                                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5">Step 2</p>
+                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">
+                                        이 코스의 프리미엄을 구독하면<br />
+                                        전체 {data.totalPlaceCount}개 장소를 모두 볼 수 있어요
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenInApp}
+                                        className="w-full py-2.5 rounded-lg bg-amber-500 text-white font-bold text-sm"
+                                    >
+                                        프리미엄 구독하기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    </>
                 )}
             </main>
 

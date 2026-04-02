@@ -31,6 +31,7 @@ export async function GET(
                         sub_title: true,
                         imageUrl: true,
                         region: true,
+                        grade: true,
                         isSelectionType: true,
                         coursePlaces: {
                             orderBy: { order_index: "asc" },
@@ -84,9 +85,9 @@ export async function GET(
         const byPlaceId = new Map<number, any>();
         allPlaces.forEach((cp: any) => byPlaceId.set(cp.place_id, cp));
 
-        let places: any[];
+        let allResolved: any[];
         if (selectedPlaceIds.length > 0) {
-            places = selectedPlaceIds
+            allResolved = selectedPlaceIds
                 .map((pid, idx) => {
                     const cp = byPlaceId.get(pid);
                     if (!cp?.place) return null;
@@ -94,8 +95,12 @@ export async function GET(
                 })
                 .filter((x): x is any => x != null);
         } else {
-            places = allPlaces;
+            allResolved = allPlaces;
         }
+
+        const isPremium = (course as any)?.grade === "PREMIUM";
+        const totalCount = allResolved.length;
+        const places = allResolved.slice(0, 1);
 
         const coursePlacesOut = places.map((cp: any) => ({
             id: cp.id,
@@ -141,6 +146,9 @@ export async function GET(
             sub_title: course?.sub_title ?? null,
             imageUrl: course?.imageUrl ?? null,
             region: course?.region ?? null,
+            isLocked: totalCount > 1,
+            isPremium,
+            totalCount,
             coursePlaces: coursePlacesOut,
         });
     } catch (e) {

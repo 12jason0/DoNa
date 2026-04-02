@@ -53,7 +53,6 @@
       },
       "package": "kr.io.dona.dona",
       "versionCode": 51,
-      "launchMode": "singleTop",
       "userInterfaceStyle": "light",
       "googleServicesFile": "./google-services.json",
       "permissions": [

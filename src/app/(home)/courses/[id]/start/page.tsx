@@ -67,6 +67,7 @@ function GuidePageInner() {
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
     const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+    const [showNotifPrompt, setShowNotifPrompt] = useState(false);
     const [personalMemoryCount, setPersonalMemoryCount] = useState<number | null>(null);
     const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
     const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
@@ -1043,6 +1044,36 @@ function GuidePageInner() {
                     return createPortal(modalContent, portalTarget);
                 })()}
             {/* 🟢 저장 성공 모달 */}
+            {showNotifPrompt && (
+                <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-[#1a241b] rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
+                        <div className="text-5xl mb-4">🔔</div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                            {t("courseStart.notifTitle")}
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+                            {t("courseStart.notifSub")}
+                        </p>
+                        <button
+                            onClick={async () => {
+                                await Notification.requestPermission();
+                                setShowNotifPrompt(false);
+                                router.push("/mypage");
+                            }}
+                            className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 mb-3 transition-all"
+                            style={{ backgroundColor: "#99c08e" }}
+                        >
+                            {t("courseStart.notifAccept")}
+                        </button>
+                        <button
+                            onClick={() => { setShowNotifPrompt(false); router.push("/mypage"); }}
+                            className="text-sm text-gray-400 hover:text-gray-600"
+                        >
+                            {t("courseStart.notifSkip")}
+                        </button>
+                    </div>
+                </div>
+            )}
             {showSaveSuccessModal && (
                 <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white dark:bg-[#1a241b] rounded-3xl p-6 pt-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
@@ -1061,7 +1092,11 @@ function GuidePageInner() {
                         <button
                             onClick={() => {
                                 setShowSaveSuccessModal(false);
-                                router.push("/mypage");
+                                if (typeof Notification !== "undefined" && Notification.permission === "default") {
+                                    setShowNotifPrompt(true);
+                                } else {
+                                    router.push("/mypage");
+                                }
                             }}
                             className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl mb-3 transition-all"
                             style={{ backgroundColor: "#99c08e" }}

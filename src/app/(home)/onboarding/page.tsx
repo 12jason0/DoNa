@@ -48,6 +48,7 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
     const [isIntroFading, setIsIntroFading] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [showResult, setShowResult] = useState(false);
+    const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
     const [preferences, setPreferences] = useState<UserPreferences>({
         concept: [],
@@ -357,9 +358,18 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         }, 1500);
     };
 
-    const completeOnboarding = () => {
+    const doNavigateAway = () => {
         const returnTo = searchParams?.get("returnTo") || "/";
         window.location.href = returnTo;
+    };
+
+    const completeOnboarding = () => {
+        setShowResult(false);
+        if (typeof Notification !== "undefined" && Notification.permission === "default") {
+            setShowNotifPrompt(true);
+        } else {
+            doNavigateAway();
+        }
     };
 
     // 🔥 [수정] 닫기 동작 개선 - 빠른 뒤로 가기
@@ -438,6 +448,40 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
                             size={20}
                             className="text-emerald-100 group-hover:text-white group-hover:translate-x-1 transition-all"
                         />
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 알림 권한 요청 프롬프트
+    if (showNotifPrompt) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-[2px] p-6">
+                <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1a241b] p-8 text-center shadow-2xl">
+                    <div className="text-5xl mb-4">🔔</div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                        {t("onboarding.notifTitle")}
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+                        {t("onboarding.notifSub")}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            await Notification.requestPermission();
+                            doNavigateAway();
+                        }}
+                        className="w-full rounded-xl bg-emerald-600 py-4 font-bold text-white hover:bg-emerald-700 mb-3"
+                    >
+                        {t("onboarding.notifAccept")}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={doNavigateAway}
+                        className="text-sm text-gray-400 hover:text-gray-600"
+                    >
+                        {t("onboarding.notifSkip")}
                     </button>
                 </div>
             </div>

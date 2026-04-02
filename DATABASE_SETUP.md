@@ -1,106 +1,98 @@
 # 데이터베이스 설정 가이드
 
+DoNa는 **PostgreSQL (Neon)** + **Prisma ORM** 사용.
+MySQL, NEXTAUTH, 직접 SQL 방식은 모두 제거됨.
+
+---
+
 ## 1. 환경 변수 설정
 
-프로젝트 루트에 `.env.local` 파일을 생성하고 다음 내용을 추가하세요:
+`.env.local` 파일:
 
 ```env
-# Database Configuration
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password_here
-DB_NAME=stylemap
+# Neon PostgreSQL - 앱 실행용 (연결 풀링)
+DATABASE_URL="postgresql://user:password@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&pgbouncer=true"
 
-# Next.js Configuration
-NEXTAUTH_SECRET=your-secret-key-here
-NEXTAUTH_URL=http://localhost:3000
+# Neon PostgreSQL - 마이그레이션용 (직접 연결, -pooler 없음)
+DIRECT_URL="postgresql://user:password@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
-# Kakao Map API (선택사항)
-NEXT_PUBLIC_KAKAO_MAP_API_KEY=your_kakao_map_api_key_here
+# JWT
+JWT_SECRET=32자_이상의_강력한_시크릿
+
+# 앱 URL
+NEXT_PUBLIC_APP_URL=https://dona.io.kr
 ```
 
-## 2. MySQL 데이터베이스 설정
+> `DATABASE_URL`과 `DIRECT_URL`의 차이는 `DATABASE_URL_SETUP.md` 참고.
 
-### 2.1 MySQL 서버 설치 및 실행
+---
 
--   MySQL 8.0 이상 설치
--   MySQL 서버 실행 확인
+## 2. Neon 대시보드에서 주소 확인
 
-### 2.2 데이터베이스 및 테이블 생성
+1. [console.neon.tech](https://console.neon.tech) 접속
+2. 프로젝트 선택 → Connection Details
+3. **Pooled Connection** (DATABASE_URL용): 주소에 `-pooler` 포함
+4. **Direct Connection** (DIRECT_URL용): 주소에 `-pooler` 없음
+
+---
+
+## 3. Prisma 설정
+
+### 3.1 Prisma Client 생성
 
 ```bash
-# MySQL에 접속
-mysql -u root -p
-
-# 스키마 실행
-source database/schema.sql
-
-# course_notices 테이블 확인
-SELECT * FROM course_notices WHERE course_id = 12;
+npx prisma generate
 ```
 
-또는 MySQL Workbench에서 `database/schema.sql`과 `database/seed.sql` 파일을 실행하세요.
-
-## 3. 데이터베이스 연결 테스트
-
-애플리케이션을 실행한 후 다음 URL로 데이터베이스 연결을 테스트할 수 있습니다:
-
-```
-http://localhost:3000/api/test-db
-```
-
-성공 응답:
-
-```json
-{
-    "success": true,
-    "message": "데이터베이스 연결 성공",
-    "test": [{ "test": 1 }],
-    "userCount": [{ "count": 3 }]
-}
-```
-
-## 4. 코스 API 테스트
-
-코스 데이터를 가져오는 API를 테스트하세요:
-
-```
-http://localhost:3000/api/courses
-```
-
-## 5. 문제 해결
-
-### 5.1 연결 오류 (ECONNREFUSED)
-
--   MySQL 서버가 실행 중인지 확인
--   포트 번호가 올바른지 확인 (기본: 3306)
-
-### 5.2 테이블 없음 오류 (ER_NO_SUCH_TABLE)
-
--   `database/schema.sql` 파일을 실행했는지 확인
--   데이터베이스 이름이 올바른지 확인
-
-### 5.3 인증 오류
-
--   사용자명과 비밀번호가 올바른지 확인
--   데이터베이스 접근 권한이 있는지 확인
-
-## 6. 개발 환경 설정
-
-개발 중에는 다음 명령어로 애플리케이션을 실행하세요:
+### 3.2 마이그레이션 적용
 
 ```bash
-npm run dev
+# 개발 환경 (마이그레이션 파일 생성 + 적용)
+npx prisma migrate dev --name 변경내용_설명
+
+# 프로덕션 (마이그레이션 파일만 적용)
+npx prisma migrate deploy
 ```
 
-이제 데이터베이스 연결이 설정되어 API가 정상적으로 작동할 것입니다.
+### 3.3 스키마 확인
 
-## 4. 데이터 확인
+```bash
+npx prisma studio
+```
 
-설정이 완료되면 다음 URL들로 데이터가 정상적으로 로딩되는지 확인하세요:
+---
 
--   **메인 페이지**: `http://localhost:3000` - 코스 목록 표시
--   **코스 상세 페이지**: `http://localhost:3000/courses/1` - 코스 상세 정보 표시
--   **팝업 페이지**: `http://localhost:3000/popup` - 팝업 스토어 목록 표시
+## 4. 주요 테이블 구조
 
-모든 데이터는 MySQL 데이터베이스에서 실시간으로 가져오며, 하드 코딩된 더미 데이터는 사용하지 않습니다.
+`prisma/schema.prisma` 참고. 주요 모델:
+
+| 모델 | 설명 |
+|------|------|
+| `User` | 사용자 (이메일, 카카오ID, Apple, 구독 정보) |
+| `Course` | 코스 (제목, 컨셉, 장소 목록, 태그) |
+| `Place` | 장소 (이름, 좌표, 카테고리) |
+| `Story` | 추억 기록 (사진, 별점, 태그) |
+| `Review` | 코스 리뷰 |
+| `UserFavorite` | 찜한 코스 |
+| `SavedCourse` | AI 추천 저장 코스 |
+| `Payment` | 결제 내역 (Toss Payments) |
+| `LoginLog` | 로그인 이력 (IP 저장) |
+
+---
+
+## 5. 이미지 URL
+
+모든 이미지는 **CloudFront** 경유:
+- CloudFront 도메인: `d13xx6k6chk2in.cloudfront.net`
+- S3 직접 접근 불가 (Private 버킷)
+- S3 URL → CloudFront URL 마이그레이션은 이미 완료 (`docs/DB_MIGRATION_INSTRUCTIONS.md` 참고)
+
+---
+
+## 6. 문제 해결
+
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| 마이그레이션 실패 | DIRECT_URL에 `-pooler` 또는 `pgbouncer=true` | `DATABASE_URL_SETUP.md` 참고 |
+| `PrismaClientKnownRequestError` | DB 연결 실패 | Neon 대시보드에서 DB 활성 상태 확인 |
+| 이미지 403 Forbidden | S3 직접 URL 사용 | CloudFront URL로 변환 (`resolveImageUrl()` 사용) |

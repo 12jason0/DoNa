@@ -3,6 +3,7 @@
  * 인트로(블러 배경 + 카드) → 사진 업로드 → 태그+설명+저장 → 성공 모달
  */
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import * as Notifications from "expo-notifications";
 import {
     View,
     Text,
@@ -89,6 +90,7 @@ export default function CourseStartMemoryScreen() {
     const [tagInput, setTagInput] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
     const suggestedTags = useMemo(
         () => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => i18n(`courseStart.suggestedTag${n}`)),
@@ -244,6 +246,16 @@ export default function CourseStartMemoryScreen() {
 
     // ─── 성공 모달 ────────────────────────────────────────────────────────────
     if (showSuccessModal) {
+        const goHome = async () => {
+            const { status } = await Notifications.getPermissionsAsync();
+            if (status === "undetermined") {
+                setShowSuccessModal(false);
+                setShowNotifPrompt(true);
+            } else {
+                router.push("/(tabs)" as any);
+            }
+        };
+
         return (
             <Modal visible transparent animationType="fade">
                 <View style={s.modalOverlay}>
@@ -253,9 +265,40 @@ export default function CourseStartMemoryScreen() {
                         <Text style={[s.successSub, { color: t.textMuted }]}>{i18n("courseStart.memorySavedMyPageHint")}</Text>
                         <TouchableOpacity
                             style={[s.successBtn, { backgroundColor: Colors.brandGreen }]}
-                            onPress={() => router.push("/(tabs)" as any)}
+                            onPress={goHome}
                         >
                             <Text style={s.successBtnText}>{i18n("courseStart.goHomeBack")}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        );
+    }
+
+    // ─── 알림 요청 프롬프트 ───────────────────────────────────────────────────
+    if (showNotifPrompt) {
+        return (
+            <Modal visible transparent animationType="fade">
+                <View style={s.modalOverlay}>
+                    <View style={[s.successCard, { backgroundColor: t.card }]}>
+                        <Text style={s.successEmoji}>🔔</Text>
+                        <Text style={[s.successTitle, { color: t.text }]}>{i18n("courseStart.notifTitle")}</Text>
+                        <Text style={[s.successSub, { color: t.textMuted }]}>{i18n("courseStart.notifSub")}</Text>
+                        <TouchableOpacity
+                            style={[s.successBtn, { backgroundColor: Colors.brandGreen }]}
+                            onPress={async () => {
+                                await Notifications.requestPermissionsAsync();
+                                router.push("/(tabs)" as any);
+                            }}
+                        >
+                            <Text style={s.successBtnText}>{i18n("courseStart.notifAccept")}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => router.push("/(tabs)" as any)}
+                            hitSlop={12}
+                            style={{ marginTop: 12 }}
+                        >
+                            <Text style={[s.successSub, { color: t.textMuted }]}>{i18n("courseStart.notifSkip")}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
