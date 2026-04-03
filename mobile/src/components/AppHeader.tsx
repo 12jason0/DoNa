@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
         fontFamily: "Cafe24Dongdong",
         color: "#111827",
         letterSpacing: -0.3,
+        minWidth: 60,
     },
     logoDark: {
         color: "#fff",

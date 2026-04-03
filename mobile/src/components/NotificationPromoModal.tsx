@@ -31,6 +31,7 @@ type Props = {
 
 export default function NotificationPromoModal({ visible, onClose }: Props) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.85, height - insets.top - 40);

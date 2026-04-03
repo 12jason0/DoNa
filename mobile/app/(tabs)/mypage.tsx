@@ -31,7 +31,7 @@ import Purchases from "react-native-purchases";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Colors, FontSize, Spacing, BorderRadius, Shadow } from "../../src/constants/theme";
-import { api, endpoints } from "../../src/lib/api";
+import { api, apiFetch, endpoints } from "../../src/lib/api";
 import { fetchMyPrivateStories } from "../../src/lib/personalStories";
 import { useAuth, AUTH_QUERY_KEY, logout } from "../../src/hooks/useAuth";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
@@ -1167,18 +1167,30 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
 
 // ─── 발자취 탭 ────────────────────────────────────────────────────────────────
 
+type FootprintSubView = "calendar" | "memories" | "suggestions";
+
+interface CourseSuggestionRow {
+    id: number;
+    placeName: string;
+    placeAddress?: string | null;
+    description?: string | null;
+    status: "PENDING" | "PUBLISHED" | "REJECTED";
+    createdAt: string;
+    course?: { id: number; title: string; imageUrl?: string | null; region?: string | null; duration?: string | null } | null;
+}
+
 function FootprintTab({
     displayName,
     initialView = "calendar",
 }: {
     displayName: string;
-    initialView?: "calendar" | "memories";
+    initialView?: FootprintSubView;
 }) {
     const t = useThemeColors();
     const { t: i18n, locale } = useLocale();
     const dateLoc = localeTag(locale);
     const insets = useSafeAreaInsets();
-    const [view, setView] = useState<"calendar" | "memories">(initialView);
+    const [view, setView] = useState<FootprintSubView>(initialView);
     const [currentMonth, setCurrentMonth] = useState(() => new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [showDateCoursePreviewModal, setShowDateCoursePreviewModal] = useState(false);
@@ -1203,7 +1215,7 @@ function FootprintTab({
         staleTime: 5 * 60 * 1000,
     });
 
-    const { data: aiSavedList = [] } = useQuery<any[]>({
+    const { data: aiSavedList = [], isLoading: loadingAiSaved } = useQuery<any[]>({
         queryKey: ["users", "saved-ai"],
         queryFn: async () => {
             const d = await api.get<any>("/api/users/me/courses?source=ai_recommendation").catch(() => ({}));
@@ -1211,6 +1223,14 @@ function FootprintTab({
         },
         staleTime: 5 * 60 * 1000,
     });
+
+    const { data: suggestionsData, isLoading: loadingSuggestions } = useQuery<{ suggestions: CourseSuggestionRow[] }>({
+        queryKey: ["users", "course-suggestions", "footprint"],
+        queryFn: () => apiFetch<{ suggestions: CourseSuggestionRow[] }>("/api/course-suggestions/my"),
+        enabled: view === "suggestions",
+        staleTime: 60 * 1000,
+    });
+    const reportedSuggestions = suggestionsData?.suggestions ?? [];
 
     const aiByDate = useMemo(() => {
         const m: Record<string, AiCalendarSlot> = {};
@@ -1277,55 +1297,62 @@ function FootprintTab({
 
     const dayNames = useMemo(() => [0, 1, 2, 3, 4, 5, 6].map((d) => i18n(`mypage.footprintTab.day${d}`)), [i18n]);
 
-    if (loadingCompleted || loadingStories) {
-        return <ActivityIndicator color={Colors.brandGreen} style={{ marginTop: 60 }} />;
-    }
+    const subViewHint =
+        view === "calendar"
+            ? i18n("mypage.footprintTab.footprintCalendarHint")
+            : view === "memories"
+              ? i18n("mypage.footprintTab.footprintMemoriesHint")
+              : i18n("mypage.footprintTab.footprintSuggestionsHint");
+
+    const viewToggleLabel = (v: FootprintSubView) =>
+        v === "calendar"
+            ? i18n("mypage.footprintTab.calendar")
+            : v === "memories"
+              ? i18n("mypage.footprintTab.memories")
+              : i18n("mypage.footprintTab.suggestions");
 
     return (
         <View style={{ flex: 1 }}>
             <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
             <View style={[s.footprintHeaderCard, { backgroundColor: t.card, borderColor: t.border }]}>
-                <View style={s.footprintHeaderRow}>
-                    <Text style={[s.footprintTitle, { color: t.text }]}>{i18n("mypage.footprintTab.myFootprint")}</Text>
-                    <View
-                        style={[s.viewToggle, { backgroundColor: t.surface, borderColor: t.border, marginBottom: 0 }]}
-                    >
-                        {(["calendar", "memories"] as const).map((v) => (
-                            <TouchableOpacity
-                                key={v}
+                <Text style={[s.footprintTitle, { color: t.text, marginBottom: 12 }]}>{i18n("mypage.footprintTab.myFootprint")}</Text>
+                <View style={[s.viewToggle, { backgroundColor: t.surface, borderColor: t.border, marginBottom: 0, alignSelf: "stretch" }]}>
+                    {(["calendar", "memories", "suggestions"] as const).map((v) => (
+                        <TouchableOpacity
+                            key={v}
+                            style={[
+                                s.viewToggleBtn,
+                                { flex: 1, minWidth: 0, paddingHorizontal: 4 },
+                                view === v && {
+                                    backgroundColor: "#0f172a",
+                                },
+                            ]}
+                            onPress={() => setView(v)}
+                        >
+                            <Text
                                 style={[
-                                    s.viewToggleBtn,
-                                    view === v && {
-                                        backgroundColor: "#0f172a",
+                                    s.viewToggleText,
+                                    { fontSize: 13 },
+                                    {
+                                        color: view === v ? "#fff" : t.textMuted,
+                                        fontWeight: view === v ? "700" : "500",
                                     },
                                 ]}
-                                onPress={() => setView(v)}
+                                numberOfLines={1}
                             >
-                                <Text
-                                    style={[
-                                        s.viewToggleText,
-                                        {
-                                            color: view === v ? "#fff" : t.textMuted,
-                                            fontWeight: view === v ? "700" : "500",
-                                        },
-                                    ]}
-                                >
-                                    {v === "calendar" ? i18n("mypage.footprintTab.calendar") : i18n("mypage.footprintTab.memories")}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                                {viewToggleLabel(v)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
-                <View style={[s.footprintDivider, { backgroundColor: t.border }]} />
-                <Text style={[s.footprintSubText, { color: t.textMuted }]}>
-                    {view === "calendar"
-                        ? i18n("mypage.footprintTab.footprintCalendarHint")
-                        : i18n("mypage.footprintTab.footprintMemoriesHint")}
-                </Text>
+                <View style={[s.footprintDivider, { backgroundColor: t.border, marginTop: 14 }]} />
+                <Text style={[s.footprintSubText, { color: t.textMuted }]}>{subViewHint}</Text>
             </View>
 
             {/* ── 캘린더 뷰 ── */}
-            {view === "calendar" && (
+            {view === "calendar" && (loadingCompleted || loadingAiSaved ? (
+                <ActivityIndicator color={Colors.brandGreen} style={{ marginTop: 40 }} />
+            ) : (
                 <View style={[s.calCard, { backgroundColor: t.card, borderColor: t.border }]}>
                     {/* 월 네비 */}
                     <View style={s.calNav}>
@@ -1506,11 +1533,13 @@ function FootprintTab({
                         ))}
                     </View>
                 </View>
-            )}
+            ))}
 
             {/* ── 추억 뷰 ── */}
             {view === "memories" &&
-                (stories.length === 0 ? (
+                (loadingStories ? (
+                    <ActivityIndicator color={Colors.brandGreen} style={{ marginTop: 40 }} />
+                ) : stories.length === 0 ? (
                     <EmptyState
                         emoji="📷"
                         title={i18n("mypage.footprintTab.memoryEmptyTitle")}
@@ -1583,6 +1612,100 @@ function FootprintTab({
                                             </View>
                                         ) : null}
                                     </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                ))}
+
+            {/* ── 제보 뷰 (웹 FootprintTab suggestions) ── */}
+            {view === "suggestions" &&
+                (loadingSuggestions ? (
+                    <ActivityIndicator color={Colors.brandGreen} style={{ marginTop: 40 }} />
+                ) : reportedSuggestions.length === 0 ? (
+                    <View style={{ alignItems: "center", paddingVertical: 36, paddingHorizontal: 16 }}>
+                        <Text style={{ fontSize: 44, marginBottom: 8 }}>📍</Text>
+                        <Text style={[s.footprintTitle, { color: t.text, fontSize: 16, textAlign: "center" }]}>
+                            {i18n("home.myReportedCourses.emptyTitle")}
+                        </Text>
+                        <Text style={{ fontSize: 13, color: t.textMuted, textAlign: "center", marginTop: 8, lineHeight: 20 }}>
+                            {i18n("home.myReportedCourses.emptySubtitle")}
+                        </Text>
+                        <TouchableOpacity
+                            style={{
+                                marginTop: 20,
+                                paddingHorizontal: 22,
+                                paddingVertical: 12,
+                                borderRadius: 999,
+                                backgroundColor: "#10b981",
+                            }}
+                            onPress={() => router.push("/suggest" as any)}
+                            activeOpacity={0.88}
+                        >
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>
+                                {i18n("home.myReportedCourses.suggestBtn")}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+                        {reportedSuggestions.map((item) => {
+                            const statusStyle =
+                                item.status === "PUBLISHED"
+                                    ? { bg: "#d1fae5", fg: "#065f46" }
+                                    : item.status === "PENDING"
+                                      ? { bg: "#fef3c7", fg: "#b45309" }
+                                      : { bg: t.surface, fg: t.textMuted };
+                            const created = new Date(item.createdAt);
+                            const dateStr = created.toLocaleDateString(dateLoc, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                            });
+                            const subline =
+                                item.placeAddress?.trim() ||
+                                item.description?.trim() ||
+                                i18n("suggest.pageSubtitle");
+                            return (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    activeOpacity={item.course?.id ? 0.88 : 1}
+                                    disabled={!item.course?.id}
+                                    onPress={() => item.course?.id && router.push(`/courses/${item.course.id}` as any)}
+                                    style={[
+                                        {
+                                            width: (SW - 40 - 10) / 2,
+                                            minHeight: 148,
+                                            borderRadius: 16,
+                                            borderWidth: StyleSheet.hairlineWidth,
+                                            borderColor: t.border,
+                                            backgroundColor: t.card,
+                                            padding: 12,
+                                        },
+                                    ]}
+                                >
+                                    <View
+                                        style={{
+                                            position: "absolute",
+                                            top: 8,
+                                            right: 8,
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 3,
+                                            borderRadius: 999,
+                                            backgroundColor: statusStyle.bg,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 10, fontWeight: "700", color: statusStyle.fg }}>
+                                            {i18n(`home.myReportedCourses.status.${item.status}`)}
+                                        </Text>
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: "700", color: t.text, paddingRight: 56 }} numberOfLines={2}>
+                                        {item.placeName}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: t.textMuted, marginTop: 8, lineHeight: 15 }} numberOfLines={2}>
+                                        {subline}
+                                    </Text>
+                                    <Text style={{ fontSize: 10, color: t.textMuted, marginTop: 10 }}>{dateStr}</Text>
                                 </TouchableOpacity>
                             );
                         })}
@@ -2487,9 +2610,15 @@ export default function MyPageScreen() {
                 )}
                 {activeTab === "footprint" && (
                     <FootprintTab
-                        key={params.footprintView === "memories" ? "fp-mem" : "fp-cal"}
+                        key={`fp-${params.footprintView ?? "cal"}`}
                         displayName={profile?.nickname ?? profile?.name ?? ""}
-                        initialView={params.footprintView === "memories" ? "memories" : "calendar"}
+                        initialView={
+                            params.footprintView === "memories"
+                                ? "memories"
+                                : params.footprintView === "suggestions"
+                                  ? "suggestions"
+                                  : "calendar"
+                        }
                     />
                 )}
                 {activeTab === "records" && <RecordsTab />}

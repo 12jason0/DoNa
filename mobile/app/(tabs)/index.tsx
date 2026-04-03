@@ -529,8 +529,8 @@ export default function HomeScreen() {
                 </View>
 
                 {/* ── 나만의 데이트 앨범 (로그인 시만) ─────────────────── */}
-                {/* ── 내가 제보한 코스 (등록 완료된 것만, 로그인 시) ─────────── */}
-                {user && publishedSuggestions.length > 0 && (
+                {/* ── 내가 제보한 코스 (로그인 시 — 빈 상태에서도 제보 진입 노출) ── */}
+                {user && (
                     <View style={styles.section}>
                         <View style={styles.reportedHeader}>
                             <Text style={[styles.reportedTitle, { color: t.text }]}>
@@ -543,40 +543,61 @@ export default function HomeScreen() {
                         <Text style={[styles.reportedSubtitle, { color: t.textMuted }]}>
                             {translate("home.myReportedCourses.subtitle")}
                         </Text>
-                        {publishedSuggestions.map((s) => (
-                            <TouchableOpacity
-                                key={s.id}
-                                style={[styles.reportedRow, { backgroundColor: t.card, borderColor: t.border }]}
-                                onPress={() => s.course && router.push(`/courses/${s.course.id}` as any)}
-                                activeOpacity={0.88}
-                                disabled={!s.course}
-                            >
-                                <View style={[styles.reportedThumb, { backgroundColor: t.surface }]}>
-                                    {s.course?.imageUrl ? (
-                                        <Image
-                                            source={{ uri: s.course.imageUrl }}
-                                            style={StyleSheet.absoluteFill}
-                                            resizeMode="cover"
-                                        />
-                                    ) : (
-                                        <Text style={styles.reportedThumbEmoji}>📍</Text>
-                                    )}
-                                </View>
-                                <View style={styles.reportedInfo}>
-                                    <Text style={[styles.reportedCourseName, { color: t.text }]} numberOfLines={1}>
-                                        {s.course?.title ?? s.placeName}
+                        {publishedSuggestions.length === 0 ? (
+                            <View style={[styles.reportedEmptyBox, { backgroundColor: t.surface, borderColor: t.border }]}>
+                                <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>📍</Text>
+                                <Text style={[styles.reportedEmptyTitle, { color: t.text }]}>
+                                    {translate("home.myReportedCourses.emptyTitle")}
+                                </Text>
+                                <Text style={[styles.reportedEmptySub, { color: t.textMuted }]}>
+                                    {translate("home.myReportedCourses.emptySubtitle")}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.reportedEmptyCta}
+                                    onPress={() => router.push("/suggest" as any)}
+                                    activeOpacity={0.88}
+                                >
+                                    <Text style={styles.reportedEmptyCtaText}>
+                                        {translate("home.myReportedCourses.suggestBtn")}
                                     </Text>
-                                    <Text style={[styles.reportedCourseMeta, { color: t.textMuted }]} numberOfLines={1}>
-                                        {[s.course?.region, s.course?.duration].filter(Boolean).join(" · ")}
-                                    </Text>
-                                </View>
-                                <View style={styles.reportedBadge}>
-                                    <Text style={styles.reportedBadgeText}>
-                                        {translate("home.myReportedCourses.status.PUBLISHED")}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            publishedSuggestions.map((s) => (
+                                <TouchableOpacity
+                                    key={s.id}
+                                    style={[styles.reportedRow, { backgroundColor: t.card, borderColor: t.border }]}
+                                    onPress={() => s.course && router.push(`/courses/${s.course.id}` as any)}
+                                    activeOpacity={0.88}
+                                    disabled={!s.course}
+                                >
+                                    <View style={[styles.reportedThumb, { backgroundColor: t.surface }]}>
+                                        {s.course?.imageUrl ? (
+                                            <Image
+                                                source={{ uri: s.course.imageUrl }}
+                                                style={StyleSheet.absoluteFill}
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <Text style={styles.reportedThumbEmoji}>📍</Text>
+                                        )}
+                                    </View>
+                                    <View style={styles.reportedInfo}>
+                                        <Text style={[styles.reportedCourseName, { color: t.text }]} numberOfLines={1}>
+                                            {s.course?.title ?? s.placeName}
+                                        </Text>
+                                        <Text style={[styles.reportedCourseMeta, { color: t.textMuted }]} numberOfLines={1}>
+                                            {[s.course?.region, s.course?.duration].filter(Boolean).join(" · ")}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.reportedBadge}>
+                                        <Text style={styles.reportedBadgeText}>
+                                            {translate("home.myReportedCourses.status.PUBLISHED")}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))
+                        )}
                     </View>
                 )}
 
@@ -1131,6 +1152,23 @@ const styles = StyleSheet.create({
     reportedTitle: { fontSize: 14, fontWeight: "700" },
     reportedCtaLink: { fontSize: 12, fontWeight: "600", color: "#7FCC9F" },
     reportedSubtitle: { fontSize: 12, marginBottom: 10 },
+    reportedEmptyBox: {
+        alignItems: "center",
+        paddingVertical: 28,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        borderWidth: StyleSheet.hairlineWidth,
+    },
+    reportedEmptyTitle: { fontSize: 15, fontWeight: "600", textAlign: "center" },
+    reportedEmptySub: { fontSize: 12, textAlign: "center", marginTop: 8, lineHeight: 18 },
+    reportedEmptyCta: {
+        marginTop: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 999,
+        backgroundColor: "#10b981",
+    },
+    reportedEmptyCtaText: { fontSize: 13, fontWeight: "600", color: "#fff" },
     reportedRow: {
         flexDirection: "row",
         alignItems: "center",

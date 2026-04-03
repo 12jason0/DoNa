@@ -32,6 +32,7 @@ import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
+import { floatingTabBarBottomReserve } from "../constants/floatingTabBarInset";
 
 const HEADER_BAR = 48;
 
@@ -44,6 +45,7 @@ type Props = {
 
 export default function SearchModal({ visible, onClose }: Props) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const inputRef = useRef<TextInput>(null);
     const [query, setQuery] = useState("");
@@ -53,7 +55,8 @@ export default function SearchModal({ visible, onClose }: Props) {
     const [loading, setLoading] = useState(true);
 
     const topOffset = insets.top + HEADER_BAR;
-    const sheetHeight = Dimensions.get("window").height - topOffset;
+    const tabReserve = floatingTabBarBottomReserve(insets.bottom);
+    const sheetHeight = Dimensions.get("window").height - topOffset - tabReserve;
 
     const { rendered, translateY, backdropOpacity } = useSlideModalAnimation(visible, sheetHeight);
 
@@ -187,7 +190,7 @@ export default function SearchModal({ visible, onClose }: Props) {
                             styles.sheet,
                             {
                                 top: topOffset,
-                                bottom: 0,
+                                bottom: tabReserve,
                                 backgroundColor: t.card,
                                 transform: [{ translateY: Animated.add(translateY, dragY) }],
                             },

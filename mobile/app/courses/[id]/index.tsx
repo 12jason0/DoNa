@@ -39,6 +39,7 @@ import LoginModal from "../../../src/components/LoginModal";
 import TicketPlansSheet from "../../../src/components/TicketPlansSheet";
 import AppHeaderWithModals from "../../../src/components/AppHeaderWithModals";
 import { MODAL_ANDROID_PROPS } from "../../../src/constants/modalAndroidProps";
+import { floatingTabBarBottomReserve } from "../../../src/constants/floatingTabBarInset";
 import type { Course, UserProfile, ActiveCourse } from "../../../src/types/api";
 import { parseTipsFromDbForLocale, type CoursePlaceTipsRow } from "../../../../src/types/tip";
 import {
@@ -369,6 +370,8 @@ function PlaceDetailModal({
     isLoggedIn: boolean;
 }) {
     const t = useThemeColors();
+    const insets = useSafeAreaInsets();
+    const tabBarReserve = floatingTabBarBottomReserve(insets.bottom);
     const { t: i18n, locale } = useLocale();
     const [reservationWebUrl, setReservationWebUrl] = useState<string | null>(null);
     const imageUri = getPlaceImageUrl(place);
@@ -447,7 +450,8 @@ function PlaceDetailModal({
                         {
                             backgroundColor: t.card,
                             borderColor: t.isDark ? "#374151" : "#f3f4f6",
-                            height: screenH * 0.85,
+                            marginBottom: tabBarReserve,
+                            height: Math.min(screenH * 0.85, screenH - tabBarReserve - 24),
                             transform: [{ translateY }],
                         },
                     ]}
@@ -989,7 +993,7 @@ function CourseMapModal({
                                 style={{ flex: 1 }}
                                 camera={mapCamera}
                                 isNightModeEnabled={t.isDark}
-                                mapType={0}
+                                mapType="Basic"
                                 isShowZoomControls={false}
                                 onTapMap={onResetRoute}
                             >

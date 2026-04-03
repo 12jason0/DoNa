@@ -37,6 +37,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
     const t = useThemeColors();
     const insets = useSafeAreaInsets();
     const { isAuthenticated } = useAuth();
+    const { t: i18n } = useLocale();
     const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
     /** 지도 탭: 웹과 동일하게 하단 네비(플로팅 탭바) 숨김 */
