@@ -39,7 +39,9 @@ let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
 try {
     const kakaoUserModule = require('@react-native-kakao/user');
     kakaoNativeLogin = kakaoUserModule.login ?? null;
-} catch {
+    console.log("[Kakao] @react-native-kakao/user 로드 성공, login 함수:", typeof kakaoNativeLogin);
+} catch (e) {
+    console.error("[Kakao] @react-native-kakao/user 로드 실패:", e);
     kakaoNativeLogin = null;
 }
 
@@ -133,7 +135,9 @@ export default function LoginScreen() {
             };
 
             if (Platform.OS === 'android' && kakaoNativeLogin) {
+                console.log("[Kakao] 네이티브 login() 호출 시작");
                 const kakaoToken = await kakaoNativeLogin();
+                console.log("[Kakao] login() 완료, accessToken:", kakaoToken?.accessToken ? "있음" : "없음", "전체 키:", Object.keys(kakaoToken ?? {}));
                 const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
                     accessToken: kakaoToken.accessToken,
                 });
@@ -148,6 +152,12 @@ export default function LoginScreen() {
                 await runKakaoWebOAuth();
             }
         } catch (e: any) {
+            console.error("[Kakao] login() catch 에러:", JSON.stringify({
+                message: e?.message,
+                code: e?.code,
+                name: e?.name,
+                isCancel: e?.message?.includes('cancel') || e?.code === 'ECANCEL',
+            }));
             // 사용자가 직접 취소한 경우 에러 표시 안 함
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
                 setError(i18n('authPage.login.errorGeneric'));

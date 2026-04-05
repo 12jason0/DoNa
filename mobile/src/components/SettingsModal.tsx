@@ -24,21 +24,21 @@ import { useLocale } from "../lib/useLocale";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
 import type { LocalePreference } from "../lib/appSettingsStorage";
-
-type Props = {
-    visible: boolean;
-    onClose: () => void;
-};
+import { useModal } from "../lib/modalContext";
+import { textFontForLocale } from "../lib/textDefaultFont";
 
 const LOCALES: LocalePreference[] = ["ko", "en", "ja", "zh"];
 
-export default function SettingsModal({ visible, onClose }: Props) {
+export default function SettingsModal() {
+    const { isOpen, closeModal } = useModal();
+    const visible = isOpen("settings");
+    const onClose = () => closeModal("settings");
     const tc = useThemeColors();
     const { t: lt } = useLocale();
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.85, height - insets.top - 24);
-    const { rendered, translateY, backdropOpacity } = useSlideModalAnimation(visible);
+    const { rendered, translateY, backdropOpacity, sheetReady, isClosing } = useSlideModalAnimation(visible);
     const { theme, setTheme, locale, setLocale } = useAppSettings();
 
     const bottomPad = modalBottomPadding(insets.bottom);
@@ -53,11 +53,7 @@ export default function SettingsModal({ visible, onClose }: Props) {
         onClose();
     };
 
-    const localeLabelStyle = (loc: LocalePreference) => {
-        if (loc === "ja") return { fontFamily: "HachiMaruPop", fontWeight: "400" as const };
-        if (loc === "zh") return { fontFamily: "ZCOOLKuaiLe", fontWeight: "400" as const };
-        return null;
-    };
+    const localeLabelStyle = (loc: LocalePreference) => textFontForLocale(loc);
 
     if (!rendered) return null;
 
@@ -65,9 +61,11 @@ export default function SettingsModal({ visible, onClose }: Props) {
 
     return (
         <Modal visible={rendered} transparent animationType="none" onRequestClose={onClose} {...MODAL_ANDROID_PROPS}>
-            <View style={styles.root}>
+            <View style={styles.root} pointerEvents={isClosing ? "none" : "auto"}>
                 <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-                    <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                    {sheetReady && (
+                        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                    )}
                 </Animated.View>
                 <Animated.View
                     style={[
@@ -93,7 +91,7 @@ export default function SettingsModal({ visible, onClose }: Props) {
                         </View>
 
                         <ScrollView
-                            keyboardShouldPersistTaps="handled"
+                            keyboardShouldPersistTaps="always"
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={styles.scrollInner}
                         >

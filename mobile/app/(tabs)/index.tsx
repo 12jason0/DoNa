@@ -9,7 +9,7 @@
  * 4. AI 맞춤 추천 CTA (로그인 시)
  * 5. 더 보기 Bottom Sheet
  */
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
     View,
     Text,
@@ -18,16 +18,10 @@ import {
     TouchableOpacity,
     Image,
     RefreshControl,
-    Animated,
-    Modal,
-    FlatList,
     Pressable,
-    PanResponder,
-    Dimensions,
-    StatusBar,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -40,10 +34,18 @@ import { resolveImageUrl } from "../../src/lib/imageUrl";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
+import { pickCourseTitle } from "../../src/lib/courseLocalized";
+import {
+    translateCourseRegion,
+    translateCourseTagLabel,
+    translateCourseFreeformKoText,
+    type CourseUiLocale,
+} from "../../../src/lib/courseTranslate";
+import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course, ActiveCourse } from "../../src/types/api";
-import MemoryDetailModal, { type MemoryDetailStory } from "../../src/components/MemoryDetailModal";
-import BenefitConsentBottomSheet from "../../src/components/BenefitConsentBottomSheet";
 import { getBenefitConsentHideUntil, setBenefitConsentHideUntil } from "../../src/lib/mmkv";
+import { useModal } from "../../src/lib/modalContext";
+import type { MemoryDetailStory } from "../../src/components/MemoryDetailModal";
 import type { UserProfile } from "../../src/types/api";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -88,22 +90,22 @@ type HomeI18nText = {
 
 function buildTx(t: (key: string) => string): HomeI18nText {
     return {
-        defaultCourseTitle:     t("courses.noTitle"),
-        todayDateKicker:        t("home.activeCourse.todayDate"),
-        inProgress:             t("home.activeCourse.inProgress"),
-        continue:               t("home.activeCourse.continue"),
-        viewCourse:             t("personalized.viewCourse"),
+        defaultCourseTitle: t("courses.noTitle"),
+        todayDateKicker: t("home.activeCourse.todayDate"),
+        inProgress: t("home.activeCourse.inProgress"),
+        continue: t("home.activeCourse.continue"),
+        viewCourse: t("personalized.viewCourse"),
         moreRecommendedCourses: t("personalized.viewMore"),
-        aiCtaTitle:             t("home.personalizedHomeCta"),
-        aiCtaSub:               t("home.personalizedHomeCtaSub"),
-        sectionTitle:           t("personalized.todayPick"),
-        sectionLoginHint:       t("personalized.loginHint"),
-        memoryAlbumTitle:       t("memory.empty.title"),
-        memoryAlbumEmptySub:    t("memory.empty.subtitle"),
-        memoryAlbumCta:         t("memory.empty.button"),
-        memoryAlbumViewMore:    t("memory.viewAll"),
+        aiCtaTitle: t("home.personalizedHomeCta"),
+        aiCtaSub: t("home.personalizedHomeCtaSub"),
+        sectionTitle: t("personalized.todayPick"),
+        sectionLoginHint: t("personalized.loginHint"),
+        memoryAlbumTitle: t("memory.empty.title"),
+        memoryAlbumEmptySub: t("memory.empty.subtitle"),
+        memoryAlbumCta: t("memory.empty.button"),
+        memoryAlbumViewMore: t("memory.viewAll"),
         loadingRecommendations: t("personalized.loadingToday"),
-        viewMore:               t("personalized.viewMore"),
+        viewMore: t("personalized.viewMore"),
     };
 }
 
@@ -116,10 +118,27 @@ function getTodayDayType(): "today" | "weekend" {
 
 // ─── 활성 코스 배너 ───────────────────────────────────────────────────────────
 
-function ActiveCourseBanner({ course, tx }: { course: ActiveCourse; tx: HomeI18nText }) {
+function ActiveCourseBanner({
+    course,
+    tx,
+    locale,
+}: {
+    course: ActiveCourse;
+    tx: HomeI18nText;
+    locale: LocalePreference;
+}) {
     const t = useThemeColors();
     const imageUri = resolveImageUrl(course.imageUrl);
-    const title = course.title ?? course.courseTitle ?? tx.defaultCourseTitle;
+    const picked = pickCourseTitle(
+        {
+            title: course.title ?? course.courseTitle,
+            title_en: course.title_en,
+            title_ja: course.title_ja,
+            title_zh: course.title_zh,
+        },
+        locale,
+    );
+    const title = picked || tx.defaultCourseTitle;
 
     const goCourse = () => router.push(`/courses/${course.courseId}` as any);
 
@@ -169,9 +188,20 @@ function ActiveCourseBanner({ course, tx }: { course: ActiveCourse; tx: HomeI18n
 
 // ─── 오늘의 선택 Featured 카드 ────────────────────────────────────────────────
 
-function FeaturedCourseCard({ course, tx }: { course: Course; tx: HomeI18nText }) {
+function FeaturedCourseCard({
+    course,
+    tx,
+    locale,
+}: {
+    course: Course;
+    tx: HomeI18nText;
+    locale: LocalePreference;
+}) {
     const t = useThemeColors();
+    const { t: i18n } = useLocale();
     const imageUri = resolveImageUrl(course.imageUrl ?? course.coursePlaces?.[0]?.place?.imageUrl);
+    const displayTitle = pickCourseTitle(course, locale) || course.title;
+    const regionLabel = course.region ? translateCourseRegion(course.region, i18n) : "";
     return (
         <View style={[styles.featuredCard, { backgroundColor: t.card }]}>
             <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/courses/${course.id}` as any)}>
@@ -190,17 +220,19 @@ function FeaturedCourseCard({ course, tx }: { course: Course; tx: HomeI18nText }
                     <View style={styles.featuredChips}>
                         {course.tags.slice(0, 4).map((tag, i) => (
                             <View key={i} style={[styles.featuredChip, { backgroundColor: t.surface }]}>
-                                <Text style={[styles.featuredChipText, { color: t.text }]}>#{tag}</Text>
+                                <Text style={[styles.featuredChipText, { color: t.text }]}>
+                                    #{translateCourseTagLabel(String(tag), i18n)}
+                                </Text>
                             </View>
                         ))}
                     </View>
                 )}
                 <Text style={[styles.featuredTitle, { color: t.text }]} numberOfLines={2}>
-                    {course.title}
+                    {displayTitle}
                 </Text>
-                {course.region && (
-                    <Text style={[styles.featuredRegion, { color: t.textMuted }]}>📍 {course.region}</Text>
-                )}
+                {regionLabel ? (
+                    <Text style={[styles.featuredRegion, { color: t.textMuted }]}>📍 {regionLabel}</Text>
+                ) : null}
                 <TouchableOpacity
                     style={styles.featuredBtn}
                     activeOpacity={0.88}
@@ -213,141 +245,6 @@ function FeaturedCourseCard({ course, tx }: { course: Course; tx: HomeI18nText }
                 </TouchableOpacity>
             </View>
         </View>
-    );
-}
-
-// ─── 더 보기 모달 카드 ────────────────────────────────────────────────────────
-
-function MoreCourseCard({ course, onPress }: { course: Course; onPress: () => void }) {
-    const imageUri = resolveImageUrl(course.imageUrl ?? course.coursePlaces?.[0]?.place?.imageUrl);
-    const tags = (Array.isArray(course.tags) ? course.tags : []).slice(0, 3);
-    return (
-        <TouchableOpacity style={styles.moreCard} activeOpacity={0.88} onPress={onPress}>
-            <View style={styles.moreCardImgWrap}>
-                {imageUri ? (
-                    <Image source={{ uri: imageUri }} style={styles.moreCardImg} resizeMode="cover" />
-                ) : (
-                    <View
-                        style={[
-                            styles.moreCardImg,
-                            { backgroundColor: "#e5e7eb", alignItems: "center", justifyContent: "center" },
-                        ]}
-                    >
-                        <Text style={{ fontSize: 24 }}>🗺️</Text>
-                    </View>
-                )}
-                <View style={styles.moreCardOverlay} />
-                <View style={styles.moreCardTextWrap}>
-                    <Text style={styles.moreCardTitle} numberOfLines={2}>
-                        {course.title}
-                    </Text>
-                    {course.region && <Text style={styles.moreCardRegion}>{course.region}</Text>}
-                    {tags.length > 0 && (
-                        <View style={styles.moreCardTagRow}>
-                            {tags.map((tag, i) => (
-                                <View key={i} style={styles.moreCardTagPill}>
-                                    <Text style={styles.moreCardTagText}>#{tag}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                </View>
-            </View>
-        </TouchableOpacity>
-    );
-}
-
-// ─── 더 보기 Bottom Sheet ─────────────────────────────────────────────────────
-
-function MoreCoursesSheet({
-    visible,
-    todayCourses,
-    weekendCourses,
-    onClose,
-}: {
-    visible: boolean;
-    todayCourses: Course[];
-    weekendCourses: Course[];
-    onClose: () => void;
-}) {
-    const t = useThemeColors();
-    const [activeTab, setActiveTab] = useState<"today" | "weekend">(getTodayDayType());
-    const translateY = useRef(new Animated.Value(0)).current;
-
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
-            onPanResponderMove: (_, gs) => {
-                if (gs.dy > 0) translateY.setValue(gs.dy);
-            },
-            onPanResponderRelease: (_, gs) => {
-                if (gs.dy > 80) {
-                    onClose();
-                    translateY.setValue(0);
-                } else {
-                    Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-                }
-            },
-        }),
-    ).current;
-
-    const displayCourses = activeTab === "today" ? todayCourses : weekendCourses;
-
-    return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <Pressable style={styles.sheetOverlay} onPress={onClose}>
-                <Animated.View style={[styles.sheet, { backgroundColor: t.card, transform: [{ translateY }] }]}>
-                    <Pressable onPress={(e) => e.stopPropagation()} style={{ flex: 1 }}>
-                        {/* 드래그 핸들 */}
-                        <View {...panResponder.panHandlers} style={styles.sheetHandle}>
-                            <View
-                                style={[styles.sheetHandleBar, { backgroundColor: t.isDark ? "#374151" : "#e5e7eb" }]}
-                            />
-                        </View>
-
-                        {/* 오늘 / 주말 필터 탭 */}
-                        <View style={styles.sheetTabRow}>
-                            <TouchableOpacity
-                                style={[styles.sheetTab, activeTab === "today" && styles.sheetTabActive]}
-                                onPress={() => setActiveTab("today")}
-                            >
-                                <Text style={[styles.sheetTabText, activeTab === "today" && styles.sheetTabTextActive]}>
-                                    오늘
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.sheetTab, activeTab === "weekend" && styles.sheetTabActive]}
-                                onPress={() => setActiveTab("weekend")}
-                            >
-                                <Text
-                                    style={[styles.sheetTabText, activeTab === "weekend" && styles.sheetTabTextActive]}
-                                >
-                                    주말
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* 코스 목록 */}
-                        <FlatList
-                            data={displayCourses}
-                            keyExtractor={(item) => String(item.id)}
-                            renderItem={({ item }) => (
-                                <MoreCourseCard
-                                    course={item}
-                                    onPress={() => {
-                                        onClose();
-                                        router.push(`/courses/${item.id}` as any);
-                                    }}
-                                />
-                            )}
-                            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 4 }}
-                            showsVerticalScrollIndicator={false}
-                        />
-                    </Pressable>
-                </Animated.View>
-            </Pressable>
-        </Modal>
     );
 }
 
@@ -373,12 +270,10 @@ export default function HomeScreen() {
     const t = useThemeColors();
     const { user } = useAuth();
     const { t: translate, locale } = useLocale();
-    const [showMore, setShowMore] = useState(false);
-    const [benefitConsentOpen, setBenefitConsentOpen] = useState(false);
-    const [selectedMemory, setSelectedMemory] = useState<PersonalStory | null>(null);
-    const [showMemoryModal, setShowMemoryModal] = useState(false);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const { openModal } = useModal();
     const dayType = getTodayDayType();
+    const { openMoreCourses } = useLocalSearchParams<{ openMoreCourses?: string }>();
+    const autoOpenedRef = useRef(false);
     const tx = buildTx(translate);
 
     // 추천 코스 (오늘의 선택)
@@ -393,13 +288,12 @@ export default function HomeScreen() {
         staleTime: 1000 * 60 * 5,
     });
 
-    // 더보기 시트용 — 반대 dayType 코스 (시트 열릴 때만 fetch)
+    // 더보기 시트용 — 반대 dayType 코스
     const otherDayType = dayType === "today" ? "weekend" : "today";
     const { data: otherRecData } = useQuery<RecommendationResponse>({
         queryKey: ["recommendations", "home", otherDayType],
         queryFn: () => api.get<RecommendationResponse>(`/api/recommendations?limit=6&dayType=${otherDayType}`),
         staleTime: 1000 * 60 * 5,
-        enabled: showMore,
     });
 
     // 활성 코스 (진행 중인 데이트)
@@ -429,7 +323,16 @@ export default function HomeScreen() {
         placeName: string;
         placeAddress?: string | null;
         status: "PENDING" | "PUBLISHED" | "REJECTED";
-        course?: { id: number; title: string; imageUrl?: string | null; region?: string | null; duration?: string | null } | null;
+        course?: {
+            id: number;
+            title: string;
+            title_en?: string | null;
+            title_ja?: string | null;
+            title_zh?: string | null;
+            imageUrl?: string | null;
+            region?: string | null;
+            duration?: string | null;
+        } | null;
     };
     const { data: suggestionsData } = useQuery<{ suggestions: ReportedSuggestion[] }>({
         queryKey: ["users", "course-suggestions"],
@@ -453,7 +356,7 @@ export default function HomeScreen() {
             if (nowKST < hideUntilKST) return;
             setBenefitConsentHideUntil(null);
         }
-        const timer = setTimeout(() => setBenefitConsentOpen(true), 300);
+        const timer = setTimeout(() => openModal("benefitConsent"), 300);
         return () => clearTimeout(timer);
     }, [user, userProfile]);
 
@@ -461,8 +364,29 @@ export default function HomeScreen() {
     const featuredCourse = recommendations[0] ?? null;
     const hasMore = recommendations.length >= 2;
 
-    const todayCourses = dayType === "today" ? recommendations : (otherRecData?.recommendations ?? []);
-    const weekendCourses = dayType === "weekend" ? recommendations : (otherRecData?.recommendations ?? []);
+    const todayRecs = dayType === "today" ? recommendations : (otherRecData?.recommendations ?? []);
+    const weekendRecs = dayType === "weekend" ? recommendations : (otherRecData?.recommendations ?? []);
+    // 오늘: 1등은 메인 카드에 이미 노출 → 2등·3등만 (index 1~2)
+    // 주말: 개인화 추천 상위 2개
+    const todayCourses = todayRecs.slice(1, 3);
+    const weekendCourses = weekendRecs.slice(0, 2);
+
+    // 알림에서 openMoreCourses=weekend 파라미터로 진입 시 자동 오픈
+    useEffect(() => {
+        if (openMoreCourses !== "weekend") return;
+        if (autoOpenedRef.current) return;
+        if (recLoading) return;
+        autoOpenedRef.current = true;
+        const timer = setTimeout(() => {
+            openModal("moreCourses", {
+                todayCourses,
+                weekendCourses,
+                locale,
+                initialTab: "weekend",
+            });
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [openMoreCourses, recLoading]);
 
     const onRefresh = useCallback(() => {
         refetchRec();
@@ -481,7 +405,7 @@ export default function HomeScreen() {
                 {/* ── 활성 코스 배너 ────────────────────────────────── */}
                 {activeCourse && (
                     <View style={styles.section}>
-                        <ActiveCourseBanner course={activeCourse} tx={tx} />
+                        <ActiveCourseBanner course={activeCourse} tx={tx} locale={locale} />
                     </View>
                 )}
 
@@ -500,11 +424,11 @@ export default function HomeScreen() {
                         </View>
                     ) : featuredCourse ? (
                         <>
-                            <FeaturedCourseCard course={featuredCourse} tx={tx} />
+                            <FeaturedCourseCard course={featuredCourse} tx={tx} locale={locale} />
                             {hasMore && (
                                 <TouchableOpacity
                                     style={styles.viewMoreBtn}
-                                    onPress={() => setShowMore(true)}
+                                    onPress={() => openModal("moreCourses", { todayCourses, weekendCourses, locale })}
                                     activeOpacity={0.75}
                                 >
                                     <View style={styles.inlineTextWithArrow}>
@@ -529,78 +453,6 @@ export default function HomeScreen() {
                 </View>
 
                 {/* ── 나만의 데이트 앨범 (로그인 시만) ─────────────────── */}
-                {/* ── 내가 제보한 코스 (로그인 시 — 빈 상태에서도 제보 진입 노출) ── */}
-                {user && (
-                    <View style={styles.section}>
-                        <View style={styles.reportedHeader}>
-                            <Text style={[styles.reportedTitle, { color: t.text }]}>
-                                {translate("home.myReportedCourses.title")}
-                            </Text>
-                            <TouchableOpacity onPress={() => router.push("/suggest" as any)} activeOpacity={0.7}>
-                                <Text style={styles.reportedCtaLink}>{translate("home.myReportedCourses.suggestBtn")}</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={[styles.reportedSubtitle, { color: t.textMuted }]}>
-                            {translate("home.myReportedCourses.subtitle")}
-                        </Text>
-                        {publishedSuggestions.length === 0 ? (
-                            <View style={[styles.reportedEmptyBox, { backgroundColor: t.surface, borderColor: t.border }]}>
-                                <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>📍</Text>
-                                <Text style={[styles.reportedEmptyTitle, { color: t.text }]}>
-                                    {translate("home.myReportedCourses.emptyTitle")}
-                                </Text>
-                                <Text style={[styles.reportedEmptySub, { color: t.textMuted }]}>
-                                    {translate("home.myReportedCourses.emptySubtitle")}
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.reportedEmptyCta}
-                                    onPress={() => router.push("/suggest" as any)}
-                                    activeOpacity={0.88}
-                                >
-                                    <Text style={styles.reportedEmptyCtaText}>
-                                        {translate("home.myReportedCourses.suggestBtn")}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            publishedSuggestions.map((s) => (
-                                <TouchableOpacity
-                                    key={s.id}
-                                    style={[styles.reportedRow, { backgroundColor: t.card, borderColor: t.border }]}
-                                    onPress={() => s.course && router.push(`/courses/${s.course.id}` as any)}
-                                    activeOpacity={0.88}
-                                    disabled={!s.course}
-                                >
-                                    <View style={[styles.reportedThumb, { backgroundColor: t.surface }]}>
-                                        {s.course?.imageUrl ? (
-                                            <Image
-                                                source={{ uri: s.course.imageUrl }}
-                                                style={StyleSheet.absoluteFill}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <Text style={styles.reportedThumbEmoji}>📍</Text>
-                                        )}
-                                    </View>
-                                    <View style={styles.reportedInfo}>
-                                        <Text style={[styles.reportedCourseName, { color: t.text }]} numberOfLines={1}>
-                                            {s.course?.title ?? s.placeName}
-                                        </Text>
-                                        <Text style={[styles.reportedCourseMeta, { color: t.textMuted }]} numberOfLines={1}>
-                                            {[s.course?.region, s.course?.duration].filter(Boolean).join(" · ")}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.reportedBadge}>
-                                        <Text style={styles.reportedBadgeText}>
-                                            {translate("home.myReportedCourses.status.PUBLISHED")}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
-                        )}
-                    </View>
-                )}
-
                 {user && (
                     <View style={styles.section}>
                         <View
@@ -617,9 +469,7 @@ export default function HomeScreen() {
                                 {stories.length > 0 && (
                                     <TouchableOpacity
                                         onPress={() =>
-                                            router.push(
-                                                "/(tabs)/mypage?tab=footprint&footprintView=memories" as any,
-                                            )
+                                            router.push("/(tabs)/mypage?tab=footprint&footprintView=memories" as any)
                                         }
                                         activeOpacity={0.7}
                                     >
@@ -639,9 +489,7 @@ export default function HomeScreen() {
                                     <TouchableOpacity
                                         style={styles.memoryAlbumCtaBtn}
                                         onPress={() =>
-                                            router.push(
-                                                "/(tabs)/mypage?tab=footprint&footprintView=memories" as any,
-                                            )
+                                            router.push("/(tabs)/mypage?tab=footprint&footprintView=memories" as any)
                                         }
                                         activeOpacity={0.85}
                                     >
@@ -681,9 +529,7 @@ export default function HomeScreen() {
                                                     },
                                                 ]}
                                                 onPress={() => {
-                                                    setSelectedMemory(story);
-                                                    setCurrentImageIndex(0);
-                                                    setShowMemoryModal(true);
+                                                    openModal("memoryDetail", { story, imageIndex: 0 });
                                                 }}
                                                 activeOpacity={0.9}
                                             >
@@ -740,37 +586,107 @@ export default function HomeScreen() {
                         </View>
                     </View>
                 )}
+
+                {/* ── 내가 제보한 코스 (로그인 시 — 빈 상태에서도 제보 진입 노출) ── */}
+                {user && (
+                    <View style={styles.section}>
+                        <View style={styles.reportedHeader}>
+                            <Text style={[styles.reportedTitle, { color: t.text }]}>
+                                {translate("home.myReportedCourses.title", { nickname: (user as any)?.nickname || (user as any)?.name || "" })}
+                            </Text>
+                            <TouchableOpacity onPress={() => router.push("/suggest" as any)} activeOpacity={0.7}>
+                                <Text style={styles.reportedCtaLink}>
+                                    {translate("home.myReportedCourses.suggestBtn")}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.reportedSubtitle, { color: t.textMuted }]}>
+                            {translate("home.myReportedCourses.subtitle", { nickname: (user as any)?.nickname || (user as any)?.name || "" })}
+                        </Text>
+                        {publishedSuggestions.length === 0 ? (
+                            <View
+                                style={[styles.reportedEmptyBox, { backgroundColor: t.surface, borderColor: t.border }]}
+                            >
+                                <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>📍</Text>
+                                <Text style={[styles.reportedEmptyTitle, { color: t.text }]}>
+                                    {translate("home.myReportedCourses.emptyTitle")}
+                                </Text>
+                                <Text style={[styles.reportedEmptySub, { color: t.textMuted }]}>
+                                    {translate("home.myReportedCourses.emptySubtitle")}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.reportedEmptyCta}
+                                    onPress={() => router.push("/suggest" as any)}
+                                    activeOpacity={0.88}
+                                >
+                                    <Text style={styles.reportedEmptyCtaText}>
+                                        {translate("home.myReportedCourses.suggestBtn")}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            publishedSuggestions.map((s) => (
+                                <TouchableOpacity
+                                    key={s.id}
+                                    style={[styles.reportedRow, { backgroundColor: t.card, borderColor: t.border }]}
+                                    onPress={() => s.course && router.push(`/courses/${s.course.id}` as any)}
+                                    activeOpacity={0.88}
+                                    disabled={!s.course}
+                                >
+                                    <View style={[styles.reportedThumb, { backgroundColor: t.surface }]}>
+                                        {s.course?.imageUrl ? (
+                                            <Image
+                                                source={{ uri: s.course.imageUrl }}
+                                                style={StyleSheet.absoluteFill}
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <Text style={styles.reportedThumbEmoji}>📍</Text>
+                                        )}
+                                    </View>
+                                    <View style={styles.reportedInfo}>
+                                        <Text style={[styles.reportedCourseName, { color: t.text }]} numberOfLines={1}>
+                                            {s.course
+                                                ? pickCourseTitle(s.course, locale) || s.course.title
+                                                : s.placeName}
+                                        </Text>
+                                        <Text
+                                            style={[styles.reportedCourseMeta, { color: t.textMuted }]}
+                                            numberOfLines={1}
+                                        >
+                                            {[
+                                                s.course?.region
+                                                    ? translateCourseRegion(s.course.region, translate)
+                                                    : "",
+                                                s.course?.duration
+                                                    ? translateCourseFreeformKoText(
+                                                          s.course.duration,
+                                                          locale as CourseUiLocale,
+                                                          translate,
+                                                      )
+                                                    : "",
+                                            ]
+                                                .filter(Boolean)
+                                                .join(" · ")}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.reportedBadge}>
+                                        <Text style={styles.reportedBadgeText}>
+                                            {translate("home.myReportedCourses.status.PUBLISHED")}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))
+                        )}
+                    </View>
+                )}
             </ScrollView>
 
-            {/* 더 보기 Bottom Sheet */}
-            <MoreCoursesSheet
-                visible={showMore}
-                todayCourses={todayCourses}
-                weekendCourses={weekendCourses}
-                onClose={() => setShowMore(false)}
-            />
-
-            {/* 추억 상세 모달 */}
-            <MemoryDetailModal
-                visible={showMemoryModal}
-                memory={selectedMemory}
-                currentIndex={currentImageIndex}
-                onIndexChange={setCurrentImageIndex}
-                onClose={() => {
-                    setShowMemoryModal(false);
-                    setSelectedMemory(null);
-                }}
-                locale={locale}
-            />
-
-            <BenefitConsentBottomSheet visible={benefitConsentOpen} onClose={() => setBenefitConsentOpen(false)} />
         </SafeAreaView>
     );
 }
 
 // ─── 스타일 ───────────────────────────────────────────────────────────────────
-
-const SCREEN_W = Dimensions.get("window").width; // MoreCoursesSheet에서 사용
 
 function getAllPhotos(memory: PersonalStory): string[] {
     if (memory.placeData && typeof memory.placeData === "object") {
@@ -1116,6 +1032,12 @@ const styles = StyleSheet.create({
         height: 6,
         borderRadius: 3,
         backgroundColor: "#e5e7eb",
+    },
+    sheetTitle: {
+        fontSize: 17,
+        fontWeight: "700",
+        paddingHorizontal: 16,
+        paddingBottom: 12,
     },
     sheetTabRow: {
         flexDirection: "row",

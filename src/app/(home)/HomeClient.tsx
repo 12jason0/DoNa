@@ -676,6 +676,14 @@ export default function HomeClient() {
                     </section>
                 )}
 
+                {/* 🟢 내가 제보한 코스 - 로그인한 사용자에게만 표시 */}
+                {isAuthenticated && (reportedSuggestionsLoading || publishedSuggestions.length > 0) && (
+                    <ReportedCoursesCTA
+                        suggestions={publishedSuggestions}
+                        isLoading={reportedSuggestionsLoading}
+                    />
+                )}
+
                 {/* 🟢 나만의 추억 CTA - 로그인한 사용자에게만 표시 */}
                 {isAuthenticated && (
                 <section className="px-6 py-4">
@@ -711,14 +719,6 @@ export default function HomeClient() {
                         }}
                     />
                 </section>
-                )}
-
-                {/* 🟢 내가 제보한 코스 - 로그인한 사용자에게만 표시 */}
-                {isAuthenticated && (reportedSuggestionsLoading || publishedSuggestions.length > 0) && (
-                    <ReportedCoursesCTA
-                        suggestions={publishedSuggestions}
-                        isLoading={reportedSuggestionsLoading}
-                    />
                 )}
             </main>
 

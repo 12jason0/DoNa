@@ -35,7 +35,7 @@ export default function KakaoChannelModal({ visible, onClose }: Props) {
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.88, height - insets.top - 24);
-    const { rendered, translateY, backdropOpacity } = useSlideModalAnimation(visible);
+    const { rendered, translateY, backdropOpacity, sheetReady, isClosing } = useSlideModalAnimation(visible);
 
     const openKakao = async () => {
         try {
@@ -56,9 +56,9 @@ export default function KakaoChannelModal({ visible, onClose }: Props) {
             onRequestClose={onClose}
             {...MODAL_ANDROID_PROPS}
         >
-            <View style={styles.root}>
+            <View style={styles.root} pointerEvents={isClosing ? "none" : "auto"}>
                 <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-                    <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                    {sheetReady && <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />}
                 </Animated.View>
                 <Animated.View
                     style={[

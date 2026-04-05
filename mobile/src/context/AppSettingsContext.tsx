@@ -8,6 +8,7 @@ import {
     type ThemePreference,
     type LocalePreference,
 } from "../lib/appSettingsStorage";
+import { applyDefaultTextFontForLocale } from "../lib/textDefaultFont";
 
 type AppSettingsValue = {
     theme: ThemePreference;
@@ -29,6 +30,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
 
     const setLocale = useCallback((l: LocalePreference) => {
         saveLocalePreference(l);
+        applyDefaultTextFontForLocale(l);  // 리렌더 전에 동기 적용
         setLocaleState(l);
     }, []);
 

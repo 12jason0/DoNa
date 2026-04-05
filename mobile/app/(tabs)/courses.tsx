@@ -24,6 +24,14 @@ import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
 import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course } from "../../src/types/api";
+import { pickCourseTitle } from "../../src/lib/courseLocalized";
+import { formatViewsCompact } from "../../src/lib/localeUtils";
+import {
+    translateCourseRegion,
+    translateCourseConcept,
+    translateDuration,
+    type CourseUiLocale,
+} from "../../../src/lib/courseTranslate";
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -52,26 +60,18 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
     PREMIUM: { bg: "#fef3c7", text: "#d97706" },
 };
 
-/** 조회수 축약 (locale별 단위) — 문장은 courses.viewsWatching 에서 조합 */
-function formatViewsCompact(views: number, locale: LocalePreference): string {
-    if (views >= 10000) {
-        const n = (views / 10000).toFixed(views % 10000 ? 1 : 0);
-        if (locale === "ko") return `${n}만`;
-        if (locale === "ja" || locale === "zh") return `${n}万`;
-        return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}k`;
-    }
-    if (views >= 1000) {
-        const n = (views / 1000).toFixed(views % 1000 ? 1 : 0);
-        if (locale === "ko") return `${n}천`;
-        if (locale === "ja" || locale === "zh") return `${n}千`;
-        return `${n}k`;
-    }
-    return String(views);
-}
 
 // ─── 히어로 슬라이더 ──────────────────────────────────────────────────────────
 
-function HeroSlider({ courses }: { courses: Course[] }) {
+function HeroSlider({
+    courses,
+    locale,
+    lt,
+}: {
+    courses: Course[];
+    locale: LocalePreference;
+    lt: (key: string, params?: Record<string, string | number>) => string;
+}) {
     const [activeIdx, setActiveIdx] = useState(0);
     // 양옆 카드가 살짝 보이도록 폭을 줄임
     const HORIZONTAL_GUTTER = 20;
@@ -109,15 +109,27 @@ function HeroSlider({ courses }: { courses: Course[] }) {
                         <View style={heroStyles.gradient}>
                             {c.concept && (
                                 <View style={heroStyles.conceptChip}>
-                                    <Text style={heroStyles.conceptText}>#{c.concept}</Text>
+                                    <Text style={heroStyles.conceptText}>
+                                        #{translateCourseConcept(c.concept, lt)}
+                                    </Text>
                                 </View>
                             )}
-                            <Text style={heroStyles.title} numberOfLines={2}>{c.title}</Text>
+                            <Text style={heroStyles.title} numberOfLines={2}>
+                                {pickCourseTitle(c, locale) || c.title}
+                            </Text>
                             <View style={heroStyles.metaRow}>
                                 {(c.location || c.region) && (
-                                    <Text style={heroStyles.meta}>📍 {(c as any).location ?? c.region}</Text>
+                                    <Text style={heroStyles.meta}>
+                                        📍{" "}
+                                        {translateCourseRegion(String((c as any).location ?? c.region ?? ""), lt)}
+                                    </Text>
                                 )}
-                                {c.duration && <Text style={heroStyles.meta}>⏳ {c.duration}</Text>}
+                                {c.duration && (
+                                    <Text style={heroStyles.meta}>
+                                        ⏳{" "}
+                                        {translateDuration(c.duration, locale as CourseUiLocale)}
+                                    </Text>
+                                )}
                             </View>
                         </View>
                     </TouchableOpacity>
@@ -176,7 +188,7 @@ const heroStyles = StyleSheet.create({
 
 // ─── 코스 카드 (웹 CourseCard와 동일) ─────────────────────────────────────────
 
-function CourseCard({
+function CourseCardInner({
     course,
     isFav,
     onFavToggle,
@@ -234,7 +246,9 @@ function CourseCard({
                     )}
                     {course.concept && (
                         <View style={styles.conceptBadge}>
-                            <Text style={styles.conceptBadgeText}>#{course.concept}</Text>
+                            <Text style={styles.conceptBadgeText}>
+                                #{translateCourseConcept(course.concept, lt)}
+                            </Text>
                         </View>
                     )}
                     {isNew && (
@@ -261,12 +275,16 @@ function CourseCard({
             {/* 정보 영역 */}
             <View style={styles.cardBody}>
                 <Text style={[styles.cardTitle, { color: themeColors.text }]} numberOfLines={2}>
-                    {course.title}
+                    {pickCourseTitle(course, locale) || course.title}
                 </Text>
                 <View style={styles.metaRow}>
                     {(course.location || (course as any).region) && (
                         <Text style={[styles.metaText, { color: themeColors.textMuted }]}>
-                            📍 {(course as any).location ?? (course as any).region}
+                            📍{" "}
+                            {translateCourseRegion(
+                                String((course as any).location ?? (course as any).region ?? ""),
+                                lt,
+                            )}
                         </Text>
                     )}
                     {((course as any).location || (course as any).region) && placesCount > 0 && (
@@ -281,7 +299,10 @@ function CourseCard({
                         <View style={[styles.metaDot, { backgroundColor: themeColors.textMuted }]} />
                     )}
                     {course.duration && (
-                        <Text style={[styles.metaText, { color: themeColors.textMuted }]}>⏳ {course.duration}</Text>
+                        <Text style={[styles.metaText, { color: themeColors.textMuted }]}>
+                            ⏳{" "}
+                            {translateDuration(course.duration, locale as CourseUiLocale)}
+                        </Text>
                     )}
                 </View>
                 {infoLine && (
@@ -293,12 +314,13 @@ function CourseCard({
         </TouchableOpacity>
     );
 }
+const CourseCard = React.memo(CourseCardInner);
 
 // ─── 메인 화면 ────────────────────────────────────────────────────────────────
 
 export default function CoursesScreen() {
     const t = useThemeColors();
-    const { t: translate } = useLocale();
+    const { t: translate, locale: appLocale } = useLocale();
     const [activeConcept, setActiveConcept] = useState("");
 
     const CONCEPTS = useMemo(
@@ -392,7 +414,7 @@ export default function CoursesScreen() {
                         ]}
                     >
                         <Text style={[styles.sectionTitle, { color: t.text }]}>{translate("courses.heroTitle")}</Text>
-                        <HeroSlider courses={heroData} />
+                        <HeroSlider courses={heroData} locale={appLocale} lt={translate} />
                     </View>
                 )}
                 <View
@@ -410,7 +432,7 @@ export default function CoursesScreen() {
                 </View>
             </>
         ),
-        [heroData, activeConcept, courses.length, t, translate, listHeaderTitleText],
+        [heroData, activeConcept, courses.length, t, translate, listHeaderTitleText, appLocale],
     );
 
     return (

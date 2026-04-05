@@ -78,48 +78,7 @@ const REGION_KEY_MAP: Record<string, string> = {
     EULJIRO: "onboarding.region.EULJIRO",
 };
 
-/**
- * DB region 값(대문자 코드 또는 한국어 동네명)을 locale에 맞게 번역
- * @param region course.region (예: "SEONGSU", "성수")
- */
-export function translateCourseRegion(region: string | null | undefined, t: TranslateFn): string {
-    if (!region?.trim()) return "";
-    const raw = region.trim();
-    const upper = raw.toUpperCase();
-    const byCode = REGION_KEY_MAP[upper];
-    if (byCode) {
-        const translated = t(byCode);
-        return translated || raw;
-    }
-    // 상세/리스트 표시는 DB 단일 지명을 그대로 유지한다.
-    return raw;
-}
-
-export function translateCourseConcept(concept: string | null | undefined, t: TranslateFn): string {
-    if (!concept?.trim()) return t("courseConcept.default");
-    const c = concept.trim();
-    for (const { keyword, key } of CONCEPT_MAP_SORTED) {
-        if (c.includes(keyword)) {
-            const translated = t(`courseConcept.${key}`);
-            return translated || c;
-        }
-    }
-    return c;
-}
-
-/** 코스 UI(추천 시간·팁 본문 등)용 locale — 모바일·웹 공통 */
-export type CourseUiLocale = "ko" | "en" | "ja" | "zh";
-
-const KO_SNIPPET_TO_SEGMENT: [string, string][] = [
-    ["브런치", "brunch"],
-    ["점심", "lunch"],
-    ["저녁", "dinner"],
-    ["카페", "cafe"],
-    ["데이트", "date"],
-];
-KO_SNIPPET_TO_SEGMENT.sort((a, b) => b[0].length - a[0].length);
-
-/** 팁·추천시간에 자주 나오는 한글 동네 표기 → onboarding.region.* (긴 토큰 우선) */
+/** 팁·추천시간·region 표시 공통: 한글 동네 토큰 → onboarding.region.* (긴 토큰 우선) */
 const KO_SNIPPET_TO_REGION_CODE: [string, string][] = [
     ["을지로", "EULJIRO"],
     ["여의도", "YEOUIDO"],
@@ -149,6 +108,242 @@ function tResolved(t: TranslateFn, key: string): string | null {
     const out = t(key);
     return out && out !== key ? out : null;
 }
+
+/**
+ * DB region 값(대문자 코드 또는 한국어 동네명)을 locale에 맞게 번역
+ * @param region course.region (예: "SEONGSU", "성수")
+ */
+/** 온보딩 라벨에서 첫 번째 동네명만 추출 ("성수 · 건대" → "성수", "Seongsu · Konkuk" → "Seongsu") */
+function shortRegionLabel(label: string): string {
+    return label.split(/\s*[·・]\s*/)[0].trim();
+}
+
+export function translateCourseRegion(region: string | null | undefined, t: TranslateFn): string {
+    if (!region?.trim()) return "";
+    const raw = region.trim();
+    const upper = raw.toUpperCase();
+    const byCode = REGION_KEY_MAP[upper];
+    if (byCode) {
+        const translated = t(byCode);
+        return shortRegionLabel(translated || raw);
+    }
+    // DB에 한글로 직접 입력된 값(성수, 홍대 등)은 그대로 표시
+    if (/[가-힣]/.test(raw)) {
+        return raw;
+    }
+    return raw;
+}
+
+/** 리스트 해시태그: 칩 ID(chip.*) 또는 컨셉/무드 한글 → i18n */
+export function translateCourseTagLabel(tag: string, t: TranslateFn): string {
+    const trimmed = (tag ?? "").trim().replace(/^#+/, "");
+    if (!trimmed) return "";
+    if (/^[A-Z][A-Z0-9_]*$/.test(trimmed)) {
+        const chipKey = `chip.${trimmed}`;
+        const out = t(chipKey);
+        if (out !== chipKey) return out;
+    }
+    return translateCourseConcept(trimmed, t);
+}
+
+export function translateCourseConcept(concept: string | null | undefined, t: TranslateFn): string {
+    if (!concept?.trim()) return t("courseConcept.default");
+    const c = concept.trim();
+    for (const { keyword, key } of CONCEPT_MAP_SORTED) {
+        if (c.includes(keyword)) {
+            const translated = t(`courseConcept.${key}`);
+            return translated || c;
+        }
+    }
+    return c;
+}
+
+/**
+ * 장소 카테고리 한국어 → 로케일별 번역
+ * (음식점, 카페, 바, 주점, 영화관 등)
+ */
+const PLACE_CATEGORY_MAP: Record<string, { en: string; ja: string; zh: string }> = {
+    음식점:    { en: "Restaurant",    ja: "レストラン",  zh: "餐厅" },
+    식당:      { en: "Restaurant",    ja: "レストラン",  zh: "餐厅" },
+    레스토랑:  { en: "Restaurant",    ja: "レストラン",  zh: "餐厅" },
+    카페:      { en: "Café",          ja: "カフェ",      zh: "咖啡厅" },
+    커피:      { en: "Coffee",        ja: "コーヒー",    zh: "咖啡" },
+    디저트:    { en: "Dessert",       ja: "デザート",    zh: "甜品" },
+    베이커리:  { en: "Bakery",        ja: "ベーカリー",  zh: "面包店" },
+    바:        { en: "Bar",           ja: "バー",        zh: "酒吧" },
+    주점:      { en: "Bar",           ja: "居酒屋",      zh: "酒馆" },
+    와인바:    { en: "Wine Bar",      ja: "ワインバー",  zh: "葡萄酒吧" },
+    칵테일바:  { en: "Cocktail Bar",  ja: "カクテルバー",zh: "鸡尾酒吧" },
+    술집:      { en: "Bar",           ja: "居酒屋",      zh: "酒馆" },
+    영화관:    { en: "Cinema",        ja: "映画館",      zh: "电影院" },
+    공연장:    { en: "Venue",         ja: "ライブハウス",zh: "演出场所" },
+    전시관:    { en: "Gallery",       ja: "ギャラリー",  zh: "展览馆" },
+    미술관:    { en: "Art Museum",    ja: "美術館",      zh: "美术馆" },
+    박물관:    { en: "Museum",        ja: "博物館",      zh: "博物馆" },
+    공원:      { en: "Park",          ja: "公園",        zh: "公园" },
+    쇼핑:      { en: "Shopping",      ja: "ショッピング",zh: "购物" },
+    마켓:      { en: "Market",        ja: "マーケット",  zh: "市场" },
+    체험:      { en: "Activity",      ja: "体験",        zh: "体验" },
+    액티비티:  { en: "Activity",      ja: "アクティビティ",zh: "活动" },
+    스파:      { en: "Spa",           ja: "スパ",        zh: "水疗" },
+    호텔:      { en: "Hotel",         ja: "ホテル",      zh: "酒店" },
+    서점:      { en: "Bookstore",     ja: "書店",        zh: "书店" },
+    독립서점:  { en: "Independent Bookstore", ja: "独立書店", zh: "独立书店" },
+    책방:      { en: "Bookstore",     ja: "本屋",        zh: "书店" },
+    문구점:    { en: "Stationery",    ja: "文具店",      zh: "文具店" },
+    편집숍:    { en: "Select Shop",   ja: "セレクトショップ", zh: "精选店" },
+    갤러리:    { en: "Gallery",       ja: "ギャラリー",  zh: "画廊" },
+    플라워샵:  { en: "Flower Shop",   ja: "フラワーショップ", zh: "花店" },
+    찜질방:    { en: "Sauna",         ja: "チムジルバン", zh: "汗蒸幕" },
+    노래방:    { en: "Karaoke",       ja: "カラオケ",    zh: "卡拉OK" },
+    방탈출:    { en: "Escape Room",   ja: "謎解き",      zh: "密室逃脱" },
+    볼링장:    { en: "Bowling Alley", ja: "ボウリング場", zh: "保龄球馆" },
+};
+
+export function translatePlaceCategory(
+    category: string | null | undefined,
+    locale: CourseUiLocale,
+): string {
+    if (!category?.trim()) return "";
+    if (locale === "ko") return category.trim();
+    const key = category.trim();
+    const entry = PLACE_CATEGORY_MAP[key];
+    if (entry) return entry[locale] ?? key;
+    // 부분 매칭 fallback
+    for (const [ko, vals] of Object.entries(PLACE_CATEGORY_MAP)) {
+        if (key.includes(ko)) return vals[locale] ?? key;
+    }
+    return key;
+}
+
+/**
+ * target_situation 값 번역 (콤마 구분, SOME·한국어 키워드 모두 지원)
+ */
+export function translateTargetSituation(
+    raw: string | null | undefined,
+    locale: CourseUiLocale,
+    t: TranslateFn,
+): string {
+    if (!raw?.trim()) return "";
+    if (locale === "ko") return raw.trim();
+    return raw
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean)
+        .map((v) => {
+            if (v === "SOME" || v === "썸") {
+                return locale === "en" ? "Situationship"
+                    : locale === "ja" ? "サム"
+                    : locale === "zh" ? "暧昧关系"
+                    : "썸";
+            }
+            return translateCourseConcept(v, t);
+        })
+        .join(" · ");
+}
+
+/**
+ * 소요시간 번역 (N시간 패턴)
+ */
+export function translateDuration(
+    raw: string | null | undefined,
+    locale: CourseUiLocale,
+): string {
+    const v = (raw ?? "").trim();
+    if (!v || locale === "ko") return v;
+    const fixed: Record<string, { en: string; ja: string; zh: string }> = {
+        "1시간":   { en: "1 hour",    ja: "1時間",    zh: "1小时" },
+        "2시간":   { en: "2 hours",   ja: "2時間",    zh: "2小时" },
+        "3시간":   { en: "3 hours",   ja: "3時間",    zh: "3小时" },
+        "4시간":   { en: "4 hours",   ja: "4時間",    zh: "4小时" },
+        "5시간":   { en: "5 hours",   ja: "5時間",    zh: "5小时" },
+        "6시간+":  { en: "6+ hours",  ja: "6時間以上", zh: "6小时以上" },
+        "반나절":  { en: "Half day",  ja: "半日",     zh: "半天" },
+        "하루종일":{ en: "Full day",  ja: "一日",     zh: "全天" },
+    };
+    if (fixed[v]) return fixed[v][locale];
+    const m = v.match(/^(?:약\s*)?(\d+)\s*시간(?:\s*(\d+)\s*분)?$/);
+    if (m) {
+        const h = m[1], min = m[2];
+        if (locale === "en") return min ? `${h} hr ${min} min` : `${h} hours`;
+        if (locale === "ja") return min ? `${h}時間${min}分` : `${h}時間`;
+        return min ? `${h}小时${min}分钟` : `${h}小时`;
+    }
+    return v;
+}
+
+/**
+ * 가격대 번역
+ * DB 포맷: "1인 3~5만", "2인 6~10만", "3만원 이하", "3~6만원" 등
+ */
+export function translateBudgetRange(
+    raw: string | null | undefined,
+    locale: CourseUiLocale,
+): string {
+    if (!raw?.trim()) return "";
+    if (locale === "ko") return raw.trim();
+    let s = raw.trim();
+
+    // "N인" prefix: "1인 3~5만" → "per person KRW 30,000-50,000"
+    const personMatch = s.match(/^(\d+)인\s*/);
+    let personPrefix = "";
+    if (personMatch) {
+        const n = personMatch[1];
+        personPrefix = locale === "en" ? "per person " : (n + "人 ");
+        s = s.slice(personMatch[0].length);
+    }
+
+    // "X만 이하" / "X만원 이하"
+    const upToMatch = s.match(/^(\d+(?:\.\d+)?)\s*만(?:원)?\s*이하$/);
+    if (upToMatch) {
+        const n = Number(upToMatch[1]);
+        if (locale === "en") return personPrefix + "Up to KRW " + (n * 10000).toLocaleString();
+        if (locale === "ja") return personPrefix + n + "万ウォン以下";
+        return personPrefix + n + "万韩元以下";
+    }
+
+    // "X만 이상" / "X만원 이상"
+    const overMatch = s.match(/^(\d+(?:\.\d+)?)\s*만(?:원)?\s*이상$/);
+    if (overMatch) {
+        const n = Number(overMatch[1]);
+        if (locale === "en") return personPrefix + "KRW " + (n * 10000).toLocaleString() + "+";
+        if (locale === "ja") return personPrefix + n + "万ウォン以上";
+        return personPrefix + n + "万韩元以上";
+    }
+
+    // "X~Y만원" 또는 "X~Y만" 범위
+    const rangeMatch = s.match(/^(\d+(?:\.\d+)?)\s*~\s*(\d+(?:\.\d+)?)\s*만(?:원)?$/);
+    if (rangeMatch) {
+        const lo = Number(rangeMatch[1]), hi = Number(rangeMatch[2]);
+        if (locale === "en") return personPrefix + "KRW " + (lo * 10000).toLocaleString() + "–" + (hi * 10000).toLocaleString();
+        if (locale === "ja") return personPrefix + lo + "〜" + hi + "万ウォン";
+        return personPrefix + lo + "~" + hi + "万韩元";
+    }
+
+    // 단일 금액: "5만원"
+    const singleMatch = s.match(/^(\d+(?:\.\d+)?)\s*만(?:원)?$/);
+    if (singleMatch) {
+        const n = Number(singleMatch[1]);
+        if (locale === "en") return personPrefix + "KRW " + (n * 10000).toLocaleString();
+        if (locale === "ja") return personPrefix + n + "万ウォン";
+        return personPrefix + n + "万韩元";
+    }
+
+    return raw.trim();
+}
+
+
+/** 코스 UI(추천 시간·팁 본문 등)용 locale — 모바일·웹 공통 */
+export type CourseUiLocale = "ko" | "en" | "ja" | "zh";
+
+const KO_SNIPPET_TO_SEGMENT: [string, string][] = [
+    ["브런치", "brunch"],
+    ["점심", "lunch"],
+    ["저녁", "dinner"],
+    ["카페", "cafe"],
+    ["데이트", "date"],
+];
+KO_SNIPPET_TO_SEGMENT.sort((a, b) => b[0].length - a[0].length);
 
 /**
  * DB에 한글로만 적힌 추천 시간·팁 문장을 비한국어 UI에서 토큰 치환으로 현지화

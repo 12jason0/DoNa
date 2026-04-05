@@ -2,30 +2,25 @@
  * 모바일 i18n hook
  * - 웹의 src/i18n/messages/[locale]/translation.json 재사용
  * - locale 상태는 AppSettingsContext에서 관리
+ * - ko/en/ja/zh 는 정적 import → 언어 선택 직후 즉시 반영 (동적 import 실패·로딩 레이스 방지)
  */
 import { useCallback, useMemo } from "react";
 import { useAppSettings } from "../context/AppSettingsContext";
 import type { LocalePreference } from "./appSettingsStorage";
 
-// ko는 번들에 포함 (초기 로딩 최적화) — 웹과 동일 파일 단일 소스
 import koMessages from "../../../src/i18n/messages/ko/translation.json";
+import enMessages from "../../../src/i18n/messages/en/translation.json";
+import jaMessages from "../../../src/i18n/messages/ja/translation.json";
+import zhMessages from "../../../src/i18n/messages/zh/translation.json";
 
 type Messages = Record<string, unknown>;
 
-const cache: Partial<Record<LocalePreference, Messages>> = { ko: koMessages as Messages };
-
-const loaders: Record<Exclude<LocalePreference, "ko">, () => Promise<Messages>> = {
-    en: () => import("../../../src/i18n/messages/en/translation.json").then((m) => m.default as Messages),
-    ja: () => import("../../../src/i18n/messages/ja/translation.json").then((m) => m.default as Messages),
-    zh: () => import("../../../src/i18n/messages/zh/translation.json").then((m) => m.default as Messages),
+const messagesByLocale: Record<LocalePreference, Messages> = {
+    ko: koMessages as Messages,
+    en: enMessages as Messages,
+    ja: jaMessages as Messages,
+    zh: zhMessages as Messages,
 };
-
-// 비동기 사전로딩 (앱 시작 시 한 번)
-(["en", "ja", "zh"] as const).forEach((loc) => {
-    if (!cache[loc]) {
-        loaders[loc]().then((data) => { cache[loc] = data; }).catch(() => {});
-    }
-});
 
 function getNested(obj: Messages, path: string): string | undefined {
     const keys = path.split(".");
@@ -50,9 +45,9 @@ export function useLocale() {
 
     const t = useCallback(
         (key: string, params?: Record<string, string | number>): string => {
-            const messages = cache[locale] ?? (koMessages as Messages);
+            const messages = messagesByLocale[locale];
             let value = getNested(messages, key);
-            if (!value && locale !== "ko") value = getNested(koMessages as Messages, key);
+            if (!value && locale !== "ko") value = getNested(messagesByLocale.ko, key);
             return interpolate(value ?? key, params);
         },
         [locale],

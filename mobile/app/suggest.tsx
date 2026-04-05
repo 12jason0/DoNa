@@ -65,7 +65,7 @@ export default function SuggestScreen() {
 
     if (!isAuthenticated) {
         return (
-            <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]} edges={["top", "left", "right"]}>
+            <SafeAreaView style={[styles.safe, { backgroundColor: tc.bg }]} edges={["top", "left", "right"]}>
                 <View style={[styles.header, { borderBottomColor: tc.border }]}>
                     <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button">
                         <Ionicons name="chevron-back" size={24} color={tc.text} />
@@ -89,7 +89,7 @@ export default function SuggestScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]} edges={["top", "left", "right"]}>
+        <SafeAreaView style={[styles.safe, { backgroundColor: tc.bg }]} edges={["top", "left", "right"]}>
             <View style={[styles.header, { borderBottomColor: tc.border }]}>
                 <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button">
                     <Ionicons name="chevron-back" size={24} color={tc.text} />
@@ -118,7 +118,7 @@ export default function SuggestScreen() {
                         onChangeText={setPlaceName}
                         placeholder={t("suggest.placeholderPlaceNameSimple")}
                         placeholderTextColor={tc.textMuted}
-                        style={[styles.input, { backgroundColor: tc.background, borderColor: tc.border, color: tc.text }]}
+                        style={[styles.input, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
                     />
                 </View>
 

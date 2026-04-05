@@ -16,11 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useLocale } from "../lib/useLocale";
 import { useThemeColors } from "../hooks/useThemeColors";
-
-type Props = {
-    visible: boolean;
-    onClose: () => void;
-};
+import { useModal } from "../lib/modalContext";
 
 const STATUS_DOT: Record<string, string> = {
     PENDING: "#f59e0b",
@@ -28,7 +24,10 @@ const STATUS_DOT: Record<string, string> = {
     REJECTED: "#94a3b8",
 };
 
-export default function SuggestNotificationModal({ visible, onClose }: Props) {
+export default function SuggestNotificationModal() {
+    const { isOpen, closeModal } = useModal();
+    const visible = isOpen("suggestNotification");
+    const onClose = () => closeModal("suggestNotification");
     const { t } = useLocale();
     const tc = useThemeColors();
     const insets = useSafeAreaInsets();

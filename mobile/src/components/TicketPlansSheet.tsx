@@ -25,7 +25,7 @@ import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { useAuth, AUTH_QUERY_KEY } from "../hooks/useAuth";
 import { api } from "../lib/api";
-import NativeLegalModal, { type NativeLegalPage } from "./NativeLegalModal";
+import { useModal } from "../lib/modalContext";
 
 // ─── 플랜 정의 (웹 PLANS 동일) ────────────────────────────────────────────────
 
@@ -70,32 +70,20 @@ const RC_PRODUCT_IDS: Record<string, string> = {
     ticket_premium: "kr.io.dona.course_premium",
 };
 
-// ─── Props (웹 TicketPlansProps 동일) ─────────────────────────────────────────
-
-export interface TicketPlansSheetProps {
-    visible: boolean;
-    onClose: () => void;
-    courseId?: number;
-    courseGrade?: "BASIC" | "PREMIUM";
-    /** COURSE: 구독+열람권 | UPGRADE: 구독만 */
-    context?: "COURSE" | "UPGRADE";
-    /** 결제 성공 후 콜백 */
-    onUnlocked?: () => void;
-}
-
 const { height: SCREEN_H } = Dimensions.get("window");
 const SHEET_HEIGHT = SCREEN_H * 0.8;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function TicketPlansSheet({
-    visible,
-    onClose,
-    courseId,
-    courseGrade,
-    context = "COURSE",
-    onUnlocked,
-}: TicketPlansSheetProps) {
+export default function TicketPlansSheet() {
+    const { isOpen, closeModal, openModal, getData } = useModal();
+    const data = getData("ticket");
+    const visible = isOpen("ticket");
+    const onClose = () => closeModal("ticket");
+    const courseId = data?.courseId;
+    const courseGrade = data?.courseGrade;
+    const context = data?.context ?? "COURSE";
+    const onUnlocked = data?.onUnlocked;
     const t = useThemeColors();
     const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
@@ -111,7 +99,6 @@ export default function TicketPlansSheet({
     const [currentTier, setCurrentTier] = useState<Tier>("FREE");
     const [loading, setLoading] = useState(false);
     const [rcPrices, setRcPrices] = useState<Partial<Record<PlanId, string>>>({});
-    const [legalPage, setLegalPage] = useState<NativeLegalPage | null>(null);
 
     // ref 동기화 (티어 로딩 시 최신 selectedPlanId 참조용)
     useEffect(() => { selectedPlanIdRef.current = selectedPlanId; }, [selectedPlanId]);
@@ -554,10 +541,10 @@ export default function TicketPlansSheet({
                                 {i18n("ticketPlans.legalNotice")}
                             </Text>
                             <View style={styles.legalLinks}>
-                                <TouchableOpacity onPress={() => setLegalPage("privacy")}>
+                                <TouchableOpacity onPress={() => openModal("legalPage", { page: "privacy" })}>
                                     <Text style={styles.legalLink}>{i18n("ticketPlans.privacyPolicy")}</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setLegalPage("terms")}>
+                                <TouchableOpacity onPress={() => openModal("legalPage", { page: "terms" })}>
                                     <Text style={styles.legalLink}>{i18n("ticketPlans.eula")}</Text>
                                 </TouchableOpacity>
                             </View>
@@ -632,7 +619,6 @@ export default function TicketPlansSheet({
                 </Animated.View>
             </View>
 
-            <NativeLegalModal page={legalPage} onClose={() => setLegalPage(null)} />
         </Modal>
     );
 }

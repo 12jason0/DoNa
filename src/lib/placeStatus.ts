@@ -149,9 +149,10 @@ function parseOpeningHours(openingHours: string | null | undefined): {
         return { todayOpenRanges: [], todayBreak: null, allHours: openingHours };
     }
 
-    // 단순 형식: "09:00-22:00" 또는 "매일 09:00-22:00"
+    // 단순 형식: "09:00-22:00", "09:00~22:00", "매일 09:00-22:00"
+    const normalizedS = s.replace(/~/g, "-");
     const simpleFormat = /^(?:매일\s*)?(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/;
-    const simpleMatch = s.match(simpleFormat);
+    const simpleMatch = normalizedS.match(simpleFormat);
     if (simpleMatch && !/[일월화수목금토]/.test(s)) {
         const open = `${simpleMatch[1].padStart(2, "0")}:${simpleMatch[2]}`;
         const close = `${simpleMatch[3].padStart(2, "0")}:${simpleMatch[4]}`;
@@ -162,12 +163,13 @@ function parseOpeningHours(openingHours: string | null | undefined): {
         };
     }
 
-    // 요일별 단일 구간 (기존 패턴)
-    const dayRangePattern = /([월화수목금토일])-([월화수목금토일]):\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
-    const singleDayPattern = /([월화수목금토일]):\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
+    // 요일별 단일 구간 — 콜론 있음/없음 + ~ 허용
+    const normalized = openingHours.replace(/~/g, "-");
+    const dayRangePattern = /([월화수목금토일])-([월화수목금토일])[:,\s]\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
+    const singleDayPattern = /([월화수목금토일])[:,\s]\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g;
     let match: RegExpExecArray | null;
 
-    while ((match = dayRangePattern.exec(openingHours)) !== null) {
+    while ((match = dayRangePattern.exec(normalized)) !== null) {
         const startIdx = DAY_ORDER.indexOf(match[1] as (typeof DAY_ORDER)[number]);
         const endIdx = DAY_ORDER.indexOf(match[2] as (typeof DAY_ORDER)[number]);
         const todayIdx = DAY_ORDER.indexOf(todayName as (typeof DAY_ORDER)[number]);
@@ -186,7 +188,7 @@ function parseOpeningHours(openingHours: string | null | undefined): {
     }
 
     singleDayPattern.lastIndex = 0;
-    while ((match = singleDayPattern.exec(openingHours)) !== null) {
+    while ((match = singleDayPattern.exec(normalized)) !== null) {
         if (match[1] === todayName) {
             const open = `${match[2].padStart(2, "0")}:${match[3]}`;
             const close = `${match[4].padStart(2, "0")}:${match[5]}`;
@@ -198,8 +200,8 @@ function parseOpeningHours(openingHours: string | null | undefined): {
         }
     }
 
-    const everydayPattern = /매일\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
-    const everydayMatch = openingHours.match(everydayPattern);
+    const everydayPattern = /매일\s*(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})/;
+    const everydayMatch = normalized.match(everydayPattern);
     if (everydayMatch) {
         const open = `${everydayMatch[1].padStart(2, "0")}:${everydayMatch[2]}`;
         const close = `${everydayMatch[3].padStart(2, "0")}:${everydayMatch[4]}`;

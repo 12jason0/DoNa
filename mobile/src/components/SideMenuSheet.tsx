@@ -20,17 +20,15 @@ import { router } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
-import TicketPlansSheet from "./TicketPlansSheet";
 import ComingSoonBottomSheet from "./ComingSoonBottomSheet";
-
-type Props = {
-    visible: boolean;
-    onClose: () => void;
-};
+import { useModal } from "../lib/modalContext";
 
 const SLIDE_FROM = 96;
 
-export default function SideMenuSheet({ visible, onClose }: Props) {
+export default function SideMenuSheet() {
+    const { isOpen, closeModal, openModal } = useModal();
+    const visible = isOpen("sideMenu");
+    const onClose = () => closeModal("sideMenu");
     const insets = useSafeAreaInsets();
     const t = useThemeColors();
     const { t: i18n } = useLocale();
@@ -42,7 +40,6 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
     const translateY = useRef(new Animated.Value(SLIDE_FROM)).current;
     const overlayOpacity = useRef(new Animated.Value(0)).current;
     const closingRef = useRef(false);
-    const [shopOpen, setShopOpen] = useState(false);
     const [comingSoonOpen, setComingSoonOpen] = useState(false);
 
     const overlayBg = "rgba(255,255,255,0.88)";
@@ -100,7 +97,7 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
 
     const goNearby = () => handleDismiss(() => router.push("/nearby" as any));
     /** 웹 ShopModal 과 동일: 두나샵 안내 하단 시트 */
-    const goShop = () => handleDismiss(() => setShopOpen(true));
+    const goShop = () => handleDismiss(() => openModal("ticket", { context: "UPGRADE" }));
     const goMypage = () => handleDismiss(() => router.push("/(tabs)/mypage" as any));
     const goLogin = () => handleDismiss(() => router.push("/(auth)/login" as any));
     const goSignup = () => handleDismiss(() => router.push("/(auth)/signup" as any));
@@ -196,7 +193,6 @@ export default function SideMenuSheet({ visible, onClose }: Props) {
             </View>
         </Modal>
 
-            <TicketPlansSheet visible={shopOpen} onClose={() => setShopOpen(false)} />
             <ComingSoonBottomSheet visible={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
         </>
     );

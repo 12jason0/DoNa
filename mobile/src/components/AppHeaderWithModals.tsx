@@ -1,28 +1,20 @@
 /**
  * 웹 Header.tsx 와 동일: 검색 모달 / 장소 제보(벨) / 설정
+ * 모달은 ModalManager에서 전역 렌더링 — useModal()로 열기만 함
  */
-import React, { useState } from "react";
+import React from "react";
 import AppHeader from "./AppHeader";
-import SearchModal from "./SearchModal";
-import SuggestNotificationModal from "./SuggestNotificationModal";
-import SettingsModal from "./SettingsModal";
+import { useModal } from "../lib/modalContext";
 
 export default function AppHeaderWithModals() {
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [suggestOpen, setSuggestOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
+    const { openModal } = useModal();
 
     return (
-        <>
-            <AppHeader
-                showBellBadge={true}
-                onSearchPress={() => setSearchOpen(true)}
-                onBellPress={() => setSuggestOpen(true)}
-                onSettingsPress={() => setSettingsOpen(true)}
-            />
-            <SearchModal visible={searchOpen} onClose={() => setSearchOpen(false)} />
-            <SuggestNotificationModal visible={suggestOpen} onClose={() => setSuggestOpen(false)} />
-            <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
-        </>
+        <AppHeader
+            showBellBadge={true}
+            onSearchPress={() => openModal("search")}
+            onBellPress={() => openModal("suggestNotification")}
+            onSettingsPress={() => openModal("settings")}
+        />
     );
 }

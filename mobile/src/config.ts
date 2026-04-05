@@ -1,6 +1,13 @@
 // 웹 서버 URL 설정
 export const WEB_BASE = "https://dona.io.kr";
 
+/**
+ * 카카오 네이티브 SDK (@react-native-kakao/user) — Android 로그인 전 initializeKakaoSDK 필수.
+ * app.json 의 @react-native-kakao/core 플러그인 nativeAppKey 와 동일 값 유지.
+ */
+export const KAKAO_NATIVE_APP_KEY =
+    process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ?? "a6c31213198b3d562121ddace8d1b65f";
+
 // 🟢 [2026-01-21] 카카오 인증 URL: 서버가 '앱'임을 인식하도록 파라미터 강제 전달
 export const KAKAO_AUTH_URL = `${WEB_BASE}/api/auth/kakao?next=mobile`;
 

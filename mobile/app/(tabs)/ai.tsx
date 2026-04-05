@@ -26,9 +26,10 @@ import { resolveImageUrl } from "../../src/lib/imageUrl";
 import { useAuth } from "../../src/hooks/useAuth";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
-import TicketPlansSheet from "../../src/components/TicketPlansSheet";
 import type { Course } from "../../src/types/api";
 import { useLocale } from "../../src/lib/useLocale";
+import { useModal, type LimitCtx } from "../../src/lib/modalContext";
+import { pickCourseTitle, pickCourseDescription } from "../../src/lib/courseLocalized";
 
 type TI18n = (key: string, params?: Record<string, string | number>) => string;
 
@@ -103,158 +104,6 @@ function buildChatFlow(i18n: TI18n): Question[] {
     ];
 }
 
-// ─── 한도 초과 바텀시트 ────────────────────────────────────────────────────────
-
-type LimitCtx = { tier: "FREE" | "BASIC" | "PREMIUM"; limit: number | null; used: number };
-
-function LimitExceededSheet({
-    visible,
-    ctx,
-    onClose,
-    onUpgrade,
-}: {
-    visible: boolean;
-    ctx: LimitCtx | null;
-    onClose: () => void;
-    onUpgrade: () => void;
-}) {
-    const t = useThemeColors();
-    const { t: i18n } = useLocale();
-    const insets = useSafeAreaInsets();
-    const slideAnim = useRef(new Animated.Value(400)).current;
-
-    useEffect(() => {
-        if (visible) {
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                useNativeDriver: true,
-                tension: 65,
-                friction: 11,
-            }).start();
-        } else {
-            slideAnim.setValue(400);
-        }
-    }, [visible]);
-
-    if (!visible || !ctx) return null;
-
-    const isBasic = ctx.tier === "BASIC";
-    const title = isBasic ? i18n("personalizedHome.alreadyUsedBasic") : i18n("personalizedHome.alreadyUsedFree");
-    const desc = isBasic
-        ? `${i18n("personalizedHome.basicLimit")}\n${i18n("personalizedHome.basicUpgradeHint")}`
-        : `${i18n("personalizedHome.freeLimit")}\n${i18n("personalizedHome.freeUpgradeHint")}`;
-    const btnLabel = isBasic ? i18n("personalizedHome.upgradeToPremium") : i18n("personalizedHome.upgradeToBasic");
-
-    return (
-        <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-            <Pressable style={ls.backdrop} onPress={onClose} />
-            <Animated.View
-                style={[
-                    ls.sheet,
-                    { backgroundColor: t.card, paddingBottom: insets.bottom + 16 },
-                    { transform: [{ translateY: slideAnim }] },
-                ]}
-            >
-                {/* 핸들바 */}
-                <View style={ls.handle} />
-
-                {/* 아이콘 */}
-                <View style={ls.iconWrap}>
-                    <Text style={{ fontSize: 36 }}>⏰</Text>
-                </View>
-
-                {/* 텍스트 */}
-                <Text style={[ls.title, { color: t.text }]}>{title}</Text>
-                <Text style={[ls.desc, { color: t.textMuted }]}>{desc}</Text>
-
-                {/* 버튼 */}
-                <TouchableOpacity
-                    style={ls.upgradeBtn}
-                    onPress={() => { onClose(); onUpgrade(); }}
-                    activeOpacity={0.88}
-                >
-                    <Text style={ls.upgradeBtnText}>{btnLabel}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={ls.closeBtn} onPress={onClose} activeOpacity={0.7}>
-                    <Text style={[ls.closeBtnText, { color: t.textMuted }]}>{i18n("personalizedHome.closeAria")}</Text>
-                </TouchableOpacity>
-            </Animated.View>
-        </Modal>
-    );
-}
-
-const ls = StyleSheet.create({
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.55)",
-    },
-    sheet: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        paddingHorizontal: 24,
-        paddingTop: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 20,
-    },
-    handle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: "#d1d5db",
-        alignSelf: "center",
-        marginBottom: 20,
-    },
-    iconWrap: {
-        alignSelf: "center",
-        width: 64,
-        height: 64,
-        borderRadius: 20,
-        backgroundColor: "#fef3c7",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: "600",
-        textAlign: "center",
-        marginBottom: 10,
-        letterSpacing: -0.3,
-    },
-    desc: {
-        fontSize: 14,
-        textAlign: "center",
-        lineHeight: 22,
-        marginBottom: 28,
-    },
-    upgradeBtn: {
-        backgroundColor: "#059669",
-        borderRadius: 16,
-        paddingVertical: 16,
-        alignItems: "center",
-        marginBottom: 10,
-    },
-    upgradeBtnText: {
-        color: "#fff",
-        fontSize: 15,
-        fontWeight: "500",
-    },
-    closeBtn: {
-        paddingVertical: 12,
-        alignItems: "center",
-    },
-    closeBtnText: {
-        fontSize: 14,
-        fontWeight: "500",
-    },
-});
 
 const DONA_LOGO = "https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512.png";
 const DEFAULT_PROFILE = "https://d13xx6k6chk2in.cloudfront.net/profileLogo.png";
@@ -358,6 +207,7 @@ function ResultCard({
     i18n: TI18n;
 }) {
     const t = useThemeColors();
+    const { locale } = useLocale();
     const T = (k: string, p?: Record<string, string | number>) => i18n(`personalizedHome.${k}`, p);
 
     if (!isRevealed) {
@@ -421,13 +271,13 @@ function ResultCard({
 
                 {/* 제목 */}
                 <Text style={[s.resultTitle, { color: t.text }]} numberOfLines={2}>
-                    {course.title}
+                    {pickCourseTitle(course, locale)}
                 </Text>
 
                 {/* 설명 */}
                 {course.description ? (
                     <Text style={[s.resultDesc, { color: t.textMuted }]} numberOfLines={2}>
-                        {course.description}
+                        {pickCourseDescription(course, locale) || course.description}
                     </Text>
                 ) : null}
 
@@ -1156,9 +1006,7 @@ export default function AiScreen() {
     const { t: i18n } = useLocale();
     const { user } = useAuth();
     const [chatOpen, setChatOpen] = useState(false);
-    const [showLimitSheet, setShowLimitSheet] = useState(false);
-    const [limitCtx, setLimitCtx] = useState<LimitCtx | null>(null);
-    const [showTicketSheet, setShowTicketSheet] = useState(false);
+    const { openModal } = useModal();
 
     // 탭 진입 시 자동 precheck
     useEffect(() => {
@@ -1170,8 +1018,7 @@ export default function AiScreen() {
             used: number;
         }>("/api/recommendations/precheck").then((pre) => {
             if (pre?.canUse === false) {
-                setLimitCtx({ tier: pre.tier, limit: pre.limit, used: pre.used });
-                setShowLimitSheet(true);
+                openModal("limitExceeded", { ctx: { tier: pre.tier, limit: pre.limit, used: pre.used }, onUpgrade: () => openModal("ticket", { context: "UPGRADE" }) });
             }
         }).catch(() => {});
     }, [user?.id]);
@@ -1189,8 +1036,7 @@ export default function AiScreen() {
                 used: number;
             }>("/api/recommendations/precheck");
             if (pre?.canUse === false) {
-                setLimitCtx({ tier: pre.tier, limit: pre.limit, used: pre.used });
-                setShowLimitSheet(true);
+                openModal("limitExceeded", { ctx: { tier: pre.tier, limit: pre.limit, used: pre.used }, onUpgrade: () => openModal("ticket", { context: "UPGRADE" }) });
                 return;
             }
         } catch {}
@@ -1299,19 +1145,8 @@ export default function AiScreen() {
             <ChatModal
                 visible={chatOpen}
                 onClose={() => setChatOpen(false)}
-                onLimitExceeded={(ctx) => { setLimitCtx(ctx); setShowLimitSheet(true); }}
+                onLimitExceeded={(ctx) => openModal("limitExceeded", { ctx, onUpgrade: () => openModal("ticket", { context: "UPGRADE" }) })}
                 user={user}
-            />
-            <LimitExceededSheet
-                visible={showLimitSheet}
-                ctx={limitCtx}
-                onClose={() => setShowLimitSheet(false)}
-                onUpgrade={() => setShowTicketSheet(true)}
-            />
-            <TicketPlansSheet
-                visible={showTicketSheet}
-                onClose={() => setShowTicketSheet(false)}
-                context="UPGRADE"
             />
         </SafeAreaView>
     );

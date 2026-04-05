@@ -25,13 +25,9 @@ import { useLocale } from "../lib/useLocale";
 import { api, ApiError } from "../lib/api";
 import { setBenefitConsentHideUntil } from "../lib/mmkv";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
+import { useModal } from "../lib/modalContext";
 
 const WIN_H = Dimensions.get("window").height;
-
-type Props = {
-    visible: boolean;
-    onClose: () => void;
-};
 
 function getNextDayMidnightKST(): string {
     const now = new Date();
@@ -43,7 +39,10 @@ function getNextDayMidnightKST(): string {
     return new Date(nextDayKST.getTime() - kstOffset).toISOString();
 }
 
-export default function BenefitConsentBottomSheet({ visible, onClose }: Props) {
+export default function BenefitConsentBottomSheet() {
+    const { isOpen, closeModal } = useModal();
+    const visible = isOpen("benefitConsent");
+    const onClose = () => closeModal("benefitConsent");
     const theme = useThemeColors();
     const { t } = useLocale();
     const insets = useSafeAreaInsets();

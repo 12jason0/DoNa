@@ -34,11 +34,13 @@ import { useAuth } from "../src/hooks/useAuth";
 import PageLoadingOverlay from "../src/components/PageLoadingOverlay";
 import AppHeaderWithModals from "../src/components/AppHeaderWithModals";
 import StandaloneTabBar from "../src/components/StandaloneTabBar";
-import SideMenuSheet from "../src/components/SideMenuSheet";
 import type { Course, UserProfile } from "../src/types/api";
+import { useModal } from "../src/lib/modalContext";
 import { useLocale } from "../src/lib/useLocale";
 import type { LocalePreference } from "../src/lib/appSettingsStorage";
+import { formatViewsCompact } from "../src/lib/localeUtils";
 import { translateCourseConcept } from "../../src/lib/courseTranslate";
+import { pickCourseTitle } from "../src/lib/courseLocalized";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -57,21 +59,6 @@ const CONCEPT_TAGS = ["이색데이트", "감성데이트", "야경", "힐링", 
 const SITUATION_TAGS = ["썸탈 때", "소개팅", "기념일", "데이트", "친구와", "혼자"];
 const MOOD_TAGS = ["로맨틱", "힙한", "활기찬", "레트로", "고급스러운", "감성", "조용한", "이국적인"];
 
-function formatViewsCompact(views: number, locale: LocalePreference): string {
-    if (views >= 10000) {
-        const n = (views / 10000).toFixed(views % 10000 ? 1 : 0);
-        if (locale === "ko") return `${n}만`;
-        if (locale === "ja" || locale === "zh") return `${n}万`;
-        return `${(views / 1000).toFixed(views % 1000 ? 1 : 0)}k`;
-    }
-    if (views >= 1000) {
-        const n = (views / 1000).toFixed(views % 1000 ? 1 : 0);
-        if (locale === "ko") return `${n}천`;
-        if (locale === "ja" || locale === "zh") return `${n}千`;
-        return `${n}k`;
-    }
-    return String(views);
-}
 
 // ─── 코스 카드 ─────────────────────────────────────────────────────────────────
 
@@ -147,7 +134,7 @@ function NearbyCard({
                 <View style={s.badges} pointerEvents="none">
                     {hasRealtimeReservation && (
                         <View style={s.reserveBadge}>
-                            <Text style={s.reserveBadgeText}>{i18n("courseDetail.realtimeReservation")}</Text>
+                            <Text style={s.reserveBadgeText}>{i18n("courseCard.realtimeReservation")}</Text>
                         </View>
                     )}
                     {grade !== "FREE" && (
@@ -197,7 +184,7 @@ function NearbyCard({
             {/* 정보 */}
             <View style={s.cardBody}>
                 <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={2}>
-                    {course.title}
+                    {pickCourseTitle(course, locale)}
                 </Text>
                 <View style={s.metaRow}>
                     {(course.location || (course as any).region) && (
@@ -247,7 +234,8 @@ export default function NearbyScreen() {
     const [searchInput, setSearchInput]   = useState(q ?? "");
     const [activeSearch, setActiveSearch] = useState(q ?? "");
     const [activeRegion, setActiveRegion] = useState("");
-    const [sideMenuOpen, setSideMenuOpen] = useState(false);
+    const { openModal, isOpen } = useModal();
+    const sideMenuOpen = isOpen("sideMenu");
     const [tagModalOpen, setTagModalOpen] = useState(false);
     const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
     const [selectedSituations, setSelectedSituations] = useState<string[]>([]);
@@ -423,8 +411,6 @@ export default function NearbyScreen() {
 
     return (
         <SafeAreaView style={[s.container, { backgroundColor: colors.bg }]} edges={["top"]}>
-            <SideMenuSheet visible={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-
             {/* ── DoNa 헤더 ── */}
             <AppHeaderWithModals />
 
@@ -548,7 +534,7 @@ export default function NearbyScreen() {
                 {!sideMenuOpen && (
                     <TouchableOpacity
                         style={s.plusBtn}
-                        onPress={() => setSideMenuOpen(true)}
+                        onPress={() => openModal("sideMenu")}
                         activeOpacity={0.85}
                         accessibilityLabel={i18n("nav.openMenu")}
                     >

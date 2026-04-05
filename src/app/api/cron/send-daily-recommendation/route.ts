@@ -10,7 +10,7 @@ const PUSH_CONCURRENCY = 5;
 const MAX_ERRORS_IN_RESPONSE = 20;
 
 /**
- * [Vercel Cron] 매일 11:30 KST 실행 (UTC 02:30)
+ * [Vercel Cron] 매일 12:10 KST 실행 (UTC 03:10)
  * 푸시 알림 수신 동의한 모든 유저에게 오늘의 추천 알림 발송
  */
 export async function GET(req: NextRequest) {
@@ -19,6 +19,26 @@ export async function GET(req: NextRequest) {
         const cronSecret = process.env.CRON_SECRET || "default-secret-change-in-production";
         if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // 멱등성 처리: 같은 날 이미 실행된 경우 중복 발송 방지 (Vercel Cron 이중 실행 대응)
+        const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+        const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+        const todayKST = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const idempotencyKey = `cron:daily-rec:${todayKST}`;
+
+        if (redisUrl && redisToken) {
+            const getRes = await fetch(`${redisUrl}/get/${idempotencyKey}`, {
+                headers: { Authorization: `Bearer ${redisToken}` },
+            });
+            const getJson = await getRes.json();
+            if (getJson?.result === "done") {
+                return NextResponse.json({ success: true, skipped: true, reason: "already sent today" });
+            }
+            // 실행 전 선점 (TTL 25시간 = 90000초)
+            await fetch(`${redisUrl}/set/${idempotencyKey}/done/ex/90000`, {
+                headers: { Authorization: `Bearer ${redisToken}` },
+            });
         }
 
         // 푸시 토큰 등록 + 알림 수신 동의한 유저 전체
@@ -34,8 +54,8 @@ export async function GET(req: NextRequest) {
         const title = "오늘의 데이트 추천";
         const body = "오늘은 어떤 데이트를 추천해줄까요? 지금 바로 확인해보세요 💚";
         const data = {
-            screen: "personalized_home",
-            url: "/ai",
+            screen: "home",
+            url: "/",
         };
 
         let sent = 0;

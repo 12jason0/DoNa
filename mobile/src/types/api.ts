@@ -43,9 +43,19 @@ export type CoursePlace = {
     place?: {
         id?: number;
         name?: string;
+        name_en?: string | null;
+        name_ja?: string | null;
+        name_zh?: string | null;
         imageUrl?: string | null;
         category?: string;
         address?: string;
+        address_en?: string | null;
+        address_ja?: string | null;
+        address_zh?: string | null;
+        description?: string | null;
+        description_en?: string | null;
+        description_ja?: string | null;
+        description_zh?: string | null;
         latitude?: number;
         longitude?: number;
     };
@@ -54,7 +64,13 @@ export type CoursePlace = {
 export type Course = {
     id: number;
     title: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     description?: string | null;
+    description_en?: string | null;
+    description_ja?: string | null;
+    description_zh?: string | null;
     imageUrl?: string | null;
     grade: CourseGrade;
     duration?: string | null;
@@ -79,6 +95,9 @@ export type ActiveCourse = {
     courseId: number;
     courseTitle: string;
     title?: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     imageUrl?: string | null;
     vibe?: string | null;
     walkability?: string | null;

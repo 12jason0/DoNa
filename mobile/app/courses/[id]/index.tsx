@@ -30,13 +30,15 @@ import { api, endpoints, BASE_URL } from "../../../src/lib/api";
 import { useAuth } from "../../../src/hooks/useAuth";
 import { Colors } from "../../../src/constants/theme";
 import { resolveImageUrl } from "../../../src/lib/imageUrl";
-import type { PlaceStatus } from "../../../src/lib/placeStatus";
-import { getPlaceOpenStatus, STATUS_COLOR, STATUS_BG } from "../../../src/lib/placeStatus";
+import { getPlaceStatus, type PlaceStatus as CoursePlaceOpenStatus } from "../../../../src/lib/placeStatus";
+import { placeStatusTranslationKey } from "../../../../src/lib/placeStatusUi";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
 import { useLocale } from "../../../src/lib/useLocale";
+import { textFontForLocale } from "../../../src/lib/textDefaultFont";
+import { BlurView } from "expo-blur";
+import type { EdgeInsets } from "react-native-safe-area-context";
 import PageLoadingOverlay from "../../../src/components/PageLoadingOverlay";
-import LoginModal from "../../../src/components/LoginModal";
-import TicketPlansSheet from "../../../src/components/TicketPlansSheet";
+import { useModal } from "../../../src/lib/modalContext";
 import AppHeaderWithModals from "../../../src/components/AppHeaderWithModals";
 import { MODAL_ANDROID_PROPS } from "../../../src/constants/modalAndroidProps";
 import { floatingTabBarBottomReserve } from "../../../src/constants/floatingTabBarInset";
@@ -44,9 +46,22 @@ import type { Course, UserProfile, ActiveCourse } from "../../../src/types/api";
 import { parseTipsFromDbForLocale, type CoursePlaceTipsRow } from "../../../../src/types/tip";
 import {
     translateCourseFreeformKoText,
+    translateCourseRegion,
+    translatePlaceCategory,
+    translateTargetSituation,
+    translateBudgetRange,
+    translateDuration,
     localizeParsedTipsForUi,
     type CourseUiLocale,
 } from "../../../../src/lib/courseTranslate";
+import {
+    pickCourseTitle,
+    pickCourseDescription,
+    pickPlaceName,
+    pickPlaceAddress,
+    pickPlaceDescription,
+} from "../../../src/lib/courseLocalized";
+import type { LocalePreference } from "../../../src/lib/appSettingsStorage";
 
 const MAP_PURPLE = "#5347AA";
 const NAVER_BTN_GRAY = "#9ca3af";
@@ -91,15 +106,24 @@ try {
 interface PlaceData {
     id?: number;
     name?: string;
+    name_en?: string | null;
+    name_ja?: string | null;
+    name_zh?: string | null;
     imageUrl?: string | null;
     image_url?: string | null;
     category?: string;
     address?: string;
+    address_en?: string | null;
+    address_ja?: string | null;
+    address_zh?: string | null;
     latitude?: number;
     longitude?: number;
     lat?: number;
     lng?: number;
     description?: string;
+    description_en?: string | null;
+    description_ja?: string | null;
+    description_zh?: string | null;
     opening_hours?: string | null;
     avg_cost_range?: string;
     phone?: string;
@@ -109,6 +133,7 @@ interface PlaceData {
     reservation_url?: string | null;
     maps_link?: string | null;
     mapUrl?: string | null;
+    closed_days?: { day_of_week?: number | null; specific_date?: string | Date | null; note?: string | null }[];
 }
 
 interface CoursePlace {
@@ -167,11 +192,30 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
 const SEGMENT_ORDER = ["brunch", "lunch", "dinner", "bar", "cafe"];
 const SEGMENT_ICONS: Record<string, string> = { brunch: "🥐", lunch: "🍱", dinner: "🍽️", bar: "🍷", cafe: "☕" };
 
-function placeOpenStatusLabel(i18n: (key: string) => string, status: PlaceStatus): string {
-    if (status === "open") return i18n("courseDetail.placeStatusOpen");
-    if (status === "closingSoon") return i18n("courseDetail.placeStatusClosingSoon");
-    if (status === "closed") return i18n("courseDetail.placeStatusClosedToday");
-    return "";
+const PLACE_OPEN_BADGE_RN: Record<CoursePlaceOpenStatus, { bg: string; text: string }> = {
+    영업중: { bg: "#dcfce7", text: "#166534" },
+    "곧 마감": { bg: "#ffedd5", text: "#c2410c" },
+    "곧 브레이크": { bg: "#fef3c7", text: "#b45309" },
+    "브레이크 중": { bg: "#fef3c7", text: "#b45309" },
+    "오픈 준비중": { bg: "#dbeafe", text: "#1d4ed8" },
+    휴무: { bg: "#f3f4f6", text: "#4b5563" },
+    영업종료: { bg: "#fee2e2", text: "#b91c1c" },
+    "정보 없음": { bg: "#f3f4f6", text: "#6b7280" },
+};
+
+function isPlaceClosedForReserve(st: CoursePlaceOpenStatus): boolean {
+    return st === "휴무" || st === "영업종료";
+}
+
+/** getPlaceStatus(웹과 동일)에 맞게 휴무 배열 정규화 */
+function closedDaysForPlaceStatus(
+    raw?: PlaceData["closed_days"],
+): { day_of_week: number | null; specific_date: Date | string | null; note?: string | null }[] {
+    return (raw ?? []).map((d) => ({
+        day_of_week: d.day_of_week != null ? d.day_of_week : null,
+        specific_date: d.specific_date ?? null,
+        note: d.note ?? null,
+    }));
 }
 
 // ─── 도보 시간 계산 ────────────────────────────────────────────────────────────
@@ -315,7 +359,7 @@ function HeroGradientOverlay() {
     return (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.1)" }]} />
-            <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 260 }}>
+            <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 200 }}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0)" }} />
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.1)" }} />
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.18)" }} />
@@ -327,6 +371,84 @@ function HeroGradientOverlay() {
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
+/**
+ * 찜 토스트: 화면 뒤 블러 + 딤, 하단 CTA와 동일 bottom inset에서 배너가 아래에서 슬라이드업 (웹 찜 시트 톤)
+ */
+function PillToast({
+    message,
+    mode,
+    insets,
+    onHide,
+}: {
+    message: string;
+    mode: "fav-added" | "fav-removed";
+    insets: EdgeInsets;
+    onHide: () => void;
+}) {
+    const t = useThemeColors();
+    const { locale } = useLocale();
+    const ctaFont = textFontForLocale(locale);
+    const slideY = useRef(new Animated.Value(140)).current;
+
+    useEffect(() => {
+        Animated.spring(slideY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 68,
+            friction: 14,
+        }).start();
+
+        const timer = setTimeout(() => {
+            Animated.timing(slideY, {
+                toValue: 160,
+                duration: 300,
+                useNativeDriver: true,
+            }).start(onHide);
+        }, 2400);
+
+        return () => clearTimeout(timer);
+    }, [onHide, slideY]);
+
+    const iconName = mode === "fav-added" ? "checkmark-circle" : "heart-outline";
+    const iconColor = mode === "fav-added" ? Colors.emerald400 : t.textMuted;
+
+    const bottomPad = insets.bottom + 12;
+
+    return (
+        <View style={s.pillToastOverlayRoot} pointerEvents="box-none">
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <BlurView intensity={Platform.OS === "ios" ? 48 : 32} tint="dark" style={StyleSheet.absoluteFill} />
+                <View style={[StyleSheet.absoluteFill, s.pillToastDim]} />
+            </View>
+            <Animated.View
+                style={[
+                    s.pillToastBannerWrap,
+                    {
+                        paddingBottom: bottomPad,
+                        transform: [{ translateY: slideY }],
+                    },
+                ]}
+                pointerEvents="none"
+            >
+                <View
+                    style={[
+                        s.pillToastBannerCard,
+                        {
+                            backgroundColor: t.card,
+                            borderColor: t.border,
+                            shadowColor: t.isDark ? "#000" : "#1e2a1a",
+                        },
+                    ]}
+                >
+                    <Ionicons name={iconName} size={26} color={iconColor} />
+                    <Text style={[ctaFont, s.pillToastBannerText, { color: t.text }]} numberOfLines={3}>
+                        {message}
+                    </Text>
+                </View>
+            </Animated.View>
+        </View>
+    );
+}
 
 function Toast({ message, icon, onHide }: { message: string; icon: string; onHide: () => void }) {
     const opacity = useRef(new Animated.Value(0)).current;
@@ -376,24 +498,14 @@ function PlaceDetailModal({
     const [reservationWebUrl, setReservationWebUrl] = useState<string | null>(null);
     const imageUri = getPlaceImageUrl(place);
     const reservationUrl = getPlaceReservationUrl(place);
-    const status = getPlaceOpenStatus(place.opening_hours);
+    const placeStatusInfo = getPlaceStatus(place.opening_hours, closedDaysForPlaceStatus(place.closed_days));
     const tipItems = useMemo(() => {
         const base = parseTipsFromDbForLocale(tipsRow, locale as CourseUiLocale);
         return localizeParsedTipsForUi(base, locale as CourseUiLocale, i18n);
     }, [tipsRow, locale, i18n]);
     const hasTips = tipItems.length > 0;
     const screenH = Dimensions.get("window").height;
-    const translateY = useRef(new Animated.Value(screenH)).current;
-
-    useEffect(() => {
-        translateY.setValue(screenH);
-        Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 68,
-            friction: 12,
-        }).start();
-    }, [place.id]);
+    const translateY = useRef(new Animated.Value(0)).current;
 
     const dismissWithSwipe = useCallback(() => {
         Animated.timing(translateY, {
@@ -441,7 +553,7 @@ function PlaceDetailModal({
     );
 
     return (
-        <Modal visible transparent animationType="none" onRequestClose={onClose} {...MODAL_ANDROID_PROPS}>
+        <Modal visible transparent animationType="slide" onRequestClose={onClose} {...MODAL_ANDROID_PROPS}>
             <View style={s.placeModalOverlay}>
                 <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
                 <Animated.View
@@ -450,8 +562,7 @@ function PlaceDetailModal({
                         {
                             backgroundColor: t.card,
                             borderColor: t.isDark ? "#374151" : "#f3f4f6",
-                            marginBottom: tabBarReserve,
-                            height: Math.min(screenH * 0.85, screenH - tabBarReserve - 24),
+                            height: screenH * 0.80,
                             transform: [{ translateY }],
                         },
                     ]}
@@ -485,39 +596,54 @@ function PlaceDetailModal({
                         </View>
                         <View style={s.detailImgOverlayWeb} pointerEvents="none">
                             <Text style={s.detailImgNameWeb} numberOfLines={2}>
-                                {place.name}
+                                {pickPlaceName(place, locale as LocalePreference)}
                             </Text>
                         </View>
                     </View>
 
                     <ScrollView
-                        style={{ flex: 1, flexGrow: 1, minHeight: 120 }}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 }}
+                        style={{ flex: 1 }}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: Math.max(24, insets.bottom) }}
                         showsVerticalScrollIndicator={false}
                         nestedScrollEnabled
                         bounces
                         keyboardShouldPersistTaps="handled"
                     >
-                        <Text style={[s.detailScrollTitle, { color: t.text }]}>{place.name}</Text>
+                        <Text style={[s.detailScrollTitle, { color: t.text }]}>{pickPlaceName(place, locale as LocalePreference)}</Text>
 
                         <View style={{ marginBottom: 10 }}>
-                            {status !== "unknown" ? (
-                                <View style={[s.detailStatusBadge, { backgroundColor: STATUS_BG[status] }]}>
-                                    <Text style={[s.detailStatusText, { color: STATUS_COLOR[status] }]}>
-                                        {placeOpenStatusLabel(i18n, status)}
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <View
+                                    style={[
+                                        s.detailStatusBadge,
+                                        { backgroundColor: PLACE_OPEN_BADGE_RN[placeStatusInfo.status].bg },
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            s.detailStatusText,
+                                            { color: PLACE_OPEN_BADGE_RN[placeStatusInfo.status].text },
+                                        ]}
+                                    >
+                                        {i18n(placeStatusTranslationKey(placeStatusInfo.status))}
                                     </Text>
                                 </View>
-                            ) : null}
+                                {place.opening_hours ? (
+                                    <Text style={[s.detailHoursText, { color: t.textMuted }]} numberOfLines={1}>
+                                        {place.opening_hours}
+                                    </Text>
+                                ) : null}
+                            </View>
                         </View>
 
                         {place.address ? (
                             <Text style={[s.detailAddressWeb, { color: t.textMuted }]} numberOfLines={2}>
-                                {place.address}
+                                {pickPlaceAddress(place, locale as LocalePreference)}
                             </Text>
                         ) : null}
 
                         <Text style={[s.detailDescWeb, { color: t.isDark ? "#d1d5db" : "#4b5563" }]}>
-                            {place.description?.trim() ? place.description : i18n("courseDetail.noDescription")}
+                            {pickPlaceDescription(place, locale as LocalePreference) || i18n("courseDetail.noDescription")}
                         </Text>
 
                         {isLoggedIn && hasTips ? (
@@ -584,7 +710,9 @@ function PlaceDetailModal({
                             >
                                 <Ionicons name="open-outline" size={18} color="#fff" />
                                 <Text style={s.detailReserveBtnWebText}>
-                                    {status === "closed" ? i18n("explore.reserveOtherDay") : i18n("explore.reserve")}
+                                    {isPlaceClosedForReserve(placeStatusInfo.status)
+                                        ? i18n("courses.reserveOtherDay")
+                                        : i18n("courses.reserve")}
                                 </Text>
                             </TouchableOpacity>
                         ) : null}
@@ -616,7 +744,7 @@ function PlaceDetailModal({
                                     <Ionicons name="chevron-down" size={22} color={t.text} />
                                 </TouchableOpacity>
                                 <Text style={[s.reserveWebTitle, { color: t.text }]} numberOfLines={1}>
-                                    {i18n("mobile.courseScreen.reserveWithName", { name: place.name || i18n("mobile.courseScreen.placeFallback") })}
+                                    {i18n("mobile.courseScreen.reserveWithName", { name: pickPlaceName(place, locale as LocalePreference) || i18n("mobile.courseScreen.placeFallback") })}
                                 </Text>
                                 <TouchableOpacity
                                     onPress={() => Linking.openURL(reservationWebUrl)}
@@ -833,6 +961,7 @@ function CourseMapModal({
 }) {
     const t = useThemeColors();
     const { t: i18n } = useLocale();
+    const insets = useSafeAreaInsets();
     const safeIndex =
         selectedIndex !== null ? Math.max(0, Math.min(selectedIndex, Math.max(0, places.length - 1))) : null;
     const current = safeIndex !== null ? places[safeIndex]?.place : null;
@@ -856,7 +985,8 @@ function CourseMapModal({
                 })()
               : i18n("mobile.courseScreen.mapSegmentRoute");
 
-    const sheetH = Math.round(Dimensions.get("window").height * 0.75);
+    const navBottom = insets.bottom;
+    const sheetH = Math.round(Dimensions.get("window").height * 0.92) - navBottom;
 
     // 네이티브 지도 카메라 위치
     const mapCamera = useMemo(() => {
@@ -956,7 +1086,7 @@ function CourseMapModal({
                 <View
                     style={[
                         s.courseMapSheetWeb,
-                        { height: sheetH, backgroundColor: t.card, borderColor: t.isDark ? "#374151" : "#f3f4f6" },
+                        { height: sheetH, bottom: navBottom, backgroundColor: t.card, borderColor: t.isDark ? "#374151" : "#f3f4f6" },
                     ]}
                 >
                     <View style={[s.courseMapGrabWeb, { backgroundColor: t.isDark ? "#4b5563" : "#d1d5db" }]} />
@@ -1010,9 +1140,9 @@ function CourseMapModal({
                                     // 생성된 step 핀 PNG는 34/68/102 스케일(정사각) 기반
                                     const pinW = isSel ? 42 : 34;
                                     const pinH = isSel ? 42 : 34;
-                                    const stepNo = idx + 1;
-                                    const stepImgs = STEP_PIN_IMAGES[stepNo] ?? null;
-                                    const markerImg = stepImgs ? (isSel ? stepImgs.selected : stepImgs.normal) : undefined;
+                                    const stepNo = Math.min(idx + 1, 5);
+                                    const stepImgs = STEP_PIN_IMAGES[stepNo];
+                                    const markerImg = isSel ? stepImgs.selected : stepImgs.normal;
                                     return (
                                         <NaverMapMarkerOverlay
                                             key={`m-${idx}-${isSel ? "1" : "0"}`}
@@ -1032,8 +1162,8 @@ function CourseMapModal({
                                         coords={routeCoords}
                                         width={5}
                                         color="#5347AA"
-                                        joinType={1}
-                                        capType={1}
+                                        joinType="Round"
+                                        capType="Round"
                                     />
                                 )}
                             </NaverMapView>
@@ -1145,7 +1275,7 @@ function CourseMapModal({
                                                 if (url) onReserve(url);
                                             }}
                                         >
-                                            <Text style={s.mapLightBtnText}>{i18n("explore.reserve")}</Text>
+                                            <Text style={s.mapLightBtnText}>{i18n("courses.reserve")}</Text>
                                         </TouchableOpacity>
                                     ) : null}
                                 </View>
@@ -1195,12 +1325,12 @@ function PlaceCard({
     const p = cp.place;
     if (!p) return null;
 
-    const status = getPlaceOpenStatus(p.opening_hours);
+    const placeStatusInfo = getPlaceStatus(p.opening_hours, closedDaysForPlaceStatus(p.closed_days));
     const imageUri = getPlaceImageUrl(p);
     const rec = cp.recommended_time?.trim();
     const subText = rec
         ? translateCourseFreeformKoText(rec, locale as CourseUiLocale, i18n)
-        : p.address || null;
+        : pickPlaceAddress(p, locale as LocalePreference) || null;
     const tipsRow: CoursePlaceTipsRow = {
         tips: cp.tips,
         tips_en: cp.tips_en,
@@ -1249,20 +1379,28 @@ function PlaceCard({
                         {/* 카테고리 · 영업 (웹: text-[10px] font-bold text-gray-400 uppercase) */}
                         <View style={s.placeBadgeRow}>
                             {p.category ? (
-                                <Text style={[s.catText, { color: t.textMuted }]}>{p.category.toUpperCase()}</Text>
+                                <Text style={[s.catText, { color: t.textMuted }]}>{translatePlaceCategory(p.category, locale as CourseUiLocale).toUpperCase()}</Text>
                             ) : null}
-                            {status !== "unknown" && (
-                                <View style={[s.statusBadge, { backgroundColor: STATUS_BG[status] }]}>
-                                    <Text style={[s.statusBadgeText, { color: STATUS_COLOR[status] }]}>
-                                        {placeOpenStatusLabel(i18n, status)}
-                                    </Text>
-                                </View>
-                            )}
+                            <View
+                                style={[
+                                    s.statusBadge,
+                                    { backgroundColor: PLACE_OPEN_BADGE_RN[placeStatusInfo.status].bg },
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        s.statusBadgeText,
+                                        { color: PLACE_OPEN_BADGE_RN[placeStatusInfo.status].text },
+                                    ]}
+                                >
+                                    {i18n(placeStatusTranslationKey(placeStatusInfo.status))}
+                                </Text>
+                            </View>
                         </View>
 
                         {/* 이름 (웹: font-bold text-sm) */}
                         <Text style={[s.placeName, { color: t.text }]} numberOfLines={1}>
-                            {p.name}
+                            {pickPlaceName(p, locale as LocalePreference)}
                         </Text>
 
                         {/* 주소 or 추천시간 (웹: text-xs text-gray-500) */}
@@ -1285,7 +1423,9 @@ function PlaceCard({
                             >
                                 <View style={s.reserveBtnInner}>
                                     <Text style={s.reserveBtnText}>
-                                        {status === "closed" ? i18n("explore.reserveInAdvance") : i18n("explore.reserve")}
+                                        {isPlaceClosedForReserve(placeStatusInfo.status)
+                                            ? i18n("courses.reserveInAdvance")
+                                            : i18n("courses.reserve")}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
@@ -1334,19 +1474,20 @@ export default function CourseDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const queryClient = useQueryClient();
     const { isAuthenticated } = useAuth();
+    const { openModal, closeModal } = useModal();
     const [isFav, setIsFav] = useState(false);
-    const [showLoginModal, setShowLoginModal] = useState(false);
-    const [showTicketModal, setShowTicketModal] = useState(false);
-    const [showMemoryLimitModal, setShowMemoryLimitModal] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState<{
         place: PlaceData;
         tipsRow: CoursePlaceTipsRow;
     } | null>(null);
-    const [toast, setToast] = useState<{ message: string; icon: string; id: number } | null>(null);
+    type ToastPayload =
+        | { id: number; variant: "bar"; message: string; icon: string }
+        | { id: number; variant: "pill"; message: string; pillMode: "fav-added" | "fav-removed" };
+    const [toast, setToast] = useState<ToastPayload | null>(null);
     const toastIdRef = useRef(0);
     const showToast = useCallback((message: string, icon: string) => {
         toastIdRef.current += 1;
-        setToast({ message, icon, id: toastIdRef.current });
+        setToast({ id: toastIdRef.current, variant: "bar", message, icon });
     }, []);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [reviewShowCount, setReviewShowCount] = useState(5);
@@ -1354,8 +1495,8 @@ export default function CourseDetailScreen() {
     const [reviewPreviewIndex, setReviewPreviewIndex] = useState(0);
     const [reviewRating, setReviewRating] = useState(5);
     const [reviewContent, setReviewContent] = useState("");
-    const [reviewImageLocalUri, setReviewImageLocalUri] = useState<string | null>(null);
-    const [reviewImageUrl, setReviewImageUrl] = useState<string | null>(null);
+    const [reviewImageLocalUris, setReviewImageLocalUris] = useState<string[]>([]);
+    const [reviewImageUrls, setReviewImageUrls] = useState<string[]>([]);
     const [reviewUploadingImage, setReviewUploadingImage] = useState(false);
     const [reviewSubmitting, setReviewSubmitting] = useState(false);
     const [showCourseMapModal, setShowCourseMapModal] = useState(false);
@@ -1483,6 +1624,27 @@ export default function CourseDetailScreen() {
             .filter(Boolean) as CoursePlace[];
     }, [course?.isSelectionType, mySelection, normalizedPlacesAll]);
 
+    /** 목록 진입 시 1번 장소가 선택된 것처럼 초록 테두리 표시 */
+    const [highlightedPlaceId, setHighlightedPlaceId] = useState<number | null>(null);
+    useEffect(() => {
+        if (!course) return;
+        const showNormalList =
+            (!course.isSelectionType || selectionOrderedSteps.length === 0 || !!mySelection) && !showSelectionUI;
+        if (showNormalList && displayPlaces.length > 0) {
+            const pid = displayPlaces[0]?.place?.id;
+            setHighlightedPlaceId(pid != null ? Number(pid) : null);
+            return;
+        }
+        if (course.isSelectionType && selectionOrderedSteps.length > 0 && (!mySelection || showSelectionUI)) {
+            const first = selectionOrderedSteps[0];
+            if (first?.type === "fixed" && first.coursePlace.place?.id != null) {
+                setHighlightedPlaceId(Number(first.coursePlace.place.id));
+                return;
+            }
+        }
+        setHighlightedPlaceId(null);
+    }, [course, id, displayPlaces, selectionOrderedSteps, mySelection, showSelectionUI]);
+
     // 선택형 초기값 세팅
     useEffect(() => {
         if (!course?.isSelectionType || selectionOrderedSteps.length === 0) return;
@@ -1526,7 +1688,13 @@ export default function CourseDetailScreen() {
             queryClient.invalidateQueries({ queryKey: ["favorites"] });
             queryClient.invalidateQueries({ queryKey: ["users", "favorites"] });
             queryClient.invalidateQueries({ queryKey: ["users", "favorites", "header-badge"] });
-            showToast(adding ? i18n("mobile.courseScreen.favAdded") : i18n("mobile.courseScreen.favRemoved"), adding ? "❤️" : "✓");
+            toastIdRef.current += 1;
+            setToast({
+                id: toastIdRef.current,
+                variant: "pill",
+                message: adding ? i18n("courseDetail.favoriteAdded") : i18n("courseDetail.favoriteRemoved"),
+                pillMode: adding ? "fav-added" : "fav-removed",
+            });
         },
     });
 
@@ -1536,14 +1704,14 @@ export default function CourseDetailScreen() {
         shareInFlightRef.current = true;
         try {
             const message = i18n("mobile.courseScreen.shareMessage", {
-                title: course.title,
+                title: pickCourseTitle(course, locale as LocalePreference),
                 url: `${BASE_URL}/courses/${id}/view`,
             });
             // iOS에서 message + url 동시 전달 시 링크가 두 번 붙는 경우가 있어 단일 필드만 사용
             await Share.share(
                 Platform.OS === "ios"
                     ? { message }
-                    : { message, title: course.title },
+                    : { message, title: pickCourseTitle(course, locale as LocalePreference) },
             );
         } catch {
             // 사용자가 시트를 닫은 경우 등 — 무시
@@ -1556,7 +1724,7 @@ export default function CourseDetailScreen() {
 
     const handleStartCourse = useCallback(async () => {
         if (!isAuthenticated) {
-            setShowLoginModal(true);
+            openModal("login");
             return;
         }
         if (!course) return;
@@ -1564,7 +1732,7 @@ export default function CourseDetailScreen() {
         const isLocked =
             (course.grade === "BASIC" && userTier === "FREE") || (course.grade === "PREMIUM" && userTier !== "PREMIUM");
         if (isLocked) {
-            setShowTicketModal(true);
+            openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }) });
             return;
         }
         try {
@@ -1579,11 +1747,11 @@ export default function CourseDetailScreen() {
 
     // 선택형 코스: 장소 선택 후 저장
     const handleStartSelectionCourse = useCallback(async () => {
-        if (!isAuthenticated) { setShowLoginModal(true); return; }
+        if (!isAuthenticated) { openModal("login"); return; }
         if (!course) return;
         const userTier = profile?.subscriptionTier ?? (profile as any)?.subscription_tier ?? "FREE";
         const isLocked = (course.grade === "BASIC" && userTier === "FREE") || (course.grade === "PREMIUM" && userTier !== "PREMIUM");
-        if (isLocked) { setShowTicketModal(true); return; }
+        if (isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }) }); return; }
         const selectedPlaceIds = selectionOrderedSteps
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);
@@ -1615,11 +1783,11 @@ export default function CourseDetailScreen() {
     }, [isAuthenticated, course, id, profile, selectionOrderedSteps, selectedBySegment, showToast, queryClient, i18n]);
 
     const handleMemoryRecord = useCallback(async () => {
-        if (!isAuthenticated) { setShowLoginModal(true); return; }
+        if (!isAuthenticated) { openModal("login"); return; }
         try {
             const data = await api.get<{ count: number; limit: number | null }>("/api/users/me/memory-count");
             if (data.limit !== null && data.count >= data.limit) {
-                setShowMemoryLimitModal(true);
+                openModal("memoryLimit");
                 return;
             }
         } catch {}
@@ -1652,7 +1820,7 @@ export default function CourseDetailScreen() {
     const handleSubmitReview = useCallback(async () => {
         if (!id) return;
         const content = reviewContent.trim();
-        if (content.length < 5) {
+        if (content.length < 10) {
             Alert.alert(i18n("mobile.courseScreen.alertNotice"), i18n("mobile.courseScreen.reviewMinLength"));
             return;
         }
@@ -1663,13 +1831,13 @@ export default function CourseDetailScreen() {
                 rating: reviewRating,
                 content,
                 isPublic: true,
-                imageUrls: reviewImageUrl ? [reviewImageUrl] : [],
+                imageUrls: reviewImageUrls,
             });
             setShowReviewModal(false);
             setReviewContent("");
             setReviewRating(5);
-            setReviewImageLocalUri(null);
-            setReviewImageUrl(null);
+            setReviewImageLocalUris([]);
+            setReviewImageUrls([]);
             showToast(i18n("mobile.courseScreen.reviewPosted"), "✅");
             refetchReviews();
         } catch (e: any) {
@@ -1677,10 +1845,13 @@ export default function CourseDetailScreen() {
         } finally {
             setReviewSubmitting(false);
         }
-    }, [id, reviewContent, reviewRating, reviewImageUrl, refetchReviews, showToast, i18n]);
+    }, [id, reviewContent, reviewRating, reviewImageUrls, refetchReviews, showToast, i18n]);
 
+    const MAX_REVIEW_IMAGES = 5;
     const handlePickReviewImage = useCallback(async () => {
         if (!id) return;
+        const remaining = MAX_REVIEW_IMAGES - reviewImageLocalUris.length;
+        if (remaining <= 0) return;
         try {
             const ImagePicker = require("expo-image-picker");
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -1690,23 +1861,27 @@ export default function CourseDetailScreen() {
             }
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsMultipleSelection: false,
+                allowsMultipleSelection: true,
+                selectionLimit: remaining,
                 quality: 0.85,
             });
-            if (result.canceled || !result.assets?.[0]?.uri) return;
+            if (result.canceled || !result.assets?.length) return;
 
-            const localUri = result.assets[0].uri;
-            setReviewImageLocalUri(localUri);
+            const newUris = result.assets.map((a: any) => a.uri);
+            setReviewImageLocalUris((prev) => [...prev, ...newUris].slice(0, MAX_REVIEW_IMAGES));
             setReviewUploadingImage(true);
             try {
-                const uploaded = await uploadImageViaPresign(localUri, String(id), {
-                    presign: i18n("courseStart.presignUrlError"),
-                    putFail: i18n("courseStart.imageUploadPutError"),
-                });
-                setReviewImageUrl(uploaded);
+                const uploads = await Promise.all(
+                    newUris.map((uri: string) =>
+                        uploadImageViaPresign(uri, String(id), {
+                            presign: i18n("courseStart.presignUrlError"),
+                            putFail: i18n("courseStart.imageUploadPutError"),
+                        })
+                    )
+                );
+                setReviewImageUrls((prev) => [...prev, ...uploads].slice(0, MAX_REVIEW_IMAGES));
             } catch (e: any) {
-                setReviewImageLocalUri(null);
-                setReviewImageUrl(null);
+                setReviewImageLocalUris((prev) => prev.slice(0, prev.length - newUris.length));
                 Alert.alert(i18n("mobile.courseScreen.imageUploadFailTitle"), e?.message ?? i18n("mobile.courseScreen.tryAgainLater"));
             } finally {
                 setReviewUploadingImage(false);
@@ -1714,7 +1889,7 @@ export default function CourseDetailScreen() {
         } catch {
             Alert.alert(i18n("mobile.courseScreen.alertNotice"), i18n("mobile.courseScreen.imagePickerBuildOnly"));
         }
-    }, [id, i18n]);
+    }, [id, i18n, reviewImageLocalUris.length]);
 
     if (isLoading) {
         return (
@@ -1739,7 +1914,7 @@ export default function CourseDetailScreen() {
 
     const grade = GRADE_META[course.grade] ?? GRADE_META.FREE;
     const normalizedPlaces = normalizedPlacesAll;
-    const regionLabel = (course as any).location ?? course.region ?? i18n("explore.regionSeoul");
+    const regionLabel = translateCourseRegion(course.region, i18n) || (course as any).location || i18n("courses.regionSeoul");
     const heroImage = resolveImageUrl(course.imageUrl) ?? getPlaceImageUrl(normalizedPlaces[0]?.place);
     const openMapForIndex = (idx: number) => {
         setActivePlaceIndex(idx);
@@ -1777,28 +1952,28 @@ export default function CourseDetailScreen() {
                     </TouchableOpacity>
 
                     {/* 히어로 하단: 상황·예산 칩 + 제목 + 메타 칩 (웹과 동일 구조) */}
-                    <View style={[s.heroFooter, { paddingBottom: 28 }]}>
+                    <View style={[s.heroFooter, { paddingBottom: 16 }]}>
                         <View style={s.heroChipRowTop}>
                             {course.target_situation ? (
                                 <View style={s.heroChipDark}>
                                     <Text style={s.heroChipDarkText}>
-                                        #{course.target_situation === "SOME" ? i18n("mobile.courseScreen.targetSome") : course.target_situation}
+                                        #{translateTargetSituation(course.target_situation, locale as CourseUiLocale, i18n)}
                                     </Text>
                                 </View>
                             ) : null}
                             {course.budget_range ? (
                                 <View style={s.heroChipDark}>
-                                    <Text style={s.heroChipDarkText}>💸 {course.budget_range}</Text>
+                                    <Text style={s.heroChipDarkText}>💸 {translateBudgetRange(course.budget_range, locale as CourseUiLocale)}</Text>
                                 </View>
                             ) : null}
                         </View>
 
                         <Text style={s.heroTitle} numberOfLines={3}>
-                            {course.title}
+                            {pickCourseTitle(course, locale as LocalePreference)}
                         </Text>
-                        {course.sub_title ? (
+                        {course.description ? (
                             <Text style={s.heroSubTitle} numberOfLines={2}>
-                                {course.sub_title}
+                                {pickCourseDescription(course, locale as LocalePreference)}
                             </Text>
                         ) : null}
 
@@ -1813,7 +1988,7 @@ export default function CourseDetailScreen() {
                             </View>
                             {course.duration ? (
                                 <View style={s.heroMetaPill}>
-                                    <Text style={s.heroMetaPillText}>⏳ {course.duration}</Text>
+                                    <Text style={s.heroMetaPillText}>⏳ {translateDuration(course.duration, locale as CourseUiLocale)}</Text>
                                 </View>
                             ) : null}
                             {course.rating != null && course.rating > 0 ? (
@@ -1871,8 +2046,15 @@ export default function CourseDetailScreen() {
                                                         <PlaceCard
                                                             cp={cp}
                                                             index={stepIdx}
-                                                            onPress={() => cp.place && setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) })}
-                                                            isSelected={!!(selectedPlace?.place?.id === cp.place?.id)}
+                                                            onPress={() => {
+                                                                if (cp.place?.id != null) setHighlightedPlaceId(Number(cp.place.id));
+                                                                if (cp.place) setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) });
+                                                            }}
+                                                            isSelected={
+                                                                cp.place?.id != null &&
+                                                                highlightedPlaceId !== null &&
+                                                                Number(cp.place.id) === highlightedPlaceId
+                                                            }
                                                             onReserve={(url) => setScreenReservationUrl(url)}
                                                         />
                                                         <View style={s.confirmedBadge}>
@@ -2002,8 +2184,15 @@ export default function CourseDetailScreen() {
                                             <PlaceCard
                                                 cp={cp}
                                                 index={i}
-                                                onPress={() => cp.place && setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) })}
-                                                isSelected={!!(selectedPlace && selectedPlace.place?.id === cp.place?.id)}
+                                                onPress={() => {
+                                                    if (cp.place?.id != null) setHighlightedPlaceId(Number(cp.place.id));
+                                                    if (cp.place) setSelectedPlace({ place: cp.place, tipsRow: coursePlaceToTipsRow(cp) });
+                                                }}
+                                                isSelected={
+                                                    cp.place?.id != null &&
+                                                    highlightedPlaceId !== null &&
+                                                    Number(cp.place.id) === highlightedPlaceId
+                                                }
                                                 onReserve={(url) => setScreenReservationUrl(url)}
                                             />
                                         </React.Fragment>
@@ -2026,10 +2215,7 @@ export default function CourseDetailScreen() {
                 >
                     <View style={s.reviewHeader}>
                         <Text style={[s.reviewSectionTitle, { color: t.text }]}>
-                            {i18n("mobile.courseScreen.reviewsHeading")}{" "}
-                            {reviews.length > 0 ? (
-                                <Text style={{ color: "#10b981" }}>{reviews.length}</Text>
-                            ) : null}
+                            {i18n("mobile.courseScreen.usageReviewsHeading", { count: reviews.length })}
                         </Text>
                         <TouchableOpacity style={s.reviewWriteBtn} onPress={() => setShowReviewModal(true)}>
                             <Text style={s.reviewWriteBtnText}>{i18n("mobile.courseScreen.reviewWrite")}</Text>
@@ -2132,44 +2318,67 @@ export default function CourseDetailScreen() {
             >
                 {/* 찜하기 */}
                 <TouchableOpacity
-                    style={[s.ctaIconBtn, { borderColor: t.border }]}
+                    style={s.ctaIconBtn}
                     onPress={() => {
-                        if (!isAuthenticated) { setShowLoginModal(true); return; }
+                        if (!isAuthenticated) { openModal("login"); return; }
                         if (favMutation.isPending) return;
                         favMutation.mutate(!isFav);
                     }}
                 >
                     <Ionicons
                         name={isFav ? "heart" : "heart-outline"}
-                        size={16}
+                        size={28}
                         color={isFav ? "#ef4444" : t.textMuted}
                     />
-                    <Text style={[s.ctaIconLabel, { color: isFav ? "#ef4444" : t.textMuted }]}>{i18n("courseDetail.favorite")}</Text>
+                    <Text style={[textFontForLocale(locale), s.ctaIconLabel, { color: isFav ? "#ef4444" : t.textMuted }]}>
+                        {i18n("courseDetail.favorite")}
+                    </Text>
                 </TouchableOpacity>
                 {/* 공유하기 */}
-                <TouchableOpacity style={[s.ctaIconBtn, { borderColor: t.border }]} onPress={handleShare}>
-                    <Ionicons name="share-outline" size={20} color={t.textMuted} />
-                    <Text style={[s.ctaIconLabel, { color: t.textMuted }]}>{i18n("courseDetail.share")}</Text>
+                <TouchableOpacity style={s.ctaIconBtn} onPress={handleShare}>
+                    <Ionicons name="share-outline" size={28} color={t.textMuted} />
+                    <Text style={[textFontForLocale(locale), s.ctaIconLabel, { color: t.textMuted }]}>
+                        {i18n("courseDetail.share")}
+                    </Text>
                 </TouchableOpacity>
                 {/* 코스 CTA — 3가지 상태 */}
                 {isAuthenticated && activeCourse?.courseId === Number(id) ? (
-                    <View style={{ flex: 1 }}>
-                        <Text style={[s.ctaStatusText, { color: t.textMuted }]}>{i18n("mobile.courseScreen.inProgressThisCourse")}</Text>
-                        <TouchableOpacity style={[s.ctaMainBtn, { minHeight: 46, paddingVertical: 10 }]} onPress={handleMemoryRecord} activeOpacity={0.85}>
-                            <Text style={s.ctaMainBtnText}>{i18n("mobile.courseScreen.memoryRecordPersonal")}</Text>
+                    <View style={s.ctaMainColumn}>
+                        <Text style={[textFontForLocale(locale), s.ctaStatusText, { color: t.textMuted, textAlign: "center" }]}>
+                            {i18n("mobile.courseScreen.inProgressThisCourse")}
+                        </Text>
+                        <TouchableOpacity
+                            style={[s.ctaMainBtn, s.ctaMainBtnColumn, { minHeight: 48, paddingVertical: 12 }]}
+                            onPress={handleMemoryRecord}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={[textFontForLocale(locale), s.ctaMainBtnText]}>
+                                {i18n("mobile.courseScreen.memoryRecordPersonal")}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 ) : isAuthenticated && activeCourse && activeCourse.courseId !== Number(id) ? (
-                    <View style={{ flex: 1 }}>
-                        <Text style={[s.ctaStatusText, { color: t.textMuted }]}>{i18n("mobile.courseScreen.alreadyOtherCourse")}</Text>
-                        <TouchableOpacity style={[s.ctaMainBtn, { minHeight: 46, paddingVertical: 10, backgroundColor: "#374151" }]} onPress={handleSwitchCourse} activeOpacity={0.85}>
-                            <Text style={s.ctaMainBtnText}>{i18n("mobile.courseScreen.switchOtherCourse")}</Text>
+                    <View style={s.ctaMainColumn}>
+                        <Text style={[textFontForLocale(locale), s.ctaStatusText, { color: t.textMuted, textAlign: "center" }]}>
+                            {i18n("mobile.courseScreen.alreadyOtherCourse")}
+                        </Text>
+                        <TouchableOpacity
+                            style={[
+                                s.ctaMainBtn,
+                                s.ctaMainBtnColumn,
+                                { minHeight: 48, paddingVertical: 12, backgroundColor: "#374151" },
+                            ]}
+                            onPress={handleSwitchCourse}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={[textFontForLocale(locale), s.ctaMainBtnText]}>
+                                {i18n("mobile.courseScreen.switchOtherCourse")}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 ) : course?.isSelectionType && selectionOrderedSteps.length > 0 && (!mySelection || showSelectionUI) ? (
-                    // 선택형 코스: 장소 선택 후 저장
                     <TouchableOpacity
-                        style={[s.ctaMainBtn, selectionLoading && { opacity: 0.7 }]}
+                        style={[s.ctaMainBtn, s.ctaMainBtnWide, selectionLoading && { opacity: 0.7 }]}
                         onPress={handleStartSelectionCourse}
                         disabled={selectionLoading}
                         activeOpacity={0.85}
@@ -2177,15 +2386,15 @@ export default function CourseDetailScreen() {
                         {selectionLoading
                             ? <ActivityIndicator size="small" color="#fff" />
                             : (
-                                <Text style={s.ctaMainBtnText}>
+                                <Text style={[textFontForLocale(locale), s.ctaMainBtnText]}>
                                     {mySelection ? i18n("mobile.courseScreen.saveSelection") : i18n("courseDetail.startCourse")}
                                 </Text>
                             )
                         }
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity style={s.ctaMainBtn} onPress={handleStartCourse} activeOpacity={0.85}>
-                        <Text style={s.ctaMainBtnText}>{i18n("courseDetail.startCourse")}</Text>
+                    <TouchableOpacity style={[s.ctaMainBtn, s.ctaMainBtnWide]} onPress={handleStartCourse} activeOpacity={0.85}>
+                        <Text style={[textFontForLocale(locale), s.ctaMainBtnText]}>{i18n("courseDetail.startCourse")}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -2243,7 +2452,7 @@ export default function CourseDetailScreen() {
                                 <Ionicons name="chevron-down" size={22} color="#111827" />
                             </TouchableOpacity>
                             <Text style={[s.reserveWebTitle, { color: "#111827" }]} numberOfLines={1}>
-                                {i18n("explore.reserve")}
+                                {i18n("courses.reserve")}
                             </Text>
                             <TouchableOpacity
                                 onPress={() => screenReservationUrl && Linking.openURL(screenReservationUrl)}
@@ -2275,68 +2484,6 @@ export default function CourseDetailScreen() {
                         ) : null}
                     </View>
                 </View>
-            </Modal>
-
-            {/* 구독/열람권 모달 */}
-            <TicketPlansSheet
-                visible={showTicketModal}
-                onClose={() => setShowTicketModal(false)}
-                courseId={Number(id)}
-                courseGrade={course.grade as "BASIC" | "PREMIUM"}
-                context="COURSE"
-                onUnlocked={() => queryClient.invalidateQueries({ queryKey: ["course", id] })}
-            />
-
-            <LoginModal
-                visible={showLoginModal}
-                onClose={() => setShowLoginModal(false)}
-            />
-
-            {/* 메모리 한도 모달 */}
-            <Modal visible={showMemoryLimitModal} transparent animationType="slide" onRequestClose={() => setShowMemoryLimitModal(false)} {...MODAL_ANDROID_PROPS}>
-                <Pressable style={s.overlay} onPress={() => setShowMemoryLimitModal(false)}>
-                    <Pressable style={[s.loginModalSheet, { backgroundColor: t.card }]} onPress={(e) => e.stopPropagation()}>
-                        <TouchableOpacity style={[s.loginModalClose, { backgroundColor: t.surface }]} onPress={() => setShowMemoryLimitModal(false)}>
-                            <Ionicons name="close" size={16} color={t.textMuted} />
-                        </TouchableOpacity>
-                        <View style={s.loginIconWrap}>
-                            <View style={[s.loginIconPulse, { backgroundColor: "#7c3aed" }]} />
-                            <View style={[s.loginIconBox, { backgroundColor: "#7c3aed", shadowColor: "#7c3aed" }]}>
-                                <Ionicons name="lock-closed" size={30} color="#fff" />
-                            </View>
-                        </View>
-                        <Text style={[s.loginModalTitle, { color: t.text }]}>
-                            {i18n("mobile.courseScreen.memoryLimitTitleLine1")}
-                            {"\n"}
-                            <Text style={{ color: "#7c3aed" }}>{i18n("mobile.courseScreen.memoryLimitHighlight")}</Text>
-                        </Text>
-                        <Text style={[s.loginModalSub, { color: t.textMuted }]}>{i18n("mobile.courseScreen.memoryLimitSub")}</Text>
-                        <View style={[s.loginBenefitBox, { backgroundColor: t.surface, borderColor: t.border }]}>
-                            <Text style={[s.loginBenefitLabel, { color: t.textMuted }]}>{i18n("mobile.courseScreen.subBenefitsTitle")}</Text>
-                            {[
-                                i18n("mobile.courseScreen.benefitUnlimitedMemories"),
-                                i18n("mobile.courseScreen.benefitPremiumCourses"),
-                                i18n("mobile.courseScreen.benefitNoAds"),
-                            ].map((b, i) => (
-                                <View key={i} style={s.loginBenefitRow}>
-                                    <View style={[s.loginCheckCircle, { backgroundColor: "#ede9fe" }]}>
-                                        <Ionicons name="checkmark" size={10} color="#7c3aed" />
-                                    </View>
-                                    <Text style={[s.loginBenefitText, { color: t.text }]}>{b}</Text>
-                                </View>
-                            ))}
-                        </View>
-                        <TouchableOpacity
-                            style={[s.loginCTABtn, { backgroundColor: "#7c3aed", shadowColor: "#7c3aed" }]}
-                            onPress={() => { setShowMemoryLimitModal(false); router.push("/shop" as any); }}
-                        >
-                            <Text style={s.loginCTAText}>{i18n("mobile.courseScreen.subscribeSaveMore")}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={s.cancelBtn} onPress={() => setShowMemoryLimitModal(false)}>
-                            <Text style={s.cancelBtnText}>{i18n("courseStart.close")}</Text>
-                        </TouchableOpacity>
-                    </Pressable>
-                </Pressable>
             </Modal>
 
             {/* 리뷰 이미지 프리뷰 */}
@@ -2396,12 +2543,12 @@ export default function CourseDetailScreen() {
                         style={s.overlay}
                         onPress={() => {
                             setShowReviewModal(false);
-                            setReviewImageLocalUri(null);
-                            setReviewImageUrl(null);
+                            setReviewImageLocalUris([]);
+                            setReviewImageUrls([]);
                         }}
                     >
                         <Pressable
-                            style={[s.modalSheet, s.reviewModalSheet, { backgroundColor: t.card }]}
+                            style={[s.modalSheet, s.reviewModalSheet, { backgroundColor: t.card, paddingBottom: Math.max(20, insets.bottom + 8) }]}
                             onPress={(e) => e.stopPropagation()}
                         >
                         <View style={[s.handle, { backgroundColor: t.border }]} />
@@ -2414,8 +2561,8 @@ export default function CourseDetailScreen() {
                                 style={[s.loginModalClose, { backgroundColor: t.surface, position: "relative", top: 0, right: 0 }]}
                                 onPress={() => {
                                     setShowReviewModal(false);
-                                    setReviewImageLocalUri(null);
-                                    setReviewImageUrl(null);
+                                    setReviewImageLocalUris([]);
+                                    setReviewImageUrls([]);
                                 }}
                                 disabled={reviewSubmitting}
                             >
@@ -2425,8 +2572,9 @@ export default function CourseDetailScreen() {
                         {/* 코스 이름 박스 */}
                         <View style={[s.reviewCourseName, { backgroundColor: t.surface }]}>
                             <Text style={{ fontSize: 11, color: t.textMuted, marginBottom: 2 }}>{i18n("mobile.courseScreen.reviewTargetLabel")}</Text>
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: t.text }} numberOfLines={1}>{course.title}</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: t.text }} numberOfLines={2}>{pickCourseTitle(course, locale as LocalePreference)}</Text>
                         </View>
+                        <Text style={[s.reviewModalFieldLabel, { color: t.text }]}>{i18n("mobile.courseScreen.reviewRatingLabel")}</Text>
                         <View style={s.reviewRatingRow}>
                             {[1, 2, 3, 4, 5].map((star) => (
                                 <TouchableOpacity
@@ -2446,39 +2594,7 @@ export default function CourseDetailScreen() {
                             ))}
                             <Text style={[s.reviewRatingCount, { color: t.textMuted }]}>{reviewRating} / 5</Text>
                         </View>
-                        <View style={s.reviewImageRow}>
-                            <TouchableOpacity
-                                style={[s.reviewImagePickBtn, { borderColor: t.border, backgroundColor: t.surface }]}
-                                onPress={handlePickReviewImage}
-                                disabled={reviewUploadingImage || reviewSubmitting}
-                            >
-                                {reviewUploadingImage ? (
-                                    <ActivityIndicator size="small" color={Colors.brandGreen} />
-                                ) : (
-                                    <>
-                                        <Ionicons name="image-outline" size={16} color={t.textMuted} />
-                                        <Text style={[s.reviewImagePickText, { color: t.textMuted }]}>
-                                            {reviewImageLocalUri ? i18n("mobile.courseScreen.changeImage") : i18n("mobile.courseScreen.attachImage")}
-                                        </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                            {reviewImageLocalUri ? (
-                                <View style={s.reviewImagePreviewWrap}>
-                                    <Image source={{ uri: reviewImageLocalUri }} style={s.reviewImagePreview} />
-                                    <TouchableOpacity
-                                        style={s.reviewImageRemoveBtn}
-                                        onPress={() => {
-                                            setReviewImageLocalUri(null);
-                                            setReviewImageUrl(null);
-                                        }}
-                                        disabled={reviewUploadingImage || reviewSubmitting}
-                                    >
-                                        <Ionicons name="close" size={12} color="#fff" />
-                                    </TouchableOpacity>
-                                </View>
-                            ) : null}
-                        </View>
+                        <Text style={[s.reviewModalFieldLabel, { color: t.text, marginTop: 4 }]}>{i18n("mobile.courseScreen.reviewContentLabel")}</Text>
                         <TextInput
                             value={reviewContent}
                             onChangeText={setReviewContent}
@@ -2491,18 +2607,55 @@ export default function CourseDetailScreen() {
                                 { color: t.text, borderColor: t.border, backgroundColor: t.surface },
                             ]}
                         />
-                        <Text style={[s.reviewCharCount, { color: reviewContent.length < 5 ? "#ef4444" : t.textSubtle }]}>{reviewContent.length} / 500</Text>
-                        <View style={s.reviewModalActions}>
+                        <Text style={[s.reviewCharCount, { color: reviewContent.length < 10 ? "#ef4444" : t.textSubtle }]}>{reviewContent.length} / 500</Text>
+                        <Text style={[s.reviewModalFieldLabel, { color: t.text }]}>{i18n("mobile.courseScreen.reviewPhotoOptional")}</Text>
+                        <View style={s.reviewImageGrid}>
+                            {reviewImageLocalUris.map((uri, idx) => (
+                                <View key={idx} style={s.reviewImageThumb}>
+                                    <Image source={{ uri }} style={s.reviewImageThumbImg} resizeMode="cover" />
+                                    <TouchableOpacity
+                                        style={s.reviewImageRemoveBtn}
+                                        onPress={() => {
+                                            setReviewImageLocalUris((prev) => prev.filter((_, i) => i !== idx));
+                                            setReviewImageUrls((prev) => prev.filter((_, i) => i !== idx));
+                                        }}
+                                        disabled={reviewUploadingImage || reviewSubmitting}
+                                    >
+                                        <Ionicons name="close" size={12} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                            {reviewImageLocalUris.length < MAX_REVIEW_IMAGES && (
+                                <TouchableOpacity
+                                    style={[s.reviewImageAddBtn, { borderColor: t.border }]}
+                                    onPress={handlePickReviewImage}
+                                    disabled={reviewUploadingImage || reviewSubmitting}
+                                    activeOpacity={0.7}
+                                >
+                                    {reviewUploadingImage ? (
+                                        <ActivityIndicator size="small" color={Colors.brandGreen} />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="add" size={22} color={t.textMuted} />
+                                            <Text style={[s.reviewImageAddText, { color: t.textMuted }]}>
+                                                {`${reviewImageLocalUris.length}/${MAX_REVIEW_IMAGES}`}
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <View style={[s.reviewModalActions, { marginTop: 16 }]}>
                             <TouchableOpacity
-                                style={[s.cancelBtn, { margin: 0 }]}
+                                style={[s.reviewCancelHalfBtn, { borderColor: t.border, backgroundColor: t.surface }]}
                                 onPress={() => {
                                     setShowReviewModal(false);
-                                    setReviewImageLocalUri(null);
-                                    setReviewImageUrl(null);
+                                    setReviewImageLocalUris([]);
+                                    setReviewImageUrls([]);
                                 }}
                                 disabled={reviewSubmitting}
                             >
-                                <Text style={s.cancelBtnText}>{i18n("mobile.courseScreen.cancel")}</Text>
+                                <Text style={[s.reviewCancelHalfText, { color: t.textMuted }]}>{i18n("mobile.courseScreen.cancel")}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[s.ticketBtn, { flex: 1 }, reviewSubmitting && { opacity: 0.6 }]}
@@ -2521,11 +2674,19 @@ export default function CourseDetailScreen() {
                 </KeyboardAvoidingView>
             </Modal>
 
-            {toast ? (
+            {toast?.variant === "bar" ? (
                 <Toast
                     key={toast.id}
                     message={toast.message}
                     icon={toast.icon}
+                    onHide={() => setToast(null)}
+                />
+            ) : toast?.variant === "pill" ? (
+                <PillToast
+                    key={toast.id}
+                    message={toast.message}
+                    mode={toast.pillMode}
+                    insets={insets}
                     onHide={() => setToast(null)}
                 />
             ) : null}
@@ -2560,7 +2721,7 @@ const s = StyleSheet.create({
         paddingTop: 8,
         zIndex: 10,
     },
-    heroChipRowTop: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
+    heroChipRowTop: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
     heroChipDark: {
         paddingHorizontal: 10,
         paddingVertical: 4,
@@ -2571,17 +2732,17 @@ const s = StyleSheet.create({
     },
     heroChipDarkText: { fontSize: 11, fontWeight: "500", color: "#fff", letterSpacing: 0.3 },
     heroTitle: {
-        fontSize: 20,
+        fontSize: 19,
         fontWeight: "600",
         color: "#fff",
-        marginBottom: 6,
+        marginBottom: 4,
         lineHeight: 28,
         textShadowColor: "rgba(0,0,0,0.45)",
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 6,
     },
-    heroSubTitle: { fontSize: 13, color: "rgba(255,255,255,0.88)", marginBottom: 10, lineHeight: 19 },
-    heroMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
+    heroSubTitle: { fontSize: 13, color: "rgba(255,255,255,0.88)", marginBottom: 6, lineHeight: 19 },
+    heroMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
     heroMetaPill: {
         paddingHorizontal: 10,
         paddingVertical: 5,
@@ -2591,6 +2752,14 @@ const s = StyleSheet.create({
         borderColor: "rgba(255,255,255,0.4)",
     },
     heroMetaPillText: { fontSize: 13, fontWeight: "500", color: "#fff" },
+
+    // 코스 정보 섹션 (description + 메타)
+    courseInfoSection: { paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1 },
+    courseInfoDesc: { fontSize: 14, lineHeight: 22, marginBottom: 12 },
+    courseInfoMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+    courseInfoMetaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+    courseInfoMetaIcon: { fontSize: 13 },
+    courseInfoMetaVal: { fontSize: 13, fontWeight: "500" },
 
     // 메인 카드 (웹: mt-4 rounded-2xl bg-white shadow-sm border border-gray-100)
     mainOuter: { marginTop: 16, paddingHorizontal: 20, marginBottom: 0, zIndex: 2 },
@@ -2712,7 +2881,7 @@ const s = StyleSheet.create({
     handle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 12 },
     detailImgWrap: { position: "relative", backgroundColor: "#f3f4f6" },
     detailImg: { width: "100%", height: 260 },
-    detailImgWeb: { width: "100%", height: 288 },
+    detailImgWeb: { width: "100%", height: 200 },
     detailImgGradient: {
         position: "absolute",
         left: 0,
@@ -2814,8 +2983,9 @@ const s = StyleSheet.create({
         marginBottom: 12,
         marginTop: 4,
     },
-    detailStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginLeft: 6, alignSelf: "flex-start" },
+    detailStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: "flex-start" },
     detailStatusText: { fontSize: 11, fontWeight: "500" },
+    detailHoursText: { fontSize: 12, flexShrink: 1 },
     detailTipBanner: {
         flexDirection: "row",
         alignItems: "center",
@@ -2948,7 +3118,7 @@ const s = StyleSheet.create({
         width: "100%",
     },
     courseMapGrab: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8, marginBottom: 6 },
-    courseMapGrabWeb: { width: 48, height: 8, borderRadius: 4, alignSelf: "center", marginTop: 10, marginBottom: 8 },
+    courseMapGrabWeb: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 6, marginBottom: 4 },
     courseMapWebView: { flex: 1, backgroundColor: "#e5e7eb" },
     courseMapHeader: {
         borderBottomWidth: StyleSheet.hairlineWidth,
@@ -3071,38 +3241,49 @@ const s = StyleSheet.create({
         left: 0,
         right: 0,
         flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingTop: 12,
+        alignItems: "flex-end",
+        gap: 14,
+        paddingHorizontal: 18,
+        paddingTop: 14,
+        paddingBottom: 0,
+        minHeight: 64,
         borderTopWidth: StyleSheet.hairlineWidth,
         zIndex: 20,
     },
+    ctaMainColumn: { flex: 1, minWidth: 0, gap: 6 },
     ctaIconBtn: {
         alignItems: "center",
         justifyContent: "center",
-        gap: 2,
+        gap: 5,
         paddingVertical: 4,
         paddingHorizontal: 4,
-        borderRadius: 0,
-        borderWidth: 0,
+        minWidth: 60,
+        marginBottom: 2,
     },
-    ctaIconLabel: { fontSize: 10, fontWeight: "500" },
+    ctaIconLabel: { fontSize: 13 },
     ctaMainBtn: {
-        flex: 1,
         backgroundColor: Colors.brandGreenLight,
-        borderRadius: 8,
-        minHeight: 56,
+        borderRadius: 14,
+        minHeight: 52,
         paddingVertical: 14,
+        paddingHorizontal: 18,
         alignItems: "center",
         justifyContent: "center",
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 4,
     },
-    ctaMainBtnText: { color: "#fff", fontSize: 16, fontWeight: "500" },
+    ctaMainBtnWide: {
+        flex: 1,
+        minWidth: 0,
+    },
+    /** 세로 스택(진행 중 등) 안에서만 — flex:1 금지(높이만 늘어남) */
+    ctaMainBtnColumn: {
+        alignSelf: "stretch",
+    },
+    ctaMainBtnText: { color: "#fff", fontSize: 15 },
     ctaStatusText: { fontSize: 11, marginBottom: 4, textAlign: "center" },
 
     // Ticket modal
@@ -3175,33 +3356,54 @@ const s = StyleSheet.create({
         textAlignVertical: "top",
         marginBottom: 10,
     },
-    reviewImageRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-    reviewImagePickBtn: {
-        borderWidth: 1,
-        borderRadius: 10,
-        minHeight: 40,
-        paddingHorizontal: 12,
+    reviewImageGrid: {
         flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+        marginBottom: 4,
+    },
+    reviewImageThumb: {
+        width: 72,
+        height: 72,
+        borderRadius: 10,
+        overflow: "hidden",
+        position: "relative",
+    },
+    reviewImageThumbImg: { width: "100%", height: "100%" },
+    reviewImageAddBtn: {
+        width: 72,
+        height: 72,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderStyle: "dashed",
         alignItems: "center",
         justifyContent: "center",
-        gap: 6,
+        gap: 2,
     },
-    reviewImagePickText: { fontSize: 13, fontWeight: "500" },
-    reviewImagePreviewWrap: { width: 40, height: 40, borderRadius: 8, overflow: "hidden", position: "relative" },
-    reviewImagePreview: { width: "100%", height: "100%" },
+    reviewImageAddText: { fontSize: 11, fontWeight: "600" },
     reviewImageRemoveBtn: {
         position: "absolute",
-        top: 2,
-        right: 2,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        top: 4,
+        right: 4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "rgba(17,24,39,0.8)",
+        backgroundColor: "rgba(17,24,39,0.7)",
     },
+    reviewCancelHalfBtn: {
+        flex: 1,
+        paddingVertical: 13,
+        borderRadius: 12,
+        borderWidth: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    reviewCancelHalfText: { fontSize: 14, fontWeight: "600" },
     reviewModalActions: { flexDirection: "row", gap: 10, alignItems: "center" },
     reviewModalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+    reviewModalFieldLabel: { fontSize: 13, fontWeight: "600", marginBottom: 8 },
     reviewCourseName: { borderRadius: 12, padding: 12, marginBottom: 16 },
     reviewModalSheet: { paddingBottom: 20 },
     reviewMoreBtn: {
@@ -3305,7 +3507,7 @@ loginModalTitle: { fontSize: 22, fontWeight: "700", textAlign: "center", marginB
     },
     loginCTAText: { color: "#fff", fontSize: 15, fontWeight: "500" },
 
-    // Toast
+    // Toast (기존 바형)
     toast: {
         position: "absolute",
         bottom: 120,
@@ -3322,6 +3524,41 @@ loginModalTitle: { fontSize: 22, fontWeight: "700", textAlign: "center", marginB
     },
     toastIcon: { fontSize: 18 },
     toastText: { color: "#fff", fontSize: 14, fontWeight: "500", flex: 1 },
+    pillToastOverlayRoot: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 500,
+    },
+    pillToastDim: {
+        backgroundColor: "rgba(0,0,0,0.42)",
+    },
+    pillToastBannerWrap: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingHorizontal: 18,
+        alignItems: "center",
+    },
+    pillToastBannerCard: {
+        width: "100%",
+        maxWidth: 400,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 16,
+        borderWidth: StyleSheet.hairlineWidth,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 20,
+        elevation: 12,
+    },
+    pillToastBannerText: {
+        flex: 1,
+        fontSize: 15,
+        lineHeight: 22,
+    },
 
     // ── 선택형 코스 스타일 ──────────────────────────────────────────────────────
     selStepRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 4 },

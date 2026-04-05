@@ -1,6 +1,20 @@
 import { loadAuthToken } from './mmkv';
+import { loadLocalePreference, type LocalePreference } from './appSettingsStorage';
 
 export const BASE_URL = 'https://dona.io.kr';
+
+function acceptLanguageHeader(locale: LocalePreference): string {
+    switch (locale) {
+        case 'en':
+            return 'en-US,en;q=0.9,ko;q=0.5';
+        case 'ja':
+            return 'ja-JP,ja;q=0.9,en;q=0.5';
+        case 'zh':
+            return 'zh-CN,zh;q=0.9,en;q=0.5';
+        default:
+            return 'ko-KR,ko;q=0.9,en;q=0.5';
+    }
+}
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -34,12 +48,15 @@ export async function apiFetch<T>(
     const { method = 'GET', body, headers = {}, credentials = 'include' } = options;
 
     const token = loadAuthToken();
+    const locale = loadLocalePreference();
 
     const response = await fetch(`${BASE_URL}${path}`, {
         method,
         credentials,
         headers: {
             'Content-Type': 'application/json',
+            'Accept-Language': acceptLanguageHeader(locale),
+            'X-App-Locale': locale,
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...headers,
         },

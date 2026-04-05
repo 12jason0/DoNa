@@ -32,18 +32,15 @@ import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { modalBottomPadding } from "../utils/modalSafePadding";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
-import { floatingTabBarBottomReserve } from "../constants/floatingTabBarInset";
+import { useModal } from "../lib/modalContext";
 
-const HEADER_BAR = 48;
 
 type SearchHistoryItem = { id: string; keyword: string; createdAt: string };
 
-type Props = {
-    visible: boolean;
-    onClose: () => void;
-};
-
-export default function SearchModal({ visible, onClose }: Props) {
+export default function SearchModal() {
+    const { isOpen, closeModal } = useModal();
+    const visible = isOpen("search");
+    const onClose = () => closeModal("search");
     const t = useThemeColors();
     const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
@@ -54,11 +51,9 @@ export default function SearchModal({ visible, onClose }: Props) {
     const [showDisableConfirm, setShowDisableConfirm] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    const topOffset = insets.top + HEADER_BAR;
-    const tabReserve = floatingTabBarBottomReserve(insets.bottom);
-    const sheetHeight = Dimensions.get("window").height - topOffset - tabReserve;
+    const sheetHeight = Math.round(Dimensions.get("window").height * 0.80);
 
-    const { rendered, translateY, backdropOpacity } = useSlideModalAnimation(visible, sheetHeight);
+    const { rendered, translateY, backdropOpacity, sheetReady, isClosing } = useSlideModalAnimation(visible, sheetHeight);
 
     // 드래그로 닫기
     const dragY = useRef(new Animated.Value(0)).current;
@@ -177,20 +172,22 @@ export default function SearchModal({ visible, onClose }: Props) {
             onRequestClose={onClose}
             {...MODAL_ANDROID_PROPS}
         >
-            <View style={styles.flex}>
+            <View style={styles.flex} pointerEvents={isClosing ? "none" : "auto"}>
                 <KeyboardAvoidingView
                     style={styles.flex}
                     behavior={Platform.OS === "ios" ? "padding" : undefined}
                 >
                     <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-                        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                        {sheetReady && (
+                            <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                        )}
                     </Animated.View>
                     <Animated.View
                         style={[
                             styles.sheet,
                             {
-                                top: topOffset,
-                                bottom: tabReserve,
+                                bottom: 0,
+                                height: sheetHeight,
                                 backgroundColor: t.card,
                                 transform: [{ translateY: Animated.add(translateY, dragY) }],
                             },
@@ -245,7 +242,7 @@ export default function SearchModal({ visible, onClose }: Props) {
                                             paddingBottom: Math.max(32, modalBottomPadding(insets.bottom) + 8),
                                         },
                                     ]}
-                                    keyboardShouldPersistTaps="handled"
+                                    keyboardShouldPersistTaps="always"
                                     showsVerticalScrollIndicator={false}
                                 >
                                     {(searchHistory.length > 0 || !isSearchHistoryEnabled) && (
@@ -358,7 +355,7 @@ export default function SearchModal({ visible, onClose }: Props) {
                             <Animated.View style={[styles.backdrop, { opacity: confirmAnim.backdropOpacity }]}>
                                 <Pressable
                                     style={StyleSheet.absoluteFill}
-                                    onPress={() => setShowDisableConfirm(false)}
+                                    onPress={() => confirmAnim.sheetReady && setShowDisableConfirm(false)}
                                 />
                             </Animated.View>
                             <Animated.View

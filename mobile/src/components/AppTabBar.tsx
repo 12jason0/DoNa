@@ -3,17 +3,18 @@
  * 웹 src/components/Footer.tsx + LayoutContent(+버튼) 과 동일
  * — + 탭 시 웹 SideMenuDrawer 와 같은 사이드 메뉴 (SideMenuSheet)
  */
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, TouchableOpacity, Pressable, StyleSheet, Platform } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
-import SideMenuSheet from "./SideMenuSheet";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useAuth } from "../hooks/useAuth";
 import { useLocale } from "../lib/useLocale";
+import { useModal } from "../lib/modalContext";
+import { textFontForLocale } from "../lib/textDefaultFont";
 import PersonalizedHomeNavIcon from "./icons/PersonalizedHomeNavIcon";
 
 type TabConfig = {
@@ -37,8 +38,9 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
     const t = useThemeColors();
     const insets = useSafeAreaInsets();
     const { isAuthenticated } = useAuth();
-    const { t: i18n } = useLocale();
-    const [sideMenuOpen, setSideMenuOpen] = useState(false);
+    const { t: i18n, locale } = useLocale();
+    const { openModal, isOpen } = useModal();
+    const sideMenuOpen = isOpen("sideMenu");
 
     /** 지도 탭: 웹과 동일하게 하단 네비(플로팅 탭바) 숨김 */
     const currentName = state.routes[state.index]?.name;
@@ -50,21 +52,16 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
 
     return (
         <>
-            <SideMenuSheet visible={sideMenuOpen} onClose={() => setSideMenuOpen(false)} />
-
-            {/* 배경 터치로 메뉴 닫기 (모달 아래 레이어 — 모달이 열리면 SideMenuSheet가 전체 처리) */}
-            {sideMenuOpen ? null : null}
-
             {/* + 버튼 — 웹과 동일: 메뉴 열릴 때는 숨김 */}
             <View style={[styles.plusArea, { bottom: plusBottom, right: 24 }]} pointerEvents="box-none">
                 {!sideMenuOpen ? (
                     <TouchableOpacity
                         style={styles.plusBtn}
-                        onPress={() => setSideMenuOpen(true)}
+                        onPress={() => openModal("sideMenu")}
                         activeOpacity={0.85}
                         accessibilityLabel={i18n("nav.openMenu")}
                     >
-                        <Text style={styles.plusText}>+</Text>
+                        <Text style={[styles.plusText, textFontForLocale(locale)]}>+</Text>
                     </TouchableOpacity>
                 ) : null}
             </View>
@@ -77,10 +74,6 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
                         if (!tab) return null;
 
                         const onPress = () => {
-                            if (sideMenuOpen) {
-                                setSideMenuOpen(false);
-                                return;
-                            }
                             if (tab.name === "mypage" && !isAuthenticated) {
                                 router.push("/(auth)/login" as any);
                                 return;

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         });
         }
 
-        // 관리자에게 새 제보 알림
+        // 관리자에게 새 제보 알림 (푸시 + Slack)
         const adminUserId = Number(process.env.NEXT_PUBLIC_ADMIN_USER_ID);
         if (Number.isFinite(adminUserId) && adminUserId > 0) {
             sendPushToUser(
@@ -60,6 +60,17 @@ export async function POST(req: NextRequest) {
                 `${placeName.trim()} 장소가 제보되었어요.`,
                 { screen: "admin_suggest", url: "/admin/suggest" },
             ).catch(() => {});
+        }
+
+        const slackWebhook = process.env.SLACK_WEBHOOK_URL;
+        if (slackWebhook) {
+            fetch(slackWebhook, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    text: `📍 *새 장소 제보*\n장소명: *${placeName.trim()}*${concept ? `\n컨셉: ${concept}` : ""}\n👉 <${process.env.NEXT_PUBLIC_BASE_URL}/admin/suggest|관리자 페이지에서 확인>`,
+                }),
+            }).catch(() => {});
         }
 
         return NextResponse.json({ ok: true, suggestion: { id: suggestion.id, status: suggestion.status } });

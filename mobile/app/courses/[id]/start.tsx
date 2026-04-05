@@ -29,6 +29,8 @@ import { useAuth } from "../../../src/hooks/useAuth";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
 import { useLocale } from "../../../src/lib/useLocale";
 import { Colors } from "../../../src/constants/theme";
+import { pickCourseTitle } from "../../../src/lib/courseLocalized";
+import type { LocalePreference } from "../../../src/lib/appSettingsStorage";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_PHOTOS = 10;
@@ -36,6 +38,9 @@ const MAX_DESC = 1000;
 type Course = {
     id: string;
     title: string;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
     imageUrl?: string;
     region?: string;
     coursePlaces?: { order_index: number; place: { id: number; name?: string; imageUrl?: string } }[];
@@ -379,7 +384,7 @@ export default function CourseStartMemoryScreen() {
                 <View style={[s.sheetHeader, { borderBottomColor: t.border }]}>
                     <Text style={[s.sheetTitle, { color: t.text }]}>{headingText}</Text>
                     {course?.title && (
-                        <Text style={[s.sheetCourseName, { color: t.textMuted }]}>{course.title}</Text>
+                        <Text style={[s.sheetCourseName, { color: t.textMuted }]}>{pickCourseTitle(course, locale as LocalePreference)}</Text>
                     )}
                     <Text style={[s.sheetDate, { color: t.textSubtle }]}>❤️ {fullDate}</Text>
                     <View style={s.pageIndicator}>

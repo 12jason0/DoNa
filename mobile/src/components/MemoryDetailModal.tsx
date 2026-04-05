@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useRef, useCallback, useEffect, useMemo, useState } from "react";
 import {
     View,
     Text,
@@ -15,15 +15,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolveImageUrl } from "../lib/imageUrl";
 import { useLocale } from "../lib/useLocale";
+import { useModal } from "../lib/modalContext";
+import { localeTag } from "../lib/localeUtils";
 
 const SCREEN_W = Dimensions.get("window").width;
 
-function localeTag(locale: string): string {
-    if (locale === "en") return "en-US";
-    if (locale === "ja") return "ja-JP";
-    if (locale === "zh") return "zh-CN";
-    return "ko-KR";
-}
 const SCREEN_H = Dimensions.get("window").height;
 const STORY_TICK_MS = 50;
 const STORY_TOTAL_TICKS = 4000 / STORY_TICK_MS;
@@ -61,30 +57,26 @@ function getTagsForIndex(memory: MemoryDetailStory, idx: number): string[] {
     return memory.tags ?? [];
 }
 
-interface Props {
-    visible: boolean;
-    memory: MemoryDetailStory | null;
-    currentIndex: number;
-    onIndexChange: (i: number) => void;
-    onClose: () => void;
-    locale?: string;
-}
-
-export default function MemoryDetailModal({
-    visible,
-    memory,
-    currentIndex,
-    onIndexChange,
-    onClose,
-}: Props) {
+export default function MemoryDetailModal() {
+    const { isOpen, closeModal, getData } = useModal();
+    const visible = isOpen("memoryDetail");
+    const data = getData("memoryDetail");
+    const memory = data?.story ?? null;
+    const onClose = () => closeModal("memoryDetail");
     const insets = useSafeAreaInsets();
     const { locale } = useLocale();
+    const [currentIndex, setCurrentIndex] = useState(data?.imageIndex ?? 0);
+    const onIndexChange = setCurrentIndex;
 
     const progressAnim = useRef(new Animated.Value(0)).current;
     const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
     const ticksRef     = useRef(0);
     const isPausedRef  = useRef(false);
     const flatListRef  = useRef<FlatList>(null);
+
+    useEffect(() => {
+        if (visible) setCurrentIndex(data?.imageIndex ?? 0);
+    }, [visible]);
 
     const photos = memory ? getAllPhotos(memory) : [];
     const total  = Math.max(photos.length, 1);

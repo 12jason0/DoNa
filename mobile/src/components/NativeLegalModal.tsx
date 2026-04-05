@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
+import { useModal } from "../lib/modalContext";
 
 import LegalTermsBody from "./legal/LegalTermsBody";
 import LegalPrivacyBody from "./legal/LegalPrivacyBody";
@@ -17,15 +18,13 @@ import LegalAboutBody from "./legal/LegalAboutBody";
 
 export type NativeLegalPage = "about" | "help" | "privacy" | "terms";
 
-type Props = {
-    page: NativeLegalPage | null;
-    onClose: () => void;
-};
-
-export default function NativeLegalModal({ page, onClose }: Props) {
+export default function NativeLegalModal() {
+    const { isOpen, closeModal, getData } = useModal();
+    const visible = isOpen("legalPage");
+    const page = getData("legalPage")?.page ?? null;
+    const onClose = () => closeModal("legalPage");
     const theme = useThemeColors();
     const { t: tr } = useLocale();
-    const visible = page != null;
     const scrollRef = useRef<ScrollView>(null);
     const anchorYs = useRef<Record<string, number>>({});
 

@@ -27,24 +27,25 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import Purchases from "react-native-purchases";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 
 import { Colors, FontSize, Spacing, BorderRadius, Shadow } from "../../src/constants/theme";
 import { api, apiFetch, endpoints } from "../../src/lib/api";
 import { fetchMyPrivateStories } from "../../src/lib/personalStories";
-import { useAuth, AUTH_QUERY_KEY, logout } from "../../src/hooks/useAuth";
+import { useAuth } from "../../src/hooks/useAuth";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
 import { translateCourseConcept } from "../../../src/lib/courseTranslate";
+import { pickCourseTitle, pickCourseDescription } from "../../src/lib/courseLocalized";
 import { resolveImageUrl } from "../../src/lib/imageUrl";
 import { KAKAO_CHANNEL_CHAT_URL } from "../../src/config";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { MODAL_ANDROID_PROPS } from "../../src/constants/modalAndroidProps";
-import NativeLegalModal, { type NativeLegalPage } from "../../src/components/NativeLegalModal";
-import TicketPlansSheet from "../../src/components/TicketPlansSheet";
-import MemoryDetailModal, { type MemoryDetailStory } from "../../src/components/MemoryDetailModal";
+import { type MemoryDetailStory } from "../../src/components/MemoryDetailModal";
+import { useModal, type Badge } from "../../src/lib/modalContext";
+import { localeTag } from "../../src/lib/localeUtils";
 import type { UserProfile, SubscriptionTier } from "../../src/types/api";
 
 const SW = Dimensions.get("window").width;
@@ -88,14 +89,6 @@ interface CasefileItem {
     badge?: { name: string; image_url?: string | null } | null;
 }
 
-interface Badge {
-    id: number;
-    name: string;
-    description?: string | null;
-    image_url?: string | null;
-    awarded_at: string;
-}
-
 interface RewardRow {
     id: number;
     type: string;
@@ -130,12 +123,6 @@ interface UserPreferences {
     regions: string[];
 }
 
-function localeTag(locale: string): string {
-    if (locale === "en") return "en-US";
-    if (locale === "ja") return "ja-JP";
-    if (locale === "zh") return "zh-CN";
-    return "ko-KR";
-}
 
 function rewardTypeLabel(type: string, tr: (k: string, params?: Record<string, string | number>) => string): string {
     const k = String(type ?? "").toLowerCase();
@@ -188,6 +175,21 @@ type DateCoursePreviewRow = {
     };
     isAI: boolean;
 };
+
+function localDateKeyFromIso(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDayModalDateLabel(dateKey: string | null, loc: string): string {
+    if (!dateKey) return "";
+    const parts = dateKey.split("-").map((x) => Number(x));
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return dateKey;
+    const [y, mo, day] = parts;
+    const dt = new Date(y, mo - 1, day);
+    return dt.toLocaleDateString(loc, { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+}
 
 function gradeBg(g: string) {
     if (g === "PREMIUM") return "#fef3c7";
@@ -358,24 +360,9 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
     const dateLoc = localeTag(locale);
     const queryClient = useQueryClient();
     const insets = useSafeAreaInsets();
-    const [editVisible, setEditVisible] = useState(false);
-    const [form, setForm] = useState({
-        nickname: profile.nickname ?? "",
-        mbti: profile.mbti ?? "",
-        ageRange: profile.ageRange ?? "",
-        gender: profile.gender ?? "",
-    });
-    const [editError, setEditError] = useState("");
+    const { openModal } = useModal();
     const [notifEnabled, setNotifEnabled] = useState<boolean | null>(null);
     const [notifLoading, setNotifLoading] = useState(false);
-    const [shopSheetVisible, setShopSheetVisible] = useState(false);
-    const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-    const [withdrawalModalVisible, setWithdrawalModalVisible] = useState(false);
-    const [withdrawalReasonStep, setWithdrawalReasonStep] = useState(false);
-    const [withdrawalReason, setWithdrawalReason] = useState("");
-    const [withdrawalEtcReason, setWithdrawalEtcReason] = useState("");
-    const [withdrawalAgree, setWithdrawalAgree] = useState(false);
-    const [legalPage, setLegalPage] = useState<NativeLegalPage | null>(null);
 
     // 취향 정보 조회
     const { data: prefs } = useQuery<UserPreferences | null>({
@@ -441,73 +428,12 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
         }
     }
 
-    const editMutation = useMutation({
-        mutationFn: (data: typeof form) => api.patch("/api/users/profile", data),
-        onSuccess: () => {
-            setEditVisible(false);
-            refetch();
-        },
-        onError: (e: any) => setEditError(e.message || i18n("mypage.profileEditFailed")),
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (reason: string) => api.post("/api/users/withdrawal", { reason }),
-        onSuccess: async () => {
-            try {
-                await Purchases.logOut();
-            } catch {}
-            await logout(queryClient);
-            router.replace("/(auth)/login");
-        },
-        onError: (e: any) => Alert.alert(i18n("mypage.alertErrorTitle"), e.message || i18n("deleteUsersModal.alertError")),
-    });
-
-    async function handleLogoutConfirm() {
-        setLogoutModalVisible(false);
-        try {
-            const isAnon = await Purchases.isAnonymous();
-            if (!isAnon) await Purchases.logOut();
-        } catch {}
-        await logout(queryClient);
-        router.replace("/(auth)/login");
-    }
-
     function handleLogout() {
-        setLogoutModalVisible(true);
+        openModal("logout");
     }
 
     function handleWithdrawal() {
-        setWithdrawalReasonStep(false);
-        setWithdrawalReason("");
-        setWithdrawalEtcReason("");
-        setWithdrawalAgree(false);
-        setWithdrawalModalVisible(true);
-    }
-
-    function handleWithdrawalClose() {
-        if (deleteMutation.isPending) return;
-        setWithdrawalModalVisible(false);
-    }
-
-    function handleWithdrawalNextOrSubmit() {
-        if (!withdrawalReasonStep) {
-            setWithdrawalReasonStep(true);
-            return;
-        }
-        if (!withdrawalReason) {
-            Alert.alert(i18n("mypage.alertInfoTitle"), i18n("deleteUsersModal.alertSelectReason"));
-            return;
-        }
-        if (withdrawalReason === "reason5" && !withdrawalEtcReason.trim()) {
-            Alert.alert(i18n("mypage.alertInfoTitle"), i18n("deleteUsersModal.alertEnterOtherReason"));
-            return;
-        }
-        if (!withdrawalAgree) {
-            Alert.alert(i18n("mypage.alertInfoTitle"), i18n("deleteUsersModal.alertAgree"));
-            return;
-        }
-        const reason = withdrawalReason === "reason5" ? withdrawalEtcReason.trim() : withdrawalReason;
-        deleteMutation.mutate(reason);
+        openModal("withdrawal");
     }
 
     const profileImageUri = resolveImageUrl(profile.profileImage);
@@ -557,7 +483,6 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
     };
     const tb = tierBadgeCfg[tier] ?? tierBadgeCfg.FREE;
 
-    const MBTI_LIST = ["INTJ","INTP","ENTJ","ENTP","INFJ","INFP","ENFJ","ENFP","ISTJ","ISFJ","ESTJ","ESFJ","ISTP","ISFP","ESTP","ESFP"] as const;
     /** API·DB는 한국어 값(10대 …)을 사용 — 표시만 locale별 번역 */
     const AGE_RANGE_OPTIONS = useMemo(
         () =>
@@ -572,14 +497,6 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
     );
     const ageRangeDisplay = (value: string) =>
         AGE_RANGE_OPTIONS.find((o) => o.value === value)?.label ?? value;
-    const GENDERS = useMemo(
-        () =>
-            [
-                { label: i18n("mypage.genderMale"), value: "M" },
-                { label: i18n("mypage.genderFemale"), value: "F" },
-            ] as const,
-        [i18n],
-    );
 
     return (
         <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
@@ -595,16 +512,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                     </View>
                     <TouchableOpacity
                         style={s.editProfileBtn}
-                        onPress={() => {
-                            setForm({
-                                nickname: profile.nickname ?? "",
-                                mbti: profile.mbti ?? "",
-                                ageRange: profile.ageRange ?? "",
-                                gender: profile.gender ?? "",
-                            });
-                            setEditError("");
-                            setEditVisible(true);
-                        }}
+                        onPress={() => openModal("profileEdit")}
                     >
                         <Ionicons name="create-outline" size={13} color="#059669" />
                         <Text style={s.editProfileBtnText}>{i18n("mypage.profileTab.edit")}</Text>
@@ -760,7 +668,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                     </View>
                     <TouchableOpacity
                         style={[s.memberBtn, { backgroundColor: tier === "PREMIUM" ? "#f3f4f6" : "#059669" }]}
-                        onPress={() => setShopSheetVisible(true)}
+                        onPress={() => openModal("ticket", { context: "UPGRADE" })}
                     >
                         <Text style={[s.memberBtnText, { color: tier === "PREMIUM" ? "#6b7280" : "#fff" }]}>
                             {tier === "PREMIUM" ? i18n("mypage.profileTab.inUse") : i18n("mypage.profileTab.upgrade")}
@@ -829,134 +737,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                 <Text style={s.withdrawalBtnText}>{i18n("mypage.profileTab.withdrawMember")}</Text>
             </TouchableOpacity>
 
-            {/* 로그아웃 하단 시트 */}
-            <Modal
-                visible={logoutModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setLogoutModalVisible(false)}
-                {...MODAL_ANDROID_PROPS}
-            >
-                <Pressable style={s.actionSheetDim} onPress={() => setLogoutModalVisible(false)}>
-                    <Pressable style={s.actionSheetWrap} onPress={(e) => e.stopPropagation()}>
-                        <View style={[s.logoutSheet, { backgroundColor: t.isDark ? "#1a241b" : "#fff", borderTopColor: t.isDark ? "#1f2937" : "#f3f4f6", paddingBottom: Math.max(insets.bottom, 24) }]}>
-                            {/* 아이콘 */}
-                            <View style={s.logoutIconWrap}>
-                                <Ionicons name="log-out-outline" size={52} color={t.isDark ? "#6b7280" : "#9ca3af"} />
-                            </View>
-                            {/* 텍스트 */}
-                            <Text style={[s.logoutTitle, { color: t.text }]}>{i18n("logoutModal.title")}</Text>
-                            <Text style={[s.logoutSubtitle, { color: t.textMuted }]}>{i18n("logoutModal.subtitle")}</Text>
-                            {/* 버튼 행 */}
-                            <View style={s.logoutBtnRow}>
-                                <TouchableOpacity style={[s.logoutBtnGray, { backgroundColor: t.isDark ? "#374151" : "#f3f4f6" }]} onPress={() => setLogoutModalVisible(false)} activeOpacity={0.8}>
-                                    <Text style={[s.logoutBtnGrayText, { color: t.isDark ? "#d1d5db" : "#374151" }]}>{i18n("logoutModal.stay")}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[s.logoutBtnDark, { backgroundColor: t.isDark ? "#1e293b" : "#0f172a" }]} onPress={handleLogoutConfirm} activeOpacity={0.85}>
-                                    <Text style={s.logoutBtnDarkText}>{i18n("logoutModal.logout")}</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </Pressable>
-                </Pressable>
-            </Modal>
-
-            {/* 회원 탈퇴 — 바텀 시트 */}
-            <Modal
-                visible={withdrawalModalVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={handleWithdrawalClose}
-                {...MODAL_ANDROID_PROPS}
-            >
-                <Pressable style={s.withdrawDim} onPress={handleWithdrawalClose}>
-                    <Pressable style={[s.withdrawSheet, { backgroundColor: t.isDark ? "#1a241b" : "#fff" }]} onPress={(e) => e.stopPropagation()}>
-                        {/* 드래그 핸들 */}
-                        <View style={s.withdrawHandle} />
-
-                        {/* 스크롤 콘텐츠 */}
-                        <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={s.withdrawScrollContent} showsVerticalScrollIndicator={false}>
-                            {/* 🍃 아이콘 원 */}
-                            <View style={s.withdrawEmojiCircle}>
-                                <Text style={{ fontSize: 28 }}>🍃</Text>
-                            </View>
-                            <Text style={[s.withdrawDialogTitle, { color: t.text }]}>{i18n("deleteUsersModal.title")}</Text>
-
-                            {/* 경고 카드 */}
-                            <View style={[s.withdrawWarnCard, { backgroundColor: t.isDark ? "#1e2d1f" : "#f9fafb", borderColor: t.isDark ? "#374151" : "#f3f4f6" }]}>
-                                <View style={s.withdrawWarnRow}>
-                                    <Text style={s.withdrawWarnIcon}>⚠️</Text>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[s.withdrawWarnTitle, { color: t.text }]}>{i18n("deleteUsersModal.warn1Title")}</Text>
-                                        <Text style={[s.withdrawWarnDesc, { color: t.textMuted }]}>{i18n("deleteUsersModal.warn1Desc")}</Text>
-                                    </View>
-                                </View>
-                                <View style={[s.withdrawWarnRow, { marginTop: 12 }]}>
-                                    <Text style={s.withdrawWarnIcon}>⚖️</Text>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[s.withdrawWarnTitle, { color: t.text }]}>{i18n("deleteUsersModal.warn2Title")}</Text>
-                                        <Text style={[s.withdrawWarnDesc, { color: t.textMuted }]}>{i18n("deleteUsersModal.warn2Desc")}</Text>
-                                        <Text style={[s.withdrawWarnDesc, { color: t.textMuted }]}>• {i18n("deleteUsersModal.warn2Li1")}</Text>
-                                        <Text style={[s.withdrawWarnDesc, { color: t.textMuted }]}>• {i18n("deleteUsersModal.warn2Li2")}</Text>
-                                        <Text style={[s.withdrawWarnDesc, { color: t.textMuted, marginTop: 2 }]}>{i18n("deleteUsersModal.warn2Footer")}</Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            {/* 사유 선택 단계 */}
-                            {withdrawalReasonStep && (
-                                <View style={[s.withdrawReasonCard, { backgroundColor: t.isDark ? "#1e2d3f" : "#eff6ff", borderColor: t.isDark ? "#1e3a5f" : "#bfdbfe" }]}>
-                                    <Text style={[s.withdrawReasonTitle, { color: t.isDark ? "#93c5fd" : "#1e40af" }]}>{i18n("deleteUsersModal.reasonTitle")}</Text>
-                                    {(["reason0","reason1","reason2","reason3","reason4","reason5"] as const).map((key) => (
-                                        <TouchableOpacity key={key} style={s.reasonRow} onPress={() => setWithdrawalReason(key)} activeOpacity={0.8}>
-                                            <View style={[s.reasonRadioOuter, withdrawalReason === key && s.reasonRadioOuterOn]}>
-                                                {withdrawalReason === key && <View style={s.reasonRadioInner} />}
-                                            </View>
-                                            <Text style={[s.reasonRowText, { color: t.text }]}>{i18n(`deleteUsersModal.${key}`)}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                    {withdrawalReason === "reason5" && (
-                                        <TextInput
-                                            style={[s.withdrawEtcInput, { backgroundColor: t.card, borderColor: t.isDark ? "#1e3a5f" : "#bfdbfe", color: t.text }]}
-                                            placeholder={i18n("deleteUsersModal.reasonOtherPlaceholder")}
-                                            placeholderTextColor={t.textSubtle}
-                                            value={withdrawalEtcReason}
-                                            onChangeText={setWithdrawalEtcReason}
-                                            multiline
-                                        />
-                                    )}
-                                    <TouchableOpacity style={[s.reasonAgreeRow, { borderTopColor: t.isDark ? "#1e3a5f" : "#bfdbfe" }]} onPress={() => setWithdrawalAgree((v) => !v)} activeOpacity={0.8}>
-                                        <View style={[s.reasonCheckBox, withdrawalAgree && s.reasonCheckBoxOn]}>
-                                            {withdrawalAgree && <Ionicons name="checkmark" size={12} color="#fff" />}
-                                        </View>
-                                        <Text style={[s.reasonAgreeText, { color: t.textMuted }]}>{i18n("deleteUsersModal.agreeLabel")}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </ScrollView>
-
-                        {/* 버튼 영역 (하단 고정) */}
-                        <View style={[s.withdrawDialogBtns, { paddingBottom: Math.max(insets.bottom, Platform.OS === "android" ? 16 : 8) }]}>
-                            <TouchableOpacity style={s.withdrawStayBtn} onPress={handleWithdrawalClose} activeOpacity={0.85}>
-                                <Text style={s.withdrawStayBtnText}>{i18n("deleteUsersModal.stay")}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={s.withdrawDangerTextBtn}
-                                onPress={handleWithdrawalNextOrSubmit}
-                                disabled={deleteMutation.isPending || (withdrawalReasonStep && !withdrawalAgree)}
-                            >
-                                {deleteMutation.isPending ? (
-                                    <ActivityIndicator size="small" color="#ef4444" />
-                                ) : (
-                                    <Text style={[s.withdrawDangerTextBtnText, (!withdrawalReasonStep) && { color: "#9ca3af" }]}>
-                                        {withdrawalReasonStep ? i18n("deleteUsersModal.deleteAccount") : i18n("deleteUsersModal.withdraw")}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </Pressable>
-                </Pressable>
-            </Modal>
+            {/* 로그아웃/탈퇴/프로필수정 모달은 ModalManager에서 전역 렌더링 */}
 
             {/* ── 사업자 정보 + 링크 ── */}
             <View style={[s.footerInfoBox, { borderTopColor: t.border }]}>
@@ -982,7 +763,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                     ).map(({ labelKey, page }) => (
                         <Pressable
                             key={labelKey}
-                            onPress={() => setLegalPage(page)}
+                            onPress={() => openModal("legalPage", { page })}
                             style={({ pressed }) => [
                                 s.footerLinkItem,
                                 pressed && { opacity: 0.72 },
@@ -1006,161 +787,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                 </View>
             </View>
 
-            <NativeLegalModal page={legalPage} onClose={() => setLegalPage(null)} />
-
-            <TicketPlansSheet
-                visible={shopSheetVisible}
-                onClose={() => setShopSheetVisible(false)}
-                context="UPGRADE"
-            />
-
-            {/* 프로필 수정 모달 — 웹과 동일한 바텀시트 스타일 */}
-            <Modal
-                visible={editVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setEditVisible(false)}
-                {...MODAL_ANDROID_PROPS}
-            >
-                <Pressable
-                    style={s.editModalBackdrop}
-                    onPress={() => setEditVisible(false)}
-                >
-                    <Pressable
-                        style={[s.editModalSheet, { backgroundColor: t.isDark ? "#1a241b" : "#fff" }]}
-                        onPress={(e) => e.stopPropagation()}
-                    >
-                        {/* 드래그 핸들 */}
-                        <View style={s.editModalHandle}>
-                            <View style={[s.editModalHandleBar, { backgroundColor: t.isDark ? "#4b5563" : "#d1d5db" }]} />
-                        </View>
-
-                        {/* 헤더 */}
-                        <View style={s.editModalHeaderRow}>
-                            <Text style={[s.editModalTitle, { color: t.text }]}>{i18n("mypage.profileTab.editModalTitle")}</Text>
-                            <TouchableOpacity onPress={() => setEditVisible(false)} hitSlop={12}>
-                                <Ionicons name="close" size={22} color={t.textMuted} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView
-                            contentContainerStyle={s.editModalScroll}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                        >
-                            {!!editError && (
-                                <View style={s.editError}>
-                                    <Text style={s.editErrorText}>{editError}</Text>
-                                </View>
-                            )}
-
-                            {/* 닉네임 */}
-                            <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.nickname")}</Text>
-                                <TextInput
-                                    style={[s.editInput, { backgroundColor: t.surface, borderColor: t.border, color: t.text }]}
-                                    value={form.nickname}
-                                    onChangeText={(v) => setForm((p) => ({ ...p, nickname: v }))}
-                                    placeholder={i18n("mypage.profileTab.nicknamePlaceholderShort")}
-                                    placeholderTextColor={t.textSubtle}
-                                />
-                            </View>
-
-                            {/* MBTI */}
-                            <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.mbtiLabel")}</Text>
-                                <View style={s.editChipsWrap}>
-                                    {MBTI_LIST.map((m) => {
-                                        const sel = form.mbti === m;
-                                        return (
-                                            <TouchableOpacity
-                                                key={m}
-                                                onPress={() => setForm((p) => ({ ...p, mbti: sel ? "" : m }))}
-                                                style={[
-                                                    s.editChip,
-                                                    sel
-                                                        ? { backgroundColor: "#111827", borderColor: "#111827" }
-                                                        : { backgroundColor: t.surface, borderColor: t.border },
-                                                ]}
-                                            >
-                                                <Text style={[s.editChipText, { color: sel ? "#fff" : t.text }]}>{m}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-
-                            {/* 연령대 */}
-                            <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.ageRange")}</Text>
-                                <View style={s.editChipsWrap}>
-                                    {AGE_RANGE_OPTIONS.map(({ value: a, label }) => {
-                                        const sel = form.ageRange === a;
-                                        return (
-                                            <TouchableOpacity
-                                                key={a}
-                                                onPress={() => setForm((p) => ({ ...p, ageRange: sel ? "" : a }))}
-                                                style={[
-                                                    s.editChip,
-                                                    sel
-                                                        ? { backgroundColor: "#111827", borderColor: "#111827" }
-                                                        : { backgroundColor: t.surface, borderColor: t.border },
-                                                ]}
-                                            >
-                                                <Text style={[s.editChipText, { color: sel ? "#fff" : t.text }]}>{label}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-
-                            {/* 성별 */}
-                            <View style={s.editField}>
-                                <Text style={[s.editLabel, { color: t.textMuted }]}>{i18n("mypage.gender")}</Text>
-                                <View style={s.editChipsWrap}>
-                                    {GENDERS.map(({ label, value }) => {
-                                        const sel = form.gender === value;
-                                        return (
-                                            <TouchableOpacity
-                                                key={value}
-                                                onPress={() => setForm((p) => ({ ...p, gender: sel ? "" : value }))}
-                                                style={[
-                                                    s.editChip,
-                                                    sel
-                                                        ? { backgroundColor: "#111827", borderColor: "#111827" }
-                                                        : { backgroundColor: t.surface, borderColor: t.border },
-                                                ]}
-                                            >
-                                                <Text style={[s.editChipText, { color: sel ? "#fff" : t.text }]}>{label}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-
-                            {/* 버튼 */}
-                            <View style={s.editModalBtnRow}>
-                                <TouchableOpacity
-                                    style={[s.editModalBtnCancel, { borderColor: t.border }]}
-                                    onPress={() => setEditVisible(false)}
-                                >
-                                    <Text style={[{ fontSize: 15, fontWeight: "500" }, { color: t.text }]}>{i18n("common.cancel")}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[s.editModalBtnSave, editMutation.isPending && { opacity: 0.5 }]}
-                                    onPress={() => editMutation.mutate(form)}
-                                    disabled={editMutation.isPending}
-                                >
-                                    {editMutation.isPending
-                                        ? <ActivityIndicator size="small" color="#fff" />
-                                        : <Text style={{ fontSize: 15, fontWeight: "500", color: "#fff" }}>{i18n("common.save")}</Text>
-                                    }
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-                    </Pressable>
-                </Pressable>
-            </Modal>
+            {/* NativeLegalModal / TicketPlansSheet / ProfileEditModal은 ModalManager에서 렌더링 */}
         </ScrollView>
     );
 }
@@ -1176,7 +803,7 @@ interface CourseSuggestionRow {
     description?: string | null;
     status: "PENDING" | "PUBLISHED" | "REJECTED";
     createdAt: string;
-    course?: { id: number; title: string; imageUrl?: string | null; region?: string | null; duration?: string | null } | null;
+    course?: { id: number; title: string; title_en?: string | null; title_ja?: string | null; title_zh?: string | null; imageUrl?: string | null; region?: string | null; duration?: string | null } | null;
 }
 
 function FootprintTab({
@@ -1190,15 +817,13 @@ function FootprintTab({
     const { t: i18n, locale } = useLocale();
     const dateLoc = localeTag(locale);
     const insets = useSafeAreaInsets();
+    const { openModal } = useModal();
     const [view, setView] = useState<FootprintSubView>(initialView);
     const [currentMonth, setCurrentMonth] = useState(() => new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [showDateCoursePreviewModal, setShowDateCoursePreviewModal] = useState(false);
     const [dateCoursePreviewItems, setDateCoursePreviewItems] = useState<DateCoursePreviewRow[]>([]);
-
-    // ── 추억 상세 모달 ──
-    const [selectedMemory, setSelectedMemory] = useState<MemoryDetailStory | null>(null);
-    const [memoryImageIndex, setMemoryImageIndex] = useState(0);
+    const [datePreviewStories, setDatePreviewStories] = useState<PersonalStory[]>([]);
 
     const { data: completed = [], isLoading: loadingCompleted } = useQuery<CompletedCourse[]>({
         queryKey: ["users", "completions"],
@@ -1264,6 +889,24 @@ function FootprintTab({
         });
         return m;
     }, [completed]);
+
+    const storiesByDateKey = useMemo(() => {
+        const m: Record<string, PersonalStory[]> = {};
+        for (const st of stories) {
+            if (!st?.createdAt) continue;
+            const k = localDateKeyFromIso(st.createdAt);
+            if (!k) continue;
+            if (!m[k]) m[k] = [];
+            m[k].push(st);
+        }
+        return m;
+    }, [stories]);
+
+    const closeDatePreviewModal = useCallback(() => {
+        setShowDateCoursePreviewModal(false);
+        setDateCoursePreviewItems([]);
+        setDatePreviewStories([]);
+    }, []);
 
     /** 웹 FootprintTab과 동일: 해당 월이 속한 주의 일요일부터 42칸 */
     const calDays = useMemo(() => {
@@ -1426,11 +1069,13 @@ function FootprintTab({
                             const isSelected = key === selectedDate;
                             const hasCompleted = day.current && day.items.length > 0;
                             const aiSlot = day.current ? aiByDate[key] : undefined;
+                            const dayStories = day.current ? (storiesByDateKey[key] ?? []) : [];
+                            const hasStories = dayStories.length > 0;
                             const thumbUri = aiSlot?.imageUrl ? resolveImageUrl(aiSlot.imageUrl) : null;
                             const showAiThumb = !!thumbUri;
                             const dow = day.date.getDay();
                             const isWeekend = dow === 0 || dow === 6;
-                            const interactive = day.current && (hasCompleted || !!aiSlot);
+                            const interactive = day.current && (hasCompleted || !!aiSlot || hasStories);
 
                             return (
                                 <TouchableOpacity
@@ -1439,6 +1084,7 @@ function FootprintTab({
                                     onPress={() => {
                                         if (!day.current) return;
                                         setSelectedDate(key);
+                                        setDatePreviewStories(dayStories);
                                         const fromCompleted: DateCoursePreviewRow[] = hasCompleted
                                             ? day.items
                                                   .filter(
@@ -1485,7 +1131,7 @@ function FootprintTab({
                                         } else if (aiRow) {
                                             previewRows = [aiRow];
                                         }
-                                        if (previewRows.length === 0) return;
+                                        if (previewRows.length === 0 && dayStories.length === 0) return;
                                         setDateCoursePreviewItems(previewRows);
                                         setShowDateCoursePreviewModal(true);
                                     }}
@@ -1520,6 +1166,7 @@ function FootprintTab({
                                             </Text>
                                         )}
                                         {hasCompleted ? <View style={s.calCompletedCornerDot} /> : null}
+                                        {hasStories ? <View style={s.calMemoryCornerDot} /> : null}
                                         {hasCompleted && day.items.length > 1 ? (
                                             <View style={s.calItemCountOnCircle}>
                                                 <Text style={s.calItemCountText}>{day.items.length}</Text>
@@ -1561,10 +1208,7 @@ function FootprintTab({
                                     key={story.id}
                                     activeOpacity={0.92}
                                     style={[s.memCard, { backgroundColor: t.card, borderColor: t.border }]}
-                                    onPress={() => {
-                                        setMemoryImageIndex(0);
-                                        setSelectedMemory(story as MemoryDetailStory);
-                                    }}
+                                    onPress={() => openModal("memoryDetail", { story: story as MemoryDetailStory, imageIndex: 0 })}
                                 >
                                     {imgUri ? (
                                         <Image source={{ uri: imgUri }} style={s.memImg} resizeMode="cover" />
@@ -1700,7 +1344,7 @@ function FootprintTab({
                                         </Text>
                                     </View>
                                     <Text style={{ fontSize: 13, fontWeight: "700", color: t.text, paddingRight: 56 }} numberOfLines={2}>
-                                        {item.placeName}
+                                        {item.course ? pickCourseTitle(item.course, locale) || item.placeName : item.placeName}
                                     </Text>
                                     <Text style={{ fontSize: 11, color: t.textMuted, marginTop: 8, lineHeight: 15 }} numberOfLines={2}>
                                         {subline}
@@ -1714,28 +1358,63 @@ function FootprintTab({
 
             </ScrollView>
 
-            {/* ── 추억 상세 모달 ── */}
-            <MemoryDetailModal
-                visible={selectedMemory !== null}
-                memory={selectedMemory}
-                currentIndex={memoryImageIndex}
-                onIndexChange={setMemoryImageIndex}
-                onClose={() => setSelectedMemory(null)}
-            />
+            {/* MemoryDetailModal은 ModalManager에서 렌더링 */}
 
             <Modal
-                visible={showDateCoursePreviewModal && dateCoursePreviewItems.length > 0}
+                visible={
+                    showDateCoursePreviewModal &&
+                    (dateCoursePreviewItems.length > 0 || datePreviewStories.length > 0)
+                }
                 transparent
                 animationType="fade"
-                onRequestClose={() => setShowDateCoursePreviewModal(false)}
+                onRequestClose={closeDatePreviewModal}
             >
                 <View style={s.coursePreviewRoot}>
-                    <TouchableOpacity
+                    <BlurView
+                        intensity={Platform.OS === "ios" ? 88 : 72}
+                        tint="dark"
                         style={StyleSheet.absoluteFillObject}
-                        activeOpacity={1}
-                        onPress={() => setShowDateCoursePreviewModal(false)}
                     />
-                    {(() => {
+                    <TouchableOpacity
+                        style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.48)" }]}
+                        activeOpacity={1}
+                        onPress={closeDatePreviewModal}
+                    />
+                    <ScrollView
+                        style={{
+                            maxHeight: Dimensions.get("window").height * 0.92,
+                            flexGrow: 0,
+                            width: "100%",
+                            zIndex: 1,
+                        }}
+                        contentContainerStyle={{
+                            paddingBottom: Math.max(24, insets.bottom + 16),
+                        }}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View
+                            style={{
+                                paddingHorizontal: 20,
+                                paddingTop: 12,
+                                paddingBottom: 10,
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    color: "rgba(255,255,255,0.92)",
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    letterSpacing: -0.3,
+                                }}
+                                numberOfLines={2}
+                            >
+                                {selectedDate ? formatDayModalDateLabel(selectedDate, dateLoc) : ""}
+                            </Text>
+                        </View>
+
+                        {dateCoursePreviewItems.length > 0
+                            ? (() => {
                         const PREVIEW_IMG_H = 208;
                         const isMulti = dateCoursePreviewItems.length > 1;
                         const CARD_PEEK = 36;
@@ -1750,10 +1429,10 @@ function FootprintTab({
                             if (!courseId) return null;
                             const imgUri = course.imageUrl ? resolveImageUrl(course.imageUrl) : null;
                             const title =
-                                course.title?.trim() ||
+                                pickCourseTitle(course, locale) ||
                                 i18n("mypage.footprintTab.course");
                             const desc =
-                                course.description?.trim() ||
+                                pickCourseDescription(course, locale) ||
                                 i18n("mypage.footprintTab.savedCourseDesc");
                             const region =
                                 course.region?.trim() ||
@@ -1796,7 +1475,7 @@ function FootprintTab({
                                         )}
                                         <TouchableOpacity
                                             style={s.coursePreviewClose}
-                                            onPress={() => setShowDateCoursePreviewModal(false)}
+                                            onPress={closeDatePreviewModal}
                                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                         >
                                             <Ionicons name="close" size={22} color="#fff" />
@@ -1895,7 +1574,7 @@ function FootprintTab({
                                             activeOpacity={0.88}
                                             onPress={() => {
                                                 if (!courseId) return;
-                                                setShowDateCoursePreviewModal(false);
+                                                closeDatePreviewModal();
                                                 router.push(`/courses/${courseId}` as any);
                                             }}
                                         >
@@ -1910,7 +1589,7 @@ function FootprintTab({
                         };
 
                         return (
-                            <View style={s.coursePreviewCenter} pointerEvents="box-none">
+                            <View style={{ justifyContent: "center", pointerEvents: "box-none" }}>
                                 {isMulti ? (
                                     <ScrollView
                                         horizontal
@@ -1946,7 +1625,11 @@ function FootprintTab({
                                     <Text
                                         style={[
                                             s.coursePreviewSwipeHint,
-                                            { bottom: Math.max(20, insets.bottom + 12) },
+                                            {
+                                                position: "relative",
+                                                marginTop: 8,
+                                                marginBottom: 4,
+                                            },
                                         ]}
                                     >
                                         {i18n("mypage.footprintTab.swipeMore")}
@@ -1954,7 +1637,75 @@ function FootprintTab({
                                 ) : null}
                             </View>
                         );
-                    })()}
+                              })()
+                            : null}
+
+                        {datePreviewStories.length > 0 ? (
+                            <View style={{ paddingHorizontal: 16, marginTop: dateCoursePreviewItems.length > 0 ? 8 : 4 }}>
+                                <Text
+                                    style={{
+                                        fontSize: 15,
+                                        fontWeight: "700",
+                                        color: "rgba(255,255,255,0.95)",
+                                        marginBottom: 12,
+                                    }}
+                                >
+                                    {i18n("mypage.footprintTab.dayPreviewAlbumTitle")}
+                                </Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ gap: 12, paddingRight: 12 }}
+                                >
+                                    {datePreviewStories.map((story) => {
+                                        const thumb = story.imageUrls?.[0]
+                                            ? resolveImageUrl(story.imageUrls[0])
+                                            : null;
+                                        const sz = 92;
+                                        const clipH = Math.round(sz * 0.72);
+                                        return (
+                                            <TouchableOpacity
+                                                key={story.id}
+                                                activeOpacity={0.88}
+                                                onPress={() => {
+                                                    closeDatePreviewModal();
+                                                    openModal("memoryDetail", { story: story as MemoryDetailStory, imageIndex: 0 });
+                                                }}
+                                                style={{
+                                                    width: sz,
+                                                    height: clipH,
+                                                    borderRadius: 14,
+                                                    overflow: "hidden",
+                                                    borderWidth: 1,
+                                                    borderColor: "rgba(255,255,255,0.28)",
+                                                }}
+                                            >
+                                                {thumb ? (
+                                                    <Image
+                                                        source={{ uri: thumb }}
+                                                        style={{ width: sz, height: sz }}
+                                                        resizeMode="cover"
+                                                    />
+                                                ) : (
+                                                    <View
+                                                        style={{
+                                                            width: sz,
+                                                            height: sz,
+                                                            backgroundColor: "rgba(255,255,255,0.12)",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 28 }}>📷</Text>
+                                                    </View>
+                                                )}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        ) : null}
+                    </ScrollView>
                 </View>
             </Modal>
         </View>
@@ -2052,7 +1803,7 @@ function RecordsTab() {
                                         .map((fav) => (
                                             <CourseListCard
                                                 key={fav.id}
-                                                title={fav.course.title}
+                                                title={pickCourseTitle(fav.course, locale)}
                                                 imageUrl={fav.course.imageUrl}
                                                 grade={fav.course.grade}
                                                 concept={fav.course.concept ?? null}
@@ -2214,8 +1965,8 @@ function ActivityTab() {
     const t = useThemeColors();
     const { t: i18n, locale } = useLocale();
     const dateLoc = localeTag(locale);
+    const { openModal } = useModal();
     const [subTab, setSubTab] = useState<"badges" | "rewards" | "payments">("badges");
-    const [selBadge, setSelBadge] = useState<Badge | null>(null);
 
     const { data: badges = [], isLoading: loadBadges } = useQuery<Badge[]>({
         queryKey: ["users", "badges"],
@@ -2285,7 +2036,7 @@ function ActivityTab() {
                                                     s.badgeCard,
                                                     { backgroundColor: t.surface, borderColor: t.border },
                                                 ]}
-                                                onPress={() => setSelBadge(b)}
+                                                onPress={() => openModal("badgeDetail", { badge: b })}
                                                 activeOpacity={0.85}
                                             >
                                                 <View style={s.badgeImgWrap}>
@@ -2454,36 +2205,6 @@ function ActivityTab() {
                 </View>
             )}
 
-            {/* 뱃지 상세 모달 */}
-            <Modal visible={!!selBadge} transparent animationType="fade" onRequestClose={() => setSelBadge(null)}>
-                <View style={s.badgeModalBg}>
-                    <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setSelBadge(null)} />
-                    {selBadge && (
-                        <View style={[s.badgeModalCard, { backgroundColor: "white" }]}>
-                            <View style={s.badgeModalImgWrap}>
-                                {selBadge.image_url ? (
-                                    <Image
-                                        source={{ uri: resolveImageUrl(selBadge.image_url) }}
-                                        style={s.badgeModalImg}
-                                        resizeMode="contain"
-                                    />
-                                ) : (
-                                    <Text style={{ fontSize: 60 }}>🏅</Text>
-                                )}
-                            </View>
-                            <Text style={s.badgeModalName}>{selBadge.name}</Text>
-                            {selBadge.description ? <Text style={s.badgeModalDesc}>{selBadge.description}</Text> : null}
-                            <Text style={s.badgeModalDateText}>
-                                {i18n("mypage.badgeAcquiredDate")}:{" "}
-                                {new Date(selBadge.awarded_at).toLocaleDateString(dateLoc)}
-                            </Text>
-                            <TouchableOpacity style={s.badgeModalCloseBtn} onPress={() => setSelBadge(null)}>
-                                <Text style={s.badgeModalCloseTxt}>{i18n("mypage.close")}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-            </Modal>
         </ScrollView>
     );
 }
@@ -3208,6 +2929,17 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#fff",
     },
+    calMemoryCornerDot: {
+        position: "absolute",
+        top: 3,
+        left: 3,
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: "#8b5cf6",
+        borderWidth: 1,
+        borderColor: "#fff",
+    },
     calItemCountOnCircle: {
         position: "absolute",
         top: -2,
@@ -3258,7 +2990,6 @@ const s = StyleSheet.create({
 
     coursePreviewRoot: {
         flex: 1,
-        backgroundColor: "#000",
         justifyContent: "center",
     },
     coursePreviewCenter: {
@@ -3514,31 +3245,6 @@ const s = StyleSheet.create({
     payAmount: { fontSize: 18, fontWeight: "600", marginLeft: 10 },
     refundBtn: { marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, alignItems: "center" },
     refundBtnText: { fontSize: 14, fontWeight: "500" },
-
-    // 뱃지 상세 모달
-    badgeModalBg: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.6)",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 32,
-    },
-    badgeModalCard: { borderRadius: 20, padding: 24, alignItems: "center", width: "100%" },
-    badgeModalImgWrap: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: "#fef9c3",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 16,
-    },
-    badgeModalImg: { width: 80, height: 80 },
-    badgeModalName: { fontSize: 20, fontWeight: "600", color: "#111", marginBottom: 8, textAlign: "center" },
-    badgeModalDesc: { fontSize: 14, color: "#6b7280", textAlign: "center", marginBottom: 8, lineHeight: 20 },
-    badgeModalDateText: { fontSize: 12, color: "#9ca3af", marginBottom: 20 },
-    badgeModalCloseBtn: { backgroundColor: "#f3f4f6", borderRadius: 10, paddingVertical: 12, paddingHorizontal: 32 },
-    badgeModalCloseTxt: { fontSize: 14, fontWeight: "500", color: "#374151" },
 
     // 로그인 CTA
     loginCTA: { backgroundColor: "#059669", borderRadius: 999, paddingHorizontal: 24, paddingVertical: 14 },

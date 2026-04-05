@@ -8,6 +8,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { useLocale } from "../lib/useLocale";
+import { textFontForLocale } from "../lib/textDefaultFont";
 
 type Props = {
     onSearchPress?: () => void;
@@ -19,22 +21,40 @@ type Props = {
 
 export default function AppHeader({ onSearchPress, onBellPress, onSettingsPress, showBellBadge }: Props) {
     const { theme } = useAppSettings();
+    const { t, locale } = useLocale();
     const isDark = theme === "dark";
 
     return (
         <View style={[styles.header, isDark && styles.headerDark]}>
             {/* 로고 */}
-            <TouchableOpacity onPress={() => router.push("/(tabs)")} activeOpacity={0.7}>
-                <Text style={[styles.logo, isDark && styles.logoDark]}>DoNa</Text>
+            <TouchableOpacity
+                onPress={() => router.push("/(tabs)")}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="DoNa"
+            >
+                <Text style={[styles.logo, textFontForLocale(locale), isDark && styles.logoDark]}>DoNa</Text>
             </TouchableOpacity>
 
             {/* 우측 아이콘 3개 */}
             <View style={styles.right}>
-                <TouchableOpacity style={styles.iconBtn} onPress={onSearchPress} activeOpacity={0.7}>
+                <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={onSearchPress}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("header.search")}
+                >
                     <Ionicons name="search-outline" size={20} color={isDark ? "#e5e7eb" : "#374151"} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.iconBtn} onPress={onBellPress} activeOpacity={0.7}>
+                <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={onBellPress}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("header.notification")}
+                >
                     <View style={styles.bellWrap}>
                         <Ionicons name="notifications-outline" size={20} color={isDark ? "#e5e7eb" : "#374151"} />
                         {showBellBadge ? <View style={styles.bellDot} /> : null}
@@ -45,6 +65,8 @@ export default function AppHeader({ onSearchPress, onBellPress, onSettingsPress,
                     style={styles.iconBtn}
                     onPress={onSettingsPress ?? (() => router.push("/(tabs)/mypage"))}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("common.settings")}
                 >
                     <Ionicons name="settings-outline" size={20} color={isDark ? "#e5e7eb" : "#374151"} />
                 </TouchableOpacity>
@@ -72,7 +94,6 @@ const styles = StyleSheet.create({
     logo: {
         fontSize: 18,
         fontWeight: "500",
-        fontFamily: "Cafe24Dongdong",
         color: "#111827",
         letterSpacing: -0.3,
         minWidth: 60,

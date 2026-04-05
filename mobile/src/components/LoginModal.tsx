@@ -25,39 +25,25 @@ import { modalBottomPadding } from '../utils/modalSafePadding';
 import { MODAL_ANDROID_PROPS } from '../constants/modalAndroidProps';
 import { Colors, FontSize, BorderRadius } from '../constants/theme';
 import { useLocale } from '../lib/useLocale';
+import { useModal } from '../lib/modalContext';
 
-type Props = {
-    visible: boolean;
-    onClose: () => void;
-    title?: string;
-    description?: string;
-    benefits?: string[];
-    ctaText?: string;
-};
-
-export default function LoginModal({
-    visible,
-    onClose,
-    title,
-    description,
-    benefits,
-    ctaText,
-}: Props) {
+export default function LoginModal() {
+    const { isOpen, closeModal } = useModal();
+    const visible = isOpen("login");
+    const onClose = () => closeModal("login");
     const t = useThemeColors();
     const { t: i18n } = useLocale();
     const insets = useSafeAreaInsets();
     const { height } = useWindowDimensions();
     const maxH = Math.min(height * 0.92, height - insets.top - 16);
-    const { rendered, translateY, backdropOpacity } = useSlideModalAnimation(visible);
+    const { rendered, translateY, backdropOpacity, sheetReady, isClosing } = useSlideModalAnimation(visible);
     const bottomPad = modalBottomPadding(insets.bottom);
 
-    const benefitList =
-        benefits ??
-        [
-            i18n('loginModal.presets.courseDetail.benefit0'),
-            i18n('loginModal.presets.courseDetail.benefit1'),
-            i18n('loginModal.presets.courseDetail.benefit2'),
-        ];
+    const benefitList = [
+        i18n('loginModal.presets.courseDetail.benefit0'),
+        i18n('loginModal.presets.courseDetail.benefit1'),
+        i18n('loginModal.presets.courseDetail.benefit2'),
+    ];
 
     function handleLogin() {
         onClose();
@@ -74,79 +60,77 @@ export default function LoginModal({
             onRequestClose={onClose}
             {...MODAL_ANDROID_PROPS}
         >
-            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-                <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-            </Animated.View>
+            <View style={StyleSheet.absoluteFillObject} pointerEvents={isClosing ? "none" : "auto"}>
+                <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+                    {sheetReady && <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />}
+                </Animated.View>
 
-            <Animated.View
-                style={[styles.sheetWrap, { transform: [{ translateY }], maxHeight: maxH }]}
-            >
-                <View style={[styles.sheet, { backgroundColor: t.card, paddingBottom: bottomPad }]}>
-                    {/* 닫기 버튼 */}
-                    <TouchableOpacity
-                        style={[styles.closeBtn, { backgroundColor: t.surface }]}
-                        onPress={onClose}
-                        hitSlop={12}
-                    >
-                        <Ionicons name="close" size={16} color={t.textMuted} />
-                    </TouchableOpacity>
+                <Animated.View
+                    style={[styles.sheetWrap, { transform: [{ translateY }], maxHeight: maxH }]}
+                >
+                    <View style={[styles.sheet, { backgroundColor: t.card, paddingBottom: bottomPad }]}>
+                        {/* 닫기 버튼 */}
+                        <TouchableOpacity
+                            style={[styles.closeBtn, { backgroundColor: t.surface }]}
+                            onPress={onClose}
+                            hitSlop={12}
+                        >
+                            <Ionicons name="close" size={16} color={t.textMuted} />
+                        </TouchableOpacity>
 
-                    <ScrollView
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={[styles.scrollInner, { paddingBottom: 4 }]}
-                    >
-                        {/* 아이콘 */}
-                        <View style={styles.iconWrap}>
-                            <View style={styles.iconPulse} />
-                            <View style={styles.iconBox}>
-                                <Ionicons name="ticket-outline" size={30} color={Colors.white} style={{ transform: [{ rotate: '-12deg' }] }} />
-                                <View style={styles.sparkle}>
-                                    <Ionicons name="sparkles" size={14} color="#fef08a" />
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={[styles.scrollInner, { paddingBottom: 4 }]}
+                        >
+                            {/* 아이콘 */}
+                            <View style={styles.iconWrap}>
+                                <View style={styles.iconPulse} />
+                                <View style={styles.iconBox}>
+                                    <Ionicons name="ticket-outline" size={30} color={Colors.white} style={{ transform: [{ rotate: '-12deg' }] }} />
+                                    <View style={styles.sparkle}>
+                                        <Ionicons name="sparkles" size={14} color="#fef08a" />
+                                    </View>
                                 </View>
                             </View>
-                        </View>
 
-                        {/* 제목 */}
-                        <Text style={[styles.title, { color: t.text }]}>
-                            {title ?? (
-                                <>
-                                    {i18n('loginModal.sheetHeroBefore')}
-                                    <Text style={styles.titleHighlight}>{i18n('commonFallback.dona')}</Text>
-                                    {i18n('loginModal.sheetHeroAfter')}
-                                </>
-                            )}
-                        </Text>
+                            {/* 제목 */}
+                            <Text style={[styles.title, { color: t.text }]}>
+                                {i18n('loginModal.sheetHeroBefore')}
+                                <Text style={styles.titleHighlight}>{i18n('commonFallback.dona')}</Text>
+                                {i18n('loginModal.sheetHeroAfter')}
+                            </Text>
 
-                        {/* 설명 */}
-                        <Text style={[styles.desc, { color: t.textMuted }]}>
-                            {description ?? i18n('loginModal.sheetDefaultDesc')}
-                        </Text>
+                            {/* 설명 */}
+                            <Text style={[styles.desc, { color: t.textMuted }]}>
+                                {i18n('loginModal.sheetDefaultDesc')}
+                            </Text>
 
-                        {/* 혜택 리스트 */}
-                        <View style={[styles.benefitBox, { backgroundColor: t.isDark ? 'rgba(31,41,55,0.5)' : Colors.gray50, borderColor: t.border }]}>
-                            <Text style={[styles.benefitLabel, { color: t.textMuted }]}>{i18n('loginModal.benefitsTitle')}</Text>
-                            {benefitList.map((b, i) => (
-                                <View key={i} style={styles.benefitRow}>
-                                    <View style={[styles.checkCircle, { backgroundColor: t.isDark ? 'rgba(16,185,129,0.2)' : Colors.emerald100 }]}>
-                                        <Ionicons name="checkmark" size={12} color={Colors.emerald600} />
+                            {/* 혜택 리스트 */}
+                            <View style={[styles.benefitBox, { backgroundColor: t.isDark ? 'rgba(31,41,55,0.5)' : Colors.gray50, borderColor: t.border }]}>
+                                <Text style={[styles.benefitLabel, { color: t.textMuted }]}>{i18n('loginModal.benefitsTitle')}</Text>
+                                {benefitList.map((b, i) => (
+                                    <View key={i} style={styles.benefitRow}>
+                                        <View style={[styles.checkCircle, { backgroundColor: t.isDark ? 'rgba(16,185,129,0.2)' : Colors.emerald100 }]}>
+                                            <Ionicons name="checkmark" size={12} color={Colors.emerald600} />
+                                        </View>
+                                        <Text style={[styles.benefitText, { color: t.text }]}>{b}</Text>
                                     </View>
-                                    <Text style={[styles.benefitText, { color: t.text }]}>{b}</Text>
-                                </View>
-                            ))}
-                        </View>
+                                ))}
+                            </View>
 
-                        {/* CTA 버튼 */}
-                        <TouchableOpacity
-                            style={styles.ctaBtn}
-                            onPress={handleLogin}
-                            activeOpacity={0.88}
-                        >
-                            <Text style={styles.ctaText}>{ctaText ?? i18n('loginModal.cta')}</Text>
-                            <Ionicons name="sparkles" size={15} color={Colors.white} style={{ marginLeft: 6 }} />
-                        </TouchableOpacity>
-                    </ScrollView>
-                </View>
-            </Animated.View>
+                            {/* CTA 버튼 */}
+                            <TouchableOpacity
+                                style={styles.ctaBtn}
+                                onPress={handleLogin}
+                                activeOpacity={0.88}
+                            >
+                                <Text style={styles.ctaText}>{i18n('loginModal.cta')}</Text>
+                                <Ionicons name="sparkles" size={15} color={Colors.white} style={{ marginLeft: 6 }} />
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </Animated.View>
+            </View>
         </Modal>
     );
 }

@@ -5,6 +5,7 @@ import Image from "@/components/ImageFallback";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
+import { pickCourseTitle } from "@/lib/courseLocalized";
 import { useDragScroll } from "@/hooks/useDragScroll";
 import { CasefileItem, CompletedCourse } from "@/types/user";
 import type { ReportedSuggestion } from "@/components/ReportedCoursesCTA";
@@ -136,7 +137,7 @@ const FootprintTab = ({
     personalStories = [],
     reportedSuggestions = [],
 }: FootprintTabProps) => {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const userName = userNameProp || t("mypage.footprintTab.defaultUser");
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -1193,7 +1194,7 @@ const FootprintTab = ({
                                                 {t(`home.myReportedCourses.status.${item.status}`)}
                                             </span>
                                             <div className="text-sm font-bold text-gray-900 dark:text-white pr-12 line-clamp-2">
-                                                {item.placeName}
+                                                {item.course ? pickCourseTitle(item.course, locale) || item.placeName : item.placeName}
                                             </div>
                                             <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">
                                                 {item.placeAddress || item.description || item.note || t("suggest.pageSubtitle")}
