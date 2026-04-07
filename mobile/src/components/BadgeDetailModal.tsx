@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { View, Text, Modal, TouchableOpacity, StyleSheet } from "react-native";
+import { Image } from "expo-image";
 import { useModal, type Badge } from "../lib/modalContext";
 import { useLocale } from "../lib/useLocale";
 import { resolveImageUrl } from "../lib/imageUrl";
@@ -24,7 +25,7 @@ export default function BadgeDetailModal() {
                                 <Image
                                     source={{ uri: resolveImageUrl(badge.image_url) }}
                                     style={s.img}
-                                    resizeMode="contain"
+                                    contentFit="contain"
                                 />
                             ) : (
                                 <Text style={{ fontSize: 60 }}>🏅</Text>

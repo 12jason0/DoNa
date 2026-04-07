@@ -142,6 +142,9 @@
         "qRegionAnguk": "안국·서촌",
         "qRegionEuljiro": "을지로",
         "qRegionYeouido": "여의도",
+        "qRegionGangnam": "강남·신사",
+        "qRegionSeongsu": "성수·건대",
+        "qRegionHongdae": "홍대·연남",
         "qPayment": "좋아요! ✨\n\n지금까지 답변을 분석해보니,\n당신에게 딱 맞는 코스를 최대 2가지로 좁힐 수 있을 것 같아요.\n\n오늘의 데이트 추천은\n하루에 1번 무료로 이용할 수 있어요 💡\n\n지금 바로 카드를 뽑아볼까요?",
         "qPaymentDraw": "코스 뽑기 🎲",
         "qPaymentLater": "나중에 할게요",
@@ -1285,6 +1288,9 @@
         "mainTitle": "두나 멤버십으로",
         "mainHighlight": "데이트 고민 끝! ✨",
         "mainSubtitle": "합리적인 가격으로 즐기는 스마트한 데이트",
+        "upgradeTitle": "열람권보다",
+        "upgradeHighlight": "구독이 더 합리적이에요 💡",
+        "upgradeSubtitle": "이미 열람권을 2번 이상 사용하셨어요",
         "backToHome": "홈으로",
         "monthlyMembership": "Monthly Membership",
         "currentPlan": "현재 이용 중",
@@ -1431,6 +1437,7 @@
             "mapFabA11y": "지도에서 전체 경로 보기",
             "closeA11y": "닫기",
             "shareMessage": "{title} - DoNa 데이트 코스\n{url}",
+            "courseStarted": "코스가 시작됐어요! 홈에서 확인하세요",
             "startCourseFailed": "코스 시작에 실패했어요. 다시 시도해 주세요.",
             "favAdded": "찜 목록에 담았어요",
             "favRemoved": "찜을 해제했어요",
@@ -1483,7 +1490,9 @@
             "reserveWithName": "{name} 예약",
             "anonymous": "익명",
             "saveFailedToast": "저장에 실패했어요.",
-            "alertNotice": "알림"
+            "alertNotice": "알림",
+            "tipLockedLabel": "멤버십 가입 시 꿀팁 공개",
+            "tipLockedBtn": "보기"
         }
     },
     "authPage": {
@@ -1680,7 +1689,7 @@
     },
     "suggest": {
         "pageTitle": "장소 제보하기",
-        "pageSubtitle": "가고 싶은 장소를 알려주세요. 검토 후 코스로 만들어드려요.",
+        "pageSubtitle": "나만 알고 있는 장소를 코스로 만들어드려요.",
         "labelTitle": "코스 제목",
         "labelLocation": "지역",
         "labelBudget": "예산 (원)",

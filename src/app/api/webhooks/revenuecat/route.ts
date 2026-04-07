@@ -49,8 +49,15 @@ export async function POST(request: NextRequest) {
         }
 
         const eventType = event.type;
-        const appUserId = event.app_user_id; // RevenueCat의 사용자 ID
-        const revenueCatProductId = event.product_id; // RevenueCat Product ID (예: kr.io.dona.course_basic)
+        const appUserId = event.app_user_id;
+        const revenueCatProductId = event.product_id;
+        const transactionId = event.transaction_id;
+
+        // transactionId 없으면 중복 방지 불가 → 200 반환 후 Sentry 기록 (400이면 RC가 무한 재시도)
+        if (!transactionId && ["INITIAL_PURCHASE", "RENEWAL", "REFUND"].includes(eventType)) {
+            captureApiError(new Error(`[RevenueCat Webhook] transaction_id 없음 — 수동 확인 필요: eventType=${eventType}, appUserId=${appUserId}`));
+            return NextResponse.json({ success: true, message: "transaction_id missing - manual review required" });
+        }
 
         // 🟢 RevenueCat Product ID를 plan.id로 변환
         const planId = REVENUECAT_TO_PLAN_ID[revenueCatProductId] || revenueCatProductId;
@@ -118,9 +125,20 @@ async function handleInitialPurchase(
     event: any,
 ) {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // COURSE_TICKET: 앱에서 revenuecat/confirm 호출 시 CourseUnlock 생성됨. 여기서는 결제 기록만 저장.
+        // COURSE_TICKET: 클라이언트 confirm이 실패한 경우를 대비해 웹훅에서도 CourseUnlock 생성
         if (productInfo.type === "COURSE_TICKET") {
-            // 결제 기록만 저장 (열람권 지급은 앱의 confirm API에서 처리)
+            const courseIdStr = event.subscriber_attributes?.pending_course_id?.value;
+            const courseId = courseIdStr ? Number(courseIdStr) : null;
+            if (courseId && !isNaN(courseId)) {
+                await (tx as any).courseUnlock.upsert({
+                    where: { userId_courseId: { userId, courseId } },
+                    update: {},
+                    create: { userId, courseId },
+                });
+                console.log("[RevenueCat Webhook] COURSE_TICKET: CourseUnlock 생성", { userId, courseId });
+            } else {
+                console.warn("[RevenueCat Webhook] COURSE_TICKET: pending_course_id 없음, 잠금 해제 불가");
+            }
         } else if (productInfo.type === "SUBSCRIPTION" && productInfo.tier) {
             // 구독 활성화
             const now = new Date();

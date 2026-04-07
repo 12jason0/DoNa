@@ -3,6 +3,7 @@
  * _layout.tsx 에서 <ModalProvider> 안에 포함
  */
 import React from "react";
+import { useModal } from "../lib/modalContext";
 
 import SearchModal from "./SearchModal";
 import SettingsModal from "./SettingsModal";
@@ -21,8 +22,10 @@ import LimitExceededSheet from "./LimitExceededSheet";
 import MemoryLimitModal from "./MemoryLimitModal";
 import ScreenReservationModal from "./ScreenReservationModal";
 import MoreCoursesSheet from "./MoreCoursesSheet";
+import ComingSoonBottomSheet from "./ComingSoonBottomSheet";
 
 export default function ModalManager() {
+    const { isOpen, closeModal } = useModal();
     return (
         <>
             {/* 헤더 모달 */}
@@ -63,6 +66,12 @@ export default function ModalManager() {
 
             {/* 홈 */}
             <MoreCoursesSheet />
+
+            {/* 준비중 */}
+            <ComingSoonBottomSheet
+                visible={isOpen("comingSoon")}
+                onClose={() => closeModal("comingSoon")}
+            />
         </>
     );
 }

@@ -178,7 +178,7 @@ function UserLocationMarker() {
         ).start();
     }, []);
     return (
-        <View key="user-location-marker" collapsable={false} style={{ width: 60, height: 60, alignItems: "center", justifyContent: "center" }}>
+        <View key="user-location-marker" collapsable={false} style={{ width: 60, height: 60, alignItems: "center", justifyContent: "center", borderRadius: 30, overflow: "hidden" }}>
             <Animated.View style={{
                 position: "absolute", width: 60, height: 60, borderRadius: 30,
                 backgroundColor: "rgba(59,130,246,0.3)",
@@ -187,8 +187,7 @@ function UserLocationMarker() {
             <View style={{
                 width: 22, height: 22, borderRadius: 11,
                 backgroundColor: "#2563EB", borderWidth: 3, borderColor: "#fff",
-                shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3, shadowRadius: 5, elevation: 6,
+                elevation: 6,
             }} />
         </View>
     );
@@ -198,6 +197,11 @@ const { height: SCREEN_H } = Dimensions.get("window");
 const PANEL_EXPANDED = SCREEN_H * 0.85;
 const PANEL_DEFAULT = SCREEN_H * 0.40;
 const PANEL_MINIMIZED = 100;
+
+// translateY targets (panel height is fixed at PANEL_EXPANDED, moved via transform)
+const TRANSLATE_EXPANDED  = 0;
+const TRANSLATE_DEFAULT   = PANEL_EXPANDED - PANEL_DEFAULT;
+const TRANSLATE_MINIMIZED = PANEL_EXPANDED - PANEL_MINIMIZED;
 
 
 export default function ExploreScreen() {
@@ -238,55 +242,63 @@ export default function ExploreScreen() {
         setTimeout(() => setToast(null), 2200);
     }, []);
 
-    // --- 바텀 시트 ---
-    const panelY = useRef(new Animated.Value(SCREEN_H - PANEL_DEFAULT)).current;
+    // --- 바텀 시트 (transform translateY — useNativeDriver: true 로 JS 스레드 부담 제거) ---
+    const panelTranslateY = useRef(new Animated.Value(TRANSLATE_DEFAULT)).current;
     const panelState = useRef<"expanded" | "default" | "minimized">("default");
-    const dragStart = useRef(0);
     const [panelMode, setPanelMode] = useState<"expanded" | "default" | "minimized">("default");
     const locationBtnAnim = useRef(new Animated.Value(PANEL_DEFAULT + 16)).current;
 
     const snapPanel = useCallback((mode: "expanded" | "default" | "minimized") => {
         panelState.current = mode;
         setPanelMode(mode);
-        // 패널 bottom은 항상 0 (safe area 무시)
-        const targetY =
-            mode === "expanded" ? SCREEN_H - PANEL_EXPANDED
-                : mode === "minimized" ? SCREEN_H - PANEL_MINIMIZED
-                    : SCREEN_H - PANEL_DEFAULT;
+        const targetTranslate =
+            mode === "expanded" ? TRANSLATE_EXPANDED
+                : mode === "minimized" ? TRANSLATE_MINIMIZED
+                    : TRANSLATE_DEFAULT;
         const panelH = mode === "expanded" ? PANEL_EXPANDED : mode === "minimized" ? PANEL_MINIMIZED : PANEL_DEFAULT;
-        Animated.spring(panelY, { toValue: targetY, useNativeDriver: false, tension: 60, friction: 12 }).start();
-        Animated.spring(locationBtnAnim, { toValue: panelH + 16, useNativeDriver: false, tension: 60, friction: 12 }).start();
-    }, [panelY, locationBtnAnim]);
-
-    const panelHeight = panelY.interpolate({
-        inputRange: [SCREEN_H - PANEL_EXPANDED, SCREEN_H - PANEL_MINIMIZED],
-        outputRange: [PANEL_EXPANDED, PANEL_MINIMIZED],
-        extrapolate: "clamp",
-    });
+        Animated.spring(panelTranslateY, {
+            toValue: targetTranslate,
+            useNativeDriver: true,   // ← JS 스레드 없이 GPU 직접 구동
+            tension: 140,
+            friction: 18,
+            overshootClamping: true,
+        }).start();
+        Animated.spring(locationBtnAnim, {
+            toValue: panelH + 16,
+            useNativeDriver: false,
+            tension: 140,
+            friction: 18,
+            overshootClamping: true,
+        }).start();
+    }, [panelTranslateY, locationBtnAnim]);
 
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
-            onPanResponderGrant: (e) => { dragStart.current = e.nativeEvent.pageY; },
+            onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 4,
+            onPanResponderGrant: () => {
+                // 현재 애니메이션 중이면 멈추고 현재값 유지
+                panelTranslateY.stopAnimation();
+            },
             onPanResponderMove: (_, gs) => {
                 const mode = panelState.current;
                 const base =
-                    mode === "expanded" ? SCREEN_H - PANEL_EXPANDED
-                        : mode === "minimized" ? SCREEN_H - PANEL_MINIMIZED
-                            : SCREEN_H - PANEL_DEFAULT;
+                    mode === "expanded" ? TRANSLATE_EXPANDED
+                        : mode === "minimized" ? TRANSLATE_MINIMIZED
+                            : TRANSLATE_DEFAULT;
                 const next = Math.max(
-                    SCREEN_H - PANEL_EXPANDED,
-                    Math.min(SCREEN_H - PANEL_MINIMIZED, base + gs.dy)
+                    TRANSLATE_EXPANDED,
+                    Math.min(TRANSLATE_MINIMIZED, base + gs.dy)
                 );
-                panelY.setValue(next);
+                panelTranslateY.setValue(next);
             },
             onPanResponderRelease: (_, gs) => {
                 const cur = panelState.current;
-                if (gs.dy > 60) {
+                // 속도(vy) 기반 스냅으로 빠른 플릭 지원
+                if (gs.vy > 0.3 || gs.dy > 60) {
                     if (cur === "expanded") snapPanel("default");
                     else snapPanel("minimized");
-                } else if (gs.dy < -60) {
+                } else if (gs.vy < -0.3 || gs.dy < -60) {
                     if (cur === "minimized") snapPanel("default");
                     else snapPanel("expanded");
                 } else {
@@ -296,6 +308,15 @@ export default function ExploreScreen() {
         })
     ).current;
 
+    // --- 카테고리 정렬 우선순위 ---
+    const getCatPriority = useCallback((category: string): number => {
+        const key = getCatKey(category);
+        if (key === "restaurant") return 0;
+        if (key === "cafe") return 1;
+        if ((category || "").includes("복합")) return 2;
+        return 3;
+    }, []);
+
     // --- 데이터 패치 ---
     const fetchData = useCallback(async (lat: number, lng: number, keyword?: string) => {
         setLoading(true);
@@ -303,61 +324,63 @@ export default function ExploreScreen() {
             const range = 0.02;
             const minLat = lat - range, maxLat = lat + range;
             const minLng = lng - range, maxLng = lng + range;
-            const effectiveKeyword = keyword?.trim() || "맛집";
             const radius = 2000;
+            // 키워드 없을 때는 음식점·카페 모두 보장하기 위해 두 키워드 병렬 패치
+            const searchKeywords = keyword?.trim() ? [keyword.trim()] : ["맛집", "카페"];
 
-            const [myData, kakaoData] = await Promise.all([
+            const [myData, ...kakaoResults] = await Promise.all([
                 fetch(`${BASE_URL}/api/map?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}`)
-                    .then(r => r.json()).catch(() => ({ places: [], courses: [] })),
-                fetch(`${BASE_URL}/api/places/search-kakao?lat=${lat}&lng=${lng}&keyword=${encodeURIComponent(effectiveKeyword)}&radius=${radius}`)
-                    .then(r => r.json()).catch(() => ({ success: false, places: [], relatedCourses: [] })),
+                    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+                    .catch(() => ({ places: [], courses: [] })),
+                ...searchKeywords.map(kw =>
+                    fetch(`${BASE_URL}/api/places/search-kakao?lat=${lat}&lng=${lng}&keyword=${encodeURIComponent(kw)}&radius=${radius}`)
+                        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+                        .catch(() => ({ success: false, places: [], relatedCourses: [] }))
+                ),
             ]);
 
             const uniquePlaces = new Map<string, Place>();
             const uniqueCourses = new Map<string, Course>();
 
-            if (kakaoData.success && Array.isArray(kakaoData.places)) {
-                kakaoData.places.forEach((p: any) => {
-                    const id = `k-${p.id}`;
-                    const lat = Number(p.latitude ?? p.lat);
-                    const lng = Number(p.longitude ?? p.lng);
-                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-                    uniquePlaces.set(id, {
-                        ...p,
-                        id,
-                        latitude: lat,
-                        longitude: lng,
-                        source: "kakao",
+            for (const kakaoData of kakaoResults) {
+                if (kakaoData.success && Array.isArray(kakaoData.places)) {
+                    kakaoData.places.forEach((p: any) => {
+                        const id = `k-${p.id}`;
+                        if (uniquePlaces.has(id)) return;
+                        const pLat = Number(p.latitude ?? p.lat);
+                        const pLng = Number(p.longitude ?? p.lng);
+                        if (!Number.isFinite(pLat) || !Number.isFinite(pLng)) return;
+                        uniquePlaces.set(id, { ...p, id, latitude: pLat, longitude: pLng, source: "kakao" });
                     });
-                });
+                }
+                if (Array.isArray(kakaoData.relatedCourses)) {
+                    kakaoData.relatedCourses.forEach((c: any) => uniqueCourses.set(`c-${c.id}`, { ...c, id: `c-${c.id}` }));
+                }
             }
             if (Array.isArray(myData.places)) {
                 myData.places.forEach((p: any) => {
-                    const lat = Number(p.latitude ?? p.lat);
-                    const lng = Number(p.longitude ?? p.lng);
-                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-                    uniquePlaces.set(`db-${p.id}`, {
-                        ...p,
-                        id: `db-${p.id}`,
-                        latitude: lat,
-                        longitude: lng,
-                        source: "db",
-                    });
+                    const pLat = Number(p.latitude ?? p.lat);
+                    const pLng = Number(p.longitude ?? p.lng);
+                    if (!Number.isFinite(pLat) || !Number.isFinite(pLng)) return;
+                    uniquePlaces.set(`db-${p.id}`, { ...p, id: `db-${p.id}`, latitude: pLat, longitude: pLng, source: "db" });
                 });
             }
             if (Array.isArray(myData.courses)) {
                 myData.courses.forEach((c: any) => uniqueCourses.set(`c-${c.id}`, { ...c, id: `c-${c.id}` }));
             }
-            if (Array.isArray(kakaoData.relatedCourses)) {
-                kakaoData.relatedCourses.forEach((c: any) => uniqueCourses.set(`c-${c.id}`, { ...c, id: `c-${c.id}` }));
-            }
 
-            setPlaces(Array.from(uniquePlaces.values()).slice(0, 40));
-            setCourses(Array.from(uniqueCourses.values()).slice(0, 40));
+            // 음식점 → 카페 → 복합건물 → 기타 순 정렬 후 20개 제한
+            const sortedPlaces = Array.from(uniquePlaces.values())
+                .sort((a, b) => getCatPriority(a.category) - getCatPriority(b.category));
+
+            setPlaces(sortedPlaces.slice(0, 20));
+            setCourses(Array.from(uniqueCourses.values()).slice(0, 20));
             if (keyword && uniqueCourses.size > 0) setActiveTab("courses");
-        } catch {}
+        } catch {
+            setToast("주변 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+        }
         finally { setLoading(false); }
-    }, []);
+    }, [getCatPriority]);
 
     const fetchAreaSearch = useCallback(async () => {
         setShowSearchBtn(false);
@@ -403,7 +426,7 @@ export default function ExploreScreen() {
             courseCache.current[courseId] = { path, list };
             setCoursePath(path);
             setCoursePlaces(list);
-        } catch {}
+        } catch { showToast(i18n("mobile.map.toastCourseDetailError") ?? "코스 정보를 불러오지 못했어요."); }
         finally { setCourseLoading(false); }
     }, []);
 
@@ -701,9 +724,10 @@ export default function ExploreScreen() {
                     styles.panel,
                     {
                         backgroundColor: panelBgColor,
-                        height: panelHeight,
+                        height: PANEL_EXPANDED,
                         bottom: 0,
                         shadowColor: "#000",
+                        transform: [{ translateY: panelTranslateY }],
                     }
                 ]}
             >

@@ -1812,6 +1812,37 @@ const AIRecommender = () => {
                     </div>
                 )}
 
+                {/* 페이지 상단 중앙 아이콘 */}
+                <div className="flex justify-center mb-4 mt-2">
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-emerald-200 rounded-full blur-xl opacity-25 group-hover:opacity-40 transition-opacity duration-500"></div>
+                        <div className="relative w-14 h-14 bg-white dark:bg-[#1a241b] rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-lg flex items-center justify-center">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="28"
+                                height="28"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#059669"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M12 6V2H8" />
+                                <path d="M15 11v2" />
+                                <path d="M2 12h2" />
+                                <path d="M20 12h2" />
+                                <path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
+                                <path d="M9 11v2" />
+                            </svg>
+                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="w-full max-w-4xl flex flex-col mb-4">
                     <div className="bg-white/80 dark:bg-[#1a241b] backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/50 dark:border-gray-800/50 dark:shadow-gray-900/20">
                         <div className="flex justify-between items-center">

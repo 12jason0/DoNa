@@ -1,7 +1,7 @@
 /**
  * 웹 SideMenuDrawer.tsx 와 동일한 항목: + 탭 시 블러 오버레이 + 우측 하단 메뉴
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
     View,
     Text,
@@ -20,7 +20,6 @@ import { router } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
-import ComingSoonBottomSheet from "./ComingSoonBottomSheet";
 import { useModal } from "../lib/modalContext";
 
 const SLIDE_FROM = 96;
@@ -40,7 +39,6 @@ export default function SideMenuSheet() {
     const translateY = useRef(new Animated.Value(SLIDE_FROM)).current;
     const overlayOpacity = useRef(new Animated.Value(0)).current;
     const closingRef = useRef(false);
-    const [comingSoonOpen, setComingSoonOpen] = useState(false);
 
     const overlayBg = "rgba(255,255,255,0.88)";
 
@@ -96,12 +94,11 @@ export default function SideMenuSheet() {
     );
 
     const goNearby = () => handleDismiss(() => router.push("/nearby" as any));
-    /** 웹 ShopModal 과 동일: 두나샵 안내 하단 시트 */
-    const goShop = () => handleDismiss(() => openModal("ticket", { context: "UPGRADE" }));
+    const goShop = () => handleDismiss(() => openModal("comingSoon"));
     const goMypage = () => handleDismiss(() => router.push("/(tabs)/mypage" as any));
     const goLogin = () => handleDismiss(() => router.push("/(auth)/login" as any));
     const goSignup = () => handleDismiss(() => router.push("/(auth)/signup" as any));
-    const onEscape = () => handleDismiss(() => router.push("/escape" as any));
+    const onEscape = () => handleDismiss(() => openModal("comingSoon"));
     const goSuggest = () => handleDismiss(() => router.push("/suggest" as any));
 
     return (
@@ -193,7 +190,6 @@ export default function SideMenuSheet() {
             </View>
         </Modal>
 
-            <ComingSoonBottomSheet visible={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
         </>
     );
 }

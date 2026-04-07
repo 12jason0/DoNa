@@ -62,7 +62,7 @@ const MOOD_TAGS = ["로맨틱", "힙한", "활기찬", "레트로", "고급스�
 
 // ─── 코스 카드 ─────────────────────────────────────────────────────────────────
 
-function NearbyCard({
+function NearbyCardInner({
     course,
     isFav,
     onFavToggle,
@@ -121,7 +121,7 @@ function NearbyCard({
             {/* 이미지 */}
             <View style={[s.cardImgWrap, { borderColor: colors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {displayImgUrl ? (
-                    <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} />
+                    <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} fadeDuration={0} />
                 ) : (
                     <View style={[s.cardImg, { backgroundColor: "#e5e7eb", alignItems: "center", justifyContent: "center" }]}>
                         <Text style={{ color: "#9ca3af", fontSize: 12 }}>DoNa</Text>
@@ -219,6 +219,8 @@ function NearbyCard({
         </TouchableOpacity>
     );
 }
+
+const NearbyCard = React.memo(NearbyCardInner);
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
@@ -387,6 +389,18 @@ export default function NearbyScreen() {
         selectedSituations.length +
         selectedMoods.length;
 
+    const renderNearbyItem = useCallback(
+        ({ item }: { item: Course }) => (
+            <NearbyCard
+                course={item}
+                isFav={favIds.has(item.id)}
+                onFavToggle={handleFavToggle}
+                userTier={userTier}
+            />
+        ),
+        [favIds, handleFavToggle, userTier],
+    );
+
     const ListHeader = useCallback(() => {
         const regionSlug = activeRegion ? KO_REGION_TO_SLUG[activeRegion] : "";
         const regionLabel = regionSlug ? i18n(`nearby.regions.${regionSlug}`) : activeRegion;
@@ -492,18 +506,18 @@ export default function NearbyScreen() {
                 <FlatList
                     data={courses}
                     keyExtractor={(item) => String(item.id)}
-                    renderItem={({ item }) => (
-                        <NearbyCard
-                            course={item}
-                            isFav={favIds.has(item.id)}
-                            onFavToggle={handleFavToggle}
-                            userTier={userTier}
-                        />
-                    )}
+                    renderItem={renderNearbyItem}
                     ListHeaderComponent={ListHeader}
                     contentContainerStyle={[s.listContent, { backgroundColor: colors.card }]}
                     onEndReached={() => { if (hasNextPage) fetchNextPage(); }}
                     onEndReachedThreshold={0.4}
+                    removeClippedSubviews={true}
+                    maxToRenderPerBatch={6}
+                    windowSize={5}
+                    initialNumToRender={6}
+                    scrollEventThrottle={16}
+                    decelerationRate="fast"
+                    overScrollMode="never"
                     ListFooterComponent={
                         isFetchingNextPage ? (
                             <View style={s.footerLoader}>
@@ -525,7 +539,6 @@ export default function NearbyScreen() {
                         </View>
                     }
                     contentInset={{ bottom: 120 }}
-                    contentInsetAdjustmentBehavior="automatic"
                 />
             )}
 
@@ -549,7 +562,7 @@ export default function NearbyScreen() {
             <Modal visible={tagModalOpen} transparent animationType="slide" onRequestClose={() => setTagModalOpen(false)}>
                 <Pressable style={s.tagModalOverlay} onPress={() => setTagModalOpen(false)}>
                     <Pressable
-                        style={[s.tagModalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}
+                        style={[s.tagModalSheet, { backgroundColor: colors.card, borderColor: colors.border, paddingBottom: insets.bottom + 12 }]}
                         onPress={(e) => e.stopPropagation()}
                     >
                         <View style={[s.tagModalGrab, { backgroundColor: colors.border }]} />

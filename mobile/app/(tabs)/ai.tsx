@@ -99,6 +99,9 @@ function buildChatFlow(i18n: TI18n): Question[] {
                 { text: `🏛️ ${T("qRegionAnguk")}`, value: "안국·서촌", next: "complete" },
                 { text: `🏙️ ${T("qRegionEuljiro")}`, value: "을지로", next: "complete" },
                 { text: `🌸 ${T("qRegionYeouido")}`, value: "여의도", next: "complete" },
+                { text: `🍸 ${T("qRegionGangnam")}`, value: "강남·신사", next: "complete" },
+                { text: `🏗️ ${T("qRegionSeongsu")}`, value: "성수·건대", next: "complete" },
+                { text: `🎸 ${T("qRegionHongdae")}`, value: "홍대·연남", next: "complete" },
             ],
         },
     ];
@@ -113,9 +116,10 @@ type Answers = Record<string, string>;
 
 // ─── 취향분석 오버레이 (웹 UI 동일) ────────────────────────────────────────────
 
-function AnalysisOverlay({ text }: { text: string }) {
+function AnalysisOverlay({ text, completed, onDone }: { text: string; completed?: boolean; onDone?: () => void }) {
     const spinOuter = useRef(new Animated.Value(0)).current;
     const spinInner = useRef(new Animated.Value(0)).current;
+    const barProgress = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         const animOuter = Animated.loop(
@@ -134,14 +138,30 @@ function AnalysisOverlay({ text }: { text: string }) {
         );
         animOuter.start();
         animInner.start();
+
+        // 0 → 85% (2.5s 빠르게), 85% → 95% (2s 느리게) — API 완료 시 completed=true로 100%까지 채움
+        Animated.sequence([
+            Animated.timing(barProgress, { toValue: 85, duration: 2500, useNativeDriver: false }),
+            Animated.timing(barProgress, { toValue: 95, duration: 2000, useNativeDriver: false }),
+        ]).start();
+
         return () => {
             animOuter.stop();
             animInner.stop();
         };
     }, []);
 
+    // API 완료 시 100%까지 채우고 나서 onDone 호출
+    useEffect(() => {
+        if (!completed) return;
+        Animated.timing(barProgress, { toValue: 100, duration: 400, useNativeDriver: false }).start(() => {
+            onDone?.();
+        });
+    }, [completed]);
+
     const rotateOuter = spinOuter.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
     const rotateInner = spinInner.interpolate({ inputRange: [0, 1], outputRange: ["360deg", "0deg"] });
+    const barWidth = barProgress.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] });
 
     return (
         <View style={s.overlay}>
@@ -155,7 +175,7 @@ function AnalysisOverlay({ text }: { text: string }) {
                 </View>
                 <Text style={s.overlayTitle}>{text}</Text>
                 <View style={s.overlayBar}>
-                    <View style={s.overlayBarFill} />
+                    <Animated.View style={[s.overlayBarFill, { width: barWidth }]} />
                 </View>
             </View>
         </View>
@@ -370,6 +390,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
     const [isTyping, setIsTyping] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisDone, setAnalysisDone] = useState(false);
     const [analysisText, setAnalysisText] = useState(() =>
         i18n(`personalizedHome.${ANALYSIS_KEY_CYCLE[0]}`),
     );
@@ -498,7 +519,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
             } catch {
                 setCourses([]);
             } finally {
-                setIsAnalyzing(false);
+                setAnalysisDone(true); // 오버레이에서 100% 채운 뒤 onDone으로 isAnalyzing=false
                 setIsComplete(true);
                 setProgress(100);
                 if (fetchedCourses.length > 0) {
@@ -688,7 +709,13 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                 )}
 
                 {/* 분석 오버레이 (웹 UI 동일) */}
-                {isAnalyzing && <AnalysisOverlay text={analysisText} />}
+                {isAnalyzing && (
+                    <AnalysisOverlay
+                        text={analysisText}
+                        completed={analysisDone}
+                        onDone={() => { setIsAnalyzing(false); setAnalysisDone(false); }}
+                    />
+                )}
             </View>
 
             {/* ─── 상세 보기 바텀시트 ─────────────────────────────────── */}
@@ -1568,7 +1595,7 @@ const s = StyleSheet.create({
     },
     overlayTitle: { fontSize: 20, fontWeight: "500", color: "#fff" },
     overlayBar: { width: 160, height: 4, backgroundColor: "#374151", borderRadius: 2, overflow: "hidden" },
-    overlayBarFill: { height: 4, width: "100%", backgroundColor: "#10b981" },
+    overlayBarFill: { height: 4, backgroundColor: "#10b981" },
 
     // 플립 카드 앞면 (웹 UI 동일)
     flipCardFront: {

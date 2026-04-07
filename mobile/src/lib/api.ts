@@ -44,24 +44,39 @@ export class ApiError extends Error {
 export async function apiFetch<T>(
     path: string,
     options: FetchOptions = {},
+    timeoutMs = 20000,
 ): Promise<T> {
     const { method = 'GET', body, headers = {}, credentials = 'include' } = options;
 
     const token = loadAuthToken();
     const locale = loadLocalePreference();
 
-    const response = await fetch(`${BASE_URL}${path}`, {
-        method,
-        credentials,
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept-Language': acceptLanguageHeader(locale),
-            'X-App-Locale': locale,
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...headers,
-        },
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+        response = await fetch(`${BASE_URL}${path}`, {
+            method,
+            credentials,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept-Language': acceptLanguageHeader(locale),
+                'X-App-Locale': locale,
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...headers,
+            },
+            ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+            signal: controller.signal,
+        });
+    } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err?.name === 'AbortError') {
+            throw new ApiError(408, '요청 시간이 초과됐어요. 네트워크를 확인해주세요.');
+        }
+        throw err;
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));

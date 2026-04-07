@@ -64,10 +64,12 @@ const PLANS = [
 type PlanId = (typeof PLANS)[number]["id"];
 type Tier = "FREE" | "BASIC" | "PREMIUM";
 
-// RevenueCat 상품 식별자 매핑
+// RevenueCat 상품 식별자 매핑 (p.product.identifier — App Store/Play Store 상품 ID)
 const RC_PRODUCT_IDS: Record<string, string> = {
     ticket_basic: "kr.io.dona.course_basic",
     ticket_premium: "kr.io.dona.course_premium",
+    sub_basic: "kr.io.dona.ai_basic_monthly",
+    sub_premium: "kr.io.dona.premium_monthly",
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -97,6 +99,7 @@ export default function TicketPlansSheet() {
     const [selectedPlanId, setSelectedPlanId] = useState<PlanId>("sub_basic");
     const selectedPlanIdRef = useRef<PlanId>("sub_basic");
     const [currentTier, setCurrentTier] = useState<Tier>("FREE");
+    const [tierLoadFailed, setTierLoadFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [rcPrices, setRcPrices] = useState<Partial<Record<PlanId, string>>>({});
 
@@ -107,6 +110,7 @@ export default function TicketPlansSheet() {
 
     useEffect(() => {
         if (!visible) { closingRef.current = false; return; }
+        setTierLoadFailed(false);
         slide.setValue(SHEET_HEIGHT);
         backdrop.setValue(0);
         Animated.parallel([
@@ -149,7 +153,7 @@ export default function TicketPlansSheet() {
                     }
                 }
             })
-            .catch(() => setCurrentTier("FREE"));
+            .catch(() => { setCurrentTier("FREE"); setTierLoadFailed(true); });
     }, [visible]);
 
     // ─── RevenueCat 가격 조회 ─────────────────────────────────────────────────
@@ -249,6 +253,12 @@ export default function TicketPlansSheet() {
                 return;
             }
 
+            // 티켓 결제 시 웹훅 폴백을 위해 courseId를 RC 속성에 저장
+            // → 클라이언트 confirm 실패해도 웹훅에서 courseId를 읽어 잠금 해제 가능
+            if (selectedPlan.type === "ticket" && courseId != null) {
+                await Purchases.setAttributes({ pending_course_id: String(courseId) }).catch(() => {});
+            }
+
             const { customerInfo } = await Purchases.purchasePackage(pkg);
 
             // 티켓 결제 서버 confirm
@@ -269,8 +279,29 @@ export default function TicketPlansSheet() {
             queryClient.invalidateQueries({ queryKey: ["profile"] });
             queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
 
+            // 단건 → 구독 전환 트리거: 티켓 구매 후 unlock 누적 횟수 확인
+            let shouldSuggestUpgrade = false;
+            if (selectedPlan.type === "ticket") {
+                try {
+                    const res = await api.get<{ count: number }>("/api/users/me/unlock-count");
+                    shouldSuggestUpgrade = (res?.count ?? 0) >= 2;
+                } catch { /* 실패해도 결제는 정상 완료 */ }
+            }
+
             Alert.alert(i18n("ticketPlans.alerts.paymentComplete"), undefined, [
-                { text: "확인", onPress: () => { dismiss(); onUnlocked?.(); } },
+                {
+                    text: "확인",
+                    onPress: () => {
+                        dismiss();
+                        onUnlocked?.();
+                        if (shouldSuggestUpgrade) {
+                            // 닫기 애니메이션(260ms) 끝난 후 구독 제안 시트 열기
+                            setTimeout(() => {
+                                openModal("ticket", { context: "UPGRADE" });
+                            }, 400);
+                        }
+                    },
+                },
             ]);
         } catch (err: unknown) {
             if (err && typeof err === "object" && "userCancelled" in err && (err as any).userCancelled) return;
@@ -345,14 +376,14 @@ export default function TicketPlansSheet() {
                     <View style={[styles.header, { borderBottomColor: dividerColor }]}>
                         <View style={styles.headerLeft}>
                             <Text style={[styles.headerTitle, { color: t.text }]}>
-                                {i18n("ticketPlans.mainTitle")}
+                                {context === "UPGRADE" ? i18n("ticketPlans.upgradeTitle") : i18n("ticketPlans.mainTitle")}
                                 {"\n"}
                                 <Text style={styles.headerHighlight}>
-                                    {i18n("ticketPlans.mainHighlight")}
+                                    {context === "UPGRADE" ? i18n("ticketPlans.upgradeHighlight") : i18n("ticketPlans.mainHighlight")}
                                 </Text>
                             </Text>
                             <Text style={[styles.headerSub, { color: sectionLabelColor }]}>
-                                {i18n("ticketPlans.mainSubtitle")}
+                                {context === "UPGRADE" ? i18n("ticketPlans.upgradeSubtitle") : i18n("ticketPlans.mainSubtitle")}
                             </Text>
                         </View>
                         <TouchableOpacity
@@ -588,16 +619,20 @@ export default function TicketPlansSheet() {
                             style={[
                                 styles.payBtn,
                                 {
-                                    backgroundColor: loading
+                                    backgroundColor: (loading || tierLoadFailed)
                                         ? (t.isDark ? "#374151" : "#d1d5db")
                                         : (t.isDark ? "#1f2937" : "#111827"),
                                 },
                             ]}
                             onPress={handlePayment}
                             activeOpacity={0.85}
-                            disabled={loading}
+                            disabled={loading || tierLoadFailed}
                         >
-                            {loading ? (
+                            {tierLoadFailed ? (
+                                <Text style={[styles.payBtnText, { fontWeight: "400", color: "#9ca3af" }]}>
+                                    {i18n("ticketPlans.tierLoadError") ?? "정보를 불러오지 못했어요. 다시 시도해주세요."}
+                                </Text>
+                            ) : loading ? (
                                 <>
                                     <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
                                     <Text style={[styles.payBtnText, { fontWeight: "400" }]}>

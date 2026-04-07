@@ -79,9 +79,8 @@ export async function GET(req: NextRequest) {
         ): Promise<{ sent: number; errors: Array<{ userId: number; reason: string }> }> => {
             const results = await Promise.all(
                 chunk.map(async (a) => {
-                    const userName = a.user?.username || "OO";
-                    const title = "오늘 데이트 기록";
-                    const body = `${userName}님, 오늘 데이트 어땠어요? 한 줄만 남겨볼까요?`;
+                    const title = "오늘 데이트 어떠셨나요?";
+                    const body = "사진 한 장이면 충분해요 📸";
                     const data = {
                         screen: "course_start",
                         courseId: String(a.courseId),

@@ -183,8 +183,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 코스 접근 권한이 있으면 장소 팁도 표시
-        const hasTipAccess = hasAccess;
+        // 팁은 BASIC 이상 또는 열람권 구매 유저만 표시 (FREE 유저는 FREE 코스도 팁 비공개)
+        const hasTipAccess = userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked;
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray
@@ -197,6 +197,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                         const lngForMap = cp.place?.longitude != null ? Number(cp.place.longitude) : null;
                         return {
                             id: cp.id,
+                            place_id: cp.place_id ?? null,
                             order_index: cp.order_index,
                             order_in_segment: cp.order_in_segment ?? null,
                             segment: cp.segment ?? null,
@@ -258,6 +259,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
                     return {
                         id: cp.id,
+                        place_id: cp.place_id ?? null,
                         order_index: cp.order_index,
                         order_in_segment: cp.order_in_segment ?? null,
                         segment: cp.segment ?? null,

@@ -69,7 +69,9 @@
       "Bash(head -10 grep -rn \"ADMIN_USER_ID\\\\|ADMIN_PUSH\" /c/Users/12jas/stylemap/.env*)",
       "Bash(find:*)",
       "Bash(npx ts-node:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(xargs -I {} bash -c 'echo \"{}\"; head -1 \"{}\"')",
+      "Read(//tmp/**)"
     ]
   }
 }

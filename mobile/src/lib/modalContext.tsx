@@ -68,6 +68,9 @@ export type ModalPayloads = {
 
     // 홈 모달
     moreCourses: { todayCourses: any[]; weekendCourses: any[]; locale: string; initialTab?: "today" | "weekend" };
+
+    // 준비중
+    comingSoon: undefined;
 };
 
 export type ModalKey = keyof ModalPayloads;

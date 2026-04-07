@@ -19,6 +19,14 @@
     {
       "path": "/api/cron/send-weekend-recommendation",
       "schedule": "0 11 * * 4"
+    },
+    {
+      "path": "/api/cron/send-saved-course-reminder",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/send-upgrade-suggestion",
+      "schedule": "0 2 * * *"
     }
   ]
 }

@@ -150,6 +150,9 @@
     "qRegionAnguk": "Anguk · Seochon",
     "qRegionEuljiro": "Euljiro",
     "qRegionYeouido": "Yeouido",
+    "qRegionGangnam": "Gangnam · Sinsa",
+    "qRegionSeongsu": "Seongsu · Konkuk",
+    "qRegionHongdae": "Hongdae · Yeonnam",
     "qPayment": "Nice! ✨\n\nBased on your answers,\nwe can narrow down to up to 2 perfect courses for you.\n\nToday's date recommendation\nis free once per day 💡\n\nReady to draw your cards?",
     "qPaymentDraw": "Draw course 🎲",
     "qPaymentLater": "Maybe later",
@@ -1318,6 +1321,9 @@
     "mainTitle": "DoNa membership",
     "mainHighlight": "No more date worries! ✨",
     "mainSubtitle": "Smart dating at a reasonable price",
+    "upgradeTitle": "A subscription",
+    "upgradeHighlight": "beats single tickets 💡",
+    "upgradeSubtitle": "You've already used 2+ single tickets",
     "backToHome": "Back to home",
     "monthlyMembership": "Monthly Membership",
     "currentPlan": "Current plan",
@@ -1464,6 +1470,7 @@
       "mapFabA11y": "View full route on map",
       "closeA11y": "Close",
       "shareMessage": "{title} - DoNa date course\n{url}",
+      "courseStarted": "Course started! Check it on the home tab",
       "startCourseFailed": "Couldn't start this course. Please try again.",
       "favAdded": "Added to favorites",
       "favRemoved": "Removed from favorites",
@@ -1516,7 +1523,9 @@
       "reserveWithName": "Reserve {name}",
       "anonymous": "Anonymous",
       "saveFailedToast": "Couldn't save.",
-      "alertNotice": "Notice"
+      "alertNotice": "Notice",
+      "tipLockedLabel": "Tips unlocked with membership",
+      "tipLockedBtn": "View"
     }
   },
   "authPage": {
@@ -1833,7 +1842,7 @@
   },
   "suggest": {
     "pageTitle": "Report a Place",
-    "pageSubtitle": "Tell us a place you'd like to visit. We'll review and turn it into a course.",
+    "pageSubtitle": "Share your hidden gem and we'll turn it into a course.",
     "labelTitle": "Course Title",
     "labelLocation": "Area",
     "labelBudget": "Budget (KRW)",

@@ -102,11 +102,17 @@ export default function RootLayout() {
     }, []);
 
     useEffect(() => {
-        (async () => {
-            // 1. AsyncStorage → MMKV 마이그레이션
-            migrateFromAsyncStorage();
+        // MMKV 마이그레이션은 즉시 실행 (스토리지 의존성 있음)
+        migrateFromAsyncStorage();
+    }, []);
 
-            // 2. RevenueCat 초기화
+    useEffect(() => {
+        // RevenueCat + 카카오 SDK는 스플래시 후 백그라운드에서 초기화
+        // 결제/로그인 버튼은 스플래시 이후에 접근 가능하므로 지연 초기화 안전
+        if (showSplash) return;
+
+        (async () => {
+            // RevenueCat 초기화
             const apiKey =
                 Platform.OS === "ios"
                     ? (process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS ?? "")
@@ -121,16 +127,16 @@ export default function RootLayout() {
                 if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
             }
 
+            // 카카오 SDK 초기화 (Android만)
             if (Platform.OS === "android" && KAKAO_NATIVE_APP_KEY) {
                 try {
                     await initializeKakaoSDK(KAKAO_NATIVE_APP_KEY);
-                    console.log("[Kakao] initializeKakaoSDK 성공");
                 } catch (e) {
                     console.error("[Kakao] initializeKakaoSDK 실패:", e);
                 }
             }
         })();
-    }, []);
+    }, [showSplash]);
 
     return (
         <GestureHandlerRootView style={styles.root}>
@@ -140,17 +146,19 @@ export default function RootLayout() {
                     <QueryClientProvider client={queryClient}>
                         <ModalProvider>
                             <RootStatusBar />
-                            <Stack
-                                screenOptions={{
-                                    headerShown: false,
-                                    animation: "none",
-                                    // Android: 전환 시 window 배경색(녹색) 비침 방지
-                                    contentStyle: { backgroundColor: "#ffffff" },
-                                    // Android: 레이아웃이 상태바 아래부터 시작하지 않도록 설정
-                                    // (미설정 시 상태바 높이가 두 번 적용되어 헤더가 과도하게 내려감)
-                                    statusBarTranslucent: Platform.OS === "android",
-                                }}
-                            />
+                            {(fontsLoaded || fontError) && (
+                                <Stack
+                                    screenOptions={{
+                                        headerShown: false,
+                                        animation: "none",
+                                        // Android: 전환 시 window 배경색(녹색) 비침 방지
+                                        contentStyle: { backgroundColor: "#ffffff" },
+                                        // Android: 레이아웃이 상태바 아래부터 시작하지 않도록 설정
+                                        // (미설정 시 상태바 높이가 두 번 적용되어 헤더가 과도하게 내려감)
+                                        statusBarTranslucent: Platform.OS === "android",
+                                    }}
+                                />
+                            )}
                             {/* 전역 모달 */}
                             <ModalManager />
                             {/* JS 스플래시: 네이티브 스플래시 즉시 숨김 후 4초 JS 애니메이션 */}

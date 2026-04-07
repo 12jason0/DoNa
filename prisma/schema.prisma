@@ -308,14 +308,15 @@ model CourseUnlock {
 
 // 🟢 [Unlock Intent]: 코스 열람권 결제 전 서버 발급 의도 ID (URL 변조 방지)
 model UnlockIntent {
-  id          String   @id @default(cuid())
-  userId      Int      @map("user_id")
-  courseId    Int      @map("course_id")
-  courseGrade String   @map("course_grade") @db.VarChar(20)
-  planId      String   @map("plan_id") @db.VarChar(50)
-  status      String   @default("PENDING") @db.VarChar(20)
-  createdAt   DateTime @default(now()) @map("created_at")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  userId      Int       @map("user_id")
+  courseId    Int       @map("course_id")
+  courseGrade String    @map("course_grade") @db.VarChar(20)
+  planId      String    @map("plan_id") @db.VarChar(50)
+  status      String    @default("PENDING") @db.VarChar(20)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime? @map("expires_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([id])
   @@index([userId])

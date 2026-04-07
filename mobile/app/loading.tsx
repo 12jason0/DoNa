@@ -1,4 +1,5 @@
-import { View, ActivityIndicator, StyleSheet, Image } from "react-native";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { Image } from "expo-image";
 
 /**
  * expo-router가 root layout 로드 중일 때 보여주는 로딩 화면
@@ -7,7 +8,7 @@ import { View, ActivityIndicator, StyleSheet, Image } from "react-native";
 export default function LoadingScreen() {
     return (
         <View style={styles.container}>
-            <Image source={require("../assets/splash.png")} style={styles.logo} resizeMode="contain" />
+            <Image source={require("../assets/splash.png")} style={styles.logo} contentFit="contain" />
             <ActivityIndicator color="#ffffff" size="large" style={styles.spinner} />
         </View>
     );

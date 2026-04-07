@@ -83,7 +83,7 @@ async function kakaoLocalSearch(query: string, lat?: number, lng?: number, radiu
     // query: 검색어
     // x: 경도(lng), y: 위도(lat) - 거리순 정렬이나 반경 검색 시 필요
     // radius: 반경(미터), sort: distance(거리순) 또는 accuracy(정확도순)
-    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}`;
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=20`;
 
     if (lat && lng) {
         url += `&y=${lat}&x=${lng}`;

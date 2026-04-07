@@ -295,8 +295,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         (currentUserTier === "BASIC" && courseGrade === "BASIC") || // 3. BASIC 유저의 BASIC 코스인가?
         currentUserTier === "PREMIUM"; // 4. 모든 권한을 가진 PREMIUM 유저인가?
 
-    // 코스 접근 권한이 있으면 장소 팁도 표시
-    const hasTipAccess = canAccess;
+    // 팁은 BASIC 이상 또는 열람권 구매 유저만 표시 (FREE 유저는 FREE 코스도 팁 비공개)
+    const hasTipAccess = currentUserTier === "PREMIUM" || currentUserTier === "BASIC" || hasUnlocked;
 
     const isLocked = !canAccess;
     const secureCourseData = (() => {

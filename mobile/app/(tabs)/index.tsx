@@ -16,10 +16,10 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    Image,
     RefreshControl,
     Pressable,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -156,7 +156,7 @@ function ActiveCourseBanner({
                 <TouchableOpacity onPress={goCourse} activeOpacity={0.9} accessibilityRole="imagebutton">
                     <View style={styles.activeBannerImg}>
                         {imageUri ? (
-                            <Image source={{ uri: imageUri }} style={styles.activeBannerImgEl} resizeMode="cover" />
+                            <Image source={{ uri: imageUri }} style={styles.activeBannerImgEl} contentFit="cover" />
                         ) : (
                             <View style={[styles.activeBannerImgEl, styles.activeBannerImgPlaceholder]}>
                                 <Text style={{ fontSize: 24 }}>📍</Text>
@@ -207,7 +207,7 @@ function FeaturedCourseCard({
             <TouchableOpacity activeOpacity={0.95} onPress={() => router.push(`/courses/${course.id}` as any)}>
                 <View style={styles.featuredImgWrap}>
                     {imageUri ? (
-                        <Image source={{ uri: imageUri }} style={styles.featuredImg} resizeMode="cover" />
+                        <Image source={{ uri: imageUri }} style={styles.featuredImg} contentFit="cover" />
                     ) : (
                         <View style={[styles.featuredImg, styles.featuredImgPlaceholder]}>
                             <Text style={{ fontSize: 48 }}>🗺️</Text>
@@ -537,7 +537,7 @@ export default function HomeScreen() {
                                                     <Image
                                                         source={{ uri: img }}
                                                         style={styles.memoryAlbumImage}
-                                                        resizeMode="cover"
+                                                        contentFit="cover"
                                                     />
                                                 ) : (
                                                     <View
@@ -638,7 +638,7 @@ export default function HomeScreen() {
                                             <Image
                                                 source={{ uri: s.course.imageUrl }}
                                                 style={StyleSheet.absoluteFill}
-                                                resizeMode="cover"
+                                                contentFit="cover"
                                             />
                                         ) : (
                                             <Text style={styles.reportedThumbEmoji}>📍</Text>

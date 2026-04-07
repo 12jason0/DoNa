@@ -73,7 +73,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // UnlockIntent 생성 (planId, courseGrade는 기록용)
+        // UnlockIntent 생성 (30분 유효)
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
         const intent = await (prisma as any).unlockIntent.create({
             data: {
                 userId,
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
                 courseGrade,
                 planId,
                 status: "PENDING",
+                expiresAt,
             },
         });
 

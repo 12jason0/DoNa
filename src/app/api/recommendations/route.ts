@@ -19,11 +19,10 @@ import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60;
 
-// data.go.kr 공공데이터 서비스 키 (기상청 날씨 + AirKorea 미세먼지 API 공통 사용)
+// data.go.kr 공공데이터포털 서비스 키 — 기상청 날씨 + AirKorea 미세먼지 API 모두 동일한 키 사용
 const KMA_API_KEY = process.env.KMA_API_KEY;
-const AIRKOREA_API_KEY = KMA_API_KEY;
+const AIRKOREA_API_KEY = process.env.KMA_API_KEY; // data.go.kr 공통 키 (Vercel 환경변수: KMA_API_KEY)
 
 // ---------------------------------------------
 // [온보딩 UI 텍스트 → 행정구역명 매핑]
@@ -43,6 +42,9 @@ const regionMapping: Record<string, string> = {
     "안국·서촌": "종로구",
     "을지로": "중구",
     "여의도": "영등포구",
+    "강남·신사": "강남구",
+    "성수·건대": "성동구",
+    "홍대·연남": "마포구",
 };
 
 // ---------------------------------------------
@@ -766,7 +768,7 @@ export async function GET(req: NextRequest) {
                     .catch(() => null),
                 (prisma as any).userInteraction
                     .findMany({
-                        where: { userId, action: { in: ["view", "like", "save", "start", "complete"] } },
+                        where: { userId, action: { in: ["view", "like", "save", "share", "start", "complete"] } },
                         orderBy: { createdAt: "desc" },
                         take: 50,
                         select: {
@@ -839,6 +841,7 @@ export async function GET(req: NextRequest) {
                 like: 1.0,
                 view: 0.3,
                 save: 0.8,
+                share: 0.9,
                 start: 1.1,
                 complete: 1.5,
             };

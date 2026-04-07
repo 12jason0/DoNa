@@ -52,6 +52,9 @@ export async function POST(request: NextRequest) {
             if (!intent || intent.userId !== userId || intent.status !== "PENDING") {
                 return NextResponse.json({ error: "Invalid or expired intent" }, { status: 400 });
             }
+            if (intent.expiresAt && intent.expiresAt < new Date()) {
+                return NextResponse.json({ error: "Intent expired" }, { status: 410 });
+            }
             if (intent.planId !== planId) {
                 return NextResponse.json({ error: "Intent plan mismatch" }, { status: 400 });
             }
@@ -141,10 +144,12 @@ export async function POST(request: NextRequest) {
                 }
             }
 
+            // COURSE_TICKET / SUBSCRIPTION 구분 없이 항상 최신 유저 정보 반환
             const updatedUser = await tx.user.findUnique({
                 where: { id: userId },
                 select: {
                     subscriptionTier: true,
+                    subscriptionExpiresAt: true,
                 },
             });
 

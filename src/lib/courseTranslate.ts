@@ -174,6 +174,7 @@ const PLACE_CATEGORY_MAP: Record<string, { en: string; ja: string; zh: string }>
     주점:      { en: "Bar",           ja: "居酒屋",      zh: "酒馆" },
     와인바:    { en: "Wine Bar",      ja: "ワインバー",  zh: "葡萄酒吧" },
     칵테일바:  { en: "Cocktail Bar",  ja: "カクテルバー",zh: "鸡尾酒吧" },
+    칵테일:    { en: "Cocktail Bar",  ja: "カクテルバー",zh: "鸡尾酒吧" },
     술집:      { en: "Bar",           ja: "居酒屋",      zh: "酒馆" },
     영화관:    { en: "Cinema",        ja: "映画館",      zh: "电影院" },
     공연장:    { en: "Venue",         ja: "ライブハウス",zh: "演出场所" },
@@ -192,12 +193,29 @@ const PLACE_CATEGORY_MAP: Record<string, { en: string; ja: string; zh: string }>
     책방:      { en: "Bookstore",     ja: "本屋",        zh: "书店" },
     문구점:    { en: "Stationery",    ja: "文具店",      zh: "文具店" },
     편집숍:    { en: "Select Shop",   ja: "セレクトショップ", zh: "精选店" },
+    편집샵:    { en: "Select Shop",   ja: "セレクトショップ", zh: "精选店" },
     갤러리:    { en: "Gallery",       ja: "ギャラリー",  zh: "画廊" },
     플라워샵:  { en: "Flower Shop",   ja: "フラワーショップ", zh: "花店" },
     찜질방:    { en: "Sauna",         ja: "チムジルバン", zh: "汗蒸幕" },
     노래방:    { en: "Karaoke",       ja: "カラオケ",    zh: "卡拉OK" },
     방탈출:    { en: "Escape Room",   ja: "謎解き",      zh: "密室逃脱" },
     볼링장:    { en: "Bowling Alley", ja: "ボウリング場", zh: "保龄球馆" },
+    // 카카오 API category_group_name 추가
+    관광명소:  { en: "Attraction",   ja: "観光スポット", zh: "景点" },
+    숙박:      { en: "Accommodation",ja: "宿泊",         zh: "住宿" },
+    문화시설:  { en: "Cultural Venue",ja: "文化施設",    zh: "文化设施" },
+    스포츠:    { en: "Sports",       ja: "スポーツ",     zh: "运动" },
+    // 기타 자주 등장하는 카테고리
+    팝업스토어:{ en: "Pop-up Store", ja: "ポップアップストア", zh: "快闪店" },
+    팝업:      { en: "Pop-up Store", ja: "ポップアップ", zh: "快闪" },
+    루프탑:    { en: "Rooftop Bar",  ja: "ルーフトップ", zh: "屋顶酒吧" },
+    한식:      { en: "Korean",       ja: "韓国料理",     zh: "韩餐" },
+    일식:      { en: "Japanese",     ja: "和食",         zh: "日料" },
+    중식:      { en: "Chinese",      ja: "中華料理",     zh: "中餐" },
+    양식:      { en: "Western",      ja: "洋食",         zh: "西餐" },
+    이탈리안:  { en: "Italian",      ja: "イタリアン",   zh: "意大利菜" },
+    브런치:    { en: "Brunch",       ja: "ブランチ",     zh: "早午餐" },
+    분식:      { en: "Korean Snacks",ja: "軽食",         zh: "小吃" },
 };
 
 export function translatePlaceCategory(
@@ -209,9 +227,9 @@ export function translatePlaceCategory(
     const key = category.trim();
     const entry = PLACE_CATEGORY_MAP[key];
     if (entry) return entry[locale] ?? key;
-    // 부분 매칭 fallback
+    // 부분 매칭 fallback: 입력이 맵키를 포함하거나, 맵키가 입력을 포함
     for (const [ko, vals] of Object.entries(PLACE_CATEGORY_MAP)) {
-        if (key.includes(ko)) return vals[locale] ?? key;
+        if (key.includes(ko) || ko.includes(key)) return vals[locale] ?? key;
     }
     return key;
 }

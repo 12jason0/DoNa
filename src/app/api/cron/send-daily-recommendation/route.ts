@@ -44,15 +44,13 @@ export async function GET(req: NextRequest) {
         // 푸시 토큰 등록 + 알림 수신 동의한 유저 전체
         const tokens = await prisma.pushToken.findMany({
             where: { subscribed: true },
-            select: { userId: true },
+            select: { userId: true, user: { select: { username: true } } },
         });
 
         if (tokens.length === 0) {
             return NextResponse.json({ success: true, total: 0, sent: 0, errors: [] });
         }
 
-        const title = "오늘의 데이트 추천";
-        const body = "오늘은 어떤 데이트를 추천해줄까요? 지금 바로 확인해보세요 💚";
         const data = {
             screen: "home",
             url: "/",
@@ -63,7 +61,10 @@ export async function GET(req: NextRequest) {
 
         const runChunk = async (chunk: typeof tokens) => {
             const results = await Promise.all(
-                chunk.map(async ({ userId }) => {
+                chunk.map(async ({ userId, user }) => {
+                    const userName = user?.username || "OO";
+                    const title = "오늘 오후 데이트 어때요?";
+                    const body = `${userName}님에게 딱 맞는 코스 골라뒀어요 💚`;
                     const result = await sendPushToUser(userId, title, body, data);
                     if (result.ok) return { sent: 1, error: null as { userId: number; reason: string } | null };
                     return { sent: 0, error: { userId, reason: result.reason ?? "알 수 없음" } };

@@ -6,11 +6,11 @@ import {
     FlatList,
     ScrollView,
     TouchableOpacity,
-    Image,
     RefreshControl,
     Dimensions,
     ActivityIndicator,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -102,7 +102,7 @@ function HeroSlider({
                         activeOpacity={0.92}
                     >
                         {c.imageUrl ? (
-                            <Image source={{ uri: resolveImageUrl(c.imageUrl) }} style={heroStyles.img} />
+                            <Image source={{ uri: resolveImageUrl(c.imageUrl) }} style={heroStyles.img} fadeDuration={0} />
                         ) : (
                             <View style={[heroStyles.img, { backgroundColor: "#d1fae5" }]} />
                         )}
@@ -222,7 +222,7 @@ function CourseCardInner({
             {/* 이미지 영역 */}
             <View style={[styles.cardImgWrap, { borderColor: themeColors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {course.imageUrl ? (
-                    <Image source={{ uri: resolveImageUrl(course.imageUrl) }} style={styles.cardImg} />
+                    <Image source={{ uri: resolveImageUrl(course.imageUrl) }} style={styles.cardImg} fadeDuration={0} />
                 ) : (
                     <View
                         style={[
@@ -399,6 +399,13 @@ export default function CoursesScreen() {
         [favMutation, favIds],
     );
 
+    const renderCourseItem = useCallback(
+        ({ item }: { item: Course }) => (
+            <CourseCard course={item} isFav={favIds.has(item.id)} onFavToggle={handleFavToggle} />
+        ),
+        [favIds, handleFavToggle],
+    );
+
     const listHeaderTitleText = activeConcept
         ? CONCEPTS.find((c) => c.value === activeConcept)?.label ?? translate("courses.allCourses")
         : translate("courses.allCourses");
@@ -466,7 +473,7 @@ export default function CoursesScreen() {
                                 onPress={() => toggleConcept(c.value)}
                             >
                                 <View style={[styles.categoryCircle, { borderColor: t.border, backgroundColor: t.surface }, isActive && styles.categoryCircleActive]}>
-                                    <Image source={{ uri: c.icon }} style={styles.categoryIcon} resizeMode="contain" />
+                                    <Image source={{ uri: c.icon }} style={styles.categoryIcon} contentFit="contain" />
                                 </View>
                                 <Text
                                     style={[styles.categoryLabel, { color: t.textMuted }, isActive && styles.categoryLabelActive]}
@@ -486,15 +493,20 @@ export default function CoursesScreen() {
                 <FlatList
                     data={courses}
                     keyExtractor={(item) => String(item.id)}
-                    renderItem={({ item }) => (
-                        <CourseCard course={item} isFav={favIds.has(item.id)} onFavToggle={handleFavToggle} />
-                    )}
+                    renderItem={renderCourseItem}
                     ListHeaderComponent={renderHeader}
                     contentContainerStyle={[styles.listContent, { backgroundColor: t.card }]}
                     onEndReached={() => {
                         if (hasNextPage) fetchNextPage();
                     }}
                     onEndReachedThreshold={0.4}
+                    removeClippedSubviews={true}
+                    maxToRenderPerBatch={6}
+                    windowSize={5}
+                    initialNumToRender={6}
+                    scrollEventThrottle={16}
+                    decelerationRate="fast"
+                    overScrollMode="never"
                     ListFooterComponent={
                         isFetchingNextPage ? (
                             <View style={styles.footerLoader}>
