@@ -13,6 +13,10 @@
 
 # Add any project specific keep options here:
 
+# expo-image / expo-modules-core R8 missing class fix
+-keep class expo.modules.kotlin.runtime.** { *; }
+-keep class expo.modules.kotlin.** { *; }
+
 # @generated begin expo-build-properties - expo prebuild (DO NOT MODIFY)
 -keep class com.kakao.sdk.** { *; }
 -keep class com.kakao.sdk.**.model.* { <fields>; }
