@@ -143,7 +143,7 @@ function HeroSlider({
                                 </View>
                                 <View style={heroStyles.lockBadge}>
                                     <Text style={heroStyles.lockBadgeText}>
-                                        {c.grade === "PREMIUM" ? lt("courses.premiumOnly") : lt("courses.basicOnly")}
+                                        {c.grade === "PREMIUM" ? lt("courseLockOverlay.premium") : lt("courseLockOverlay.basic")}
                                     </Text>
                                 </View>
                             </View>
@@ -394,6 +394,7 @@ const CourseCard = React.memo(CourseCardInner);
 export default function CoursesScreen() {
     const t = useThemeColors();
     const { t: translate, locale: appLocale } = useLocale();
+    const { openModal } = useModal();
     const [activeConcept, setActiveConcept] = useState("");
 
     const CONCEPTS = useMemo(
@@ -532,7 +533,7 @@ export default function CoursesScreen() {
                 </View>
             </>
         ),
-        [heroData, activeConcept, courses.length, t, translate, listHeaderTitleText, appLocale],
+        [heroData, activeConcept, courses.length, t, translate, listHeaderTitleText, appLocale, openModal],
     );
 
     return (
