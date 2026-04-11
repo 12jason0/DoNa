@@ -53,7 +53,6 @@ const queryClient = new QueryClient({
 Notifications.setNotificationHandler({
     handleNotification: async () =>
         ({
-            shouldShowAlert: true,
             shouldPlaySound: true,
             shouldSetBadge: true,
             shouldShowBanner: true as any,

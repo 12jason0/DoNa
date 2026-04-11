@@ -82,10 +82,12 @@ export async function GET(req: NextRequest) {
         const runChunk = async (chunk: typeof targets) => {
             const results = await Promise.all(
                 chunk.map(async (f) => {
-                    const userName = f.user?.username || "OO";
+                    const userName = f.user?.username?.trim() || "";
                     const courseName = f.course?.title || "코스";
                     const title = "저장해두고 잊은 거 아니죠?";
-                    const body = `${courseName}이 아직도 ${userName}님 기다리고 있어요`;
+                    const body = userName
+                        ? `${courseName}이 아직도 ${userName}님 기다리고 있어요`
+                        : `${courseName}이 아직도 기다리고 있어요`;
                     const data = {
                         screen: "course_detail",
                         courseId: String(f.course_id),

@@ -62,9 +62,11 @@ export async function GET(req: NextRequest) {
         const runChunk = async (chunk: typeof tokens) => {
             const results = await Promise.all(
                 chunk.map(async ({ userId, user }) => {
-                    const userName = user?.username || "OO";
+                    const userName = user?.username?.trim() || "";
                     const title = "오늘 오후 데이트 어때요?";
-                    const body = `${userName}님에게 딱 맞는 코스 골라뒀어요 💚`;
+                    const body = userName
+                        ? `${userName}님에게 딱 맞는 코스 골라뒀어요 💚`
+                        : "딱 맞는 코스 골라뒀어요 💚";
                     const result = await sendPushToUser(userId, title, body, data);
                     if (result.ok) return { sent: 1, error: null as { userId: number; reason: string } | null };
                     return { sent: 0, error: { userId, reason: result.reason ?? "알 수 없음" } };
