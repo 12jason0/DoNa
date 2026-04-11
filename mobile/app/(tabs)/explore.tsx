@@ -342,20 +342,13 @@ export default function ExploreScreen() {
             const [myData, ...kakaoResults] = await Promise.all([
                 fetch(`${BASE_URL}/api/map?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}`)
                     .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-                    .catch((e) => { console.error("[map] /api/map 실패:", e); showToast(`[map오류] ${e.message}`); return { places: [], courses: [] }; }),
+                    .catch(() => ({ places: [], courses: [] })),
                 ...searchKeywords.map(kw =>
                     fetch(`${BASE_URL}/api/places/search-kakao?lat=${lat}&lng=${lng}&keyword=${encodeURIComponent(kw)}&radius=${radius}`)
-                        .then(async r => {
-                            if (!r.ok) {
-                                const body = await r.json().catch(() => ({}));
-                                throw new Error(`HTTP ${r.status}: ${body.detail ?? body.error ?? ""}`);
-                            }
-                            return r.json();
-                        })
-                        .catch((e) => { console.error(`[map] /api/places/search-kakao (${kw}) 실패:`, e); showToast(`[kakao] ${e.message}`); return { success: false, places: [], relatedCourses: [] }; })
+                        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+                        .catch(() => ({ success: false, places: [], relatedCourses: [] }))
                 ),
             ]);
-            showToast(`map:${myData.places?.length ?? "?"} kakao:${kakaoResults[0]?.success}/${kakaoResults[0]?.places?.length ?? "?"}`);
 
             const uniquePlaces = new Map<string, Place>();
             const uniqueCourses = new Map<string, Course>();

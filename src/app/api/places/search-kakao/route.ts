@@ -83,7 +83,7 @@ async function kakaoLocalSearch(query: string, lat?: number, lng?: number, radiu
     // query: 검색어
     // x: 경도(lng), y: 위도(lat) - 거리순 정렬이나 반경 검색 시 필요
     // radius: 반경(미터), sort: distance(거리순) 또는 accuracy(정확도순)
-    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=20`;
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=15`;
 
     if (lat && lng) {
         url += `&y=${lat}&x=${lng}`;
@@ -95,7 +95,6 @@ async function kakaoLocalSearch(query: string, lat?: number, lng?: number, radiu
         }
     }
 
-    console.log("[kakao] 요청 URL:", url);
     const res = await fetch(url, {
         headers: { Authorization: `KakaoAK ${apiKey}` },
         cache: "no-store",
@@ -312,6 +311,6 @@ export async function GET(request: NextRequest) {
     } catch (error) {
             captureApiError(error);
         console.error("KAKAO 장소 검색 API 오류:", error);
-        return NextResponse.json({ error: "장소 검색 중 오류 발생", detail: String(error) }, { status: 500 });
+        return NextResponse.json({ error: "장소 검색 중 오류 발생" }, { status: 500 });
     }
 }
