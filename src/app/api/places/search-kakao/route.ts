@@ -95,12 +95,16 @@ async function kakaoLocalSearch(query: string, lat?: number, lng?: number, radiu
         }
     }
 
+    console.log("[kakao] 요청 URL:", url);
     const res = await fetch(url, {
         headers: { Authorization: `KakaoAK ${apiKey}` },
         cache: "no-store",
     });
 
-    if (!res.ok) throw new Error(`카카오 로컬 검색 실패: ${res.status}`);
+    if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`카카오 로컬 검색 실패: ${res.status} / ${body}`);
+    }
     return await res.json();
 }
 
@@ -308,6 +312,6 @@ export async function GET(request: NextRequest) {
     } catch (error) {
             captureApiError(error);
         console.error("KAKAO 장소 검색 API 오류:", error);
-        return NextResponse.json({ error: "장소 검색 중 오류 발생" }, { status: 500 });
+        return NextResponse.json({ error: "장소 검색 중 오류 발생", detail: String(error) }, { status: 500 });
     }
 }
