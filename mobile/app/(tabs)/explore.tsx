@@ -28,6 +28,9 @@ import { useThemeColors } from "../../src/hooks/useThemeColors";
 import Svg, { Path, Circle } from "react-native-svg";
 import { BASE_URL } from "../../src/lib/api";
 import { useLocale } from "../../src/lib/useLocale";
+import { Ionicons } from "@expo/vector-icons";
+import { useModal } from "../../src/lib/modalContext";
+import CourseCard from "../../src/components/CourseCard";
 
 // 네이버 지도 — EAS dev build 필요
 let NaverMapView: any = null;
@@ -62,9 +65,16 @@ interface Course {
     description: string;
     distance: number;
     grade?: string;
+    isLocked?: boolean;
     latitude?: number;
     longitude?: number;
 }
+
+const GRADE_META: Record<string, { bg: string; text: string }> = {
+    FREE:    { bg: "#dcfce7", text: "#16a34a" },
+    BASIC:   { bg: "#dbeafe", text: "#1d4ed8" },
+    PREMIUM: { bg: "#fef3c7", text: "#d97706" },
+};
 
 // --- 카테고리 색상 / 아이콘 ---
 type CatKey = "restaurant" | "cafe" | "bar" | "play" | "bookstore" | "landmark" | "default";
@@ -209,6 +219,7 @@ export default function ExploreScreen() {
     const t = useThemeColors();
     const { t: i18n } = useLocale();
     const router = useRouter();
+    const { openModal } = useModal();
 
     // --- 지도 상태 ---
     const [center, setCenter] = useState({ latitude: 37.5665, longitude: 126.978 });
@@ -855,6 +866,16 @@ export default function ExploreScreen() {
                                     const isCourse = "title" in item && typeof item.title === "string";
                                     const catKey = isCourse ? "play" : getCatKey(item.category || item.name);
                                     const isSelectedCourse = isCourse && selectedCourse?.id === item.id;
+
+                                    if (isCourse) {
+                                        return (
+                                            <CourseCard
+                                                key={item.id}
+                                                course={item}
+                                            />
+                                        );
+                                    }
+
                                     return (
                                         <TouchableOpacity
                                             key={item.id}
@@ -866,10 +887,7 @@ export default function ExploreScreen() {
                                                     shadowColor: "#000",
                                                 }
                                             ]}
-                                            onPress={() => {
-                                                if (activeTab === "courses" && !selectedCourse) handleCourseSelect(item);
-                                                else handlePlaceClick(item);
-                                            }}
+                                            onPress={() => handlePlaceClick(item)}
                                             activeOpacity={0.75}
                                         >
                                             {/* 아이콘 박스 */}
@@ -879,29 +897,17 @@ export default function ExploreScreen() {
                                             {/* 텍스트 */}
                                             <View style={{ flex: 1, minWidth: 0 }}>
                                                 <View style={styles.badgeRow}>
-                                                    <View style={[
-                                                        styles.badge,
-                                                        isCourse
-                                                            ? { backgroundColor: t.isDark ? "rgba(99,102,241,0.15)" : "#eef2ff", borderColor: t.isDark ? "rgba(99,102,241,0.3)" : "#e0e7ff" }
-                                                            : { backgroundColor: t.isDark ? "rgba(107,184,138,0.15)" : "#f0fdf4", borderColor: t.isDark ? "rgba(107,184,138,0.3)" : "#dcfce7" }
-                                                    ]}>
-                                                        <Text style={[styles.badgeText, { color: isCourse ? (t.isDark ? "#818cf8" : "#4f46e5") : "#6bb88a" }]}>
-                                                            {isCourse
-                                                                ? i18n("mobile.map.badgeRecommendedCourse")
-                                                                : item.category || i18n("mobile.map.badgePlace")}
+                                                    <View style={[styles.badge, { backgroundColor: t.isDark ? "rgba(107,184,138,0.15)" : "#f0fdf4", borderColor: t.isDark ? "rgba(107,184,138,0.3)" : "#dcfce7" }]}>
+                                                        <Text style={[styles.badgeText, { color: "#6bb88a" }]}>
+                                                            {item.category || i18n("mobile.map.badgePlace")}
                                                         </Text>
                                                     </View>
-                                                    {isCourse && isSelectedCourse && (
-                                                        <TouchableOpacity onPress={(e) => { router.push(`/courses/${item.id.replace("c-", "")}`); }}>
-                                                            <Text style={{ fontSize: 11, fontWeight: "500", color: "#6bb88a" }}>{i18n("mobile.map.viewDetail")}</Text>
-                                                        </TouchableOpacity>
-                                                    )}
                                                 </View>
                                                 <Text style={[styles.itemName, { color: t.text }]} numberOfLines={1}>
-                                                    {item.name || item.title}
+                                                    {item.name}
                                                 </Text>
                                                 <Text style={[styles.itemSub, { color: t.textMuted }]} numberOfLines={1}>
-                                                    {isCourse ? item.description : item.address}
+                                                    {item.address}
                                                 </Text>
                                             </View>
                                             {/* 화살표 */}

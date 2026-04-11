@@ -28,6 +28,7 @@ import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course } from "../../src/types/api";
 import { pickCourseTitle } from "../../src/lib/courseLocalized";
 import { formatViewsCompact } from "../../src/lib/localeUtils";
+import CourseCard from "../../src/components/CourseCard";
 import {
     translateCourseRegion,
     translateCourseConcept,
@@ -490,7 +491,7 @@ export default function CoursesScreen() {
 
     const renderCourseItem = useCallback(
         ({ item }: { item: Course }) => (
-            <CourseCard course={item} isFav={favIds.has(item.id)} onFavToggle={handleFavToggle} />
+            <CourseCard course={item as any} isFav={favIds.has(item.id)} onFavToggle={handleFavToggle} />
         ),
         [favIds, handleFavToggle],
     );
