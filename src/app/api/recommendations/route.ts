@@ -78,7 +78,7 @@ async function fetchWeatherAndCache(nx: number, ny: number): Promise<string | nu
         KMA_API_KEY,
     )}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
     try {
-        const response = await fetch(apiUrl, { signal: controller.signal });
+        const response = await fetch(apiUrl, { next: { revalidate: 3600 }, signal: controller.signal });
         clearTimeout(timeout);
         if (!response.ok) return null;
         const jsonResponse = await response.json();
