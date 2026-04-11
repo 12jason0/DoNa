@@ -374,7 +374,7 @@ export default function CourseStartMemoryScreen() {
                 style={[
                     s.bottomSheet,
                     {
-                        bottom: insets.bottom,
+                        bottom: 0,
                         backgroundColor: t.card,
                         borderColor: t.border,
                     },
@@ -519,7 +519,7 @@ export default function CourseStartMemoryScreen() {
                 </ScrollView>
 
                 {/* 하단 버튼 */}
-                <View style={[s.footer, { borderTopColor: t.border }]}>
+                <View style={[s.footer, { borderTopColor: t.border, paddingBottom: insets.bottom + 14 }]}>
                     {pageIndex === 0 ? (
                         <TouchableOpacity
                             style={[s.primaryBtn, (localUris.length === 0 || uploading) && s.btnDisabled]}
@@ -657,7 +657,7 @@ const s = StyleSheet.create({
     charCount: { fontSize: 12, textAlign: "right", marginBottom: 16 },
 
     // 버튼
-    footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14, borderTopWidth: StyleSheet.hairlineWidth },
+    footer: { paddingHorizontal: 20, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
     footerRow: { flexDirection: "row", gap: 10, alignItems: "center" },
     backBtn: {
         width: 44, height: 44, borderRadius: 12,

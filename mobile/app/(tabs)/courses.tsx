@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
 
     // ─── 카드 ────────────────────────────────────────────────────────────────────
     card: {
-        marginHorizontal: 16,
+        marginHorizontal: 8,
         marginBottom: 24,
     },
     cardImgWrap: {

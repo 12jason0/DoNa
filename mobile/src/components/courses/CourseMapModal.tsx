@@ -282,7 +282,7 @@ export function CourseMapModal({
               : i18n("mobile.courseScreen.mapSegmentRoute");
 
     const navBottom = insets.bottom;
-    const sheetH = Math.round(Dimensions.get("window").height * 0.92);
+    const sheetH = Math.round(Dimensions.get("window").height * 0.75);
 
     // 네이티브 지도 카메라 위치
     const mapCamera = useMemo(() => {

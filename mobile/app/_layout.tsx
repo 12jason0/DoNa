@@ -1,7 +1,7 @@
 import "react-native-gesture-handler";
 import * as Sentry from "@sentry/react-native";
 import { useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, AppState } from "react-native";
 import { router, Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -68,6 +68,15 @@ applyDefaultTextFontForLocale(loadLocalePreference());
 export default function RootLayout() {
     const [showSplash, setShowSplash] = useState(true);
     const notificationListener = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener>>();
+
+    useEffect(() => {
+        // 앱 열릴 때 배지 초기화
+        Notifications.setBadgeCountAsync(0);
+        const appStateSub = AppState.addEventListener("change", (state) => {
+            if (state === "active") Notifications.setBadgeCountAsync(0);
+        });
+        return () => appStateSub.remove();
+    }, []);
 
     useEffect(() => {
         // 알림 탭 시 data.url 기반으로 라우팅

@@ -840,7 +840,7 @@ export default function ExploreScreen() {
                         </View>
                     ) : (
                         // 목록
-                        <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
+                        <View style={{ paddingHorizontal: 12, paddingTop: 4 }}>
                             {(activeTab === "places" ? places : selectedCourse ? coursePlaces : courses).length === 0 ? (
                                 <View style={styles.emptyBox}>
                                     <Text style={{ fontSize: 36 }}>🤔</Text>
