@@ -60,11 +60,11 @@ function saveMainRecommendationCache(key: string, recommendations: Course[], has
     } catch {}
 }
 
-export default function PersonalizedSection() {
+export default function PersonalizedSection({ initialCourses }: { initialCourses?: Course[] }) {
     const router = useRouter();
     const { t, locale } = useLocale();
-    const [courses, setCourses] = useState<Course[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [courses, setCourses] = useState<Course[]>(initialCourses ?? []);
+    const [loading, setLoading] = useState(!initialCourses?.length);
     const [userName, setUserName] = useState(() => "");
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // 🟢 null = 아직 확인 중
     const [hasOnboardingData, setHasOnboardingData] = useState(false); // 온보딩 데이터 보유 여부
@@ -284,8 +284,8 @@ export default function PersonalizedSection() {
     // 로딩 중이거나 데이터 없으면 아무것도 안 보여줌
     if (!loading && courses.length === 0) return null;
 
-    // 🟢 로그인 상태 확인이 완료되지 않았으면 로딩 중으로 처리
-    if (isLoggedIn === null) {
+    // 🟢 로그인 상태 확인 중 + 초기 코스 없으면 스켈레톤, 있으면 바로 렌더
+    if (isLoggedIn === null && courses.length === 0) {
         return (
             <section className="py-8 px-4">
                 <div className="mb-6">

@@ -292,7 +292,7 @@ export default function DonaSplashFinal({
                             transform: "translate(-50%, -50%)",
                             animation: "logoAppear 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
                             textAlign: "center",
-                            zIndex: 20,
+                            zIndex: 100001,
                         }}
                     >
                         <div

@@ -20,6 +20,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Path } from "react-native-svg";
 
 import { api, ApiError } from "../../src/lib/api";
 import { resolveImageUrl } from "../../src/lib/imageUrl";
@@ -32,6 +33,33 @@ import { useModal, type LimitCtx } from "../../src/lib/modalContext";
 import { pickCourseTitle, pickCourseDescription } from "../../src/lib/courseLocalized";
 
 type TI18n = (key: string, params?: Record<string, string | number>) => string;
+
+/** 웹 personalized-home 히어로와 동일 봇 아이콘 (Lucide Bot 경로) */
+function PersonalizedHomeHeroBotIcon({ size = 40 }: { size?: number }) {
+    const stroke = "#059669";
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M12 6V2H8"
+                stroke={stroke}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <Path d="M15 11v2" stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M2 12h2" stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M20 12h2" stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <Path
+                d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"
+                stroke={stroke}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <Path d="M9 11v2" stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+    );
+}
 
 type FlowOption = { text: string; value: string; next: string };
 type Question = { id: string; text: string; options: FlowOption[] };
@@ -1126,7 +1154,7 @@ export default function AiScreen() {
                     {/* 아이콘 */}
                     <View style={s.heroIconWrap}>
                         <View style={s.heroIconBox}>
-                            <Ionicons name="sparkles" size={40} color="#059669" />
+                            <PersonalizedHomeHeroBotIcon size={40} />
                             <View style={s.heroPingDot}>
                                 <View style={s.heroPingInner} />
                             </View>

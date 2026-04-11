@@ -78,14 +78,12 @@ const nextConfig = {
                     { key: "X-Content-Type-Options", value: "nosniff" },
                     { key: "Referrer-Policy", value: "origin-when-cross-origin" },
                     { key: "X-XSS-Protection", value: "1; mode=block" },
-                    // 🟢 웹뷰 앱 캐시 문제 해결: HTML 페이지만 캐시 방지
+                    // 🟢 Vercel Edge 캐시(s-maxage) + 브라우저 재검증(no-cache) 분리
+                    // s-maxage: CDN이 60초 캐시 → RES 점수 개선
+                    // no-cache: 브라우저는 항상 서버에 재검증 → 웹뷰 오래된 화면 방지
                     {
                         key: "Cache-Control",
-                        value: "no-cache, no-store, must-revalidate, max-age=0",
-                    },
-                    {
-                        key: "Pragma",
-                        value: "no-cache",
+                        value: "public, s-maxage=60, stale-while-revalidate=300, no-cache",
                     },
                     {
                         key: "Content-Security-Policy",

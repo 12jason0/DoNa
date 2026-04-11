@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, memo } from "react";
+import type { InitialUserData } from "./page";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/authClient";
@@ -46,7 +47,13 @@ function runAfterPaint(fn: () => void) {
     }
 }
 
-export default function HomeClient() {
+export default function HomeClient({
+    initialRecommendations,
+    initialUserData,
+}: {
+    initialRecommendations?: any[];
+    initialUserData?: InitialUserData | null;
+}) {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { t, locale } = useLocale();
     const { containInPhone, modalContainerRef } = useAppLayout();
@@ -64,7 +71,7 @@ export default function HomeClient() {
     const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(false);
     const [showBenefitConsentModal, setShowBenefitConsentModal] = useState(false);
     const [userId, setUserId] = useState<number | null>(null);
-    const [userName, setUserName] = useState<string>("");
+    const [userName, setUserName] = useState<string>(initialUserData?.nickname ?? "");
     const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -83,7 +90,9 @@ export default function HomeClient() {
     const memoryJustDraggedRef = useRef(false);
     const [fullMemoryData, setFullMemoryData] = useState<any[]>([]);
     // 🟢 광고 노출: FREE만 광고 표시, BASIC/PREMIUM은 미표시
-    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">("FREE");
+    const [userTier, setUserTier] = useState<"FREE" | "BASIC" | "PREMIUM">(
+        initialUserData?.tier ?? "FREE",
+    );
     // 🟢 오늘 데이트 진행 중 (activeCourse)
     const [activeCourse, setActiveCourse] = useState<{
         courseId: number;
@@ -94,12 +103,18 @@ export default function HomeClient() {
         walkability?: string | null;
         rating?: number | null;
         hasMemory: boolean;
-    } | null>(null);
+    } | null>(initialUserData?.activeCourse ?? null);
     const [showMemoryReminderModal, setShowMemoryReminderModal] = useState(false);
     // 🟢 AI 추천 한도: FREE는 하루 1회 → 오늘 이미 사용했으면 메인 CTA 숨김
-    const [canUseRecommendation, setCanUseRecommendation] = useState<boolean | null>(null);
+    const [canUseRecommendation, setCanUseRecommendation] = useState<boolean | null>(
+        initialUserData != null ? initialUserData.canUseRecommendation : null,
+    );
     // 🟢 Hydration 방지: CTA 블록은 마운트 후에만 렌더 (서버/클라이언트 첫 렌더 일치)
     const [hasMounted, setHasMounted] = useState(false);
+    // 🟢 SSR 데이터 1회 skip 추적용 ref
+    const ssrUserDataUsedRef = useRef(initialUserData != null);
+    const ssrActiveCourseUsedRef = useRef(initialUserData?.activeCourse !== undefined);
+    const ssrPrecheckUsedRef = useRef(initialUserData != null);
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -424,18 +439,30 @@ export default function HomeClient() {
         }
     }, []);
 
-    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스 - 첫 페인트 후 조회 (메인 체감 속도 개선)
-    // 🟢 앱 WebView: 쿠키 지연 시 대비 재시도 항상 등록 (isMobileApp()이 늦게 true여도 재시도 동작)
+    // 🟢 activeCourse: 오늘 데이트 진행 중인 코스
+    // SSR 데이터가 있으면 즉시 배너 표시 후 5초 뒤 1회 백그라운드 갱신
+    // SSR 데이터 없으면 첫 페인트 후 조회 + 재시도 (앱 WebView 쿠키 지연 대응)
     useEffect(() => {
         if (!isAuthenticated) {
             setActiveCourse(null);
             return;
         }
+        const onLoginSuccess = () => setTimeout(fetchActiveCourse, 300);
+        window.addEventListener("authLoginSuccess", onLoginSuccess);
+
+        if (ssrActiveCourseUsedRef.current) {
+            ssrActiveCourseUsedRef.current = false;
+            // SSR 데이터 사용 — 5초 후 백그라운드 갱신 1회
+            const t1 = setTimeout(fetchActiveCourse, 5000);
+            return () => {
+                clearTimeout(t1);
+                window.removeEventListener("authLoginSuccess", onLoginSuccess);
+            };
+        }
+
         runAfterPaint(fetchActiveCourse);
         const t1 = setTimeout(fetchActiveCourse, 1800);
         const t2 = setTimeout(fetchActiveCourse, 3500);
-        const onLoginSuccess = () => setTimeout(fetchActiveCourse, 300);
-        window.addEventListener("authLoginSuccess", onLoginSuccess);
         return () => {
             clearTimeout(t1);
             clearTimeout(t2);
@@ -466,7 +493,10 @@ export default function HomeClient() {
 
     useEffect(() => {
         if (!isAuthenticated || !userId) return;
-        const timer = setTimeout(loadUserData, 200);
+        // 🟢 SSR 데이터가 있으면 3초 후 백그라운드 갱신, 없으면 즉시 (200ms)
+        const delay = ssrUserDataUsedRef.current ? 3000 : 200;
+        ssrUserDataUsedRef.current = false;
+        const timer = setTimeout(loadUserData, delay);
         return () => clearTimeout(timer);
     }, [isAuthenticated, userId, loadUserData]);
 
@@ -511,9 +541,15 @@ export default function HomeClient() {
     useEffect(() => setHasMounted(true), []);
 
     // 🟢 AI 추천 precheck: 로그인 시 한도 확인, FREE이고 오늘 이미 사용했으면 CTA 숨김
+    // SSR 데이터가 있으면 첫 실행 skip (state 이미 세팅) — 페이지 전환 시에는 항상 재조회
     useEffect(() => {
         if (!isAuthenticated || !userId) {
             setCanUseRecommendation(null);
+            ssrPrecheckUsedRef.current = false;
+            return;
+        }
+        if (ssrPrecheckUsedRef.current) {
+            ssrPrecheckUsedRef.current = false;
             return;
         }
         let cancelled = false;
@@ -651,7 +687,7 @@ export default function HomeClient() {
                     </div>
                 )}
                 {/* 🟢 개인별 추천 섹션 */}
-                <MemoizedPersonalizedSection />
+                <MemoizedPersonalizedSection initialCourses={initialRecommendations} />
 
                 {/* 🟢 AI 맞춤 추천(personalized-home) 진입 CTA - FREE는 오늘 이미 사용 시 숨김, 마운트 후에만 렌더 */}
                 {hasMounted && showPersonalizedHomeCta && (
@@ -676,8 +712,8 @@ export default function HomeClient() {
                     </section>
                 )}
 
-                {/* 🟢 내가 제보한 코스 - 로그인한 사용자에게만 표시 */}
-                {isAuthenticated && (reportedSuggestionsLoading || publishedSuggestions.length > 0) && (
+                {/* 🟢 내가 제보한 코스 - 로그인한 사용자에게만 표시 (빈 상태도 표시하여 제보 CTA 노출) */}
+                {isAuthenticated && (
                     <ReportedCoursesCTA
                         suggestions={publishedSuggestions}
                         isLoading={reportedSuggestionsLoading}

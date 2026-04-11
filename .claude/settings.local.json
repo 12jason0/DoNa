@@ -71,7 +71,10 @@
       "Bash(npx ts-node:*)",
       "Bash(sed:*)",
       "Bash(xargs -I {} bash -c 'echo \"{}\"; head -1 \"{}\"')",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node \"C:\\\\Users\\\\12jas\\\\stylemap\\\\node_modules\\\\typescript\\\\bin\\\\tsc\" --noEmit --project \"C:\\\\Users\\\\12jas\\\\stylemap\\\\tsconfig.json\")",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

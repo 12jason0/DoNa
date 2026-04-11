@@ -43,35 +43,39 @@ function mapRowToHeroItem(c: {
 }
 
 /** "지금 많이 선택한 코스" — 조회수 상위 공개 코스 (등급 제한 제거, FREE만이면 비는 문제 방지) */
-async function getHeroCourses(): Promise<HeroSliderItem[]> {
-    try {
-        const heroRaw = await prisma.course.findMany({
-            where: { isPublic: true },
-            orderBy: [{ view_count: "desc" }, { id: "desc" }],
-            take: 20,
-            select: {
-                id: true,
-                title: true,
-                title_en: true,
-                title_ja: true,
-                title_zh: true,
-                region: true,
-                imageUrl: true,
-                concept: true,
-                coursePlaces: {
-                    orderBy: { order_index: "asc" as const },
-                    take: 1,
-                    select: { place: { select: { imageUrl: true } } },
+const getHeroCourses = unstable_cache(
+    async (): Promise<HeroSliderItem[]> => {
+        try {
+            const heroRaw = await prisma.course.findMany({
+                where: { isPublic: true },
+                orderBy: [{ view_count: "desc" }, { id: "desc" }],
+                take: 20,
+                select: {
+                    id: true,
+                    title: true,
+                    title_en: true,
+                    title_ja: true,
+                    title_zh: true,
+                    region: true,
+                    imageUrl: true,
+                    concept: true,
+                    coursePlaces: {
+                        orderBy: { order_index: "asc" as const },
+                        take: 1,
+                        select: { place: { select: { imageUrl: true } } },
+                    },
                 },
-            },
-        });
-        const filtered = filterCoursesByImagePolicy(heroRaw as unknown as CourseWithPlaces[], "any");
-        const top = filtered.slice(0, 5);
-        return top.map((c) => mapRowToHeroItem(c as any));
-    } catch {
-        return [];
-    }
-}
+            });
+            const filtered = filterCoursesByImagePolicy(heroRaw as unknown as CourseWithPlaces[], "any");
+            const top = filtered.slice(0, 5);
+            return top.map((c) => mapRowToHeroItem(c as any));
+        } catch {
+            return [];
+        }
+    },
+    ["hero-courses"],
+    { revalidate: 300, tags: ["hero-courses"] }
+);
 
 /** 히어로 전용 조회가 비었을 때 목록 상단 코스로 폴밄 (동일 슬라이더 형식) */
 function heroFromInitialCourses(courses: any[]): HeroSliderItem[] {
@@ -88,7 +92,6 @@ function heroFromInitialCourses(courses: any[]): HeroSliderItem[] {
     }));
 }
 
-export const dynamic = "force-dynamic";
 export const revalidate = 120; // 🟢 성능 최적화: 60초 -> 120초로 캐시 시간 증가
 
 // 🟢 [Optimization] 필요한 최소 필드만 조회 (90% 데이터 크기 감소)

@@ -42,13 +42,6 @@ export default function ImageFallback(props: ImageFallbackProps) {
         );
     }
 
-    // 🟢 CDN 이미지는 Next 최적화 경유 시 타임아웃 → 브라우저에서 직접 로드
-    const isRemoteCdn =
-        typeof src === "string" &&
-        (src.startsWith("https://d13xx6k6chk2in.cloudfront.net") ||
-            src.includes("cloudfront.net") ||
-            src.includes("amazonaws.com"));
-
     const defaultSizes = rest.sizes ?? "(max-width: 768px) 100vw, 500px";
     const defaultQuality = typeof rest.quality === "number" ? rest.quality : 65;
 
@@ -65,7 +58,8 @@ export default function ImageFallback(props: ImageFallbackProps) {
         fill,
         width,
         height,
-        ...(isRemoteCdn ? { unoptimized: true } : { sizes: defaultSizes, quality: defaultQuality }),
+        sizes: defaultSizes,
+        quality: defaultQuality,
         onError: (e: any) => {
             try {
                 setErrored(true);

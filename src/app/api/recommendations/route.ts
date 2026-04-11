@@ -304,8 +304,11 @@ function calculateTargetMatch(courseTarget: string[], companionToday: string, lo
     const companionTargetMap: Record<string, string[]> = {
         연인: ["연인"],
         썸: ["썸", "연인"],
-        "소개팅 상대": ["소개팅", "썸", "연인"],
+        "썸 상대": ["썸", "연인"],
         소개팅: ["소개팅", "썸", "연인"],
+        "소개팅 상대": ["소개팅", "썸", "연인"],
+        사회초년생: ["썸", "소개팅", "연인"],
+        대학생: ["썸", "소개팅", "연인", "친구"],
         친구: ["친구"],
         혼자: ["혼자"],
         가족: ["가족"],

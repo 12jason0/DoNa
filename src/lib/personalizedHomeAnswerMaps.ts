@@ -34,6 +34,8 @@ export const REGION_CODE_TO_API: Record<string, string> = {
     anguk_seochon: "안국·서촌",
     euljiro: "을지로",
     yeouido: "여의도",
+    seongsu_konkuk: "성수·건대",
+    hongdae_yeonnam: "홍대·연남",
 };
 
 const LEGACY_PURPOSE: Record<string, keyof typeof PURPOSE_CODE_TO_GOAL_MOOD> = {
