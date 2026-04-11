@@ -1036,9 +1036,9 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     }).catch(() => {});
                                     setFeedbackCourseId(null);
                                     onClose();
-                                    InteractionManager.runAfterInteractions(() => {
+                                    setTimeout(() => {
                                         router.push(`/courses/${courseId}` as any);
-                                    });
+                                    }, 400);
                                 }}
                             >
                                 <Text style={{ fontSize: 20 }}>{opt.emoji}</Text>

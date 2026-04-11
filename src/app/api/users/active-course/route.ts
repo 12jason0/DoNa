@@ -112,6 +112,10 @@ export async function POST(request: NextRequest) {
         }
 
         if (existing.courseId === courseId) {
+            await prisma.activeCourse.update({
+                where: { userId },
+                data: { startedAt: new Date() },
+            });
             return NextResponse.json({ success: true });
         }
 

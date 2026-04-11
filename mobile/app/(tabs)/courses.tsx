@@ -22,6 +22,8 @@ import { resolveImageUrl } from "../../src/lib/imageUrl";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
+import { useAuth } from "../../src/hooks/useAuth";
+import { useModal } from "../../src/lib/modalContext";
 import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course } from "../../src/types/api";
 import { pickCourseTitle } from "../../src/lib/courseLocalized";
@@ -199,12 +201,15 @@ function CourseCardInner({
 }) {
     const themeColors = useThemeColors();
     const { t: lt, locale } = useLocale();
+    const { isAuthenticated } = useAuth();
+    const { openModal } = useModal();
     const isNew = (course as any).reviewCount === 0;
     const placesCount = (course as any).placesCount ?? (course as any).coursePlaces?.length ?? 0;
     const views = Number((course as any).viewCount ?? 0);
     const reviewCount = Number((course as any).reviewCount ?? 0);
     const rating = Number((course as any).rating ?? 0);
     const hasReservation = !!((course as any).coursePlaces?.some((cp: any) => cp?.place?.reservationUrl));
+    const isLocked = !!(course as any).isLocked;
 
     const infoLine =
         views >= 1000
@@ -213,16 +218,43 @@ function CourseCardInner({
               ? `★ ${rating.toFixed(1)} (${reviewCount})`
               : null;
 
+    const handlePress = useCallback(() => {
+        if (isLocked) {
+            if (!isAuthenticated) {
+                openModal("login");
+                return;
+            }
+            openModal("ticket", {
+                context: "COURSE",
+                courseId: Number(course.id),
+                courseGrade: (course.grade ?? "BASIC") as "BASIC" | "PREMIUM",
+            });
+            return;
+        }
+        router.push(`/courses/${course.id}` as any);
+    }, [isLocked, isAuthenticated, course.id, course.grade]);
+
+    const gradeLabel =
+        course.grade === "BASIC"
+            ? lt("courseLockOverlay.basic")
+            : lt("courseLockOverlay.premium");
+    const lockLabel = lt("courseLockOverlay.gradeOnly", { grade: gradeLabel });
+
     return (
         <TouchableOpacity
             style={styles.card}
-            onPress={() => router.push(`/courses/${course.id}` as any)}
+            onPress={handlePress}
             activeOpacity={0.88}
         >
             {/* 이미지 영역 */}
             <View style={[styles.cardImgWrap, { borderColor: themeColors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {course.imageUrl ? (
-                    <Image source={{ uri: resolveImageUrl(course.imageUrl) }} style={styles.cardImg} fadeDuration={0} />
+                    <Image
+                        source={{ uri: resolveImageUrl(course.imageUrl) }}
+                        style={styles.cardImg}
+                        fadeDuration={0}
+                        blurRadius={isLocked ? 3 : 0}
+                    />
                 ) : (
                     <View
                         style={[
@@ -231,6 +263,18 @@ function CourseCardInner({
                         ]}
                     >
                         <Text style={{ color: "#9ca3af", fontSize: 12 }}>DoNa</Text>
+                    </View>
+                )}
+
+                {/* 잠금 오버레이 — 웹 CourseLockOverlay와 동일 */}
+                {isLocked && (
+                    <View style={styles.lockOverlay} pointerEvents="none">
+                        <View style={styles.lockIconWrap}>
+                            <Ionicons name="lock-closed" size={28} color="#fff" />
+                        </View>
+                        <View style={styles.lockBadge}>
+                            <Text style={styles.lockBadgeText}>{lockLabel}</Text>
+                        </View>
                     </View>
                 )}
 
@@ -251,7 +295,7 @@ function CourseCardInner({
                             </Text>
                         </View>
                     )}
-                    {isNew && (
+                    {isNew && !isLocked && (
                         <View style={styles.newBadge}>
                             <Text style={styles.newBadgeText}>{lt("courses.badgeNew")}</Text>
                         </View>
@@ -671,6 +715,38 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
     },
     newBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
+    lockOverlay: {
+        position: "absolute",
+        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.45)",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 10,
+    },
+    lockIconWrap: {
+        backgroundColor: "rgba(255,255,255,0.2)",
+        borderRadius: 40,
+        padding: 12,
+        marginBottom: 8,
+    },
+    lockBadge: {
+        backgroundColor: "rgba(0,0,0,0.6)",
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 5,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.2)",
+    },
+    lockBadgeText: {
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: "700",
+        letterSpacing: -0.3,
+    },
     favBtn: {
         position: "absolute",
         top: 12,

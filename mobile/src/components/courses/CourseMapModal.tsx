@@ -282,7 +282,7 @@ export function CourseMapModal({
               : i18n("mobile.courseScreen.mapSegmentRoute");
 
     const navBottom = insets.bottom;
-    const sheetH = Math.round(Dimensions.get("window").height * 0.92) - navBottom;
+    const sheetH = Math.round(Dimensions.get("window").height * 0.92);
 
     // 네이티브 지도 카메라 위치
     const mapCamera = useMemo(() => {
@@ -473,7 +473,7 @@ export function CourseMapModal({
                 <View
                     style={[
                         s.courseMapSheetWeb,
-                        { height: sheetH, bottom: navBottom, backgroundColor: t.card, borderColor: t.isDark ? "#374151" : "#f3f4f6" },
+                        { height: sheetH, bottom: 0, backgroundColor: t.card, borderColor: t.isDark ? "#374151" : "#f3f4f6" },
                     ]}
                 >
                     <View style={[s.courseMapGrabWeb, { backgroundColor: t.isDark ? "#4b5563" : "#d1d5db" }]} />
@@ -710,7 +710,7 @@ export function CourseMapModal({
                                 return null;
                             })();
                             return (
-                                <View style={[s.mapBottomSheet, { backgroundColor: t.card }]}>
+                                <View style={[s.mapBottomSheet, { backgroundColor: t.card, paddingBottom: Math.max(12, navBottom) }]}>
                                     <View style={s.mapBottomTop}>
                                         {displayImage ? (
                                             <Image source={{ uri: displayImage }} style={s.mapBottomThumb} />
