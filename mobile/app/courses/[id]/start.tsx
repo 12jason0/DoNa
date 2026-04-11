@@ -233,6 +233,8 @@ export default function CourseStartMemoryScreen() {
             });
             // 홈 + 마이페이지 추억 목록 즉시 갱신
             queryClient.invalidateQueries({ queryKey: ["users", "personal-stories"] });
+            // 홈 활성 코스 배너 즉시 숨김 (추억 저장 후 서버는 null 반환)
+            queryClient.invalidateQueries({ queryKey: ["users", "active-course"] });
             setShowSuccessModal(true);
         } catch (e: any) {
             const msg = e?.message ?? "";
@@ -257,7 +259,8 @@ export default function CourseStartMemoryScreen() {
                 setShowSuccessModal(false);
                 setShowNotifPrompt(true);
             } else {
-                router.push("/(tabs)" as any);
+                setShowSuccessModal(false);
+                router.replace("/(tabs)" as any);
             }
         };
 

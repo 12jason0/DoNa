@@ -102,6 +102,8 @@ export default function TicketPlansSheet() {
     const [tierLoadFailed, setTierLoadFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [rcPrices, setRcPrices] = useState<Partial<Record<PlanId, string>>>({});
+    // offerings 캐시 — 결제 시 재요청 방지
+    const cachedPkgsRef = useRef<import("react-native-purchases").PurchasesPackage[]>([]);
 
     // ref 동기화 (티어 로딩 시 최신 selectedPlanId 참조용)
     useEffect(() => { selectedPlanIdRef.current = selectedPlanId; }, [selectedPlanId]);
@@ -156,16 +158,27 @@ export default function TicketPlansSheet() {
             .catch(() => { setCurrentTier("FREE"); setTierLoadFailed(true); });
     }, [visible]);
 
-    // ─── RevenueCat 가격 조회 ─────────────────────────────────────────────────
+    // ─── RevenueCat 가격 조회 (모든 offering 탐색 + 캐싱) ───────────────────────
 
     useEffect(() => {
         if (!visible) return;
         (async () => {
             try {
                 const offerings = await Purchases.getOfferings();
-                const pkgs = offerings.current?.availablePackages ?? [];
+                // current + 모든 offering의 패키지 합산 (중복 제거)
+                const seen = new Set<string>();
+                const allPkgs: import("react-native-purchases").PurchasesPackage[] = [];
+                for (const offering of Object.values(offerings.all)) {
+                    for (const pkg of offering.availablePackages) {
+                        if (!seen.has(pkg.product.identifier)) {
+                            seen.add(pkg.product.identifier);
+                            allPkgs.push(pkg);
+                        }
+                    }
+                }
+                cachedPkgsRef.current = allPkgs;
                 const prices: Partial<Record<PlanId, string>> = {};
-                for (const pkg of pkgs) {
+                for (const pkg of allPkgs) {
                     const match = PLANS.find(
                         (p) =>
                             p.id === pkg.identifier ||
@@ -239,9 +252,21 @@ export default function TicketPlansSheet() {
                 intentId = res.intentId;
             }
 
-            // RevenueCat 패키지 찾기
-            const offerings = await Purchases.getOfferings();
-            const allPkgs = offerings.current?.availablePackages ?? [];
+            // RevenueCat 패키지 찾기 (캐시 우선, 없으면 재조회)
+            let allPkgs = cachedPkgsRef.current;
+            if (allPkgs.length === 0) {
+                const offerings = await Purchases.getOfferings();
+                const seen = new Set<string>();
+                for (const offering of Object.values(offerings.all)) {
+                    for (const p of offering.availablePackages) {
+                        if (!seen.has(p.product.identifier)) {
+                            seen.add(p.product.identifier);
+                            allPkgs.push(p);
+                        }
+                    }
+                }
+                cachedPkgsRef.current = allPkgs;
+            }
             const pkg = allPkgs.find(
                 (p) =>
                     p.identifier === selectedPlan.id ||

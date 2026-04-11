@@ -69,10 +69,12 @@ function HeroSlider({
     courses,
     locale,
     lt,
+    onLockedPress,
 }: {
     courses: Course[];
     locale: LocalePreference;
     lt: (key: string, params?: Record<string, string | number>) => string;
+    onLockedPress: (course: Course) => void;
 }) {
     const [activeIdx, setActiveIdx] = useState(0);
     // 양옆 카드가 살짝 보이도록 폭을 줄임
@@ -100,7 +102,7 @@ function HeroSlider({
                     <TouchableOpacity
                         key={c.id}
                         style={[heroStyles.slide, { width: SLIDE_W }]}
-                        onPress={() => router.push(`/courses/${c.id}` as any)}
+                        onPress={() => c.isLocked ? onLockedPress(c) : router.push(`/courses/${c.id}` as any)}
                         activeOpacity={0.92}
                     >
                         {c.imageUrl ? (
@@ -134,6 +136,18 @@ function HeroSlider({
                                 )}
                             </View>
                         </View>
+                        {c.isLocked && (
+                            <View style={heroStyles.lockOverlay}>
+                                <View style={heroStyles.lockIconWrap}>
+                                    <Ionicons name="lock-closed" size={32} color="#fff" />
+                                </View>
+                                <View style={heroStyles.lockBadge}>
+                                    <Text style={heroStyles.lockBadgeText}>
+                                        {c.grade === "PREMIUM" ? lt("courses.premiumOnly") : lt("courses.basicOnly")}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
                     </TouchableOpacity>
                 ))}
             </ScrollView>
@@ -186,6 +200,21 @@ const heroStyles = StyleSheet.create({
     dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 12 },
     dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(0,0,0,0.15)" },
     dotActive: { backgroundColor: Colors.brandGreen, width: 20 },
+    lockOverlay: {
+        position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.45)",
+        alignItems: "center", justifyContent: "center", zIndex: 10,
+    },
+    lockIconWrap: {
+        backgroundColor: "rgba(255,255,255,0.2)",
+        borderRadius: 40, padding: 14, marginBottom: 10,
+    },
+    lockBadge: {
+        backgroundColor: "rgba(0,0,0,0.6)",
+        borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6,
+        borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+    },
+    lockBadgeText: { color: "#fff", fontSize: 13, fontWeight: "700", letterSpacing: -0.3 },
 });
 
 // ─── 코스 카드 (웹 CourseCard와 동일) ─────────────────────────────────────────
@@ -373,16 +402,31 @@ export default function CoursesScreen() {
     );
     const queryClient = useQueryClient();
 
-    // 히어로 슬라이더용 인기 코스
-    const { data: heroData } = useQuery<Course[]>({
+    // 히어로 슬라이더용 코스 (limit=10으로 각 등급 충분히 확보 후 프론트에서 순서 배치)
+    const { data: heroRaw } = useQuery<Course[]>({
         queryKey: ["courses-hero"],
         queryFn: async () => {
-            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>("/api/courses?limit=5");
+            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>("/api/courses?limit=10");
             if (Array.isArray(r)) return r;
             return (r as any)?.data ?? (r as any)?.courses ?? [];
         },
         staleTime: 5 * 60 * 1000,
     });
+
+    // 순서: 1=FREE, 2=BASIC, 3=BASIC, 4=PREMIUM, 5=FREE
+    const heroData = React.useMemo(() => {
+        if (!heroRaw || heroRaw.length === 0) return [];
+        const free = heroRaw.filter((c) => c.grade === "FREE");
+        const basic = heroRaw.filter((c) => c.grade === "BASIC");
+        const premium = heroRaw.filter((c) => c.grade === "PREMIUM");
+        const result: Course[] = [];
+        if (free[0]) result.push(free[0]);
+        if (basic[0]) result.push(basic[0]);
+        if (basic[1] ?? basic[0]) result.push(basic[1] ?? basic[0]);
+        if (premium[0]) result.push(premium[0]);
+        if (free[1] ?? free[0]) result.push(free[1] ?? free[0]);
+        return result;
+    }, [heroRaw]);
 
     // 찜 목록
     const { data: favList } = useQuery<any[]>({
@@ -465,7 +509,12 @@ export default function CoursesScreen() {
                         ]}
                     >
                         <Text style={[styles.sectionTitle, { color: t.text }]}>{translate("courses.heroTitle")}</Text>
-                        <HeroSlider courses={heroData} locale={appLocale} lt={translate} />
+                        <HeroSlider
+                            courses={heroData}
+                            locale={appLocale}
+                            lt={translate}
+                            onLockedPress={(c) => openModal("ticket", { courseId: c.id, courseGrade: c.grade })}
+                        />
                     </View>
                 )}
                 <View
