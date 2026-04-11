@@ -143,7 +143,7 @@ function HeroSlider({
                                 </View>
                                 <View style={heroStyles.lockBadge}>
                                     <Text style={heroStyles.lockBadgeText}>
-                                        {c.grade === "PREMIUM" ? lt("courseLockOverlay.premium") : lt("courseLockOverlay.basic")}
+                                        {lt("courseLockOverlay.gradeOnly", { grade: c.grade === "PREMIUM" ? lt("courseLockOverlay.premium") : lt("courseLockOverlay.basic") })}
                                     </Text>
                                 </View>
                             </View>
