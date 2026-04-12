@@ -7,7 +7,7 @@
  *  530ms → step 3: 핀1 (💕 출발) 낙하
  *  870ms → step 4: 핀2 (🌳 데이트) 낙하
  * 1330ms → step 5: 핀3 (💖 도착) 낙하
- * 2000ms → step 6: DoNa 로고 카드 팝업
+ * 2000ms → step 6: DoNa 로고 슬라이드업 + 페이드인
  * 3330ms → fade out 시작
  * 4000ms → onDone() 호출
  */
@@ -65,14 +65,9 @@ export default function DonaSplashAnimation({ onDone }: Props) {
     const p3S = useRef(new Animated.Value(0)).current;
     const p3R = useRef(new Animated.Value(0)).current;
 
-    // ── 로고 카드 ─────────────────────────────────────────────────────────────
-    const logoO      = useRef(new Animated.Value(0)).current;
-    const logoS      = useRef(new Animated.Value(0.7)).current;
-    const logoRotate = useRef(new Animated.Value(-5)).current;
-    const logoRotateDeg = logoRotate.interpolate({
-        inputRange: [-5, 0],
-        outputRange: ["-5deg", "0deg"],
-    });
+    // ── 로고 (카드 없이 배경 위 직접 등장) ──────────────────────────────────────
+    const logoO = useRef(new Animated.Value(0)).current;
+    const logoY = useRef(new Animated.Value(24)).current;
 
     // ── 핀 낙하 애니메이션 (웹 pinDrop keyframe 완전 동일) ───────────────────
     // 웹: 0%→translateY(-120) scale(0) rotate(0) opacity:0
@@ -130,12 +125,11 @@ export default function DonaSplashAnimation({ onDone }: Props) {
         // step 5: 핀3
         at(1330, () => dropPin(p3Y, p3O, p3S, p3R));
 
-        // step 6: 로고 (웹 logoAppear keyframe 동일)
+        // step 6: 로고 — 배경 위 슬라이드업 + 페이드인
         at(2000, () => {
             Animated.parallel([
-                Animated.timing(logoO, { toValue: 1, duration: 800, useNativeDriver: true }),
-                Animated.spring(logoS, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }),
-                Animated.spring(logoRotate, { toValue: 0, tension: 80, friction: 6, useNativeDriver: true }),
+                Animated.timing(logoO, { toValue: 1, duration: 700, useNativeDriver: true }),
+                Animated.timing(logoY, { toValue: 0, duration: 600, useNativeDriver: true }),
             ]).start();
         });
 
@@ -150,7 +144,6 @@ export default function DonaSplashAnimation({ onDone }: Props) {
         return () => timers.forEach(clearTimeout);
     }, []);
 
-    // rotate interpolation: 단계값(0→1→2→3) → deg 문자열
     const p1RotateDeg = p1R.interpolate({ inputRange: [0,1,2,3], outputRange: ["0deg","5deg","-2deg","0deg"] });
     const p2RotateDeg = p2R.interpolate({ inputRange: [0,1,2,3], outputRange: ["0deg","5deg","-2deg","0deg"] });
     const p3RotateDeg = p3R.interpolate({ inputRange: [0,1,2,3], outputRange: ["0deg","5deg","-2deg","0deg"] });
@@ -210,22 +203,20 @@ export default function DonaSplashAnimation({ onDone }: Props) {
                 </View>
             </View>
 
-            {/* ── DoNa 로고 카드 — 전체 화면 중앙에 고정 ──────────────────── */}
+            {/* ── DoNa 로고 — 배경 위 직접 등장 ───────────────────────────── */}
             <Animated.View
                 style={[StyleSheet.absoluteFillObject, s.logoCenter, {
                     opacity:   logoO,
-                    transform: [{ scale: logoS }, { rotate: logoRotateDeg }],
+                    transform: [{ translateY: logoY }],
                 }]}
                 pointerEvents="none"
             >
-                <View style={s.logoCard}>
-                    <Image
-                        source={{ uri: LOGO_URI }}
-                        style={s.logoImage}
-                        resizeMode="contain"
-                    />
-                    <Text style={s.tagline}>{t("splash.tagline")}</Text>
-                </View>
+                <Image
+                    source={{ uri: LOGO_URI }}
+                    style={s.logoImage}
+                    resizeMode="contain"
+                />
+                <Text style={s.tagline}>{t("splash.tagline")}</Text>
             </Animated.View>
         </Animated.View>
     );
@@ -317,28 +308,19 @@ const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    logoCard: {
-        backgroundColor: "rgba(255,255,255,0.98)",
-        paddingVertical: 30,
-        paddingHorizontal: 32,
-        borderRadius: 32,
-        alignItems: "center",
-        maxWidth: SW * 0.92,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 25 },
-        shadowOpacity: 0.2,
-        shadowRadius: 35,
-        elevation: 20,
-    },
     logoImage: {
         width: Math.min(SW * 0.72, 300),
         height: 102,
         marginBottom: 14,
+        shadowColor: "rgba(255,255,255,0.9)",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 20,
     },
     tagline: {
         fontSize: 17,
         lineHeight: 24,
-        color: "#7FCC9F",
+        color: "rgba(255,255,255,0.9)",
         fontWeight: "400",
         textAlign: "center",
         paddingHorizontal: 8,

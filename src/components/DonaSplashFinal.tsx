@@ -290,29 +290,19 @@ export default function DonaSplashFinal({
                             left: logoCenter.left,
                             top: logoCenter.top,
                             transform: "translate(-50%, -50%)",
-                            animation: "logoAppear 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+                            animation: "logoFadeUp 0.7s ease forwards",
                             textAlign: "center",
                             zIndex: 100001,
                         }}
                     >
-                        <div
-                            style={{
-                                background: "rgba(255, 255, 255, 0.98)",
-                                backdropFilter: "blur(12px)",
-                                padding: "24px 28px",
-                                borderRadius: "28px",
-                                boxShadow: "0 25px 70px rgba(0,0,0,0.2)",
-                            }}
-                        >
-                            <img
-                                src={getS3StaticUrl("logo/donalogo_512.png")}
-                                alt="DoNa"
-                                style={{ width: "300px", height: "auto", margin: "0 auto 12px", display: "block" }}
-                            />
-                            <p style={{ fontSize: 16, color: "#7FCC9F", margin: 0, fontWeight: 600 }}>
-                                {t("splash.tagline")}
-                            </p>
-                        </div>
+                        <img
+                            src={getS3StaticUrl("logo/donalogo_512.png")}
+                            alt="DoNa"
+                            style={{ width: "300px", height: "auto", margin: "0 auto 12px", display: "block", filter: "drop-shadow(0 0 20px rgba(255,255,255,0.8))" }}
+                        />
+                        <p style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", margin: 0, fontWeight: 400 }}>
+                            {t("splash.tagline")}
+                        </p>
                     </div>
                 )}
             </div>
@@ -324,10 +314,9 @@ export default function DonaSplashFinal({
                     80% { transform: translateY(-3px) scale(0.95) rotate(-2deg); }
                     100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
                 }
-                @keyframes logoAppear {
-                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-5deg); }
-                    70% { transform: translate(-50%, -50%) scale(1.05) rotate(2deg); }
-                    100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+                @keyframes logoFadeUp {
+                    0% { opacity: 0; transform: translate(-50%, calc(-50% + 24px)); }
+                    100% { opacity: 1; transform: translate(-50%, -50%); }
                 }
             `}</style>
         </div>
