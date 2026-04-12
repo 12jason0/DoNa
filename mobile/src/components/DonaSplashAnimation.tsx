@@ -308,7 +308,7 @@ const s = StyleSheet.create({
         justifyContent: "center",
     },
     logoImage: {
-        width: Math.min(SW * 0.72, 300),
-        height: 102,
+        width: Math.min(SW * 0.82, 340),
+        height: Math.min(SW * 0.82, 340),
     },
 });

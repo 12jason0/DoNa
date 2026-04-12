@@ -591,16 +591,30 @@ export default function AdminCoursesPage() {
         ).slice(0, MAX_CONCEPT_COUNT);
     };
 
-    /** 컨셉: 입력/선택 모두 최대 5개. course.concept는 첫 번째를 대표값으로 저장 */
+    /** 컨셉: 입력 중에는 raw string 유지, blur 시 정규화. course.concept는 첫 번째를 대표값으로 저장 */
     const handleConceptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        const concepts = parseConcepts(value);
-        const normalizedInput = concepts.join(", ");
         setFormData((prev) => {
+            const currentTags = prev.tags || INITIAL_TAGS;
+            const concepts = parseConcepts(value);
+            return {
+                ...prev,
+                concept: value, // 입력 중에는 raw 그대로 유지 (쉼표 날아가지 않게)
+                tags: {
+                    ...currentTags,
+                    concept: concepts as ConceptTag[],
+                },
+            };
+        });
+    };
+
+    const handleConceptBlur = () => {
+        setFormData((prev) => {
+            const concepts = parseConcepts(prev.concept || "");
             const currentTags = prev.tags || INITIAL_TAGS;
             return {
                 ...prev,
-                concept: normalizedInput,
+                concept: concepts.join(", "), // blur 시에만 정규화
                 tags: {
                     ...currentTags,
                     concept: concepts as ConceptTag[],
@@ -1205,6 +1219,7 @@ export default function AdminCoursesPage() {
                                     placeholder="쉼표(,)로 최대 5개 입력 (예: 감성데이트, 야경, 힐링)"
                                     value={formData.concept || ""}
                                     onChange={handleConceptChange}
+                                    onBlur={handleConceptBlur}
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                                 />
                                 <datalist id="admin-course-concept-options">
