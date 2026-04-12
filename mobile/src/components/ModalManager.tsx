@@ -23,6 +23,7 @@ import MemoryLimitModal from "./MemoryLimitModal";
 import ScreenReservationModal from "./ScreenReservationModal";
 import MoreCoursesSheet from "./MoreCoursesSheet";
 import ComingSoonBottomSheet from "./ComingSoonBottomSheet";
+import ShopBottomSheet from "./ShopBottomSheet";
 
 export default function ModalManager() {
     const { isOpen, closeModal } = useModal();
@@ -66,6 +67,12 @@ export default function ModalManager() {
 
             {/* 홈 */}
             <MoreCoursesSheet />
+
+            {/* 두나샵 */}
+            <ShopBottomSheet
+                visible={isOpen("shop")}
+                onClose={() => closeModal("shop")}
+            />
 
             {/* 준비중 */}
             <ComingSoonBottomSheet

@@ -956,7 +956,7 @@ function FootprintTab({
 
     return (
         <View style={{ flex: 1 }}>
-            <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
+            <ScrollView style={s.tabScroll} contentContainerStyle={[s.tabContent, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
             <View style={[s.footprintHeaderCard, { backgroundColor: t.card, borderColor: t.border }]}>
                 <Text style={[s.footprintTitle, { color: t.text, marginBottom: 12 }]}>{i18n("mypage.footprintTab.myFootprint")}</Text>
                 <View style={[s.viewToggle, { backgroundColor: t.surface, borderColor: t.border, marginBottom: 0, alignSelf: "stretch" }]}>
@@ -1718,6 +1718,7 @@ function RecordsTab() {
     const t = useThemeColors();
     const { t: i18n, locale } = useLocale();
     const dateLoc = localeTag(locale);
+    const insets = useSafeAreaInsets();
     const queryClient = useQueryClient();
     const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "casefiles">("favorites");
 
@@ -1776,7 +1777,7 @@ function RecordsTab() {
     const isLoading = loadFav || loadSaved || loadCompleted || loadCase;
 
     return (
-        <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.tabScroll} contentContainerStyle={[s.tabContent, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
             <SubTabBar tabs={subTabs} active={subTab} onSelect={setSubTab} t={t} />
 
             {isLoading ? (
@@ -1965,6 +1966,7 @@ function ActivityTab() {
     const t = useThemeColors();
     const { t: i18n, locale } = useLocale();
     const dateLoc = localeTag(locale);
+    const insets = useSafeAreaInsets();
     const { openModal } = useModal();
     const [subTab, setSubTab] = useState<"badges" | "rewards" | "payments">("badges");
 
@@ -2007,7 +2009,7 @@ function ActivityTab() {
     const isLoading = loadBadges || loadRewards || loadPayments;
 
     return (
-        <ScrollView style={s.tabScroll} contentContainerStyle={s.tabContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.tabScroll} contentContainerStyle={[s.tabContent, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
             <SubTabBar tabs={subTabs} active={subTab} onSelect={setSubTab} t={t} />
 
             {isLoading ? (

@@ -94,7 +94,7 @@ export default function SideMenuSheet() {
     );
 
     const goNearby = () => handleDismiss(() => router.push("/nearby" as any));
-    const goShop = () => handleDismiss(() => openModal("comingSoon"));
+    const goShop = () => handleDismiss(() => openModal("shop"));
     const goMypage = () => handleDismiss(() => router.push("/(tabs)/mypage" as any));
     const goLogin = () => handleDismiss(() => router.push("/(auth)/login" as any));
     const goSignup = () => handleDismiss(() => router.push("/(auth)/signup" as any));
