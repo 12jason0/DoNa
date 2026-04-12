@@ -1194,7 +1194,7 @@ function FootprintTab({
                         t={t}
                     />
                 ) : (
-                    <View style={{ gap: 12 }}>
+                    <View style={{ gap: 12, marginTop: 16, paddingBottom: Platform.OS === "android" ? insets.bottom + 20 : 20 }}>
                         {stories.map((story, stIdx) => {
                             const imgUri = story.imageUrls?.[0] ? resolveImageUrl(story.imageUrls[0]) : null;
                             const d = new Date(story.createdAt);
@@ -3135,7 +3135,7 @@ const s = StyleSheet.create({
 
     // 추억 카드
     memCard: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
-    memImg: { width: "100%", height: 180 },
+    memImg: { width: "100%", height: 240 },
     memBody: { padding: 14 },
     memDate: { fontSize: 11, marginBottom: 4 },
     memCourse: { fontSize: 15, fontWeight: "500", marginBottom: 8, letterSpacing: -0.3 },
