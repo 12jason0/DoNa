@@ -17,13 +17,13 @@ import {
     Modal,
     Alert,
     RefreshControl,
-    Image,
     Linking,
     Dimensions,
     Platform,
     Switch,
     Pressable,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -275,7 +275,7 @@ function CourseListCard({
         >
             <View style={s.courseCardImgWrap}>
                 {uri ? (
-                    <Image source={{ uri }} style={s.courseCardImgFull} resizeMode="cover" />
+                    <Image source={{ uri }} style={s.courseCardImgFull} contentFit="cover" />
                 ) : (
                     <View
                         style={[
@@ -1150,7 +1150,7 @@ function FootprintTab({
                                             <Image
                                                 source={{ uri: thumbUri! }}
                                                 style={s.calDayThumb}
-                                                resizeMode="cover"
+                                                contentFit="cover"
                                             />
                                         ) : (
                                             <Text
@@ -1211,7 +1211,7 @@ function FootprintTab({
                                     onPress={() => openModal("memoryDetail", { story: story as MemoryDetailStory, imageIndex: 0 })}
                                 >
                                     {imgUri ? (
-                                        <Image source={{ uri: imgUri }} style={s.memImg} resizeMode="cover" />
+                                        <Image source={{ uri: imgUri }} style={s.memImg} contentFit="cover" />
                                     ) : (
                                         <View
                                             style={[
@@ -1457,7 +1457,7 @@ function FootprintTab({
                                             <Image
                                                 source={{ uri: imgUri }}
                                                 style={[StyleSheet.absoluteFillObject, { opacity: 0.9 }]}
-                                                resizeMode="cover"
+                                                contentFit="cover"
                                             />
                                         ) : (
                                             <View
@@ -1684,7 +1684,7 @@ function FootprintTab({
                                                     <Image
                                                         source={{ uri: thumb }}
                                                         style={{ width: sz, height: sz }}
-                                                        resizeMode="cover"
+                                                        contentFit="cover"
                                                     />
                                                 ) : (
                                                     <View
@@ -1908,7 +1908,7 @@ function RecordsTab() {
                                                         <Image
                                                             source={{ uri }}
                                                             style={StyleSheet.absoluteFillObject}
-                                                            resizeMode="cover"
+                                                            contentFit="cover"
                                                         />
                                                     ) : (
                                                         <View
@@ -2044,7 +2044,7 @@ function ActivityTab() {
                                                         <Image
                                                             source={{ uri }}
                                                             style={s.badgeImg}
-                                                            resizeMode="contain"
+                                                            contentFit="contain"
                                                         />
                                                     ) : (
                                                         <Text style={{ fontSize: 34 }}>🏅</Text>
