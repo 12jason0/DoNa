@@ -298,11 +298,8 @@ export default function DonaSplashFinal({
                         <img
                             src={getS3StaticUrl("logo/donalogo_512.png")}
                             alt="DoNa"
-                            style={{ width: "300px", height: "auto", margin: "0 auto 12px", display: "block", filter: "drop-shadow(0 0 20px rgba(255,255,255,0.8))" }}
+                            style={{ width: "300px", height: "auto", margin: "0 auto", display: "block", filter: "drop-shadow(0 0 20px rgba(255,255,255,0.8))" }}
                         />
-                        <p style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", margin: 0, fontWeight: 400 }}>
-                            {t("splash.tagline")}
-                        </p>
                     </div>
                 )}
             </div>

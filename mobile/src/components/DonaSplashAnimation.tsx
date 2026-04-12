@@ -216,7 +216,6 @@ export default function DonaSplashAnimation({ onDone }: Props) {
                     style={s.logoImage}
                     resizeMode="contain"
                 />
-                <Text style={s.tagline}>{t("splash.tagline")}</Text>
             </Animated.View>
         </Animated.View>
     );
@@ -311,18 +310,9 @@ const s = StyleSheet.create({
     logoImage: {
         width: Math.min(SW * 0.72, 300),
         height: 102,
-        marginBottom: 14,
-        shadowColor: "rgba(255,255,255,0.9)",
+        shadowColor: "#ffffff",
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
+        shadowOpacity: 0.8,
         shadowRadius: 20,
-    },
-    tagline: {
-        fontSize: 17,
-        lineHeight: 24,
-        color: "rgba(255,255,255,0.9)",
-        fontWeight: "400",
-        textAlign: "center",
-        paddingHorizontal: 8,
     },
 });
