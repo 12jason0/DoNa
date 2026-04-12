@@ -31,7 +31,7 @@ const SCALE = CONTAINER_W / 340;
 const CONTAINER_H = 420 * SCALE;
 
 // DoNa 로고 (CloudFront) — getS3StaticUrl("logo/donalogo_512.png") 와 동일
-const LOGO_URI = "https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512.png";
+const LOGO_URI = "https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512_glow.png";
 
 type Props = { onDone?: () => void };
 
@@ -310,9 +310,5 @@ const s = StyleSheet.create({
     logoImage: {
         width: Math.min(SW * 0.72, 300),
         height: 102,
-        shadowColor: "#ffffff",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 20,
     },
 });

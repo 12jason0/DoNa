@@ -296,9 +296,9 @@ export default function DonaSplashFinal({
                         }}
                     >
                         <img
-                            src={getS3StaticUrl("logo/donalogo_512.png")}
+                            src={getS3StaticUrl("logo/donalogo_512_glow.png")}
                             alt="DoNa"
-                            style={{ width: "300px", height: "auto", margin: "0 auto", display: "block", filter: "drop-shadow(0 0 20px rgba(255,255,255,0.8))" }}
+                            style={{ width: "300px", height: "auto", margin: "0 auto", display: "block" }}
                         />
                     </div>
                 )}
