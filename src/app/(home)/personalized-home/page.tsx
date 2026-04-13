@@ -1609,22 +1609,29 @@ const AIRecommender = () => {
                                             <button
                                                 onClick={() => {
                                                     const courseId = feedbackTarget.courseId;
+                                                    const payload = {
+                                                        courseId,
+                                                        rating: opt.value,
+                                                        context: "AI_RECOMMENDATION",
+                                                        matchScore: feedbackTarget.matchScore,
+                                                        matchReason: feedbackTarget.matchReason,
+                                                        todayContext: feedbackTarget.todayContext,
+                                                    };
+                                                    // 모달 오버레이(bg-black/70)가 DOM에서 완전히 제거된 뒤
+                                                    // 네비게이션이 시작되도록 한 프레임 뒤로 미룸.
+                                                    // router.push를 상태 업데이트와 같은 tick에 호출하면
+                                                    // 검은 오버레이가 남은 채로 새 페이지가 로드되어 검은 화면이 됨.
                                                     setShowFeedbackModal(false);
                                                     setFeedbackTarget(null);
-                                                    router.push(`/courses/${courseId}`);
+                                                    setTimeout(() => {
+                                                        router.push(`/courses/${courseId}`);
+                                                    }, 50);
 
                                                     fetch("/api/feedback", {
                                                         method: "POST",
                                                         headers: { "Content-Type": "application/json" },
                                                         credentials: "include",
-                                                        body: JSON.stringify({
-                                                            courseId,
-                                                            rating: opt.value,
-                                                            context: "AI_RECOMMENDATION",
-                                                            matchScore: feedbackTarget.matchScore,
-                                                            matchReason: feedbackTarget.matchReason,
-                                                            todayContext: feedbackTarget.todayContext,
-                                                        }),
+                                                        body: JSON.stringify(payload),
                                                         keepalive: true,
                                                     }).catch(() => {});
                                                 }}
