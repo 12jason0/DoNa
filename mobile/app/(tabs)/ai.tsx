@@ -1034,11 +1034,13 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                         rating: opt.value,
                                         context: "AI_RECOMMENDATION",
                                     }).catch(() => {});
+                                    // 피드백 모달 먼저 닫고, 애니메이션 완료 후 부모 모달 닫기
+                                    // Android에서 자식/부모 Modal 동시 닫으면 검은 화면 버그 발생
                                     setFeedbackCourseId(null);
-                                    onClose();
                                     setTimeout(() => {
+                                        onClose();
                                         router.push(`/courses/${courseId}` as any);
-                                    }, 400);
+                                    }, 300);
                                 }}
                             >
                                 <Text style={{ fontSize: 20 }}>{opt.emoji}</Text>
