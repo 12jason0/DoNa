@@ -2,7 +2,7 @@ import type { PrivacyStrings } from "./privacy.ko";
 
 const privacyEn = {
     intro_p:
-        "DoNa (the “Service”) establishes and discloses this Privacy Policy in accordance with Article 30 of the Personal Information Protection Act to protect personal data and handle related complaints promptly and smoothly.",
+        "DoNa (the \"Service\") establishes and discloses this Privacy Policy in accordance with Article 30 of the Personal Information Protection Act to protect personal data and handle related complaints promptly and smoothly.",
 
     art1_title: "Article 1 Purposes of processing",
     art1_p:
@@ -60,9 +60,9 @@ const privacyEn = {
 
     art3_s2_title: "2. When using certain features such as missions",
     art3_s2_li1:
-        "Escape mission photos: images you capture or select. They may be shown again in features such as the in-service “memory frame.”",
+        "Escape mission photos: images you capture or select. They may be shown again in features such as the in-service \"memory frame.\"",
     art3_s2_li2:
-        "Scope of photo use: uploaded photos are used only for the “memory frame” feature, not for training recommendations, ad targeting, or external sharing.",
+        "Scope of photo use: uploaded photos are used only for the \"memory frame\" feature, not for training recommendations, ad targeting, or external sharing.",
 
     art3_s3_title: "3. Automatically collected during use",
     art3_s3_li1:
@@ -74,13 +74,13 @@ const privacyEn = {
     art4_p: "To provide a better service, we collect and use behavioral information as follows.",
     art4_li1: "Items: site visits, page views, clicks, search queries, etc.",
     art4_li2: "Purpose: statistics and analysis to improve and optimize the service",
-    art4_li3: “Tool: PostHog”,
-    art4_li4_title: “How PostHog processes data:”,
+    art4_li3: "Tool: PostHog",
+    art4_li4_title: "How PostHog processes data:",
     art4_li4_beforeLink:
-        “PostHog collects behavioral data in a non-identifiable form and manages it under PostHog’s privacy policy.”,
-    art4_li4_suffix: “”,
+        "PostHog collects behavioral data in a non-identifiable form and manages it under PostHog's privacy policy.",
+    art4_li4_suffix: "",
     art4_p2:
-        “You may withdraw consent to behavioral data collection in the app settings.”,
+        "You may withdraw consent to behavioral data collection in the app settings.",
 
     art5_title: "Article 5 Disclosure to third parties",
     art5_p:

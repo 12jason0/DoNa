@@ -77,7 +77,8 @@
       "Bash(echo \"exit: $?\")",
       "Bash(magick --version)",
       "Bash(convert --version)",
-      "Bash(curl -s \"https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512.png\" -o /tmp/donalogo_512_original.png)"
+      "Bash(curl -s \"https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512.png\" -o /tmp/donalogo_512_original.png)",
+      "Bash(awk -F'[\\(\\):]' '{print $2}')"
     ]
   }
 }
