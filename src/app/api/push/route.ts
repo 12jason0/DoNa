@@ -96,6 +96,16 @@ export async function POST(req: NextRequest) {
             updateData.alarmEnabledAt = new Date();
         }
 
+        // 같은 토큰을 가진 다른 userId 레코드 삭제 (중복 알림 방지)
+        if (hasValidPushToken) {
+            await prisma.pushToken.deleteMany({
+                where: {
+                    token: pushToken,
+                    userId: { not: userIdNum },
+                },
+            });
+        }
+
         // 🟢 성능 최적화: user.update와 pushToken.upsert를 병렬로 처리
         await Promise.all([
             userUpdatePromise,
