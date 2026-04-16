@@ -74,13 +74,13 @@ const privacyEn = {
     art4_p: "To provide a better service, we collect and use behavioral information as follows.",
     art4_li1: "Items: site visits, page views, clicks, search queries, etc.",
     art4_li2: "Purpose: statistics and analysis to improve and optimize the service",
-    art4_li3: "Tool: Google Analytics",
-    art4_li4_title: "How Google Analytics processes data:",
+    art4_li3: “Tool: PostHog”,
+    art4_li4_title: “How PostHog processes data:”,
     art4_li4_beforeLink:
-        "It collects data in a non-identifiable form via cookies, managed under Google’s privacy policy. See “How Google uses information from sites or apps that use our services” (",
-    art4_li4_suffix: ").",
+        “PostHog collects behavioral data in a non-identifiable form and manages it under PostHog’s privacy policy.”,
+    art4_li4_suffix: “”,
     art4_p2:
-        "You may refuse cookies via browser settings; some features may be less convenient.",
+        “You may withdraw consent to behavioral data collection in the app settings.”,
 
     art5_title: "Article 5 Disclosure to third parties",
     art5_p:
@@ -96,7 +96,7 @@ const privacyEn = {
     art6_li3:
         "Kakao — social login (OAuth) / identifiers, profile (nickname/image) within consent / until unlink or withdrawal",
     art6_li4:
-        "Google LLC (Google Analytics) — usage analytics / cookies, visit and click data in non-identifiable form / up to 26 months",
+        "PostHog, Inc. — usage behavior analytics / screen views, click data in non-identifiable form / up to 1 year",
 
     art7_title: "Article 7 Rights of data subjects",
     art7_p: "You may exercise the following rights toward DoNa at any time:",

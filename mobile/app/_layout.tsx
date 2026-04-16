@@ -1,5 +1,6 @@
 import "react-native-gesture-handler";
 import * as Sentry from "@sentry/react-native";
+import { PostHogProvider } from "posthog-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Platform, AppState } from "react-native";
 import { router, Stack } from "expo-router";
@@ -23,6 +24,8 @@ import { ModalProvider } from "../src/lib/modalContext";
 import ModalManager from "../src/components/ModalManager";
 import { loadLocalePreference } from "../src/lib/appSettingsStorage";
 import { applyDefaultTextFontForLocale } from "../src/lib/textDefaultFont";
+import { posthog } from "../src/lib/posthog";
+import { useScreenTracking } from "../src/hooks/useScreenTracking";
 
 // ─── Sentry 초기화 ────────────────────────────────────────────────────────────
 if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
@@ -65,7 +68,7 @@ Notifications.setNotificationHandler({
 // RN: locale별 단일 폰트. ko: Cafe24Dongdong / en: Kalam* / ja: HachiMaruPop / zh: ZCOOLKuaiLe
 applyDefaultTextFontForLocale(loadLocalePreference());
 
-export default function RootLayout() {
+function RootLayoutInner() {
     const [showSplash, setShowSplash] = useState(true);
     const notificationListener = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener>>();
 
@@ -146,6 +149,8 @@ export default function RootLayout() {
         })();
     }, [showSplash]);
 
+    useScreenTracking();
+
     return (
         <GestureHandlerRootView style={styles.root}>
             <SafeAreaProvider>
@@ -178,6 +183,14 @@ export default function RootLayout() {
                 </AppSettingsProvider>
             </SafeAreaProvider>
         </GestureHandlerRootView>
+    );
+}
+
+export default function RootLayout() {
+    return (
+        <PostHogProvider client={posthog}>
+            <RootLayoutInner />
+        </PostHogProvider>
     );
 }
 

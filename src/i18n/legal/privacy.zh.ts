@@ -72,12 +72,12 @@ const privacyZh = {
     art4_p: "为向用户提供更好的服务，我们按如下收集并使用行为信息。",
     art4_li1: "收集项目：网站访问、页面浏览、点击、搜索词等",
     art4_li2: "收集目的：通过使用情况及统计分析改进与优化服务",
-    art4_li3: "外部工具：Google Analytics",
-    art4_li4_title: "通过 Google Analytics 收集的信息的处理方式：",
+    art4_li3: “外部工具：PostHog”,
+    art4_li4_title: “通过 PostHog 收集的信息的处理方式：”,
     art4_li4_beforeLink:
-        "Google Analytics 通过 cookie 以不可识别个人的方式收集信息，并依 Google 隐私政策管理。详见“Google 如何使用使用其服务的网站或应用的信息”（",
-    art4_li4_suffix: "）。",
-    art4_p2: "您可通过浏览器设置拒绝保存 cookie，但可能影响部分使用体验。",
+        “PostHog 以不可识别个人的方式收集应用及网站内的行为信息，并依 PostHog 隐私政策管理。”,
+    art4_li4_suffix: “”,
+    art4_p2: “您可在应用设置中撤回对行为信息收集的同意。”,
 
     art5_title: "第5条 向第三方提供",
     art5_p:
@@ -93,7 +93,7 @@ const privacyZh = {
     art6_li3:
         "Kakao — 社交登录(OAuth) / 项目：标识符、资料(昵称/头像)等在同意范围内 / 保存至解除关联或注销",
     art6_li4:
-        "Google LLC (Google Analytics) — 使用行为分析 / 项目：cookie、访问与点击记录等不可识别形态 / 最长26个月",
+        "PostHog, Inc. — 使用行为分析 / 项目：页面访问与点击记录等不可识别形态 / 最长1年",
 
     art7_title: "第7条 信息主体的权利与行使",
     art7_p: "信息主体可随时向 DoNa 行使下列与个人信息保护相关的权利：",

@@ -5,7 +5,6 @@ import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from "react-native";
 
 const CONTACT_EMAIL = "12jason@donacouse.com";
-const GOOGLE_PARTNERS = "https://www.google.com/policies/privacy/partners/";
 const DATA_DELETION_URL = "https://dona.io.kr/data-deletion";
 
 type Theme = {
@@ -283,20 +282,15 @@ export default function LegalPrivacyBody({ tr, theme, scrollRef, anchorYs }: Pro
                 </Text>
                 <Text style={[styles.disc, { color: theme.textMuted }]}>
                     {"\u2022 "}
-                    <Text style={styles.strong}>행태정보를 수집하는 외부 도구:</Text> Google Analytics
+                    <Text style={styles.strong}>행태정보를 수집하는 외부 도구:</Text> PostHog
                 </Text>
                 <Text style={[styles.disc, { color: theme.textMuted }]}>
                     {"\u2022 "}
-                    <Text style={styles.strong}>Google Analytics를 통해 수집된 정보의 처리 방식:</Text> Google Analytics는 쿠키를 통해 개인을
-                    식별할 수 없는 형태로 정보를 수집하며, 이 정보는 Google의 개인정보처리방침에 따라 관리됩니다. 자세한 내용은
-                    &apos;Google이 Google 서비스를 사용하는 사이트 또는 앱의 정보를 이용하는 방법&apos; (
-                    <Text style={styles.link} onPress={() => void Linking.openURL(GOOGLE_PARTNERS)}>
-                        www.google.com/policies/privacy/partners/
-                    </Text>
-                    ) 페이지에서 확인하실 수 있습니다.
+                    <Text style={styles.strong}>PostHog를 통해 수집된 정보의 처리 방식:</Text> PostHog는 개인을 식별할 수 없는 형태로 앱 내
+                    행동 정보를 수집하며, 이 정보는 PostHog의 개인정보처리방침에 따라 관리됩니다.
                 </Text>
                 <Text style={[styles.p, { color: theme.textMuted }]}>
-                    이용자는 웹 브라우저의 설정을 변경하여 쿠키 저장을 거부할 수 있으나, 이 경우 서비스 이용에 불편이 발생할 수 있습니다.
+                    이용자는 앱 설정에서 행태정보 수집에 대한 동의를 철회할 수 있습니다.
                 </Text>
             </View>
 
@@ -332,8 +326,8 @@ export default function LegalPrivacyBody({ tr, theme, scrollRef, anchorYs }: Pro
                 </Text>
                 <Text style={[styles.disc, { color: theme.textMuted }]}>
                     {"\u2022 "}
-                    <Text style={styles.strong}>Google LLC (Google Analytics)</Text> — 서비스 이용 행태 분석 / 항목: 쿠키, 방문·클릭 이력 등 개인을
-                    식별할 수 없는 형태 / 보유·이용기간: 최대 26개월
+                    <Text style={styles.strong}>PostHog, Inc.</Text> — 서비스 이용 행태 분석 / 항목: 화면 조회·클릭 이력 등 개인을
+                    식별할 수 없는 형태 / 보유·이용기간: 최대 1년
                 </Text>
             </View>
 

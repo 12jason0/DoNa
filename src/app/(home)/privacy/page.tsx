@@ -7,7 +7,6 @@ export default function PrivacyPolicyPage() {
     const { t, locale } = useLocale();
     const s = getPrivacyStrings(locale);
     const CONTACT_EMAIL = "12jason@donacouse.com";
-    const gaPartnersUrl = "https://www.google.com/policies/privacy/partners/";
 
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1710]">
@@ -166,15 +165,6 @@ export default function PrivacyPolicyPage() {
                             <li>{s.art4_li3}</li>
                             <li>
                                 <strong>{s.art4_li4_title}</strong> {s.art4_li4_beforeLink}
-                                <a
-                                    href={gaPartnersUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    www.google.com/policies/privacy/partners/
-                                </a>
-                                {s.art4_li4_suffix}
                             </li>
                         </ul>
                         <p className="text-gray-700 dark:text-white mb-6">{s.art4_p2}</p>

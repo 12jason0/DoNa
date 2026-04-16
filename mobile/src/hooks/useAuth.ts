@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, endpoints } from '../lib/api';
 import { saveUserId, loadUserId, saveAuthToken } from '../lib/mmkv';
+import { setRegisteredForUserId } from '../lib/pushRegistrationState';
 
 // ─── 타입 (웹 authClient.ts AuthUser 와 동일) ─────────────────────────────────
 
@@ -56,11 +57,21 @@ export function useAuth() {
 // ─── 로그아웃 유틸 ────────────────────────────────────────────────────────────
 
 export async function logout(queryClient: ReturnType<typeof useQueryClient>) {
+    // 로그아웃 전 push 구독 해제 (세션이 살아있는 동안 호출해야 auth 통과)
+    try {
+        await api.post(endpoints.push, { subscribed: false });
+    } catch {
+        // 실패해도 로그아웃은 계속 진행
+    }
+
     try {
         await api.post('/api/auth/logout', {});
     } catch {
         // 서버 실패해도 로컬 상태는 초기화
     }
+
+    // 다음 로그인 시 push 재등록 허용
+    setRegisteredForUserId(null);
 
     // MMKV 초기화
     saveAuthToken(null);
