@@ -3,7 +3,7 @@
  * 웹 /nearby (NearbyClient) 1:1 재현
  * - 검색 / 지역 필터 / 무한 스크롤 / 찜
  */
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
     View,
     Text,
@@ -11,7 +11,6 @@ import {
     FlatList,
     ScrollView,
     TouchableOpacity,
-    Image,
     TextInput,
     ActivityIndicator,
     RefreshControl,
@@ -20,6 +19,7 @@ import {
     Modal,
     Pressable,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -121,7 +121,7 @@ function NearbyCardInner({
             {/* 이미지 */}
             <View style={[s.cardImgWrap, { borderColor: colors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {displayImgUrl ? (
-                    <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} fadeDuration={0} />
+                    <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} contentFit="cover" transition={0} />
                 ) : (
                     <View style={[s.cardImg, { backgroundColor: "#e5e7eb", alignItems: "center", justifyContent: "center" }]}>
                         <Text style={{ color: "#9ca3af", fontSize: 12 }}>DoNa</Text>
@@ -312,6 +312,9 @@ export default function NearbyScreen() {
         return new Set<number>(favList.map((f: any) => Number(f?.course?.id ?? f?.courseId ?? f?.id)));
     }, [favList]);
 
+    const favIdsRef = useRef(favIds);
+    useEffect(() => { favIdsRef.current = favIds; }, [favIds]);
+
     const favMutation = useMutation({
         mutationFn: async ({ id, isFav }: { id: number; isFav: boolean }) => {
             if (isFav) {
@@ -329,8 +332,8 @@ export default function NearbyScreen() {
 
     const handleFavToggle = useCallback((courseId: number) => {
         if (!isAuthenticated) { router.push("/(auth)/login" as any); return; }
-        favMutation.mutate({ id: courseId, isFav: favIds.has(courseId) });
-    }, [favMutation, favIds, isAuthenticated]);
+        favMutation.mutate({ id: courseId, isFav: favIdsRef.current.has(courseId) });
+    }, [favMutation, isAuthenticated]);
 
     // 코스 목록 (무한 스크롤)
     const queryKey = ["nearby", activeSearch, activeRegion];
@@ -832,7 +835,7 @@ const s = StyleSheet.create({
         position: "relative",
         backgroundColor: "#f3f4f6",
     },
-    cardImg: { width: "100%", height: "100%", resizeMode: "cover" },
+    cardImg: { width: "100%", height: "100%" },
     imgGradient: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "rgba(0,0,0,0.06)",

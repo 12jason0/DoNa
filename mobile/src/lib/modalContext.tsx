@@ -4,7 +4,7 @@
  * - closeModal(key) 로 닫기
  * - ModalManager에서 모든 모달을 한 곳에서 렌더링
  */
-import React, { createContext, useContext, useReducer, useCallback } from "react";
+import React, { createContext, useContext, useReducer, useCallback, useMemo } from "react";
 import type { MemoryDetailStory } from "../components/MemoryDetailModal";
 import type { NativeLegalPage } from "../components/NativeLegalModal";
 
@@ -108,14 +108,15 @@ function reducer(state: ModalState, action: Action): ModalState {
 
 // ─── 컨텍스트 ─────────────────────────────────────────────────────────────────
 
-interface ModalContextValue {
+interface ModalActionsValue {
     openModal: <K extends ModalKey>(key: K, data?: ModalPayloads[K]) => void;
     closeModal: (key: ModalKey) => void;
-    isOpen: (key: ModalKey) => boolean;
-    getData: <K extends ModalKey>(key: K) => ModalPayloads[K] | undefined;
 }
 
-const ModalContext = createContext<ModalContextValue | null>(null);
+// Actions context — never changes → consumers don't re-render on modal open/close
+const ModalActionsContext = createContext<ModalActionsValue | null>(null);
+// State context — changes on every modal open/close
+const ModalStateContext = createContext<ModalState>({});
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
@@ -130,23 +131,36 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: "CLOSE", key });
     }, []);
 
-    const isOpen = useCallback((key: ModalKey) => !!(state[key]?.open), [state]);
+    const actions = useMemo(() => ({ openModal, closeModal }), [openModal, closeModal]);
 
+    return (
+        <ModalActionsContext.Provider value={actions}>
+            <ModalStateContext.Provider value={state}>
+                {children}
+            </ModalStateContext.Provider>
+        </ModalActionsContext.Provider>
+    );
+}
+
+// ─── Hooks ────────────────────────────────────────────────────────────────────
+
+// Use when component only needs openModal/closeModal — never re-renders due to modal state
+export function useModalActions() {
+    const ctx = useContext(ModalActionsContext);
+    if (!ctx) throw new Error("useModalActions must be inside ModalProvider");
+    return ctx;
+}
+
+// Use when component also needs isOpen/getData — re-renders on every modal state change
+export function useModal() {
+    const actions = useContext(ModalActionsContext);
+    const state = useContext(ModalStateContext);
+    if (!actions) throw new Error("useModal must be inside ModalProvider");
+
+    const isOpen = useCallback((key: ModalKey) => !!(state[key]?.open), [state]);
     const getData = useCallback(<K extends ModalKey>(key: K): ModalPayloads[K] | undefined => {
         return state[key]?.data as ModalPayloads[K] | undefined;
     }, [state]);
 
-    return (
-        <ModalContext.Provider value={{ openModal, closeModal, isOpen, getData }}>
-            {children}
-        </ModalContext.Provider>
-    );
-}
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
-export function useModal() {
-    const ctx = useContext(ModalContext);
-    if (!ctx) throw new Error("useModal must be used inside ModalProvider");
-    return ctx;
+    return { ...actions, isOpen, getData };
 }

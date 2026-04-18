@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
         const normalizedState = decodedState.replace(/^%2F/, "/").replace(/\/+/g, "/");
 
         // 🟢 [2026-01-21] mobile?redirect=... 형식 처리
-        let next = normalizedState;
         let actualNext = "/";
         if (normalizedState.startsWith("mobile")) {
             // mobile?redirect=/path 형식인 경우 redirect 파라미터 추출

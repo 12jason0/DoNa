@@ -4,10 +4,10 @@
  */
 import React from "react";
 import AppHeader from "./AppHeader";
-import { useModal } from "../lib/modalContext";
+import { useModalActions } from "../lib/modalContext";
 
 export default function AppHeaderWithModals() {
-    const { openModal } = useModal();
+    const { openModal } = useModalActions();
 
     return (
         <AppHeader

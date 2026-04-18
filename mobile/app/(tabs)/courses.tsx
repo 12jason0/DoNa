@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
     View,
     Text,
@@ -23,7 +23,7 @@ import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
 import { useAuth } from "../../src/hooks/useAuth";
-import { useModal } from "../../src/lib/modalContext";
+import { useModalActions } from "../../src/lib/modalContext";
 import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course } from "../../src/types/api";
 import { pickCourseTitle } from "../../src/lib/courseLocalized";
@@ -65,7 +65,7 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
 
 // ─── 히어로 슬라이더 ──────────────────────────────────────────────────────────
 
-function HeroSlider({
+const HeroSlider = React.memo(function HeroSlider({
     courses,
     locale,
     lt,
@@ -76,6 +76,7 @@ function HeroSlider({
     lt: (key: string, params?: Record<string, string | number>) => string;
     onLockedPress: (course: Course) => void;
 }) {
+
     const [activeIdx, setActiveIdx] = useState(0);
     // 양옆 카드가 살짝 보이도록 폭을 줄임
     const HORIZONTAL_GUTTER = 20;
@@ -158,7 +159,7 @@ function HeroSlider({
             </View>
         </View>
     );
-}
+});
 
 const heroStyles = StyleSheet.create({
     wrap: { marginBottom: 12 },
@@ -223,7 +224,7 @@ const heroStyles = StyleSheet.create({
 export default function CoursesScreen() {
     const t = useThemeColors();
     const { t: translate, locale: appLocale } = useLocale();
-    const { openModal } = useModal();
+    const { openModal } = useModalActions();
     const [activeConcept, setActiveConcept] = useState("");
 
     const CONCEPTS = useMemo(
@@ -304,7 +305,10 @@ export default function CoursesScreen() {
         },
     });
 
-    const courses = data?.pages.flat() ?? [];
+    const courses = useMemo(() => data?.pages.flat() ?? [], [data?.pages]);
+
+    const favIdsRef = useRef(favIds);
+    useEffect(() => { favIdsRef.current = favIds; }, [favIds]);
 
     const toggleConcept = useCallback((val: string) => {
         setActiveConcept((prev) => (prev === val ? "" : val));
@@ -312,9 +316,9 @@ export default function CoursesScreen() {
 
     const handleFavToggle = useCallback(
         (courseId: number) => {
-            favMutation.mutate({ id: courseId, isFav: favIds.has(courseId) });
+            favMutation.mutate({ id: courseId, isFav: favIdsRef.current.has(courseId) });
         },
-        [favMutation, favIds],
+        [favMutation],
     );
 
     const renderCourseItem = useCallback(

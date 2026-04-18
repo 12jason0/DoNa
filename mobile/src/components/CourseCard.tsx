@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { useAuth } from "../hooks/useAuth";
-import { useModal } from "../lib/modalContext";
+import { useModalActions } from "../lib/modalContext";
 import { resolveImageUrl } from "../lib/imageUrl";
 import { pickCourseTitle } from "../lib/courseLocalized";
 import { formatViewsCompact } from "../lib/localeUtils";
@@ -44,7 +44,7 @@ export type CourseCardCourse = {
     rating?: number;
 };
 
-export default function CourseCard({
+function CourseCardInner({
     course,
     isFav = false,
     onFavToggle,
@@ -56,7 +56,7 @@ export default function CourseCard({
     const t = useThemeColors();
     const { t: lt, locale } = useLocale();
     const { isAuthenticated } = useAuth();
-    const { openModal } = useModal();
+    const { openModal } = useModalActions();
 
     const isLocked = !!course.isLocked;
     const isNew = (course as any).reviewCount === 0;
@@ -204,6 +204,9 @@ export default function CourseCard({
         </TouchableOpacity>
     );
 }
+
+const CourseCard = React.memo(CourseCardInner);
+export default CourseCard;
 
 const s = StyleSheet.create({
     card:        { marginHorizontal: 8, marginBottom: 24 },

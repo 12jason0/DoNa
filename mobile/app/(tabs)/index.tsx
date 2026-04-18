@@ -9,7 +9,7 @@
  * 4. AI 맞춤 추천 CTA (로그인 시)
  * 5. 더 보기 Bottom Sheet
  */
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
     View,
     Text,
@@ -44,7 +44,7 @@ import {
 import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course, ActiveCourse } from "../../src/types/api";
 import { getBenefitConsentHideUntil, setBenefitConsentHideUntil } from "../../src/lib/mmkv";
-import { useModal } from "../../src/lib/modalContext";
+import { useModalActions } from "../../src/lib/modalContext";
 import type { MemoryDetailStory } from "../../src/components/MemoryDetailModal";
 import type { UserProfile } from "../../src/types/api";
 
@@ -270,11 +270,11 @@ export default function HomeScreen() {
     const t = useThemeColors();
     const { user } = useAuth();
     const { t: translate, locale } = useLocale();
-    const { openModal } = useModal();
+    const { openModal } = useModalActions();
     const dayType = getTodayDayType();
     const { openMoreCourses } = useLocalSearchParams<{ openMoreCourses?: string }>();
     const autoOpenedRef = useRef(false);
-    const tx = buildTx(translate);
+    const tx = useMemo(() => buildTx(translate), [translate]);
 
     // 추천 코스 (오늘의 선택)
     const {

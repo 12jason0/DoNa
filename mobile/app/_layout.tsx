@@ -17,6 +17,8 @@ import { migrateFromAsyncStorage } from "../src/lib/mmkv";
 import { KAKAO_NATIVE_APP_KEY } from "../src/config";
 import { AppSettingsProvider } from "../src/context/AppSettingsContext";
 import { initializeKakaoSDK } from "@react-native-kakao/core";
+
+export let kakaoSdkReady = false;
 import RootStatusBar from "../src/components/RootStatusBar";
 import DonaSplashAnimation from "../src/components/DonaSplashAnimation";
 import SyncTextFontToLocale from "../src/components/SyncTextFontToLocale";
@@ -142,6 +144,7 @@ function RootLayoutInner() {
             if (Platform.OS === "android" && KAKAO_NATIVE_APP_KEY) {
                 try {
                     await initializeKakaoSDK(KAKAO_NATIVE_APP_KEY);
+                    kakaoSdkReady = true;
                 } catch (e) {
                     console.error("[Kakao] initializeKakaoSDK 실패:", e);
                 }

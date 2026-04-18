@@ -29,6 +29,7 @@ import { Colors, FontSize, Spacing, BorderRadius, Shadow } from '../../src/const
 import { api, endpoints, BASE_URL } from '../../src/lib/api';
 import { saveAuthToken, saveUserId } from '../../src/lib/mmkv';
 import { AUTH_QUERY_KEY } from '../../src/hooks/useAuth';
+import { kakaoSdkReady } from '../_layout';
 import AppHeader from '../../src/components/AppHeader';
 import StandaloneTabBar from '../../src/components/StandaloneTabBar';
 import { AppleMark, KakaoMark, SOCIAL_MARK_SIZE } from '../../src/components/auth/SocialLoginMarks';
@@ -127,14 +128,24 @@ export default function LoginScreen() {
                     const urlObj = new URL(result.url);
                     const token = urlObj.searchParams.get('token');
                     const userId = urlObj.searchParams.get('userId');
-                    if (token) saveAuthToken(token);
+                    if (!token) {
+                        setError(i18n('authPage.login.errorGeneric'));
+                        return;
+                    }
+                    saveAuthToken(token);
                     if (userId) saveUserId(userId);
                     await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
                     router.replace('/(tabs)');
+                } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
+                    setError(i18n('authPage.login.errorGeneric'));
                 }
             };
 
             if (Platform.OS === 'android' && kakaoNativeLogin) {
+                if (!kakaoSdkReady) {
+                    setError(i18n('authPage.login.errorGeneric'));
+                    return;
+                }
                 console.log("[Kakao] 네이티브 login() 호출 시작");
                 const kakaoToken = await kakaoNativeLogin();
                 console.log("[Kakao] login() 완료, accessToken:", kakaoToken?.accessToken ? "있음" : "없음", "전체 키:", Object.keys(kakaoToken ?? {}));
@@ -158,7 +169,6 @@ export default function LoginScreen() {
                 name: e?.name,
                 isCancel: e?.message?.includes('cancel') || e?.code === 'ECANCEL',
             }));
-            // 사용자가 직접 취소한 경우 에러 표시 안 함
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
                 setError(i18n('authPage.login.errorGeneric'));
             }

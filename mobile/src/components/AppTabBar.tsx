@@ -34,7 +34,7 @@ const TABS: TabConfig[] = [
 const ACTIVE_COLOR = "#059669";
 const INACTIVE_COLOR = "#6b7280";
 
-export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
+function AppTabBarInner({ state, navigation }: BottomTabBarProps) {
     const t = useThemeColors();
     const insets = useSafeAreaInsets();
     const { isAuthenticated } = useAuth();
@@ -126,6 +126,9 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
         </>
     );
 }
+
+const AppTabBar = React.memo(AppTabBarInner);
+export default AppTabBar;
 
 const styles = StyleSheet.create({
     wrapper: {
