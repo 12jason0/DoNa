@@ -7,6 +7,8 @@
  * - Apple: expo-apple-authentication 네이티브
  */
 import React, { useState } from 'react';
+import EyeOnIcon from '../../src/components/icons/EyeOnIcon';
+import EyeOffIcon from '../../src/components/icons/EyeOffIcon';
 import {
     View,
     Text,
@@ -290,7 +292,7 @@ export default function LoginScreen() {
                                     onPress={() => setShowPassword(v => !v)}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
-                                    <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+                                    {showPassword ? <EyeOnIcon /> : <EyeOffIcon />}
                                 </TouchableOpacity>
                             </View>
                         </View>

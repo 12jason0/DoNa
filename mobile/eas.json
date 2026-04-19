@@ -36,7 +36,8 @@
             "env": {
                 "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "@EXPO_PUBLIC_REVENUECAT_API_KEY_IOS",
                 "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "@EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID",
-                "EXPO_PUBLIC_SENTRY_DSN": "@EXPO_PUBLIC_SENTRY_DSN"
+                "EXPO_PUBLIC_SENTRY_DSN": "@EXPO_PUBLIC_SENTRY_DSN",
+                "EXPO_PUBLIC_POSTHOG_API_KEY": "@EXPO_PUBLIC_POSTHOG_API_KEY"
             },
             "android": {
                 "buildType": "app-bundle"
@@ -46,8 +47,8 @@
     "submit": {
         "production": {
             "ios": {
-                "ascApiKeyPath": "/c/Users/12jas/.appstoreconnect/AuthKey_MM9H9CF3K9.p8",
-                "ascApiKeyId": "MM9H9CF3K9",
+                "ascApiKeyPath": "C:\\Users\\12jas\\.appstoreconnect\\AuthKey_VW9Z38T644.p8",
+                "ascApiKeyId": "VW9Z38T644",
                 "ascApiKeyIssuerId": "6362ce0b-3905-44a0-b832-851e44b162c9"
             }
         }
