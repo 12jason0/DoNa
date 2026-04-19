@@ -44,6 +44,12 @@
         }
     },
     "submit": {
-        "production": {}
+        "production": {
+            "ios": {
+                "ascApiKeyPath": "/c/Users/12jas/.appstoreconnect/AuthKey_MM9H9CF3K9.p8",
+                "ascApiKeyId": "MM9H9CF3K9",
+                "ascApiKeyIssuerId": "6362ce0b-3905-44a0-b832-851e44b162c9"
+            }
+        }
     }
 }
