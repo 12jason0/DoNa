@@ -28,6 +28,33 @@ async function naverSearch(name: string) {
     return data.items?.[0] ?? null;
 }
 
+async function fetchNaverPlaceMenuPrices(naverLink: string): Promise<string> {
+    try {
+        const match = naverLink.match(/place\/(\d+)/);
+        if (!match) return "";
+        const placeId = match[1];
+        const res = await fetch(`https://map.naver.com/v5/api/sites/summary/${placeId}?lang=ko`, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                Referer: "https://map.naver.com/",
+            },
+            cache: "no-store",
+        });
+        if (!res.ok) return "";
+        const data = await res.json();
+        const menus: any[] = data?.menus ?? data?.result?.menus ?? [];
+        if (!menus.length) return "";
+        const lines = menus.slice(0, 10).map((m: any) => {
+            const menuName = m.name || m.menu || "";
+            const price = m.price ?? m.cost ?? "";
+            return price ? `${menuName}: ${Number(price).toLocaleString("ko-KR")}원` : menuName;
+        });
+        return lines.filter(Boolean).join(", ");
+    } catch {
+        return "";
+    }
+}
+
 export interface PlaceAutofillResult {
     name: string;
     name_en: string;
@@ -52,6 +79,8 @@ export interface PlaceAutofillResult {
 
 export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResult> {
     const [kakao, naver] = await Promise.all([kakaoSearch(name), naverSearch(name)]);
+    const naverLink = naver?.link || "";
+    const menuPrices = naverLink ? await fetchNaverPlaceMenuPrices(naverLink) : "";
 
     const address = kakao?.road_address_name || kakao?.address_name || naver?.roadAddress || naver?.address || "";
     const phone = naver?.telephone || kakao?.phone || "";
@@ -72,6 +101,7 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
                 "장소명: " + resolvedName,
                 "주소(한국어): " + (address || "정보 없음"),
                 "카테고리: " + (categoryRaw || "정보 없음"),
+                "메뉴/가격 정보: " + (menuPrices || "정보 없음"),
                 "",
                 "다음 JSON 형식으로만 응답하세요 (다른 텍스트 없이):",
                 "{",
@@ -85,7 +115,7 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
                 '  "address_en": "주어진 한국어 주소를 영문으로 변환 (로마자 표기)",',
                 '  "address_ja": "주어진 한국어 주소를 일본어로 번역",',
                 '  "address_zh": "주어진 한국어 주소를 중국어로 번역",',
-                '  "avg_cost_range": "1인 기준 가격대, 숫자+쉼표 형식으로 (예: 10,000 - 20,000 / 30,000 - 50,000)",',
+                '  "avg_cost_range": "위 메뉴/가격 정보를 참고해 1인 기준 최소~최대 가격대를 숫자+쉼표 형식으로 (예: 10,000 - 20,000). 정보 없으면 카테고리 기반으로 추정",',
                 '  "reservation_required": false',
                 "}",
                 "",
