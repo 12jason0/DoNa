@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
                     description_zh: autofillData.description_zh || null,
                     category: autofillData.category || null,
                     avg_cost_range: autofillData.avg_cost_range || null,
+                    opening_hours: autofillData.opening_hours || null,
                     phone: autofillData.phone || null,
                     website: autofillData.website || null,
                     reservation_required: autofillData.reservation_required ?? false,

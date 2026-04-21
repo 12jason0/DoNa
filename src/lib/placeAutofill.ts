@@ -28,10 +28,12 @@ async function naverSearch(name: string) {
     return data.items?.[0] ?? null;
 }
 
-async function fetchNaverPlaceMenuPrices(naverLink: string): Promise<string> {
+const DAY_ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+async function fetchNaverPlaceData(naverLink: string): Promise<{ menuPrices: string; openingHours: string }> {
     try {
         const match = naverLink.match(/place\/(\d+)/);
-        if (!match) return "";
+        if (!match) return { menuPrices: "", openingHours: "" };
         const placeId = match[1];
         const res = await fetch(`https://map.naver.com/v5/api/sites/summary/${placeId}?lang=ko`, {
             headers: {
@@ -40,19 +42,61 @@ async function fetchNaverPlaceMenuPrices(naverLink: string): Promise<string> {
             },
             cache: "no-store",
         });
-        if (!res.ok) return "";
+        if (!res.ok) return { menuPrices: "", openingHours: "" };
         const data = await res.json();
+
+        // 메뉴 가격
         const menus: any[] = data?.menus ?? data?.result?.menus ?? [];
-        if (!menus.length) return "";
-        const lines = menus.slice(0, 10).map((m: any) => {
+        const menuPrices = menus.slice(0, 10).map((m: any) => {
             const menuName = m.name || m.menu || "";
             const price = m.price ?? m.cost ?? "";
             return price ? `${menuName}: ${Number(price).toLocaleString("ko-KR")}원` : menuName;
-        });
-        return lines.filter(Boolean).join(", ");
+        }).filter(Boolean).join(", ");
+
+        // 영업시간
+        const bizHours: any[] = data?.businessHours ?? data?.result?.businessHours ?? [];
+        let openingHours = "";
+        if (bizHours.length > 0) {
+            const sorted = [...bizHours].sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day));
+            const dayMap: Record<string, string> = { MON: "월", TUE: "화", WED: "수", THU: "목", FRI: "금", SAT: "토", SUN: "일" };
+            const lines = sorted.map((bh: any) => {
+                const hours: any[] = bh.businessHours ?? bh.hours ?? [];
+                if (!hours.length) return null;
+                const timeStr = hours.map((h: any) => `${h.startTime ?? h.start ?? ""}-${h.endTime ?? h.end ?? ""}`).join(", ");
+                const day = dayMap[bh.day] ?? bh.day;
+                return `${day} ${timeStr}`;
+            }).filter(Boolean);
+
+            // 연속된 같은 시간대 압축: 월-금 11:40-21:20
+            const compressed = compressHours(sorted, dayMap);
+            openingHours = compressed || lines.join(" / ");
+        }
+
+        return { menuPrices, openingHours };
     } catch {
-        return "";
+        return { menuPrices: "", openingHours: "" };
     }
+}
+
+function compressHours(sorted: any[], dayMap: Record<string, string>): string {
+    if (!sorted.length) return "";
+    const groups: { days: string[]; time: string }[] = [];
+    for (const bh of sorted) {
+        const hours: any[] = bh.businessHours ?? bh.hours ?? [];
+        if (!hours.length) continue;
+        const timeStr = hours.map((h: any) => `${h.startTime ?? h.start ?? ""}-${h.endTime ?? h.end ?? ""}`).join(", ");
+        const last = groups[groups.length - 1];
+        if (last && last.time === timeStr) {
+            last.days.push(bh.day);
+        } else {
+            groups.push({ days: [bh.day], time: timeStr });
+        }
+    }
+    return groups.map((g) => {
+        const dayLabels = g.days.map((d) => dayMap[d] ?? d);
+        const dayStr = dayLabels.length > 2 ? `${dayLabels[0]}-${dayLabels[dayLabels.length - 1]}` : dayLabels.join(", ");
+        return `${dayStr} ${g.time}`;
+    }).join(" / ");
 }
 
 export interface PlaceAutofillResult {
@@ -69,6 +113,7 @@ export interface PlaceAutofillResult {
     latitude: number | null;
     longitude: number | null;
     category: string;
+    opening_hours: string;
     description: string;
     description_en: string;
     description_ja: string;
@@ -80,7 +125,7 @@ export interface PlaceAutofillResult {
 export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResult> {
     const [kakao, naver] = await Promise.all([kakaoSearch(name), naverSearch(name)]);
     const naverLink = naver?.link || "";
-    const menuPrices = naverLink ? await fetchNaverPlaceMenuPrices(naverLink) : "";
+    const { menuPrices, openingHours } = naverLink ? await fetchNaverPlaceData(naverLink) : { menuPrices: "", openingHours: "" };
 
     const address = kakao?.road_address_name || kakao?.address_name || naver?.roadAddress || naver?.address || "";
     const phone = naver?.telephone || kakao?.phone || "";
@@ -155,6 +200,7 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
         latitude,
         longitude,
         category,
+        opening_hours: openingHours,
         description: aiData.description || "",
         description_en: aiData.description_en || "",
         description_ja: aiData.description_ja || "",
