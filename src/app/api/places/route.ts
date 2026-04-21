@@ -26,9 +26,15 @@ export async function GET(request: NextRequest) {
             const maxLng = searchParams.get("maxLng");
 
             // 검색 조건 구성
+            const statusFilter = searchParams.get("status");
             const whereClause: any = {};
             if (searchQuery) {
                 whereClause.name = { contains: searchQuery, mode: "insensitive" };
+            }
+            if (statusFilter) {
+                whereClause.status = statusFilter;
+            } else if (!searchParams.get("include_drafts")) {
+                whereClause.status = { not: "draft" };
             }
             
             // 🟢 지도 영역 필터링 추가
@@ -203,18 +209,25 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const {
             name,
+            name_en,
+            name_ja,
+            name_zh,
             address,
             address_en,
             address_ja,
             address_zh,
             description,
+            description_en,
+            description_ja,
+            description_zh,
             category,
             avg_cost_range,
             opening_hours,
             phone,
             website,
-            parking_available,
             reservation_required,
+            reservationUrl,
+            parking_available,
             latitude,
             longitude,
             imageUrl,
@@ -251,15 +264,24 @@ export async function POST(request: NextRequest) {
         const created = await (prisma as any).place.create({
             data: {
                 name,
+                name_en: name_en || null,
+                name_ja: name_ja || null,
+                name_zh: name_zh || null,
                 address: address || null,
                 address_en: address_en || null,
                 address_ja: address_ja || null,
                 address_zh: address_zh || null,
                 description: description || null,
+                description_en: description_en || null,
+                description_ja: description_ja || null,
+                description_zh: description_zh || null,
                 category: category || null,
                 avg_cost_range: avg_cost_range || null,
                 opening_hours: opening_hours || null,
                 phone: phone || null,
+                website: website || null,
+                reservation_required: typeof reservation_required === "boolean" ? reservation_required : false,
+                reservationUrl: reservationUrl || null,
                 parking_available: typeof parking_available === "boolean" ? parking_available : false,
                 latitude: latitude ?? null,
                 longitude: longitude ?? null,

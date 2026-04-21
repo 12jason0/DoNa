@@ -239,6 +239,7 @@ model Place {
   latitude             Float?
   longitude            Float?
   imageUrl             String?          @db.VarChar(500)
+  status               String           @default("published") @db.VarChar(20)
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
   tags                 Json?
