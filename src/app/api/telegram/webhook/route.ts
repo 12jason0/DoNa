@@ -125,6 +125,17 @@ export async function POST(request: NextRequest) {
                 select: { id: true, name: true },
             });
 
+            if (autofillData.closed_days?.length > 0) {
+                await (prisma as any).placeClosedDay.createMany({
+                    data: autofillData.closed_days.map((d: { day_of_week: number; note: string | null }) => ({
+                        place_id: saved.id,
+                        day_of_week: d.day_of_week,
+                        specific_date: null,
+                        note: d.note || null,
+                    })),
+                });
+            }
+
             await sendMessage(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}\n집에서 admin 페이지에서 확인·수정 후 발행하세요.`);
             return NextResponse.json({ ok: true });
         }

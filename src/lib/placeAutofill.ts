@@ -28,12 +28,23 @@ async function naverSearch(name: string) {
     return data.items?.[0] ?? null;
 }
 
-const DAY_ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+// Naver day → day_of_week (0=일, 1=월 ... 6=토)
+const NAV_DAY_TO_DOW: Record<string, number> = {
+    SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6,
+};
+const ALL_NAV_DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
-async function fetchNaverPlaceData(naverLink: string): Promise<{ menuPrices: string; openingHours: string }> {
+interface NaverPlaceData {
+    menuPrices: string;
+    openingHours: string;
+    closedDays: { day_of_week: number; note: string | null }[];
+}
+
+async function fetchNaverPlaceData(naverLink: string): Promise<NaverPlaceData> {
+    const empty: NaverPlaceData = { menuPrices: "", openingHours: "", closedDays: [] };
     try {
         const match = naverLink.match(/place\/(\d+)/);
-        if (!match) return { menuPrices: "", openingHours: "" };
+        if (!match) return empty;
         const placeId = match[1];
         const res = await fetch(`https://map.naver.com/v5/api/sites/summary/${placeId}?lang=ko`, {
             headers: {
@@ -42,7 +53,7 @@ async function fetchNaverPlaceData(naverLink: string): Promise<{ menuPrices: str
             },
             cache: "no-store",
         });
-        if (!res.ok) return { menuPrices: "", openingHours: "" };
+        if (!res.ok) return empty;
         const data = await res.json();
 
         // 메뉴 가격
@@ -53,50 +64,37 @@ async function fetchNaverPlaceData(naverLink: string): Promise<{ menuPrices: str
             return price ? `${menuName}: ${Number(price).toLocaleString("ko-KR")}원` : menuName;
         }).filter(Boolean).join(", ");
 
-        // 영업시간
+        // 영업시간 & 휴무일
         const bizHours: any[] = data?.businessHours ?? data?.result?.businessHours ?? [];
+
+        // 각 요일별 시간 문자열 추출
+        const openDayTimes: Record<string, string> = {};
+        for (const bh of bizHours) {
+            const hours: any[] = bh.businessHours ?? bh.hours ?? [];
+            if (!hours.length) continue;
+            const timeStr = hours
+                .map((h: any) => `${h.startTime ?? h.start ?? ""}-${h.endTime ?? h.end ?? ""}`)
+                .join(", ");
+            if (timeStr) openDayTimes[bh.day] = timeStr;
+        }
+
+        // 대표 영업시간: 가장 많이 등장하는 시간대
         let openingHours = "";
-        if (bizHours.length > 0) {
-            const sorted = [...bizHours].sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day));
-            const dayMap: Record<string, string> = { MON: "월", TUE: "화", WED: "수", THU: "목", FRI: "금", SAT: "토", SUN: "일" };
-            const lines = sorted.map((bh: any) => {
-                const hours: any[] = bh.businessHours ?? bh.hours ?? [];
-                if (!hours.length) return null;
-                const timeStr = hours.map((h: any) => `${h.startTime ?? h.start ?? ""}-${h.endTime ?? h.end ?? ""}`).join(", ");
-                const day = dayMap[bh.day] ?? bh.day;
-                return `${day} ${timeStr}`;
-            }).filter(Boolean);
-
-            // 연속된 같은 시간대 압축: 월-금 11:40-21:20
-            const compressed = compressHours(sorted, dayMap);
-            openingHours = compressed || lines.join(" / ");
+        if (Object.keys(openDayTimes).length > 0) {
+            const freq: Record<string, number> = {};
+            for (const t of Object.values(openDayTimes)) freq[t] = (freq[t] ?? 0) + 1;
+            openingHours = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
         }
 
-        return { menuPrices, openingHours };
+        // 휴무일: 7일 중 영업시간 없는 요일
+        const closedDays = ALL_NAV_DAYS
+            .filter((d) => !openDayTimes[d])
+            .map((d) => ({ day_of_week: NAV_DAY_TO_DOW[d], note: null }));
+
+        return { menuPrices, openingHours, closedDays };
     } catch {
-        return { menuPrices: "", openingHours: "" };
+        return empty;
     }
-}
-
-function compressHours(sorted: any[], dayMap: Record<string, string>): string {
-    if (!sorted.length) return "";
-    const groups: { days: string[]; time: string }[] = [];
-    for (const bh of sorted) {
-        const hours: any[] = bh.businessHours ?? bh.hours ?? [];
-        if (!hours.length) continue;
-        const timeStr = hours.map((h: any) => `${h.startTime ?? h.start ?? ""}-${h.endTime ?? h.end ?? ""}`).join(", ");
-        const last = groups[groups.length - 1];
-        if (last && last.time === timeStr) {
-            last.days.push(bh.day);
-        } else {
-            groups.push({ days: [bh.day], time: timeStr });
-        }
-    }
-    return groups.map((g) => {
-        const dayLabels = g.days.map((d) => dayMap[d] ?? d);
-        const dayStr = dayLabels.length > 2 ? `${dayLabels[0]}-${dayLabels[dayLabels.length - 1]}` : dayLabels.join(", ");
-        return `${dayStr} ${g.time}`;
-    }).join(" / ");
 }
 
 export interface PlaceAutofillResult {
@@ -114,6 +112,7 @@ export interface PlaceAutofillResult {
     longitude: number | null;
     category: string;
     opening_hours: string;
+    closed_days: { day_of_week: number; note: string | null }[];
     description: string;
     description_en: string;
     description_ja: string;
@@ -125,7 +124,9 @@ export interface PlaceAutofillResult {
 export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResult> {
     const [kakao, naver] = await Promise.all([kakaoSearch(name), naverSearch(name)]);
     const naverLink = naver?.link || "";
-    const { menuPrices, openingHours } = naverLink ? await fetchNaverPlaceData(naverLink) : { menuPrices: "", openingHours: "" };
+    const { menuPrices, openingHours, closedDays } = naverLink
+        ? await fetchNaverPlaceData(naverLink)
+        : { menuPrices: "", openingHours: "", closedDays: [] };
 
     const address = kakao?.road_address_name || kakao?.address_name || naver?.roadAddress || naver?.address || "";
     const phone = naver?.telephone || kakao?.phone || "";
@@ -201,6 +202,7 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
         longitude,
         category,
         opening_hours: openingHours,
+        closed_days: closedDays,
         description: aiData.description || "",
         description_en: aiData.description_en || "",
         description_ja: aiData.description_ja || "",
