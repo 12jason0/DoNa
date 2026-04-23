@@ -237,7 +237,7 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             const target = deferredConcept.trim().toLowerCase();
             filtered = courses.filter((c) => {
                 const concept = c.concept || "";
-                return concept.trim().toLowerCase() === target;
+                return concept.split(",").some((c) => c.trim().toLowerCase() === target);
             });
         }
         return [...filtered].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
