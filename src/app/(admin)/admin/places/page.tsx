@@ -379,13 +379,27 @@ export default function AdminPlacesPage() {
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-600">카테고리</label>
-                            <input
+                            <select
                                 name="category"
-                                placeholder="예: 카페, 식당"
                                 value={formData.category || ""}
                                 onChange={handleInputChange}
-                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                            />
+                                className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                            >
+                                <option value="">선택하세요</option>
+                                <option value="음식점">음식점</option>
+                                <option value="카페">카페</option>
+                                <option value="주점">주점</option>
+                                <option value="쇼핑">쇼핑</option>
+                                <option value="실내명소">실내명소</option>
+                                <option value="야외명소">야외명소</option>
+                                <option value="이색데이트">이색데이트</option>
+                                <option value="액티비티">액티비티</option>
+                                <option value="사진관">사진관</option>
+                                <option value="향수">향수</option>
+                                <option value="야경">야경</option>
+                                <option value="식물원">식물원</option>
+                                <option value="시장">시장</option>
+                            </select>
                         </div>
                         <div className="space-y-1 md:col-span-2">
                             <label className="text-sm font-medium text-gray-600">주소 (한국어)</label>

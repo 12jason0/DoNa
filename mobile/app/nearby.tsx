@@ -371,11 +371,14 @@ export default function NearbyScreen() {
     const courses = useMemo(() => {
         const raw = data?.pages.flat() ?? [];
         return raw.filter((course) => {
-            const courseConcept = String((course as any).concept ?? "");
+            const courseConceptList = [
+                (course as any).concept ?? "",
+                ...((course as any).tags?.concept ?? []),
+            ].map((v) => String(v ?? "").trim()).filter(Boolean);
             const courseSituationRaw = String((course as any).target_situation ?? (course as any).situation ?? "");
             const normalizedSituation = courseSituationRaw === "SOME" ? "썸탈 때" : courseSituationRaw;
             const courseMood = String((course as any).mood ?? (course as any).atmosphere ?? "");
-            const conceptOk = selectedConcepts.length === 0 || selectedConcepts.some((c) => courseConcept.includes(c));
+            const conceptOk = selectedConcepts.length === 0 || selectedConcepts.some((c) => courseConceptList.some((cc) => cc.includes(c)));
             const situationOk =
                 selectedSituations.length === 0 ||
                 selectedSituations.some((situation) => normalizedSituation.includes(situation));

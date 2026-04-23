@@ -19,8 +19,7 @@ const SUGGESTION_SELECT = {
     imageUrl: true,
     status: true,
     createdAt: true,
-    course: { select: { id: true, title: true } },
-    user: { select: { id: true, nickname: true, email: true } },
+    user: { select: { id: true, username: true, email: true } },
 } as const;
 
 export async function PATCH(
@@ -56,21 +55,12 @@ export async function PATCH(
             }
             data.status = body.status;
         }
-        if (body?.courseId === null || body?.courseId === "") {
-            data.courseId = null;
-        } else if (typeof body?.courseId === "number" || typeof body?.courseId === "string") {
-            const courseId = Number(body.courseId);
-            if (!Number.isFinite(courseId) || courseId <= 0) {
-                return NextResponse.json({ error: "유효하지 않은 코스 ID입니다." }, { status: 400 });
-            }
-            data.courseId = courseId;
-        }
 
         if (Object.keys(data).length === 0) {
             return NextResponse.json({ error: "수정할 값이 없습니다." }, { status: 400 });
         }
 
-        // PUBLISHED로 변경 시 courses 테이블에 자동 등록
+        // 승인 시 places 테이블에 draft로 장소 생성
         if (data.status === "PUBLISHED") {
             const current = await (prisma as any).courseSuggestion.findUnique({
                 where: { id },
@@ -81,7 +71,6 @@ export async function PATCH(
                     description: true,
                     concept: true,
                     imageUrl: true,
-                    courseId: true,
                 },
             });
 
@@ -89,20 +78,16 @@ export async function PATCH(
                 return NextResponse.json({ error: "제보를 찾을 수 없습니다." }, { status: 404 });
             }
 
-            // 아직 courses에 등록되지 않은 경우에만 생성
-            if (!current.courseId && !data.courseId) {
-                const newCourse = await (prisma as any).course.create({
-                    data: {
-                        title: current.placeName,
-                        description: (data.description as string | null) ?? current.description ?? null,
-                        imageUrl: (data.imageUrl as string | null) ?? current.imageUrl ?? null,
-                        concept: (data.concept as string | null) ?? current.concept ?? null,
-                        isPublic: false, // 관리자가 코스 상세 채운 뒤 직접 공개
-                    },
-                    select: { id: true },
-                });
-                data.courseId = newCourse.id;
-            }
+            await (prisma as any).place.create({
+                data: {
+                    name: current.placeName,
+                    address: (data.placeAddress as string | null) ?? current.placeAddress ?? null,
+                    description: (data.description as string | null) ?? current.description ?? null,
+                    category: (data.concept as string | null) ?? current.concept ?? null,
+                    imageUrl: (data.imageUrl as string | null) ?? current.imageUrl ?? null,
+                    status: "draft",
+                },
+            });
         }
 
         const suggestion = await (prisma as any).courseSuggestion.update({
@@ -111,12 +96,20 @@ export async function PATCH(
             select: { ...SUGGESTION_SELECT, userId: true },
         });
 
-        // PUBLISHED로 바뀐 경우 해당 유저에게 알림
         if (data.status === "PUBLISHED") {
             sendPushToUser(
                 suggestion.userId,
-                "제보하신 장소가 코스로 등록됐어요! 🎉",
-                `${suggestion.placeName} 장소가 DoNa 코스로 만들어졌어요. 지금 확인해보세요!`,
+                "제보하신 장소가 등록됐어요! 🎉",
+                `${suggestion.placeName} 장소를 DoNa 코스로 만들고 있어요. 조금만 기다려주세요!`,
+                { screen: "home", url: "/" },
+            ).catch(() => {});
+        }
+
+        if (data.status === "REJECTED") {
+            sendPushToUser(
+                suggestion.userId,
+                "장소 제보 결과 안내",
+                `아쉽게도 ${suggestion.placeName} 장소는 이번에 등록이 어려웠어요. 다음에 또 좋은 장소 제보해주세요!`,
                 { screen: "home", url: "/" },
             ).catch(() => {});
         }

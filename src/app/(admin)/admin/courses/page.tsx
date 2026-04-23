@@ -221,12 +221,8 @@ type AdminSuggestion = {
     createdAt: string;
     user?: {
         id: number;
-        nickname?: string | null;
+        username?: string | null;
         email?: string | null;
-    } | null;
-    course?: {
-        id: number;
-        title: string;
     } | null;
 };
 
@@ -352,6 +348,25 @@ export default function AdminCoursesPage() {
             setSuggestions([]);
         } finally {
             setSuggestionsLoading(false);
+        }
+    };
+
+    const updateSuggestionStatus = async (id: number, status: "PUBLISHED" | "REJECTED") => {
+        try {
+            const res = await fetch(`/api/admin/course-suggestions/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ status }),
+            });
+            if (!res.ok) throw new Error("상태 변경 실패");
+            const data = await res.json();
+            setSuggestions((prev) =>
+                prev.map((s) => (s.id === id ? { ...s, status } : s)),
+            );
+        } catch (e) {
+            alert("상태 변경 중 오류가 발생했습니다.");
+            console.error(e);
         }
     };
 
@@ -591,37 +606,6 @@ export default function AdminCoursesPage() {
         ).slice(0, MAX_CONCEPT_COUNT);
     };
 
-    /** 컨셉: 입력 중에는 raw string 유지, blur 시 정규화. course.concept는 첫 번째를 대표값으로 저장 */
-    const handleConceptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setFormData((prev) => {
-            const currentTags = prev.tags || INITIAL_TAGS;
-            const concepts = parseConcepts(value);
-            return {
-                ...prev,
-                concept: value, // 입력 중에는 raw 그대로 유지 (쉼표 날아가지 않게)
-                tags: {
-                    ...currentTags,
-                    concept: concepts as ConceptTag[],
-                },
-            };
-        });
-    };
-
-    const handleConceptBlur = () => {
-        setFormData((prev) => {
-            const concepts = parseConcepts(prev.concept || "");
-            const currentTags = prev.tags || INITIAL_TAGS;
-            return {
-                ...prev,
-                concept: concepts.join(", "), // blur 시에만 정규화
-                tags: {
-                    ...currentTags,
-                    concept: concepts as ConceptTag[],
-                },
-            };
-        });
-    };
 
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
@@ -639,7 +623,10 @@ export default function AdminCoursesPage() {
             } else {
                 newCategoryTags = [...categoryTags, tag];
             }
-            return { ...prev, tags: { ...currentTags, [category]: newCategoryTags } };
+            const newTags = { ...currentTags, [category]: newCategoryTags };
+            // concept 선택 시 formData.concept(대표값)도 동기화
+            const extra = category === "concept" ? { concept: newCategoryTags.join(", ") } : {};
+            return { ...prev, tags: newTags, ...extra };
         });
     };
 
@@ -1096,8 +1083,8 @@ export default function AdminCoursesPage() {
                                     <th className="py-1 pr-3">장소</th>
                                     <th className="py-1 pr-3">설명</th>
                                     <th className="py-1 pr-3">제보자</th>
-                                    <th className="py-1 pr-3">생성 코스</th>
-                                    <th className="py-1">접수일</th>
+                                    <th className="py-1 pr-3">접수일</th>
+                                    <th className="py-1">액션</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1130,23 +1117,32 @@ export default function AdminCoursesPage() {
                                                 )}
                                             </td>
                                             <td className="py-2 pr-3 text-gray-700">
-                                                {s.user?.nickname || s.user?.email || `#${s.user?.id ?? "-"}`}
+                                                {s.user?.username || s.user?.email || `#${s.user?.id ?? "-"}`}
                                             </td>
-                                            <td className="py-2 pr-3">
-                                                {s.course?.id ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => startEdit({ id: s.course!.id } as Course)}
-                                                        className="text-green-700 hover:underline"
-                                                    >
-                                                        {s.course.title}
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-gray-400">-</span>
-                                                )}
-                                            </td>
-                                            <td className="py-2 text-gray-500">
+                                            <td className="py-2 pr-3 text-gray-500 text-xs">
                                                 {new Date(s.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="py-2">
+                                                {s.status === "PENDING" ? (
+                                                    <div className="flex gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateSuggestionStatus(s.id, "PUBLISHED")}
+                                                            className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                                                        >
+                                                            승인
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateSuggestionStatus(s.id, "REJECTED")}
+                                                            className="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-300"
+                                                        >
+                                                            거절
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-300 text-xs">—</span>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -1197,40 +1193,52 @@ export default function AdminCoursesPage() {
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-gray-600">지역</label>
-                                <input
+                                <select
                                     name="region"
-                                    list="admin-course-region-options"
                                     value={formData.region || ""}
                                     onChange={handleInputChange}
-                                    placeholder="예: 홍대, 홍대/신촌, 마포"
-                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                />
-                                <datalist id="admin-course-region-options">
-                                    {regionOptions.map((region) => (
-                                        <option key={region} value={region} />
+                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                                >
+                                    <option value="">선택하세요</option>
+                                    {REGION_OPTIONS.map((region) => (
+                                        <option key={region} value={region}>{region}</option>
                                     ))}
-                                </datalist>
+                                </select>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-600">컨셉 (Concept)</label>
-                                <input
-                                    name="concept"
-                                    list="admin-course-concept-options"
-                                    placeholder="쉼표(,)로 최대 5개 입력 (예: 감성데이트, 야경, 힐링)"
-                                    value={formData.concept || ""}
-                                    onChange={handleConceptChange}
-                                    onBlur={handleConceptBlur}
-                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                />
-                                <datalist id="admin-course-concept-options">
-                                    {conceptOptions.map((c) => (
-                                        <option key={c} value={c} />
-                                    ))}
-                                </datalist>
-                                <p className="text-xs text-gray-500">
-                                    최대 {MAX_CONCEPT_COUNT}개까지 저장됩니다. 첫 번째 값이 대표{" "}
-                                    <code className="text-[11px]">course.concept</code>로 저장되고, 전체는{" "}
-                                    <code className="text-[11px]">tags.concept</code>에 저장됩니다.
+                            <div className="space-y-1 md:col-span-2">
+                                <label className="text-sm font-medium text-gray-600">
+                                    컨셉 (최대 {MAX_CONCEPT_COUNT}개)
+                                    {(formData.tags?.concept ?? []).length > 0 && (
+                                        <span className="ml-2 text-emerald-600 font-normal">
+                                            선택됨: {(formData.tags?.concept ?? []).join(", ")}
+                                        </span>
+                                    )}
+                                </label>
+                                <div className="flex flex-wrap gap-2 p-3 border rounded bg-gray-50">
+                                    {CONCEPT_OPTIONS.map((tag) => {
+                                        const selected = (formData.tags?.concept ?? []).includes(tag as ConceptTag);
+                                        const atMax = (formData.tags?.concept ?? []).length >= MAX_CONCEPT_COUNT;
+                                        return (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => toggleArrayTag("concept", tag)}
+                                                disabled={!selected && atMax}
+                                                className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                                                    selected
+                                                        ? "bg-emerald-600 text-white border-emerald-600"
+                                                        : atMax
+                                                          ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                          : "bg-white text-gray-700 border-gray-300 hover:border-emerald-400"
+                                                }`}
+                                            >
+                                                {tag}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-xs text-gray-400">
+                                    첫 번째 선택값이 대표 <code className="text-[11px]">course.concept</code>로 저장됩니다.
                                 </p>
                             </div>
                             <div className="space-y-1">
