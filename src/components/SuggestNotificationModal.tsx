@@ -53,9 +53,10 @@ export default function SuggestNotificationModal({ onClose }: Props) {
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl px-5 py-4 space-y-2.5">
-                    {(["PENDING", "PUBLISHED", "REJECTED"] as const).map((status) => {
+                    {(["PENDING", "ACCEPTED", "PUBLISHED", "REJECTED"] as const).map((status) => {
                         const dot: Record<string, string> = {
                             PENDING: "bg-amber-400",
+                            ACCEPTED: "bg-blue-400",
                             PUBLISHED: "bg-emerald-400",
                             REJECTED: "bg-slate-400",
                         };

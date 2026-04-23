@@ -209,7 +209,7 @@ export default function MemoryCTA({
                                 }}
                             >
                                 {/* 이미지 영역 (3:2 비율: 풍경/데이트 코스에 안정적) */}
-                                <div className="relative w-full aspect-3/4 bg-gray-200 dark:bg-gray-800">
+                                <div className="relative w-full aspect-[3/4] bg-gray-200 dark:bg-gray-800">
                                     {memory.imageUrl ? (
                                         <Image
                                             src={memory.imageUrl}

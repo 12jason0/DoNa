@@ -204,7 +204,7 @@ const CourseCard = memo(
                 )}
 
                 {/* 이미지 섹션 */}
-                <div className="relative w-full aspect-4/3 rounded-[20px] overflow-hidden bg-gray-100 dark:bg-gray-800 mb-3 shadow-sm border border-gray-100 dark:border-transparent">
+                <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-gray-100 dark:bg-gray-800 mb-3 shadow-sm border border-gray-100 dark:border-transparent">
                     {course.imageUrl ? (
                         <Image
                             src={course.imageUrl}

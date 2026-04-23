@@ -18,6 +18,7 @@ export default function SuggestCoursePage() {
     ] as const;
 
     const [placeName, setPlaceName] = useState("");
+    const [locationHint, setLocationHint] = useState("");
     const [concept, setConcept] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
@@ -37,6 +38,7 @@ export default function SuggestCoursePage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     placeName: placeName.trim(),
+                    placeAddress: locationHint.trim() || undefined,
                     concept: concept || undefined,
                 }),
             });
@@ -98,6 +100,19 @@ export default function SuggestCoursePage() {
                             onChange={(e) => setPlaceName(e.target.value)}
                             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#7FCC9F] transition-colors"
                             placeholder={t("suggest.placeholderPlaceNameSimple")}
+                        />
+                    </div>
+
+                    {/* 대략적인 위치 */}
+                    <div className="px-5 py-4 space-y-1.5">
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            {t("suggest.labelLocationHint")}
+                        </label>
+                        <input
+                            value={locationHint}
+                            onChange={(e) => setLocationHint(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#7FCC9F] transition-colors"
+                            placeholder={t("suggest.placeholderLocationHint")}
                         />
                     </div>
 

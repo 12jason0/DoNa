@@ -35,6 +35,7 @@ export default function SuggestScreen() {
     const { isAuthenticated } = useAuth();
 
     const [placeName, setPlaceName] = useState("");
+    const [locationHint, setLocationHint] = useState("");
     const [concept, setConcept] = useState<ConceptKey | "">("");
     const [submitting, setSubmitting] = useState(false);
 
@@ -49,6 +50,7 @@ export default function SuggestScreen() {
                 method: "POST",
                 body: {
                     placeName: placeName.trim(),
+                    placeAddress: locationHint.trim() || undefined,
                     concept: concept || undefined,
                 },
             });
@@ -117,6 +119,18 @@ export default function SuggestScreen() {
                         value={placeName}
                         onChangeText={setPlaceName}
                         placeholder={t("suggest.placeholderPlaceNameSimple")}
+                        placeholderTextColor={tc.textMuted}
+                        style={[styles.input, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
+                    />
+                </View>
+
+                {/* 대략적인 위치 */}
+                <View style={[styles.card, { backgroundColor: tc.card, borderColor: tc.border }]}>
+                    <Text style={[styles.label, { color: tc.text }]}>{t("suggest.labelLocationHint")}</Text>
+                    <TextInput
+                        value={locationHint}
+                        onChangeText={setLocationHint}
+                        placeholder={t("suggest.placeholderLocationHint")}
                         placeholderTextColor={tc.textMuted}
                         style={[styles.input, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
                     />

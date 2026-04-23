@@ -72,7 +72,8 @@
             "suggestBtn": "장소 제보하기",
             "status": {
                 "PENDING": "검토 중",
-                "PUBLISHED": "등록 완료",
+                "ACCEPTED": "진행 중",
+                "PUBLISHED": "완료",
                 "REJECTED": "미선정"
             }
         }
@@ -1722,12 +1723,15 @@
         "addPhoto": "사진 추가",
         "labelDescriptionSimple": "설명",
         "placeholderDescriptionSimple": "이 장소만의 특별한 점을 알려주세요",
+        "labelLocationHint": "대략적인 위치 (선택)",
+        "placeholderLocationHint": "예) 홍대 근처, 강남역 2번 출구 앞",
         "labelConceptSimple": "원하는 컨셉 (선택)",
         "placeholderConceptSimple": "예) 감성 카페, 뷰 맛집, 조용한 분위기",
         "uploadingPhoto": "사진 업로드 중...",
         "photoError": "사진 업로드에 실패했어요. 다시 시도해주세요.",
         "modalStatusHint": {
             "PENDING": "제보를 받아 검토 중이에요",
+            "ACCEPTED": "장소를 확인했어요! 코스로 만들고 있어요",
             "PUBLISHED": "코스로 만들어 앱에 공개됐어요",
             "REJECTED": "이번엔 아쉽지만 다음에 또 제보해 주세요"
         }

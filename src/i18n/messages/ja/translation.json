@@ -80,7 +80,8 @@
       "suggestBtn": "場所を提案する",
       "status": {
         "PENDING": "審査中",
-        "PUBLISHED": "公開済み",
+        "ACCEPTED": "進行中",
+        "PUBLISHED": "完了",
         "REJECTED": "非選定"
       }
     }
@@ -1863,12 +1864,15 @@
     "addPhoto": "写真を追加",
     "labelDescriptionSimple": "説明",
     "placeholderDescriptionSimple": "この場所ならではの特別な点を教えてください",
+    "labelLocationHint": "おおよその場所（任意）",
+    "placeholderLocationHint": "例）弘大近く、江南駅2番出口付近",
     "labelConceptSimple": "希望のコンセプト（任意）",
     "placeholderConceptSimple": "例）おしゃれカフェ、絶景スポット、静かな雰囲気",
     "uploadingPhoto": "写真をアップロード中...",
     "photoError": "写真のアップロードに失敗しました。もう一度お試しください。",
     "modalStatusHint": {
       "PENDING": "提案を受け取り、審査中です。",
+      "ACCEPTED": "場所を確認しました！コースを作成中です。",
       "PUBLISHED": "コースとしてアプリに公開されました。",
       "REJECTED": "今回は見送りでした。またのご提案をお待ちしています。"
     }

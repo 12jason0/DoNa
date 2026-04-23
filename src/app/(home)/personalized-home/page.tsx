@@ -1020,7 +1020,7 @@ const AIRecommender = () => {
                     >
                         {/* 잠금 코스만: /courses 페이지처럼 이미지 + CourseLockOverlay */}
                         {isLocked && (
-                            <div className="relative w-full aspect-4/3 shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
                                 {(() => {
                                     const displayImageUrl =
                                         course.imageUrl?.trim() ||

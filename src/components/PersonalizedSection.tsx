@@ -294,7 +294,7 @@ export default function PersonalizedSection({ initialCourses }: { initialCourses
                 </div>
                 <HorizontalScrollContainer className="flex overflow-x-auto gap-4 scrollbar-hide pb-4 -mx-4 px-4">
                     {[1, 2, 3].map((n) => (
-                        <div key={n} className="shrink-0 w-[200px] aspect-3/4 bg-gray-100 rounded-xl animate-pulse" />
+                        <div key={n} className="shrink-0 w-[200px] aspect-[3/4] bg-gray-100 rounded-xl animate-pulse" />
                     ))}
                 </HorizontalScrollContainer>
             </section>

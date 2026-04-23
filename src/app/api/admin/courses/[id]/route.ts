@@ -202,20 +202,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // 코스 공개 시 제보자 알림
         if (isPublic === true) {
             const coursePlaces = await (prisma as any).coursePlace.findMany({
-                where: { courseId },
-                select: { placeId: true },
+                where: { course_id: courseId },
+                select: { place_id: true },
             });
-            const placeIds = coursePlaces.map((cp: any) => cp.placeId);
+            const placeIds = coursePlaces.map((cp: any) => cp.place_id);
 
             if (placeIds.length > 0) {
-                const suggestions = await (prisma as any).courseSuggestion.findMany({
-                    where: {
-                        status: "PUBLISHED",
-                        place: { id: { in: placeIds } },
-                    },
-                    select: { userId: true },
-                });
-
                 // suggestion_id로 직접 찾기 (place.suggestion_id 활용)
                 const places = await (prisma as any).place.findMany({
                     where: { id: { in: placeIds }, suggestion_id: { not: null } },
@@ -226,9 +218,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 if (suggestionIds.length > 0) {
                     const relatedSuggestions = await (prisma as any).courseSuggestion.findMany({
                         where: { id: { in: suggestionIds } },
-                        select: { userId: true },
+                        select: { id: true, userId: true },
                     });
                     const userIds = [...new Set(relatedSuggestions.map((s: any) => s.userId))] as number[];
+                    const relatedSuggestionIds = relatedSuggestions.map((s: any) => s.id);
+
+                    // 제보 상태 → PUBLISHED (완료)
+                    await (prisma as any).courseSuggestion.updateMany({
+                        where: { id: { in: relatedSuggestionIds } },
+                        data: { status: "PUBLISHED" },
+                    });
 
                     // 제보자한테 해당 코스 무료 unlock
                     await Promise.all(

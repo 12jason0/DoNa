@@ -80,7 +80,8 @@
       "suggestBtn": "Report a Place",
       "status": {
         "PENDING": "Under review",
-        "PUBLISHED": "Published",
+        "ACCEPTED": "In progress",
+        "PUBLISHED": "Completed",
         "REJECTED": "Not selected"
       }
     }
@@ -1875,12 +1876,15 @@
     "addPhoto": "Add Photo",
     "labelDescriptionSimple": "Description",
     "placeholderDescriptionSimple": "Tell us what makes this place special",
+    "labelLocationHint": "Approximate location (optional)",
+    "placeholderLocationHint": "e.g. Near Hongdae, Exit 2 of Gangnam Station",
     "labelConceptSimple": "Desired concept (optional)",
     "placeholderConceptSimple": "e.g. Cozy cafe, Great view, Quiet atmosphere",
     "uploadingPhoto": "Uploading photo...",
     "photoError": "Photo upload failed. Please try again.",
     "modalStatusHint": {
       "PENDING": "We're reviewing your submission.",
+      "ACCEPTED": "We've confirmed your place and are building a course!",
       "PUBLISHED": "It's live as a course in the app.",
       "REJECTED": "Not selected this time—feel free to try again."
     }

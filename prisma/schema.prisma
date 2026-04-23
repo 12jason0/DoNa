@@ -880,6 +880,7 @@ model RecommendationFeedback {
 
 enum CourseSuggestionStatus {
   PENDING
+  ACCEPTED
   PUBLISHED
   REJECTED
 }

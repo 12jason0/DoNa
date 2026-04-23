@@ -1070,7 +1070,7 @@ export default function JongroMapFinalExact({ data }: Props) {
                                                                     {" "}
                                                                     {/* 🟢 여기서 마진을 줍니다 */}
                                                                     <label
-                                                                        className={`relative w-full aspect-4/3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group hover:border-[#c8aa64] hover:bg-[#c8aa64]/5 ${
+                                                                        className={`relative w-full aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group hover:border-[#c8aa64] hover:bg-[#c8aa64]/5 ${
                                                                             photoFiles.length > 0
                                                                                 ? "border-[#c8aa64] bg-black"
                                                                                 : "border-[#c8aa64]/30 bg-transparent"

@@ -11,7 +11,7 @@ export type ReportedSuggestion = {
     placeAddress?: string | null;
     description?: string | null;
     note?: string | null;
-    status: "PENDING" | "PUBLISHED" | "REJECTED";
+    status: "PENDING" | "ACCEPTED" | "PUBLISHED" | "REJECTED";
     createdAt: string;
     course?: {
         id: number;
@@ -28,15 +28,17 @@ export type ReportedSuggestion = {
 type Props = {
     suggestions: ReportedSuggestion[];
     isLoading: boolean;
+    userName?: string;
 };
 
-const STATUS_STYLE: Record<ReportedSuggestion["status"], string> = {
+const STATUS_STYLE: Partial<Record<ReportedSuggestion["status"], string>> & Record<string, string> = {
     PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    ACCEPTED: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
     PUBLISHED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
     REJECTED: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
 };
 
-export default function ReportedCoursesCTA({ suggestions, isLoading }: Props) {
+export default function ReportedCoursesCTA({ suggestions, isLoading, userName = "" }: Props) {
     const router = useRouter();
     const { t } = useLocale();
 
@@ -48,7 +50,7 @@ export default function ReportedCoursesCTA({ suggestions, isLoading }: Props) {
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-[14px] font-bold text-slate-900 dark:text-white">
-                        {t("home.myReportedCourses.title")}
+                        {t("home.myReportedCourses.title", { nickname: userName })}
                     </p>
                     {suggestions.length > 0 && (
                         <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">

@@ -833,7 +833,7 @@ export async function GET(req: NextRequest) {
                 (prisma as any).userBehaviorPattern
                     .findFirst({
                         where: { userId },
-                        orderBy: { createdAt: "desc" },
+                        orderBy: { snapshotDate: "desc" },
                         select: {
                             conceptPattern: true,
                             regionPattern: true,

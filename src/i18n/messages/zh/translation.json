@@ -80,7 +80,8 @@
       "suggestBtn": "提报地点",
       "status": {
         "PENDING": "审核中",
-        "PUBLISHED": "已发布",
+        "ACCEPTED": "进行中",
+        "PUBLISHED": "已完成",
         "REJECTED": "未选定"
       }
     }
@@ -1863,12 +1864,15 @@
     "addPhoto": "添加照片",
     "labelDescriptionSimple": "说明",
     "placeholderDescriptionSimple": "请告诉我们这个地方的特别之处",
+    "labelLocationHint": "大致位置（可选）",
+    "placeholderLocationHint": "例）弘大附近、江南站2号出口前",
     "labelConceptSimple": "希望的概念（可选）",
     "placeholderConceptSimple": "例）感性咖啡厅、绝景餐厅、安静氛围",
     "uploadingPhoto": "正在上传照片...",
     "photoError": "照片上传失败，请重试。",
     "modalStatusHint": {
       "PENDING": "我们已收到投稿，正在审核。",
+      "ACCEPTED": "已确认您的地点！正在制作路线中。",
       "PUBLISHED": "已制作成路线并在应用中上线。",
       "REJECTED": "本次未入选，欢迎下次再投稿。"
     }

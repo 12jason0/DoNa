@@ -717,6 +717,7 @@ export default function HomeClient({
                     <ReportedCoursesCTA
                         suggestions={publishedSuggestions}
                         isLoading={reportedSuggestionsLoading}
+                        userName={userName}
                     />
                 )}
 

@@ -49,7 +49,7 @@ const SkeletonLoader = () => (
     <div className="space-y-8 animate-pulse">
         {[1, 2].map((i) => (
             <div key={i} className="block">
-                <div className="w-full aspect-4/3 bg-gray-100 dark:bg-gray-800 rounded-[20px] mb-4 relative"></div>
+                <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-[20px] mb-4 relative"></div>
                 <div className="px-1 space-y-3">
                     <div className="w-3/4 h-7 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
                     <div className="w-1/2 h-5 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>

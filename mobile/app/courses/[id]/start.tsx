@@ -51,8 +51,12 @@ async function uploadImageViaPresign(
     courseId: string,
     err: { presign: string; putFail: string },
 ): Promise<string> {
-    const filename = uri.split("/").pop() ?? "photo.jpg";
-    const ext = filename.split(".").pop()?.toLowerCase() ?? "jpg";
+    const rawFilename = uri.split("/").pop() ?? "photo.jpg";
+    const ext = rawFilename.split(".").pop()?.toLowerCase() ?? "jpg";
+
+    // HEIC/HEIF → jpg로 변환 (iOS에서 실제 데이터는 이미 JPEG이나 확장자가 .heic로 남음)
+    const isHeic = ext === "heic" || ext === "heif";
+    const filename = isHeic ? rawFilename.replace(/\.(heic|heif)$/i, ".jpg") : rawFilename;
     const contentType = ext === "png" ? "image/png" : "image/jpeg";
 
     const presignRes = await api.post<{ success: boolean; uploads: { uploadUrl: string; publicUrl: string }[] }>(

@@ -8,7 +8,7 @@ function ensureAdmin(req: NextRequest) {
     if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
 }
 
-const ALLOWED_STATUS = new Set(["PENDING", "PUBLISHED", "REJECTED"]);
+const ALLOWED_STATUS = new Set(["PENDING", "ACCEPTED", "PUBLISHED", "REJECTED"]);
 
 const SUGGESTION_SELECT = {
     id: true,
@@ -61,7 +61,7 @@ export async function PATCH(
         }
 
         // 승인 시 places 테이블에 draft로 장소 생성
-        if (data.status === "PUBLISHED") {
+        if (data.status === "ACCEPTED") {
             const current = await (prisma as any).courseSuggestion.findUnique({
                 where: { id },
                 select: {
@@ -97,10 +97,10 @@ export async function PATCH(
             select: { ...SUGGESTION_SELECT, userId: true },
         });
 
-        if (data.status === "PUBLISHED") {
+        if (data.status === "ACCEPTED") {
             sendPushToUser(
                 suggestion.userId,
-                "제보하신 장소가 등록됐어요! 🎉",
+                "제보하신 장소가 검토됐어요! 🎉",
                 `${suggestion.placeName} 장소를 DoNa 코스로 만들고 있어요. 조금만 기다려주세요!`,
                 { screen: "home", url: "/" },
             ).catch(() => {});

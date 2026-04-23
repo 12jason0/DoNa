@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-type SuggestionStatus = "PENDING" | "PUBLISHED" | "REJECTED";
+type SuggestionStatus = "PENDING" | "ACCEPTED" | "PUBLISHED" | "REJECTED";
 
 type AdminSuggestion = {
     id: number;
@@ -16,7 +16,7 @@ type AdminSuggestion = {
     createdAt: string;
     user?: {
         id: number;
-        nickname?: string | null;
+        username?: string | null;
         email?: string | null;
     } | null;
     course?: {
@@ -30,20 +30,20 @@ type SuggestionDraft = {
     description: string;
     concept: string;
     imageUrl: string;
-    status: SuggestionStatus;
-    courseId: string;
 };
 
 const STATUS_TEXT: Record<SuggestionStatus, string> = {
     PENDING: "검토중",
-    PUBLISHED: "등록완료",
-    REJECTED: "미선정",
+    ACCEPTED: "진행중",
+    PUBLISHED: "완료",
+    REJECTED: "거절",
 };
 
 const STATUS_STYLE: Record<SuggestionStatus, string> = {
     PENDING: "bg-amber-100 text-amber-700",
+    ACCEPTED: "bg-blue-100 text-blue-700",
     PUBLISHED: "bg-emerald-100 text-emerald-700",
-    REJECTED: "bg-slate-200 text-slate-600",
+    REJECTED: "bg-slate-200 text-slate-500",
 };
 
 export default function AdminSuggestPage() {
@@ -52,6 +52,8 @@ export default function AdminSuggestPage() {
     const [suggestions, setSuggestions] = useState<AdminSuggestion[]>([]);
     const [drafts, setDrafts] = useState<Record<number, SuggestionDraft>>({});
     const [filterStatus, setFilterStatus] = useState<"ALL" | SuggestionStatus>("ALL");
+    const pendingCount = suggestions.filter((s) => s.status === "PENDING").length;
+    const [expandedId, setExpandedId] = useState<number | null>(null);
 
     const fetchSuggestions = async () => {
         try {
@@ -70,8 +72,6 @@ export default function AdminSuggestPage() {
                             description: item.description ?? "",
                             concept: item.concept ?? "",
                             imageUrl: item.imageUrl ?? "",
-                            status: item.status,
-                            courseId: item.course?.id ? String(item.course.id) : "",
                         },
                     ]),
                 ),
@@ -89,15 +89,18 @@ export default function AdminSuggestPage() {
     }, []);
 
     const filteredSuggestions = useMemo(() => {
-        if (filterStatus === "ALL") return suggestions;
-        return suggestions.filter((s) => s.status === filterStatus);
+        const list = filterStatus === "ALL" ? suggestions : suggestions.filter((s) => s.status === filterStatus);
+        return [...list].sort((a, b) => {
+            const order: Record<SuggestionStatus, number> = { PENDING: 0, ACCEPTED: 1, PUBLISHED: 2, REJECTED: 3 };
+            return order[a.status] - order[b.status];
+        });
     }, [filterStatus, suggestions]);
 
     const updateDraft = (id: number, patch: Partial<SuggestionDraft>) => {
         setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
     };
 
-    const saveSuggestion = async (id: number, overrideStatus?: SuggestionStatus) => {
+    const saveAndUpdateStatus = async (id: number, status: SuggestionStatus) => {
         const draft = drafts[id];
         if (!draft) return;
         try {
@@ -107,17 +110,17 @@ export default function AdminSuggestPage() {
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    placeAddress: draft.placeAddress,
-                    description: draft.description,
-                    concept: draft.concept,
-                    imageUrl: draft.imageUrl,
-                    status: overrideStatus ?? draft.status,
-                    courseId: draft.courseId.trim() ? Number(draft.courseId.trim()) : null,
+                    placeAddress: draft.placeAddress || null,
+                    description: draft.description || null,
+                    concept: draft.concept || null,
+                    imageUrl: draft.imageUrl || null,
+                    status,
                 }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "저장 실패");
             await fetchSuggestions();
+            if (status === "PUBLISHED") setExpandedId(null);
         } catch (e: any) {
             alert(e?.message || "저장 중 오류가 발생했습니다.");
         } finally {
@@ -125,36 +128,17 @@ export default function AdminSuggestPage() {
         }
     };
 
-    const publishSuggestion = async (id: number) => {
-        if (!confirm("이 제보를 코스로 등록하시겠습니까?\n(courses 테이블에 새 항목이 생성됩니다)")) return;
-        await saveSuggestion(id, "PUBLISHED");
-    };
-
-    const rejectSuggestion = async (id: number) => {
-        if (!confirm("이 제보를 미선정 처리하시겠습니까?")) return;
-        await saveSuggestion(id, "REJECTED");
-    };
-
     return (
         <div className="space-y-6">
+            {/* 헤더 */}
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">장소 제보 검토</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        유저 제보를 확인하고 주소/설명을 보강한 뒤 상태를 업데이트하세요.
+                        승인하면 장소 페이지에 draft로 추가되고 제보자에게 알림이 전송됩니다.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value as "ALL" | SuggestionStatus)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                    >
-                        <option value="ALL">전체 상태</option>
-                        <option value="PENDING">검토중</option>
-                        <option value="PUBLISHED">등록완료</option>
-                        <option value="REJECTED">미선정</option>
-                    </select>
                     <button
                         type="button"
                         onClick={fetchSuggestions}
@@ -163,132 +147,208 @@ export default function AdminSuggestPage() {
                         새로고침
                     </button>
                     <Link
-                        href="/admin/courses"
-                        className="px-3 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-700"
+                        href="/admin/places"
+                        className="px-3 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700"
                     >
-                        코스 관리로 이동
+                        장소 관리
                     </Link>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                {loading ? (
-                    <div className="p-8 text-center text-sm text-gray-500">로딩 중...</div>
-                ) : filteredSuggestions.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-gray-500">표시할 제보가 없습니다.</div>
-                ) : (
-                    <div className="divide-y divide-gray-100">
-                        {filteredSuggestions.map((s) => {
-                            const d = drafts[s.id];
-                            return (
-                                <div key={s.id} className="p-4 space-y-3">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="font-semibold text-gray-900">{s.placeName}</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">
-                                                제보자: {s.user?.nickname || "-"} ({s.user?.email || "-"}) ·{" "}
-                                                {new Date(s.createdAt).toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_STYLE[s.status]}`}
-                                        >
-                                            {STATUS_TEXT[s.status]}
-                                        </span>
+            {/* 필터 탭 */}
+            <div className="flex gap-2">
+                {(["ALL", "PENDING", "ACCEPTED", "PUBLISHED", "REJECTED"] as const).map((s) => (
+                    <button
+                        key={s}
+                        type="button"
+                        onClick={() => setFilterStatus(s)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            filterStatus === s
+                                ? "bg-gray-900 text-white"
+                                : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                    >
+                        {s === "ALL" ? `전체 (${suggestions.length})` : `${STATUS_TEXT[s]} (${suggestions.filter(x => x.status === s).length})`}
+                        {s === "PENDING" && pendingCount > 0 && (
+                            <span className="ml-1.5 bg-amber-400 text-white text-xs rounded-full px-1.5 py-0.5">
+                                {pendingCount}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {/* 목록 */}
+            {loading ? (
+                <div className="py-16 text-center text-sm text-gray-400">불러오는 중...</div>
+            ) : filteredSuggestions.length === 0 ? (
+                <div className="py-16 text-center text-sm text-gray-400">표시할 제보가 없습니다.</div>
+            ) : (
+                <div className="space-y-3">
+                    {filteredSuggestions.map((s) => {
+                        const d = drafts[s.id];
+                        const isExpanded = expandedId === s.id;
+                        const isSaving = savingId === s.id;
+
+                        return (
+                            <div
+                                key={s.id}
+                                className={`bg-white rounded-xl border transition-shadow ${
+                                    s.status === "PENDING" ? "border-amber-200 shadow-sm" : "border-gray-200"
+                                }`}
+                            >
+                                {/* 카드 상단 - 항상 보이는 요약 */}
+                                <div
+                                    className="flex items-center gap-4 p-4 cursor-pointer"
+                                    onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                                >
+                                    {/* 이미지 */}
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                        {s.imageUrl ? (
+                                            <img
+                                                src={s.imageUrl}
+                                                alt={s.placeName}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl">
+                                                📍
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <input
-                                            value={d?.placeAddress ?? ""}
-                                            onChange={(e) => updateDraft(s.id, { placeAddress: e.target.value })}
-                                            placeholder="주소"
-                                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                        />
-                                        <input
-                                            value={d?.concept ?? ""}
-                                            onChange={(e) => updateDraft(s.id, { concept: e.target.value })}
-                                            placeholder="컨셉"
-                                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                        />
-                                        <input
-                                            value={d?.imageUrl ?? ""}
-                                            onChange={(e) => updateDraft(s.id, { imageUrl: e.target.value })}
-                                            placeholder="이미지 URL"
-                                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm md:col-span-2"
-                                        />
-                                        <textarea
-                                            value={d?.description ?? ""}
-                                            onChange={(e) => updateDraft(s.id, { description: e.target.value })}
-                                            placeholder="관리자 메모/설명"
-                                            rows={3}
-                                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm md:col-span-2 resize-y"
-                                        />
+                                    {/* 정보 */}
+                                    <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <select
-                                                value={d?.status ?? "PENDING"}
-                                                onChange={(e) =>
-                                                    updateDraft(s.id, { status: e.target.value as SuggestionStatus })
-                                                }
-                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            <span className="font-semibold text-gray-900">{s.placeName}</span>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[s.status]}`}>
+                                                {STATUS_TEXT[s.status]}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-0.5 truncate">
+                                            {s.placeAddress || "주소 미입력"}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            {s.user?.username || s.user?.email || "-"} ·{" "}
+                                            {new Date(s.createdAt).toLocaleDateString()}
+                                            {s.concept && ` · ${s.concept}`}
+                                            {s.status === "PUBLISHED" && s.course && (
+                                                <span className="ml-1 text-emerald-600 font-medium">
+                                                    · {s.course.id}번 코스 ({s.course.title})
+                                                </span>
+                                            )}
+                                            {s.status === "PUBLISHED" && !s.course && (
+                                                <span className="ml-1 text-gray-400">· 코스 미연결</span>
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    {/* PENDING이면 빠른 액션 버튼 */}
+                                    {s.status === "PENDING" && (
+                                        <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                type="button"
+                                                disabled={isSaving}
+                                                onClick={() => saveAndUpdateStatus(s.id, "ACCEPTED")}
+                                                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
                                             >
-                                                <option value="PENDING">검토중</option>
-                                                <option value="PUBLISHED">등록완료</option>
-                                                <option value="REJECTED">미선정</option>
-                                            </select>
+                                                {isSaving ? "처리중..." : "승인"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={isSaving}
+                                                onClick={() => saveAndUpdateStatus(s.id, "REJECTED")}
+                                                className="px-4 py-2 rounded-lg bg-red-50 text-red-500 text-sm font-semibold hover:bg-red-100 disabled:opacity-60"
+                                            >
+                                                거절
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <span className="text-gray-400 text-sm ml-1">{isExpanded ? "▲" : "▼"}</span>
+                                </div>
+
+                                {/* 확장 영역 - 수정 폼 */}
+                                {isExpanded && d && (
+                                    <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <input
-                                                value={d?.courseId ?? ""}
-                                                onChange={(e) => updateDraft(s.id, { courseId: e.target.value })}
-                                                placeholder="연결 코스 ID (선택)"
-                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48"
+                                                value={d.placeAddress}
+                                                onChange={(e) => updateDraft(s.id, { placeAddress: e.target.value })}
+                                                placeholder="주소"
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            />
+                                            <input
+                                                value={d.concept}
+                                                onChange={(e) => updateDraft(s.id, { concept: e.target.value })}
+                                                placeholder="컨셉"
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            />
+                                            <input
+                                                value={d.imageUrl}
+                                                onChange={(e) => updateDraft(s.id, { imageUrl: e.target.value })}
+                                                placeholder="이미지 URL"
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm md:col-span-2"
+                                            />
+                                            <textarea
+                                                value={d.description}
+                                                onChange={(e) => updateDraft(s.id, { description: e.target.value })}
+                                                placeholder="메모/설명"
+                                                rows={3}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm md:col-span-2 resize-y"
                                             />
                                         </div>
-                                        <div className="flex items-center gap-2 md:justify-end flex-wrap">
-                                            {s.course?.id ? (
+
+                                        <div className="flex items-center justify-between mt-3">
+                                            {s.course ? (
                                                 <Link
                                                     href="/admin/courses"
-                                                    className="text-xs px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                                                    className="text-xs text-blue-600 hover:underline"
                                                 >
                                                     연결 코스: {s.course.title}
                                                 </Link>
                                             ) : (
                                                 <span className="text-xs text-gray-400">연결 코스 없음</span>
                                             )}
-                                            <button
-                                                type="button"
-                                                onClick={() => saveSuggestion(s.id)}
-                                                disabled={savingId === s.id}
-                                                className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-60"
-                                            >
-                                                {savingId === s.id ? "저장 중..." : "저장"}
-                                            </button>
-                                            {s.status !== "PUBLISHED" && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => publishSuggestion(s.id)}
-                                                    disabled={savingId === s.id}
-                                                    className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                                                >
-                                                    올리기
-                                                </button>
-                                            )}
-                                            {s.status === "PENDING" && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => rejectSuggestion(s.id)}
-                                                    disabled={savingId === s.id}
-                                                    className="px-3 py-2 text-sm rounded-lg bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-60"
-                                                >
-                                                    거절
-                                                </button>
-                                            )}
+                                            <div className="flex gap-2">
+                                                {s.status === "PENDING" ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            disabled={isSaving}
+                                                            onClick={() => saveAndUpdateStatus(s.id, "REJECTED")}
+                                                            className="px-3 py-1.5 rounded-lg bg-red-50 text-red-500 text-sm font-medium hover:bg-red-100 disabled:opacity-60"
+                                                        >
+                                                            거절
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={isSaving}
+                                                            onClick={() => saveAndUpdateStatus(s.id, "ACCEPTED")}
+                                                            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+                                                        >
+                                                            {isSaving ? "처리중..." : "수정 후 승인"}
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        disabled={isSaving}
+                                                        onClick={() => saveAndUpdateStatus(s.id, s.status)}
+                                                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                                    >
+                                                        {isSaving ? "저장 중..." : "수정 저장"}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

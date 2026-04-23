@@ -210,22 +210,6 @@ type Course = {
     placesCount?: number;
 };
 
-type AdminSuggestion = {
-    id: number;
-    placeName: string;
-    placeAddress?: string | null;
-    note?: string | null;
-    description?: string | null;
-    concept?: string | null;
-    status: "PENDING" | "PUBLISHED" | "REJECTED";
-    createdAt: string;
-    user?: {
-        id: number;
-        username?: string | null;
-        email?: string | null;
-    } | null;
-};
-
 const INITIAL_TAGS: DoNaCourseTags = {
     concept: [],
     mood: [],
@@ -257,8 +241,6 @@ export default function AdminCoursesPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [suggestions, setSuggestions] = useState<AdminSuggestion[]>([]);
-    const [suggestionsLoading, setSuggestionsLoading] = useState(false);
     const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null); // 지도 확장용
     const [selectedPlaceForModal, setSelectedPlaceForModal] = useState<Place | null>(null); // 모달용 선택된 장소
     const [showPlaceModal, setShowPlaceModal] = useState(false); // 모달 표시 여부
@@ -334,42 +316,6 @@ export default function AdminCoursesPage() {
         }
     };
 
-    const fetchSuggestions = async () => {
-        try {
-            setSuggestionsLoading(true);
-            const res = await fetch("/api/admin/course-suggestions", {
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("제보 목록 조회 실패");
-            const data = await res.json();
-            setSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
-        } catch (e) {
-            console.error("제보 목록 로딩 실패:", e);
-            setSuggestions([]);
-        } finally {
-            setSuggestionsLoading(false);
-        }
-    };
-
-    const updateSuggestionStatus = async (id: number, status: "PUBLISHED" | "REJECTED") => {
-        try {
-            const res = await fetch(`/api/admin/course-suggestions/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ status }),
-            });
-            if (!res.ok) throw new Error("상태 변경 실패");
-            const data = await res.json();
-            setSuggestions((prev) =>
-                prev.map((s) => (s.id === id ? { ...s, status } : s)),
-            );
-        } catch (e) {
-            alert("상태 변경 중 오류가 발생했습니다.");
-            console.error(e);
-        }
-    };
-
     // 검색어 변경 시 debounce 검색
     useEffect(() => {
         if (!placeSearchQuery.trim()) {
@@ -421,7 +367,6 @@ export default function AdminCoursesPage() {
     useEffect(() => {
         fetchCourses();
         fetchAllPlaces();
-        fetchSuggestions();
     }, []);
 
     // 모든 places 데이터를 지도용 Place[]로 변환 (새 코스 추가 모드용)
@@ -1058,100 +1003,6 @@ export default function AdminCoursesPage() {
     return (
         <div className="space-y-12 pb-20">
             <h1 className="text-2xl font-bold text-gray-800">코스 데이터 관리</h1>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-gray-700">📍 장소 제보 목록</h2>
-                    <button
-                        type="button"
-                        onClick={fetchSuggestions}
-                        className="text-sm text-green-700 hover:text-green-800 underline"
-                    >
-                        새로고침
-                    </button>
-                </div>
-                {suggestionsLoading ? (
-                    <p className="text-sm text-gray-500">불러오는 중...</p>
-                ) : suggestions.length === 0 ? (
-                    <p className="text-sm text-gray-500">접수된 제보가 없습니다.</p>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm border-separate border-spacing-y-2">
-                            <thead>
-                                <tr className="text-left text-gray-500">
-                                    <th className="py-1 pr-3">상태</th>
-                                    <th className="py-1 pr-3">장소</th>
-                                    <th className="py-1 pr-3">설명</th>
-                                    <th className="py-1 pr-3">제보자</th>
-                                    <th className="py-1 pr-3">접수일</th>
-                                    <th className="py-1">액션</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {suggestions.map((s) => {
-                                    const badgeClass =
-                                        s.status === "PUBLISHED"
-                                            ? "bg-emerald-100 text-emerald-700"
-                                            : s.status === "PENDING"
-                                              ? "bg-amber-100 text-amber-700"
-                                              : "bg-slate-100 text-slate-600";
-                                    return (
-                                        <tr key={s.id} className="bg-gray-50 rounded-xl">
-                                            <td className="py-2 pr-3">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${badgeClass}`}>
-                                                    {s.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-2 pr-3">
-                                                <div className="font-medium text-gray-800">{s.placeName}</div>
-                                                {s.placeAddress && (
-                                                    <div className="text-xs text-gray-500">{s.placeAddress}</div>
-                                                )}
-                                            </td>
-                                            <td className="py-2 pr-3 max-w-[280px]">
-                                                <div className="line-clamp-2 text-gray-700">
-                                                    {s.description || s.note || "-"}
-                                                </div>
-                                                {s.concept && (
-                                                    <div className="text-xs text-gray-500 mt-1">컨셉: {s.concept}</div>
-                                                )}
-                                            </td>
-                                            <td className="py-2 pr-3 text-gray-700">
-                                                {s.user?.username || s.user?.email || `#${s.user?.id ?? "-"}`}
-                                            </td>
-                                            <td className="py-2 pr-3 text-gray-500 text-xs">
-                                                {new Date(s.createdAt).toLocaleDateString()}
-                                            </td>
-                                            <td className="py-2">
-                                                {s.status === "PENDING" ? (
-                                                    <div className="flex gap-1.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateSuggestionStatus(s.id, "PUBLISHED")}
-                                                            className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
-                                                        >
-                                                            승인
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateSuggestionStatus(s.id, "REJECTED")}
-                                                            className="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-300"
-                                                        >
-                                                            거절
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-gray-300 text-xs">—</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
 
             {/* --- 입력 폼 --- */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
