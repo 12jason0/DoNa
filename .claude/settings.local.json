@@ -82,7 +82,9 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "mcp__claude_ai_Vercel__deploy_to_vercel",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_deployment_build_logs"
     ]
   }
 }
