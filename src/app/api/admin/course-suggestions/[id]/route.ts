@@ -86,6 +86,7 @@ export async function PATCH(
                     category: (data.concept as string | null) ?? current.concept ?? null,
                     imageUrl: (data.imageUrl as string | null) ?? current.imageUrl ?? null,
                     status: "draft",
+                    suggestion_id: id,
                 },
             });
         }

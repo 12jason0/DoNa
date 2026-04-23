@@ -706,7 +706,7 @@ export default function AdminCoursesPage() {
     const handleDelete = async (id: number) => {
         if (!confirm("정말 이 코스를 삭제하시겠습니까?")) return;
         try {
-            const res = await fetch(`/api/courses/${id}`, {
+            const res = await fetch(`/api/admin/courses/${id}`, {
                 method: "DELETE",
                 credentials: "include",
             });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
+import { sendPushToUser } from "@/lib/push";
 
 function ensureAdmin(req: NextRequest) {
     if (!verifyAdminJwt(req)) throw new Error("ADMIN_ONLY");
@@ -198,6 +199,61 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             },
         });
 
+        // 코스 공개 시 제보자 알림
+        if (isPublic === true) {
+            const coursePlaces = await (prisma as any).coursePlace.findMany({
+                where: { courseId },
+                select: { placeId: true },
+            });
+            const placeIds = coursePlaces.map((cp: any) => cp.placeId);
+
+            if (placeIds.length > 0) {
+                const suggestions = await (prisma as any).courseSuggestion.findMany({
+                    where: {
+                        status: "PUBLISHED",
+                        place: { id: { in: placeIds } },
+                    },
+                    select: { userId: true },
+                });
+
+                // suggestion_id로 직접 찾기 (place.suggestion_id 활용)
+                const places = await (prisma as any).place.findMany({
+                    where: { id: { in: placeIds }, suggestion_id: { not: null } },
+                    select: { suggestion_id: true },
+                });
+                const suggestionIds = places.map((p: any) => p.suggestion_id).filter(Boolean);
+
+                if (suggestionIds.length > 0) {
+                    const relatedSuggestions = await (prisma as any).courseSuggestion.findMany({
+                        where: { id: { in: suggestionIds } },
+                        select: { userId: true },
+                    });
+                    const userIds = [...new Set(relatedSuggestions.map((s: any) => s.userId))] as number[];
+
+                    // 제보자한테 해당 코스 무료 unlock
+                    await Promise.all(
+                        userIds.map((userId) =>
+                            prisma.courseUnlock.upsert({
+                                where: { userId_courseId: { userId, courseId } },
+                                create: { userId, courseId },
+                                update: {},
+                            }),
+                        ),
+                    );
+
+                    // 푸시알림
+                    userIds.forEach((userId) => {
+                        sendPushToUser(
+                            userId,
+                            "제보하신 장소로 코스가 만들어졌어요! 🎉",
+                            `${updated.title} 코스가 완성됐어요. 무료로 바로 확인해보세요!`,
+                            { screen: "course", url: `/courses/${courseId}` },
+                        ).catch(() => {});
+                    });
+                }
+            }
+        }
+
         return NextResponse.json({ success: true, course: updated });
     } catch (error: any) {
 
@@ -207,5 +263,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
         console.error("API: 코스 수정 오류:", error);
         return NextResponse.json({ error: "코스 수정 실패" }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        ensureAdmin(req);
+        const { id } = await params;
+        const courseId = parseInt(id);
+        if (!courseId || isNaN(courseId)) {
+            return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
+        }
+        await prisma.course.delete({ where: { id: courseId } });
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        captureApiError(error);
+        if (error.message === "ADMIN_ONLY") {
+            return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
+        }
+        console.error("API: 코스 삭제 오류:", error);
+        return NextResponse.json({ error: "코스 삭제 실패" }, { status: 500 });
     }
 }

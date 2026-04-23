@@ -757,7 +757,8 @@ export async function GET(req: NextRequest) {
         let savedCourseIds: number[] = []; // 🟢 이미 저장한 코스 ID 목록
         let completedCourseIds: number[] = []; // 🟢 완료한 코스 ID 목록
         let cooldownCourseIds: number[] = []; // 🟢 최근 노출(피드백 기준) 쿨다운 코스 ID
-        const feedbackPenaltyMap = new Map<number, number>(); // BAD/OK 피드백 감점 (코스별)
+        let badCourseIds: number[] = []; // 🟢 BAD 피드백 코스 — 영구 제외
+        const feedbackPenaltyMap = new Map<number, number>(); // OK 피드백 감점 (코스별)
         const badConceptCount = new Map<string, number>(); // BAD 누른 코스의 컨셉 빈도
         const badMoodCount = new Map<string, number>(); // BAD 누른 코스의 무드 빈도
         let behaviorPatternLatest: any = null; // 최신 장기 패턴
@@ -788,15 +789,23 @@ export async function GET(req: NextRequest) {
                         },
                     })
                     .catch(() => []), // 🟢 에러 시 빈 배열 반환하여 'null' 가능성 제거 (18047 해결)
-                // 🟢 오늘의 데이트 추천 모드일 때만 이미 저장한 코스 목록 조회
-                mode === "ai"
-                    ? prisma.savedCourse
-                          .findMany({
-                              where: { userId },
-                              select: { courseId: true },
-                          })
-                          .catch(() => [])
-                    : Promise.resolve([]),
+                // 찜한 코스 목록 + 취향 학습용 상세 데이터
+                prisma.savedCourse
+                    .findMany({
+                        where: { userId },
+                        select: {
+                            courseId: true,
+                            course: {
+                                select: {
+                                    concept: true,
+                                    region: true,
+                                    mood: true,
+                                    goal: true,
+                                },
+                            },
+                        },
+                    })
+                    .catch(() => []),
                 (prisma as any).completedCourse
                     .findMany({
                         where: { userId, courseId: { not: null } },
@@ -924,41 +933,70 @@ export async function GET(req: NextRequest) {
             }
 
             savedCourseIds = Array.isArray(savedCourses) ? savedCourses.map((sc: any) => sc.courseId) : [];
+
+            // 찜한 코스 취향 학습 (save보다 높은 가중치 2.0 적용)
+            if (Array.isArray(savedCourses)) {
+                savedCourses.forEach((sc: any) => {
+                    const course = sc.course;
+                    if (!course) return;
+                    const FAV_WEIGHT = 20; // interactionData의 save(0.8*10=8)보다 높게
+                    if (course.concept) {
+                        for (let i = 0; i < FAV_WEIGHT; i++) recentBehaviorData.concepts.push(course.concept);
+                    }
+                    if (course.region) {
+                        for (let i = 0; i < FAV_WEIGHT; i++) recentBehaviorData.regions.push(course.region);
+                    }
+                    if (Array.isArray(course.mood)) {
+                        course.mood.forEach((m: string) => {
+                            for (let i = 0; i < FAV_WEIGHT; i++) recentBehaviorData.moods.push(m);
+                        });
+                    }
+                    if (course.goal) {
+                        for (let i = 0; i < FAV_WEIGHT; i++) recentBehaviorData.goals.push(course.goal);
+                    }
+                });
+            }
             completedCourseIds = Array.isArray(completedCourses)
                 ? completedCourses.map((cc: any) => Number(cc.courseId)).filter((id: number) => Number.isFinite(id))
                 : [];
             behaviorPatternLatest = behaviorPatternRow;
 
             const feedbackWeights: Record<string, number> = {
-                BAD: -0.15,
                 OK: -0.08,
                 GOOD: 0.04,
             };
             if (Array.isArray(feedbackRows)) {
                 const cooldownCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
                 const cooldownSet = new Set<number>();
+                const badSet = new Set<number>();
                 feedbackRows.forEach((row: any) => {
                     const cid = Number(row?.courseId);
                     if (!Number.isFinite(cid)) return;
                     if (row?.createdAt && new Date(row.createdAt) >= cooldownCutoff) {
                         cooldownSet.add(cid);
                     }
-                    if (feedbackPenaltyMap.has(cid)) return; // 최신 1개만 반영
                     const rating = String(row?.rating || "").toUpperCase();
+
+                    // BAD → 영구 제외 목록에 추가 + 컨셉/무드 카운트
+                    if (rating === "BAD") {
+                        badSet.add(cid);
+                        if (row?.course) {
+                            const concept = row.course.concept;
+                            if (concept) badConceptCount.set(concept, (badConceptCount.get(concept) || 0) + 1);
+                            const moods = Array.isArray(row.course.mood) ? row.course.mood : [];
+                            moods.forEach((m: string) => {
+                                if (m) badMoodCount.set(m, (badMoodCount.get(m) || 0) + 1);
+                            });
+                        }
+                        return;
+                    }
+
+                    if (feedbackPenaltyMap.has(cid)) return; // 최신 1개만 반영
                     const delta = feedbackWeights[rating] || 0;
                     if (delta !== 0) feedbackPenaltyMap.set(cid, delta);
-
-                    // BAD 피드백 → 해당 코스의 컨셉/무드 카테고리 카운트
-                    if (rating === "BAD" && row?.course) {
-                        const concept = row.course.concept;
-                        if (concept) badConceptCount.set(concept, (badConceptCount.get(concept) || 0) + 1);
-                        const moods = Array.isArray(row.course.mood) ? row.course.mood : [];
-                        moods.forEach((m: string) => {
-                            if (m) badMoodCount.set(m, (badMoodCount.get(m) || 0) + 1);
-                        });
-                    }
                 });
                 cooldownCourseIds = Array.from(cooldownSet);
+                badCourseIds = Array.from(badSet);
             }
         }
 
@@ -985,17 +1023,17 @@ export async function GET(req: NextRequest) {
             usedStrictRegion = true;
         }
 
-        // AI 모드: 완료 코스 + 최근 3일 재노출 쿨다운 코스 제외
-        if (mode === "ai") {
-            const aiExcludedIds = Array.from(
-                new Set(
-                    [...completedCourseIds, ...cooldownCourseIds]
-                        .map((id) => Number(id))
-                        .filter((id) => Number.isFinite(id)),
-                ),
+        // BAD 피드백 코스 항상 제외 + AI 모드: 완료 코스·쿨다운 코스 추가 제외
+        {
+            const excludeBase = [...badCourseIds];
+            if (mode === "ai") {
+                excludeBase.push(...completedCourseIds, ...cooldownCourseIds);
+            }
+            const excludedIds = Array.from(
+                new Set(excludeBase.map((id) => Number(id)).filter((id) => Number.isFinite(id))),
             );
-            if (aiExcludedIds.length > 0) {
-                whereConditions.id = { notIn: aiExcludedIds };
+            if (excludedIds.length > 0) {
+                whereConditions.id = { notIn: excludedIds };
             }
         }
 

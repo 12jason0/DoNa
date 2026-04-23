@@ -244,6 +244,7 @@ model Place {
   updated_at           DateTime         @updatedAt
   tags                 Json?
   reservationUrl       String?          @db.VarChar(500)
+  suggestion_id        Int?             @map("suggestion_id")
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
 

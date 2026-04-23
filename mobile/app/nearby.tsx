@@ -19,6 +19,7 @@ import {
     Modal,
     Pressable,
 } from "react-native";
+import * as Location from "expo-location";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -56,6 +57,33 @@ const KO_REGION_TO_SLUG: Record<string, string> = {
     영등포: "yeongdeungpo",
 };
 const CONCEPT_TAGS = ["이색데이트", "감성데이트", "야경", "힐링", "가성비", "인생샷", "맛집탐방", "카페투어", "술자리", "실내데이트", "공연·전시"];
+
+// ─── 지역 좌표 범위 ──────────────────────────────────────────────────────────
+const REGION_BOUNDS: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
+    강남: { minLat: 37.490, maxLat: 37.525, minLng: 127.010, maxLng: 127.065 },
+    성수: { minLat: 37.535, maxLat: 37.565, minLng: 127.035, maxLng: 127.075 },
+    홍대: { minLat: 37.540, maxLat: 37.560, minLng: 126.910, maxLng: 126.945 },
+    종로: { minLat: 37.565, maxLat: 37.595, minLng: 126.965, maxLng: 127.015 },
+    연남: { minLat: 37.553, maxLat: 37.572, minLng: 126.910, maxLng: 126.935 },
+    영등포: { minLat: 37.510, maxLat: 37.535, minLng: 126.885, maxLng: 126.925 },
+};
+
+function detectUserRegion(lat: number, lng: number): string | null {
+    for (const [region, b] of Object.entries(REGION_BOUNDS)) {
+        if (lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng) return region;
+    }
+    return null;
+}
+
+function getConceptTimeBonus(concept: string | null | undefined, hour: number): number {
+    if (!concept) return 0;
+    const c = concept;
+    if (c.includes("야경") || c.includes("루프탑")) return hour >= 17 ? 3 : 0;
+    if (c.includes("술자리") || c.includes("주점")) return hour >= 19 ? 3 : 0;
+    if (c.includes("카페") || c.includes("브런치") || c.includes("카페투어")) return (hour >= 9 && hour <= 15) ? 2 : 0;
+    if (c.includes("맛집")) return ((hour >= 11 && hour <= 14) || (hour >= 17 && hour <= 21)) ? 1 : 0;
+    return 0;
+}
 const SITUATION_TAGS = ["썸탈 때", "소개팅", "기념일", "데이트", "친구와", "혼자"];
 const MOOD_TAGS = ["로맨틱", "힙한", "활기찬", "레트로", "고급스러운", "감성", "조용한", "이국적인"];
 
@@ -245,6 +273,17 @@ export default function NearbyScreen() {
     const [draftConcepts, setDraftConcepts] = useState<string[]>([]);
     const [draftSituations, setDraftSituations] = useState<string[]>([]);
     const [draftMoods, setDraftMoods] = useState<string[]>([]);
+    const [userRegion, setUserRegion] = useState<string | null>(null);
+
+    // 위치 권한이 이미 있으면 현재 위치 읽어서 권역 감지 (권한 없으면 조용히 무시)
+    useEffect(() => {
+        Location.getForegroundPermissionsAsync().then(({ status }) => {
+            if (status !== "granted") return;
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+                .then(({ coords }) => setUserRegion(detectUserRegion(coords.latitude, coords.longitude)))
+                .catch(() => {});
+        }).catch(() => {});
+    }, []);
 
     const toggleTag = useCallback((list: string[], value: string, setter: (v: string[]) => void) => {
         setter(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
@@ -370,7 +409,7 @@ export default function NearbyScreen() {
 
     const courses = useMemo(() => {
         const raw = data?.pages.flat() ?? [];
-        return raw.filter((course) => {
+        const filtered = raw.filter((course) => {
             const courseConceptList = [
                 (course as any).concept ?? "",
                 ...((course as any).tags?.concept ?? []),
@@ -385,7 +424,21 @@ export default function NearbyScreen() {
             const moodOk = selectedMoods.length === 0 || selectedMoods.some((m) => courseMood.includes(m));
             return conceptOk && situationOk && moodOk;
         });
-    }, [data?.pages, selectedConcepts, selectedSituations, selectedMoods]);
+
+        // 유저가 지역 필터를 직접 선택했으면 정렬 건드리지 않음
+        if (activeRegion) return filtered;
+
+        const hour = new Date().getHours();
+        return [...filtered].sort((a, b) => {
+            const scoreA =
+                getConceptTimeBonus((a as any).concept, hour) +
+                (userRegion && String((a as any).region ?? "").includes(userRegion) ? 5 : 0);
+            const scoreB =
+                getConceptTimeBonus((b as any).concept, hour) +
+                (userRegion && String((b as any).region ?? "").includes(userRegion) ? 5 : 0);
+            return scoreB - scoreA;
+        });
+    }, [data?.pages, selectedConcepts, selectedSituations, selectedMoods, activeRegion, userRegion]);
 
     // ─── 렌더 헬퍼 ──────────────────────────────────────────────────────────────
 
