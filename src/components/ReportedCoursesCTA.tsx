@@ -54,7 +54,7 @@ export default function ReportedCoursesCTA({ suggestions, isLoading, userName = 
                     </p>
                     {suggestions.length > 0 && (
                         <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {t("home.myReportedCourses.subtitle")}
+                            {t("home.myReportedCourses.subtitle", { nickname: userName })}
                         </p>
                     )}
                 </div>
