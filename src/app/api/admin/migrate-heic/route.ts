@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
                     const putUrl = await getPresignedPutUrl(newKey, "image/jpeg");
                     const putRes = await fetch(putUrl, {
                         method: "PUT",
-                        body: jpegBuffer,
+                        body: new Uint8Array(jpegBuffer),
                         headers: { "Content-Type": "image/jpeg" },
                     });
                     if (!putRes.ok) throw new Error(`S3 PUT ${putRes.status}`);

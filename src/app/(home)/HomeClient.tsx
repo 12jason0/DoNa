@@ -570,9 +570,7 @@ export default function HomeClient({
     // 🟢 personalized-home CTA 표시: 로그인한 사용자에게만 표시 (FREE이고 오늘 사용 완료면 숨김)
     const showPersonalizedHomeCta =
         isAuthenticated && canUseRecommendation !== false;
-    const publishedSuggestions = reportedSuggestions.filter(
-        (s: any) => s?.status === "PUBLISHED" && Number.isFinite(Number(s?.course?.id)),
-    );
+    const publishedSuggestions = reportedSuggestions;
 
     return (
         <>
