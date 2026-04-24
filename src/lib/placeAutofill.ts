@@ -121,21 +121,40 @@ export interface PlaceAutofillResult {
     reservation_required: boolean;
 }
 
-export async function runPlaceAutofill(name: string, imageBuffer?: Buffer): Promise<PlaceAutofillResult> {
-    const [kakao, naver] = await Promise.all([kakaoSearch(name), naverSearch(name)]);
+function isNameMatch(input: string, result: string): boolean {
+    const norm = (s: string) => s.replace(/\s/g, "").toLowerCase();
+    const a = norm(input);
+    const b = norm(result);
+    return a.includes(b) || b.includes(a);
+}
+
+export async function runPlaceAutofill(name: string, imageBuffer?: Buffer, forcedCategory?: string, neighborhood?: string): Promise<PlaceAutofillResult> {
+    const searchQuery = neighborhood ? `${name} ${neighborhood}` : name;
+    const [kakao, naver] = await Promise.all([kakaoSearch(searchQuery), naverSearch(searchQuery)]);
     const naverLink = naver?.link || "";
     const { menuPrices, openingHours, closedDays } = naverLink
         ? await fetchNaverPlaceData(naverLink)
         : { menuPrices: "", openingHours: "", closedDays: [] };
 
-    const address = kakao?.road_address_name || kakao?.address_name || naver?.roadAddress || naver?.address || "";
-    const phone = naver?.telephone || kakao?.phone || "";
-    const website = naver?.link && !naver.link.includes("map.naver.com") ? naver.link : "";
-    const latitude = kakao?.y ? parseFloat(parseFloat(kakao.y).toFixed(6)) : null;
-    const longitude = kakao?.x ? parseFloat(parseFloat(kakao.x).toFixed(6)) : null;
-    const categoryRaw = kakao?.category_name || naver?.category || "";
-    const category = kakao?.category_group_name || categoryRaw.split(" > ")[0] || "";
-    const resolvedName = kakao?.place_name || naver?.title?.replace(/<[^>]+>/g, "") || name;
+    const kakaoName = kakao?.place_name || "";
+    const naverName = naver?.title?.replace(/<[^>]+>/g, "") || "";
+    const resolvedName = kakaoName || naverName || name;
+
+    // 카카오/네이버 결과가 입력한 이름과 다른 장소면 주소·좌표 사용 안 함
+    const kakaoMatches = kakaoName ? isNameMatch(name, kakaoName) : false;
+    const naverMatches = naverName ? isNameMatch(name, naverName) : false;
+
+    const address = kakaoMatches
+        ? kakao?.road_address_name || kakao?.address_name || ""
+        : naverMatches
+          ? naver?.roadAddress || naver?.address || ""
+          : "";
+    const phone = (kakaoMatches || naverMatches) ? (naver?.telephone || kakao?.phone || "") : "";
+    const website = (kakaoMatches || naverMatches) && naver?.link && !naver.link.includes("map.naver.com") ? naver.link : "";
+    const latitude = kakaoMatches && kakao?.y ? parseFloat(parseFloat(kakao.y).toFixed(6)) : null;
+    const longitude = kakaoMatches && kakao?.x ? parseFloat(parseFloat(kakao.x).toFixed(6)) : null;
+    const categoryRaw = forcedCategory || ((kakaoMatches || naverMatches) ? (kakao?.category_name || naver?.category || "") : "");
+    const category = forcedCategory || ((kakaoMatches || naverMatches) ? (kakao?.category_group_name || categoryRaw.split(" > ")[0] || "") : "");
 
     let aiData: any = {};
     if (process.env.ANTHROPIC_API_KEY) {
@@ -197,7 +216,7 @@ export async function runPlaceAutofill(name: string, imageBuffer?: Buffer): Prom
     }
 
     return {
-        name: resolvedName,
+        name: name, // 원본 입력 이름 유지 (카카오 결과로 덮어쓰지 않음)
         name_en: aiData.name_en || "",
         name_ja: aiData.name_ja || "",
         name_zh: aiData.name_zh || "",

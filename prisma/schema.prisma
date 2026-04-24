@@ -27,69 +27,68 @@ model Payment {
 }
 
 model User {
-  id                    Int                    @id @default(autoincrement())
-  email                 String?                @unique @db.VarChar(191)
-  password              String?                @db.VarChar(255)
-  username              String                 @map("nickname") @db.VarChar(50)
-  profileImageUrl       String?
-  socialId              String?                @db.VarChar(255)
-  provider              String                 @default("local") @db.VarChar(20)
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  mbti                  String?                @db.VarChar(20)
-  age                   Int?
-  gender                String?                @db.VarChar(10)
-  lastActiveAt          DateTime?
-  level                 Int                    @default(1)
-  location              String?                @db.VarChar(100)
-  preferredTags         String[]
-  ageRange              String?                @db.VarChar(20)
-  birthday              DateTime?
-  phone                 String?                @db.VarChar(30)
-  isAutoRenewal         Boolean                @default(false) @map("is_auto_renewal")
-  subscriptionExpiresAt DateTime?              @map("subscription_expires_at")
-  subscriptionTier      SubscriptionTier       @default(FREE) @map("subscription_tier")
-  isMarketingAgreed     Boolean                @default(false) @map("is_marketing_agreed")
-  marketingAgreedAt     DateTime?              @map("marketing_agreed_at")
-  hasSeenConsentModal   Boolean                @default(false) @map("has_seen_consent_modal")
-  billingKey            String?                @map("billing_key") @db.VarChar(255)
-  deletedAt             DateTime?              @map("deleted_at")
-  appleRefreshToken     String?                @map("apple_refresh_token")
-  isSearchHistoryEnabled Boolean               @default(true) @map("is_search_history_enabled")
-  lastAiRecommendationUsedAt DateTime?         @map("last_ai_recommendation_used_at")
-  completedCourses      CompletedCourse[]
-  searchHistories       SearchHistory[]
-  completedEscapes      CompletedEscape[]
-  bookings              Booking[]
-  unlockedCourses       CourseUnlock[]
-  courses               Course[]
-  locationLogs          LocationLog[]
-  loginLogs             LoginLog[]
-  missionSubmissions    MissionSubmission[]
-  notificationInterests NotificationInterest[]
-  payments              Payment[]
-  pushTokens            PushToken?
-  reviews               Review[]
-  savedCourses          SavedCourse[]
-  userBadges            UserBadge[]
-  UserCollage           UserCollage[]
-  userFavorites         UserFavorite[]
-  interactions          UserInteraction[]
-  userPreference        UserPreference?
-  behaviorPatterns      UserBehaviorPattern[]
-  rewards               UserReward[]
-  userStoryProgress     UserStoryProgress[]
-  unlockIntents         UnlockIntent[]
-  activeCourse          ActiveCourse?
-  aiRecommendationUsages       AiRecommendationUsage[]
-  recommendationFeedbacks      RecommendationFeedback[]
-  userCourseSelections   UserCourseSelection[]
-  courseSuggestions      CourseSuggestion[]
+  id                         Int                      @id @default(autoincrement())
+  email                      String?                  @unique @db.VarChar(191)
+  password                   String?                  @db.VarChar(255)
+  username                   String                   @map("nickname") @db.VarChar(50)
+  profileImageUrl            String?
+  socialId                   String?                  @db.VarChar(255)
+  provider                   String                   @default("local") @db.VarChar(20)
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  mbti                       String?                  @db.VarChar(20)
+  age                        Int?
+  gender                     String?                  @db.VarChar(10)
+  lastActiveAt               DateTime?
+  level                      Int                      @default(1)
+  location                   String?                  @db.VarChar(100)
+  preferredTags              String[]
+  ageRange                   String?                  @db.VarChar(20)
+  birthday                   DateTime?
+  phone                      String?                  @db.VarChar(30)
+  isAutoRenewal              Boolean                  @default(false) @map("is_auto_renewal")
+  subscriptionExpiresAt      DateTime?                @map("subscription_expires_at")
+  subscriptionTier           SubscriptionTier         @default(FREE) @map("subscription_tier")
+  isMarketingAgreed          Boolean                  @default(false) @map("is_marketing_agreed")
+  marketingAgreedAt          DateTime?                @map("marketing_agreed_at")
+  hasSeenConsentModal        Boolean                  @default(false) @map("has_seen_consent_modal")
+  billingKey                 String?                  @map("billing_key") @db.VarChar(255)
+  deletedAt                  DateTime?                @map("deleted_at")
+  appleRefreshToken          String?                  @map("apple_refresh_token")
+  isSearchHistoryEnabled     Boolean                  @default(true) @map("is_search_history_enabled")
+  lastAiRecommendationUsedAt DateTime?                @map("last_ai_recommendation_used_at")
+  completedCourses           CompletedCourse[]
+  completedEscapes           CompletedEscape[]
+  activeCourse               ActiveCourse?
+  aiRecommendationUsages     AiRecommendationUsage[]
+  bookings                   Booking[]
+  courseSuggestions          CourseSuggestion[]
+  unlockedCourses            CourseUnlock[]
+  courses                    Course[]
+  locationLogs               LocationLog[]
+  loginLogs                  LoginLog[]
+  missionSubmissions         MissionSubmission[]
+  notificationInterests      NotificationInterest[]
+  payments                   Payment[]
+  pushTokens                 PushToken?
+  recommendationFeedbacks    RecommendationFeedback[]
+  reviews                    Review[]
+  savedCourses               SavedCourse[]
+  searchHistories            SearchHistory[]
+  unlockIntents              UnlockIntent[]
+  userBadges                 UserBadge[]
+  behaviorPatterns           UserBehaviorPattern[]
+  UserCollage                UserCollage[]
+  userCourseSelections       UserCourseSelection[]
+  userFavorites              UserFavorite[]
+  interactions               UserInteraction[]
+  userPreference             UserPreference?
+  rewards                    UserReward[]
+  userStoryProgress          UserStoryProgress[]
 
+  @@unique([socialId, provider], name: "unique_social_provider")
   @@index([provider, socialId])
   @@index([deletedAt])
-  // 🟢 [Fix]: 복합 유니크 인덱스 추가 (중복 가입 원천 차단)
-  @@unique([socialId, provider], name: "unique_social_provider")
   @@map("users")
 }
 
@@ -121,86 +120,80 @@ model SearchHistory {
 }
 
 model ActiveCourse {
-  id                    String                @id @default(cuid())
-  userId                Int                   @unique @map("user_id")
-  courseId              Int?                  @map("course_id")  // 고정 코스일 때
-  userCourseSelectionId String?               @unique @map("user_course_selection_id")  // 선택형일 때 (이대로 시작 클릭 시)
-  startedAt             DateTime              @default(now()) @map("started_at")
-  remindedAt            DateTime?             @map("reminded_at")  // 21시 리마인더 푸시 발송 시각 (중복 발송 방지)
-  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course                Course?               @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userCourseSelection   UserCourseSelection?  @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
+  id                    String               @id @default(cuid())
+  userId                Int                  @unique @map("user_id")
+  courseId              Int?                 @map("course_id")
+  startedAt             DateTime             @default(now()) @map("started_at")
+  remindedAt            DateTime?            @map("reminded_at")
+  userCourseSelectionId String?              @unique @map("user_course_selection_id")
+  course                Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userCourseSelection   UserCourseSelection? @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, startedAt])
   @@map("active_courses")
 }
 
 model Course {
-  id                   Int                 @id @default(autoincrement())
-  userId               Int?
-  title                String              @db.VarChar(100)
-  title_en             String?             @map("title_en")
-  title_ja             String?             @map("title_ja")
-  title_zh             String?             @map("title_zh")
-  description          String?
-  description_en       String?             @map("description_en")
-  description_ja       String?             @map("description_ja")
-  description_zh       String?             @map("description_zh")
-  imageUrl             String?             @db.VarChar(255)
-  region               String?             @db.VarChar(50)
-  duration             String?             @db.VarChar(45)
-  concept              String?             @db.VarChar(45)
-  
-  // 🔥 기존 JSON → 컬럼으로 변환
-  mood                 String[]            @default([])                      // tags.mood → 배열 컬럼
-  target               String[]            @default([])                      // tags.target → 배열 컬럼
-  goal                 String?             @db.VarChar(50)                   // tags.goal → 컬럼
-  
-  // 🔥 신규 Context-Aware 필드
-  scene                String?             @db.VarChar(100)                  // "퇴근 후 3시간", "주말 반나절"
-  target_audience      String?             @db.VarChar(100)                  // "직장인 커플", "대학생"
-  budget_level         String?             @db.VarChar(20)                   // "low" | "mid" | "high"
-  budget_range         String?             @db.VarChar(50)                   // "1인 3~5만"
-  budget_min           Int?                                                  // 30000
-  budget_max           Int?                                                  // 50000
-  route_difficulty     String?             @db.VarChar(20)                   // "편함" | "보통" | "빡셈"
-  target_description   String?             @db.VarChar(500)                  // "회사 근처에서 바로 시작하는..."
-  perfect_for          String[]            @default([])                      // ["직장인", "감성 좋아하는 커플"]
-  
-  tags                 Json?                                                 // 기타 정보 (선택적)
-  isPopular            Boolean             @default(false)
-  rating               Float               @default(0.0)
-  current_participants Int                 @default(0)
-  max_participants     Int                 @default(0)
-  view_count           Int                 @default(0)
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  sub_title            String?             @map("sub_title") @db.VarChar(100)
-  target_situation     String?             @map("target_situation") @db.VarChar(50)
-  is_editor_pick       Boolean             @default(false)
-  grade                CourseGrade         @default(FREE)
-  isPublic             Boolean             @default(true)
-  isSelectionType      Boolean             @default(false) @map("is_selection_type")  // true: 브런치/저녁 등 유저 선택형
-  completedCourses     CompletedCourse[]
-  benefits             Benefit[]
-  bookings             Booking[]
-  courseDetail         CourseDetail?
-  courseNotices        CourseNotice[]
-  coursePlaces         CoursePlace[]
-  unlockedUsers        CourseUnlock[]
-  user                 User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  highlights           Highlight[]
-  reviews              Review[]
-  savedUsers           SavedCourse[]
-  userFavorites        UserFavorite[]
-  interactions         UserInteraction[]
-  activeCourses        ActiveCourse[]
+  id                      Int                      @id @default(autoincrement())
+  userId                  Int?
+  title                   String                   @db.VarChar(100)
+  description             String?
+  imageUrl                String?                  @db.VarChar(255)
+  region                  String?                  @db.VarChar(50)
+  duration                String?                  @db.VarChar(45)
+  concept                 String?                  @db.VarChar(45)
+  tags                    Json?
+  isPopular               Boolean                  @default(false)
+  rating                  Float                    @default(0.0)
+  current_participants    Int                      @default(0)
+  max_participants        Int                      @default(0)
+  view_count              Int                      @default(0)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  sub_title               String?                  @map("sub_title") @db.VarChar(100)
+  target_situation        String?                  @map("target_situation") @db.VarChar(50)
+  is_editor_pick          Boolean                  @default(false)
+  grade                   CourseGrade              @default(FREE)
+  isPublic                Boolean                  @default(true)
+  budget_level            String?                  @db.VarChar(20)
+  budget_max              Int?
+  budget_min              Int?
+  budget_range            String?                  @db.VarChar(50)
+  goal                    String?                  @db.VarChar(50)
+  mood                    String[]                 @default([])
+  perfect_for             String[]                 @default([])
+  route_difficulty        String?                  @db.VarChar(20)
+  scene                   String?                  @db.VarChar(100)
+  target_audience         String?                  @db.VarChar(100)
+  target_description      String?                  @db.VarChar(500)
+  isSelectionType         Boolean                  @default(false) @map("is_selection_type")
+  title_en                String?                  @map("title_en")
+  title_ja                String?                  @map("title_ja")
+  title_zh                String?                  @map("title_zh")
+  description_en          String?                  @map("description_en")
+  description_ja          String?                  @map("description_ja")
+  description_zh          String?                  @map("description_zh")
+  target                  String[]                 @default([])
+  completedCourses        CompletedCourse[]
+  activeCourses           ActiveCourse[]
+  benefits                Benefit[]
+  bookings                Booking[]
+  courseDetail            CourseDetail?
+  courseNotices           CourseNotice[]
+  coursePlaces            CoursePlace[]
+  suggestions             CourseSuggestion[]
+  unlockedUsers           CourseUnlock[]
+  user                    User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  highlights              Highlight[]
   recommendationFeedbacks RecommendationFeedback[]
-  userCourseSelections   UserCourseSelection[]
-  sharedCourses          SharedCourse[]
-  suggestions            CourseSuggestion[]
+  reviews                 Review[]
+  savedUsers              SavedCourse[]
+  sharedCourses           SharedCourse[]
+  userCourseSelections    UserCourseSelection[]
+  userFavorites           UserFavorite[]
+  interactions            UserInteraction[]
 
-  // 🔥 인덱스 추가 (빠른 검색)
   @@index([scene])
   @@index([budget_level])
   @@index([route_difficulty])
@@ -218,17 +211,8 @@ model Course {
 model Place {
   id                   Int              @id @default(autoincrement())
   name                 String           @db.VarChar(255)
-  name_en              String?          @map("name_en")
-  name_ja              String?          @map("name_ja")
-  name_zh              String?          @map("name_zh")
   address              String?          @db.VarChar(500)
-  address_en           String?          @map("address_en") @db.VarChar(500)
-  address_ja           String?          @map("address_ja") @db.VarChar(500)
-  address_zh           String?          @map("address_zh") @db.VarChar(500)
   description          String?
-  description_en       String?          @map("description_en")
-  description_ja       String?          @map("description_ja")
-  description_zh       String?          @map("description_zh")
   category             String?          @db.VarChar(100)
   avg_cost_range       String?          @db.VarChar(100)
   opening_hours        String?          @db.VarChar(200)
@@ -239,11 +223,20 @@ model Place {
   latitude             Float?
   longitude            Float?
   imageUrl             String?          @db.VarChar(500)
-  status               String           @default("published") @db.VarChar(20)
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
   tags                 Json?
   reservationUrl       String?          @db.VarChar(500)
+  name_en              String?          @map("name_en")
+  name_ja              String?          @map("name_ja")
+  name_zh              String?          @map("name_zh")
+  description_en       String?          @map("description_en")
+  description_ja       String?          @map("description_ja")
+  description_zh       String?          @map("description_zh")
+  address_en           String?          @map("address_en") @db.VarChar(500)
+  address_ja           String?          @map("address_ja") @db.VarChar(500)
+  address_zh           String?          @map("address_zh") @db.VarChar(500)
+  status               String           @default("published") @db.VarChar(20)
   suggestion_id        Int?             @map("suggestion_id")
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
@@ -259,35 +252,33 @@ model CoursePlace {
   course_id          Int
   place_id           Int
   order_index        Int
-  segment            String?  @db.VarChar(50)  // "brunch" | "dinner" | null (선택형 코스일 때)
-  order_in_segment   Int?     @map("order_in_segment")  // 세그먼트 내 순서 (기본 선택 = 0)
   estimated_duration Int?
   recommended_time   String?  @db.VarChar(100)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-  tips              String?  @map("tips")   // 통합 팁 (JSON 배열, 기본 한국어)
-  tips_en           String?  @map("tips_en") @db.Text
-  tips_ja           String?  @map("tips_ja") @db.Text
-  tips_zh           String?  @map("tips_zh") @db.Text
+  segment            String?  @db.VarChar(50)
+  order_in_segment   Int?     @map("order_in_segment")
+  tips               String?  @map("tips")
+  tips_en            String?  @map("tips_en")
+  tips_ja            String?  @map("tips_ja")
+  tips_zh            String?  @map("tips_zh")
   course             Course   @relation(fields: [course_id], references: [id])
   place              Place    @relation(fields: [place_id], references: [id])
 
   @@map("course_places")
 }
 
-// 유저가 "이대로 시작" 클릭 시 생성되는 선택 조합 (브런치 A + 저녁 B 등)
 model UserCourseSelection {
-  id                 String            @id @default(cuid())
-  userId             Int               @map("user_id")
-  templateCourseId   Int               @map("template_course_id")
-  selectedPlaceIds   Int[]             @map("selected_place_ids")  // [placeId1, placeId2, ...] 선택한 장소 순서
-  createdAt          DateTime          @default(now()) @map("created_at")
-
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  templateCourse     Course            @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
-  activeCourse       ActiveCourse?
-  savedCourses       SavedCourse[]
-  completedCourses   CompletedCourse[]
+  id               String            @id @default(cuid())
+  userId           Int               @map("user_id")
+  templateCourseId Int               @map("template_course_id")
+  selectedPlaceIds Int[]             @map("selected_place_ids")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  completedCourses CompletedCourse[]
+  activeCourse     ActiveCourse?
+  savedCourses     SavedCourse[]
+  templateCourse   Course            @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([templateCourseId])
@@ -308,7 +299,6 @@ model CourseUnlock {
   @@map("course_unlocks")
 }
 
-// 🟢 [Unlock Intent]: 코스 열람권 결제 전 서버 발급 의도 ID (URL 변조 방지)
 model UnlockIntent {
   id          String    @id @default(cuid())
   userId      Int       @map("user_id")
@@ -459,7 +449,6 @@ model CourseDetail {
   @@map("course_details")
 }
 
-
 model StoryUI {
   id          Int      @id @default(autoincrement())
   storyId     Int      @unique
@@ -563,14 +552,14 @@ model Badge {
 }
 
 model CompletedCourse {
-  id                     Int                   @id @default(autoincrement())
-  userId                 Int                   // 기존 컬럼 (camelCase 유지)
-  courseId               Int?                  // 고정 코스 완료 시 (nullable로 변경)
-  userCourseSelectionId  String?               @map("user_course_selection_id")  // 선택형 완료 시
-  completedAt            DateTime              @default(now())
-  course                 Course?               @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userCourseSelection    UserCourseSelection?  @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
-  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    Int                  @id @default(autoincrement())
+  userId                Int
+  courseId              Int?
+  completedAt           DateTime             @default(now())
+  userCourseSelectionId String?              @map("user_course_selection_id")
+  course                Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userCourseSelection   UserCourseSelection? @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([courseId])
@@ -588,8 +577,8 @@ model Review {
   updatedAt DateTime @updatedAt
   imageUrls String[] @default([])
   isPublic  Boolean  @default(true) @map("is_public")
-  tags      String[] @default([]) // 🟢 태그 필드 추가
-  placeData Json?    @map("place_data") // 🟢 장소별 데이터: { [stepIndex]: { photos: string[], tags: string[] } }
+  tags      String[] @default([])
+  placeData Json?    @map("place_data")
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -626,15 +615,15 @@ model UserFavorite {
 }
 
 model SavedCourse {
-  id                     Int                   @id @default(autoincrement())
-  userId                 Int                   @map("user_id")
-  courseId               Int?                  @map("course_id")  // 고정 코스 저장 시
-  userCourseSelectionId  String?               @map("user_course_selection_id")  // 유저 선택 조합 저장 시
-  source                 String?               @db.VarChar(50) @default("general") @map("source") // "ai_recommendation" | "general"
-  savedAt                DateTime              @default(now()) @map("saved_at")
-  course                 Course?               @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userCourseSelection    UserCourseSelection?  @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
-  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    Int                  @id @default(autoincrement())
+  userId                Int                  @map("user_id")
+  courseId              Int?                 @map("course_id")
+  savedAt               DateTime             @default(now()) @map("saved_at")
+  source                String?              @default("general") @map("source") @db.VarChar(50)
+  userCourseSelectionId String?              @map("user_course_selection_id")
+  course                Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userCourseSelection   UserCourseSelection? @relation(fields: [userCourseSelectionId], references: [id], onDelete: Cascade)
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([courseId])
@@ -721,10 +710,10 @@ model UserPreference {
 model UserBehaviorPattern {
   id             Int      @id @default(autoincrement())
   userId         Int      @map("user_id")
-  conceptPattern Json     @map("concept_pattern") // { "힐링": 8, "활동적인": 3, ... }
-  regionPattern  Json     @map("region_pattern") // { "서울 강남구": 10, "제주": 2, ... }
-  moodPattern    Json     @map("mood_pattern") // { "로맨틱한": 6, "활기찬": 4, ... }
-  goalPattern    Json     @map("goal_pattern") // { "데이트": 12, "혼자만의시간": 3, ... }
+  conceptPattern Json     @map("concept_pattern")
+  regionPattern  Json     @map("region_pattern")
+  moodPattern    Json     @map("mood_pattern")
+  goalPattern    Json     @map("goal_pattern")
   snapshotDate   DateTime @default(now()) @map("snapshot_date")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -755,12 +744,76 @@ model CompletedEscape {
   @@map("CompletedEscapes")
 }
 
-
 model GridCode {
   id          Int    @id @default(autoincrement())
   region_name String @unique
   nx          Int
   ny          Int
+}
+
+model SharedCourse {
+  id               String   @id @default(cuid())
+  templateCourseId Int      @map("template_course_id")
+  sharedByUserId   Int?     @map("shared_by_user_id")
+  selectedPlaceIds Int[]    @default([]) @map("selected_place_ids")
+  createdAt        DateTime @default(now()) @map("created_at")
+  templateCourse   Course   @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
+
+  @@index([id])
+  @@index([templateCourseId])
+  @@map("shared_courses")
+}
+
+model AiRecommendationUsage {
+  id     Int      @id @default(autoincrement())
+  userId Int      @map("user_id")
+  usedAt DateTime @default(now()) @map("used_at")
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@map("ai_recommendation_usages")
+}
+
+model RecommendationFeedback {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  courseId     Int      @map("course_id")
+  rating       String   @db.VarChar(20)
+  context      String   @db.VarChar(50)
+  matchScore   Float?   @map("match_score")
+  matchReason  String?  @map("match_reason") @db.VarChar(500)
+  todayContext Json?    @map("today_context")
+  dayKey       String   @map("day_key") @db.VarChar(10)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, context, dayKey], name: "unique_user_course_context_day")
+  @@index([userId])
+  @@index([courseId])
+  @@map("recommendation_feedbacks")
+}
+
+model CourseSuggestion {
+  id           Int                    @id @default(autoincrement())
+  userId       Int                    @map("user_id")
+  placeName    String                 @map("place_name") @db.VarChar(100)
+  placeAddress String?                @map("place_address") @db.VarChar(255)
+  status       CourseSuggestionStatus @default(PENDING)
+  courseId     Int?                   @map("course_id")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+  description  String?                @db.VarChar(1000)
+  concept      String?                @db.VarChar(100)
+  imageUrl     String?                @map("image_url") @db.VarChar(500)
+  course       Course?                @relation(fields: [courseId], references: [id])
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@map("course_suggestions")
 }
 
 enum ChapterType {
@@ -830,78 +883,9 @@ enum CourseGrade {
   PREMIUM
 }
 
-// 🟢 공유 전용 미리보기: shareId로 공유 링크 관리
-model SharedCourse {
-  id                 String   @id @default(cuid())
-  templateCourseId   Int      @map("template_course_id")
-  sharedByUserId     Int?     @map("shared_by_user_id")
-  selectedPlaceIds   Int[]    @map("selected_place_ids") @default([]) // 완성 코스: 선택된 place_id 배열, 같이 고르기: []
-  createdAt          DateTime @default(now()) @map("created_at")
-
-  templateCourse     Course   @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
-
-  @@index([id])
-  @@index([templateCourseId])
-  @@map("shared_courses")
-}
-
-// 🟢 AI 추천 1일 사용 횟수 추적 (등급별 한도: FREE 1회, BASIC 5회, PREMIUM 무제한)
-model AiRecommendationUsage {
-  id     Int      @id @default(autoincrement())
-  userId Int      @map("user_id")
-  usedAt DateTime @default(now()) @map("used_at")
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, usedAt])
-  @@map("ai_recommendation_usages")
-}
-
-// 🟢 추천 피드백 (유저가 선택한 코스에 대한 만족도)
-model RecommendationFeedback {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  courseId     Int      @map("course_id")
-  rating       String   @db.VarChar(20)   // "GOOD" | "OK" | "BAD"
-  context      String   @db.VarChar(50)   // "AI_RECOMMENDATION"
-  matchScore   Float?   @map("match_score")
-  matchReason  String?  @map("match_reason") @db.VarChar(500)
-  todayContext Json?    @map("today_context")
-  dayKey       String   @map("day_key") @db.VarChar(10)   // "2026-03-03" (유니크용)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, courseId, context, dayKey], name: "unique_user_course_context_day")
-  @@index([userId])
-  @@index([courseId])
-  @@map("recommendation_feedbacks")
-}
-
 enum CourseSuggestionStatus {
   PENDING
   ACCEPTED
   PUBLISHED
   REJECTED
-}
-
-model CourseSuggestion {
-  id           Int                    @id @default(autoincrement())
-  userId       Int                    @map("user_id")
-  placeName    String                 @map("place_name") @db.VarChar(100)
-  placeAddress String?                @map("place_address") @db.VarChar(255)
-  description  String?                @db.VarChar(1000)
-  concept      String?                @db.VarChar(100)
-  imageUrl     String?                @map("image_url") @db.VarChar(500)
-  status       CourseSuggestionStatus @default(PENDING)
-  courseId     Int?                   @map("course_id")
-  createdAt    DateTime               @default(now()) @map("created_at")
-  updatedAt    DateTime               @updatedAt @map("updated_at")
-  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course       Course?                @relation(fields: [courseId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([courseId])
-  @@index([status])
-  @@map("course_suggestions")
 }

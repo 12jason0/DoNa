@@ -4,6 +4,7 @@ import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import prisma from "@/lib/db";
+import exifr from "exifr";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +27,25 @@ async function downloadTelegramPhoto(fileId: string): Promise<Buffer> {
     if (!filePath) throw new Error("파일 경로 없음");
     const imgRes = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`);
     return Buffer.from(await imgRes.arrayBuffer());
+}
+
+function parseCaption(caption: string): { placeName: string; neighborhood: string | null; category: string | null } {
+    const parts = caption.split("|").map((s) => s.trim());
+    return {
+        placeName: parts[0] || "",
+        neighborhood: parts[1] || null,
+        category: parts[2] || null,
+    };
+}
+
+async function extractGpsFromBuffer(buffer: Buffer): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+        const gps = await exifr.gps(buffer);
+        if (gps?.latitude && gps?.longitude) {
+            return { latitude: gps.latitude, longitude: gps.longitude };
+        }
+    } catch {}
+    return null;
 }
 
 function toSlug(str: string): string {
@@ -64,25 +84,54 @@ export async function POST(request: NextRequest) {
 
         // /start 커맨드
         if (text === "/start") {
-            await sendMessage(chatId, "안녕하세요! 사진과 함께 장소 이름을 캡션으로 입력하면 자동으로 저장됩니다.\n\n예시: 사진 첨부 후 캡션에 '봉땅' 입력");
+            await sendMessage(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리\n예시: 봉땅 | 홍대 | 카페\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
             return NextResponse.json({ ok: true });
         }
 
-        // 사진 메시지 처리
-        if (message.photo) {
-            const placeName = caption.trim();
-            if (!placeName) {
-                await sendMessage(chatId, "캡션에 장소 이름을 입력해주세요.\n예시: 사진 첨부 후 캡션에 '봉땅' 입력");
+        // 사진(압축) 또는 파일(원본) 둘 다 처리
+        const isPhoto = !!message.photo;
+        const isDocument = !!message.document && message.document.mime_type?.startsWith("image/");
+
+        if (isPhoto || isDocument) {
+            const rawCaption = caption.trim();
+            if (!rawCaption) {
+                await sendMessage(chatId, "캡션에 장소 이름을 입력해주세요.\n형식: 장소이름 | 카테고리\n예시: 봉땅 | 카페");
                 return NextResponse.json({ ok: true });
             }
 
-            await sendMessage(chatId, `📍 "${placeName}" 저장 중...`);
+            const { placeName, neighborhood, category } = parseCaption(rawCaption);
+            if (!placeName) {
+                await sendMessage(chatId, "장소 이름을 확인해주세요.");
+                return NextResponse.json({ ok: true });
+            }
 
-            const largestPhoto = message.photo[message.photo.length - 1];
+            const categoryMsg = category ? ` (${category})` : "";
+            const neighborhoodMsg = neighborhood ? ` / ${neighborhood}` : "";
+            await sendMessage(chatId, `📍 "${placeName}"${neighborhoodMsg}${categoryMsg} 저장 중...`);
 
-            // 사진 먼저 다운로드 후 autofill에 넘김 (Vision 분석용)
-            const photoBuffer = await downloadTelegramPhoto(largestPhoto.file_id).catch((e) => { console.error("사진 다운로드 실패:", e); return null as Buffer | null; });
-            const autofillData = await runPlaceAutofill(placeName, photoBuffer ?? undefined).catch((e) => { console.error("autofill 실패:", e); return { name: placeName } as any; });
+            const fileId = isDocument
+                ? message.document.file_id
+                : message.photo[message.photo.length - 1].file_id;
+
+            // 파일 다운로드
+            const photoBuffer = await downloadTelegramPhoto(fileId).catch((e) => { console.error("사진 다운로드 실패:", e); return null as Buffer | null; });
+
+            // 파일로 보낸 경우 GPS 추출
+            let gpsCoords: { latitude: number; longitude: number } | null = null;
+            if (isDocument && photoBuffer) {
+                gpsCoords = await extractGpsFromBuffer(photoBuffer);
+                if (gpsCoords) {
+                    await sendMessage(chatId, `📡 GPS 감지됨 (${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)})`);
+                }
+            }
+
+            const autofillData = await runPlaceAutofill(placeName, photoBuffer ?? undefined, category ?? undefined, neighborhood ?? undefined).catch((e) => { console.error("autofill 실패:", e); return { name: placeName } as any; });
+
+            // GPS가 있으면 카카오 좌표보다 우선 적용
+            if (gpsCoords) {
+                autofillData.latitude = gpsCoords.latitude;
+                autofillData.longitude = gpsCoords.longitude;
+            }
 
             // 영문명으로 S3 업로드
             let imageUrl = "";
@@ -94,10 +143,10 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // draft 로 DB 저장
+            // draft 로 DB 저장 (이름은 캡션 원본 유지)
             const saved = await (prisma as any).place.create({
                 data: {
-                    name: autofillData.name || placeName,
+                    name: placeName,
                     name_en: autofillData.name_en || null,
                     name_ja: autofillData.name_ja || null,
                     name_zh: autofillData.name_zh || null,
@@ -134,7 +183,10 @@ export async function POST(request: NextRequest) {
                 });
             }
 
-            await sendMessage(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}\n집에서 admin 페이지에서 확인·수정 후 발행하세요.`);
+            const gpsNote = gpsCoords ? "\n📡 GPS 좌표 자동 적용" : "";
+            const catNote = category ? `\n🏷 카테고리: ${category}` : "";
+            const neighborNote = neighborhood ? `\n📍 지역: ${neighborhood}` : "";
+            await sendMessage(chatId, `✅ "${saved.name}" 저장 완료!\n\nID: ${saved.id}${neighborNote}${catNote}${gpsNote}\n어드민에서 확인·수정 후 발행하세요.`);
             return NextResponse.json({ ok: true });
         }
 

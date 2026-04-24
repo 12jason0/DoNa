@@ -217,7 +217,7 @@ export default function AdminPlacesPage() {
             const d = data.data;
             setFormData((prev) => ({
                 ...prev,
-                name: d.name || prev.name,
+                name: prev.name, // 관리자가 입력한 이름 유지
                 name_en: d.name_en || prev.name_en,
                 name_ja: d.name_ja || prev.name_ja,
                 name_zh: d.name_zh || prev.name_zh,
