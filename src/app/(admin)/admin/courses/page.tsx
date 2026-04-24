@@ -28,7 +28,6 @@ const CONCEPT_OPTIONS: ConceptTag[] = [
     "술자리",
     "실내데이트",
     "공연·전시",
-    "실내",
     "야외",
     "기념일",
     "소개팅",
