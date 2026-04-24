@@ -399,6 +399,7 @@ export default function AdminPlacesPage() {
                                 <option value="야경">야경</option>
                                 <option value="식물원">식물원</option>
                                 <option value="시장">시장</option>
+                                <option value="소품샵">소품샵</option>
                             </select>
                         </div>
                         <div className="space-y-1 md:col-span-2">

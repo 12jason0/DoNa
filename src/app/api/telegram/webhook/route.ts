@@ -80,11 +80,9 @@ export async function POST(request: NextRequest) {
 
             const largestPhoto = message.photo[message.photo.length - 1];
 
-            // autofill + 사진 다운로드 병렬 실행
-            const [autofillData, photoBuffer] = await Promise.all([
-                runPlaceAutofill(placeName).catch((e) => { console.error("autofill 실패:", e); return { name: placeName } as any; }),
-                downloadTelegramPhoto(largestPhoto.file_id).catch((e) => { console.error("사진 다운로드 실패:", e); return null as any; }),
-            ]);
+            // 사진 먼저 다운로드 후 autofill에 넘김 (Vision 분석용)
+            const photoBuffer = await downloadTelegramPhoto(largestPhoto.file_id).catch((e) => { console.error("사진 다운로드 실패:", e); return null as Buffer | null; });
+            const autofillData = await runPlaceAutofill(placeName, photoBuffer ?? undefined).catch((e) => { console.error("autofill 실패:", e); return { name: placeName } as any; });
 
             // 영문명으로 S3 업로드
             let imageUrl = "";

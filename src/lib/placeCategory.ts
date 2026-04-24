@@ -21,6 +21,7 @@ const RAW_BY_TYPE: Record<PlaceCategoryType, string[]> = {
         "쇼핑",
         "액티비티",
         "시장",
+        "소품샵",
     ],
 };
 

@@ -121,7 +121,7 @@ export interface PlaceAutofillResult {
     reservation_required: boolean;
 }
 
-export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResult> {
+export async function runPlaceAutofill(name: string, imageBuffer?: Buffer): Promise<PlaceAutofillResult> {
     const [kakao, naver] = await Promise.all([kakaoSearch(name), naverSearch(name)]);
     const naverLink = naver?.link || "";
     const { menuPrices, openingHours, closedDays } = naverLink
@@ -142,7 +142,9 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
         try {
             const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
             const prompt = [
+                "당신은 20-30대 커플 데이트 앱 'DoNa'의 장소 큐레이터입니다.",
                 "다음 장소 정보를 바탕으로 데이터를 생성해주세요.",
+                imageBuffer ? "첨부된 사진을 참고해 실제 공간의 분위기와 특징을 파악하세요." : "",
                 "",
                 "장소명: " + resolvedName,
                 "주소(한국어): " + (address || "정보 없음"),
@@ -154,10 +156,10 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
                 '  "name_en": "장소명 영어 번역 (한국어 고유명사는 로마자 발음 그대로, 예: 봉땅 → Bongdang)",',
                 '  "name_ja": "장소명 일본어 번역 (한국어 고유명사는 가타카나 음역, 예: 봉땅 → ポンダン)",',
                 '  "name_zh": "장소명 중국어 번역 (한국어 고유명사는 한자 음역 또는 병음, 예: 봉땅 → 蓬当)",',
-                '  "description": "이 장소의 분위기와 경험을 1문장으로 (예: 스마트폰과 미디어에 의존하는 일상에서 벗어나 독서를 통해 디지털 디톡스와 힐링을 실천할 수 있는 장소)",',
-                '  "description_en": "Same concept, 1 sentence in English",',
-                '  "description_ja": "同じコンセプト、日本語で1文",',
-                '  "description_zh": "相同概念，用中文写一句话",',
+                '  "description": "커플 데이트 관점에서 이 장소의 매력을 1문장으로. 공간 분위기·경험 중심으로 쓰되, 왜 데이트 장소로 좋은지 자연스럽게 녹여내기. (예 카페: \'통유리 너머 한강이 보이는 좌석에서 여유로운 오후를 보낼 수 있는 감성 카페\' / 예 소품샵: \'빈티지 소품과 아기자기한 인테리어 소품이 가득해 함께 구경하며 취향을 나누기 좋은 편집숍\')",',
+                '  "description_en": "Same concept, 1 sentence in English for couples",',
+                '  "description_ja": "同じコンセプト、カップル向けに日本語で1文",',
+                '  "description_zh": "相同概念，面向情侣用中文写一句话",',
                 '  "address_en": "주어진 한국어 주소를 영문으로 변환 (로마자 표기)",',
                 '  "address_ja": "주어진 한국어 주소를 일본어로 번역",',
                 '  "address_zh": "주어진 한국어 주소를 중국어로 번역",',
@@ -166,12 +168,19 @@ export async function runPlaceAutofill(name: string): Promise<PlaceAutofillResul
                 "}",
                 "",
                 "reservation_required는 예약이 보통 필요한 곳(파인다이닝, 오마카세, 고급 레스토랑 등)이면 true, 아니면 false",
-            ].join("\n");
+            ].filter(Boolean).join("\n");
+
+            const userContent: Anthropic.MessageParam["content"] = imageBuffer
+                ? [
+                      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageBuffer.toString("base64") } },
+                      { type: "text", text: prompt },
+                  ]
+                : prompt;
 
             const message = await anthropic.messages.create({
                 model: "claude-haiku-4-5-20251001",
                 max_tokens: 3000,
-                messages: [{ role: "user", content: prompt }],
+                messages: [{ role: "user", content: userContent }],
             });
             const text = message.content[0].type === "text" ? message.content[0].text : "";
             const jsonMatch = text.match(/\{[\s\S]*\}/);
