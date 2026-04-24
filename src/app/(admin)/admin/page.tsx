@@ -582,6 +582,17 @@ export default function AdminDashboard() {
                             <p className="text-gray-500 mt-2 text-sm">구독권 환불 요청을 확인하고 승인/거부합니다.</p>
                         </div>
                     </Link>
+
+                    {/* 7. 지역 관리 */}
+                    <Link href="/admin/regions" className="block group">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
+                            <div className="text-3xl mb-4">📌</div>
+                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600">
+                                지역 관리
+                            </h3>
+                            <p className="text-gray-500 mt-2 text-sm">코스 지역 목록을 추가·삭제·순서 변경합니다.</p>
+                        </div>
+                    </Link>
                 </div>
             </section>
         </div>

@@ -131,6 +131,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             isPublic,
             isSelectionType,
             tags,
+            title_en,
+            title_ja,
+            title_zh,
+            sub_title_en,
+            sub_title_ja,
+            sub_title_zh,
+            description_en,
+            description_ja,
+            description_zh,
         } = body || {};
 
         // 🟢 [Fix]: region 또는 location 둘 다 처리 (프론트엔드는 region을 보냄)
@@ -153,6 +162,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             ...(isPublic !== undefined ? { isPublic } : {}),
             ...(isSelectionType !== undefined ? { isSelectionType } : {}),
             ...(tags !== undefined ? { tags } : {}),
+            ...(title_en !== undefined ? { title_en: title_en || null } : {}),
+            ...(title_ja !== undefined ? { title_ja: title_ja || null } : {}),
+            ...(title_zh !== undefined ? { title_zh: title_zh || null } : {}),
+            ...(sub_title_en !== undefined ? { sub_title_en: sub_title_en || null } : {}),
+            ...(sub_title_ja !== undefined ? { sub_title_ja: sub_title_ja || null } : {}),
+            ...(sub_title_zh !== undefined ? { sub_title_zh: sub_title_zh || null } : {}),
+            ...(description_en !== undefined ? { description_en: description_en || null } : {}),
+            ...(description_ja !== undefined ? { description_ja: description_ja || null } : {}),
+            ...(description_zh !== undefined ? { description_zh: description_zh || null } : {}),
         };
 
         // 🔥 tags가 있으면 컬럼으로 변환

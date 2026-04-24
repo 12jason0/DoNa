@@ -118,19 +118,52 @@ function shortRegionLabel(label: string): string {
     return label.split(/\s*[·・]\s*/)[0].trim();
 }
 
-export function translateCourseRegion(region: string | null | undefined, t: TranslateFn): string {
+export type RegionTranslationMap = Record<string, { name_en?: string | null; name_ja?: string | null; name_zh?: string | null }>;
+
+export function translateCourseRegion(
+    region: string | null | undefined,
+    t: TranslateFn,
+    locale?: string,
+    regionMap?: RegionTranslationMap,
+): string {
     if (!region?.trim()) return "";
     const raw = region.trim();
     const upper = raw.toUpperCase();
+
+    // 1. 대문자 코드(GANGNAM 등) → i18n
     const byCode = REGION_KEY_MAP[upper];
     if (byCode) {
         const translated = t(byCode);
         return shortRegionLabel(translated || raw);
     }
-    // DB에 한글로 직접 입력된 값(성수, 홍대 등)은 그대로 표시
+
+    // 2. 한글 동네명 → 기존 KO_SNIPPET 매핑 → i18n
     if (/[가-힣]/.test(raw)) {
+        for (const [ko, code] of KO_SNIPPET_TO_REGION_CODE) {
+            if (raw === ko || raw.includes(ko)) {
+                const mapKey = REGION_KEY_MAP[code];
+                if (mapKey) {
+                    const translated = tResolved(t, mapKey);
+                    if (translated) return shortRegionLabel(translated);
+                }
+            }
+        }
+
+        // 3. DB regions 번역 테이블 참조 (새로 추가된 지역)
+        if (regionMap && locale && locale !== "ko") {
+            const entry = regionMap[raw];
+            if (entry) {
+                const dbTranslated =
+                    locale === "en" ? entry.name_en :
+                    locale === "ja" ? entry.name_ja :
+                    entry.name_zh;
+                if (dbTranslated?.trim()) return dbTranslated.trim();
+            }
+        }
+
         return raw;
     }
+
     return raw;
 }
 

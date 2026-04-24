@@ -35,7 +35,6 @@ const ACTIVITY_ICONS: Record<string, string> = {
     [CONCEPTS.EXHIBITION]: "🎭",
 };
 
-/** URL·상태는 영문 슬러그, 서버 필터는 `resolveNearbyRegionParam`으로 한글 토큰 변환 */
 const REGION_DEFS = [
     { slug: "gangnam" },
     { slug: "seongsu" },

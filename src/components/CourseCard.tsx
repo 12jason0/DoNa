@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "@/components/ImageFallback";
 import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
 import { useLocale } from "@/context/LocaleContext";
-import { translateCourseConcept } from "@/lib/courseTranslate";
+import { translateCourseConcept, translateCourseRegion } from "@/lib/courseTranslate";
+import { useRegions } from "@/hooks/useRegions";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
 import { pickCourseDescription, pickCourseTitle } from "@/lib/courseLocalized";
 import CourseLockOverlay from "./CourseLockOverlay";
@@ -113,6 +114,7 @@ const CourseCard = memo(
         const router = useRouter();
         const { isAuthenticated } = useAuth();
         const { t, locale } = useLocale();
+        const regionMap = useRegions();
         const hasDbTranslation = locale === "ko"
             || (locale === "en" && !!course.title_en?.trim())
             || (locale === "ja" && !!course.title_ja?.trim())
@@ -319,7 +321,7 @@ const CourseCard = memo(
                         {(course.region || course.location) && (
                             <div className="flex items-center gap-1">
                                 <span>📍</span>
-                                <span>{course.region || course.location}</span>
+                                <span>{translateCourseRegion(course.region || course.location, t as (k: string) => string, locale, regionMap)}</span>
                             </div>
                         )}
 

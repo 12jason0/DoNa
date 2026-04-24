@@ -48,24 +48,6 @@ const MOOD_OPTIONS: MoodTag[] = [
 const TARGET_OPTIONS: TargetTag[] = ["연인", "썸", "친구", "가족", "혼자"];
 
 const BUDGET_OPTIONS: BudgetTag[] = ["3만원 이하", "3~6만원", "6~10만원", "10~20만원", "20만원 이상"];
-const REGION_OPTIONS = [
-    "성수",
-    "홍대",
-    "연남",
-    "종로",
-    "을지로",
-    "강남",
-    "용산",
-    "이태원",
-    "잠실",
-    "여의도",
-    "영등포",
-    "한남",
-    "서촌",
-    "안국",
-    "합정",
-    "건대",
-];
 const DURATION_OPTIONS = ["2시간", "3시간", "4시간", "5시간", "6시간+"];
 
 const MAX_CONCEPT_COUNT = 5;
@@ -204,9 +186,18 @@ type Course = {
     is_editor_pick?: boolean;
     isPublic: boolean;
     grade?: "FREE" | "BASIC" | "PREMIUM";
-    isSelectionType?: boolean; // 선택형 코스 (브런치/저녁 등 유저 선택)
+    isSelectionType?: boolean;
     places?: LinkedPlace[];
     placesCount?: number;
+    title_en?: string | null;
+    title_ja?: string | null;
+    title_zh?: string | null;
+    sub_title_en?: string | null;
+    sub_title_ja?: string | null;
+    sub_title_zh?: string | null;
+    description_en?: string | null;
+    description_ja?: string | null;
+    description_zh?: string | null;
 };
 
 const INITIAL_TAGS: DoNaCourseTags = {
@@ -231,6 +222,15 @@ const INITIAL_COURSE: Omit<Course, "id"> = {
     grade: "FREE",
     isSelectionType: false,
     places: [],
+    title_en: "",
+    title_ja: "",
+    title_zh: "",
+    sub_title_en: "",
+    sub_title_ja: "",
+    sub_title_zh: "",
+    description_en: "",
+    description_ja: "",
+    description_zh: "",
 };
 
 export default function AdminCoursesPage() {
@@ -257,12 +257,13 @@ export default function AdminCoursesPage() {
     const [addRecTime, setAddRecTime] = useState<string>(""); // recommended_time
     const [addTips, setAddTips] = useState<TipItem[]>([]);
 
-    const regionOptions = useMemo(() => {
-        const fromCourses = courses
-            .map((c) => (c.region || "").trim())
-            .filter((v): v is string => Boolean(v));
-        return Array.from(new Set([...REGION_OPTIONS, ...fromCourses])).sort((a, b) => a.localeCompare(b, "ko"));
-    }, [courses]);
+    const [regionOptions, setRegionOptions] = useState<string[]>([]);
+    useEffect(() => {
+        fetch("/api/regions")
+            .then((r) => r.json())
+            .then((data: { name: string }[]) => setRegionOptions(data.map((r) => r.name)))
+            .catch(() => {});
+    }, []);
 
     const conceptOptions = useMemo(() => {
         const fromCourses = courses
@@ -279,6 +280,8 @@ export default function AdminCoursesPage() {
 
     // 장소 수정용 State
     const [editingPlaceId, setEditingPlaceId] = useState<number | null>(null);
+    const [isTranslatingTips, setIsTranslatingTips] = useState(false);
+    const [isTranslatingCourse, setIsTranslatingCourse] = useState(false);
     const [editingPlaceData, setEditingPlaceData] = useState<{
         order_index: number;
         segment?: string;
@@ -620,10 +623,16 @@ export default function AdminCoursesPage() {
                 isPublic: courseDetail.isPublic ?? true,
                 grade: courseDetail.grade || "FREE",
                 isSelectionType: courseDetail.isSelectionType ?? false,
-
-                // ✅ API에서 include로 가져온 places (coursePlaces) 데이터를 바로 넣음
-                // 백엔드에서 places: course.coursePlaces로 매핑해서 보냈으므로 그대로 사용
                 places: courseDetail.places || [],
+                title_en: courseDetail.title_en || "",
+                title_ja: courseDetail.title_ja || "",
+                title_zh: courseDetail.title_zh || "",
+                sub_title_en: courseDetail.sub_title_en || "",
+                sub_title_ja: courseDetail.sub_title_ja || "",
+                sub_title_zh: courseDetail.sub_title_zh || "",
+                description_en: courseDetail.description_en || "",
+                description_ja: courseDetail.description_ja || "",
+                description_zh: courseDetail.description_zh || "",
             });
 
             // 추가 폼 초기화
@@ -639,6 +648,50 @@ export default function AdminCoursesPage() {
             setEditingId(null);
         }
     };
+    // 코스 기본 정보 한국어 → 자동번역
+    const handleAutoTranslateCourse = async () => {
+        if (!formData.title?.trim() && !formData.sub_title?.trim() && !formData.description?.trim()) {
+            alert("번역할 내용이 없습니다. 제목 또는 설명을 먼저 입력해주세요.");
+            return;
+        }
+        setIsTranslatingCourse(true);
+        try {
+            const res = await fetch("/api/admin/translate-course", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    title: formData.title || undefined,
+                    sub_title: formData.sub_title || undefined,
+                    description: formData.description || undefined,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                alert(`번역 실패: ${err.error || res.status}`);
+                return;
+            }
+            const data = await res.json();
+            setFormData((prev) => ({
+                ...prev,
+                title_en: data.en?.title ?? prev.title_en,
+                title_ja: data.ja?.title ?? prev.title_ja,
+                title_zh: data.zh?.title ?? prev.title_zh,
+                sub_title_en: data.en?.sub_title ?? prev.sub_title_en,
+                sub_title_ja: data.ja?.sub_title ?? prev.sub_title_ja,
+                sub_title_zh: data.zh?.sub_title ?? prev.sub_title_zh,
+                description_en: data.en?.description ?? prev.description_en,
+                description_ja: data.ja?.description ?? prev.description_ja,
+                description_zh: data.zh?.description ?? prev.description_zh,
+            }));
+        } catch (e) {
+            console.error("번역 오류:", e);
+            alert("번역 중 오류가 발생했습니다.");
+        } finally {
+            setIsTranslatingCourse(false);
+        }
+    };
+
     // --- 취소 핸들러 ---
     const cancelEdit = () => {
         setEditingId(null);
@@ -830,6 +883,40 @@ export default function AdminCoursesPage() {
     const cancelEditPlace = () => {
         setEditingPlaceId(null);
         setEditingPlaceData(null);
+    };
+
+    // 한국어 팁 → EN/JA/ZH 자동 번역
+    const handleAutoTranslateTips = async () => {
+        if (!editingPlaceData || editingPlaceData.tips.length === 0) {
+            alert("번역할 한국어 팁이 없습니다.");
+            return;
+        }
+        setIsTranslatingTips(true);
+        try {
+            const res = await fetch("/api/admin/translate-tips", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ tips: editingPlaceData.tips }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                alert(`번역 실패: ${err.error || res.status}`);
+                return;
+            }
+            const data = await res.json();
+            setEditingPlaceData({
+                ...editingPlaceData,
+                tips_en: data.tips_en ?? [],
+                tips_ja: data.tips_ja ?? [],
+                tips_zh: data.tips_zh ?? [],
+            });
+        } catch (e) {
+            console.error("번역 오류:", e);
+            alert("번역 중 오류가 발생했습니다.");
+        } finally {
+            setIsTranslatingTips(false);
+        }
     };
 
     // 장소 수정 저장
@@ -1050,8 +1137,8 @@ export default function AdminCoursesPage() {
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white"
                                 >
                                     <option value="">선택하세요</option>
-                                    {REGION_OPTIONS.map((region) => (
-                                        <option key={region} value={region}>{region}</option>
+                                    {regionOptions.map((r) => (
+                                        <option key={r} value={r}>{r}</option>
                                     ))}
                                 </select>
                             </div>
@@ -1193,6 +1280,47 @@ export default function AdminCoursesPage() {
                                     rows={3}
                                     className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none"
                                 />
+                            </div>
+
+                            {/* 다국어 자동번역 섹션 */}
+                            <div className="border rounded-lg p-4 bg-blue-50 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-blue-700">다국어 번역 (EN / JA / ZH)</span>
+                                    <button
+                                        type="button"
+                                        onClick={handleAutoTranslateCourse}
+                                        disabled={isTranslatingCourse}
+                                        className="px-3 py-1.5 text-xs font-medium rounded border border-blue-500 text-blue-600 bg-white hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isTranslatingCourse ? "번역 중..." : "한국어 → 자동번역"}
+                                    </button>
+                                </div>
+                                {(["en", "ja", "zh"] as const).map((lang) => (
+                                    <div key={lang} className="space-y-2">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase">{lang === "en" ? "English" : lang === "ja" ? "日本語" : "中文"}</p>
+                                        <input
+                                            type="text"
+                                            placeholder={`제목 (${lang})`}
+                                            value={(formData[`title_${lang}` as keyof typeof formData] as string) || ""}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, [`title_${lang}`]: e.target.value }))}
+                                            className="w-full border p-1.5 rounded text-sm bg-white"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder={`부제목 (${lang})`}
+                                            value={(formData[`sub_title_${lang}` as keyof typeof formData] as string) || ""}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, [`sub_title_${lang}`]: e.target.value }))}
+                                            className="w-full border p-1.5 rounded text-sm bg-white"
+                                        />
+                                        <textarea
+                                            placeholder={`설명 (${lang})`}
+                                            value={(formData[`description_${lang}` as keyof typeof formData] as string) || ""}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, [`description_${lang}`]: e.target.value }))}
+                                            rows={2}
+                                            className="w-full border p-1.5 rounded text-sm bg-white"
+                                        />
+                                    </div>
+                                ))}
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
@@ -1545,6 +1673,14 @@ export default function AdminCoursesPage() {
                                                                             })
                                                                         }
                                                                     />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleAutoTranslateTips}
+                                                                        disabled={isTranslatingTips || editData.tips.length === 0}
+                                                                        className="w-full py-1.5 text-xs font-medium rounded border border-blue-400 text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        {isTranslatingTips ? "번역 중..." : "한국어 팁 → EN / JA / ZH 자동번역"}
+                                                                    </button>
                                                                     <TipItemEditor
                                                                         label="팁 (English)"
                                                                         tips={editData.tips_en}

@@ -30,6 +30,7 @@ import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
 import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { useTranslatedTitle } from "@/hooks/useTranslatedTitle";
+import { useRegions } from "@/hooks/useRegions";
 import HorizontalScrollContainer from "@/components/HorizontalScrollContainer";
 import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
 import type { TranslationKeys } from "@/types/i18n";
@@ -407,7 +408,8 @@ export default function CourseDetailClient({
     const translatedTitle = hasTitleDbTranslation
         ? (courseData ? pickCourseTitle(courseData, locale) : "")
         : (apiTitle || courseData?.title || "");
-    const translatedRegion = translateCourseRegion(courseData?.region || "", t as (k: string) => string);
+    const regionMap = useRegions();
+    const translatedRegion = translateCourseRegion(courseData?.region || "", t as (k: string) => string, locale, regionMap);
     const translatedTargetSituation = useMemo(() => {
         const raw = (courseData?.target_situation || "").trim();
         if (!raw) return "";

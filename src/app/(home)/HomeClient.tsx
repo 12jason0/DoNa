@@ -33,6 +33,7 @@ import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
 import { localeToBcp47 } from "@/lib/localeBcp47";
 import { translateCourseRegion } from "@/lib/courseTranslate";
+import { useRegions } from "@/hooks/useRegions";
 
 // 🟢 섹션 메모이제이션 (렌더링 부하 감소)
 const MemoizedPersonalizedSection = memo(PersonalizedSection);
@@ -56,6 +57,7 @@ export default function HomeClient({
 }) {
     const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { t, locale } = useLocale();
+    const regionMap = useRegions();
     const { containInPhone, modalContainerRef } = useAppLayout();
     const [showWelcome, setShowWelcome] = useState(false);
     const [loginProvider, setLoginProvider] = useState<"apple" | "kakao" | null>(null);
@@ -805,7 +807,7 @@ export default function HomeClient({
                                 {selectedMemory.course?.region && (
                                     <div className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-xs rounded-full z-20">
                                         <span className="text-sm font-medium text-white dark:text-gray-300">
-                                            {translateCourseRegion(selectedMemory.course.region, t as (k: string) => string)}
+                                            {translateCourseRegion(selectedMemory.course.region, t as (k: string) => string, locale, regionMap)}
                                         </span>
                                     </div>
                                 )}

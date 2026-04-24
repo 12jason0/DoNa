@@ -304,18 +304,6 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
 
     const handleRegionSelect = (group: (typeof REGION_GROUPS)[number]) => {
         setPreferences((prev) => {
-            // 지역 선택은 다중 선택이 가능하지만, "새로 시작" 느낌을 위해
-            // 만약 기존에 선택된 지역들이 있고 사용자가 새로 클릭한다면?
-            // -> 여기는 "자주 출몰하는 지역"이라 여러 개 선택이 자연스러움.
-            // -> 하지만 "재설정" 상황이라면 기존 것을 다 날리고 싶을 수도 있음.
-            // -> 일단 기존 토글 방식 유지하되, 사용자가 명시적으로 지우지 않는 한 유지되는 것이 일반적임.
-            // -> 다만 사용자가 "초기화"를 원한다면 별도 버튼이 필요하거나,
-            //    진입 시점에 초기화했어야 함.
-            // -> 요청하신 "각 단계 선택 시 기존 값 초기화"를 지역에도 적용하려면 단일 선택으로 바뀌거나,
-            //    첫 클릭 시 초기화 로직이 필요한데, 다중 선택 UI에서는 첫 클릭인지 알기 어려움.
-            // -> 따라서 지역은 토글 방식을 유지하되, 만약 "단일 선택"처럼 동작하길 원하면 수정 가능.
-            // -> 여기서는 기존 토글 로직 유지 (지역은 여러 곳일 수 있으므로)
-
             const current = prev.regions || [];
             const isSelected = current.includes(group.dbValues[0]);
             let newRegions = [...current];
