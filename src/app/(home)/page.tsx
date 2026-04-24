@@ -63,6 +63,36 @@ export type InitialUserData = {
     canUseRecommendation: boolean;
 };
 
+const getCachedUserQueries = unstable_cache(
+    async (userId: number, dayStartIso: string) => {
+        const start = new Date(dayStartIso);
+        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+        return Promise.all([
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: { username: true, email: true, subscriptionTier: true, hasSeenConsentModal: true },
+            }),
+            (prisma.activeCourse as any).findUnique({
+                where: { userId },
+                select: {
+                    startedAt: true, courseId: true,
+                    course: {
+                        select: {
+                            id: true, title: true, title_en: true, title_ja: true, title_zh: true, imageUrl: true,
+                            coursePlaces: { orderBy: { order_index: "asc" }, take: 3, select: { place: { select: { imageUrl: true } } } },
+                        },
+                    },
+                },
+            }).catch(() => null),
+            (prisma as any).aiRecommendationUsage
+                .count({ where: { userId, createdAt: { gte: start, lte: end } } })
+                .catch(() => 0),
+        ]);
+    },
+    ["home-user-queries"],
+    { revalidate: 30 },
+);
+
 async function getInitialUserData(token: string): Promise<InitialUserData | null> {
     try {
         const userIdStr = verifyJwtAndGetUserId(token);
@@ -70,49 +100,10 @@ async function getInitialUserData(token: string): Promise<InitialUserData | null
         if (!Number.isFinite(userId)) return null;
 
         const { start, end } = getKSTTodayRange();
-
-        const [user, active, usageCount] = await Promise.all([
-            prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    username: true,
-                    email: true,
-                    subscriptionTier: true,
-                    hasSeenConsentModal: true,
-                },
-            }),
-            (prisma.activeCourse as any)
-                .findUnique({
-                    where: { userId },
-                    select: {
-                        startedAt: true,
-                        courseId: true,
-                        course: {
-                            select: {
-                                id: true,
-                                title: true,
-                                title_en: true,
-                                title_ja: true,
-                                title_zh: true,
-                                imageUrl: true,
-                                coursePlaces: {
-                                    orderBy: { order_index: "asc" },
-                                    take: 3,
-                                    select: { place: { select: { imageUrl: true } } },
-                                },
-                            },
-                        },
-                    },
-                })
-                .catch(() => null),
-            (prisma as any).aiRecommendationUsage
-                .count({ where: { userId, createdAt: { gte: start, lte: end } } })
-                .catch(() => 0),
-        ]);
+        const [user, active, usageCount] = await getCachedUserQueries(userId, start.toISOString());
 
         if (!user) return null;
 
-        // 표시 이름 계산 (/api/users/profile 와 동일 로직)
         let displayName = user.username || "";
         if (!displayName || displayName.trim() === "" || displayName.trim().startsWith("user_")) {
             displayName = user.email?.split("@")[0] || displayName;
@@ -126,19 +117,13 @@ async function getInitialUserData(token: string): Promise<InitialUserData | null
         const canUseRecommendation =
             limit === Number.POSITIVE_INFINITY || (usageCount as number) < limit;
 
-        // activeCourse — active-course API 와 동일 로직
         let activeCourseData: InitialUserData["activeCourse"] = null;
         if (active && active.courseId) {
             const startedAt = new Date(active.startedAt);
             if (startedAt >= start && startedAt <= end) {
                 const memory = await prisma.review
                     .findFirst({
-                        where: {
-                            userId,
-                            courseId: active.courseId,
-                            isPublic: false,
-                            createdAt: { gte: start, lte: end },
-                        },
+                        where: { userId, courseId: active.courseId, isPublic: false, createdAt: { gte: start, lte: end } },
                         select: { id: true },
                     })
                     .catch(() => null);

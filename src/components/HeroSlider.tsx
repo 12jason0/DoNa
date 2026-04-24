@@ -83,7 +83,7 @@ const SliderItemComponent = memo(
                             className="object-cover"
                             priority={hasPriority}
                             quality={75}
-                            sizes="(max-width: 768px) 100vw, 400px"
+                            sizes="(max-width: 480px) 88vw, (max-width: 768px) 400px, 400px"
                         />
                     ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
@@ -310,22 +310,17 @@ export default function HeroSlider({ items }: HeroSliderProps) {
         startTimer();
     }, [startTimer]);
 
-    const slideStyle =
+    const slideStyle: React.CSSProperties =
         slideWidthPx > 0
-            ? {
-                  width: slideWidthPx,
-                  minWidth: slideWidthPx,
-                  height: "100%",
-                  minHeight: "100%",
-              }
-            : undefined;
+            ? { width: slideWidthPx, minWidth: slideWidthPx, height: "100%", minHeight: "100%" }
+            : { width: `${PEEK_RATIO * 100}vw`, minWidth: `${PEEK_RATIO * 100}vw`, height: "100%", minHeight: "100%" };
 
     return (
         <section
             className={`relative w-full overflow-hidden transition-opacity duration-500 ${
                 isInitialized ? "opacity-100" : "opacity-0"
             }`}
-            style={{ minHeight: `${HERO_HEIGHT_VH}vh` }}
+            style={{ minHeight: `${HERO_HEIGHT_VH}svh` }}
         >
             <div
                 ref={scrollRef}
@@ -337,7 +332,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
                 style={{
                     scrollBehavior: "auto",
                     gap: CARD_GAP,
-                    height: `${HERO_HEIGHT_VH}vh`,
+                    height: `${HERO_HEIGHT_VH}svh`,
                     WebkitOverflowScrolling: "touch",
                 }}
             >

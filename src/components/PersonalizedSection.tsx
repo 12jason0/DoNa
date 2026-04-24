@@ -77,6 +77,7 @@ export default function PersonalizedSection({ initialCourses }: { initialCourses
     const [showLoginModal, setShowLoginModal] = useState(false);
     // 🟢 모달 드래그로 닫기
     const dragRef = useRef({ startY: 0, currentY: 0 });
+    const dragRafRef = useRef<number | null>(null);
     const [modalDragY, setModalDragY] = useState(0);
     // 주말(토·일)엔 dayBanner=weekend 고정. 평일엔 today
     useEffect(() => {
@@ -436,7 +437,13 @@ export default function PersonalizedSection({ initialCourses }: { initialCourses
                                 const y = e.touches[0].clientY;
                                 const delta = y - dragRef.current.startY;
                                 if (delta > 0) {
-                                    setModalDragY(delta);
+                                    dragRef.current.currentY = delta;
+                                    if (dragRafRef.current === null) {
+                                        dragRafRef.current = requestAnimationFrame(() => {
+                                            setModalDragY(dragRef.current.currentY);
+                                            dragRafRef.current = null;
+                                        });
+                                    }
                                 }
                             }}
                             onTouchEnd={() => {
