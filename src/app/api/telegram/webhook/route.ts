@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
         // /start 커맨드
         if (text === "/start") {
-            await sendMessage(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리\n예시: 봉땅 | 홍대 | 카페\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
+            await sendMessage(chatId, "안녕하세요!\n\n📎 사진을 파일로 보내면 GPS 자동 인식\n\n형식: 장소이름 | 지역 | 카테고리\n예시: 봉땅 | 홍대 | 카페\n\n카테고리: 카페 / 음식점 / 주점 / 소품샵 / 실내명소 / 야외명소 / 이색데이트 / 액티비티 / 사진관 / 인생네컷 / 향수 / 야경 / 식물원 / 시장 / 쇼핑");
             return NextResponse.json({ ok: true });
         }
 

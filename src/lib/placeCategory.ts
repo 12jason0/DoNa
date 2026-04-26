@@ -15,6 +15,7 @@ const RAW_BY_TYPE: Record<PlaceCategoryType, string[]> = {
         "실내명소",
         "향수",
         "사진관",
+        "인생네컷",
         "식물원",
         "이색데이트",
         "야경",

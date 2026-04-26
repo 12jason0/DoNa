@@ -395,6 +395,7 @@ export default function AdminPlacesPage() {
                                 <option value="이색데이트">이색데이트</option>
                                 <option value="액티비티">액티비티</option>
                                 <option value="사진관">사진관</option>
+                                <option value="인생네컷">인생네컷</option>
                                 <option value="향수">향수</option>
                                 <option value="야경">야경</option>
                                 <option value="식물원">식물원</option>
