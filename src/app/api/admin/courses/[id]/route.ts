@@ -291,6 +291,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         if (!courseId || isNaN(courseId)) {
             return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
         }
+        // ON DELETE RESTRICT FK 자식 테이블 먼저 삭제
+        await Promise.all([
+            prisma.coursePlace.deleteMany({ where: { course_id: courseId } }),
+            prisma.highlight.deleteMany({ where: { course_id: courseId } }),
+            prisma.benefit.deleteMany({ where: { course_id: courseId } }),
+            prisma.courseNotice.deleteMany({ where: { course_id: courseId } }),
+        ]);
         await prisma.course.delete({ where: { id: courseId } });
         return NextResponse.json({ success: true });
     } catch (error: any) {
