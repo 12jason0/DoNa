@@ -186,10 +186,15 @@ export async function GET(request: NextRequest) {
                 },
             });
 
-            genderStats = genderData.map((item) => ({
-                gender: item.gender === "M" ? "남성" : item.gender === "F" ? "여성" : item.gender || "미입력",
-                count: item._count.id,
-            }));
+            const genderMerge: Record<string, number> = {};
+            for (const item of genderData) {
+                const label =
+                    item.gender === "M" || item.gender === "남성" ? "남성" :
+                    item.gender === "F" || item.gender === "여성" ? "여성" :
+                    item.gender || "미입력";
+                genderMerge[label] = (genderMerge[label] ?? 0) + item._count.id;
+            }
+            genderStats = Object.entries(genderMerge).map(([gender, count]) => ({ gender, count }));
         } catch (genderError: any) {
 
                 captureApiError(genderError);
