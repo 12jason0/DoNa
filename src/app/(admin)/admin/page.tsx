@@ -583,7 +583,18 @@ export default function AdminDashboard() {
                         </div>
                     </Link>
 
-                    {/* 7. 지역 관리 */}
+                    {/* 7. 카드뉴스 생성 */}
+                    <Link href="/admin/card-news" className="block group">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
+                            <div className="text-3xl mb-4">📸</div>
+                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600">카드뉴스 생성</h3>
+                            <p className="text-gray-500 mt-2 text-sm">
+                                코스를 선택해 인스타그램용 카드뉴스 이미지를 자동 생성합니다.
+                            </p>
+                        </div>
+                    </Link>
+
+                    {/* 8. 지역 관리 */}
                     <Link href="/admin/regions" className="block group">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition cursor-pointer h-full">
                             <div className="text-3xl mb-4">📌</div>

@@ -62,6 +62,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             🕵️‍♀️ 방탈출 스토리
                         </Link>
 
+                        <Link
+                            href="/admin/card-news"
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-green-50 text-gray-700 hover:text-green-700 font-medium transition"
+                        >
+                            📸 카드뉴스 생성
+                        </Link>
+
                         <p className="px-4 text-xs font-semibold text-gray-400 uppercase mt-6 mb-2">운영</p>
                         <Link
                             href="/admin/notifications"
