@@ -10,13 +10,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
 
-    const { name } = await request.json();
+    const { name, excludeId } = await request.json();
     if (!name?.trim()) {
         return NextResponse.json({ error: "장소 이름이 필요합니다." }, { status: 400 });
     }
 
     const existing = await (prisma as any).place.findFirst({
-        where: { name: { equals: name.trim(), mode: "insensitive" } },
+        where: {
+            name: { equals: name.trim(), mode: "insensitive" },
+            ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
         select: { id: true, name: true },
     });
     if (existing) {

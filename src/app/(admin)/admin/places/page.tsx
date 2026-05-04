@@ -205,7 +205,7 @@ export default function AdminPlacesPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ name: formData.name.trim() }),
+                body: JSON.stringify({ name: formData.name.trim(), excludeId: editingId }),
             });
             const data = await res.json();
             if (res.status === 409) {
