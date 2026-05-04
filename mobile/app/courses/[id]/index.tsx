@@ -179,6 +179,11 @@ export default function CourseDetailScreen() {
         setIsFav(ids.has(Number(id)));
     }, [favList, id]);
 
+    useEffect(() => {
+        if (!id) return;
+        api.post(`/api/courses/${id}/view`, {}).catch(() => {});
+    }, [id]);
+
     // ── 선택형 코스 데이터 ──────────────────────────────────────────────────────
     const normalizedPlacesAll = useMemo(() => {
         const sorted = [...(course?.coursePlaces ?? [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));

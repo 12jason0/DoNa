@@ -156,10 +156,12 @@ export async function GET(request: NextRequest) {
                 },
             });
 
-            ageRangeStats = ageRangeData.map((item) => ({
-                ageRange: item.ageRange || "미입력",
-                count: item._count.id,
-            })).sort((a, b) => {
+            const ageMerge: Record<string, number> = {};
+            for (const item of ageRangeData) {
+                const label = item.ageRange === "50대" ? "50대 이상" : (item.ageRange || "미입력");
+                ageMerge[label] = (ageMerge[label] ?? 0) + item._count.id;
+            }
+            ageRangeStats = Object.entries(ageMerge).map(([ageRange, count]) => ({ ageRange, count })).sort((a, b) => {
                 // 연령대 순서 정렬 (10대, 20대, 30대, 40대, 50대 이상, 미입력)
                 const order = ["10대", "20대", "30대", "40대", "50대 이상", "미입력"];
                 const indexA = order.indexOf(a.ageRange) >= 0 ? order.indexOf(a.ageRange) : 999;
