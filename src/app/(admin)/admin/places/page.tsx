@@ -340,9 +340,34 @@ export default function AdminPlacesPage() {
         }
     };
 
+    const [mapping, setMapping] = useState(false);
+
     return (
         <div className="space-y-12">
-            <h1 className="text-2xl font-bold text-gray-800">장소 데이터 관리</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-gray-800">장소 데이터 관리</h1>
+                <button
+                    type="button"
+                    disabled={mapping}
+                    onClick={async () => {
+                        if (!confirm("DB의 모든 장소에 Google Place ID를 자동 매핑합니다. (약 1~2분 소요)")) return;
+                        setMapping(true);
+                        try {
+                            const res = await fetch("/api/admin/places/google-map", { method: "POST", credentials: "include" });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error ?? "오류");
+                            alert(`완료: ${data.mapped}개 매핑 성공, ${data.failed}개 실패 (전체 ${data.total}개)`);
+                        } catch (e: any) {
+                            alert(`오류: ${e.message}`);
+                        } finally {
+                            setMapping(false);
+                        }
+                    }}
+                    className="text-sm px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                >
+                    {mapping ? "매핑 중..." : "🔍 Google Place ID 자동 매핑"}
+                </button>
+            </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-6">

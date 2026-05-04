@@ -1567,6 +1567,15 @@ export default function AdminCoursesPage() {
                                                                 <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
                                                                     {item.place.category}
                                                                 </span>
+                                                                {(() => {
+                                                                    const s = (item as any).place?.place_status;
+                                                                    if (!s || s === "OPERATIONAL") return null;
+                                                                    return (
+                                                                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${s === "CLOSED_PERMANENTLY" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                                                            {s === "CLOSED_PERMANENTLY" ? "🔴 폐업" : "🟡 임시휴업"}
+                                                                        </span>
+                                                                    );
+                                                                })()}
                                                                 {formData.isSelectionType && (item as any).segment && (
                                                                     <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
                                                                         {SEGMENT_OPTIONS.find((s) => s.value === (item as any).segment)?.label ?? (item as any).segment}

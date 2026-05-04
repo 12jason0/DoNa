@@ -241,6 +241,9 @@ model Place {
   address_zh           String?          @map("address_zh") @db.VarChar(500)
   status               String           @default("published") @db.VarChar(20)
   suggestion_id        Int?             @map("suggestion_id")
+  google_place_id      String?          @map("google_place_id") @db.VarChar(500)
+  place_status         String?          @default("OPERATIONAL") @map("place_status") @db.VarChar(50)
+  status_checked_at    DateTime?        @map("status_checked_at")
   coursePlaces         CoursePlace[]
   closed_days          PlaceClosedDay[]
 
