@@ -356,7 +356,10 @@ export default function AdminPlacesPage() {
                             const res = await fetch("/api/admin/places/google-map", { method: "POST", credentials: "include" });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error ?? "오류");
-                            alert(`완료: ${data.mapped}개 매핑 성공, ${data.failed}개 실패 (전체 ${data.total}개)`);
+                            const failedMsg = data.failedPlaces?.length
+                                ? `\n\n실패 장소:\n${data.failedPlaces.map((p: { id: number; name: string; address: string | null }) => `• [${p.id}] ${p.name} (${p.address ?? "주소없음"})`).join("\n")}`
+                                : "";
+                            alert(`완료: ${data.mapped}개 매핑 성공 (좌표 자동입력 ${data.coordsFilled ?? 0}개), ${data.failed}개 실패 (전체 ${data.total}개)${failedMsg}`);
                         } catch (e: any) {
                             alert(`오류: ${e.message}`);
                         } finally {
