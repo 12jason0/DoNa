@@ -76,26 +76,26 @@ export async function GET(request: NextRequest) {
                     ? await prisma.$queryRaw<
                           Array<{ date: Date; count: bigint | number }>
                       >(Prisma.sql`
-                SELECT 
-                    DATE("created_at") as date,
+                SELECT
+                    DATE("createdAt") as date,
                     COUNT(*)::integer as count
                 FROM "user_interactions"
-                WHERE "created_at" >= ${sevenDaysAgo}
+                WHERE "createdAt" >= ${sevenDaysAgo}
                     AND "action" = 'view'
                     AND "user_id" NOT IN (${Prisma.join(excludedUserIds)})
-                GROUP BY DATE("created_at")
+                GROUP BY DATE("createdAt")
                 ORDER BY date ASC
             `)
                     : await prisma.$queryRaw<
                           Array<{ date: Date; count: bigint | number }>
                       >`
-                SELECT 
-                    DATE("created_at") as date,
+                SELECT
+                    DATE("createdAt") as date,
                     COUNT(*)::integer as count
                 FROM "user_interactions"
-                WHERE "created_at" >= ${sevenDaysAgo}
+                WHERE "createdAt" >= ${sevenDaysAgo}
                     AND "action" = 'view'
-                GROUP BY DATE("created_at")
+                GROUP BY DATE("createdAt")
                 ORDER BY date ASC
             `;
 

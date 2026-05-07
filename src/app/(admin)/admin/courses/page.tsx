@@ -82,9 +82,14 @@ function TipItemEditor({
                 content: "",
             },
         ]);
-    const updateTip = (index: number, field: "category" | "content", value: string) => {
+    const updateTip = (index: number, field: "category" | "content" | "priority", value: string) => {
         const next = [...tips];
-        next[index] = { ...next[index], [field]: value };
+        if (field === "priority") {
+            const num = value === "" ? undefined : Number(value);
+            next[index] = { ...next[index], priority: num };
+        } else {
+            next[index] = { ...next[index], [field]: value };
+        }
         onChange(next);
     };
     const removeTip = (index: number) => onChange(tips.filter((_, i) => i !== index));
@@ -105,6 +110,19 @@ function TipItemEditor({
                                     {getTipCategoryLabel(c, t)}
                                 </option>
                             ))}
+                        </select>
+                        <select
+                            value={tipRow.priority ?? ""}
+                            onChange={(e) => updateTip(i, "priority", e.target.value)}
+                            className="border p-1.5 rounded text-xs w-16 shrink-0"
+                            title="중요도 (3 = 카드뉴스 노출)"
+                        >
+                            <option value="">-</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3★</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
                         </select>
                         <textarea
                             value={tipRow.content}
@@ -1675,12 +1693,21 @@ export default function AdminCoursesPage() {
                                                                     <TipItemEditor
                                                                         label="팁 (한국어)"
                                                                         tips={editData.tips}
-                                                                        onChange={(tips) =>
+                                                                        onChange={(newTips) => {
+                                                                            const syncPriority = (translated: TipItem[]) =>
+                                                                                translated.map((tip, i) =>
+                                                                                    newTips[i] !== undefined
+                                                                                        ? { ...tip, priority: newTips[i].priority }
+                                                                                        : tip,
+                                                                                );
                                                                             setEditingPlaceData({
                                                                                 ...editData,
-                                                                                tips,
-                                                                            })
-                                                                        }
+                                                                                tips: newTips,
+                                                                                tips_en: syncPriority(editData.tips_en),
+                                                                                tips_ja: syncPriority(editData.tips_ja),
+                                                                                tips_zh: syncPriority(editData.tips_zh),
+                                                                            });
+                                                                        }}
                                                                     />
                                                                     <button
                                                                         type="button"

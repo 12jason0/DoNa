@@ -41,8 +41,10 @@ import { useLocale } from '../../src/lib/useLocale';
 let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
 try {
     const kakaoUserModule = require('@react-native-kakao/user');
-    kakaoNativeLogin = kakaoUserModule.login ?? null;
-    console.log("[Kakao] @react-native-kakao/user 로드 성공, login 함수:", typeof kakaoNativeLogin);
+    const loginFn = kakaoUserModule.login;
+    // useKakaoAccountLogin: true → KakaoTalk 앱 대신 웹 로그인 (프로세스 킬 방지)
+    kakaoNativeLogin = loginFn ? () => loginFn({ useKakaoAccountLogin: true }) : null;
+    console.log("[Kakao] @react-native-kakao/user 로드 성공, login(useKakaoAccountLogin:true):", typeof loginFn);
 } catch (e) {
     console.error("[Kakao] @react-native-kakao/user 로드 실패:", e);
     kakaoNativeLogin = null;
@@ -143,27 +145,7 @@ export default function LoginScreen() {
                 }
             };
 
-            if (Platform.OS === 'android' && kakaoNativeLogin) {
-                if (!kakaoSdkReady) {
-                    setError(i18n('authPage.login.errorGeneric'));
-                    return;
-                }
-                console.log("[Kakao] 네이티브 login() 호출 시작");
-                const kakaoToken = await kakaoNativeLogin();
-                console.log("[Kakao] login() 완료, accessToken:", kakaoToken?.accessToken ? "있음" : "없음", "전체 키:", Object.keys(kakaoToken ?? {}));
-                const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
-                    accessToken: kakaoToken.accessToken,
-                });
-                if (data.user) {
-                    setMessage(i18n('authPage.login.submitting'));
-                    await handleLoginSuccess(data.user, data.token);
-                } else {
-                    setError(data.error || i18n('authPage.login.errorKakaoCanceled'));
-                }
-            } else {
-                // iOS 또는 안드로이드에서 네이티브 모듈 없을 때: 웹 OAuth
-                await runKakaoWebOAuth();
-            }
+            await runKakaoWebOAuth();
         } catch (e: any) {
             console.error("[Kakao] login() catch 에러:", JSON.stringify({
                 message: e?.message,

@@ -22,6 +22,7 @@ export type TipCategory =
 export interface TipItem {
     category: TipCategory;
     content: string;
+    priority?: number; // 1~5, 3 = 카드뉴스 노출 대상
 }
 
 /** 유효 카테고리 값 목록 (어드민 select·검증용) */
@@ -123,6 +124,7 @@ export function parseTipsFromDb(value: string | null | undefined): TipItem[] {
                     return {
                         category: valid ? mapped : ("ETC" as TipCategory),
                         content: String(x.content || "").trim(),
+                        ...(typeof x.priority === "number" ? { priority: x.priority } : {}),
                     };
                 })
                 .filter((x) => x.content.length > 0);

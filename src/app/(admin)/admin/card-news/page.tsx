@@ -11,9 +11,11 @@ interface CoursePlace {
     seg?: string | null;
     ois?: number | null;
     tip?: string | null;
+    hasPriority3: boolean;
     imageUrl?: string | null;
     lat?: number | null;
     lng?: number | null;
+    category?: string | null;
 }
 
 interface Course {
@@ -25,13 +27,30 @@ interface Course {
     budget: string;
     sel: boolean;
     mood: string[];
+    concept: string[];
     places: CoursePlace[];
 }
 
-/* TipItem[] JSON에서 첫 번째 팁 content만 꺼냄 */
-function parseTip(raw: string | null | undefined): string | null {
-    const items = parseTipsFromDb(raw);
+const CARD_NEWS_TIP_PRIORITY: string[] = [
+    "CAUTION", "BEST_SPOT", "WAITING", "PHOTO_ZONE",
+    "SIGNATURE_MENU", "GOOD_TO_KNOW", "VIBE_CHECK",
+    "ATTIRE", "ROUTE", "WALKING", "PARKING", "ETC",
+];
+
+function pickByCategory(items: ReturnType<typeof parseTipsFromDb>): string | null {
+    for (const cat of CARD_NEWS_TIP_PRIORITY) {
+        const found = items.find((t) => t.category === cat);
+        if (found) return found.content;
+    }
     return items[0]?.content ?? null;
+}
+
+function parseTipForCardNews(raw: string | null | undefined): { tip: string | null; hasPriority3: boolean } {
+    const items = parseTipsFromDb(raw);
+    const p3 = items.filter((t) => t.priority === 3);
+    if (p3.length === 1) return { tip: p3[0].content, hasPriority3: true };
+    if (p3.length > 1) return { tip: pickByCategory(p3), hasPriority3: true };
+    return { tip: pickByCategory(items), hasPriority3: false };
 }
 
 /* ── API response → internal Course shape ───────────────────── */
@@ -39,9 +58,9 @@ function transformCourse(raw: any): Course {
     const places: CoursePlace[] = (raw.coursePlaces ?? raw.places ?? [])
         .sort((a: any, b: any) => a.order_index - b.order_index)
         .map((cp: any) => {
-            const tip = parseTip(cp.tips);
+            const { tip, hasPriority3 } = parseTipForCardNews(cp.tips);
             if (process.env.NODE_ENV === "development") {
-                console.log(`[card-news] place=${cp.place?.name} raw_tips=${JSON.stringify(cp.tips)} → tip=${tip}`);
+                console.log(`[card-news] place=${cp.place?.name} raw_tips=${JSON.stringify(cp.tips)} → tip=${tip} hasPriority3=${hasPriority3}`);
             }
             return {
                 pid: cp.place_id ?? cp.place?.id,
@@ -50,9 +69,11 @@ function transformCourse(raw: any): Course {
                 seg: cp.segment ?? null,
                 ois: cp.order_in_segment ?? null,
                 tip,
+                hasPriority3,
                 imageUrl: cp.place?.imageUrl ?? null,
                 lat: cp.place?.latitude != null ? Number(cp.place.latitude) : null,
                 lng: cp.place?.longitude != null ? Number(cp.place.longitude) : null,
+                category: cp.place?.category ?? null,
             };
         });
 
@@ -65,6 +86,7 @@ function transformCourse(raw: any): Course {
         budget: raw.budget_range ?? raw.tags?.budget ?? "",
         sel: raw.isSelectionType ?? false,
         mood: raw.mood ?? raw.tags?.mood ?? [],
+        concept: Array.isArray(raw.concept) ? raw.concept : Array.isArray(raw.tags?.concept) ? raw.tags.concept : typeof raw.concept === "string" && raw.concept ? raw.concept.split(",").map((s: string) => s.trim()) : [],
         places,
     };
 }
@@ -100,7 +122,7 @@ function buildSlides(c: Course): SlideType[] {
 type PosMap = Record<string, { x: number; y: number }>;
 
 function defaultPositions(slide: SlideType): PosMap {
-    if (slide.type === "cover") return { title: { x: 70, y: H - 350 }, tags: { x: 70, y: H - 170 } };
+    if (slide.type === "cover") return { title: { x: 70, y: H - 350 }, subtitle: { x: 70, y: H - 265 }, tags: { x: 70, y: H - 170 } };
     if (slide.type === "route") return {};
     if (slide.type === "place") return { name: { x: 70, y: H - 310 }, tip: { x: 70, y: H - 200 } };
     if (slide.type === "or") {
@@ -123,6 +145,35 @@ function getWalkingMinutes(lat1: number, lng1: number, lat2: number, lng2: numbe
         Math.sin(dLat / 2) ** 2 +
         Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
     return Math.max(1, Math.round((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.4) / 80));
+}
+
+/* ── Cover place selection ──────────────────────────────────── */
+const CONCEPT_CATEGORY_MAP: Record<string, string[]> = {
+    야경: ["야경", "야외명소", "카페"],
+    인생샷: ["인생네컷", "사진관", "야경"],
+    기념일: ["야경", "야외명소", "음식점"],
+    카페투어: ["카페", "음식점"],
+    맛집탐방: ["음식점", "카페"],
+    감성데이트: ["카페", "야외명소", "실내명소"],
+    이색데이트: ["이색데이트", "실내명소", "카페"],
+    실내데이트: ["실내명소", "액티비티", "카페"],
+    술자리: ["주점", "음식점"],
+    힐링: ["야외명소", "카페", "식물원"],
+    가성비: ["음식점", "카페"],
+    소개팅: ["카페", "음식점"],
+    "공연·전시": ["실내명소", "카페", "음식점"],
+    야외: ["야외명소", "식물원"],
+};
+
+function pickCoverPid(course: Course): number {
+    const priorities = CONCEPT_CATEGORY_MAP[course.concept[0]] ?? [];
+    for (const cat of priorities) {
+        const matches = course.places.filter((p) => p.category === cat && p.imageUrl);
+        if (matches.length) return matches.reduce((a, b) => (b.oi > a.oi ? b : a)).pid;
+    }
+    // 백업: 마지막 장소
+    const last = [...course.places].sort((a, b) => b.oi - a.oi).find((p) => p.imageUrl);
+    return last?.pid ?? course.places[0]?.pid;
 }
 
 /* ── Canvas helpers ─────────────────────────────────────────── */
@@ -206,7 +257,7 @@ function gb(ctx: CanvasRenderingContext2D, sy = H * 0.55) {
 
 /* ── Renderers ──────────────────────────────────────────────── */
 function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTMLImageElement>, pos: PosMap) {
-    const img = ph[c.places[0]?.pid];
+    const img = ph[pickCoverPid(c)];
     if (img) {
         cf(ctx, img, 0, 0, W, H);
         ctx.fillStyle = "rgba(0,0,0,.3)";
@@ -226,8 +277,12 @@ function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTM
     ctx.shadowColor = "rgba(0,0,0,.6)";
     ctx.shadowBlur = 16;
     wt(ctx, c.title, pos.title.x, pos.title.y, W - 140, 64);
+    if (c.sub_title) {
+        ctx.font = "500 28px 'Pretendard',-apple-system,sans-serif";
+        wt(ctx, c.sub_title, pos.subtitle.x, pos.subtitle.y, W - 140, 36);
+    }
     ctx.shadowBlur = 0;
-    const tags = ["#두나", ...c.mood.slice(0, 2).map((m) => "#" + m)];
+    const tags = ["#두나", ...c.concept.slice(0, 2).map((m) => "#" + m)];
     let px = pos.tags.x;
     const py = pos.tags.y;
     ctx.font = "500 24px 'Pretendard',-apple-system,sans-serif";
@@ -374,7 +429,7 @@ function rCta(ctx: CanvasRenderingContext2D, c: Course, _ph: Record<number, HTML
     ctx.textAlign = "left";
     ctx.font = "500 42px 'Pretendard',-apple-system,sans-serif";
     ctx.fillStyle = "#fff";
-    ctx.fillText("이 코스의 더 자세한 이야기는", pos.main.x, pos.main.y);
+    ctx.fillText("이런 코스 더 보러", pos.main.x, pos.main.y);
     const ay = pos.arrow.y;
     ctx.strokeStyle = "rgba(255,255,255,.6)";
     ctx.lineWidth = 2;
@@ -1050,6 +1105,24 @@ export default function CardNewsPage() {
                                                 }}
                                             >
                                                 <span style={{ color: "#fff", fontSize: 8 }}>✓</span>
+                                            </div>
+                                        )}
+                                        {!p.hasPriority3 && (
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    bottom: 2,
+                                                    left: 2,
+                                                    background: "#f59e0b",
+                                                    borderRadius: 4,
+                                                    padding: "1px 4px",
+                                                    fontSize: 7,
+                                                    fontWeight: 700,
+                                                    color: "#fff",
+                                                    lineHeight: 1.4,
+                                                }}
+                                            >
+                                                폴백
                                             </div>
                                         )}
                                     </label>
