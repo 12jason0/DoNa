@@ -13,6 +13,13 @@
 
 # Add any project specific keep options here:
 
+# Retrofit - Kakao SDK internal network calls (prevents R8 from stripping generic type info)
+-keep class retrofit2.** { *; }
+-keep interface retrofit2.** { *; }
+-dontwarn retrofit2.**
+-keepattributes Signature
+-keepattributes Exceptions
+
 # expo-image / expo-modules-core R8 missing class fix
 -keep class expo.modules.kotlin.runtime.** { *; }
 -keep class expo.modules.kotlin.** { *; }

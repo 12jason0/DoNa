@@ -88,7 +88,9 @@
       "mcp__claude_ai_Vercel__get_runtime_logs",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\12jas\\\\dona-tip-automation\" | Where-Object { $_.Name -notlike \"node_modules\" } | Select-Object Name, PSIsContainer)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Recurse -Directory)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }
