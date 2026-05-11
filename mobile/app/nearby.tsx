@@ -36,7 +36,7 @@ import PageLoadingOverlay from "../src/components/PageLoadingOverlay";
 import AppHeaderWithModals from "../src/components/AppHeaderWithModals";
 import StandaloneTabBar from "../src/components/StandaloneTabBar";
 import type { Course, UserProfile } from "../src/types/api";
-import { useModal } from "../src/lib/modalContext";
+import { useModal, useModalActions } from "../src/lib/modalContext";
 import { useLocale } from "../src/lib/useLocale";
 import type { LocalePreference } from "../src/lib/appSettingsStorage";
 import { formatViewsCompact } from "../src/lib/localeUtils";
@@ -105,7 +105,7 @@ function NearbyCardInner({
 }) {
     const colors = useThemeColors();
     const { t: i18n, locale } = useLocale();
-    const { openModal } = useModal();
+    const { openModal } = useModalActions();
     const { isAuthenticated } = useAuth();
     const isNew = (course as any).reviewCount === 0;
     const placesCount = (course as any).placesCount ?? (course as any).coursePlaces?.length ?? 0;
