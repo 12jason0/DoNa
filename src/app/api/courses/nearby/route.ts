@@ -6,7 +6,6 @@ import { captureApiError } from "@/lib/sentry";
 import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // 🟢 60초 캐시
 
 // 주요 지역 리스트 (NearbyClient와 동기화)
 const majorRegions = ["압구정", "합정정", "성수", "홍대", "종로", "연남", "한남", "건대"];
@@ -107,12 +106,13 @@ export async function GET(request: NextRequest) {
     andConditions.push({ isPublic: true });
     const whereClause = { AND: andConditions };
 
-    // isLocked 계산 헬퍼
+    // isLocked 계산 헬퍼 (grade는 대소문자 무관하게 비교)
     const computeIsLocked = (courseId: number, grade: string): boolean => {
+        const g = (grade ?? "FREE").toUpperCase();
         if (unlockedCourseIds.includes(courseId)) return false;
         if (userTier === "PREMIUM") return false;
-        if (userTier === "BASIC") return grade === "PREMIUM";
-        return grade === "BASIC" || grade === "PREMIUM";
+        if (userTier === "BASIC") return g === "PREMIUM";
+        return g === "BASIC" || g === "PREMIUM";
     };
 
     // 🟢 [Performance]: 캐시 키 생성 (유저 tier 포함)
@@ -173,9 +173,9 @@ export async function GET(request: NextRequest) {
                 select: courseSelect,
             });
 
-            const freeArr = allRaw.filter((c: any) => (c.grade ?? "FREE") === "FREE");
-            const basicArr = allRaw.filter((c: any) => c.grade === "BASIC");
-            const premiumArr = allRaw.filter((c: any) => c.grade === "PREMIUM");
+            const freeArr = allRaw.filter((c: any) => ((c.grade ?? "FREE").toUpperCase()) === "FREE");
+            const basicArr = allRaw.filter((c: any) => (c.grade ?? "").toUpperCase() === "BASIC");
+            const premiumArr = allRaw.filter((c: any) => (c.grade ?? "").toUpperCase() === "PREMIUM");
 
             const interleaved: any[] = [];
             let f = 0, b = 0, p = 0;

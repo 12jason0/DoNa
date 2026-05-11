@@ -114,8 +114,8 @@ export default function LoginScreen() {
     }
 
     // ─── 카카오 로그인 ────────────────────────────────────────────────────────
-    // Android: 네이티브 Kakao SDK (@react-native-kakao/user)
-    // iOS: 웹 OAuth (expo-web-browser)
+    // Android: 네이티브 Kakao SDK (@react-native-kakao/user) → /api/auth/kakao/native
+    // iOS: 웹 OAuth (expo-web-browser) → /api/auth/kakao?next=mobile
 
     async function handleKakaoLogin() {
         if (loading) return;
@@ -123,29 +123,45 @@ export default function LoginScreen() {
         setError('');
 
         try {
-            const runKakaoWebOAuth = async () => {
-                const result = await WebBrowser.openAuthSessionAsync(
-                    `${BASE_URL}/api/auth/kakao?next=mobile`,
-                    'duna://success',
-                );
-                if (result.type === 'success' && result.url) {
-                    const urlObj = new URL(result.url);
-                    const token = urlObj.searchParams.get('token');
-                    const userId = urlObj.searchParams.get('userId');
-                    if (!token) {
-                        setError(i18n('authPage.login.errorGeneric'));
-                        return;
-                    }
-                    saveAuthToken(token);
-                    if (userId) saveUserId(userId);
-                    await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-                    router.replace('/(tabs)');
-                } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
+            // Android: intentFilter가 https://dona.io.kr를 앱으로 라우팅하여
+            // Chrome Custom Tab이 앱 자신의 OAuth URL을 열지 못함 → 네이티브 SDK 사용
+            if (Platform.OS === 'android') {
+                if (!kakaoNativeLogin) {
                     setError(i18n('authPage.login.errorGeneric'));
+                    return;
                 }
-            };
+                const nativeResult = await kakaoNativeLogin();
+                const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
+                    accessToken: nativeResult.accessToken,
+                });
+                if (data.user) {
+                    await handleLoginSuccess(data.user, data.token);
+                } else {
+                    setError(data.error || i18n('authPage.login.errorLoginFailed'));
+                }
+                return;
+            }
 
-            await runKakaoWebOAuth();
+            // iOS: 웹 OAuth
+            const result = await WebBrowser.openAuthSessionAsync(
+                `${BASE_URL}/api/auth/kakao?next=mobile`,
+                'duna://success',
+            );
+            if (result.type === 'success' && result.url) {
+                const urlObj = new URL(result.url);
+                const token = urlObj.searchParams.get('token');
+                const userId = urlObj.searchParams.get('userId');
+                if (!token) {
+                    setError(i18n('authPage.login.errorGeneric'));
+                    return;
+                }
+                saveAuthToken(token);
+                if (userId) saveUserId(userId);
+                await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+                router.replace('/(tabs)');
+            } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
+                setError(i18n('authPage.login.errorGeneric'));
+            }
         } catch (e: any) {
             console.error("[Kakao] login() catch 에러:", JSON.stringify({
                 message: e?.message,
