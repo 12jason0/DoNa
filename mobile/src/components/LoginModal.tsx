@@ -94,18 +94,25 @@ export default function LoginModal() {
         setLoading(true);
         setError('');
 
+        console.log('[LoginModal] kakaoNativeLogin loaded:', !!kakaoNativeLogin, 'platform:', Platform.OS);
+
         try {
             // Android: intentFilter가 https://dona.io.kr를 앱으로 라우팅 → 네이티브 SDK
             if (Platform.OS === 'android') {
                 if (!kakaoNativeLogin) {
+                    console.warn('[LoginModal] kakaoNativeLogin is null — SDK not loaded');
+                    setError('[debug] native SDK null');
                     setLoading(false);
-                    handleGoToLogin();
                     return;
                 }
                 let nativeResult: { accessToken: string };
                 try {
+                    console.log('[LoginModal] calling kakaoNativeLogin...');
                     nativeResult = await kakaoNativeLogin();
+                    console.log('[LoginModal] kakaoNativeLogin success, token length:', nativeResult?.accessToken?.length);
                 } catch (e: any) {
+                    console.error('[LoginModal][inner] SDK 오류 msg:', e?.message, 'code:', e?.code, 'name:', e?.name);
+                    console.error('[LoginModal][inner] JSON:', JSON.stringify(e));
                     // "마지막 로그인 도중에 오류 발생" → 카카오 로그아웃 후 재시도
                     if (e?.message?.includes('마지막 로그인') || e?.message?.toLowerCase().includes('lastlogin')) {
                         try {
@@ -117,13 +124,15 @@ export default function LoginModal() {
                         throw e;
                     }
                 }
+                console.log('[LoginModal] posting to /api/auth/kakao/native');
                 const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
                     accessToken: nativeResult.accessToken,
                 });
+                console.log('[LoginModal] API response user:', !!data.user, 'error:', data.error);
                 if (data.user) {
                     await handleLoginSuccess(data.user, data.token);
                 } else {
-                    setError(i18n('authPage.login.errorLoginFailed'));
+                    setError(data.error || i18n('authPage.login.errorLoginFailed'));
                 }
                 return;
             }
@@ -147,8 +156,12 @@ export default function LoginModal() {
                 setError(i18n('authPage.login.errorGeneric'));
             }
         } catch (e: any) {
+            let detail = '';
+            try { detail = JSON.stringify(e); } catch {}
+            console.error('[LoginModal][outer] msg:', e?.message, 'code:', e?.code, 'name:', e?.name);
+            console.error('[LoginModal][outer] JSON:', detail);
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
-                setError(i18n('authPage.login.errorGeneric'));
+                setError(`[${e?.name || 'Err'}] ${e?.message || detail || '알 수 없는 오류'}`);
             }
         } finally {
             setLoading(false);

@@ -56,18 +56,19 @@ export async function GET(req: NextRequest) {
 
         // 🟢 DB에서 최신 사용자 정보 조회 (선택적, 성능 최적화를 위해 필요한 경우만)
         // 토큰에 이미 정보가 있으므로 DB 조회는 선택적으로 처리
-        let userInfo = {
+        let userInfo: { id: number; email: string; name: string; nickname: string; profileImage: string | null } = {
             id: Number(userId),
             email: payload?.email || "",
             name: payload?.name || payload?.nickname || "",
             nickname: payload?.nickname || payload?.name || "",
+            profileImage: null,
         };
 
         // 🟢 DB에서 최신 정보 가져오기 (닉네임 등 최신 정보 반영)
         try {
             const dbUser = await prisma.user.findUnique({
                 where: { id: Number(userId) },
-                select: { id: true, email: true, username: true },
+                select: { id: true, email: true, username: true, profileImageUrl: true },
             });
             if (dbUser) {
                 // 🟢 username이 있고 user_로 시작하지 않으면 사용 (실제 이름)
@@ -92,11 +93,17 @@ export async function GET(req: NextRequest) {
                     displayName = dbUser.email.split("@")[0];
                 }
 
+                const rawProfileImage = dbUser.profileImageUrl;
+                const profileImage = rawProfileImage?.startsWith("http://")
+                    ? rawProfileImage.replace(/^http:\/\//, "https://")
+                    : rawProfileImage ?? null;
+
                 userInfo = {
                     id: dbUser.id,
                     email: dbUser.email || payload?.email || "",
                     name: displayName,
                     nickname: displayName,
+                    profileImage,
                 };
 
                 console.log("[Session API] 사용자 정보 반환:", {

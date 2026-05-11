@@ -127,7 +127,7 @@ export default function LoginScreen() {
             // Chrome Custom Tab이 앱 자신의 OAuth URL을 열지 못함 → 네이티브 SDK 사용
             if (Platform.OS === 'android') {
                 if (!kakaoNativeLogin) {
-                    setError(i18n('authPage.login.errorGeneric'));
+                    setError('[debug] native SDK null — 네이티브 빌드 필요');
                     return;
                 }
                 let nativeResult: { accessToken: string };
@@ -177,14 +177,11 @@ export default function LoginScreen() {
                 setError(i18n('authPage.login.errorGeneric'));
             }
         } catch (e: any) {
-            console.error("[Kakao] login() catch 에러:", JSON.stringify({
-                message: e?.message,
-                code: e?.code,
-                name: e?.name,
-                isCancel: e?.message?.includes('cancel') || e?.code === 'ECANCEL',
-            }));
+            let detail = '';
+            try { detail = JSON.stringify(e); } catch {}
+            console.error("[Kakao] login() catch:", e?.name, e?.message, e?.code, detail);
             if (!e?.message?.includes('cancel') && e?.code !== 'ECANCEL') {
-                setError(i18n('authPage.login.errorGeneric'));
+                setError(`[${e?.name || 'Err'}] ${e?.message || detail || '알 수 없는 오류'}`);
             }
         } finally {
             setLoading(false);
