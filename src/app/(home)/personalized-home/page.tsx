@@ -664,7 +664,7 @@ const AIRecommender = () => {
                     participants: c.participants || 0,
                     highlights: c.highlights || [],
                     score: c.matchScore !== undefined && c.matchScore !== null ? Number(c.matchScore) : 0.5,
-                    grade: c.grade === "BASIC" || c.grade === "PREMIUM" ? c.grade : "FREE",
+                    grade: (["BASIC", "PREMIUM"] as const).find(g => g === String(c.grade || "").toUpperCase()) ?? "FREE",
                     imageUrl: imageUrl || undefined,
                     coursePlaces: c.coursePlaces,
                     matchScore: c.matchScore ?? null,

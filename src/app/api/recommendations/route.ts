@@ -200,8 +200,10 @@ function calculateRegionMatch(courseRegion: string | null, longTermRegions: stri
     if (!courseRegion) return 0.5; // 지역 정보 없으면 중간값
 
     // 🟢 지역이 맞지 않으면 점수를 대폭 깎음 (UX 개선)
+    // personalized-home 선택값("문래·영등포")을 DB 행정구역명("영등포구")으로 정규화 후 비교
     if (regionToday) {
-        return courseRegion.includes(regionToday) || regionToday.includes(courseRegion) ? 1.0 : 0.1;
+        const normalizedToday = regionMapping[regionToday] || regionToday;
+        return courseRegion.includes(normalizedToday) || normalizedToday.includes(courseRegion) ? 1.0 : 0.1;
     }
 
     if (longTermRegions?.length > 0) {
@@ -1387,7 +1389,7 @@ export async function GET(req: NextRequest) {
         let upsellFor: "BASIC" | "PREMIUM" | null = null;
 
         if (mode === "ai") {
-            const byGrade = (g: string) => sortedFiltered.filter((c: any) => (c.grade || "FREE") === g);
+            const byGrade = (g: string) => sortedFiltered.filter((c: any) => String(c.grade || "FREE").toUpperCase() === g);
             const freeList = byGrade("FREE");
             const basicList = byGrade("BASIC");
             const premiumList = byGrade("PREMIUM");

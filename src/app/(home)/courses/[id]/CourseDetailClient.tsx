@@ -3384,25 +3384,23 @@ export default function CourseDetailClient({
                                                 locale,
                                                 t as CourseUiTranslate,
                                             );
-                                            if (tips.length === 0) {
-                                                if (userTier === "FREE") {
-                                                    return (
-                                                        <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
-                                                            <Icons.Lock className="w-4 h-4 text-gray-400 shrink-0" />
-                                                            <span className="flex-1 text-xs text-gray-500 dark:text-gray-400">
-                                                                {t("mobile.courseScreen.tipLockedLabel")}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowSubscriptionModal(true)}
-                                                                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0"
-                                                            >
-                                                                {t("mobile.courseScreen.tipLockedBtn")}
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
+                                            if (tips.length === 0) return null;
+                                            if (userTier === "FREE") {
+                                                return (
+                                                    <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                                                        <Icons.Lock className="w-4 h-4 text-gray-400 shrink-0" />
+                                                        <span className="flex-1 text-xs text-gray-500 dark:text-gray-400">
+                                                            {t("mobile.courseScreen.tipLockedLabel")}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowSubscriptionModal(true)}
+                                                            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0"
+                                                        >
+                                                            {t("mobile.courseScreen.tipLockedBtn")}
+                                                        </button>
+                                                    </div>
+                                                );
                                             }
                                             return (
                                                 <div className="mb-4 flex flex-col gap-2">
