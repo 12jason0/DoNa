@@ -137,12 +137,16 @@ function NearbyCardInner({
                 })
               : null;
 
+    // CourseCard와 동일한 lockLabel 계산
+    const gradeLabel = grade === "PREMIUM" ? i18n("courseLockOverlay.premium") : i18n("courseLockOverlay.basic");
+    const lockLabel = i18n("courseLockOverlay.gradeOnly", { grade: gradeLabel });
+
     return (
         <TouchableOpacity
             style={s.card}
             onPress={() => {
                 if (isLocked) {
-                    if (!isAuthenticated) { router.push("/(auth)/login" as any); return; }
+                    if (!isAuthenticated) { openModal("login"); return; }
                     openModal("ticket", {
                         context: "COURSE",
                         courseId: Number(course.id),
@@ -164,18 +168,25 @@ function NearbyCardInner({
                     </View>
                 )}
 
+                {/* 잠금 오버레이 — CourseCard와 동일하게 imgGradient/배지보다 먼저, zIndex:10 */}
+                {isLocked && (
+                    <View style={s.lockOverlay} pointerEvents="none">
+                        <View style={s.lockIconWrap}>
+                            <Ionicons name="lock-closed" size={28} color="#fff" />
+                        </View>
+                        <View style={s.lockBadge}>
+                            <Text style={s.lockBadgeText}>{lockLabel}</Text>
+                        </View>
+                    </View>
+                )}
+
                 <View style={s.imgGradient} pointerEvents="none" />
 
-                {/* 배지 */}
+                {/* 배지 — 잠금 시 tierBadge 숨김 (lockBadge가 등급 표시) */}
                 <View style={s.badges} pointerEvents="none">
                     {hasRealtimeReservation && (
                         <View style={s.reserveBadge}>
                             <Text style={s.reserveBadgeText}>{i18n("courseCard.realtimeReservation")}</Text>
-                        </View>
-                    )}
-                    {grade !== "FREE" && (
-                        <View style={s.tierBadge}>
-                            <Text style={s.tierBadgeText}>{grade}</Text>
                         </View>
                     )}
                     {course.concept && (
@@ -192,30 +203,14 @@ function NearbyCardInner({
                     )}
                 </View>
 
-                {/* 찜 버튼 */}
+                {/* 찜 버튼 — CourseCard와 동일: 44×44, #111827 배경 */}
                 <TouchableOpacity
                     style={s.favBtn}
                     onPress={() => onFavToggle(course.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                    <Ionicons name={isFav ? "heart" : "heart-outline"} size={19} color={isFav ? "#ef4444" : "#fff"} />
+                    <Ionicons name={isFav ? "heart" : "heart-outline"} size={22} color={isFav ? "#ef4444" : "#ffffff"} />
                 </TouchableOpacity>
-
-                {/* 잠금 오버레이 */}
-                {isLocked && (
-                    <View style={s.lockOverlay} pointerEvents="none">
-                        <View style={s.lockIconWrap}>
-                            <Ionicons name="lock-closed" size={28} color="#fff" />
-                        </View>
-                        <View style={s.lockBadge}>
-                            <Text style={s.lockBadgeText}>
-                                {i18n("courseLockOverlay.gradeOnly", {
-                                    grade: grade === "PREMIUM" ? i18n("courseLockOverlay.premium") : i18n("courseLockOverlay.basic"),
-                                })}
-                            </Text>
-                        </View>
-                    </View>
-                )}
             </View>
 
             {/* 정보 */}
@@ -927,37 +922,23 @@ const s = StyleSheet.create({
         fontWeight: "600",
         letterSpacing: -0.1,
     },
-    tierBadge: {
-        backgroundColor: "#12b886",
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderWidth: 1.5,
-        borderColor: "rgba(0,0,0,0.18)",
-    },
-    tierBadgeText: {
-        color: "#fff",
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 0.2,
-    },
+
     newBadge: {
         backgroundColor: "#059669",
         borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
     },
     newBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
+    // 찜 버튼 — CourseCard와 동일
     favBtn: {
         position: "absolute", top: 12, right: 12,
-        width: 36, height: 36, borderRadius: 18,
-        backgroundColor: "rgba(0,0,0,0.35)",
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: "#111827", borderWidth: 1, borderColor: "#374151",
         alignItems: "center", justifyContent: "center",
     },
-    // 잠금 오버레이
+    // 잠금 오버레이 — CourseCard와 동일
     lockOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.45)",
-        alignItems: "center",
-        justifyContent: "center",
+        position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", zIndex: 10,
     },
     lockIconWrap: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 40, padding: 12, marginBottom: 8 },
     lockBadge: { backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
