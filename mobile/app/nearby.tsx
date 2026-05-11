@@ -906,8 +906,9 @@ const s = StyleSheet.create({
     conceptBadge: {
         backgroundColor: "rgba(0,0,0,0.45)",
         borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
+        alignItems: "center", justifyContent: "center",
     },
-    conceptBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500" },
+    conceptBadgeText: { color: "#fff", fontSize: 10, fontWeight: "500", lineHeight: 14, includeFontPadding: false } as any,
     reserveBadge: {
         backgroundColor: "#0ea68b",
         borderRadius: 10,
