@@ -95,21 +95,30 @@ function NearbyCardInner({
     isFav,
     onFavToggle,
     userTier,
+    unlockedIds,
 }: {
     course: Course;
     isFav: boolean;
     onFavToggle: (id: number) => void;
     userTier: string;
+    unlockedIds: Set<number>;
 }) {
     const colors = useThemeColors();
     const { t: i18n, locale } = useLocale();
+    const { openModal } = useModal();
+    const { isAuthenticated } = useAuth();
     const isNew = (course as any).reviewCount === 0;
     const placesCount = (course as any).placesCount ?? (course as any).coursePlaces?.length ?? 0;
-    const views = Number((course as any).viewCount ?? 0);
+    const views = Number((course as any).view_count ?? (course as any).viewCount ?? 0);
     const reviewCount = Number((course as any).reviewCount ?? 0);
     const rating = Number((course as any).rating ?? 0);
-    const isLocked = (course as any).isLocked === true;
     const grade = String((course as any).grade ?? "FREE").toUpperCase();
+    const isLocked = (() => {
+        if (unlockedIds.has(Number(course.id))) return false;
+        if (userTier === "PREMIUM") return false;
+        if (userTier === "BASIC") return grade === "PREMIUM";
+        return grade === "BASIC" || grade === "PREMIUM";
+    })();
     const hasRealtimeReservation = Boolean(
         (course as any).reservationUrl ||
             (course as any).reservation_url ||
@@ -141,7 +150,15 @@ function NearbyCardInner({
         <TouchableOpacity
             style={s.card}
             onPress={() => {
-                if (isLocked) { router.push("/shop" as any); return; }
+                if (isLocked) {
+                    if (!isAuthenticated) { router.push("/(auth)/login" as any); return; }
+                    openModal("ticket", {
+                        context: "COURSE",
+                        courseId: Number(course.id),
+                        courseGrade: (grade === "PREMIUM" ? "PREMIUM" : "BASIC") as "BASIC" | "PREMIUM",
+                    });
+                    return;
+                }
                 router.push(`/courses/${course.id}` as any);
             }}
             activeOpacity={0.88}
@@ -149,7 +166,7 @@ function NearbyCardInner({
             {/* 이미지 */}
             <View style={[s.cardImgWrap, { borderColor: colors.isDark ? "transparent" : "#f3f4f6" }]}>
                 {displayImgUrl ? (
-                    <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} contentFit="cover" transition={0} />
+                    <Image source={{ uri: resolveImageUrl(displayImgUrl) }} style={s.cardImg} contentFit="cover" transition={0} blurRadius={isLocked ? 3 : 0} />
                 ) : (
                     <View style={[s.cardImg, { backgroundColor: "#e5e7eb", alignItems: "center", justifyContent: "center" }]}>
                         <Text style={{ color: "#9ca3af", fontSize: 12 }}>DoNa</Text>
@@ -177,7 +194,7 @@ function NearbyCardInner({
                             </Text>
                         </View>
                     )}
-                    {isNew && (
+                    {isNew && !isLocked && (
                         <View style={s.newBadge}>
                             <Text style={s.newBadgeText}>{i18n("courses.badgeNew")}</Text>
                         </View>
@@ -195,15 +212,16 @@ function NearbyCardInner({
 
                 {/* 잠금 오버레이 */}
                 {isLocked && (
-                    <View style={s.lockOverlay}>
-                        <View style={s.lockBox}>
-                            <Ionicons name="lock-closed" size={24} color="#fff" />
-                            <Text style={s.lockText}>
-                                {i18n("mobile.nearby.lockTierCourse", {
-                                    tier: course.grade === "PREMIUM" ? "PREMIUM" : "BASIC",
+                    <View style={s.lockOverlay} pointerEvents="none">
+                        <View style={s.lockIconWrap}>
+                            <Ionicons name="lock-closed" size={28} color="#fff" />
+                        </View>
+                        <View style={s.lockBadge}>
+                            <Text style={s.lockBadgeText}>
+                                {i18n("courseLockOverlay.gradeOnly", {
+                                    grade: grade === "PREMIUM" ? i18n("courseLockOverlay.premium") : i18n("courseLockOverlay.basic"),
                                 })}
                             </Text>
-                            <Text style={s.lockSub}>{i18n("mobile.nearby.lockSubscribe")}</Text>
                         </View>
                     </View>
                 )}
@@ -340,6 +358,15 @@ export default function NearbyScreen() {
     });
     const userTier = (profile?.subscriptionTier ?? profile?.subscription_tier ?? "FREE") as string;
 
+    // 열람권 해제 코스 ID 목록
+    const { data: unlockData } = useQuery<{ ids: number[] }>({
+        queryKey: ["unlockIds"],
+        queryFn: () => api.get<{ ids: number[] }>(endpoints.unlockIds),
+        retry: false,
+        enabled: isAuthenticated,
+    });
+    const unlockedIds = useMemo(() => new Set<number>(unlockData?.ids ?? []), [unlockData]);
+
     // 찜 목록
     const { data: favList } = useQuery<any[]>({
         queryKey: ["favorites"],
@@ -414,7 +441,7 @@ export default function NearbyScreen() {
                 (course as any).concept ?? "",
                 ...((course as any).tags?.concept ?? []),
             ].map((v) => String(v ?? "").trim()).filter(Boolean);
-            const courseSituationRaw = String((course as any).target_situation ?? (course as any).situation ?? "");
+            const courseSituationRaw = String((course as any).target ?? (course as any).target_situation ?? (course as any).situation ?? "");
             const normalizedSituation = courseSituationRaw === "SOME" ? "썸탈 때" : courseSituationRaw;
             const courseMood = String((course as any).mood ?? (course as any).atmosphere ?? "");
             const conceptOk = selectedConcepts.length === 0 || selectedConcepts.some((c) => courseConceptList.some((cc) => cc.includes(c)));
@@ -455,9 +482,10 @@ export default function NearbyScreen() {
                 isFav={favIds.has(item.id)}
                 onFavToggle={handleFavToggle}
                 userTier={userTier}
+                unlockedIds={unlockedIds}
             />
         ),
-        [favIds, handleFavToggle, userTier],
+        [favIds, handleFavToggle, userTier, unlockedIds],
     );
 
     const ListHeader = useCallback(() => {
@@ -947,13 +975,13 @@ const s = StyleSheet.create({
     // 잠금 오버레이
     lockOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: "rgba(0,0,0,0.55)",
+        backgroundColor: "rgba(0,0,0,0.45)",
         alignItems: "center",
         justifyContent: "center",
     },
-    lockBox: { alignItems: "center", gap: 6 },
-    lockText: { color: "#fff", fontSize: 14, fontWeight: "600" },
-    lockSub: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "500" },
+    lockIconWrap: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 40, padding: 12, marginBottom: 8 },
+    lockBadge: { backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+    lockBadgeText: { color: "#fff", fontSize: 12, fontWeight: "700", letterSpacing: -0.3 },
 
     cardBody: { paddingTop: 12, paddingHorizontal: 2 },
     cardTitle: { fontSize: 16, fontWeight: "600", letterSpacing: -0.3, marginBottom: 6, lineHeight: 22 },

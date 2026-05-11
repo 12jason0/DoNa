@@ -144,4 +144,5 @@ export const endpoints = {
     favorites: '/api/users/favorites',
     completions: '/api/users/completions',
     badges: '/api/users/badges',
+    unlockIds: '/api/users/me/unlock-ids',
 } as const;

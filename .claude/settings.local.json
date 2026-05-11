@@ -90,7 +90,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Read(//c/Users/12jas/Downloads/application-317dcf46-b63b-4cbf-994e-09b92e2a8bca.tar.gz/bundle/**)",
+      "Bash(dir \"C:\\\\Users\\\\12jas\\\\Downloads\\\\application-317dcf46-b63b-4cbf-994e-09b92e2a8bca.tar.gz\\\\bundle\\\\release\")"
     ]
   }
 }

@@ -109,7 +109,12 @@ export async function GET(request: NextRequest) {
         imageUrl: true,
         region: true,
         concept: true,
-        grade: true, // 정렬 가중치 계산용
+        grade: true,
+        rating: true,
+        view_count: true,
+        duration: true,
+        target: true,
+        mood: true,
         coursePlaces: {
             orderBy: { order_index: "asc" as const },
             select: {
