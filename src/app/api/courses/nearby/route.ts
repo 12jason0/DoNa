@@ -139,8 +139,40 @@ export async function GET(request: NextRequest) {
         },
     };
 
+    const isDefaultLoad = !cleanKeyword && !concept && !tagIdsParam && offset === 0;
+
     try {
-        // DB에서는 우선 필터링된 결과만 가져옴
+        // 기본 로드: FREE×2, BASIC×1, PREMIUM×1 인터리빙
+        if (isDefaultLoad) {
+            const allRaw = await prisma.course.findMany({
+                where: whereClause,
+                orderBy: { id: "desc" },
+                take: 60,
+                select: courseSelect,
+            });
+
+            const freeArr = allRaw.filter((c: any) => (c.grade ?? "FREE") === "FREE");
+            const basicArr = allRaw.filter((c: any) => c.grade === "BASIC");
+            const premiumArr = allRaw.filter((c: any) => c.grade === "PREMIUM");
+
+            const interleaved: any[] = [];
+            let f = 0, b = 0, p = 0;
+            while (
+                interleaved.length < limit &&
+                (f < freeArr.length || b < basicArr.length || p < premiumArr.length)
+            ) {
+                if (f < freeArr.length) interleaved.push(freeArr[f++]);
+                if (f < freeArr.length && interleaved.length < limit) interleaved.push(freeArr[f++]);
+                if (b < basicArr.length && interleaved.length < limit) interleaved.push(basicArr[b++]);
+                if (p < premiumArr.length && interleaved.length < limit) interleaved.push(premiumArr[p++]);
+            }
+
+            sortCoursesByTimeMatch(interleaved, timeOfDay);
+            await defaultCache.set(cacheKey, interleaved, 60 * 1000);
+            return NextResponse.json(interleaved);
+        }
+
+        // 검색/필터 있을 때: 관련도 순서 유지
         const courses = await prisma.course.findMany({
             where: whereClause,
             orderBy: { id: "desc" },
@@ -172,15 +204,12 @@ export async function GET(request: NextRequest) {
                     return score;
                 };
 
-                return getScore(b) - getScore(a); // 점수 높은 순 정렬
+                return getScore(b) - getScore(a);
             });
         }
 
         sortCoursesByTimeMatch(courses, timeOfDay);
-
-        // 🟢 [Performance]: 응답 데이터 캐싱 (60초)
         await defaultCache.set(cacheKey, courses, 60 * 1000);
-
         return NextResponse.json(courses);
     } catch (error) {
             captureApiError(error);
