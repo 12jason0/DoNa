@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { defaultCache } from "@/lib/cache";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
 import { captureApiError } from "@/lib/sentry";
+import { resolveUserId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60; // 🟢 60초 캐시
@@ -12,6 +13,19 @@ const majorRegions = ["압구정", "합정정", "성수", "홍대", "종로", "�
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
+
+    // 유저 인증 및 tier/열람권 조회
+    const userId = resolveUserId(request);
+    let userTier = "FREE";
+    let unlockedCourseIds: number[] = [];
+    if (userId && Number.isFinite(userId)) {
+        const [userResult, unlocksResult] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId }, select: { subscriptionTier: true } }).catch(() => null),
+            (prisma as any).courseUnlock.findMany({ where: { userId }, select: { courseId: true } }).catch(() => []),
+        ]);
+        if (userResult?.subscriptionTier) userTier = userResult.subscriptionTier;
+        unlockedCourseIds = Array.isArray(unlocksResult) ? unlocksResult.map((u: any) => Number(u.courseId)) : [];
+    }
 
     // 1. 파라미터 가져오기 및 클리닝
     const rawKeyword = (
@@ -93,8 +107,16 @@ export async function GET(request: NextRequest) {
     andConditions.push({ isPublic: true });
     const whereClause = { AND: andConditions };
 
-    // 🟢 [Performance]: 캐시 키 생성 (필터별로 캐싱)
-    const cacheKey = `nearby:${cleanKeyword || ""}:${concept || ""}:${tagIdsParam || ""}:${limit}:${offset}:${timeOfDay ?? ""}`;
+    // isLocked 계산 헬퍼
+    const computeIsLocked = (courseId: number, grade: string): boolean => {
+        if (unlockedCourseIds.includes(courseId)) return false;
+        if (userTier === "PREMIUM") return false;
+        if (userTier === "BASIC") return grade === "PREMIUM";
+        return grade === "BASIC" || grade === "PREMIUM";
+    };
+
+    // 🟢 [Performance]: 캐시 키 생성 (유저 tier 포함)
+    const cacheKey = `nearby:${userTier}:${cleanKeyword || ""}:${concept || ""}:${tagIdsParam || ""}:${limit}:${offset}:${timeOfDay ?? ""}`;
 
     // 🟢 캐시에서 먼저 확인
     const cached = await defaultCache.get<any[]>(cacheKey);
@@ -168,8 +190,12 @@ export async function GET(request: NextRequest) {
             }
 
             sortCoursesByTimeMatch(interleaved, timeOfDay);
-            await defaultCache.set(cacheKey, interleaved, 60 * 1000);
-            return NextResponse.json(interleaved);
+            const interleavedWithLock = interleaved.map((c: any) => ({
+                ...c,
+                isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE"),
+            }));
+            await defaultCache.set(cacheKey, interleavedWithLock, 60 * 1000);
+            return NextResponse.json(interleavedWithLock);
         }
 
         // 검색/필터 있을 때: 관련도 순서 유지
@@ -209,8 +235,12 @@ export async function GET(request: NextRequest) {
         }
 
         sortCoursesByTimeMatch(courses, timeOfDay);
-        await defaultCache.set(cacheKey, courses, 60 * 1000);
-        return NextResponse.json(courses);
+        const coursesWithLock = courses.map((c: any) => ({
+            ...c,
+            isLocked: computeIsLocked(Number(c.id), c.grade ?? "FREE"),
+        }));
+        await defaultCache.set(cacheKey, coursesWithLock, 60 * 1000);
+        return NextResponse.json(coursesWithLock);
     } catch (error) {
             captureApiError(error);
         console.error("❌ API 오류:", error);

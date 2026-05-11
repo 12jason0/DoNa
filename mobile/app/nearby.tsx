@@ -94,14 +94,10 @@ function NearbyCardInner({
     course,
     isFav,
     onFavToggle,
-    userTier,
-    unlockedIds,
 }: {
     course: Course;
     isFav: boolean;
     onFavToggle: (id: number) => void;
-    userTier: string;
-    unlockedIds: Set<number>;
 }) {
     const colors = useThemeColors();
     const { t: i18n, locale } = useLocale();
@@ -113,12 +109,7 @@ function NearbyCardInner({
     const reviewCount = Number((course as any).reviewCount ?? 0);
     const rating = Number((course as any).rating ?? 0);
     const grade = String((course as any).grade ?? "FREE").toUpperCase();
-    const isLocked = (() => {
-        if (unlockedIds.has(Number(course.id))) return false;
-        if (userTier === "PREMIUM") return false;
-        if (userTier === "BASIC") return grade === "PREMIUM";
-        return grade === "BASIC" || grade === "PREMIUM";
-    })();
+    const isLocked = (course as any).isLocked === true;
     const hasRealtimeReservation = Boolean(
         (course as any).reservationUrl ||
             (course as any).reservation_url ||
@@ -358,15 +349,6 @@ export default function NearbyScreen() {
     });
     const userTier = (profile?.subscriptionTier ?? profile?.subscription_tier ?? "FREE") as string;
 
-    // 열람권 해제 코스 ID 목록
-    const { data: unlockData } = useQuery<{ ids: number[] }>({
-        queryKey: ["unlockIds"],
-        queryFn: () => api.get<{ ids: number[] }>(endpoints.unlockIds),
-        retry: false,
-        enabled: isAuthenticated,
-    });
-    const unlockedIds = useMemo(() => new Set<number>(unlockData?.ids ?? []), [unlockData]);
-
     // 찜 목록
     const { data: favList } = useQuery<any[]>({
         queryKey: ["favorites"],
@@ -481,11 +463,9 @@ export default function NearbyScreen() {
                 course={item}
                 isFav={favIds.has(item.id)}
                 onFavToggle={handleFavToggle}
-                userTier={userTier}
-                unlockedIds={unlockedIds}
             />
         ),
-        [favIds, handleFavToggle, userTier, unlockedIds],
+        [favIds, handleFavToggle],
     );
 
     const ListHeader = useCallback(() => {
