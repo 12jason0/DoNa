@@ -130,7 +130,21 @@ export default function LoginScreen() {
                     setError(i18n('authPage.login.errorGeneric'));
                     return;
                 }
-                const nativeResult = await kakaoNativeLogin();
+                let nativeResult: { accessToken: string };
+                try {
+                    nativeResult = await kakaoNativeLogin();
+                } catch (e: any) {
+                    // "마지막 로그인 도중에 오류 발생" → 카카오 로그아웃 후 재시도
+                    if (e?.message?.includes('마지막 로그인') || e?.message?.toLowerCase().includes('lastlogin')) {
+                        try {
+                            const m = require('@react-native-kakao/user');
+                            if (m.logout) await m.logout();
+                        } catch {}
+                        nativeResult = await kakaoNativeLogin();
+                    } else {
+                        throw e;
+                    }
+                }
                 const data = await api.post<LoginResponse>('/api/auth/kakao/native', {
                     accessToken: nativeResult.accessToken,
                 });
