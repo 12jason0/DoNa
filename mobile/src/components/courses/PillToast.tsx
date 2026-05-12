@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from "react";
-import { View, Text, Animated, StyleSheet, Platform } from "react-native";
+import React, { useRef, useEffect, useCallback } from "react";
+import { View, Text, Animated, StyleSheet, Platform, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import type { EdgeInsets } from "react-native-safe-area-context";
@@ -26,24 +26,29 @@ export const PillToast = React.memo(function PillToast({
     const { locale } = useLocale();
     const ctaFont = textFontForLocale(locale);
     const slideY = useRef(new Animated.Value(140)).current;
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const dismiss = useCallback(() => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        onHide();
+    }, [onHide]);
 
     useEffect(() => {
-        Animated.spring(slideY, {
+        Animated.timing(slideY, {
             toValue: 0,
+            duration: 180,
             useNativeDriver: true,
-            tension: 68,
-            friction: 14,
         }).start();
 
-        const timer = setTimeout(() => {
+        timerRef.current = setTimeout(() => {
             Animated.timing(slideY, {
                 toValue: 160,
-                duration: 300,
+                duration: 200,
                 useNativeDriver: true,
             }).start(onHide);
-        }, 2400);
+        }, 1400);
 
-        return () => clearTimeout(timer);
+        return () => { if (timerRef.current) clearTimeout(timerRef.current); };
     }, [onHide, slideY]);
 
     const iconName = mode === "fav-added" ? "checkmark-circle" : "heart-outline";
@@ -53,10 +58,10 @@ export const PillToast = React.memo(function PillToast({
 
     return (
         <View style={s.pillToastOverlayRoot} pointerEvents="box-none">
-            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Pressable style={StyleSheet.absoluteFill} onPress={dismiss}>
                 <BlurView intensity={Platform.OS === "ios" ? 48 : 32} tint="dark" style={StyleSheet.absoluteFill} />
                 <View style={[StyleSheet.absoluteFill, s.pillToastDim]} />
-            </View>
+            </Pressable>
             <Animated.View
                 style={[
                     s.pillToastBannerWrap,

@@ -54,7 +54,7 @@ export default function ProfileEditModal() {
     ] as const, [i18n]);
 
     const editMutation = useMutation({
-        mutationFn: (data: typeof form) => api.patch("/api/users/profile", data),
+        mutationFn: (data: typeof form) => api.put("/api/users/profile", { ...data, name: data.nickname }),
         onSuccess: () => {
             closeModal("profileEdit");
             queryClient.invalidateQueries({ queryKey: ["users", "profile"] });

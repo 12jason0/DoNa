@@ -92,6 +92,16 @@ model User {
   @@map("users")
 }
 
+model WithdrawalLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  reason    String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("withdrawal_logs")
+}
+
 model PushToken {
   id              String    @id @default(cuid())
   userId          Int       @unique

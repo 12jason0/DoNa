@@ -183,8 +183,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             (userTier === "BASIC" && courseGrade === "BASIC") || // BASIC 유저는 BASIC 코스만 접근
             hasUnlocked; // 열람권으로 구매한 경우 (FREE 유저도 해당 코스 접근 가능)
 
-        // 팁은 BASIC 이상 또는 열람권 구매 유저만 표시 (FREE 유저는 FREE 코스도 팁 비공개)
-        const hasTipAccess = userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked;
+        const hasTipAccess = userTier === "PREMIUM" || userTier === "BASIC" || hasUnlocked || courseGrade === "FREE";
 
         // 🔒 [서버 사이드 데이터 마스킹] 접근 권한이 없으면 핵심 정보 차단
         const coursePlaces = coursePlacesArray

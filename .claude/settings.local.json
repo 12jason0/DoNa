@@ -92,7 +92,19 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Directory)",
       "Bash(Select-Object Name)",
       "Read(//c/Users/12jas/Downloads/application-317dcf46-b63b-4cbf-994e-09b92e2a8bca.tar.gz/bundle/**)",
-      "Bash(dir \"C:\\\\Users\\\\12jas\\\\Downloads\\\\application-317dcf46-b63b-4cbf-994e-09b92e2a8bca.tar.gz\\\\bundle\\\\release\")"
+      "Bash(dir \"C:\\\\Users\\\\12jas\\\\Downloads\\\\application-317dcf46-b63b-4cbf-994e-09b92e2a8bca.tar.gz\\\\bundle\\\\release\")",
+      "Bash(eas update *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "PowerShell(auth *)",
+      "PowerShell(cd C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile; $env:CI=\"1\"; npx eas update --branch production --message \"feat: LoginModal kakao/apple buttons + lastLogin error retry\" 2>&1)",
+      "PowerShell(cd C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile; $env:CI=\"1\"; npx eas update --branch production --message \"fix: nearby lock UI matches CourseCard + ticket modal fix\" 2>&1)",
+      "PowerShell(cd C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile; $env:CI=\"1\"; npx eas update --branch production --message \"fix: nearby hashtag badge text vertical centering\" 2>&1 | Select-String -Pattern \"Published|Update group|Error\")",
+      "Bash(npx eas *)",
+      "Bash(eas credentials *)",
+      "PowerShell(cd C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile; $env:CI=\"1\"; npx eas update --branch production --message \"fix: 프로필 사진 AI탭\\(personalized-home\\)에서 정상 표시 + 카카오 로그인 디버그 강화\" 2>&1 | Select-String -Pattern \"Published|Update group|Error|error|✓|✗|platform|android|ios\")",
+      "PowerShell(git add *)",
+      "PowerShell(eas update *)"
     ]
   }
 }

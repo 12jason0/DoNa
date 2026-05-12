@@ -247,6 +247,16 @@ export async function DELETE(request: NextRequest) {
             // - Payment: 전자상거래법에 따라 5년 보관
             // - LoginLog: 통신비밀보호법에 따라 3개월 보관
 
+            // 탈퇴 사유 저장
+            try {
+                await (tx as any).withdrawalLog.create({
+                    data: { userId, reason: withdrawalReason },
+                });
+            } catch (e) {
+                captureApiError(e);
+                console.warn("[User Delete] WithdrawalLog 저장 실패 (무시):", e);
+            }
+
             // [삭제 가능한 데이터] 사용자 활동 데이터 삭제
 
             // UserReward 삭제 (보상 기록은 법적 보관 불필요)

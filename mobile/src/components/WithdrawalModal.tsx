@@ -12,7 +12,7 @@ import { logout } from "../hooks/useAuth";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { useModal } from "../lib/modalContext";
-import { api } from "../lib/api";
+import { apiFetch } from "../lib/api";
 import { MODAL_ANDROID_PROPS } from "../constants/modalAndroidProps";
 
 export default function WithdrawalModal() {
@@ -37,7 +37,7 @@ export default function WithdrawalModal() {
     }
 
     const deleteMutation = useMutation({
-        mutationFn: (r: string) => api.post("/api/users/withdrawal", { reason: r }),
+        mutationFn: (r: string) => apiFetch("/api/users/delete", { method: "DELETE", body: { withdrawalReason: r } }),
         onSuccess: async () => {
             try { await Purchases.logOut(); } catch {}
             await logout(queryClient);

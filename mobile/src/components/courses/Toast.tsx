@@ -7,16 +7,16 @@ export const Toast = React.memo(function Toast({ message, icon, onHide }: { mess
 
     useEffect(() => {
         Animated.parallel([
-            Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-            Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+            Animated.timing(translateY, { toValue: 0, duration: 150, useNativeDriver: true }),
         ]).start();
 
         const timer = setTimeout(() => {
             Animated.parallel([
-                Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-                Animated.timing(translateY, { toValue: 16, duration: 200, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+                Animated.timing(translateY, { toValue: 16, duration: 150, useNativeDriver: true }),
             ]).start(onHide);
-        }, 1500);
+        }, 1000);
 
         return () => clearTimeout(timer);
     }, []);

@@ -735,7 +735,7 @@ export default function CourseDetailScreen() {
                                                         }
                                                         onReserve={handleReserve}
                                                         showConfirmed
-                                                        tipLocked={course?.userTier === "FREE"}
+                                                        tipLocked={course?.userTier === "FREE" && course?.grade !== "FREE"}
                                                         onTipLockPress={handleTipLockPress}
                                                     />
                                                 </View>
@@ -876,7 +876,7 @@ export default function CourseDetailScreen() {
                                                     Number(cp.place.id) === highlightedPlaceId
                                                 }
                                                 onReserve={handleReserve}
-                                                tipLocked={course?.userTier === "FREE"}
+                                                tipLocked={course?.userTier === "FREE" && course?.grade !== "FREE"}
                                                 onTipLockPress={handleTipLockPress}
                                             />
                                         </React.Fragment>
@@ -1042,7 +1042,7 @@ export default function CourseDetailScreen() {
                     tipsRow={selectedPlace.tipsRow}
                     onClose={() => setSelectedPlace(null)}
                     isLoggedIn={!!profile}
-                    tipLocked={course?.userTier === "FREE"}
+                    tipLocked={course?.userTier === "FREE" && course?.grade !== "FREE"}
                     onTipLockPress={handleTipLockPress}
                 />
             )}
