@@ -12,8 +12,8 @@ import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
     operation: () => Promise<T>,
-    maxRetries: number = 3,
-    delayMs: number = 500,
+    maxRetries: number = 2,
+    delayMs: number = 300,
 ): Promise<T> {
     let lastError: Error | null = null;
 

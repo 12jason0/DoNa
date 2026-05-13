@@ -252,6 +252,24 @@ body.splash-active {
 }
 
 /* 애니메이션 클래스 */
+@keyframes fav-sheet-in {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes fav-sheet-out {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+}
+
+.animate-fav-sheet-in {
+    animation: fav-sheet-in 0.25s ease-out forwards;
+}
+
+.animate-fav-sheet-out {
+    animation: fav-sheet-out 0.2s ease-in forwards;
+}
+
 @keyframes slideUp {
     from {
         transform: translateY(100%);

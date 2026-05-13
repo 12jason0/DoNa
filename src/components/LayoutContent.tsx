@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { Suspense, useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image"; // 🟢 img 대신 next/image 사용 (하이드레이션 오류 근본 해결)
 import Header from "@/components/Header";
@@ -125,13 +125,23 @@ const FLOATING_ICONS: Array<{
     },
 ];
 
+const HOMEPAGE_BG_URL = getS3StaticUrl("homepage.png");
+
+function ViewParamReader({ onRead }: { onRead: (v: string | null) => void }) {
+    const sp = useSearchParams();
+    const v = sp.get("view");
+    useEffect(() => { onRead(v); }, [v, onRead]);
+    return null;
+}
+
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
     // ---------------------------------------------------------
     // 1. 모든 Hook은 반드시 최상단에 순서대로 선언 (Rules of Hooks)
     // ---------------------------------------------------------
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const router = useRouter();
+    const [viewParam, setViewParam] = useState<string | null>(null);
+    const onViewParam = useCallback((v: string | null) => setViewParam(v), []);
     const { isAuthenticated } = useAuth();
     const { t } = useLocale();
     const [isQrOpen, setIsQrOpen] = useState(false);
@@ -159,23 +169,34 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     const [isLgOrUp, setIsLgOrUp] = useState(false);
     const [hasCheckedViewport, setHasCheckedViewport] = useState(false);
 
-    // 경로 변수들
-    const isEscapeIntroPage = pathname.startsWith("/escape/intro");
-    const isEscapeId = pathname ? /^\/escape\/[^/]+$/.test(pathname) : false;
-    const isCourseStart = pathname ? /^\/courses\/[^/]+\/start$/.test(pathname) : false;
-    const isCourseDetail = pathname ? /^\/courses\/[^/]+$/.test(pathname) : false; // 🟢 코스 상세 페이지
-    const isShareCoursePage = pathname?.startsWith("/share/course") ?? false; // 🟢 공유 코스 미리보기
-    const isMapPage = pathname === "/map" || pathname.startsWith("/map/");
-    const isOnboardingPage = pathname === "/onboarding";
-    const isShopPage = pathname.startsWith("/shop"); // 🟢 [PHYSICAL PRODUCT]: 두나샵 페이지는 스플래시 제외
-    const homepageBgUrl = getS3StaticUrl("homepage.png");
+    // 경로 변수들 — pathname이 바뀔 때만 재계산
+    const {
+        isEscapeIntroPage,
+        isEscapeId,
+        isCourseStart,
+        isCourseDetail,
+        isShareCoursePage,
+        isMapPage,
+        isOnboardingPage,
+        isShopPage,
+    } = useMemo(() => ({
+        isEscapeIntroPage: pathname.startsWith("/escape/intro"),
+        isEscapeId: /^\/escape\/[^/]+$/.test(pathname),
+        isCourseStart: /^\/courses\/[^/]+\/start$/.test(pathname),
+        isCourseDetail: /^\/courses\/[^/]+$/.test(pathname),
+        isShareCoursePage: pathname.startsWith("/share/course"),
+        isMapPage: pathname === "/map" || pathname.startsWith("/map/"),
+        isOnboardingPage: pathname === "/onboarding",
+        isShopPage: pathname.startsWith("/shop"),
+    }), [pathname]);
+    const homepageBgUrl = HOMEPAGE_BG_URL;
 
     // 🟢 웹 하단 광고: 앱과 동일 조건 (/, /mypage만. personalized-home, courses, nearby, view=memories 제외)
     const shouldShowWebAd =
         !pathname.startsWith("/personalized-home") &&
         !pathname.startsWith("/nearby") &&
         !pathname.startsWith("/courses") &&
-        (pathname === "/" || (pathname === "/mypage" && searchParams?.get("view") !== "memories"));
+        (pathname === "/" || (pathname === "/mypage" && viewParam !== "memories"));
 
     // 🟢 앱 하단 [AdMob] 배너 표시 시 footer·+버튼을 배너 높이만큼 올려서 광고에 가리지 않게
     const shouldShowAppBanner =
@@ -183,7 +204,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         !pathname.startsWith("/personalized-home") &&
         !pathname.startsWith("/nearby") &&
         !pathname.startsWith("/courses") &&
-        (pathname === "/" || (pathname === "/mypage" && searchParams?.get("view") !== "memories"));
+        (pathname === "/" || (pathname === "/mypage" && viewParam !== "memories"));
 
     // 🟢 앱 환경 재확인. 검색 모달 열기 (AdMob 비활성화로 notifyNativeModalOpen 주석)
     useEffect(() => {
@@ -366,6 +387,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     // 🟢 하이드레이션 오류 방지: 서버와 클라이언트가 동일한 구조를 반환하도록 수정
     return (
         <>
+            <Suspense fallback={null}>
+                <ViewParamReader onRead={onViewParam} />
+            </Suspense>
             <style>{`
                 .homepage-bg-container {
                     background-image: none;

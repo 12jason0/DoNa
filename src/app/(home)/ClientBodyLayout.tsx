@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React from "react";
 import { usePathname } from "next/navigation";
 import LayoutContent from "@/components/LayoutContent";
 import RoutePrefetcher from "@/components/RoutePrefetcher";
@@ -42,9 +42,7 @@ export default function ClientBodyLayout({ children }: { children: React.ReactNo
     return (
         <>
             <RoutePrefetcher />
-            <Suspense fallback={null}>
-                <LayoutContent>{children}</LayoutContent>
-            </Suspense>
+            <LayoutContent>{children}</LayoutContent>
         </>
     );
 }

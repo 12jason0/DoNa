@@ -494,7 +494,6 @@ export default function CourseDetailClient({
     useEffect(() => {
         if (!isAuthenticated || authLoading || memoryCountPromiseRef.current) return;
         memoryCountPromiseRef.current = (async () => {
-            const { authenticatedFetch } = await import("@/lib/authClient");
             return authenticatedFetch<{
                 count: number;
                 limit: number | null;
@@ -527,7 +526,9 @@ export default function CourseDetailClient({
     const [memoryLimitModalSlideUp, setMemoryLimitModalSlideUp] = useState(false);
     const [showFavoriteAddedModal, setShowFavoriteAddedModal] = useState(false);
     const [favoriteSheetType, setFavoriteSheetType] = useState<"added" | "removed">("added");
-    const [favoriteModalSlideUp, setFavoriteModalSlideUp] = useState(false);
+    const [favoriteIsClosing, setFavoriteIsClosing] = useState(false);
+    const [favoriteSheetKey, setFavoriteSheetKey] = useState(0);
+    const favoriteAfterCloseRef = useRef<(() => void) | null>(null);
     // 🟢 예약/네이버 지도 하단 시트 (아래에서 위로, 헤더 아래까지)
     const [showWebSheet, setShowWebSheet] = useState(false);
     const [webSheetType, setWebSheetType] = useState<"reservation" | "directions">("reservation");
@@ -796,24 +797,17 @@ export default function CourseDetailClient({
         [fullMapModalClose],
     );
 
-    // 🟢 찜 추가 하단 시트: 열릴 때 slideUp, 1초 뒤 자동 닫기
+    const closeFavoriteSheet = useCallback((afterClose?: () => void) => {
+        if (afterClose) favoriteAfterCloseRef.current = afterClose;
+        setFavoriteIsClosing(true);
+    }, []);
+
+    // 찜 시트: 1초 후 자동 닫기
     useEffect(() => {
-        if (!showFavoriteAddedModal) return;
-        setFavoriteModalSlideUp(false);
-        const raf = requestAnimationFrame(() => {
-            requestAnimationFrame(() => setFavoriteModalSlideUp(true));
-        });
-        let hideTimer: ReturnType<typeof setTimeout> | null = null;
-        const closeTimer = setTimeout(() => {
-            setFavoriteModalSlideUp(false);
-            hideTimer = setTimeout(() => setShowFavoriteAddedModal(false), 300);
-        }, 1000);
-        return () => {
-            cancelAnimationFrame(raf);
-            clearTimeout(closeTimer);
-            if (hideTimer != null) clearTimeout(hideTimer);
-        };
-    }, [showFavoriteAddedModal]);
+        if (!showFavoriteAddedModal || favoriteIsClosing) return;
+        const t = setTimeout(() => closeFavoriteSheet(), 1000);
+        return () => clearTimeout(t);
+    }, [showFavoriteAddedModal, favoriteIsClosing, closeFavoriteSheet]);
 
     // 🟢 [Fix]: 지도 랙(Lag) 및 preventDefault 에러 원천 차단 패치
     useEffect(() => {
@@ -878,7 +872,6 @@ export default function CourseDetailClient({
         if (!isAuthenticated || authLoading) return;
         (async () => {
             try {
-                const { authenticatedFetch } = await import("@/lib/authClient");
                 const data = await authenticatedFetch<{
                     courseId: number;
                     courseTitle: string;
@@ -962,7 +955,6 @@ export default function CourseDetailClient({
         setSelectionLoading(true);
         (async () => {
             try {
-                const { authenticatedFetch } = await import("@/lib/authClient");
                 const data = await authenticatedFetch<{
                     selection: {
                         id: string;
@@ -1463,9 +1455,11 @@ export default function CourseDetailClient({
         const currentSavedState = isSaved;
         const nextState = !isSaved;
 
-        // 🟢 클릭 즉시 하단 시트 표시 (찜 추가/취소 둘 다, 1초 후 자동 닫힘)
+        // 클릭 즉시 하단 시트 표시 (찜 추가/취소 둘 다, 1초 후 자동 닫힘)
         setIsSaved(nextState);
         setFavoriteSheetType(nextState ? "added" : "removed");
+        setFavoriteIsClosing(false);
+        setFavoriteSheetKey((k) => k + 1);
         setShowFavoriteAddedModal(true);
 
         try {
@@ -1477,11 +1471,9 @@ export default function CourseDetailClient({
                 body: currentSavedState ? undefined : JSON.stringify({ courseId }),
             });
 
-            // 🟢 [Fix]: API 호출 실패 시 상태 되돌리기 + 시트 닫기
             if (response === null) {
-                setIsSaved(currentSavedState); // 원래 상태로 되돌림
-                setFavoriteModalSlideUp(false);
-                setTimeout(() => setShowFavoriteAddedModal(false), 300);
+                setIsSaved(currentSavedState);
+                closeFavoriteSheet();
                 showToast(t("courseDetail.errorRetry"), "error");
                 return;
             }
@@ -1531,7 +1523,6 @@ export default function CourseDetailClient({
         }
         setSelectionLoading(true);
         try {
-            const { authenticatedFetch } = await import("@/lib/authClient");
             const data = await authenticatedFetch<{
                 success?: boolean;
                 selection?: { id: string; templateCourseId: number; selectedPlaceIds: number[] };
@@ -2461,7 +2452,6 @@ export default function CourseDetailClient({
                                                 if (!isLoggedIn) return;
                                                 if (memoryCountPromiseRef.current) return;
                                                 memoryCountPromiseRef.current = (async () => {
-                                                    const { authenticatedFetch } = await import("@/lib/authClient");
                                                     return authenticatedFetch<{
                                                         count: number;
                                                         limit: number | null;
@@ -2476,7 +2466,6 @@ export default function CourseDetailClient({
                                                     return;
                                                 }
                                                 try {
-                                                    const { authenticatedFetch } = await import("@/lib/authClient");
                                                     const promise =
                                                         memoryCountPromiseRef.current ??
                                                         (memoryCountPromiseRef.current = authenticatedFetch<{
@@ -2516,7 +2505,6 @@ export default function CourseDetailClient({
                                                     return;
                                                 }
                                                 try {
-                                                    const { authenticatedFetch } = await import("@/lib/authClient");
                                                     await authenticatedFetch("/api/users/active-course", {
                                                         method: "POST",
                                                         headers: { "Content-Type": "application/json" },
@@ -2551,7 +2539,6 @@ export default function CourseDetailClient({
                                                     return;
                                                 }
                                                 try {
-                                                    const { authenticatedFetch } = await import("@/lib/authClient");
                                                     await authenticatedFetch("/api/users/active-course", {
                                                         method: "POST",
                                                         headers: { "Content-Type": "application/json" },
@@ -3187,21 +3174,24 @@ export default function CourseDetailClient({
                         aria-hidden
                     />
                     <div
-                        className={`fixed left-0 right-0 z-5001 flex justify-center px-4 pointer-events-auto ${iosIgnoreSafeAreaBottom ? "bottom-0 pb-4" : "bottom-3 pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}
-                        style={{
-                            transform: favoriteModalSlideUp ? "translateY(0)" : "translateY(100%)",
-                            transition: "transform 0.3s ease-out",
+                        key={favoriteSheetKey}
+                        className={`fixed left-0 right-0 z-5001 flex justify-center px-4 pointer-events-auto ${iosIgnoreSafeAreaBottom ? "bottom-0 pb-4" : "bottom-3 pb-[calc(1rem+env(safe-area-inset-bottom))]"} ${favoriteIsClosing ? "animate-fav-sheet-out" : "animate-fav-sheet-in"}`}
+                        onAnimationEnd={() => {
+                            if (favoriteIsClosing) {
+                                setShowFavoriteAddedModal(false);
+                                setFavoriteIsClosing(false);
+                                favoriteAfterCloseRef.current?.();
+                                favoriteAfterCloseRef.current = null;
+                            }
                         }}
                     >
                         <div
                             className="bg-white dark:bg-[#1a241b] rounded-t-2xl rounded-b-2xl px-6 py-4 shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-sm flex items-center gap-3 cursor-pointer"
-                            onClick={() => {
-                                setFavoriteModalSlideUp(false);
-                                setTimeout(() => {
-                                    setShowFavoriteAddedModal(false);
-                                    if (favoriteSheetType === "added") router.push("/mypage");
-                                }, 300);
-                            }}
+                            onClick={() =>
+                                closeFavoriteSheet(
+                                    favoriteSheetType === "added" ? () => router.push("/mypage") : undefined,
+                                )
+                            }
                         >
                             <span className="w-6 h-6 shrink-0 text-red-500 dark:text-red-400 [&_svg]:size-full">
                                 {favoriteSheetType === "added" ? (
