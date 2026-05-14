@@ -215,11 +215,12 @@ export default function PersonalizedSection({ initialCourses }: { initialCourses
         }
     }, []);
 
-    // 🟢 [성능] 첫 페인트 후 추천 API 호출 (LCP 개선, 계산/정확도 동일)
+    // 🟢 [LCP 최적화] SSR 초기 데이터가 있으면 3초 후 백그라운드 갱신, 없으면 즉시 호출
+    const hasInitialCourses = Boolean(initialCourses?.length);
     useEffect(() => {
-        const t = setTimeout(fetchData, 0);
+        const t = setTimeout(fetchData, hasInitialCourses ? 3000 : 0);
         return () => clearTimeout(t);
-    }, [fetchData]);
+    }, [fetchData, hasInitialCourses]);
 
     const isMainWeekend = (() => {
         const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));

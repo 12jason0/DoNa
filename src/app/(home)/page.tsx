@@ -173,9 +173,20 @@ export default async function Page() {
         token ? getInitialUserData(token) : Promise.resolve(null),
     ]);
 
+    // LCP 이미지를 SSR 시점에 <head> preload로 주입 — next/image priority보다 먼저 브라우저에 전달
+    const lcpImageUrl =
+        initialRecommendations[0]?.imageUrl ||
+        initialRecommendations[0]?.coursePlaces?.[0]?.place?.imageUrl ||
+        null;
+
     return (
-        <Suspense fallback={<HomePlaceholder />}>
-            <HomeClient initialRecommendations={initialRecommendations} initialUserData={initialUserData} />
-        </Suspense>
+        <>
+            {lcpImageUrl && (
+                <link rel="preload" as="image" href={lcpImageUrl} fetchPriority="high" />
+            )}
+            <Suspense fallback={<HomePlaceholder />}>
+                <HomeClient initialRecommendations={initialRecommendations} initialUserData={initialUserData} />
+            </Suspense>
+        </>
     );
 }
