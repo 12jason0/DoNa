@@ -431,7 +431,7 @@ function rCta(ctx: CanvasRenderingContext2D, c: Course, _ph: Record<number, HTML
     ctx.textAlign = "left";
     ctx.font = "500 42px 'Pretendard',-apple-system,sans-serif";
     ctx.fillStyle = "#fff";
-    ctx.fillText("이런 코스 더 보러", pos.main.x, pos.main.y);
+    ctx.fillText("이 코스의 나머지 이야기", pos.main.x, pos.main.y);
     const ay = pos.arrow.y;
     ctx.strokeStyle = "rgba(255,255,255,.6)";
     ctx.lineWidth = 2;
