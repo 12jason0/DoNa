@@ -105,7 +105,8 @@
       "PowerShell(cd C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile; $env:CI=\"1\"; npx eas update --branch production --message \"fix: 프로필 사진 AI탭\\(personalized-home\\)에서 정상 표시 + 카카오 로그인 디버그 강화\" 2>&1 | Select-String -Pattern \"Published|Update group|Error|error|✓|✗|platform|android|ios\")",
       "PowerShell(git add *)",
       "PowerShell(eas update *)",
-      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\12jas\\\\stylemap\" | Where-Object { !$_.PSIsContainer } | Select-Object Name)"
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\12jas\\\\stylemap\" | Where-Object { !$_.PSIsContainer } | Select-Object Name)",
+      "Bash(findstr \"card-news\")"
     ]
   }
 }

@@ -31,6 +31,8 @@ interface Course {
     places: CoursePlace[];
 }
 
+const COVER_PID = -1; // special pid for manually-uploaded cover (not tied to any place)
+
 const CARD_NEWS_TIP_PRIORITY: string[] = [
     "CAUTION", "BEST_SPOT", "WAITING", "PHOTO_ZONE",
     "SIGNATURE_MENU", "GOOD_TO_KNOW", "VIBE_CHECK",
@@ -256,8 +258,8 @@ function gb(ctx: CanvasRenderingContext2D, sy = H * 0.55) {
 }
 
 /* ── Renderers ──────────────────────────────────────────────── */
-function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTMLImageElement>, pos: PosMap) {
-    const img = ph[pickCoverPid(c)];
+function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTMLImageElement>, pos: PosMap, effectiveCoverPid: number) {
+    const img = ph[effectiveCoverPid];
     if (img) {
         cf(ctx, img, 0, 0, W, H);
         ctx.fillStyle = "rgba(0,0,0,.3)";
@@ -688,6 +690,7 @@ export default function CardNewsPage() {
     const [positions, setPositions] = useState<Record<number, PosMap>>({});
     const [editMode, setEditMode] = useState(false);
     const [imgStatus, setImgStatus] = useState<"" | "loading" | "done" | "error">("");
+    const [coverPid, setCoverPid] = useState<number | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -816,7 +819,7 @@ export default function CardNewsPage() {
             ctx.clearRect(0, 0, W, H);
             ctx.save();
             ctx.textBaseline = "alphabetic";
-            if (s.type === "cover") rCover(ctx, course, photos, pos);
+            if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
             else if (s.type === "place") rPlace(ctx, course, s.place, photos, pos);
             else if (s.type === "or") rOr(ctx, course, s.places, photos, pos);
@@ -946,6 +949,7 @@ export default function CardNewsPage() {
                                 setPreviews([]);
                                 setEditMode(false);
                                 setImgStatus("");
+                                setCoverPid(null);
                             }}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
@@ -1044,42 +1048,34 @@ export default function CardNewsPage() {
                                 className="grid gap-2"
                                 style={{ gridTemplateColumns: "repeat(auto-fill,minmax(90px,1fr))" }}
                             >
-                                {uniP.map((p, i) => (
+                                {/* 커버 직접 업로드 슬롯 */}
+                                <div style={{ position: "relative" }}>
                                     <label
-                                        key={p.pid}
                                         style={{
                                             position: "relative",
                                             aspectRatio: "3/4",
                                             borderRadius: 8,
                                             overflow: "hidden",
-                                            border: photos[p.pid] ? "2px solid #059669" : "1.5px dashed #d1d5db",
+                                            border: coverPid === COVER_PID ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd",
                                             cursor: "pointer",
                                             display: "flex",
                                             flexDirection: "column",
                                             alignItems: "center",
                                             justifyContent: "center",
-                                            background: photos[p.pid] ? "#000" : "#fafafa",
+                                            background: photos[COVER_PID] ? "#000" : "#f5f3ff",
                                         }}
                                     >
-                                        {photos[p.pid] ? (
+                                        {photos[COVER_PID] ? (
                                             <img
-                                                src={photos[p.pid].src}
+                                                src={photos[COVER_PID].src}
                                                 alt=""
                                                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                             />
                                         ) : (
                                             <>
-                                                <span style={{ fontSize: 16 }}>{i + 1}</span>
-                                                <span
-                                                    style={{
-                                                        fontSize: 8,
-                                                        color: "#9ca3af",
-                                                        textAlign: "center",
-                                                        padding: "0 4px",
-                                                        lineHeight: 1.2,
-                                                    }}
-                                                >
-                                                    {p.name.slice(0, 10)}
+                                                <span style={{ fontSize: 18 }}>🖼️</span>
+                                                <span style={{ fontSize: 7, color: "#7c3aed", textAlign: "center", padding: "0 4px", lineHeight: 1.3, fontWeight: 700 }}>
+                                                    커버 직접
                                                 </span>
                                             </>
                                         )}
@@ -1087,46 +1083,103 @@ export default function CardNewsPage() {
                                             type="file"
                                             accept="image/*"
                                             style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
-                                            onChange={(e) => e.target.files?.[0] && singleUp(p.pid, e.target.files[0])}
+                                            onChange={(e) => {
+                                                if (e.target.files?.[0]) {
+                                                    singleUp(COVER_PID, e.target.files[0]);
+                                                    setCoverPid(COVER_PID);
+                                                }
+                                            }}
                                         />
-                                        {photos[p.pid] && (
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    top: 2,
-                                                    right: 2,
-                                                    background: "#059669",
-                                                    borderRadius: 99,
-                                                    width: 14,
-                                                    height: 14,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                }}
-                                            >
-                                                <span style={{ color: "#fff", fontSize: 8 }}>✓</span>
-                                            </div>
-                                        )}
-                                        {!p.hasPriority3 && (
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    bottom: 2,
-                                                    left: 2,
-                                                    background: "#f59e0b",
-                                                    borderRadius: 4,
-                                                    padding: "1px 4px",
-                                                    fontSize: 7,
-                                                    fontWeight: 700,
-                                                    color: "#fff",
-                                                    lineHeight: 1.4,
-                                                }}
-                                            >
-                                                폴백
+                                        {coverPid === COVER_PID && (
+                                            <div style={{ position: "absolute", top: 2, left: 2, background: "#7c3aed", borderRadius: 4, padding: "1px 5px", fontSize: 7, fontWeight: 700, color: "#fff" }}>
+                                                커버✓
                                             </div>
                                         )}
                                     </label>
-                                ))}
+                                </div>
+
+                                {/* 장소별 사진 카드 */}
+                                {uniP.map((p, i) => {
+                                    const autoCover = course ? pickCoverPid(course) : -9999;
+                                    const isManualCover = coverPid === p.pid;
+                                    const isAutoCover = coverPid === null && autoCover === p.pid;
+                                    const borderColor = isManualCover ? "#7c3aed" : isAutoCover ? "#94a3b8" : photos[p.pid] ? "#059669" : "#d1d5db";
+                                    const borderStyle = isManualCover || isAutoCover || photos[p.pid] ? `2px solid ${borderColor}` : `1.5px dashed ${borderColor}`;
+                                    return (
+                                        <div key={p.pid} style={{ position: "relative" }}>
+                                            <label
+                                                style={{
+                                                    position: "relative",
+                                                    aspectRatio: "3/4",
+                                                    borderRadius: 8,
+                                                    overflow: "hidden",
+                                                    border: borderStyle,
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    background: photos[p.pid] ? "#000" : "#fafafa",
+                                                }}
+                                            >
+                                                {photos[p.pid] ? (
+                                                    <img
+                                                        src={photos[p.pid].src}
+                                                        alt=""
+                                                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        <span style={{ fontSize: 16 }}>{i + 1}</span>
+                                                        <span style={{ fontSize: 8, color: "#9ca3af", textAlign: "center", padding: "0 4px", lineHeight: 1.2 }}>
+                                                            {p.name.slice(0, 10)}
+                                                        </span>
+                                                    </>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                                                    onChange={(e) => e.target.files?.[0] && singleUp(p.pid, e.target.files[0])}
+                                                />
+                                                {photos[p.pid] && (
+                                                    <div style={{ position: "absolute", top: 2, right: 2, background: "#059669", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                        <span style={{ color: "#fff", fontSize: 8 }}>✓</span>
+                                                    </div>
+                                                )}
+                                                {!p.hasPriority3 && (
+                                                    <div style={{ position: "absolute", bottom: 2, left: 2, background: "#f59e0b", borderRadius: 4, padding: "1px 4px", fontSize: 7, fontWeight: 700, color: "#fff", lineHeight: 1.4 }}>
+                                                        폴백
+                                                    </div>
+                                                )}
+                                            </label>
+                                            {/* 커버 지정 버튼 — label 바깥이라 파일 피커 안 열림 */}
+                                            {photos[p.pid] && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCoverPid(isManualCover ? null : p.pid)}
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: 2,
+                                                        left: 2,
+                                                        zIndex: 10,
+                                                        background: isManualCover ? "#7c3aed" : isAutoCover ? "#94a3b8" : "rgba(0,0,0,0.45)",
+                                                        border: "none",
+                                                        borderRadius: 4,
+                                                        padding: "1px 5px",
+                                                        fontSize: 7,
+                                                        fontWeight: 700,
+                                                        color: "#fff",
+                                                        cursor: "pointer",
+                                                        lineHeight: 1.6,
+                                                    }}
+                                                >
+                                                    {isManualCover ? "커버✓" : isAutoCover ? "자동" : "커버"}
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
