@@ -70,13 +70,15 @@ const HeroSlider = React.memo(function HeroSlider({
     locale,
     lt,
     onLockedPress,
+    onLoginRequired,
 }: {
     courses: Course[];
     locale: LocalePreference;
     lt: (key: string, params?: Record<string, string | number>) => string;
     onLockedPress: (course: Course) => void;
+    onLoginRequired: () => void;
 }) {
-
+    const { isAuthenticated } = useAuth();
     const [activeIdx, setActiveIdx] = useState(0);
     // 양옆 카드가 살짝 보이도록 폭을 줄임
     const HORIZONTAL_GUTTER = 20;
@@ -103,11 +105,18 @@ const HeroSlider = React.memo(function HeroSlider({
                     <TouchableOpacity
                         key={c.id}
                         style={[heroStyles.slide, { width: SLIDE_W }]}
-                        onPress={() => c.isLocked ? onLockedPress(c) : router.push(`/courses/${c.id}` as any)}
+                        onPress={() => {
+                            if (c.isLocked) {
+                                if (!isAuthenticated) { onLoginRequired(); return; }
+                                onLockedPress(c);
+                            } else {
+                                router.push(`/courses/${c.id}` as any);
+                            }
+                        }}
                         activeOpacity={0.92}
                     >
                         {c.imageUrl ? (
-                            <Image source={{ uri: resolveImageUrl(c.imageUrl) }} style={heroStyles.img} fadeDuration={0} />
+                            <Image source={{ uri: resolveImageUrl(c.imageUrl) }} style={heroStyles.img} fadeDuration={0} blurRadius={c.isLocked ? 3 : 0} />
                         ) : (
                             <View style={[heroStyles.img, { backgroundColor: "#d1fae5" }]} />
                         )}
@@ -237,7 +246,7 @@ export default function CoursesScreen() {
     const { data: heroRaw } = useQuery<Course[]>({
         queryKey: ["courses-hero"],
         queryFn: async () => {
-            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>("/api/courses?limit=10");
+            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>("/api/courses?limit=30");
             if (Array.isArray(r)) return r;
             return (r as any)?.data ?? (r as any)?.courses ?? [];
         },
@@ -348,6 +357,7 @@ export default function CoursesScreen() {
                             locale={appLocale}
                             lt={translate}
                             onLockedPress={(c) => openModal("ticket", { courseId: c.id, courseGrade: c.grade })}
+                            onLoginRequired={() => openModal("login")}
                         />
                     </View>
                 )}

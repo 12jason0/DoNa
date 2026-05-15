@@ -378,32 +378,7 @@ export default function CourseSharePreviewClient({
         "/images/placeholder-course.jpg";
 
     const handleOpenInApp = () => {
-        if (isIOS() || isAndroid()) {
-            const appUrl = `https://dona.io.kr/courses/${data.templateCourseId}`;
-            const storeUrl = isIOS() ? APP_STORE_URL : PLAY_STORE_URL;
-
-            let timeoutId: ReturnType<typeof setTimeout>;
-            const clearAndGoToStore = () => {
-                clearTimeout(timeoutId);
-                window.removeEventListener("visibilitychange", onVisibilityChange);
-                window.removeEventListener("pagehide", onVisibilityChange);
-                window.location.href = storeUrl;
-            };
-            const onVisibilityChange = () => {
-                if (document.visibilityState === "hidden") {
-                    clearTimeout(timeoutId);
-                    window.removeEventListener("visibilitychange", onVisibilityChange);
-                    window.removeEventListener("pagehide", onVisibilityChange);
-                }
-            };
-
-            window.addEventListener("visibilitychange", onVisibilityChange);
-            window.addEventListener("pagehide", onVisibilityChange);
-            timeoutId = setTimeout(clearAndGoToStore, 1800);
-            window.location.href = appUrl;
-        } else {
-            window.location.href = isIOS() ? APP_STORE_URL : PLAY_STORE_URL;
-        }
+        window.location.href = isIOS() ? APP_STORE_URL : PLAY_STORE_URL;
     };
 
     return (
