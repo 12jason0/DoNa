@@ -78,9 +78,10 @@ async function getSharedCourseData(shareId: string) {
                   .filter(Boolean)
             : allPlaces;
 
+    const isFree = course?.grade === "FREE";
     const isPremium = course?.grade === "PREMIUM";
     const totalPlaceCount = allResolved.length;
-    const places = allResolved.slice(0, 1);
+    const places = isFree ? allResolved : allResolved.slice(0, 1);
 
     return {
         shareId: shared.id,
@@ -92,7 +93,7 @@ async function getSharedCourseData(shareId: string) {
         sub_title: course?.sub_title ?? null,
         imageUrl: course?.imageUrl ?? null,
         region: course?.region ?? null,
-        isLocked: totalPlaceCount > 1,
+        isLocked: !isFree && totalPlaceCount > 1,
         isPremium,
         totalPlaceCount,
         coursePlaces: places.map((cp: any) => ({

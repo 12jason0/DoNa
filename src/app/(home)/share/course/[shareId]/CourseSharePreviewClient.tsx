@@ -633,7 +633,7 @@ export default function CourseSharePreviewClient({
                                 <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40">
                                     <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5">Step 2</p>
                                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">
-                                        이 코스의 프리미엄을 구독하면<br />
+                                        이 코스의 {data.isPremium ? "프리미엄" : "Basic"}을 구독하면<br />
                                         전체 {data.totalPlaceCount}개 장소를 모두 볼 수 있어요
                                     </p>
                                     <button
@@ -641,7 +641,7 @@ export default function CourseSharePreviewClient({
                                         onClick={handleOpenInApp}
                                         className="w-full py-2.5 rounded-lg bg-amber-500 text-white font-bold text-sm"
                                     >
-                                        프리미엄 구독하기
+                                        {data.isPremium ? "프리미엄 구독하기" : "Basic 구독하기"}
                                     </button>
                                 </div>
                             </div>
