@@ -408,7 +408,7 @@ export default function CourseDetailScreen() {
     const handleStartSelectionCourse = useCallback(async () => {
         if (!isAuthenticated) { openModal("login"); return; }
         if (!course) return;
-        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }) }); return; }
+        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: async () => { await queryClient.refetchQueries({ queryKey: ["course", id] }); } }); return; }
         const selectedPlaceIds = selectionOrderedSteps
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);
