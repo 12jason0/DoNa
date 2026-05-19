@@ -362,16 +362,12 @@ export default function TicketPlansSheet() {
         // 결제 완료 후 intent 캐시 초기화 (재결제 시 만료된 intentId 재사용 방지)
         prefetchedIntentRef.current = null;
 
-        // 코스 쿼리는 refetch 완료 후 dismiss (stale UI 방지)
-        if (courseId != null) {
-            await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] }).catch(() => {});
-        }
         queryClient.invalidateQueries({ queryKey: ["profile"] });
         if (selectedPlan.type === "sub") {
             queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-        }
-        if (selectedPlan.type === "sub" && courseId != null) {
-            queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
+            if (courseId != null) {
+                await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] }).catch(() => {});
+            }
         }
 
         setLoading(false);
