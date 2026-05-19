@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         const transactionId = event.transaction_id;
 
         // transactionId 없으면 중복 방지 불가 → 200 반환 후 Sentry 기록 (400이면 RC가 무한 재시도)
-        if (!transactionId && ["INITIAL_PURCHASE", "RENEWAL", "REFUND"].includes(eventType)) {
+        if (!transactionId && ["INITIAL_PURCHASE", "NON_RENEWING_PURCHASE", "RENEWAL", "REFUND"].includes(eventType)) {
             captureApiError(new Error(`[RevenueCat Webhook] transaction_id 없음 — 수동 확인 필요: eventType=${eventType}, appUserId=${appUserId}`));
             return NextResponse.json({ success: true, message: "transaction_id missing - manual review required" });
         }
@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
         });
 
         // 🟢 이벤트 타입에 따른 처리
-        if (eventType === "INITIAL_PURCHASE") {
-            // 첫 구매 처리
+        if (eventType === "INITIAL_PURCHASE" || eventType === "NON_RENEWING_PURCHASE") {
+            // 첫 구매 처리 (NON_RENEWING_PURCHASE = 단건 열람권)
             await handleInitialPurchase(userId, productInfo, event);
         } else if (eventType === "RENEWAL") {
             // 구독 갱신 처리
