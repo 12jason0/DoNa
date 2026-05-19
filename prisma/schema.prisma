@@ -19,7 +19,8 @@ model Payment {
   method      String?
   requestedAt DateTime      @default(now()) @map("requested_at")
   approvedAt  DateTime?     @map("approved_at")
-  user        User          @relation(fields: [userId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  refundRequests RefundRequest[]
 
   @@index([userId])
   @@index([orderId])
@@ -85,6 +86,7 @@ model User {
   userPreference             UserPreference?
   rewards                    UserReward[]
   userStoryProgress          UserStoryProgress[]
+  refundRequests             RefundRequest[]
 
   @@unique([socialId, provider], name: "unique_social_provider")
   @@index([provider, socialId])
@@ -916,4 +918,36 @@ model Region {
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@map("regions")
+}
+
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model RefundRequest {
+  id                          Int                  @id @default(autoincrement())
+  paymentId                   String               @map("payment_id")
+  userId                      Int                  @map("user_id")
+  orderId                     String               @map("order_id")
+  orderName                   String               @map("order_name")
+  amount                      Int
+  cancelReason                String?              @map("cancel_reason")
+  status                      RefundRequestStatus  @default(PENDING)
+  adminNote                   String?              @map("admin_note")
+  requestedAt                 DateTime             @default(now()) @map("requested_at")
+  processedAt                 DateTime?            @map("processed_at")
+  processedBy                 Int?                 @map("processed_by")
+  originalSubscriptionTier    String?              @map("original_subscription_tier")
+  originalSubscriptionExpiresAt DateTime?          @map("original_subscription_expires_at")
+  createdAt                   DateTime             @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([userId])
+  @@index([paymentId])
+  @@index([status])
+  @@map("refund_requests")
 }

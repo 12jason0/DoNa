@@ -5,18 +5,6 @@ import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
-async function sendSlackMessage(text: string) {
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-    if (!webhookUrl) return;
-    try {
-        await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text }),
-        });
-    } catch {}
-}
-
 export async function POST(request: NextRequest) {
     try {
         const userId = await resolveUserId(request);
@@ -32,23 +20,40 @@ export async function POST(request: NextRequest) {
         }
 
         const payment = await prisma.payment.findFirst({
-            where: { id: paymentId, userId, status: "PAID" },
-            include: { user: { select: { email: true, username: true } } },
+            where: { id: paymentId, userId },
         });
 
         if (!payment) {
             return NextResponse.json({ error: "유효하지 않은 결제입니다." }, { status: 404 });
         }
 
-        await sendSlackMessage(
-            `🔴 *환불 신청*\n` +
-            `• 유저: ${payment.user?.username ?? payment.user?.email ?? userId} (ID: ${userId})\n` +
-            `• 상품: ${payment.orderName}\n` +
-            `• 금액: ${payment.amount.toLocaleString()}원\n` +
-            `• 결제일: ${payment.approvedAt?.toLocaleDateString("ko-KR") ?? "-"}\n` +
-            `• 사유: ${reason}\n` +
-            `• 결제 ID: ${payment.id}`
-        );
+        // 이미 환불 신청된 경우 중복 방지
+        const existing = await (prisma as any).refundRequest.findFirst({
+            where: { paymentId, userId, status: { not: "REJECTED" } },
+        });
+        if (existing) {
+            return NextResponse.json({ error: "이미 환불 신청된 결제입니다." }, { status: 409 });
+        }
+
+        // 유저 현재 구독 정보 저장 (거부 시 복구용)
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { subscriptionTier: true, subscriptionExpiresAt: true },
+        });
+
+        await (prisma as any).refundRequest.create({
+            data: {
+                paymentId: payment.id,
+                userId,
+                orderId: payment.orderId,
+                orderName: payment.orderName,
+                amount: payment.amount,
+                cancelReason: reason.trim(),
+                status: "PENDING",
+                originalSubscriptionTier: user?.subscriptionTier ?? null,
+                originalSubscriptionExpiresAt: user?.subscriptionExpiresAt ?? null,
+            },
+        });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
