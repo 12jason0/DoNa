@@ -383,6 +383,7 @@ export default function CourseDetailScreen() {
                 courseId: Number(id),
                 courseGrade: course.grade as "BASIC" | "PREMIUM",
                 onUnlocked: async () => {
+                    await queryClient.refetchQueries({ queryKey: ["course", id] });
                     try {
                         await api.post(endpoints.activeCourse, { courseId: Number(id) });
                         await queryClient.refetchQueries({ queryKey: ["users", "active-course"] });

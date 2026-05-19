@@ -319,7 +319,7 @@ export default function TicketPlansSheet() {
 
         // ── 3) RC 결제창 호출 ────────────────────────────────────────────────
         if (selectedPlan.type === "ticket" && courseId != null) {
-            Purchases.setAttributes({ pending_course_id: String(courseId) }).catch(() => {});
+            await Purchases.setAttributes({ pending_course_id: String(courseId) });
         }
 
         let customerInfo: any;
@@ -367,7 +367,9 @@ export default function TicketPlansSheet() {
             await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] }).catch(() => {});
         }
         queryClient.invalidateQueries({ queryKey: ["profile"] });
-        queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        if (selectedPlan.type === "sub") {
+            queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        }
         if (selectedPlan.type === "sub" && courseId != null) {
             queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
         }
