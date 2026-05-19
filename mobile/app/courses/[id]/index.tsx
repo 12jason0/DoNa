@@ -383,6 +383,7 @@ export default function CourseDetailScreen() {
                 courseId: Number(id),
                 courseGrade: course.grade as "BASIC" | "PREMIUM",
                 onUnlocked: async () => {
+                    queryClient.removeQueries({ queryKey: ["course", id] });
                     try {
                         await api.post(endpoints.activeCourse, { courseId: Number(id) });
                     } catch {}
@@ -406,7 +407,7 @@ export default function CourseDetailScreen() {
     const handleStartSelectionCourse = useCallback(async () => {
         if (!isAuthenticated) { openModal("login"); return; }
         if (!course) return;
-        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: async () => { try { await api.post(endpoints.activeCourse, { courseId: Number(id) }); } catch {} router.replace(`/courses/${id}` as any); } }); return; }
+        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: async () => { queryClient.removeQueries({ queryKey: ["course", id] }); try { await api.post(endpoints.activeCourse, { courseId: Number(id) }); } catch {} router.replace(`/courses/${id}` as any); } }); return; }
         const selectedPlaceIds = selectionOrderedSteps
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);

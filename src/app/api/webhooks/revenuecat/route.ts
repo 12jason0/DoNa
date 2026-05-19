@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
     "kr.io.dona.course_basic": "ticket_basic",
     "kr.io.dona.course_premium": "ticket_premium",
+    "course_basic": "ticket_basic",
+    "course_premium": "ticket_premium",
     "kr.io.dona.ai_basic_monthly": "sub_basic",
     "kr.io.dona.premium_monthly": "sub_premium",
 };
