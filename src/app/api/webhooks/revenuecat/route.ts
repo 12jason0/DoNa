@@ -16,12 +16,12 @@ const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
 // 🟢 [IN-APP PURCHASE]: RevenueCat 상품 ID 매핑
 const PRODUCT_MAPPING: Record<
     string,
-    { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" }
+    { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number }
 > = {
-    ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC" },
-    ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM" },
-    sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC" },
-    sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM" },
+    ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC", price: 990 },
+    ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM", price: 1990 },
+    sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC", price: 4900 },
+    sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM", price: 9900 },
 };
 
 /**
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
  */
 async function handleInitialPurchase(
     userId: number,
-    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number },
     event: any,
 ) {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -164,7 +164,7 @@ async function handleInitialPurchase(
                     orderId: transactionId,
                     userId: userId,
                     orderName: productInfo.name,
-                    amount: 0, // RevenueCat은 금액 정보를 제공하지 않을 수 있음
+                    amount: productInfo.price,
                     status: "PAID",
                     method: "IN_APP",
                     approvedAt: new Date(event.purchased_at_ms || Date.now()),
@@ -183,7 +183,7 @@ async function handleInitialPurchase(
  */
 async function handleRenewal(
     userId: number,
-    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number },
     event: any,
 ) {
     if (productInfo.type !== "SUBSCRIPTION" || !productInfo.tier) {
@@ -232,7 +232,7 @@ async function handleCancellation(userId: number, event: any) {
  */
 async function handleUncancellation(
     userId: number,
-    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number },
     event: any,
 ) {
     if (productInfo.type !== "SUBSCRIPTION" || !productInfo.tier) {
@@ -253,7 +253,7 @@ async function handleUncancellation(
  */
 async function handleRefund(
     userId: number,
-    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" },
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number },
     event: any,
 ) {
     // 🟢 transaction_id로 결제 기록 찾기

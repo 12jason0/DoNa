@@ -16,12 +16,12 @@ const REVENUECAT_TO_PLAN_ID: Record<string, string> = {
 
 const PRODUCT_MAPPING: Record<
     string,
-    { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM" }
+    { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number }
 > = {
-    ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC" },
-    ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM" },
-    sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC" },
-    sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM" },
+    ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC", price: 990 },
+    ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM", price: 1990 },
+    sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC", price: 4900 },
+    sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM", price: 9900 },
 };
 
 export async function POST(request: NextRequest) {
@@ -70,25 +70,35 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingPayment) {
-            // 이미 처리된 결제 (어떤 상태든 이미 orderId가 존재함)
-            const user = await prisma.user.findUnique({ 
-                where: { id: userId }, 
-                select: { subscriptionTier: true } 
+            // 이미 처리된 결제 (webhook이 먼저 처리한 경우)
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { subscriptionTier: true }
             });
-            
-            // 만약 PAID 상태가 아니면 업데이트 시도 (중요: 이미 존재하므로 지급은 하지 않음)
+
             if (existingPayment.status !== "PAID") {
                 await prisma.payment.update({
                     where: { id: existingPayment.id },
                     data: { status: "PAID" },
                 });
             }
-            
-            return NextResponse.json({ 
-                success: true, 
+
+            // webhook이 pending_course_id 없이 처리한 경우 CourseUnlock이 없을 수 있으므로 여기서도 upsert
+            if (productInfo.type === "COURSE_TICKET" && unlockCourseId) {
+                await (prisma as any).courseUnlock.upsert({
+                    where: { userId_courseId: { userId, courseId: unlockCourseId } },
+                    update: {},
+                    create: { userId, courseId: unlockCourseId },
+                });
+            }
+
+            const resPayload: Record<string, unknown> = {
+                success: true,
                 message: "Already processed",
-                subscriptionTier: user?.subscriptionTier
-            });
+                subscriptionTier: user?.subscriptionTier,
+            };
+            if (unlockCourseId != null) resPayload.courseId = unlockCourseId;
+            return NextResponse.json(resPayload);
         }
 
         // 🟢 코스 열람권/구독 지급
@@ -127,7 +137,7 @@ export async function POST(request: NextRequest) {
                         orderId: orderId,
                         userId: userId,
                         orderName: productInfo.name,
-                        amount: 0,
+                        amount: productInfo.price,
                         status: "PAID",
                         method: "IN_APP",
                         approvedAt: new Date(),

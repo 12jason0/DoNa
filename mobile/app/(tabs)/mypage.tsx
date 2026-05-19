@@ -1969,6 +1969,32 @@ function ActivityTab() {
     const insets = useSafeAreaInsets();
     const { openModal } = useModal();
     const [subTab, setSubTab] = useState<"badges" | "rewards" | "payments">("badges");
+    const [refundPayment, setRefundPayment] = useState<PaymentHistory | null>(null);
+    const [selectedReason, setSelectedReason] = useState<string | null>(null);
+    const [customReason, setCustomReason] = useState("");
+    const [refundSubmitting, setRefundSubmitting] = useState(false);
+
+    const handleRefundSubmit = async () => {
+        const reason = selectedReason === "기타" ? customReason.trim() : selectedReason;
+        if (!reason) {
+            Alert.alert("환불 사유를 선택하거나 입력해주세요.");
+            return;
+        }
+        if (!refundPayment) return;
+        setRefundSubmitting(true);
+        try {
+            await api.post("/api/payments/refund-request", { paymentId: refundPayment.id, reason });
+            Alert.alert(
+                "환불 신청 완료",
+                "환불 신청이 접수되었습니다.\n영업일 기준 1~3일 내 처리됩니다.",
+                [{ text: "확인", onPress: () => setRefundPayment(null) }]
+            );
+        } catch {
+            Alert.alert("오류 발생", "잠시 후 다시 시도해주세요.");
+        } finally {
+            setRefundSubmitting(false);
+        }
+    };
 
     const { data: badges = [], isLoading: loadBadges } = useQuery<Badge[]>({
         queryKey: ["users", "badges"],
@@ -1991,8 +2017,8 @@ function ActivityTab() {
     const { data: payments = [], isLoading: loadPayments } = useQuery<PaymentHistory[]>({
         queryKey: ["payments", "history"],
         queryFn: async () => {
-            const d = await api.get<any[]>("/api/payments/history").catch(() => []);
-            return Array.isArray(d) ? d : [];
+            const d = await api.get<{ payments?: any[] }>("/api/payments/history").catch(() => ({}));
+            return Array.isArray(d?.payments) ? d.payments : [];
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -2007,8 +2033,10 @@ function ActivityTab() {
     );
 
     const isLoading = loadBadges || loadRewards || loadPayments;
+    const REFUND_REASONS = ["서비스 불만족", "단순 변심", "중복 구매", "기타"];
 
     return (
+        <>
         <ScrollView style={s.tabScroll} contentContainerStyle={[s.tabContent, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
             <SubTabBar tabs={subTabs} active={subTab} onSelect={setSubTab} t={t} />
 
@@ -2190,7 +2218,7 @@ function ActivityTab() {
                                                 {!isRefunded && (
                                                     <TouchableOpacity
                                                         style={[s.refundBtn, { borderTopColor: t.border }]}
-                                                        onPress={() => router.push("/refund" as any)}
+                                                        onPress={() => { setRefundPayment(p); setSelectedReason(null); setCustomReason(""); }}
                                                     >
                                                         <Text style={[s.refundBtnText, { color: t.textMuted }]}>
                                                             {i18n("mypage.activityTab.requestRefund")}
@@ -2208,6 +2236,89 @@ function ActivityTab() {
             )}
 
         </ScrollView>
+
+        {/* 환불 신청 모달 */}
+        <Modal
+            visible={refundPayment != null}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setRefundPayment(null)}
+        >
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+                <TouchableOpacity
+                    style={StyleSheet.absoluteFillObject}
+                    activeOpacity={1}
+                    onPress={() => setRefundPayment(null)}
+                />
+                <View style={[s.refundSheet, { backgroundColor: t.bg, paddingBottom: insets.bottom + 24 }]}>
+                    <View style={s.refundSheetHandle} />
+                    <View style={s.refundSheetHeader}>
+                        <Text style={[s.refundSheetTitle, { color: t.text }]}>환불 신청</Text>
+                        <TouchableOpacity onPress={() => setRefundPayment(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="close" size={24} color={t.text} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {refundPayment && (
+                        <View style={[s.refundPaymentCard, { backgroundColor: t.surface, marginBottom: 16 }]}>
+                            <Text style={[{ fontSize: 12, color: t.textMuted }]}>환불 대상</Text>
+                            <Text style={[{ fontSize: 16, fontWeight: "500", color: t.text }]}>{refundPayment.orderName}</Text>
+                            <Text style={[{ fontSize: 18, fontWeight: "600", color: t.text }]}>
+                                {refundPayment.amount.toLocaleString()}원
+                            </Text>
+                        </View>
+                    )}
+
+                    <Text style={[{ fontSize: 14, fontWeight: "600", color: t.text, marginBottom: 10 }]}>환불 사유</Text>
+                    <View style={{ gap: 8, marginBottom: 16 }}>
+                        {REFUND_REASONS.map((r) => {
+                            const selected = selectedReason === r;
+                            return (
+                                <TouchableOpacity
+                                    key={r}
+                                    style={[
+                                        s.refundReasonBtn,
+                                        { borderColor: selected ? "#10b981" : t.border, backgroundColor: selected ? "rgba(16,185,129,0.08)" : t.card },
+                                    ]}
+                                    onPress={() => setSelectedReason(r)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name={selected ? "radio-button-on" : "radio-button-off"} size={18} color={selected ? "#10b981" : t.textMuted} />
+                                    <Text style={[{ fontSize: 15, color: t.text }]}>{r}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    {selectedReason === "기타" && (
+                        <TextInput
+                            style={[s.refundTextInput, { borderColor: t.border, color: t.text, backgroundColor: t.card, marginBottom: 16 }]}
+                            placeholder="환불 사유를 직접 입력해주세요."
+                            placeholderTextColor={t.textMuted}
+                            value={customReason}
+                            onChangeText={setCustomReason}
+                            multiline
+                            numberOfLines={3}
+                            textAlignVertical="top"
+                        />
+                    )}
+
+                    <TouchableOpacity
+                        style={[s.refundSubmitBtn, { opacity: refundSubmitting ? 0.7 : 1 }]}
+                        onPress={handleRefundSubmit}
+                        disabled={refundSubmitting}
+                        activeOpacity={0.85}
+                    >
+                        {refundSubmitting ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={s.refundSubmitBtnText}>환불 신청하기</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+        </>
     );
 }
 
@@ -3247,6 +3358,15 @@ const s = StyleSheet.create({
     payAmount: { fontSize: 18, fontWeight: "600", marginLeft: 10 },
     refundBtn: { marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, alignItems: "center" },
     refundBtnText: { fontSize: 14, fontWeight: "500" },
+    refundSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+    refundSheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#d1d5db", alignSelf: "center", marginBottom: 16 },
+    refundSheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+    refundSheetTitle: { fontSize: 18, fontWeight: "700" },
+    refundPaymentCard: { borderRadius: 12, padding: 14, gap: 4 },
+    refundReasonBtn: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 10, padding: 14 },
+    refundTextInput: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 14, minHeight: 80 },
+    refundSubmitBtn: { backgroundColor: "#111827", borderRadius: 12, paddingVertical: 16, alignItems: "center" },
+    refundSubmitBtnText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 
     // 로그인 CTA
     loginCTA: { backgroundColor: "#059669", borderRadius: 999, paddingHorizontal: 24, paddingVertical: 14 },

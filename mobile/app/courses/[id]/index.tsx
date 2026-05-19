@@ -377,11 +377,19 @@ export default function CourseDetailScreen() {
             return;
         }
         if (!course) return;
-        const userTier = profile?.subscriptionTier ?? (profile as any)?.subscription_tier ?? "FREE";
-        const isLocked =
-            (course.grade === "BASIC" && userTier === "FREE") || (course.grade === "PREMIUM" && userTier !== "PREMIUM");
-        if (isLocked) {
-            openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }) });
+        if (course.isLocked) {
+            openModal("ticket", {
+                context: "COURSE",
+                courseId: Number(id),
+                courseGrade: course.grade as "BASIC" | "PREMIUM",
+                onUnlocked: async () => {
+                    try {
+                        await api.post(endpoints.activeCourse, { courseId: Number(id) });
+                        await queryClient.refetchQueries({ queryKey: ["users", "active-course"] });
+                    } catch {}
+                    showToast(i18n("mobile.courseScreen.courseStarted"), "🗺️");
+                },
+            });
             return;
         }
         try {
@@ -399,9 +407,7 @@ export default function CourseDetailScreen() {
     const handleStartSelectionCourse = useCallback(async () => {
         if (!isAuthenticated) { openModal("login"); return; }
         if (!course) return;
-        const userTier = profile?.subscriptionTier ?? (profile as any)?.subscription_tier ?? "FREE";
-        const isLocked = (course.grade === "BASIC" && userTier === "FREE") || (course.grade === "PREMIUM" && userTier !== "PREMIUM");
-        if (isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }) }); return; }
+        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }) }); return; }
         const selectedPlaceIds = selectionOrderedSteps
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);
@@ -735,7 +741,7 @@ export default function CourseDetailScreen() {
                                                         }
                                                         onReserve={handleReserve}
                                                         showConfirmed
-                                                        tipLocked={course?.userTier === "FREE" && course?.grade !== "FREE"}
+                                                        tipLocked={course?.isLocked === true}
                                                         onTipLockPress={handleTipLockPress}
                                                     />
                                                 </View>
@@ -876,7 +882,7 @@ export default function CourseDetailScreen() {
                                                     Number(cp.place.id) === highlightedPlaceId
                                                 }
                                                 onReserve={handleReserve}
-                                                tipLocked={course?.userTier === "FREE" && course?.grade !== "FREE"}
+                                                tipLocked={course?.isLocked === true}
                                                 onTipLockPress={handleTipLockPress}
                                             />
                                         </React.Fragment>
@@ -1042,7 +1048,7 @@ export default function CourseDetailScreen() {
                     tipsRow={selectedPlace.tipsRow}
                     onClose={() => setSelectedPlace(null)}
                     isLoggedIn={!!profile}
-                    tipLocked={course?.userTier === "FREE" && course?.grade !== "FREE"}
+                    tipLocked={course?.isLocked === true}
                     onTipLockPress={handleTipLockPress}
                 />
             )}

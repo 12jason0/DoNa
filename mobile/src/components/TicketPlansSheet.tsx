@@ -75,6 +75,9 @@ const RC_PRODUCT_IDS: Record<string, string> = {
 const { height: SCREEN_H } = Dimensions.get("window");
 const SHEET_HEIGHT = SCREEN_H * 0.8;
 
+// 모듈 레벨 RC 패키지 캐시 — 앱 세션 동안 유지 (컴포넌트 unmount 후에도 보존)
+let globalRcPkgs: import("react-native-purchases").PurchasesPackage[] = [];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TicketPlansSheet() {
@@ -102,8 +105,9 @@ export default function TicketPlansSheet() {
     const [tierLoadFailed, setTierLoadFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [rcPrices, setRcPrices] = useState<Partial<Record<PlanId, string>>>({});
-    // offerings 캐시 — 결제 시 재요청 방지
-    const cachedPkgsRef = useRef<import("react-native-purchases").PurchasesPackage[]>([]);
+    const cachedPkgsRef = useRef<import("react-native-purchases").PurchasesPackage[]>(globalRcPkgs);
+    // unlock-intent 프리패치 캐시 (courseId+planId 키)
+    const prefetchedIntentRef = useRef<{ key: string; intentId: string } | null>(null);
 
     // ref 동기화 (티어 로딩 시 최신 selectedPlanId 참조용)
     useEffect(() => { selectedPlanIdRef.current = selectedPlanId; }, [selectedPlanId]);
@@ -121,13 +125,13 @@ export default function TicketPlansSheet() {
         ]).start();
     }, [visible]);
 
-    const dismiss = useCallback(() => {
+    const dismiss = useCallback((afterDismiss?: () => void) => {
         if (closingRef.current) return;
         closingRef.current = true;
         Animated.parallel([
             Animated.timing(slide, { toValue: SHEET_HEIGHT, duration: 260, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
             Animated.timing(backdrop, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-        ]).start(({ finished }) => { closingRef.current = false; if (finished) onClose(); });
+        ]).start(({ finished }) => { closingRef.current = false; if (finished) { onClose(); afterDismiss?.(); } });
     }, [onClose]);
 
     // ─── 사용자 등급 조회 ─────────────────────────────────────────────────────
@@ -158,23 +162,26 @@ export default function TicketPlansSheet() {
             .catch(() => { setCurrentTier("FREE"); setTierLoadFailed(true); });
     }, [visible]);
 
-    // ─── RevenueCat 가격 조회 (모든 offering 탐색 + 캐싱) ───────────────────────
+    // ─── RevenueCat 가격 조회 (모듈 캐시 우선, 없으면 네트워크) ───────────────
 
     useEffect(() => {
         if (!visible) return;
         (async () => {
             try {
-                const offerings = await Purchases.getOfferings();
-                // current + 모든 offering의 패키지 합산 (중복 제거)
-                const seen = new Set<string>();
-                const allPkgs: import("react-native-purchases").PurchasesPackage[] = [];
-                for (const offering of Object.values(offerings.all)) {
-                    for (const pkg of offering.availablePackages) {
-                        if (!seen.has(pkg.product.identifier)) {
-                            seen.add(pkg.product.identifier);
-                            allPkgs.push(pkg);
+                let allPkgs = globalRcPkgs;
+                if (allPkgs.length === 0) {
+                    const offerings = await Purchases.getOfferings();
+                    const seen = new Set<string>();
+                    allPkgs = [];
+                    for (const offering of Object.values(offerings.all)) {
+                        for (const pkg of offering.availablePackages) {
+                            if (!seen.has(pkg.product.identifier)) {
+                                seen.add(pkg.product.identifier);
+                                allPkgs.push(pkg);
+                            }
                         }
                     }
+                    globalRcPkgs = allPkgs;
                 }
                 cachedPkgsRef.current = allPkgs;
                 const prices: Partial<Record<PlanId, string>> = {};
@@ -218,6 +225,24 @@ export default function TicketPlansSheet() {
         }
     }, [currentTier]);
 
+    // ─── unlock-intent 프리패치 (티켓 플랜 선택 시 미리 호출) ────────────────
+    useEffect(() => {
+        if (!visible || courseId == null) return;
+        const plan = PLANS.find((p) => p.id === selectedPlanId);
+        if (plan?.type !== "ticket") return;
+
+        const productId = plan.id === "ticket_basic" ? "course_basic" : "course_premium";
+        const key = `${courseId}:${plan.id}`;
+        if (prefetchedIntentRef.current?.key === key) return; // 이미 패치됨
+
+        prefetchedIntentRef.current = null; // 이전 캐시 무효화
+        api.post<{ intentId?: string }>("/api/payments/unlock-intent", {
+            courseId: Number(courseId), productId, unlockTarget: "FULL",
+        }).then((res) => {
+            if (res?.intentId) prefetchedIntentRef.current = { key, intentId: res.intentId };
+        }).catch(() => {}); // 실패해도 결제 시 재시도
+    }, [visible, selectedPlanId, courseId]);
+
     // ─── 결제 처리 ────────────────────────────────────────────────────────────
 
     const handlePayment = async () => {
@@ -236,27 +261,37 @@ export default function TicketPlansSheet() {
         }
 
         setLoading(true);
-        try {
-            // 티켓 결제 시 unlock-intent 발급
-            let intentId: string | null = null;
-            if (selectedPlan.type === "ticket" && courseId != null) {
-                const productId = selectedPlan.id === "ticket_basic" ? "course_basic" : "course_premium";
-                const res = await api.post<{ intentId?: string }>("/api/payments/unlock-intent", {
-                    courseId: Number(courseId), productId, unlockTarget: "FULL",
-                });
-                if (!res?.intentId) {
-                    Alert.alert(i18n("ticketPlans.alerts.paymentFailed"));
+
+        // ── 1) unlock-intent (프리패치 캐시 우선) ──────────────────────────────
+        let intentId: string | null = null;
+        if (selectedPlan.type === "ticket" && courseId != null) {
+            const key = `${courseId}:${selectedPlan.id}`;
+            const cached = prefetchedIntentRef.current?.key === key ? prefetchedIntentRef.current.intentId : null;
+            if (cached) {
+                intentId = cached;
+            } else {
+                try {
+                    const productId = selectedPlan.id === "ticket_basic" ? "course_basic" : "course_premium";
+                    const res = await api.post<{ intentId?: string }>("/api/payments/unlock-intent", {
+                        courseId: Number(courseId), productId, unlockTarget: "FULL",
+                    });
+                    intentId = res?.intentId ?? null;
+                } catch { /* 아래에서 null 체크 */ }
+                if (!intentId) {
                     setLoading(false);
+                    Alert.alert(i18n("ticketPlans.alerts.paymentFailed"));
                     return;
                 }
-                intentId = res.intentId;
             }
+        }
 
-            // RevenueCat 패키지 찾기 (캐시 우선, 없으면 재조회)
-            let allPkgs = cachedPkgsRef.current;
-            if (allPkgs.length === 0) {
+        // ── 2) RC 패키지 찾기 ─────────────────────────────────────────────────
+        let allPkgs = globalRcPkgs.length > 0 ? globalRcPkgs : cachedPkgsRef.current;
+        if (allPkgs.length === 0) {
+            try {
                 const offerings = await Purchases.getOfferings();
                 const seen = new Set<string>();
+                allPkgs = [];
                 for (const offering of Object.values(offerings.all)) {
                     for (const p of offering.availablePackages) {
                         if (!seen.has(p.product.identifier)) {
@@ -265,75 +300,81 @@ export default function TicketPlansSheet() {
                         }
                     }
                 }
+                globalRcPkgs = allPkgs;
                 cachedPkgsRef.current = allPkgs;
-            }
-            const pkg = allPkgs.find(
-                (p) =>
-                    p.identifier === selectedPlan.id ||
-                    RC_PRODUCT_IDS[selectedPlan.id] === p.product.identifier,
-            );
-            if (!pkg) {
-                Alert.alert(i18n("ticketPlans.alerts.paymentError"));
+            } catch {
                 setLoading(false);
+                Alert.alert(i18n("ticketPlans.alerts.paymentError"));
                 return;
             }
+        }
+        const pkg = allPkgs.find(
+            (p) => p.identifier === selectedPlan.id || RC_PRODUCT_IDS[selectedPlan.id] === p.product.identifier,
+        );
+        if (!pkg) {
+            setLoading(false);
+            Alert.alert(i18n("ticketPlans.alerts.paymentError"));
+            return;
+        }
 
-            // 티켓 결제 시 웹훅 폴백을 위해 courseId를 RC 속성에 저장
-            // → 클라이언트 confirm 실패해도 웹훅에서 courseId를 읽어 잠금 해제 가능
-            if (selectedPlan.type === "ticket" && courseId != null) {
-                await Purchases.setAttributes({ pending_course_id: String(courseId) }).catch(() => {});
-            }
+        // ── 3) RC 결제창 호출 ────────────────────────────────────────────────
+        if (selectedPlan.type === "ticket" && courseId != null) {
+            Purchases.setAttributes({ pending_course_id: String(courseId) }).catch(() => {});
+        }
 
-            const { customerInfo } = await Purchases.purchasePackage(pkg);
-
-            // 티켓 결제 서버 confirm
-            if (selectedPlan.type === "ticket" && intentId) {
-                try {
-                    await api.post("/api/payments/revenuecat/confirm", {
-                        planId: selectedPlan.id,
-                        planType: "ticket",
-                        transactionId: (customerInfo as any)?.originalTransactionId ?? null,
-                        customerInfo,
-                        intentId,
-                        courseId,
-                    });
-                } catch { /* confirm 실패해도 구매 처리 */ }
-            }
-
-            if (courseId != null) queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
-            queryClient.invalidateQueries({ queryKey: ["profile"] });
-            queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-
-            // 단건 → 구독 전환 트리거: 티켓 구매 후 unlock 누적 횟수 확인
-            let shouldSuggestUpgrade = false;
-            if (selectedPlan.type === "ticket") {
-                try {
-                    const res = await api.get<{ count: number }>("/api/users/me/unlock-count");
-                    shouldSuggestUpgrade = (res?.count ?? 0) >= 2;
-                } catch { /* 실패해도 결제는 정상 완료 */ }
-            }
-
-            Alert.alert(i18n("ticketPlans.alerts.paymentComplete"), undefined, [
-                {
-                    text: "확인",
-                    onPress: () => {
-                        dismiss();
-                        onUnlocked?.();
-                        if (shouldSuggestUpgrade) {
-                            // 닫기 애니메이션(260ms) 끝난 후 구독 제안 시트 열기
-                            setTimeout(() => {
-                                openModal("ticket", { context: "UPGRADE" });
-                            }, 400);
-                        }
-                    },
-                },
-            ]);
+        let customerInfo: any;
+        try {
+            const result = await Purchases.purchasePackage(pkg);
+            customerInfo = result.customerInfo;
         } catch (err: unknown) {
+            setLoading(false);
             if (err && typeof err === "object" && "userCancelled" in err && (err as any).userCancelled) return;
             Alert.alert(i18n("ticketPlans.alerts.paymentError"));
-        } finally {
-            setLoading(false);
+            return;
         }
+
+        // ── 4) confirm + UI 반응 ─────────────────────────────────────────────
+        const transactionId = (customerInfo as any)?.originalTransactionId ?? null;
+
+        if (selectedPlan.type === "ticket" && intentId) {
+            try {
+                await api.post("/api/payments/revenuecat/confirm", {
+                    planId: selectedPlan.id, planType: "ticket",
+                    transactionId, customerInfo, intentId, courseId,
+                });
+            } catch {
+                setLoading(false);
+                Alert.alert(
+                    i18n("ticketPlans.alerts.paymentError"),
+                    undefined,
+                    [{ text: "확인", onPress: () => dismiss() }]
+                );
+                return;
+            }
+        } else if (selectedPlan.type === "sub") {
+            // 구독: 즉시 닫고 confirm은 백그라운드
+            api.post("/api/payments/revenuecat/confirm", {
+                planId: selectedPlan.id, planType: "sub",
+                transactionId, customerInfo,
+            }).catch(() => {});
+        }
+
+        // 결제 완료 후 intent 캐시 초기화 (재결제 시 만료된 intentId 재사용 방지)
+        prefetchedIntentRef.current = null;
+
+        // 코스 쿼리는 refetch 완료 후 dismiss (stale UI 방지)
+        if (courseId != null) {
+            await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] }).catch(() => {});
+        }
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+        queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        if (selectedPlan.type === "sub" && courseId != null) {
+            queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
+        }
+
+        setLoading(false);
+        const afterDismiss = onUnlocked;
+        dismiss(() => afterDismiss?.());
     };
 
     // ─── 헬퍼 ────────────────────────────────────────────────────────────────
@@ -623,7 +664,7 @@ export default function TicketPlansSheet() {
                         <View style={{ height: 100 }} />
                     </ScrollView>
 
-                    {/* ── 하단 고정 버튼 (웹과 동일: dark + ChevronRight) ───── */}
+                    {/* ── 하단 고정 버튼 ───── */}
                     <View
                         style={[
                             styles.footer,
@@ -634,45 +675,36 @@ export default function TicketPlansSheet() {
                             },
                         ]}
                     >
-                        {/* 티켓 선택 시 팁 (웹 ticketTip2) */}
+                        {/* 티켓 선택 시 팁 */}
                         {selectedPlan?.type === "ticket" && (
                             <Text style={[styles.ticketTip, { color: sectionLabelColor }]}>
                                 {i18n("ticketPlans.ticketTip2")}
                             </Text>
                         )}
+
+                        {/* 결제 버튼 */}
                         <TouchableOpacity
                             style={[
                                 styles.payBtn,
                                 {
-                                    backgroundColor: (loading || tierLoadFailed)
-                                        ? (t.isDark ? "#374151" : "#d1d5db")
-                                        : (t.isDark ? "#1f2937" : "#111827"),
+                                    backgroundColor: tierLoadFailed
+                                        ? (t.isDark ? "#374151" : "#e5e7eb")
+                                        : "#111827",
+                                    opacity: loading ? 0.7 : 1,
                                 },
                             ]}
                             onPress={handlePayment}
                             activeOpacity={0.85}
                             disabled={loading || tierLoadFailed}
                         >
-                            {tierLoadFailed ? (
-                                <Text style={[styles.payBtnText, { fontWeight: "400", color: "#9ca3af" }]}>
-                                    {i18n("ticketPlans.tierLoadError") ?? "정보를 불러오지 못했어요. 다시 시도해주세요."}
-                                </Text>
-                            ) : loading ? (
-                                <>
-                                    <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-                                    <Text style={[styles.payBtnText, { fontWeight: "400" }]}>
-                                        {i18n("ticketPlans.loadingPayment")}
-                                    </Text>
-                                </>
+                            {loading ? (
+                                <ActivityIndicator color="#fff" size="small" />
                             ) : (
-                                <>
-                                    <Text style={[styles.payBtnText, { fontWeight: "400" }]}>
-                                        {i18n("ticketPlans.startPlan", {
-                                            name: i18n(`ticketPlans.plans.${selectedPlan?.id ?? "sub_basic"}.name`),
-                                        })}
-                                    </Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#34d399" />
-                                </>
+                                <Text style={styles.payBtnText}>
+                                    {i18n("ticketPlans.startPlan", {
+                                        name: i18n(`ticketPlans.plans.${selectedPlanId}.name`),
+                                    })}
+                                </Text>
                             )}
                         </TouchableOpacity>
                     </View>
