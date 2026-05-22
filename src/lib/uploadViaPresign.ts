@@ -42,10 +42,15 @@ export async function uploadViaPresign(
         ...fetchOptions,
     });
 
-    const data = await res.json();
     if (!res.ok) {
-        throw new Error(data.message || "Presign 요청에 실패했습니다.");
+        let errMsg = "Presign 요청에 실패했습니다.";
+        try {
+            const data = await res.json();
+            errMsg = data.message || errMsg;
+        } catch {}
+        throw new Error(errMsg);
     }
+    const data = await res.json();
     if (!data.success || !Array.isArray(data.uploads) || data.uploads.length !== files.length) {
         throw new Error(data.message || "업로드 URL을 받지 못했습니다.");
     }

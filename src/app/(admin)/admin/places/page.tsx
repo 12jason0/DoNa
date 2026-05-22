@@ -278,13 +278,14 @@ export default function AdminPlacesPage() {
                 body: form,
             });
             if (!res.ok) {
-                const ct = res.headers.get("content-type") || "";
                 let errMsg = "업로드 실패";
-                if (ct.includes("application/json")) {
-                    const data = await res.json();
-                    errMsg = data.error || errMsg;
-                } else if (res.status === 413) {
+                if (res.status === 413) {
                     errMsg = "파일이 너무 큽니다. 4MB 이하로 올려주세요.";
+                } else {
+                    try {
+                        const data = await res.json();
+                        errMsg = data.error || errMsg;
+                    } catch {}
                 }
                 throw new Error(errMsg);
             }
