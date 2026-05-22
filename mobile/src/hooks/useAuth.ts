@@ -77,9 +77,11 @@ export async function logout(queryClient: ReturnType<typeof useQueryClient>) {
     saveAuthToken(null);
     saveUserId(null);
 
+    // 진행 중인 쿼리 취소 — clear() 직후 마운트된 컴포넌트가 이전 유저 쿠키로
+    // 리페치해 캐시를 오염시키는 race condition 방지
+    await queryClient.cancelQueries();
+
     // 전체 쿼리 캐시 제거 — 다음 로그인 시 이전 유저 데이터가 보이는 버그 방지
-    // ["users"] 외에도 ["favorites"], ["profile"] 등 유저별 데이터가 다양한 키에 분산되어 있어
-    // removeQueries({ queryKey: ["users"] })로는 불충분, clear()로 전부 제거
     queryClient.clear();
 
     // clear() 후 Auth 상태를 비로그인으로 즉시 세팅 (로딩 플래시 방지)

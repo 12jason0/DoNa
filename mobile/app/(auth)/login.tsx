@@ -77,6 +77,9 @@ export default function LoginScreen() {
         if (token) saveAuthToken(token);
         saveUserId(String(user.id));
 
+        // 이전 유저 캐시 잔재 제거 (크로스유저 오염 방어선 2중화)
+        queryClient.removeQueries({ queryKey: ["course"] });
+
         try {
             await Purchases.logIn(String(user.id));
         } catch {}

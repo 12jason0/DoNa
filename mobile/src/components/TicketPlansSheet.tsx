@@ -64,12 +64,12 @@ const PLANS = [
 type PlanId = (typeof PLANS)[number]["id"];
 type Tier = "FREE" | "BASIC" | "PREMIUM";
 
-// RevenueCat 상품 식별자 매핑 (p.product.identifier — App Store/Play Store 상품 ID)
-const RC_PRODUCT_IDS: Record<string, string> = {
-    ticket_basic: "kr.io.dona.course_basic",
-    ticket_premium: "kr.io.dona.course_premium",
-    sub_basic: "kr.io.dona.ai_basic_monthly",
-    sub_premium: "kr.io.dona.premium_monthly",
+// RevenueCat 상품 식별자 매핑 — iOS/Android 상품 ID 모두 포함
+const RC_PRODUCT_IDS: Record<string, string[]> = {
+    ticket_basic:  ["kr.io.dona.course_basic", "course_basic"],
+    ticket_premium: ["kr.io.dona.course_premium", "course_premium"],
+    sub_basic:     ["kr.io.dona.ai_basic_monthly"],
+    sub_premium:   ["kr.io.dona.premium_monthly"],
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -131,7 +131,7 @@ export default function TicketPlansSheet() {
         Animated.parallel([
             Animated.timing(slide, { toValue: SHEET_HEIGHT, duration: 260, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
             Animated.timing(backdrop, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-        ]).start(({ finished }) => { closingRef.current = false; if (finished) { onClose(); afterDismiss?.(); } });
+        ]).start(({ finished }) => { closingRef.current = false; onClose(); afterDismiss?.(); });
     }, [onClose]);
 
     // ─── 사용자 등급 조회 ─────────────────────────────────────────────────────
@@ -187,9 +187,9 @@ export default function TicketPlansSheet() {
                 const prices: Partial<Record<PlanId, string>> = {};
                 for (const pkg of allPkgs) {
                     const match = PLANS.find(
-                        (p) =>
-                            p.id === pkg.identifier ||
-                            RC_PRODUCT_IDS[p.id] === pkg.product.identifier,
+                        (p) => RC_PRODUCT_IDS[p.id]?.includes(pkg.product.identifier),
+                    ) ?? PLANS.find(
+                        (p) => p.id === pkg.identifier,
                     );
                     if (match) prices[match.id] = pkg.product.priceString;
                 }
@@ -309,7 +309,9 @@ export default function TicketPlansSheet() {
             }
         }
         const pkg = allPkgs.find(
-            (p) => p.identifier === selectedPlan.id || RC_PRODUCT_IDS[selectedPlan.id] === p.product.identifier,
+            (p) => RC_PRODUCT_IDS[selectedPlan.id]?.includes(p.product.identifier),
+        ) ?? allPkgs.find(
+            (p) => p.identifier === selectedPlan.id,
         );
         if (!pkg) {
             setLoading(false);
@@ -362,13 +364,25 @@ export default function TicketPlansSheet() {
         // 결제 완료 후 intent 캐시 초기화 (재결제 시 만료된 intentId 재사용 방지)
         prefetchedIntentRef.current = null;
 
+        // 캐시 즉시 업데이트 → dismiss 전에 isLocked=false 반영하여 UI 즉시 해제
+        if (courseId != null) {
+            const beforeCache = queryClient.getQueryData(["course", String(courseId)]);
+            console.log("[setQueryData] courseId:", courseId, "before:", JSON.stringify(beforeCache ? { isLocked: (beforeCache as any).isLocked, hasAccess: (beforeCache as any).hasAccess } : null));
+            queryClient.setQueryData(["course", String(courseId)], (old: any) => {
+                if (!old) return { isLocked: false };
+                return { ...old, isLocked: false };
+            });
+            const afterCache = queryClient.getQueryData(["course", String(courseId)]);
+            console.log("[setQueryData] courseId:", courseId, "after:", JSON.stringify(afterCache ? { isLocked: (afterCache as any).isLocked, hasAccess: (afterCache as any).hasAccess } : null));
+        }
+
         queryClient.invalidateQueries({ queryKey: ["profile"] });
         if (selectedPlan.type === "sub") {
             queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-            if (courseId != null) {
-                await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] }).catch(() => {});
-            }
         }
+        // 코스 쿼리는 invalidate 하지 않음 — setQueryData로 즉시 isLocked=false 반영 후
+        // staleTime(5분) 동안 캐시 유지. 서버 webhook 처리가 비동기라 즉시 refetch하면
+        // 아직 isLocked=true를 반환해 setQueryData를 덮어쓰는 문제 방지.
 
         setLoading(false);
         const afterDismiss = onUnlocked;

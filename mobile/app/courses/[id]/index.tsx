@@ -382,13 +382,6 @@ export default function CourseDetailScreen() {
                 context: "COURSE",
                 courseId: Number(id),
                 courseGrade: course.grade as "BASIC" | "PREMIUM",
-                onUnlocked: async () => {
-                    queryClient.removeQueries({ queryKey: ["course", id] });
-                    try {
-                        await api.post(endpoints.activeCourse, { courseId: Number(id) });
-                    } catch {}
-                    router.replace(`/courses/${id}` as any);
-                },
             });
             return;
         }
@@ -407,7 +400,7 @@ export default function CourseDetailScreen() {
     const handleStartSelectionCourse = useCallback(async () => {
         if (!isAuthenticated) { openModal("login"); return; }
         if (!course) return;
-        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: async () => { queryClient.removeQueries({ queryKey: ["course", id] }); try { await api.post(endpoints.activeCourse, { courseId: Number(id) }); } catch {} router.replace(`/courses/${id}` as any); } }); return; }
+        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM" }); return; }
         const selectedPlaceIds = selectionOrderedSteps
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);
@@ -572,7 +565,7 @@ export default function CourseDetailScreen() {
             context: "COURSE",
             courseId: Number(id),
             courseGrade: (course.grade === "PREMIUM" ? "PREMIUM" : "BASIC") as "BASIC" | "PREMIUM",
-            onUnlocked: () => queryClient.invalidateQueries({ queryKey: ["course", id] }),
+            onUnlocked: undefined,
         });
     }, [isAuthenticated, course, id, queryClient, openModal]);
 
@@ -862,14 +855,14 @@ export default function CourseDetailScreen() {
                                         <Text style={s.editSelectionBtnText}>{i18n("courseDetail.editCourse")}</Text>
                                     </TouchableOpacity>
                                 )}
-                                {displayPlaces.map((cp, i) => {
+                                {displayPlaces.filter((cp) => cp.place != null).map((cp, i) => {
                                     const a = i > 0 ? displayPlaces[i - 1]?.place : null;
                                     const b = cp.place;
                                     const walkMins = a?.latitude && a?.longitude && b?.latitude && b?.longitude
                                         ? getWalkingMinutes(a.latitude, a.longitude, b.latitude, b.longitude)
                                         : null;
                                     return (
-                                        <React.Fragment key={i}>
+                                        <React.Fragment key={String(cp.place_id ?? cp.place?.id ?? i)}>
                                             {walkMins != null ? <WalkingConnector minutes={walkMins} /> : null}
                                             <PlaceCard
                                                 cp={cp}

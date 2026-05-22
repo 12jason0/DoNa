@@ -25,6 +25,7 @@ import SyncTextFontToLocale from "../src/components/SyncTextFontToLocale";
 import { ModalProvider } from "../src/lib/modalContext";
 import ModalManager from "../src/components/ModalManager";
 import { loadLocalePreference } from "../src/lib/appSettingsStorage";
+import { loadUserId } from "../src/lib/mmkv";
 import { applyDefaultTextFontForLocale } from "../src/lib/textDefaultFont";
 import { posthog } from "../src/lib/posthog";
 import { useScreenTracking } from "../src/hooks/useScreenTracking";
@@ -138,6 +139,10 @@ function RootLayoutInner() {
                     /* already configured */
                 }
                 if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+                const savedUserId = loadUserId();
+                if (savedUserId) {
+                    try { await Purchases.logIn(savedUserId); } catch {}
+                }
             }
 
             // 카카오 SDK 초기화 (Android만)
