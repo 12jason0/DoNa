@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { resolveUserId } from "@/lib/auth"; // 🔐 [보안] 서버 세션 쿠키 검증
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 import { captureApiError } from "@/lib/sentry";
+import { revalidateTag } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -282,6 +283,11 @@ export async function POST(req: NextRequest) {
 
             return { payment: newPayment, user: updatedUser };
         });
+
+        // 🟢 열람권 구매 시 서버 권한 캐시 무효화 (60초 캐시로 잠금이 유지되는 버그 방지)
+        if (planInfo.type === "COURSE_TICKET" && unlockCourseId != null) {
+            revalidateTag("course-user-permission");
+        }
 
         // 🟢 응답 데이터
         const responseData: Record<string, unknown> = {
