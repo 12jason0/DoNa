@@ -338,6 +338,11 @@ export default function TicketPlansSheet() {
         // ── 4) confirm + UI 반응 ─────────────────────────────────────────────
         const transactionId = (customerInfo as any)?.originalTransactionId ?? null;
 
+        // RC 결제 완료 = 사용자는 이미 돈을 냄. confirm 성공 여부와 무관하게 즉시 잠금 해제
+        if (selectedPlan.type === "ticket") {
+            onUnlocked?.();
+        }
+
         if (selectedPlan.type === "ticket" && intentId) {
             try {
                 await api.post("/api/payments/revenuecat/confirm", {
@@ -353,7 +358,6 @@ export default function TicketPlansSheet() {
                 );
                 return;
             }
-            // Confirm 200 → CourseUnlock이 DB에 확정됨. 서버에서 최신 데이터 직접 받아오기
             if (courseId != null) {
                 await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] });
             }
@@ -374,8 +378,7 @@ export default function TicketPlansSheet() {
         }
 
         setLoading(false);
-        const afterDismiss = onUnlocked;
-        dismiss(() => afterDismiss?.());
+        dismiss();
     };
 
     // ─── 헬퍼 ────────────────────────────────────────────────────────────────
