@@ -179,7 +179,26 @@ export async function POST(request: NextRequest) {
         if (unlockCourseId != null) resPayload.courseId = unlockCourseId;
         return NextResponse.json(resPayload);
     } catch (error: any) {
-            captureApiError(error);
+        // P2034 = 웹훅과 confirm이 동시에 실행되어 PostgreSQL 데드락 발생
+        // 웹훅이 먼저 CourseUnlock을 생성한 경우 → 이미 처리된 것으로 간주하고 200 반환
+        if (error?.code === "P2034" && productInfo?.type === "COURSE_TICKET" && unlockCourseId) {
+            try {
+                const existingUnlock = await (prisma as any).courseUnlock.findFirst({
+                    where: { userId, courseId: unlockCourseId },
+                });
+                if (existingUnlock) {
+                    console.log("[RevenueCat Confirm] P2034 deadlock — CourseUnlock already created by webhook", { userId, courseId: unlockCourseId });
+                    const user = await prisma.user.findUnique({
+                        where: { id: userId },
+                        select: { subscriptionTier: true },
+                    });
+                    return NextResponse.json({ success: true, courseId: unlockCourseId, subscriptionTier: user?.subscriptionTier });
+                }
+            } catch {
+                // fallthrough to generic error
+            }
+        }
+        captureApiError(error);
         console.error("[RevenueCat Confirm] Error:", error);
         return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });
     }
