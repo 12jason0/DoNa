@@ -83,12 +83,11 @@ export async function POST(request: NextRequest) {
                 });
             }
 
-            // webhook이 pending_course_id 없이 처리한 경우 CourseUnlock이 없을 수 있으므로 여기서도 upsert
+            // webhook이 pending_course_id 없이 처리한 경우 CourseUnlock이 없을 수 있으므로 여기서도 생성
             if (productInfo.type === "COURSE_TICKET" && unlockCourseId) {
-                await (prisma as any).courseUnlock.upsert({
-                    where: { userId_courseId: { userId, courseId: unlockCourseId } },
-                    update: {},
-                    create: { userId, courseId: unlockCourseId },
+                await (prisma as any).courseUnlock.createMany({
+                    data: [{ userId, courseId: unlockCourseId }],
+                    skipDuplicates: true,
                 });
             }
 
@@ -104,12 +103,10 @@ export async function POST(request: NextRequest) {
         // 🟢 코스 열람권/구독 지급
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             if (productInfo.type === "COURSE_TICKET" && unlockCourseId) {
-                await (tx as any).courseUnlock.upsert({
-                    where: {
-                        userId_courseId: { userId, courseId: unlockCourseId },
-                    },
-                    update: {},
-                    create: { userId, courseId: unlockCourseId },
+                // createMany + skipDuplicates: 웹훅이 이미 생성한 경우 P2002 없이 무시
+                await (tx as any).courseUnlock.createMany({
+                    data: [{ userId, courseId: unlockCourseId }],
+                    skipDuplicates: true,
                 });
                 await (tx as any).unlockIntent.update({
                     where: { id: intentId },
@@ -179,9 +176,9 @@ export async function POST(request: NextRequest) {
         if (unlockCourseId != null) resPayload.courseId = unlockCourseId;
         return NextResponse.json(resPayload);
     } catch (error: any) {
-        // P2034 = 웹훅과 confirm이 동시에 실행되어 PostgreSQL 데드락 발생
+        // P2034 = 데드락, P2002 = unique 충돌 — 웹훅과 confirm이 동시에 upsert할 때 발생
         // 웹훅이 먼저 CourseUnlock을 생성한 경우 → 이미 처리된 것으로 간주하고 200 반환
-        if (error?.code === "P2034" && productInfo?.type === "COURSE_TICKET" && unlockCourseId) {
+        if ((error?.code === "P2034" || error?.code === "P2002") && productInfo?.type === "COURSE_TICKET" && unlockCourseId) {
             try {
                 const existingUnlock = await (prisma as any).courseUnlock.findFirst({
                     where: { userId, courseId: unlockCourseId },

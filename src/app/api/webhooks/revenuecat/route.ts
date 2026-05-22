@@ -132,10 +132,9 @@ async function handleInitialPurchase(
             const courseIdStr = event.subscriber_attributes?.pending_course_id?.value;
             const courseId = courseIdStr ? Number(courseIdStr) : null;
             if (courseId && !isNaN(courseId)) {
-                await (tx as any).courseUnlock.upsert({
-                    where: { userId_courseId: { userId, courseId } },
-                    update: {},
-                    create: { userId, courseId },
+                await (tx as any).courseUnlock.createMany({
+                    data: [{ userId, courseId }],
+                    skipDuplicates: true,
                 });
                 console.log("[RevenueCat Webhook] COURSE_TICKET: CourseUnlock 생성", { userId, courseId });
             } else {
