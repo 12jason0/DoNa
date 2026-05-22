@@ -261,35 +261,16 @@ export default function AdminPlacesPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 10 * 1024 * 1024) {
-            alert("파일이 너무 큽니다. 10MB 이하의 이미지를 업로드해주세요.");
+        if (file.size > 50 * 1024 * 1024) {
+            alert("파일이 너무 큽니다. 50MB 이하의 이미지를 업로드해주세요.");
             if (imageInputRef.current) imageInputRef.current.value = "";
             return;
         }
 
         setIsUploading(true);
         try {
-            const form = new FormData();
-            form.append("file", file);
-            const res = await fetch("/api/upload/place-image", {
-                method: "POST",
-                credentials: "include",
-                body: form,
-            });
-            if (!res.ok) {
-                let errMsg = "업로드 실패";
-                if (res.status === 413) {
-                    errMsg = "파일이 너무 큽니다. 10MB 이하로 올려주세요.";
-                } else {
-                    try {
-                        const data = await res.json();
-                        errMsg = data.error || errMsg;
-                    } catch {}
-                }
-                throw new Error(errMsg);
-            }
-            const data = await res.json();
-            setFormData((prev) => ({ ...prev, imageUrl: data.url }));
+            const [url] = await uploadViaPresign([file], { type: "place" });
+            setFormData((prev) => ({ ...prev, imageUrl: url }));
         } catch (err: any) {
             alert("이미지 업로드 실패: " + err.message);
         } finally {

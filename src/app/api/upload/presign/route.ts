@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getS3PublicUrl, getPresignedPutUrl } from "@/lib/s3";
-import { resolveUserId } from "@/lib/auth";
+import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { randomBytes } from "crypto";
 import prisma from "@/lib/db";
 import { captureApiError } from "@/lib/sentry";
@@ -52,6 +52,12 @@ export async function POST(request: NextRequest) {
         if (type === "suggestion" && !userId) {
             return NextResponse.json(
                 { message: "제보 업로드에는 로그인이 필요합니다." },
+                { status: 401 }
+            );
+        }
+        if (type === "place" && !verifyAdminJwt(request)) {
+            return NextResponse.json(
+                { message: "관리자 인증이 필요합니다." },
                 { status: 401 }
             );
         }
@@ -110,6 +116,8 @@ export async function POST(request: NextRequest) {
                 key = `escape/user_${userId}/escape_${escapeId}/${dateStr}_${uniqueFileName}`;
             } else if (type === "suggestion" && userId) {
                 key = `suggestions/user_${userId}/${dateStr}_${uniqueFileName}`;
+            } else if (type === "place") {
+                key = `places/${dateStr}/${uniqueFileName}`;
             } else {
                 key = `uploads/${dateStr}/${uniqueFileName}`;
             }
