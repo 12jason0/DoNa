@@ -341,6 +341,7 @@ export default function TicketPlansSheet() {
         // RC 결제 완료 = 사용자는 이미 돈을 냄. confirm 성공 여부와 무관하게 즉시 잠금 해제
         if (selectedPlan.type === "ticket") {
             onUnlocked?.();
+            console.log('onUnlocked called');
         }
 
         if (selectedPlan.type === "ticket" && intentId) {
