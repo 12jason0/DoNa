@@ -260,6 +260,14 @@ export default function AdminPlacesPage() {
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // Vercel 서버리스 함수 body 제한 4.5MB → 미리 차단
+        if (file.size > 4 * 1024 * 1024) {
+            alert("파일이 너무 큽니다. 4MB 이하의 이미지를 업로드해주세요.");
+            if (imageInputRef.current) imageInputRef.current.value = "";
+            return;
+        }
+
         setIsUploading(true);
         try {
             const form = new FormData();
@@ -269,8 +277,18 @@ export default function AdminPlacesPage() {
                 credentials: "include",
                 body: form,
             });
+            if (!res.ok) {
+                const ct = res.headers.get("content-type") || "";
+                let errMsg = "업로드 실패";
+                if (ct.includes("application/json")) {
+                    const data = await res.json();
+                    errMsg = data.error || errMsg;
+                } else if (res.status === 413) {
+                    errMsg = "파일이 너무 큽니다. 4MB 이하로 올려주세요.";
+                }
+                throw new Error(errMsg);
+            }
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "업로드 실패");
             setFormData((prev) => ({ ...prev, imageUrl: data.url }));
         } catch (err: any) {
             alert("이미지 업로드 실패: " + err.message);

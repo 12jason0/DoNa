@@ -83,8 +83,14 @@ export default function CourseDetailScreen() {
     const insets = useSafeAreaInsets();
     const { id } = useLocalSearchParams<{ id: string }>();
     const queryClient = useQueryClient();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const { openModal, closeModal } = useModal();
+    const [courseUnlocked, setCourseUnlocked] = useState(false);
+
+    // 유저가 바뀌면(로그아웃/다른 계정 로그인) 로컬 잠금해제 상태 초기화
+    useEffect(() => {
+        setCourseUnlocked(false);
+    }, [user?.id]);
     const [isFav, setIsFav] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState<{
         place: PlaceData;
@@ -144,6 +150,8 @@ export default function CourseDetailScreen() {
         queryFn: () => api.get<CourseDetail>(endpoints.course(id!)),
         enabled: !!id,
     });
+
+    const isCourseLocked = (course?.isLocked ?? false) && !courseUnlocked;
 
     const { data: favList } = useQuery<any[]>({
         queryKey: ["favorites"],
@@ -377,11 +385,12 @@ export default function CourseDetailScreen() {
             return;
         }
         if (!course) return;
-        if (course.isLocked) {
+        if (isCourseLocked) {
             openModal("ticket", {
                 context: "COURSE",
                 courseId: Number(id),
                 courseGrade: course.grade as "BASIC" | "PREMIUM",
+                onUnlocked: () => setCourseUnlocked(true),
             });
             return;
         }
@@ -394,13 +403,13 @@ export default function CourseDetailScreen() {
         await queryClient.invalidateQueries({ queryKey: ["users", "active-course"] });
         showToast(i18n("mobile.courseScreen.courseStarted"), "🗺️");
         setTimeout(() => router.push("/(tabs)" as any), 800);
-    }, [isAuthenticated, course, id, profile, queryClient, i18n, showToast]);
+    }, [isAuthenticated, course, isCourseLocked, id, profile, queryClient, i18n, showToast]);
 
     // 선택형 코스: 장소 선택 후 저장
     const handleStartSelectionCourse = useCallback(async () => {
         if (!isAuthenticated) { openModal("login"); return; }
         if (!course) return;
-        if (course.isLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM" }); return; }
+        if (isCourseLocked) { openModal("ticket", { context: "COURSE", courseId: Number(id), courseGrade: course.grade as "BASIC" | "PREMIUM", onUnlocked: () => setCourseUnlocked(true) }); return; }
         const selectedPlaceIds = selectionOrderedSteps
             .map((step) => step.type === "fixed" ? step.coursePlace.place_id : selectedBySegment[step.segment])
             .filter((pid): pid is number => pid != null && pid > 0);
@@ -429,7 +438,7 @@ export default function CourseDetailScreen() {
         } finally {
             setSelectionLoading(false);
         }
-    }, [isAuthenticated, course, id, profile, selectionOrderedSteps, selectedBySegment, showToast, queryClient, i18n]);
+    }, [isAuthenticated, course, isCourseLocked, id, profile, selectionOrderedSteps, selectedBySegment, showToast, queryClient, i18n]);
 
     const handleMemoryRecord = useCallback(async () => {
         if (!isAuthenticated) { openModal("login"); return; }
@@ -565,7 +574,7 @@ export default function CourseDetailScreen() {
             context: "COURSE",
             courseId: Number(id),
             courseGrade: (course.grade === "PREMIUM" ? "PREMIUM" : "BASIC") as "BASIC" | "PREMIUM",
-            onUnlocked: undefined,
+            onUnlocked: () => setCourseUnlocked(true),
         });
     }, [isAuthenticated, course, id, queryClient, openModal]);
 
@@ -734,7 +743,7 @@ export default function CourseDetailScreen() {
                                                         }
                                                         onReserve={handleReserve}
                                                         showConfirmed
-                                                        tipLocked={course?.isLocked === true}
+                                                        tipLocked={isCourseLocked}
                                                         onTipLockPress={handleTipLockPress}
                                                     />
                                                 </View>
@@ -875,7 +884,7 @@ export default function CourseDetailScreen() {
                                                     Number(cp.place.id) === highlightedPlaceId
                                                 }
                                                 onReserve={handleReserve}
-                                                tipLocked={course?.isLocked === true}
+                                                tipLocked={isCourseLocked}
                                                 onTipLockPress={handleTipLockPress}
                                             />
                                         </React.Fragment>
@@ -1041,7 +1050,7 @@ export default function CourseDetailScreen() {
                     tipsRow={selectedPlace.tipsRow}
                     onClose={() => setSelectedPlace(null)}
                     isLoggedIn={!!profile}
-                    tipLocked={course?.isLocked === true}
+                    tipLocked={isCourseLocked}
                     onTipLockPress={handleTipLockPress}
                 />
             )}
