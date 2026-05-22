@@ -261,9 +261,8 @@ export default function AdminPlacesPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Vercel 서버리스 함수 body 제한 4.5MB → 미리 차단
-        if (file.size > 4 * 1024 * 1024) {
-            alert("파일이 너무 큽니다. 4MB 이하의 이미지를 업로드해주세요.");
+        if (file.size > 10 * 1024 * 1024) {
+            alert("파일이 너무 큽니다. 10MB 이하의 이미지를 업로드해주세요.");
             if (imageInputRef.current) imageInputRef.current.value = "";
             return;
         }
@@ -280,7 +279,7 @@ export default function AdminPlacesPage() {
             if (!res.ok) {
                 let errMsg = "업로드 실패";
                 if (res.status === 413) {
-                    errMsg = "파일이 너무 큽니다. 4MB 이하로 올려주세요.";
+                    errMsg = "파일이 너무 큽니다. 10MB 이하로 올려주세요.";
                 } else {
                     try {
                         const data = await res.json();
