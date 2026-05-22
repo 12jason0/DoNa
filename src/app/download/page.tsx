@@ -1,8 +1,8 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export default function DownloadPage() {
-    const headersList = headers();
+export default async function DownloadPage() {
+    const headersList = await headers();
     const userAgent = headersList.get('user-agent') || '';
 
     const isIOS = /iPad|iPhone|iPod/.test(userAgent);
