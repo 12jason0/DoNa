@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 // 👇 [수정됨] lib/prisma가 아니라 lib/db에서 가져옵니다.
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
@@ -282,6 +283,11 @@ export async function POST(req: NextRequest) {
 
             return { payment: newPayment, user: updatedUser };
         });
+
+        // 🟢 코스 잠금 해제 시 캐시 즉시 무효화
+        if (unlockCourseId != null) {
+            (revalidateTag as Function)("course-user-permission");
+        }
 
         // 🟢 응답 데이터
         const responseData: Record<string, unknown> = {

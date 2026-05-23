@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { resolveUserId } from "@/lib/auth";
@@ -91,6 +92,10 @@ export async function POST(request: NextRequest) {
                 });
             }
 
+            if (unlockCourseId != null) {
+                (revalidateTag as Function)("course-user-permission");
+            }
+
             const resPayload: Record<string, unknown> = {
                 success: true,
                 message: "Already processed",
@@ -162,6 +167,11 @@ export async function POST(request: NextRequest) {
 
             return updatedUser;
         });
+
+        // 🟢 코스 잠금 해제 시 캐시 즉시 무효화
+        if (unlockCourseId != null) {
+            (revalidateTag as Function)("course-user-permission");
+        }
 
         console.log("[RevenueCat Confirm] 열람권/구독 지급 완료:", {
             userId,
