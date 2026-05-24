@@ -340,20 +340,22 @@ export default function TicketPlansSheet() {
 
         // RC 결제 완료 = 사용자는 이미 돈을 냄. 즉시 잠금 해제 + 시트 닫기
         if (selectedPlan.type === "ticket") {
+            // 낙관적 캐시 업데이트: 화면 이탈/재진입 후에도 잠금 해제 유지
+            if (courseId != null) {
+                queryClient.setQueryData<any>(["course", String(courseId)], (old: any) =>
+                    old ? { ...old, isLocked: false } : old
+                );
+            }
             onUnlocked?.();
             prefetchedIntentRef.current = null;
             queryClient.invalidateQueries({ queryKey: ["profile"] });
             setLoading(false);
             dismiss();
-            // confirm + refetch는 백그라운드
+            // confirm은 백그라운드 (DB CourseUnlock 생성) — refetch 제거: setQueryData로 캐시 이미 확정
             if (intentId) {
                 api.post("/api/payments/revenuecat/confirm", {
                     planId: selectedPlan.id, planType: "ticket",
                     transactionId, customerInfo, intentId, courseId,
-                }).then(() => {
-                    if (courseId != null) {
-                        queryClient.refetchQueries({ queryKey: ["course", String(courseId)] });
-                    }
                 }).catch(() => {});
             }
             return;
