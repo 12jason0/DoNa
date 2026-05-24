@@ -338,30 +338,25 @@ export default function TicketPlansSheet() {
         // ── 4) confirm + UI 반응 ─────────────────────────────────────────────
         const transactionId = (customerInfo as any)?.originalTransactionId ?? null;
 
-        // RC 결제 완료 = 사용자는 이미 돈을 냄. confirm 성공 여부와 무관하게 즉시 잠금 해제
+        // RC 결제 완료 = 사용자는 이미 돈을 냄. 즉시 잠금 해제 + 시트 닫기
         if (selectedPlan.type === "ticket") {
             onUnlocked?.();
-            console.log('onUnlocked called');
-        }
-
-        if (selectedPlan.type === "ticket" && intentId) {
-            try {
-                await api.post("/api/payments/revenuecat/confirm", {
+            prefetchedIntentRef.current = null;
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            setLoading(false);
+            dismiss();
+            // confirm + refetch는 백그라운드
+            if (intentId) {
+                api.post("/api/payments/revenuecat/confirm", {
                     planId: selectedPlan.id, planType: "ticket",
                     transactionId, customerInfo, intentId, courseId,
-                });
-            } catch {
-                setLoading(false);
-                Alert.alert(
-                    i18n("ticketPlans.alerts.paymentError"),
-                    undefined,
-                    [{ text: "확인", onPress: () => dismiss() }]
-                );
-                return;
+                }).then(() => {
+                    if (courseId != null) {
+                        queryClient.refetchQueries({ queryKey: ["course", String(courseId)] });
+                    }
+                }).catch(() => {});
             }
-            if (courseId != null) {
-                await queryClient.refetchQueries({ queryKey: ["course", String(courseId)] });
-            }
+            return;
         } else if (selectedPlan.type === "sub") {
             // 구독: 즉시 닫고 confirm은 백그라운드
             api.post("/api/payments/revenuecat/confirm", {
