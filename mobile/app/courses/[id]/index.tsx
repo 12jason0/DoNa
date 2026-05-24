@@ -149,6 +149,7 @@ export default function CourseDetailScreen() {
         queryKey: ["course", id],
         queryFn: () => api.get<CourseDetail>(endpoints.course(id!)),
         enabled: !!id,
+        staleTime: 60 * 1000,
     });
 
     const isCourseLocked = (course?.isLocked ?? false) && !courseUnlocked;
