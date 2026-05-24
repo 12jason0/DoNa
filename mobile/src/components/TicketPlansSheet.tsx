@@ -330,7 +330,11 @@ export default function TicketPlansSheet() {
             customerInfo = result.customerInfo;
         } catch (err: unknown) {
             setLoading(false);
-            if (err && typeof err === "object" && "userCancelled" in err && (err as any).userCancelled) return;
+            if (err && typeof err === "object" && "userCancelled" in err && (err as any).userCancelled) {
+                console.log('[Purchase] 사용자 취소');
+                return;
+            }
+            console.log('[Purchase] purchasePackage 오류:', err);
             Alert.alert(i18n("ticketPlans.alerts.paymentError"));
             return;
         }
@@ -368,6 +372,9 @@ export default function TicketPlansSheet() {
                     if (courseId != null) {
                         queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
                     }
+                    // 코스 목록(히어로/리스트)도 갱신해 잠금 상태 반영
+                    queryClient.invalidateQueries({ queryKey: ["courses-hero"] });
+                    queryClient.invalidateQueries({ queryKey: ["courses-list"] });
                 }).catch(() => {});
             }
             return;
