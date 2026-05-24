@@ -131,7 +131,7 @@ export default function TicketPlansSheet() {
         Animated.parallel([
             Animated.timing(slide, { toValue: SHEET_HEIGHT, duration: 260, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
             Animated.timing(backdrop, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-        ]).start(({ finished }) => { closingRef.current = false; onClose(); afterDismiss?.(); });
+        ]).start(({ finished }) => { closingRef.current = false; onClose(); if (typeof afterDismiss === 'function') afterDismiss(); });
     }, [onClose]);
 
     // ─── 사용자 등급 조회 ─────────────────────────────────────────────────────
@@ -411,13 +411,13 @@ export default function TicketPlansSheet() {
             visible={visible}
             transparent
             animationType="none"
-            onRequestClose={dismiss}
+            onRequestClose={() => dismiss()}
             statusBarTranslucent
             navigationBarTranslucent
         >
             <View style={styles.root} pointerEvents="box-none">
                 {/* 어두운 오버레이 (backdrop-blur 대체) */}
-                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={dismiss}>
+                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => dismiss()}>
                     <Animated.View
                         style={[
                             StyleSheet.absoluteFill,
@@ -453,7 +453,7 @@ export default function TicketPlansSheet() {
                             </Text>
                         </View>
                         <TouchableOpacity
-                            onPress={dismiss}
+                            onPress={() => dismiss()}
                             style={[styles.closeBtn, { backgroundColor: t.isDark ? "#374151" : "#f3f4f6" }]}
                             activeOpacity={0.7}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
