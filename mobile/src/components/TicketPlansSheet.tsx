@@ -343,10 +343,16 @@ export default function TicketPlansSheet() {
             // cancelQueries → setQueryData 순서 보장: 자동 background refetch가 낙관적 업데이트를 덮어쓰는 것 방지
             if (courseId != null) {
                 const courseKey = ["course", String(courseId)];
+                console.log('[Unlock] cancelQueries 시작, courseId:', courseId, 'key:', courseKey);
                 await queryClient.cancelQueries({ queryKey: courseKey });
-                queryClient.setQueryData<any>(courseKey, (old: any) =>
-                    old ? { ...old, isLocked: false } : old
-                );
+                console.log('[Unlock] setQueryData 실행');
+                queryClient.setQueryData<any>(courseKey, (old: any) => {
+                    console.log('[Unlock] updater 호출, old:', old ? { isLocked: (old as any).isLocked } : old);
+                    return old ? { ...old, isLocked: false } : old;
+                });
+                console.log('[Unlock] setQueryData 완료');
+            } else {
+                console.log('[Unlock] courseId null — setQueryData 스킵');
             }
             onUnlocked?.();
             prefetchedIntentRef.current = null;
