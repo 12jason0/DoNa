@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
     View,
     Text,
@@ -58,7 +58,8 @@ function CourseCardInner({
     const { isAuthenticated } = useAuth();
     const { openModal } = useModalActions();
 
-    const isLocked = !!course.isLocked;
+    const [unlocked, setUnlocked] = useState(false);
+    const isLocked = !!course.isLocked && !unlocked;
     const isNew = (course as any).reviewCount === 0;
     const placesCount = course.placesCount ?? course.coursePlaces?.length ?? 0;
     const views = Number((course as any).viewCount ?? 0);
@@ -86,6 +87,7 @@ function CourseCardInner({
                 context: "COURSE",
                 courseId: Number(cleanId),
                 courseGrade: (course.grade ?? "BASIC") as "BASIC" | "PREMIUM",
+                onUnlocked: () => setUnlocked(true),
             });
             return;
         }

@@ -356,7 +356,13 @@ export default function CoursesScreen() {
                             courses={heroData}
                             locale={appLocale}
                             lt={translate}
-                            onLockedPress={(c) => openModal("ticket", { courseId: c.id, courseGrade: c.grade })}
+                            onLockedPress={(c) => openModal("ticket", {
+                                courseId: c.id,
+                                courseGrade: c.grade,
+                                onUnlocked: () => queryClient.setQueryData<Course[]>(["courses-hero"], (old) =>
+                                    old?.map(item => item.id === c.id ? { ...item, isLocked: false } : item) ?? old
+                                ),
+                            })}
                             onLoginRequired={() => openModal("login")}
                         />
                     </View>
