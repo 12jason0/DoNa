@@ -343,7 +343,7 @@ export default function TicketPlansSheet() {
             // cancelQueries → setQueryData 순서 보장: 자동 background refetch가 낙관적 업데이트를 덮어쓰는 것 방지
             if (courseId != null) {
                 const courseKey = ["course", String(courseId)];
-                queryClient.cancelQueries({ queryKey: courseKey });
+                await queryClient.cancelQueries({ queryKey: courseKey });
                 queryClient.setQueryData<any>(courseKey, (old: any) =>
                     old ? { ...old, isLocked: false } : old
                 );
