@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { parseTipsFromDb } from "@/types/tip";
+import { parseTipsFromDb, getTipIcon, type TipItem } from "@/types/tip";
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface CoursePlace {
@@ -11,12 +11,20 @@ interface CoursePlace {
     seg?: string | null;
     ois?: number | null;
     tip?: string | null;
+    allTips: TipItem[];
     hasPriority3: boolean;
     imageUrl?: string | null;
     lat?: number | null;
     lng?: number | null;
     category?: string | null;
 }
+
+const TIP_CAT_LABEL: Record<string, string> = {
+    CAUTION: "주의", BEST_SPOT: "추천", WAITING: "대기", PHOTO_ZONE: "포토존",
+    SIGNATURE_MENU: "시그니처", GOOD_TO_KNOW: "알아두기", VIBE_CHECK: "분위기",
+    ATTIRE: "복장", ROUTE: "경로", WALKING: "도보", PARKING: "주차",
+    PARKING_LOT: "주차장", RESTROOM: "화장실", ETC: "기타",
+};
 
 interface Course {
     id: number;
@@ -71,6 +79,7 @@ function transformCourse(raw: any): Course {
                 seg: cp.segment ?? null,
                 ois: cp.order_in_segment ?? null,
                 tip,
+                allTips: parseTipsFromDb(cp.tips),
                 hasPriority3,
                 imageUrl: cp.place?.imageUrl ?? null,
                 lat: cp.place?.latitude != null ? Number(cp.place.latitude) : null,
@@ -475,7 +484,9 @@ function rTimeline(ctx: CanvasRenderingContext2D, c: Course) {
     const cx = W / 2;
     const areaTop = 90,
         areaBottom = H - 160;
-    const spacing = 260;
+    const availableH = areaBottom - areaTop;
+    const spacing = n > 1 ? Math.min(260, Math.floor(availableH / (n - 1))) : 0;
+    const sizeScale = Math.min(1, spacing / 260);
     const blockH = (n - 1) * spacing;
     const startY = Math.round((areaTop + areaBottom) / 2 - blockH / 2);
 
@@ -489,14 +500,16 @@ function rTimeline(ctx: CanvasRenderingContext2D, c: Course) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const dotR = 18,
-        connLen = 90,
-        maxNameW = 390,
-        lh = 42;
+    const dotR = Math.max(10, Math.round(18 * sizeScale));
+    const connLen = Math.max(50, Math.round(90 * sizeScale));
+    const maxNameW = Math.max(200, Math.round(390 * sizeScale));
+    const lh = Math.max(24, Math.round(42 * sizeScale));
+    const nameFontSize = Math.max(22, Math.round(36 * sizeScale));
+    const walkingFontSize = Math.max(14, Math.round(24 * sizeScale));
 
     const drawName = (name: string, x: number, y: number, align: CanvasTextAlign) => {
         ctx.textAlign = align;
-        ctx.font = "600 36px 'Pretendard',-apple-system,sans-serif";
+        ctx.font = `600 ${nameFontSize}px 'Pretendard',-apple-system,sans-serif`;
         ctx.fillStyle = "#ffffff";
         ctx.shadowColor = "rgba(0,0,0,0.6)";
         ctx.shadowBlur = 8;
@@ -525,7 +538,7 @@ function rTimeline(ctx: CanvasRenderingContext2D, c: Course) {
             const prevPlace = prevGroup[0];
             const midY = y - spacing / 2;
             ctx.save();
-            ctx.font = "500 24px 'Pretendard',-apple-system,sans-serif";
+            ctx.font = `500 ${walkingFontSize}px 'Pretendard',-apple-system,sans-serif`;
             ctx.fillStyle = "rgba(255,255,255,0.6)";
             if (isOr) {
                 // or 스톱: 왼쪽 장소(A)는 왼쪽에, 오른쪽 장소(B)는 오른쪽에
@@ -557,7 +570,7 @@ function rTimeline(ctx: CanvasRenderingContext2D, c: Course) {
         ctx.arc(cx, y, dotR, 0, Math.PI * 2);
         ctx.fillStyle = i === 0 ? "#22c55e" : isOr ? "#f59e0b" : "#ffffff";
         ctx.fill();
-        ctx.font = "700 16px 'Pretendard',-apple-system,sans-serif";
+        ctx.font = `700 ${Math.max(10, Math.round(16 * sizeScale))}px 'Pretendard',-apple-system,sans-serif`;
         ctx.fillStyle = "#000000";
         ctx.textAlign = "center";
         ctx.fillText(isOr ? "or" : String(singleIdx + 1), cx, y + 6);
@@ -691,6 +704,7 @@ export default function CardNewsPage() {
     const [editMode, setEditMode] = useState(false);
     const [imgStatus, setImgStatus] = useState<"" | "loading" | "done" | "error">("");
     const [coverPid, setCoverPid] = useState<number | null>(null);
+    const [tipOverrides, setTipOverrides] = useState<Record<number, string | null>>({});
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -811,6 +825,12 @@ export default function CardNewsPage() {
         r.readAsDataURL(file);
     }, []);
 
+    const applyTipOverride = useCallback(
+        (p: CoursePlace): CoursePlace =>
+            p.pid in tipOverrides ? { ...p, tip: tipOverrides[p.pid] } : p,
+        [tipOverrides],
+    );
+
     const renderOne = useCallback(
         (ctx: CanvasRenderingContext2D, slideIdx: number) => {
             if (!course) return "";
@@ -821,13 +841,13 @@ export default function CardNewsPage() {
             ctx.textBaseline = "alphabetic";
             if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
-            else if (s.type === "place") rPlace(ctx, course, s.place, photos, pos);
-            else if (s.type === "or") rOr(ctx, course, s.places, photos, pos);
+            else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
+            else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
             else if (s.type === "cta") rCta(ctx, course, photos, pos);
             ctx.restore();
             return ctx.canvas.toDataURL("image/png");
         },
-        [slides, course, photos, positions],
+        [slides, course, photos, positions, applyTipOverride],
     );
 
     const generate = useCallback(async () => {
@@ -867,6 +887,13 @@ export default function CardNewsPage() {
             return () => clearTimeout(t);
         }
     }, [positions, editMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (previews.length > 0 && course && fontReady) {
+            const t = setTimeout(generate, 150);
+            return () => clearTimeout(t);
+        }
+    }, [tipOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const slideName = (i: number) => {
         if (!course) return `dona_${i + 1}.png`;
@@ -950,6 +977,7 @@ export default function CardNewsPage() {
                                 setEditMode(false);
                                 setImgStatus("");
                                 setCoverPid(null);
+                                setTipOverrides({});
                             }}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
@@ -1181,6 +1209,60 @@ export default function CardNewsPage() {
                                     );
                                 })}
                             </div>
+
+                            {/* 팁 선택 */}
+                            {uniP.some((p) => p.allTips.length > 0) && (
+                                <div className="mt-5 border-t border-gray-100 pt-4">
+                                    <div className="text-xs font-bold text-gray-500 mb-3 tracking-widest">팁 선택 (카드에 표시할 팁)</div>
+                                    <div className="space-y-2">
+                                        {uniP.filter((p) => p.allTips.length > 0).map((p) => {
+                                            const autoTip = p.tip;
+                                            const overrideVal = p.pid in tipOverrides ? tipOverrides[p.pid] : "__auto__";
+                                            const selectVal = overrideVal === null ? "__none__" : overrideVal === "__auto__" ? "__auto__" : overrideVal;
+                                            return (
+                                                <div key={p.pid} className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-600 shrink-0 w-20 truncate" title={p.name}>
+                                                        {p.name}
+                                                    </span>
+                                                    <select
+                                                        value={selectVal}
+                                                        onChange={(e) => {
+                                                            const v = e.target.value;
+                                                            setTipOverrides((prev) => {
+                                                                const next = { ...prev };
+                                                                if (v === "__auto__") delete next[p.pid];
+                                                                else next[p.pid] = v === "__none__" ? null : v;
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                                                    >
+                                                        <option value="__auto__">
+                                                            자동{autoTip ? ` — ${autoTip.slice(0, 28)}${autoTip.length > 28 ? "…" : ""}` : " (없음)"}
+                                                        </option>
+                                                        <option value="__none__">표시 안 함</option>
+                                                        {p.allTips.map((t, i) => (
+                                                            <option key={i} value={t.content}>
+                                                                {getTipIcon(t.category)} [{TIP_CAT_LABEL[t.category] ?? t.category}] {t.content.slice(0, 35)}{t.content.length > 35 ? "…" : ""}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {p.pid in tipOverrides && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setTipOverrides((prev) => { const n = { ...prev }; delete n[p.pid]; return n; })}
+                                                            className="text-xs text-gray-400 hover:text-red-400 shrink-0"
+                                                            title="자동으로 되돌리기"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* STEP 3 */}
