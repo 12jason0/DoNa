@@ -112,6 +112,7 @@ type SlideType =
     | { type: "route" }
     | { type: "place"; place: CoursePlace }
     | { type: "or"; places: CoursePlace[] }
+    | { type: "interior"; place: CoursePlace }
     | { type: "cta" };
 
 function buildSlides(c: Course): SlideType[] {
@@ -137,6 +138,7 @@ type PosMap = Record<string, { x: number; y: number }>;
 function defaultPositions(slide: SlideType): PosMap {
     if (slide.type === "cover") return { title: { x: 70, y: H - 350 }, subtitle: { x: 70, y: H - 265 }, tags: { x: 70, y: H - 170 } };
     if (slide.type === "route") return {};
+    if (slide.type === "interior") return { name: { x: 70, y: H - 310 }, tip: { x: 70, y: H - 200 } };
     if (slide.type === "place") return { name: { x: 70, y: H - 310 }, tip: { x: 70, y: H - 200 } };
     if (slide.type === "or") {
         const hw = W / 2;
@@ -464,6 +466,62 @@ function rCta(ctx: CanvasRenderingContext2D, c: Course, _ph: Record<number, HTML
     bb(ctx, c.region);
 }
 
+// 장소 순서별 폴라로이드 위치 (order_index % 5 로 순환)
+const POLAROID_SLOTS: Array<{ x: number; y: number; w: number; h: number; deg: number }> = [
+    { x: 52,  y: 76,  w: 390, h: 446, deg: -7 }, // 1번: 왼쪽 상단
+    { x: 638, y: 76,  w: 390, h: 446, deg:  6 }, // 2번: 오른쪽 상단
+    { x: 56,  y: 128, w: 368, h: 420, deg:  9 }, // 3번: 왼쪽, 큰 기울기
+    { x: 656, y: 108, w: 368, h: 420, deg: -5 }, // 4번: 오른쪽 살짝 내려
+];
+
+function rPlacePolaroid(
+    ctx: CanvasRenderingContext2D,
+    c: Course,
+    p: CoursePlace,
+    extPhotos: Record<number, HTMLImageElement>,
+    intImgs: HTMLImageElement[],
+    pos: PosMap,
+) {
+    // 뒤(idx 0) = 전체 배경, 없으면 외관 사진 폴백
+    const bg = intImgs[0] ?? extPhotos[p.pid];
+    if (bg) {
+        cf(ctx, bg, 0, 0, W, H);
+        ctx.fillStyle = "rgba(0,0,0,.2)";
+        ctx.fillRect(0, 0, W, H);
+        gb(ctx, H * 0.4);
+    } else {
+        ctx.fillStyle = "#1a1a2e";
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    // 앞(idx 1) = 장소 순서에 따라 위치가 다른 폴라로이드
+    if (intImgs[1]) {
+        const slot = POLAROID_SLOTS[(p.oi - 1) % POLAROID_SLOTS.length];
+        const { x, y, w, h, deg } = slot;
+        const rad = (deg * Math.PI) / 180;
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(rad);
+        ctx.translate(-(x + w / 2), -(y + h / 2));
+        ctx.shadowColor = "rgba(0,0,0,0.6)";
+        ctx.shadowBlur = 32;
+        ctx.shadowOffsetX = 6;
+        ctx.shadowOffsetY = 16;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(x, y, w, h);
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        const bSide = 16, bBottom = 60;
+        cf(ctx, intImgs[1], x + bSide, y + bSide, w - bSide * 2, h - bSide - bBottom);
+        ctx.restore();
+    }
+
+    logo(ctx);
+    bb(ctx, c.region);
+}
+
 function rTimeline(ctx: CanvasRenderingContext2D, c: Course) {
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, "#0d0d0d");
@@ -711,6 +769,8 @@ export default function CardNewsPage() {
     const fileRef = useRef<HTMLInputElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
     const [previewW, setPreviewW] = useState(400);
+    const [collectionMode, setCollectionMode] = useState(false);
+    const [interiorPhotos, setInteriorPhotos] = useState<Record<number, HTMLImageElement[]>>({});
 
     // CSS @font-face injection → document.fonts.ready (더 안정적으로 canvas에 적용됨)
     useEffect(() => {
@@ -750,7 +810,19 @@ export default function CardNewsPage() {
     }, []);
 
     const course = courses.find((c) => c.id === selId) ?? null;
-    const slides: SlideType[] = course ? buildSlides(course) : [];
+    const slides: SlideType[] = course
+        ? (() => {
+            const base = buildSlides(course);
+            if (!collectionMode) return base;
+            return base.reduce<SlideType[]>((acc, s) => {
+                acc.push(s);
+                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).length > 0) {
+                    acc.push({ type: "interior", place: s.place });
+                }
+                return acc;
+            }, []);
+        })()
+        : [];
     const uniP: CoursePlace[] = course
         ? course.places.filter((p, i, a) => a.findIndex((x) => x.pid === p.pid) === i)
         : [];
@@ -837,19 +909,20 @@ export default function CardNewsPage() {
         (ctx: CanvasRenderingContext2D, slideIdx: number) => {
             if (!course) return "";
             const s = slides[slideIdx];
-            const pos = positions[slideIdx] || defaultPositions(s);
+            const pos = { ...defaultPositions(s), ...(positions[slideIdx] ?? {}) };
             ctx.clearRect(0, 0, W, H);
             ctx.save();
             ctx.textBaseline = "alphabetic";
             if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
             else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
+            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid] ?? [], pos);
             else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
             else if (s.type === "cta") rCta(ctx, course, photos, pos);
             ctx.restore();
             return ctx.canvas.toDataURL("image/png");
         },
-        [slides, course, photos, positions, applyTipOverride],
+        [slides, course, photos, positions, applyTipOverride, collectionMode, interiorPhotos],
     );
 
     const generate = useCallback(async () => {
@@ -905,6 +978,7 @@ export default function CardNewsPage() {
         else if (s.type === "route") n += "_route";
         else if (s.type === "cta") n += "_cta";
         else if (s.type === "or") n += "_or";
+        else if (s.type === "interior") n += `_${s.place.name.replace(/\s/g, "").slice(0, 8)}_interior`;
         else n += `_${s.place.name.replace(/\s/g, "").slice(0, 8)}`;
         return n + ".png";
     };
@@ -964,6 +1038,32 @@ export default function CardNewsPage() {
             <canvas ref={canvasRef} style={{ display: "none" }} />
 
             <div className="space-y-4">
+                {/* 카드뉴스 유형 선택 */}
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-gray-400 mb-3 tracking-widest">카드뉴스 유형</div>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => { setCollectionMode(false); setInteriorPhotos({}); setPreviews([]); }}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors border-none cursor-pointer"
+                            style={{ background: !collectionMode ? "#059669" : "#f3f4f6", color: !collectionMode ? "#fff" : "#6b7280" }}
+                        >
+                            일반 코스
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCollectionMode(true); setInteriorPhotos({}); setPreviews([]); }}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors border-none cursor-pointer"
+                            style={{ background: collectionMode ? "#7c3aed" : "#f3f4f6", color: collectionMode ? "#fff" : "#6b7280" }}
+                        >
+                            모음집 (폴라로이드)
+                        </button>
+                    </div>
+                    {collectionMode && (
+                        <p className="text-xs text-purple-600 mt-2">외관 사진 → 배경 · 내부 사진 → 왼쪽 상단 폴라로이드 오버레이</p>
+                    )}
+                </div>
+
                 {/* STEP 1 */}
                 <div className="bg-white border border-gray-200 rounded-xl p-5">
                     <div className="text-xs font-bold text-green-600 mb-3 tracking-widest">STEP 1 — 코스 선택</div>
@@ -980,6 +1080,7 @@ export default function CardNewsPage() {
                                 setImgStatus("");
                                 setCoverPid(null);
                                 setTipOverrides({});
+                                setInteriorPhotos({});
                             }}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
@@ -1279,6 +1380,78 @@ export default function CardNewsPage() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* 내부 사진 업로드 (모음집 모드) */}
+                            {collectionMode && (
+                                <div className="mt-5 border-t border-purple-100 pt-4">
+                                    <div className="text-xs font-bold text-purple-600 mb-1 tracking-widest">내부 사진 (폴라로이드)</div>
+                                    <p className="text-xs text-gray-400 mb-3">장소당 최대 2장 · 1번(뒤) → 2번(앞) 순서로 겹쳐짐</p>
+                                    <div className="space-y-2">
+                                        {uniP.map((p) => (
+                                            <div key={p.pid} className="flex items-center gap-3">
+                                                <span className="text-xs text-gray-600 shrink-0 w-24 truncate" title={p.name}>{p.name}</span>
+                                                {([0, 1] as const).map((idx) => {
+                                                    const img = interiorPhotos[p.pid]?.[idx];
+                                                    return (
+                                                        <label
+                                                            key={idx}
+                                                            style={{
+                                                                position: "relative",
+                                                                width: 56,
+                                                                aspectRatio: "3/4",
+                                                                borderRadius: 8,
+                                                                overflow: "hidden",
+                                                                border: img ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd",
+                                                                cursor: "pointer",
+                                                                display: "flex",
+                                                                flexDirection: "column",
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
+                                                                background: img ? "#000" : "#faf5ff",
+                                                                flexShrink: 0,
+                                                            }}
+                                                        >
+                                                            {img ? (
+                                                                <img src={img.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                            ) : (
+                                                                <>
+                                                                    <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>{idx === 0 ? "뒤" : "앞"}</span>
+                                                                    <span style={{ fontSize: 9, color: "#c4b5fd" }}>내부</span>
+                                                                </>
+                                                            )}
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (!file) return;
+                                                                    const r = new FileReader();
+                                                                    r.onload = (ev) => {
+                                                                        const im = new Image();
+                                                                        im.onload = () => setInteriorPhotos(prev => {
+                                                                            const cur = prev[p.pid] ? [...prev[p.pid]] : [];
+                                                                            cur[idx] = im;
+                                                                            return { ...prev, [p.pid]: cur };
+                                                                        });
+                                                                        im.src = ev.target!.result as string;
+                                                                    };
+                                                                    r.readAsDataURL(file);
+                                                                }}
+                                                            />
+                                                            {img && (
+                                                                <div style={{ position: "absolute", top: 2, right: 2, background: "#7c3aed", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                                    <span style={{ color: "#fff", fontSize: 8 }}>✓</span>
+                                                                </div>
+                                                            )}
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* STEP 3 */}
@@ -1320,7 +1493,9 @@ export default function CardNewsPage() {
                                                         ? "CTA"
                                                         : s.type === "or"
                                                           ? `or ${s.places.map((p) => p.name.slice(0, 3)).join("·")}`
-                                                          : s.place.name.slice(0, 8)}
+                                                          : s.type === "interior"
+                                                            ? `📷 ${s.place.name.slice(0, 5)}`
+                                                            : s.place.name.slice(0, 8)}
                                             </button>
                                         ))}
                                     </div>
