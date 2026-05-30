@@ -37,6 +37,7 @@ interface Course {
     mood: string[];
     concept: string[];
     places: CoursePlace[];
+    isPublic: boolean;
 }
 
 const COVER_PID = -1; // special pid for manually-uploaded cover (not tied to any place)
@@ -99,6 +100,7 @@ function transformCourse(raw: any): Course {
         mood: raw.mood ?? raw.tags?.mood ?? [],
         concept: Array.isArray(raw.concept) ? raw.concept : Array.isArray(raw.tags?.concept) ? raw.tags.concept : typeof raw.concept === "string" && raw.concept ? raw.concept.split(",").map((s: string) => s.trim()) : [],
         places,
+        isPublic: raw.isPublic ?? false,
     };
 }
 
@@ -731,7 +733,7 @@ export default function CardNewsPage() {
         fetch("/api/admin/courses")
             .then((r) => r.json())
             .then((data: any[]) => {
-                const filtered = data.filter((c) => c.isPublic && c.grade === "FREE");
+                const filtered = data.filter((c) => c.grade === "FREE");
                 if (process.env.NODE_ENV === "development") {
                     filtered
                         .slice(0, 3)
@@ -981,13 +983,27 @@ export default function CardNewsPage() {
                             }}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
-                            <option value="">공개 코스 {courses.length}개 중 선택</option>
-                            {courses.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.sel ? "🔀 " : ""}
-                                    {c.title} — {c.region}
-                                </option>
-                            ))}
+                            <option value="">FREE 코스 {courses.length}개 중 선택</option>
+                            {courses.filter((c) => c.isPublic).length > 0 && (
+                                <optgroup label="공개">
+                                    {courses.filter((c) => c.isPublic).map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.sel ? "🔀 " : ""}
+                                            {c.title} — {c.region}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
+                            {courses.filter((c) => !c.isPublic).length > 0 && (
+                                <optgroup label="비공개 (미공개)">
+                                    {courses.filter((c) => !c.isPublic).map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.sel ? "🔀 " : ""}
+                                            {c.title} — {c.region}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
                         </select>
                     )}
                 </div>

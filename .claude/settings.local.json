@@ -106,7 +106,22 @@
       "PowerShell(git add *)",
       "PowerShell(eas update *)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\12jas\\\\stylemap\" | Where-Object { !$_.PSIsContainer } | Select-Object Name)",
-      "Bash(findstr \"card-news\")"
+      "Bash(findstr \"card-news\")",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\12jas\\\\stylemap\\\\src\\\\app\\\\api\" -Recurse -Name)",
+      "Bash(dir \"C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile\\\\app\" /b /s)",
+      "Bash(findstr \"_layout\")",
+      "Bash(git *)",
+      "Bash(npx eas-cli *)",
+      "Bash(npx vercel *)",
+      "Bash(npm i *)",
+      "PowerShell(git *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile\\\\src\\\\components\\\\AppHeaderWithModals.tsx\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile\\\\app\\\\_layout.tsx\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Recurse -File -Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\" -Recurse -File | Where-Object {$_.Extension -in @\\('.ts', '.tsx', '.js', '.jsx'\\)} | Select-Object -ExpandProperty FullName | Select-Object -First 100)",
+      "PowerShell(ls \"C:\\\\Users\\\\12jas\\\\stylemap\\\\mobile\" -File | Where-Object {$_.Extension -in @\\('.ts', '.tsx', '.js', '.jsx'\\)})",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\12jas\\\\stylemap\\\\src\\\\app\\\\api\" -Recurse -File | Where-Object {$_.FullName -match '\\(payment|purchase|unlock|refund|subscription\\)' -and $_.Extension -in @\\('.ts', '.tsx'\\)} | Select-Object -ExpandProperty FullName)",
+      "Bash(psql *)"
     ]
   }
 }
