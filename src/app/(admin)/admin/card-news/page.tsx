@@ -479,11 +479,12 @@ function rPlacePolaroid(
     c: Course,
     p: CoursePlace,
     extPhotos: Record<number, HTMLImageElement>,
-    intImgs: HTMLImageElement[],
+    bgImg: HTMLImageElement | null,
+    frontImg: HTMLImageElement | null,
     pos: PosMap,
 ) {
-    // 뒤(idx 0) = 전체 배경, 없으면 외관 사진 폴백
-    const bg = intImgs[0] ?? extPhotos[p.pid];
+    // 뒤 사진 = 전체 배경, 없으면 외관 사진 폴백
+    const bg = bgImg ?? extPhotos[p.pid];
     if (bg) {
         cf(ctx, bg, 0, 0, W, H);
         ctx.fillStyle = "rgba(0,0,0,.2)";
@@ -494,8 +495,8 @@ function rPlacePolaroid(
         ctx.fillRect(0, 0, W, H);
     }
 
-    // 앞(idx 1) = 장소 순서에 따라 위치가 다른 폴라로이드
-    if (intImgs[1]) {
+    // 앞 이미지 = 장소 순서에 따라 위치가 다른 폴라로이드
+    if (frontImg) {
         const slot = POLAROID_SLOTS[(p.oi - 1) % POLAROID_SLOTS.length];
         const { x, y, w, h, deg } = slot;
         const rad = (deg * Math.PI) / 180;
@@ -514,7 +515,7 @@ function rPlacePolaroid(
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
         const bSide = 16, bBottom = 60;
-        cf(ctx, intImgs[1], x + bSide, y + bSide, w - bSide * 2, h - bSide - bBottom);
+        cf(ctx, frontImg, x + bSide, y + bSide, w - bSide * 2, h - bSide - bBottom);
         ctx.restore();
     }
 
@@ -916,7 +917,7 @@ export default function CardNewsPage() {
             if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
             else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
-            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid] ?? [], pos);
+            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, interiorPhotos[s.place.pid]?.[1] ?? null, pos);
             else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
             else if (s.type === "cta") rCta(ctx, course, photos, pos);
             ctx.restore();
@@ -1387,68 +1388,79 @@ export default function CardNewsPage() {
                                     <div className="text-xs font-bold text-purple-600 mb-1 tracking-widest">내부 사진 (폴라로이드)</div>
                                     <p className="text-xs text-gray-400 mb-3">장소당 최대 2장 · 1번(뒤) → 2번(앞) 순서로 겹쳐짐</p>
                                     <div className="space-y-2">
-                                        {uniP.map((p) => (
-                                            <div key={p.pid} className="flex items-center gap-3">
-                                                <span className="text-xs text-gray-600 shrink-0 w-24 truncate" title={p.name}>{p.name}</span>
-                                                {([0, 1] as const).map((idx) => {
-                                                    const img = interiorPhotos[p.pid]?.[idx];
-                                                    return (
-                                                        <label
-                                                            key={idx}
-                                                            style={{
-                                                                position: "relative",
-                                                                width: 56,
-                                                                aspectRatio: "3/4",
-                                                                borderRadius: 8,
-                                                                overflow: "hidden",
-                                                                border: img ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd",
-                                                                cursor: "pointer",
-                                                                display: "flex",
-                                                                flexDirection: "column",
-                                                                alignItems: "center",
-                                                                justifyContent: "center",
-                                                                background: img ? "#000" : "#faf5ff",
-                                                                flexShrink: 0,
+                                        {uniP.map((p) => {
+                                            const bgImg = interiorPhotos[p.pid]?.[0];
+                                            return (
+                                                <div key={p.pid} className="flex items-center gap-3">
+                                                    <span className="text-xs text-gray-600 shrink-0 w-24 truncate" title={p.name}>{p.name}</span>
+
+                                                    {/* 뒤: 배경 이미지 */}
+                                                    <label style={{ position: "relative", width: 56, aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: bgImg ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: bgImg ? "#000" : "#faf5ff", flexShrink: 0 }}>
+                                                        {bgImg ? (
+                                                            <img src={bgImg.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                        ) : (
+                                                            <>
+                                                                <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>뒤</span>
+                                                                <span style={{ fontSize: 9, color: "#c4b5fd" }}>배경</span>
+                                                            </>
+                                                        )}
+                                                        <input type="file" accept="image/*" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (!file) return;
+                                                                const r = new FileReader();
+                                                                r.onload = (ev) => {
+                                                                    const im = new Image();
+                                                                    im.onload = () => setInteriorPhotos(prev => {
+                                                                        const cur = prev[p.pid] ? [...prev[p.pid]] : [];
+                                                                        cur[0] = im;
+                                                                        return { ...prev, [p.pid]: cur };
+                                                                    });
+                                                                    im.src = ev.target!.result as string;
+                                                                };
+                                                                r.readAsDataURL(file);
                                                             }}
-                                                        >
-                                                            {img ? (
-                                                                <img src={img.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                                            ) : (
-                                                                <>
-                                                                    <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>{idx === 0 ? "뒤" : "앞"}</span>
-                                                                    <span style={{ fontSize: 9, color: "#c4b5fd" }}>내부</span>
-                                                                </>
-                                                            )}
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
-                                                                onChange={(e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (!file) return;
-                                                                    const r = new FileReader();
-                                                                    r.onload = (ev) => {
-                                                                        const im = new Image();
-                                                                        im.onload = () => setInteriorPhotos(prev => {
-                                                                            const cur = prev[p.pid] ? [...prev[p.pid]] : [];
-                                                                            cur[idx] = im;
-                                                                            return { ...prev, [p.pid]: cur };
-                                                                        });
-                                                                        im.src = ev.target!.result as string;
-                                                                    };
-                                                                    r.readAsDataURL(file);
-                                                                }}
-                                                            />
-                                                            {img && (
-                                                                <div style={{ position: "absolute", top: 2, right: 2, background: "#7c3aed", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                                    <span style={{ color: "#fff", fontSize: 8 }}>✓</span>
-                                                                </div>
-                                                            )}
-                                                        </label>
-                                                    );
-                                                })}
-                                            </div>
-                                        ))}
+                                                        />
+                                                        {bgImg && <div style={{ position: "absolute", top: 2, right: 2, background: "#7c3aed", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
+                                                    </label>
+
+                                                    {/* 앞: 폴라로이드 영상 */}
+                                                    {(() => {
+                                                        const frontImgEl = interiorPhotos[p.pid]?.[1];
+                                                        return (
+                                                    <label style={{ position: "relative", width: 56, aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: frontImgEl ? "2px solid #db2777" : "1.5px dashed #f9a8d4", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: frontImgEl ? "#000" : "#fff0f6", flexShrink: 0 }}>
+                                                        {frontImgEl ? (
+                                                            <img src={frontImgEl.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                        ) : (
+                                                            <>
+                                                                <span style={{ fontSize: 11, fontWeight: 700, color: "#db2777" }}>앞</span>
+                                                                <span style={{ fontSize: 9, color: "#f9a8d4" }}>사진</span>
+                                                            </>
+                                                        )}
+                                                        <input type="file" accept="image/*" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (!file) return;
+                                                                const r = new FileReader();
+                                                                r.onload = (ev) => {
+                                                                    const im = new Image();
+                                                                    im.onload = () => setInteriorPhotos(prev => {
+                                                                        const cur = prev[p.pid] ? [...prev[p.pid]] : [];
+                                                                        cur[1] = im;
+                                                                        return { ...prev, [p.pid]: cur };
+                                                                    });
+                                                                    im.src = ev.target!.result as string;
+                                                                };
+                                                                r.readAsDataURL(file);
+                                                            }}
+                                                        />
+                                                        {frontImgEl && <div style={{ position: "absolute", top: 2, right: 2, background: "#db2777", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
+                                                    </label>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
