@@ -466,12 +466,16 @@ function rCta(ctx: CanvasRenderingContext2D, c: Course, _ph: Record<number, HTML
     bb(ctx, c.region);
 }
 
-// 장소 순서별 폴라로이드 위치 (order_index % 5 로 순환)
-const POLAROID_SLOTS: Array<{ x: number; y: number; w: number; h: number; deg: number }> = [
-    { x: 52,  y: 76,  w: 390, h: 446, deg: -7 }, // 1번: 왼쪽 상단
-    { x: 638, y: 76,  w: 390, h: 446, deg:  6 }, // 2번: 오른쪽 상단
-    { x: 56,  y: 128, w: 368, h: 420, deg:  9 }, // 3번: 왼쪽, 큰 기울기
-    { x: 656, y: 108, w: 368, h: 420, deg: -5 }, // 4번: 오른쪽 살짝 내려
+// 직사각형 사진 레이아웃: 1장 / 2장별 위치 (크기 동일 420×500)
+const RECT_W = 420, RECT_H = 500;
+const RECT_POSITIONS: Array<Array<{ x: number; y: number; w: number; h: number; deg: number }>> = [
+    // 1장: 오른쪽 상단
+    [{ x: 620, y: 90, w: RECT_W, h: RECT_H, deg: 5 }],
+    // 2장: 좌상단 + 우하단
+    [
+        { x: 20,  y: 120, w: RECT_W, h: RECT_H, deg: -7 },
+        { x: 640, y: 240, w: RECT_W, h: RECT_H, deg:  5 },
+    ],
 ];
 
 function rPlacePolaroid(
@@ -480,10 +484,9 @@ function rPlacePolaroid(
     p: CoursePlace,
     extPhotos: Record<number, HTMLImageElement>,
     bgImg: HTMLImageElement | null,
-    frontImg: HTMLImageElement | null,
+    frontImgs: HTMLImageElement[],
     pos: PosMap,
 ) {
-    // 뒤 사진 = 전체 배경, 없으면 외관 사진 폴백
     const bg = bgImg ?? extPhotos[p.pid];
     if (bg) {
         cf(ctx, bg, 0, 0, W, H);
@@ -495,28 +498,25 @@ function rPlacePolaroid(
         ctx.fillRect(0, 0, W, H);
     }
 
-    // 앞 이미지 = 장소 순서에 따라 위치가 다른 폴라로이드
-    if (frontImg) {
-        const slot = POLAROID_SLOTS[(p.oi - 1) % POLAROID_SLOTS.length];
-        const { x, y, w, h, deg } = slot;
-        const rad = (deg * Math.PI) / 180;
-        ctx.save();
-        ctx.translate(x + w / 2, y + h / 2);
-        ctx.rotate(rad);
-        ctx.translate(-(x + w / 2), -(y + h / 2));
-        ctx.shadowColor = "rgba(0,0,0,0.6)";
-        ctx.shadowBlur = 32;
-        ctx.shadowOffsetX = 6;
-        ctx.shadowOffsetY = 16;
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(x, y, w, h);
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-        const bSide = 16, bBottom = 60;
-        cf(ctx, frontImg, x + bSide, y + bSide, w - bSide * 2, h - bSide - bBottom);
-        ctx.restore();
+    const count = Math.min(frontImgs.length, 2);
+    if (count > 0) {
+        const slots = RECT_POSITIONS[count - 1];
+        for (let i = 0; i < count; i++) {
+            const img = frontImgs[i];
+            if (!img) continue;
+            const { x, y, w, h, deg } = slots[i];
+            const rad = (deg * Math.PI) / 180;
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(rad);
+            ctx.translate(-(x + w / 2), -(y + h / 2));
+            ctx.shadowColor = "rgba(0,0,0,0.6)";
+            ctx.shadowBlur = 32;
+            ctx.shadowOffsetX = 6;
+            ctx.shadowOffsetY = 16;
+            cf(ctx, img, x, y, w, h);
+            ctx.restore();
+        }
     }
 
     logo(ctx);
@@ -817,7 +817,7 @@ export default function CardNewsPage() {
             if (!collectionMode) return base;
             return base.reduce<SlideType[]>((acc, s) => {
                 acc.push(s);
-                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).length > 0) {
+                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).length > 1) {
                     acc.push({ type: "interior", place: s.place });
                 }
                 return acc;
@@ -917,7 +917,7 @@ export default function CardNewsPage() {
             if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
             else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
-            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, interiorPhotos[s.place.pid]?.[1] ?? null, pos);
+            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1).filter(Boolean), pos);
             else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
             else if (s.type === "cta") rCta(ctx, course, photos, pos);
             ctx.restore();
@@ -1385,17 +1385,17 @@ export default function CardNewsPage() {
                             {/* 내부 사진 업로드 (모음집 모드) */}
                             {collectionMode && (
                                 <div className="mt-5 border-t border-purple-100 pt-4">
-                                    <div className="text-xs font-bold text-purple-600 mb-1 tracking-widest">내부 사진 (폴라로이드)</div>
-                                    <p className="text-xs text-gray-400 mb-3">장소당 최대 2장 · 1번(뒤) → 2번(앞) 순서로 겹쳐짐</p>
+                                    <div className="text-xs font-bold text-purple-600 mb-1 tracking-widest">내부 사진 (직사각형)</div>
+                                    <p className="text-xs text-gray-400 mb-3">배경 1장 + 직사각형 최대 3장 · 장수에 따라 위치 자동 배치</p>
                                     <div className="space-y-2">
                                         {uniP.map((p) => {
                                             const bgImg = interiorPhotos[p.pid]?.[0];
                                             return (
-                                                <div key={p.pid} className="flex items-center gap-3">
-                                                    <span className="text-xs text-gray-600 shrink-0 w-24 truncate" title={p.name}>{p.name}</span>
+                                                <div key={p.pid} className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-600 shrink-0 w-16 truncate" title={p.name}>{p.name}</span>
 
                                                     {/* 뒤: 배경 이미지 */}
-                                                    <label style={{ position: "relative", width: 56, aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: bgImg ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: bgImg ? "#000" : "#faf5ff", flexShrink: 0 }}>
+                                                    <label style={{ position: "relative", width: 24, aspectRatio: "3/4", borderRadius: 4, overflow: "hidden", border: bgImg ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: bgImg ? "#000" : "#faf5ff", flexShrink: 0 }}>
                                                         {bgImg ? (
                                                             <img src={bgImg.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                         ) : (
@@ -1424,40 +1424,44 @@ export default function CardNewsPage() {
                                                         {bgImg && <div style={{ position: "absolute", top: 2, right: 2, background: "#7c3aed", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
                                                     </label>
 
-                                                    {/* 앞: 폴라로이드 영상 */}
-                                                    {(() => {
-                                                        const frontImgEl = interiorPhotos[p.pid]?.[1];
+                                                    {/* 앞 사진 1~3 */}
+                                                    {[1, 2].map((idx) => {
+                                                        const colors = ["#db2777", "#7c3aed", "#0891b2"];
+                                                        const lightBgs = ["#fff0f6", "#faf5ff", "#f0f9ff"];
+                                                        const dashes = ["#f9a8d4", "#c4b5fd", "#7dd3fc"];
+                                                        const col = colors[idx - 1];
+                                                        const imgEl = interiorPhotos[p.pid]?.[idx];
                                                         return (
-                                                    <label style={{ position: "relative", width: 56, aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: frontImgEl ? "2px solid #db2777" : "1.5px dashed #f9a8d4", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: frontImgEl ? "#000" : "#fff0f6", flexShrink: 0 }}>
-                                                        {frontImgEl ? (
-                                                            <img src={frontImgEl.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                                        ) : (
-                                                            <>
-                                                                <span style={{ fontSize: 11, fontWeight: 700, color: "#db2777" }}>앞</span>
-                                                                <span style={{ fontSize: 9, color: "#f9a8d4" }}>사진</span>
-                                                            </>
-                                                        )}
-                                                        <input type="file" accept="image/*" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (!file) return;
-                                                                const r = new FileReader();
-                                                                r.onload = (ev) => {
-                                                                    const im = new Image();
-                                                                    im.onload = () => setInteriorPhotos(prev => {
-                                                                        const cur = prev[p.pid] ? [...prev[p.pid]] : [];
-                                                                        cur[1] = im;
-                                                                        return { ...prev, [p.pid]: cur };
-                                                                    });
-                                                                    im.src = ev.target!.result as string;
-                                                                };
-                                                                r.readAsDataURL(file);
-                                                            }}
-                                                        />
-                                                        {frontImgEl && <div style={{ position: "absolute", top: 2, right: 2, background: "#db2777", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
-                                                    </label>
+                                                            <label key={idx} style={{ position: "relative", width: 24, aspectRatio: "3/4", borderRadius: 4, overflow: "hidden", border: imgEl ? `2px solid ${col}` : `1.5px dashed ${dashes[idx - 1]}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: imgEl ? "#000" : lightBgs[idx - 1], flexShrink: 0 }}>
+                                                                {imgEl ? (
+                                                                    <img src={imgEl.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                                ) : (
+                                                                    <>
+                                                                        <span style={{ fontSize: 11, fontWeight: 700, color: col }}>{idx}</span>
+                                                                        <span style={{ fontSize: 9, color: dashes[idx - 1] }}>사진</span>
+                                                                    </>
+                                                                )}
+                                                                <input type="file" accept="image/*" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (!file) return;
+                                                                        const r = new FileReader();
+                                                                        r.onload = (ev) => {
+                                                                            const im = new Image();
+                                                                            im.onload = () => setInteriorPhotos(prev => {
+                                                                                const cur = prev[p.pid] ? [...prev[p.pid]] : [];
+                                                                                cur[idx] = im;
+                                                                                return { ...prev, [p.pid]: cur };
+                                                                            });
+                                                                            im.src = ev.target!.result as string;
+                                                                        };
+                                                                        r.readAsDataURL(file);
+                                                                    }}
+                                                                />
+                                                                {imgEl && <div style={{ position: "absolute", top: 2, right: 2, background: col, borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
+                                                            </label>
                                                         );
-                                                    })()}
+                                                    })}
                                                 </div>
                                             );
                                         })}
