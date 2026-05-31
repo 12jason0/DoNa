@@ -466,16 +466,41 @@ function rCta(ctx: CanvasRenderingContext2D, c: Course, _ph: Record<number, HTML
     bb(ctx, c.region);
 }
 
-// 직사각형 사진 레이아웃: 1장 / 2장별 위치 (크기 동일 420×500)
+function rCtaCollection(ctx: CanvasRenderingContext2D, c: Course, ep: string, pos: PosMap) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#111111");
+    g.addColorStop(1, "#000000");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    logo(ctx);
+    ctx.textAlign = "left";
+
+    // 줄1: 크게, 흰색
+    ctx.font = "bold 68px 'Pretendard',-apple-system,sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0,0,0,0.4)";
+    ctx.shadowBlur = 8;
+    wt(ctx, "저장해두고 이번 주말 같이 가봐요", pos.line1.x, pos.line1.y, W - 140, 82);
+
+    // 줄2: 작게, 흰색
+    ctx.shadowBlur = 0;
+    ctx.font = "500 38px 'Pretendard',-apple-system,sans-serif";
+    ctx.fillStyle = "#99c08e";
+    ctx.fillText(`${ep}탄도 곧 올게요 →`, pos.line2.x, pos.line2.y);
+
+    bb(ctx, c.region);
+}
+
+const COLLECTION_CTA_DEFAULTS: PosMap = {
+    line1: { x: 70, y: Math.round(H / 2 - 60) },
+    line2: { x: 70, y: Math.round(H / 2 + 110) },
+};
+
+// 직사각형 사진 레이아웃: 슬롯별 고정 위치 (크기 동일 420×500)
 const RECT_W = 420, RECT_H = 500;
-const RECT_POSITIONS: Array<Array<{ x: number; y: number; w: number; h: number; deg: number }>> = [
-    // 1장: 오른쪽 상단
-    [{ x: 620, y: 90, w: RECT_W, h: RECT_H, deg: 5 }],
-    // 2장: 좌상단 + 우하단
-    [
-        { x: 20,  y: 120, w: RECT_W, h: RECT_H, deg: -7 },
-        { x: 640, y: 240, w: RECT_W, h: RECT_H, deg:  5 },
-    ],
+const SLOT_POSITIONS: Array<{ x: number; y: number; w: number; h: number; deg: number }> = [
+    { x: 20,  y: 120, w: RECT_W, h: RECT_H, deg: -7 }, // 슬롯 1
+    { x: 640, y: 240, w: RECT_W, h: RECT_H, deg:  5 }, // 슬롯 2
 ];
 
 function rPlacePolaroid(
@@ -498,13 +523,10 @@ function rPlacePolaroid(
         ctx.fillRect(0, 0, W, H);
     }
 
-    const count = Math.min(frontImgs.length, 2);
-    if (count > 0) {
-        const slots = RECT_POSITIONS[count - 1];
-        for (let i = 0; i < count; i++) {
-            const img = frontImgs[i];
-            if (!img) continue;
-            const { x, y, w, h, deg } = slots[i];
+    for (let i = 0; i < SLOT_POSITIONS.length; i++) {
+        const img = frontImgs[i];
+        if (img) {
+            const { x, y, w, h, deg } = SLOT_POSITIONS[i];
             const rad = (deg * Math.PI) / 180;
             ctx.save();
             ctx.translate(x + w / 2, y + h / 2);
@@ -518,7 +540,6 @@ function rPlacePolaroid(
             ctx.restore();
         }
     }
-
     logo(ctx);
     bb(ctx, c.region);
 }
@@ -772,6 +793,7 @@ export default function CardNewsPage() {
     const [previewW, setPreviewW] = useState(400);
     const [collectionMode, setCollectionMode] = useState(false);
     const [interiorPhotos, setInteriorPhotos] = useState<Record<number, HTMLImageElement[]>>({});
+    const [collectionEp, setCollectionEp] = useState("2");
 
     // CSS @font-face injection → document.fonts.ready (더 안정적으로 canvas에 적용됨)
     useEffect(() => {
@@ -817,7 +839,7 @@ export default function CardNewsPage() {
             if (!collectionMode) return base;
             return base.reduce<SlideType[]>((acc, s) => {
                 acc.push(s);
-                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).length > 1) {
+                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).slice(1).filter(Boolean).length > 0) {
                     acc.push({ type: "interior", place: s.place });
                 }
                 return acc;
@@ -906,24 +928,33 @@ export default function CardNewsPage() {
         [tipOverrides],
     );
 
+    const deleteInteriorPhoto = useCallback((pid: number, idx: number) => {
+        setInteriorPhotos(prev => {
+            const cur = prev[pid] ? [...prev[pid]] : [];
+            delete cur[idx];
+            return { ...prev, [pid]: cur };
+        });
+    }, []);
+
     const renderOne = useCallback(
         (ctx: CanvasRenderingContext2D, slideIdx: number) => {
             if (!course) return "";
             const s = slides[slideIdx];
-            const pos = { ...defaultPositions(s), ...(positions[slideIdx] ?? {}) };
+            const collCtaDefaults = (collectionMode && s.type === "cta") ? COLLECTION_CTA_DEFAULTS : {};
+            const pos = { ...defaultPositions(s), ...collCtaDefaults, ...(positions[slideIdx] ?? {}) };
             ctx.clearRect(0, 0, W, H);
             ctx.save();
             ctx.textBaseline = "alphabetic";
             if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
             else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
-            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1).filter(Boolean), pos);
+            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1), pos);
             else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
-            else if (s.type === "cta") rCta(ctx, course, photos, pos);
+            else if (s.type === "cta") collectionMode ? rCtaCollection(ctx, course, collectionEp, pos) : rCta(ctx, course, photos, pos);
             ctx.restore();
             return ctx.canvas.toDataURL("image/png");
         },
-        [slides, course, photos, positions, applyTipOverride, collectionMode, interiorPhotos],
+        [slides, course, photos, positions, applyTipOverride, collectionMode, interiorPhotos, collectionEp],
     );
 
     const generate = useCallback(async () => {
@@ -970,6 +1001,13 @@ export default function CardNewsPage() {
             return () => clearTimeout(t);
         }
     }, [tipOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (previews.length > 0 && course && fontReady && collectionMode) {
+            const t = setTimeout(generate, 150);
+            return () => clearTimeout(t);
+        }
+    }, [collectionEp]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const slideName = (i: number) => {
         if (!course) return `dona_${i + 1}.png`;
@@ -1026,6 +1064,8 @@ export default function CardNewsPage() {
         tipB: "B 팁",
         main: "메인 텍스트",
         arrow: "화살표",
+        line1: "줄1",
+        line2: "줄2",
     };
 
     return (
@@ -1061,7 +1101,19 @@ export default function CardNewsPage() {
                         </button>
                     </div>
                     {collectionMode && (
-                        <p className="text-xs text-purple-600 mt-2">외관 사진 → 배경 · 내부 사진 → 왼쪽 상단 폴라로이드 오버레이</p>
+                        <>
+                            <p className="text-xs text-purple-600 mt-2">외관 사진 → 배경 · 내부 사진 → 왼쪽 상단 폴라로이드 오버레이</p>
+                            <div className="flex items-center gap-2 mt-3">
+                                <span className="text-xs text-gray-500 shrink-0">CTA 탄 숫자</span>
+                                <input
+                                    type="text"
+                                    value={collectionEp}
+                                    onChange={(e) => setCollectionEp(e.target.value)}
+                                    className="w-16 px-2 py-1.5 rounded-lg border border-purple-200 text-sm text-center bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                />
+                                <span className="text-xs text-gray-400">탄도 곧 올게요 →</span>
+                            </div>
+                        </>
                     )}
                 </div>
 
@@ -1395,7 +1447,8 @@ export default function CardNewsPage() {
                                                     <span className="text-xs text-gray-600 shrink-0 w-16 truncate" title={p.name}>{p.name}</span>
 
                                                     {/* 뒤: 배경 이미지 */}
-                                                    <label style={{ position: "relative", width: 24, aspectRatio: "3/4", borderRadius: 4, overflow: "hidden", border: bgImg ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: bgImg ? "#000" : "#faf5ff", flexShrink: 0 }}>
+                                                    <div style={{ position: "relative", width: 24, flexShrink: 0 }}>
+                                                    <label style={{ position: "relative", width: "100%", aspectRatio: "3/4", borderRadius: 4, overflow: "hidden", border: bgImg ? "2px solid #7c3aed" : "1.5px dashed #c4b5fd", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: bgImg ? "#000" : "#faf5ff" }}>
                                                         {bgImg ? (
                                                             <img src={bgImg.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                         ) : (
@@ -1423,6 +1476,10 @@ export default function CardNewsPage() {
                                                         />
                                                         {bgImg && <div style={{ position: "absolute", top: 2, right: 2, background: "#7c3aed", borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
                                                     </label>
+                                                    {bgImg && (
+                                                        <button type="button" onClick={() => deleteInteriorPhoto(p.pid, 0)} style={{ position: "absolute", top: 2, left: 2, zIndex: 10, background: "rgba(220,38,38,0.85)", border: "none", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 700, color: "#fff", cursor: "pointer", lineHeight: 1.6 }}>✕</button>
+                                                    )}
+                                                    </div>
 
                                                     {/* 앞 사진 1~3 */}
                                                     {[1, 2].map((idx) => {
@@ -1432,7 +1489,8 @@ export default function CardNewsPage() {
                                                         const col = colors[idx - 1];
                                                         const imgEl = interiorPhotos[p.pid]?.[idx];
                                                         return (
-                                                            <label key={idx} style={{ position: "relative", width: 24, aspectRatio: "3/4", borderRadius: 4, overflow: "hidden", border: imgEl ? `2px solid ${col}` : `1.5px dashed ${dashes[idx - 1]}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: imgEl ? "#000" : lightBgs[idx - 1], flexShrink: 0 }}>
+                                                            <div key={idx} style={{ position: "relative", width: 24, flexShrink: 0 }}>
+                                                            <label style={{ position: "relative", width: "100%", aspectRatio: "3/4", borderRadius: 4, overflow: "hidden", border: imgEl ? `2px solid ${col}` : `1.5px dashed ${dashes[idx - 1]}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: imgEl ? "#000" : lightBgs[idx - 1] }}>
                                                                 {imgEl ? (
                                                                     <img src={imgEl.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                                 ) : (
@@ -1460,6 +1518,10 @@ export default function CardNewsPage() {
                                                                 />
                                                                 {imgEl && <div style={{ position: "absolute", top: 2, right: 2, background: col, borderRadius: 99, width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "#fff", fontSize: 8 }}>✓</span></div>}
                                                             </label>
+                                                            {imgEl && (
+                                                                <button type="button" onClick={() => deleteInteriorPhoto(p.pid, idx)} style={{ position: "absolute", top: 2, left: 2, zIndex: 10, background: "rgba(220,38,38,0.85)", border: "none", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 700, color: "#fff", cursor: "pointer", lineHeight: 1.6 }}>✕</button>
+                                                            )}
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
