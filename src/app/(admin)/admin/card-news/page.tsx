@@ -486,7 +486,7 @@ function rCtaCollection(ctx: CanvasRenderingContext2D, c: Course, ep: string, po
     ctx.shadowBlur = 0;
     ctx.font = "500 38px 'Pretendard',-apple-system,sans-serif";
     ctx.fillStyle = "#99c08e";
-    ctx.fillText(`${ep}탄도 곧 올게요 →`, pos.line2.x, pos.line2.y);
+    ctx.fillText(ep.trim() ? `${ep}탄도 곧 올게요 →` : "다른 코스 보러 가기 →", pos.line2.x, pos.line2.y);
 
     bb(ctx, c.region);
 }
@@ -839,7 +839,7 @@ export default function CardNewsPage() {
             if (!collectionMode) return base;
             return base.reduce<SlideType[]>((acc, s) => {
                 acc.push(s);
-                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).slice(1).filter(Boolean).length > 0) {
+                if (s.type === "place" && (interiorPhotos[s.place.pid] ?? []).some(Boolean)) {
                     acc.push({ type: "interior", place: s.place });
                 }
                 return acc;
