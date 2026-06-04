@@ -133,7 +133,7 @@ function buildSlides(c: Course): SlideType[] {
     return s;
 }
 
-type PosMap = Record<string, { x: number; y: number }>;
+type PosMap = Record<string, { x: number; y: number; rot?: number; size?: number }>;
 
 function defaultPositions(slide: SlideType): PosMap {
     if (slide.type === "cover") return { title: { x: 70, y: H - 350 }, subtitle: { x: 70, y: H - 265 }, tags: { x: 70, y: H - 170 } };
@@ -511,6 +511,8 @@ function rPlacePolaroid(
     bgImg: HTMLImageElement | null,
     frontImgs: HTMLImageElement[],
     pos: PosMap,
+    nameText?: string,
+    tipText?: string,
 ) {
     const bg = bgImg ?? extPhotos[p.pid];
     if (bg) {
@@ -540,6 +542,33 @@ function rPlacePolaroid(
             ctx.restore();
         }
     }
+
+    if (nameText) {
+        const nSz = pos.name?.size ?? 52;
+        ctx.save();
+        ctx.translate(pos.name.x, pos.name.y);
+        ctx.rotate(((pos.name?.rot ?? 0) * Math.PI) / 180);
+        ctx.font = `bold ${nSz}px 'Pretendard',-apple-system,sans-serif`;
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "left";
+        ctx.shadowColor = "rgba(0,0,0,.7)";
+        ctx.shadowBlur = 16;
+        wt(ctx, nameText, 0, 0, W - 140, nSz * 1.2);
+        ctx.restore();
+    }
+    if (tipText) {
+        const tSz = pos.tip?.size ?? 32;
+        ctx.save();
+        ctx.translate(pos.tip.x, pos.tip.y);
+        ctx.rotate(((pos.tip?.rot ?? 0) * Math.PI) / 180);
+        ctx.font = `400 ${tSz}px 'Pretendard',-apple-system,sans-serif`;
+        ctx.fillStyle = "rgba(255,255,255,.8)";
+        ctx.shadowColor = "rgba(0,0,0,.5)";
+        ctx.shadowBlur = 8;
+        wt(ctx, tipText, 0, 0, W - 140, tSz * 1.4);
+        ctx.restore();
+    }
+
     logo(ctx);
     bb(ctx, c.region);
 }
@@ -794,6 +823,7 @@ export default function CardNewsPage() {
     const [collectionMode, setCollectionMode] = useState(false);
     const [interiorPhotos, setInteriorPhotos] = useState<Record<number, HTMLImageElement[]>>({});
     const [collectionEp, setCollectionEp] = useState("2");
+    const [interiorTexts, setInteriorTexts] = useState<Record<number, { name?: string; tip?: string }>>({});
 
     // CSS @font-face injection → document.fonts.ready (더 안정적으로 canvas에 적용됨)
     useEffect(() => {
@@ -948,13 +978,13 @@ export default function CardNewsPage() {
             if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
             else if (s.type === "route") rTimeline(ctx, course);
             else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
-            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1), pos);
+            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1), pos, interiorTexts[s.place.pid]?.name, interiorTexts[s.place.pid]?.tip);
             else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
             else if (s.type === "cta") collectionMode ? rCtaCollection(ctx, course, collectionEp, pos) : rCta(ctx, course, photos, pos);
             ctx.restore();
             return ctx.canvas.toDataURL("image/png");
         },
-        [slides, course, photos, positions, applyTipOverride, collectionMode, interiorPhotos, collectionEp],
+        [slides, course, photos, positions, applyTipOverride, collectionMode, interiorPhotos, collectionEp, interiorTexts],
     );
 
     const generate = useCallback(async () => {
@@ -984,12 +1014,12 @@ export default function CardNewsPage() {
         });
     }, [course, activeIdx, renderOne, previews.length]);
 
-    const updatePos = useCallback((slideIdx: number, key: string, val: { x: number; y: number }) => {
+    const updatePos = useCallback((slideIdx: number, key: string, val: { x: number; y: number; rot?: number; size?: number }) => {
         setPositions((prev) => ({ ...prev, [slideIdx]: { ...(prev[slideIdx] || {}), [key]: val } }));
     }, []);
 
     useEffect(() => {
-        if (editMode && previews.length > 0) {
+        if (previews.length > 0) {
             const t = setTimeout(regenCurrent, 80);
             return () => clearTimeout(t);
         }
@@ -1008,6 +1038,13 @@ export default function CardNewsPage() {
             return () => clearTimeout(t);
         }
     }, [collectionEp]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (previews.length > 0 && course && fontReady) {
+            const t = setTimeout(generate, 150);
+            return () => clearTimeout(t);
+        }
+    }, [interiorTexts]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const slideName = (i: number) => {
         if (!course) return `dona_${i + 1}.png`;
@@ -1134,6 +1171,7 @@ export default function CardNewsPage() {
                                 setCoverPid(null);
                                 setTipOverrides({});
                                 setInteriorPhotos({});
+                                setInteriorTexts({});
                             }}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
@@ -1443,7 +1481,8 @@ export default function CardNewsPage() {
                                         {uniP.map((p) => {
                                             const bgImg = interiorPhotos[p.pid]?.[0];
                                             return (
-                                                <div key={p.pid} className="flex items-center gap-2">
+                                                <div key={p.pid} className="space-y-1.5">
+                                                <div className="flex items-center gap-2">
                                                     <span className="text-xs text-gray-600 shrink-0 w-16 truncate" title={p.name}>{p.name}</span>
 
                                                     {/* 뒤: 배경 이미지 */}
@@ -1524,6 +1563,84 @@ export default function CardNewsPage() {
                                                             </div>
                                                         );
                                                     })}
+                                                </div>
+                                                {/* 내부 슬라이드 텍스트 입력 + 크기/회전 */}
+                                                {(() => {
+                                                    const iIdx = slides.findIndex(s => s.type === "interior" && s.place.pid === p.pid);
+                                                    const iPos = iIdx !== -1 ? (positions[iIdx] ?? {}) : {};
+                                                    const namePos = iPos.name ?? { x: 70, y: H - 310 };
+                                                    const tipPos  = iPos.tip  ?? { x: 70, y: H - 200 };
+                                                    const setNameProp = (patch: Partial<typeof namePos>) => {
+                                                        if (iIdx === -1) return;
+                                                        updatePos(iIdx, "name", { ...namePos, ...patch });
+                                                        setActiveIdx(iIdx);
+                                                    };
+                                                    const setTipProp = (patch: Partial<typeof tipPos>) => {
+                                                        if (iIdx === -1) return;
+                                                        updatePos(iIdx, "tip", { ...tipPos, ...patch });
+                                                        setActiveIdx(iIdx);
+                                                    };
+                                                    return (
+                                                        <div className="ml-[72px] space-y-1.5">
+                                                            {/* 큰 텍스트 행 */}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="큰 텍스트 (비워두면 미표시)"
+                                                                    value={interiorTexts[p.pid]?.name ?? ""}
+                                                                    onChange={(e) => setInteriorTexts(prev => ({ ...prev, [p.pid]: { ...prev[p.pid], name: e.target.value } }))}
+                                                                    className="flex-1 text-xs border border-purple-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white min-w-0"
+                                                                />
+                                                                {iIdx !== -1 && (
+                                                                    <>
+                                                                        <input type="number" min={16} max={120} step={2}
+                                                                            value={namePos.size ?? 52}
+                                                                            onChange={(e) => setNameProp({ size: +e.target.value })}
+                                                                            title="폰트 크기 (px)"
+                                                                            className="w-12 text-xs border border-purple-200 rounded px-1 py-1 text-center bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                                                        />
+                                                                        <span className="text-xs text-gray-300 shrink-0">px</span>
+                                                                        <input type="number" min={-180} max={180} step={1}
+                                                                            value={namePos.rot ?? 0}
+                                                                            onChange={(e) => setNameProp({ rot: +e.target.value })}
+                                                                            title="회전 (도)"
+                                                                            className="w-12 text-xs border border-purple-200 rounded px-1 py-1 text-center bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                                                        />
+                                                                        <span className="text-xs text-gray-300 shrink-0">°</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            {/* 작은 텍스트 행 */}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="작은 텍스트 (비워두면 미표시)"
+                                                                    value={interiorTexts[p.pid]?.tip ?? ""}
+                                                                    onChange={(e) => setInteriorTexts(prev => ({ ...prev, [p.pid]: { ...prev[p.pid], tip: e.target.value } }))}
+                                                                    className="flex-1 text-xs border border-purple-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white min-w-0"
+                                                                />
+                                                                {iIdx !== -1 && (
+                                                                    <>
+                                                                        <input type="number" min={12} max={80} step={2}
+                                                                            value={tipPos.size ?? 32}
+                                                                            onChange={(e) => setTipProp({ size: +e.target.value })}
+                                                                            title="폰트 크기 (px)"
+                                                                            className="w-12 text-xs border border-purple-200 rounded px-1 py-1 text-center bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                                                        />
+                                                                        <span className="text-xs text-gray-300 shrink-0">px</span>
+                                                                        <input type="number" min={-180} max={180} step={1}
+                                                                            value={tipPos.rot ?? 0}
+                                                                            onChange={(e) => setTipProp({ rot: +e.target.value })}
+                                                                            title="회전 (도)"
+                                                                            className="w-12 text-xs border border-purple-200 rounded px-1 py-1 text-center bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                                                        />
+                                                                        <span className="text-xs text-gray-300 shrink-0">°</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
                                                 </div>
                                             );
                                         })}
