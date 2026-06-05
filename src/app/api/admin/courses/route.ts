@@ -60,7 +60,11 @@ export async function GET() {
                         order_index: "asc", // 기왕이면 순서대로 가져오기
                     },
                     include: {
-                        place: true, // 👈 핵심! 이걸 해야 장소 이름(name), 카테고리 등을 가져옵니다.
+                        place: {
+                            include: {
+                                closed_days: true,
+                            },
+                        },
                     },
                 },
             },

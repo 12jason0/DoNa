@@ -17,6 +17,9 @@ interface CoursePlace {
     lat?: number | null;
     lng?: number | null;
     category?: string | null;
+    address?: string | null;
+    openingHours?: string | null;
+    closedDays?: number[];
 }
 
 const TIP_CAT_LABEL: Record<string, string> = {
@@ -86,6 +89,11 @@ function transformCourse(raw: any): Course {
                 lat: cp.place?.latitude != null ? Number(cp.place.latitude) : null,
                 lng: cp.place?.longitude != null ? Number(cp.place.longitude) : null,
                 category: cp.place?.category ?? null,
+                address: cp.place?.address ?? null,
+                openingHours: cp.place?.opening_hours ?? null,
+                closedDays: (cp.place?.closed_days ?? [])
+                    .filter((d: any) => d.day_of_week != null)
+                    .map((d: any) => d.day_of_week as number),
             };
         });
 
@@ -102,6 +110,12 @@ function transformCourse(raw: any): Course {
         places,
         isPublic: raw.isPublic ?? false,
     };
+}
+
+const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+function formatClosedDays(days: number[]): string {
+    if (!days.length) return "";
+    return `(${days.map((d) => DAY_KO[d]).join("·")}요일 휴무)`;
 }
 
 const W = 1080,
@@ -139,7 +153,11 @@ function defaultPositions(slide: SlideType): PosMap {
     if (slide.type === "cover") return { title: { x: 70, y: H - 350 }, subtitle: { x: 70, y: H - 265 }, tags: { x: 70, y: H - 170 } };
     if (slide.type === "route") return {};
     if (slide.type === "interior") return { name: { x: 70, y: H - 310 }, tip: { x: 70, y: H - 200 } };
-    if (slide.type === "place") return { name: { x: 70, y: H - 310 }, tip: { x: 70, y: H - 200 } };
+    if (slide.type === "place") return {
+        name: { x: 62, y: H - 380 },
+        info: { x: 62, y: H - 298 },
+        tip: { x: 62, y: H - 238 },
+    };
     if (slide.type === "or") {
         const hw = W / 2;
         return {
@@ -223,18 +241,22 @@ function cf(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: 
 }
 function wt(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, mw: number, lh: number) {
     if (typeof t !== "string" || !t) return y;
-    const ch = [...t];
-    let l = "",
-        cy = y;
-    for (const c of ch) {
-        const te = l + c;
-        if (ctx.measureText(te).width > mw && l) {
-            ctx.fillText(l, x, cy);
-            l = c;
-            cy += lh;
-        } else l = te;
+    const segments = t.split("\n");
+    let cy = y;
+    for (let si = 0; si < segments.length; si++) {
+        const ch = [...segments[si]];
+        let l = "";
+        for (const c of ch) {
+            const te = l + c;
+            if (ctx.measureText(te).width > mw && l) {
+                ctx.fillText(l, x, cy);
+                l = c;
+                cy += lh;
+            } else l = te;
+        }
+        if (l) ctx.fillText(l, x, cy);
+        if (si < segments.length - 1) cy += lh;
     }
-    if (l) ctx.fillText(l, x, cy);
     return cy;
 }
 function bb(ctx: CanvasRenderingContext2D, r: string) {
@@ -275,9 +297,8 @@ function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTM
     const img = ph[effectiveCoverPid];
     if (img) {
         cf(ctx, img, 0, 0, W, H);
-        ctx.fillStyle = "rgba(0,0,0,.3)";
+        ctx.fillStyle = "rgba(0,0,0,.32)";
         ctx.fillRect(0, 0, W, H);
-        gb(ctx, H * 0.45);
     } else {
         const g = ctx.createLinearGradient(0, 0, W, H);
         g.addColorStop(0, "#1a1a2e");
@@ -297,7 +318,7 @@ function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTM
         wt(ctx, c.sub_title, pos.subtitle.x, pos.subtitle.y, W - 140, 36);
     }
     ctx.shadowBlur = 0;
-    const tags = ["#두나", ...c.concept.slice(0, 2).map((m) => "#" + m)];
+    const tags = ["#두나"];
     let px = pos.tags.x;
     const py = pos.tags.y;
     ctx.font = "500 24px 'Pretendard',-apple-system,sans-serif";
@@ -314,6 +335,54 @@ function rCover(ctx: CanvasRenderingContext2D, c: Course, ph: Record<number, HTM
     bb(ctx, c.region);
 }
 
+function rCoverEditorial(
+    ctx: CanvasRenderingContext2D,
+    c: Course,
+    ph: Record<number, HTMLImageElement>,
+    pos: PosMap,
+    effectiveCoverPid: number,
+    line1: string,
+    line2: string,
+) {
+    const img = ph[effectiveCoverPid];
+    if (img) {
+        cf(ctx, img, 0, 0, W, H);
+        const g = ctx.createLinearGradient(0, H * 0.5, 0, H);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(0,0,0,0.82)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, H * 0.5, W, H * 0.5);
+    } else {
+        const g = ctx.createLinearGradient(0, 0, W, H);
+        g.addColorStop(0, "#1a1a2e");
+        g.addColorStop(1, "#16213e");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+    }
+    logo(ctx);
+    const l1 = line1 || "";
+    const l2 = line2 || c.title;
+    if (l1 && pos.line1) {
+        ctx.font = "600 50px 'Pretendard',-apple-system,sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.shadowColor = "rgba(0,0,0,.65)";
+        ctx.shadowBlur = 14;
+        wt(ctx, l1, pos.line1.x, pos.line1.y, W - 160, 64);
+        ctx.shadowBlur = 0;
+    }
+    if (l2 && pos.line2) {
+        ctx.font = "600 50px 'Pretendard',-apple-system,sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.shadowColor = "rgba(0,0,0,.65)";
+        ctx.shadowBlur = 14;
+        wt(ctx, l2, pos.line2.x, pos.line2.y, W - 160, 64);
+        ctx.shadowBlur = 0;
+    }
+    bb(ctx, c.region);
+}
+
 function rPlace(
     ctx: CanvasRenderingContext2D,
     c: Course,
@@ -324,27 +393,46 @@ function rPlace(
     const img = ph[p.pid];
     if (img) {
         cf(ctx, img, 0, 0, W, H);
-        ctx.fillStyle = "rgba(0,0,0,.15)";
-        ctx.fillRect(0, 0, W, H);
-        gb(ctx, H * 0.4);
+        const tg = ctx.createLinearGradient(0, H * 0.35, 0, H);
+        tg.addColorStop(0, "rgba(0,0,0,0)");
+        tg.addColorStop(0.55, "rgba(0,0,0,0.45)");
+        tg.addColorStop(1, "rgba(0,0,0,0.9)");
+        ctx.fillStyle = tg;
+        ctx.fillRect(0, H * 0.35, W, H * 0.65);
     } else {
         ctx.fillStyle = "#1a1a2e";
         ctx.fillRect(0, 0, W, H);
     }
     logo(ctx);
-    ctx.font = "bold 52px 'Pretendard',-apple-system,sans-serif";
+    // 장소명
+    ctx.font = "bold 54px 'Pretendard',-apple-system,sans-serif";
     ctx.fillStyle = "#fff";
     ctx.textAlign = "left";
     ctx.shadowColor = "rgba(0,0,0,.7)";
     ctx.shadowBlur = 16;
-    wt(ctx, p.name, pos.name.x, pos.name.y, W - 140, 62);
+    wt(ctx, p.name, pos.name.x, pos.name.y, W - 140, 66);
     ctx.shadowBlur = 0;
-    if (p.tip) {
-        ctx.font = "400 32px 'Pretendard',-apple-system,sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,.8)";
-        ctx.shadowColor = "rgba(0,0,0,.5)";
-        ctx.shadowBlur = 8;
-        wt(ctx, p.tip, pos.tip.x, pos.tip.y, W - 140, 44);
+    // 주소 · 운영시간 (한 줄)
+    if (pos.info) {
+        const closedStr = p.closedDays?.length ? ` ${formatClosedDays(p.closedDays)}` : "";
+        const infoParts = [p.address, p.openingHours ? `${p.openingHours}${closedStr}` : null].filter(Boolean);
+        const infoText = infoParts.join(" · ");
+        if (infoText) {
+            ctx.font = "400 27px 'Pretendard',-apple-system,sans-serif";
+            ctx.fillStyle = "rgba(255,255,255,.88)";
+            ctx.shadowColor = "rgba(0,0,0,.6)";
+            ctx.shadowBlur = 8;
+            wt(ctx, infoText, pos.info.x, pos.info.y, W - 140, 34);
+            ctx.shadowBlur = 0;
+        }
+    }
+    // 팁
+    if (p.tip && pos.tip) {
+        ctx.font = "500 34px 'Pretendard',-apple-system,sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,.92)";
+        ctx.shadowColor = "rgba(0,0,0,.6)";
+        ctx.shadowBlur = 10;
+        wt(ctx, p.tip.replace(/\s*\/\s*/g, "\n"), pos.tip.x, pos.tip.y, W - 140, 46);
         ctx.shadowBlur = 0;
     }
     bb(ctx, c.region);
@@ -466,34 +554,102 @@ function rCta(ctx: CanvasRenderingContext2D, c: Course, _ph: Record<number, HTML
     bb(ctx, c.region);
 }
 
-function rCtaCollection(ctx: CanvasRenderingContext2D, c: Course, ep: string, pos: PosMap) {
+function rCtaCollection(
+    ctx: CanvasRenderingContext2D,
+    c: Course,
+    ep: string,
+    pos: PosMap,
+    places: CoursePlace[],
+) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, "#111111");
     g.addColorStop(1, "#000000");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
     logo(ctx);
-    ctx.textAlign = "left";
+    ctx.textAlign = "center";
+    const cx = W / 2;
 
-    // 줄1: 크게, 흰색
-    ctx.font = "bold 68px 'Pretendard',-apple-system,sans-serif";
+    const NAME_H = 50;
+    const ADDR_H = 38;
+    const PLACE_GAP = 44;
+    const DIV_PRE = 52;
+    const DIV_POST = 40;
+    const CTA_GAP = 20;
+    const CTA1_H = 52;
+    const CTA2_H = 38;
+
+    // 전체 높이 계산
+    let listH = 0;
+    places.forEach((p, i) => {
+        listH += NAME_H;
+        if (p.address) listH += ADDR_H;
+        if (i < places.length - 1) listH += PLACE_GAP;
+    });
+    const totalH = listH + DIV_PRE + DIV_POST + CTA1_H + CTA_GAP + CTA2_H;
+    const startY = Math.round(90 + (H - 90 - 140 - totalH) / 2);
+
+    // 장소 목록
+    const numbered = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+    let y = startY;
+    places.forEach((p, i) => {
+        const prefix = numbered[i] ?? `${i + 1}.`;
+        ctx.font = "600 36px 'Pretendard',-apple-system,sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "rgba(0,0,0,.3)";
+        ctx.shadowBlur = 4;
+        ctx.fillText(`${prefix} ${p.name}`, cx, y);
+        ctx.shadowBlur = 0;
+        y += NAME_H;
+        if (p.address) {
+            ctx.font = "400 27px 'Pretendard',-apple-system,sans-serif";
+            ctx.fillStyle = "rgba(255,255,255,0.52)";
+            ctx.fillText(p.address, cx, y);
+            y += ADDR_H;
+        }
+        if (i < places.length - 1) y += PLACE_GAP;
+    });
+
+    // 구분선
+    y += DIV_PRE;
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(70, y);
+    ctx.lineTo(W - 70, y);
+    ctx.stroke();
+    y += DIV_POST;
+
+    // CTA 줄1
+    ctx.font = "bold 38px 'Pretendard',-apple-system,sans-serif";
     ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "rgba(0,0,0,0.4)";
-    ctx.shadowBlur = 8;
-    wt(ctx, "저장해두고 이번 주말 같이 가봐요", pos.line1.x, pos.line1.y, W - 140, 82);
-
-    // 줄2: 작게, 흰색
+    ctx.shadowColor = "rgba(0,0,0,.4)";
+    ctx.shadowBlur = 6;
+    ctx.fillText("저장해두고 한 번에 가보기", cx, y);
     ctx.shadowBlur = 0;
-    ctx.font = "500 38px 'Pretendard',-apple-system,sans-serif";
+    y += CTA1_H;
+
+    // CTA 줄2
+    y += CTA_GAP;
+    ctx.font = "500 28px 'Pretendard',-apple-system,sans-serif";
     ctx.fillStyle = "#99c08e";
-    ctx.fillText(ep.trim() ? `${ep}탄도 곧 올게요 →` : "다른 코스 보러 가기 →", pos.line2.x, pos.line2.y);
+    ctx.fillText(
+        ep.trim() ? `두나 팔로우하면 ${ep}탄 안 놓침 →` : "두나 팔로우하면 다음 탄 안 놓침 →",
+        cx,
+        y,
+    );
 
     bb(ctx, c.region);
 }
 
+const EDITORIAL_COVER_DEFAULTS: PosMap = {
+    line1: { x: 100, y: H - 325 },
+    line2: { x: 100, y: H - 242 },
+};
+
 const COLLECTION_CTA_DEFAULTS: PosMap = {
-    line1: { x: 70, y: Math.round(H / 2 - 60) },
-    line2: { x: 70, y: Math.round(H / 2 + 110) },
+    line1: { x: W / 2, y: H - 225 },
+    line2: { x: W / 2, y: H - 158 },
 };
 
 // 직사각형 사진 레이아웃: 슬롯별 고정 위치 (크기 동일 420×500)
@@ -519,7 +675,12 @@ function rPlacePolaroid(
         cf(ctx, bg, 0, 0, W, H);
         ctx.fillStyle = "rgba(0,0,0,.2)";
         ctx.fillRect(0, 0, W, H);
-        gb(ctx, H * 0.4);
+        const tg = ctx.createLinearGradient(0, H * 0.35, 0, H);
+        tg.addColorStop(0, "rgba(0,0,0,0)");
+        tg.addColorStop(0.55, "rgba(0,0,0,0.45)");
+        tg.addColorStop(1, "rgba(0,0,0,0.9)");
+        ctx.fillStyle = tg;
+        ctx.fillRect(0, H * 0.35, W, H * 0.65);
     } else {
         ctx.fillStyle = "#1a1a2e";
         ctx.fillRect(0, 0, W, H);
@@ -824,6 +985,13 @@ export default function CardNewsPage() {
     const [interiorPhotos, setInteriorPhotos] = useState<Record<number, HTMLImageElement[]>>({});
     const [collectionEp, setCollectionEp] = useState("2");
     const [interiorTexts, setInteriorTexts] = useState<Record<number, { name?: string; tip?: string }>>({});
+    const [tipDrafts, setTipDrafts] = useState<Record<number, string>>({});
+    const [addressOverrides, setAddressOverrides] = useState<Record<number, string>>({});
+    const [hoursOverrides, setHoursOverrides] = useState<Record<number, string>>({});
+    const [excludeRoute, setExcludeRoute] = useState(false);
+    const [coverStyle, setCoverStyle] = useState<"default" | "editorial">("default");
+    const [coverLine1, setCoverLine1] = useState("");
+    const [coverLine2, setCoverLine2] = useState("");
 
     // CSS @font-face injection → document.fonts.ready (더 안정적으로 canvas에 적용됨)
     useEffect(() => {
@@ -865,7 +1033,8 @@ export default function CardNewsPage() {
     const course = courses.find((c) => c.id === selId) ?? null;
     const slides: SlideType[] = course
         ? (() => {
-            const base = buildSlides(course);
+            let base = buildSlides(course);
+            if (excludeRoute || collectionMode) base = base.filter((s) => s.type !== "route");
             if (!collectionMode) return base;
             return base.reduce<SlideType[]>((acc, s) => {
                 acc.push(s);
@@ -952,10 +1121,14 @@ export default function CardNewsPage() {
         r.readAsDataURL(file);
     }, []);
 
-    const applyTipOverride = useCallback(
-        (p: CoursePlace): CoursePlace =>
-            p.pid in tipOverrides ? { ...p, tip: tipOverrides[p.pid] } : p,
-        [tipOverrides],
+    const applyPlaceOverrides = useCallback(
+        (p: CoursePlace): CoursePlace => ({
+            ...p,
+            tip: p.pid in tipOverrides ? tipOverrides[p.pid] : p.tip,
+            address: (addressOverrides[p.pid] !== undefined && addressOverrides[p.pid] !== "") ? addressOverrides[p.pid] : p.address,
+            openingHours: (hoursOverrides[p.pid] !== undefined && hoursOverrides[p.pid] !== "") ? hoursOverrides[p.pid] : p.openingHours,
+        }),
+        [tipOverrides, addressOverrides, hoursOverrides],
     );
 
     const deleteInteriorPhoto = useCallback((pid: number, idx: number) => {
@@ -975,16 +1148,34 @@ export default function CardNewsPage() {
             ctx.clearRect(0, 0, W, H);
             ctx.save();
             ctx.textBaseline = "alphabetic";
-            if (s.type === "cover") rCover(ctx, course, photos, pos, coverPid ?? pickCoverPid(course));
+            if (s.type === "cover") {
+                const ePid = coverPid ?? pickCoverPid(course);
+                if (coverStyle === "editorial") {
+                    const editPos = { ...EDITORIAL_COVER_DEFAULTS, ...(positions[slideIdx] ?? {}) };
+                    rCoverEditorial(ctx, course, photos, editPos, ePid, coverLine1, coverLine2);
+                } else {
+                    rCover(ctx, course, photos, pos, ePid);
+                }
+            }
             else if (s.type === "route") rTimeline(ctx, course);
-            else if (s.type === "place") rPlace(ctx, course, applyTipOverride(s.place), photos, pos);
-            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyTipOverride(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1), pos, interiorTexts[s.place.pid]?.name, interiorTexts[s.place.pid]?.tip);
-            else if (s.type === "or") rOr(ctx, course, s.places.map(applyTipOverride), photos, pos);
-            else if (s.type === "cta") collectionMode ? rCtaCollection(ctx, course, collectionEp, pos) : rCta(ctx, course, photos, pos);
+            else if (s.type === "place") rPlace(ctx, course, applyPlaceOverrides(s.place), photos, pos);
+            else if (s.type === "interior") rPlacePolaroid(ctx, course, applyPlaceOverrides(s.place), photos, interiorPhotos[s.place.pid]?.[0] ?? null, (interiorPhotos[s.place.pid] ?? []).slice(1), pos, interiorTexts[s.place.pid]?.name, interiorTexts[s.place.pid]?.tip);
+            else if (s.type === "or") rOr(ctx, course, s.places.map(applyPlaceOverrides), photos, pos);
+            else if (s.type === "cta") {
+                if (collectionMode) {
+                    const ctaPlaces = course.places
+                        .filter((p, i, a) => a.findIndex((x) => x.pid === p.pid) === i)
+                        .sort((a, b) => a.oi - b.oi)
+                        .map(applyPlaceOverrides);
+                    rCtaCollection(ctx, course, collectionEp, pos, ctaPlaces);
+                } else {
+                    rCta(ctx, course, photos, pos);
+                }
+            }
             ctx.restore();
             return ctx.canvas.toDataURL("image/png");
         },
-        [slides, course, photos, positions, applyTipOverride, collectionMode, interiorPhotos, collectionEp, interiorTexts],
+        [slides, course, photos, positions, applyPlaceOverrides, collectionMode, interiorPhotos, collectionEp, interiorTexts, coverStyle, coverLine1, coverLine2],
     );
 
     const generate = useCallback(async () => {
@@ -1031,6 +1222,20 @@ export default function CardNewsPage() {
             return () => clearTimeout(t);
         }
     }, [tipOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (previews.length > 0 && course && fontReady) {
+            const t = setTimeout(generate, 150);
+            return () => clearTimeout(t);
+        }
+    }, [addressOverrides, hoursOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (previews.length > 0 && course && fontReady) {
+            const t = setTimeout(generate, 150);
+            return () => clearTimeout(t);
+        }
+    }, [coverStyle, coverLine1, coverLine2]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (previews.length > 0 && course && fontReady && collectionMode) {
@@ -1094,6 +1299,7 @@ export default function CardNewsPage() {
         title: "제목",
         tags: "태그",
         name: "장소명",
+        info: "주소·시간",
         tip: "팁",
         nameA: "A 장소명",
         tipA: "A 팁",
@@ -1137,6 +1343,15 @@ export default function CardNewsPage() {
                             모음집 (폴라로이드)
                         </button>
                     </div>
+                    <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={excludeRoute}
+                            onChange={(e) => { setExcludeRoute(e.target.checked); setPreviews([]); }}
+                            className="rounded"
+                        />
+                        <span className="text-xs text-gray-600">동선 슬라이드 제외</span>
+                    </label>
                     {collectionMode && (
                         <>
                             <p className="text-xs text-purple-600 mt-2">외관 사진 → 배경 · 내부 사진 → 왼쪽 상단 폴라로이드 오버레이</p>
@@ -1170,6 +1385,9 @@ export default function CardNewsPage() {
                                 setImgStatus("");
                                 setCoverPid(null);
                                 setTipOverrides({});
+                                setTipDrafts({});
+                                setAddressOverrides({});
+                                setHoursOverrides({});
                                 setInteriorPhotos({});
                                 setInteriorTexts({});
                             }}
@@ -1334,6 +1552,46 @@ export default function CardNewsPage() {
                                     </label>
                                 </div>
 
+                                {/* 표지 스타일 */}
+                                <div style={{ gridColumn: "1 / -1" }} className="mb-1">
+                                    <div className="flex gap-1.5 mb-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCoverStyle("default")}
+                                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold border-none cursor-pointer"
+                                            style={{ background: coverStyle === "default" ? "#059669" : "#f3f4f6", color: coverStyle === "default" ? "#fff" : "#6b7280" }}
+                                        >
+                                            기본 표지
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCoverStyle("editorial")}
+                                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold border-none cursor-pointer"
+                                            style={{ background: coverStyle === "editorial" ? "#111827" : "#f3f4f6", color: coverStyle === "editorial" ? "#fff" : "#6b7280" }}
+                                        >
+                                            에디토리얼
+                                        </button>
+                                    </div>
+                                    {coverStyle === "editorial" && (
+                                        <div className="space-y-1.5 mb-3">
+                                            <input
+                                                type="text"
+                                                placeholder="1줄"
+                                                value={coverLine1}
+                                                onChange={(e) => setCoverLine1(e.target.value)}
+                                                className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-gray-800"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="2줄 (비워두면 코스 제목 자동)"
+                                                value={coverLine2}
+                                                onChange={(e) => setCoverLine2(e.target.value)}
+                                                className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-gray-800"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* 장소별 사진 카드 */}
                                 {uniP.map((p, i) => {
                                     const autoCover = course ? pickCoverPid(course) : -9999;
@@ -1421,56 +1679,102 @@ export default function CardNewsPage() {
                             {/* 팁 선택 */}
                             {uniP.some((p) => p.allTips.length > 0) && (
                                 <div className="mt-5 border-t border-gray-100 pt-4">
-                                    <div className="text-xs font-bold text-gray-500 mb-3 tracking-widest">팁 선택 (카드에 표시할 팁)</div>
-                                    <div className="space-y-2">
+                                    <div className="text-xs font-bold text-gray-500 mb-3 tracking-widest">팁 (Enter로 줄바꿈)</div>
+                                    <div className="space-y-3">
                                         {uniP.filter((p) => p.allTips.length > 0).map((p) => {
-                                            const autoTip = p.tip;
-                                            const overrideVal = p.pid in tipOverrides ? tipOverrides[p.pid] : "__auto__";
-                                            const selectVal = overrideVal === null ? "__none__" : overrideVal === "__auto__" ? "__auto__" : overrideVal;
+                                            const draftVal = tipDrafts[p.pid] ?? "";
                                             return (
-                                                <div key={p.pid} className="flex items-center gap-2">
-                                                    <span className="text-xs text-gray-600 shrink-0 w-20 truncate" title={p.name}>
-                                                        {p.name}
-                                                    </span>
-                                                    <select
-                                                        value={selectVal}
+                                                <div key={p.pid} className="space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-medium text-gray-600 truncate" title={p.name}>{p.name}</span>
+                                                        <div className="flex gap-1">
+                                                            {p.allTips.map((t, i) => (
+                                                                <button
+                                                                    key={i}
+                                                                    type="button"
+                                                                    title={t.content}
+                                                                    onClick={() => {
+                                                                        setTipDrafts((prev) => ({ ...prev, [p.pid]: t.content }));
+                                                                        setTipOverrides((prev) => ({ ...prev, [p.pid]: t.content }));
+                                                                    }}
+                                                                    className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-600 cursor-pointer bg-white"
+                                                                >
+                                                                    {getTipIcon(t.category)}
+                                                                </button>
+                                                            ))}
+                                                            {draftVal && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setTipDrafts((prev) => { const n = { ...prev }; delete n[p.pid]; return n; });
+                                                                        setTipOverrides((prev) => { const n = { ...prev }; delete n[p.pid]; return n; });
+                                                                    }}
+                                                                    className="text-xs text-gray-300 hover:text-red-400"
+                                                                >✕</button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <textarea
+                                                        rows={2}
+                                                        placeholder={p.tip ?? "(팁 없음)"}
+                                                        value={draftVal}
                                                         onChange={(e) => {
                                                             const v = e.target.value;
+                                                            setTipDrafts((prev) => ({ ...prev, [p.pid]: v }));
                                                             setTipOverrides((prev) => {
                                                                 const next = { ...prev };
-                                                                if (v === "__auto__") delete next[p.pid];
-                                                                else next[p.pid] = v === "__none__" ? null : v;
+                                                                if (v === "") delete next[p.pid];
+                                                                else next[p.pid] = v;
                                                                 return next;
                                                             });
                                                         }}
-                                                        className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
-                                                    >
-                                                        <option value="__auto__">
-                                                            자동{autoTip ? ` — ${autoTip.slice(0, 28)}${autoTip.length > 28 ? "…" : ""}` : " (없음)"}
-                                                        </option>
-                                                        <option value="__none__">표시 안 함</option>
-                                                        {p.allTips.map((t, i) => (
-                                                            <option key={i} value={t.content}>
-                                                                {getTipIcon(t.category)} [{TIP_CAT_LABEL[t.category] ?? t.category}] {t.content.slice(0, 35)}{t.content.length > 35 ? "…" : ""}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    {p.pid in tipOverrides && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setTipOverrides((prev) => { const n = { ...prev }; delete n[p.pid]; return n; })}
-                                                            className="text-xs text-gray-400 hover:text-red-400 shrink-0"
-                                                            title="자동으로 되돌리기"
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    )}
+                                                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
+                                                    />
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 </div>
                             )}
+
+                            {/* 주소 · 운영시간 override */}
+                            <div className="mt-5 border-t border-gray-100 pt-4">
+                                <div className="text-xs font-bold text-gray-500 mb-1 tracking-widest">주소 · 운영시간</div>
+                                <p className="text-xs text-gray-400 mb-3">DB값이 자동 표시됩니다. 수정이 필요하면 직접 입력하세요.</p>
+                                <div className="space-y-3">
+                                    {uniP.map((p) => (
+                                        <div key={p.pid} className="space-y-1.5">
+                                            <div className="text-xs font-semibold text-gray-600">{p.name}</div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-400 shrink-0 w-14">주소</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={p.address ?? "(DB에 없음)"}
+                                                    value={addressOverrides[p.pid] ?? ""}
+                                                    onChange={(e) => setAddressOverrides((prev) => ({ ...prev, [p.pid]: e.target.value }))}
+                                                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                                                />
+                                                {addressOverrides[p.pid] && (
+                                                    <button type="button" onClick={() => setAddressOverrides((prev) => { const n = { ...prev }; delete n[p.pid]; return n; })} className="text-xs text-gray-400 hover:text-red-400 shrink-0">✕</button>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-400 shrink-0 w-14">운영시간</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={p.openingHours ?? "(DB에 없음)"}
+                                                    value={hoursOverrides[p.pid] ?? ""}
+                                                    onChange={(e) => setHoursOverrides((prev) => ({ ...prev, [p.pid]: e.target.value }))}
+                                                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                                                />
+                                                {hoursOverrides[p.pid] && (
+                                                    <button type="button" onClick={() => setHoursOverrides((prev) => { const n = { ...prev }; delete n[p.pid]; return n; })} className="text-xs text-gray-400 hover:text-red-400 shrink-0">✕</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
                             {/* 내부 사진 업로드 (모음집 모드) */}
                             {collectionMode && (
