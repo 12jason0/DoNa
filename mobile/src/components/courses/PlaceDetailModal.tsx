@@ -205,7 +205,7 @@ export function PlaceDetailModal({
                             {pickPlaceDescription(place, locale as LocalePreference) || i18n("courseDetail.noDescription")}
                         </Text>
 
-                        {isLoggedIn && hasTips ? (
+                        {hasTips && !tipLocked ? (
                             <View
                                 style={[
                                     s.placeTipSection,
@@ -253,7 +253,7 @@ export function PlaceDetailModal({
                             </TouchableOpacity>
                         ) : null}
 
-                        {!isLoggedIn ? (
+                        {!isLoggedIn && tipLocked ? (
                             <TouchableOpacity
                                 style={[
                                     s.detailTipBanner,

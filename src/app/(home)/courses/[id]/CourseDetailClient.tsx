@@ -3375,7 +3375,7 @@ export default function CourseDetailClient({
                                                 t as CourseUiTranslate,
                                             );
                                             if (tips.length === 0) return null;
-                                            if (userTier === "FREE") {
+                                            if (userTier === "FREE" && courseData.grade !== "FREE") {
                                                 return (
                                                     <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                                                         <Icons.Lock className="w-4 h-4 text-gray-400 shrink-0" />
