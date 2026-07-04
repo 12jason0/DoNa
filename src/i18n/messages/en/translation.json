@@ -1111,6 +1111,9 @@
     "badgeBrag": "Share",
     "profileTab": {
       "notificationSettings": "Notifications",
+      "notifPermissionTitle": "Notification permission needed",
+      "notifPermissionDesc": "Please allow notifications in Settings.",
+      "openSettings": "Open Settings",
       "notificationAppOnly": "Notification settings",
       "notificationAppOnlyTitle": "Available in app only",
       "notificationAppOnlyDesc": "App only",

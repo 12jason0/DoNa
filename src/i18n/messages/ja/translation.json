@@ -1108,6 +1108,9 @@
     "badgeBrag": "自慢する",
     "profileTab": {
       "notificationSettings": "通知設定",
+      "notifPermissionTitle": "通知の許可が必要です",
+      "notifPermissionDesc": "設定で通知を許可してください。",
+      "openSettings": "設定を開く",
       "notificationAppOnly": "通知設定",
       "notificationAppOnlyTitle": "アプリでのみ設定可能です",
       "notificationAppOnlyDesc": "アプリでのみ設定可能",

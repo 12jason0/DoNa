@@ -1108,6 +1108,9 @@
     "badgeBrag": "炫耀",
     "profileTab": {
       "notificationSettings": "通知设置",
+      "notifPermissionTitle": "需要通知权限",
+      "notifPermissionDesc": "请在设置中允许通知。",
+      "openSettings": "前往设置",
       "notificationAppOnly": "通知设置",
       "notificationAppOnlyTitle": "仅在应用中可设置",
       "notificationAppOnlyDesc": "仅限应用",

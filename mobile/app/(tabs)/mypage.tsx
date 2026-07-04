@@ -46,6 +46,7 @@ import { MODAL_ANDROID_PROPS } from "../../src/constants/modalAndroidProps";
 import { type MemoryDetailStory } from "../../src/components/MemoryDetailModal";
 import { useModal, type Badge } from "../../src/lib/modalContext";
 import { localeTag } from "../../src/lib/localeUtils";
+import { registerForPushNotificationsAsync } from "../../src/notifications";
 import type { UserProfile, SubscriptionTier } from "../../src/types/api";
 
 const SW = Dimensions.get("window").width;
@@ -408,19 +409,30 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
     async function handleNotifToggle() {
         if (notifEnabled === null || notifLoading) return;
         const newVal = !notifEnabled;
-        setNotifEnabled(newVal);
         setNotifLoading(true);
         try {
-            let pushToken: string | null = null;
-            try {
-                const Notif = await import("expo-notifications");
-                const { status } = await Notif.getPermissionsAsync();
-                if (status === "granted") {
-                    const t = await Notif.getExpoPushTokenAsync();
-                    pushToken = t.data;
+            if (newVal) {
+                // 켤 때: 권한 요청 + projectId 포함 유효 토큰 발급을 보장
+                const pushToken = await registerForPushNotificationsAsync();
+                if (!pushToken) {
+                    // 권한 거부/토큰 실패 → 스위치를 켜지 않고 안내
+                    Alert.alert(
+                        i18n("mypage.profileTab.notifPermissionTitle"),
+                        i18n("mypage.profileTab.notifPermissionDesc"),
+                        [
+                            { text: i18n("common.cancel"), style: "cancel" },
+                            { text: i18n("mypage.profileTab.openSettings"), onPress: () => Linking.openSettings() },
+                        ],
+                    );
+                    return;
                 }
-            } catch {}
-            await api.post(endpoints.push, { pushToken: pushToken ?? "", platform: "expo", subscribed: newVal });
+                setNotifEnabled(true);
+                await api.post(endpoints.push, { pushToken, platform: Platform.OS, subscribed: true });
+            } else {
+                // 끌 때: 토큰 없이 상태만 변경 (기존 서버 로직상 existingToken이 있어 정상 처리)
+                setNotifEnabled(false);
+                await api.post(endpoints.push, { pushToken: "", platform: Platform.OS, subscribed: false });
+            }
         } catch {
             setNotifEnabled(!newVal);
         } finally {
@@ -682,7 +694,12 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                 <Text style={[s.cardTitle, { color: t.text, marginBottom: 4 }]}>{i18n("mypage.profileTab.accountSettingsTitle")}</Text>
 
                 {/* 알림 설정 */}
-                <View style={[s.settingRow, { borderBottomColor: t.border }]}>
+                <TouchableOpacity
+                    style={[s.settingRow, { borderBottomColor: t.border }]}
+                    onPress={handleNotifToggle}
+                    disabled={notifEnabled === null || notifLoading}
+                    activeOpacity={0.7}
+                >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <View
                             style={[
@@ -705,7 +722,7 @@ function ProfileTab({ profile, tier, refetch }: { profile: UserProfile; tier: Su
                         trackColor={{ false: "#d1d5db", true: "#6ee7b7" }}
                         thumbColor={notifEnabled ? "#059669" : "#f3f4f6"}
                     />
-                </View>
+                </TouchableOpacity>
 
                 {/* 카카오 채널 */}
                 <TouchableOpacity

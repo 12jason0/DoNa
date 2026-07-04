@@ -32,7 +32,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         }
 
         if (finalStatus !== "granted") {
-            alert("알림 권한이 없어 푸시 알림을 받을 수 없습니다!");
+            // 권한 거부 시 조용히 종료 — 안내 UI는 호출부에서 처리
+            console.log("알림 권한이 거부되어 푸시 토큰을 발급하지 않습니다.");
             return null;
         }
 
@@ -56,7 +57,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
             console.error("❌ 토큰 발급 에러:", e);
         }
     } else {
-        alert("에뮬레이터에서는 푸시 알림이 작동하지 않을 수 있습니다.");
+        console.log("에뮬레이터에서는 푸시 알림이 작동하지 않을 수 있습니다.");
     }
 
     return token ?? null;
