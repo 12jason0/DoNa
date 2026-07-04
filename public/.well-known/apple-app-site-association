@@ -3,8 +3,22 @@
         "apps": [],
         "details": [
             {
-                "appID": "RZCM47FCAG.kr.io.dona.dona",
-                "paths": ["/courses/*", "/"]
+                "appIDs": ["RZCM47FCAG.kr.io.dona.dona"],
+                "components": [
+                    {
+                        "/": "/api/*",
+                        "exclude": true,
+                        "comment": "카카오 OAuth 등 /api/* 는 앱이 가로채지 않고 브라우저(웹 OAuth 세션)에서 처리되도록 제외"
+                    },
+                    {
+                        "/": "/courses/*",
+                        "comment": "코스 상세/공유 딥링크는 앱으로 열기"
+                    },
+                    {
+                        "/": "/",
+                        "comment": "홈만 앱으로 열기 (도메인 전체 catch-all 아님)"
+                    }
+                ]
             }
         ]
     }
