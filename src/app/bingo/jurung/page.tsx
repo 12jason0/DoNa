@@ -23,10 +23,12 @@ const C = {
     border: "#DCC7A4", // 판 테두리/줄무늬
     polaroid: "#FFFDF8", // 폴라로이드
     brown: "#5A4636", // 다크브라운(제목·버튼·글씨)
+    caption: "#8C7A66", // 미션 캡션 — 사진 밑 한 줄, 연한 갈색으로 물러나게
     textLight: "#F3E7D0", // 버튼 위 밝은 글씨
     coral: "#C4553A",
     ring: "#E8895C", // 완성 줄 하이라이트 링
     green: "#3FA97A",
+    photoFilter: "sepia(12%) saturate(90%)", // 조명 제각각인 폰 사진들을 한 판처럼 묶어주는 톤 통일
     tapeCoral: "rgba(232,137,92,.55)",
     tapeMint: "rgba(127,184,160,.60)",
     photoBg: "#F1E7D4",
@@ -40,12 +42,18 @@ const MISSIONS: Mission[] = [
     { label: "프레디독이랑 눈 맞추기", key: "prairiedog" },
     { label: "카페에서 당 충전하기", key: "cafe" },
     { label: "닥터피쉬 5초 버티기", key: "fish" },
-    { label: "미어캣 밥 주기", key: "meeacat" },
+    { label: "빙고판 완성!", key: "donalogo" },
     { label: "자라 찾아서 인증샷", key: "turtle" },
     { label: "펭귄 멍하니 보기", key: "penguin" },
     { label: "카피바라랑 셀카", key: "capybara" },
-    { label: "빙고판 완성!", key: "donalogo" },
+    { label: "미어캣 밥 주기", key: "meeacat" },
 ];
+
+// 사진 업로드 없이 나머지 8칸을 다 채우면 자동 완료되는 '빙고판 완성!' 칸
+const AUTO_INDEX = 4;
+
+// 아직 사진을 안 올린 칸의 일러스트는 연하게 — "채워야 할 칸"으로 읽히게
+const ILLUST_ALPHA = 0.35;
 
 // 빙고 판정 (가로3 · 세로3 · 대각2)
 const LINES = [
@@ -86,9 +94,9 @@ const LINEART: string[] = [
     la(
         `<ellipse cx="45" cy="52" rx="26" ry="16"/><path d="M71 52 L88 39 V65 Z"/>${dot(33, 47, 3)}<path d="M40 60 q6 4 12 0"/>`,
     ),
-    // 4 미어캣 밥주기(밥그릇 + 하트)
+    // 4 빙고판 완성!(트로피 + 하트)
     la(
-        `<path d="M26 54 H74 a24 22 0 0 1 -48 0 Z"/><path d="M22 54 H78"/><path d="M39 54 q4 -13 11 -13 q7 0 11 13"/><path d="M50 30 q-4 -6 -9 -1.5 q-3.5 4 9 12 q12.5 -8 9 -12 q-5 -4.5 -9 1.5 Z"/>`,
+        `<path d="M34 26 H66 V42 a16 16 0 0 1 -32 0 Z"/><path d="M34 30 H23 a8 8 0 0 0 8 12 M66 30 H77 a8 8 0 0 1 -8 12"/><path d="M50 58 V69 M39 69 H61 M35 81 H65 L60 69 H40 Z"/><path d="M50 33 q-3.5 -5 -8 -1 q-3 3.5 8 10.5 q11 -7 8 -10.5 q-4.5 -4 -8 1 Z"/>`,
     ),
     // 5 자라
     la(
@@ -102,9 +110,9 @@ const LINEART: string[] = [
     la(
         `<ellipse cx="50" cy="58" rx="30" ry="19"/><ellipse cx="50" cy="41" rx="18" ry="15"/><circle cx="40" cy="28" r="4.5"/><circle cx="60" cy="28" r="4.5"/>${dot(43, 40)}${dot(57, 40)}<path d="M44 48 q6 4 12 0"/><path d="M33 70 v8 M44 72 v8 M56 72 v8 M67 70 v8"/>`,
     ),
-    // 8 빙고판 완성!(트로피 + 하트)
+    // 8 미어캣 밥주기(밥그릇 + 하트)
     la(
-        `<path d="M34 26 H66 V42 a16 16 0 0 1 -32 0 Z"/><path d="M34 30 H23 a8 8 0 0 0 8 12 M66 30 H77 a8 8 0 0 1 -8 12"/><path d="M50 58 V69 M39 69 H61 M35 81 H65 L60 69 H40 Z"/><path d="M50 33 q-3.5 -5 -8 -1 q-3 3.5 8 10.5 q11 -7 8 -10.5 q-4.5 -4 -8 1 Z"/>`,
+        `<path d="M26 54 H74 a24 22 0 0 1 -48 0 Z"/><path d="M22 54 H78"/><path d="M39 54 q4 -13 11 -13 q7 0 11 13"/><path d="M50 30 q-4 -6 -9 -1.5 q-3.5 4 9 12 q12.5 -8 9 -12 q-5 -4.5 -9 1.5 Z"/>`,
     ),
 ];
 
@@ -135,24 +143,16 @@ export default function JurungBingoPage() {
     const firstSave = useRef(true); // 첫 렌더에서 빈 보드로 저장소를 덮어쓰지 않도록
     const skipNextSave = useRef(false); // 복원으로 인한 setBoard는 저장(=활동시각 갱신)에서 제외
 
-    // '빙고판 완성!' 칸(마지막 8번)은 나머지 8칸을 모두 채우면 자동으로 완료된다.
-    const autoDone = useMemo(() => board.slice(0, 8).every((c) => c.photo), [board]);
+    // '빙고판 완성!' 칸(한가운데 4번)은 나머지 8칸을 모두 채우면 자동으로 완료된다.
+    const autoDone = useMemo(() => board.every((c, i) => i === AUTO_INDEX || c.photo), [board]);
     const isDone = useCallback(
-        (i: number) => Boolean(board[i].photo) || (i === 8 && autoDone),
+        (i: number) => Boolean(board[i].photo) || (i === AUTO_INDEX && autoDone),
         [board, autoDone],
     );
 
     const completedLines = useMemo(() => LINES.filter((l) => l.every((i) => isDone(i))).length, [isDone]);
     const doneCount = useMemo(() => MISSIONS.reduce((n, _m, i) => n + (isDone(i) ? 1 : 0), 0), [isDone]);
 
-    // 완성된 모든 줄에 속한 칸 인덱스 집합 → 이 칸들에 코랄 링을 씌운다
-    const hitCells = useMemo(() => {
-        const set = new Set<number>();
-        LINES.forEach((l) => {
-            if (l.every((i) => isDone(i))) l.forEach((i) => set.add(i));
-        });
-        return set;
-    }, [isDone]);
     const canSave = completedLines >= 1;
 
     // 각 칸에 실제로 보여줄 이미지 소스
@@ -188,7 +188,12 @@ export default function JurungBingoPage() {
                 if (fresh && Array.isArray(saved.board) && saved.board.length === 9) {
                     // 12시간 이내 → 복원(이 setBoard는 활동시각 갱신에서 제외)
                     skipNextSave.current = true;
-                    setBoard(saved.board.map((c: CellState) => ({ photo: typeof c?.photo === "string" ? c.photo : null })));
+                    setBoard(
+                        saved.board.map((c: CellState, i: number) => ({
+                            // 자동 완료 칸에는 예전 저장본의 사진이 남아 있어도 쓰지 않는다
+                            photo: i !== AUTO_INDEX && typeof c?.photo === "string" ? c.photo : null,
+                        })),
+                    );
                 } else {
                     // 12시간 초과(또는 손상된 데이터) → 자동 초기화
                     localStorage.removeItem(STORAGE_KEY);
@@ -299,7 +304,7 @@ export default function JurungBingoPage() {
 
     // ── 인터랙션 ── 칸을 탭하면 내 사진을 올린다(이미 있으면 교체)
     const pick = (i: number) => {
-        if (i === 8) return; // '빙고판 완성!' 칸은 자동 완료 — 업로드하지 않는다
+        if (i === AUTO_INDEX) return; // '빙고판 완성!' 칸은 자동 완료 — 업로드하지 않는다
         pickingIndex.current = i;
         fileInputRef.current?.click();
     };
@@ -364,14 +369,13 @@ export default function JurungBingoPage() {
             const cardPad = 40;
             const gap = 26;
             const cellW = (cardW - cardPad * 2 - gap * 2) / 3; // ≈ 280
-            const polPad = 16;
-            const photoSz = cellW - polPad * 2;
-            const capH = 62;
-            const polH = polPad + photoSz + capH;
+            const photoSz = cellW; // 사진이 칸 폭을 꽉 채운다
+            const capH = 44;
+            const polH = photoSz + capH;
             const titleTop = 96;
             const gridTop = 300;
             const cardH = cardPad * 2 + polH * 3 + gap * 2;
-            const H = gridTop + cardH + 170;
+            const H = gridTop + cardH + 130;
 
             const canvas = document.createElement("canvas");
             canvas.width = W;
@@ -468,17 +472,23 @@ export default function JurungBingoPage() {
                 ctx.fill();
                 ctx.shadowColor = "transparent";
 
-                // 사진 영역
-                const px = ox + polPad;
-                const py = oy + polPad;
+                // 사진 영역 — 폴라로이드 폭을 꽉 채운다
+                const px = ox;
+                const py = oy;
                 ctx.save();
-                roundRect(px, py, photoSz, photoSz, 6);
+                roundRect(px, py, photoSz, photoSz, 10);
                 ctx.clip();
                 ctx.fillStyle = C.photoBg;
                 ctx.fillRect(px, py, photoSz, photoSz);
                 if (im) {
+                    // 내 사진과 한가운데 두나 로고는 원본 농도, 나머지 안 채운 칸의 일러스트는 연하게
+                    ctx.globalAlpha = c.photo || i === AUTO_INDEX ? 1 : ILLUST_ALPHA;
+                    // 올린 사진만 톤 통일 필터 — 일러스트는 그대로
+                    if (c.photo) ctx.filter = C.photoFilter;
                     if (c.photo || (MISSIONS[i].key && pngOk[i])) drawCover(im, px, py, photoSz, photoSz);
                     else drawContain(im, px, py, photoSz, photoSz);
+                    ctx.filter = "none";
+                    ctx.globalAlpha = 1;
                 }
                 ctx.restore();
 
@@ -490,45 +500,24 @@ export default function JurungBingoPage() {
                 ctx.fillRect(-34, -12, 68, 24);
                 ctx.restore();
 
-                // 캡션
-                ctx.fillStyle = C.brown;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.font = `400 26px ${FONT}`;
-                const label = MISSIONS[i].label;
-                const capY = oy + polPad + photoSz + capH / 2 + 2;
-                if (ctx.measureText(label).width <= photoSz + 8) {
-                    ctx.fillText(label, ox + cellW / 2, capY);
-                } else {
-                    // 두 줄 줄바꿈
-                    let cut = Math.ceil(label.length / 2);
-                    for (let k = cut; k < label.length; k++) {
-                        if (label[k] === " ") {
-                            cut = k;
-                            break;
-                        }
+                // 캡션 — 사진 밑 한 줄(칸을 넘치면 폭에 맞춰 줄인다)
+                if (i !== AUTO_INDEX) {
+                    const label = MISSIONS[i].label;
+                    ctx.fillStyle = C.caption;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    let size = 24;
+                    ctx.font = `600 ${size}px ${FONT}`;
+                    while (size > 16 && ctx.measureText(label).width > cellW - 16) {
+                        size -= 1;
+                        ctx.font = `600 ${size}px ${FONT}`;
                     }
-                    ctx.font = `400 23px ${FONT}`;
-                    ctx.fillText(label.slice(0, cut).trim(), ox + cellW / 2, capY - 13);
-                    ctx.fillText(label.slice(cut).trim(), ox + cellW / 2, capY + 13);
-                }
-
-                // 완성 줄 하이라이트 — 코랄 링 + 글로우
-                if (hitCells.has(i)) {
-                    ctx.save();
-                    ctx.shadowColor = "rgba(232,137,92,0.45)";
-                    ctx.shadowBlur = 26;
-                    ctx.shadowOffsetY = 10;
-                    roundRect(ox - 3, oy - 3, cellW + 6, polH + 6, 12);
-                    ctx.lineWidth = 6;
-                    ctx.strokeStyle = C.ring;
-                    ctx.stroke();
-                    ctx.restore();
+                    ctx.fillText(label, ox + cellW / 2, oy + photoSz + capH / 2);
                 }
                 ctx.restore();
             }
 
-            // 푸터
+            // 푸터 — 가운데 로고가 워터마크 역할을 하므로 "두나" 서명은 넣지 않는다
             ctx.fillStyle = C.brown;
             ctx.textAlign = "center";
             ctx.font = `700 34px ${FONT}`;
@@ -537,10 +526,6 @@ export default function JurungBingoPage() {
                 W / 2,
                 gridTop + cardH + 70,
             );
-            ctx.globalAlpha = 0.6;
-            ctx.font = `400 26px ${FONT}`;
-            ctx.fillText("두나", W / 2, gridTop + cardH + 116);
-            ctx.globalAlpha = 1;
 
             const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b as Blob), "image/png", 0.95));
             const url = URL.createObjectURL(blob);
@@ -552,7 +537,7 @@ export default function JurungBingoPage() {
         } finally {
             setSaving(false);
         }
-    }, [board, pngOk, canSave, completedLines, doneCount, hitCells]);
+    }, [board, pngOk, canSave, completedLines, doneCount]);
 
     return (
         <div
@@ -616,7 +601,7 @@ export default function JurungBingoPage() {
                             {MISSIONS.map((m, i) => {
                                 const c = board[i];
                                 const even = i % 2 === 0;
-                                const auto = i === 8; // '빙고판 완성!' — 8칸 완료 시 자동 완료 칸
+                                const auto = i === AUTO_INDEX; // '빙고판 완성!' — 8칸 완료 시 자동 완료 칸
                                 const done = isDone(i);
                                 return (
                                     <div key={i} className="relative" style={{ transform: `rotate(${ROT[i]}deg)` }}>
@@ -631,25 +616,15 @@ export default function JurungBingoPage() {
                                                       : `${m.label} 인증샷 올리기`
                                             }
                                             onClick={() => pick(i)}
-                                            className={`block w-full rounded-md text-left transition ${auto ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
+                                            className={`block w-full overflow-hidden rounded-md text-left transition ${auto ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
                                             style={{
                                                 background: C.polaroid,
-                                                padding: "5px 4px 0",
                                                 boxShadow: "0 3px 8px rgba(90,70,54,0.18)",
                                             }}
                                         >
-                                            {/* 마스킹테이프 */}
-                                            <span
-                                                className="absolute left-1/2 h-5 w-[52px] rounded-[2px]"
-                                                style={{
-                                                    top: -9,
-                                                    background: even ? C.tapeCoral : C.tapeMint,
-                                                    transform: `translateX(-50%) rotate(${even ? -8 : 8}deg)`,
-                                                }}
-                                            />
-                                            {/* 사진 영역 */}
+                                            {/* 사진 영역 — 칸 폭을 꽉 채운다 */}
                                             <div
-                                                className="relative overflow-hidden rounded-[5px]"
+                                                className="relative overflow-hidden"
                                                 style={{ aspectRatio: "1 / 1", background: C.photoBg }}
                                             >
                                                 <img
@@ -657,8 +632,13 @@ export default function JurungBingoPage() {
                                                     alt=""
                                                     className="absolute inset-0 h-full w-full"
                                                     style={{
+                                                        // 내 사진은 항상 cover(세로/가로 상관없이 칸을 꽉 채움)
                                                         objectFit: c.photo || (m.key && pngOk[i]) ? "cover" : "contain",
                                                         padding: c.photo || (m.key && pngOk[i]) ? 0 : "14%",
+                                                        // 한가운데 두나 로고는 판의 중심이라 항상 진하게
+                                                        opacity: c.photo || auto ? 1 : ILLUST_ALPHA,
+                                                        // 올린 사진만 톤 통일 필터 — 일러스트는 그대로
+                                                        filter: c.photo ? C.photoFilter : undefined,
                                                     }}
                                                 />
                                                 {/* 완료되면 초록 ✓ (자동 완료 칸 포함) */}
@@ -671,28 +651,26 @@ export default function JurungBingoPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                            {/* 캡션 (이미지와 분리) */}
+                                            {/* 캡션 — 사진 밑 한 줄 */}
                                             <div
-                                                className="flex items-center justify-center px-0.5 pb-1 pt-1 text-center leading-tight"
-                                                style={{ minHeight: 22, fontSize: 10, color: C.brown }}
+                                                className="flex items-center justify-center overflow-hidden whitespace-nowrap px-1 pb-1 pt-1 text-center leading-tight"
+                                                style={{ minHeight: 20, fontSize: 10, color: C.caption }}
                                             >
-                                                {m.label}
+                                                {/* 한가운데 칸은 캡션 없이 로고만 — 높이는 다른 칸과 맞춘다 */}
+                                                {auto ? "" : m.label}
                                             </div>
                                         </button>
 
-                                        {/* 완성 줄 하이라이트 — 코랄 링 + 글로우 */}
-                                        {hitCells.has(i) && (
-                                            <div
-                                                className="pointer-events-none absolute rounded-[6px]"
-                                                style={{
-                                                    inset: -3,
-                                                    border: `3px solid ${C.ring}`,
-                                                    boxShadow:
-                                                        "0 0 0 3px rgba(232,137,92,.25), 0 10px 22px rgba(232,137,92,.4)",
-                                                    zIndex: 3,
-                                                }}
-                                            />
-                                        )}
+                                        {/* 마스킹테이프 — 사진이 칸을 꽉 채우므로 폴라로이드 바깥에 얹는다 */}
+                                        <span
+                                            className="pointer-events-none absolute left-1/2 h-5 w-[52px] rounded-[2px]"
+                                            style={{
+                                                top: -9,
+                                                zIndex: 3,
+                                                background: even ? C.tapeCoral : C.tapeMint,
+                                                transform: `translateX(-50%) rotate(${even ? -8 : 8}deg)`,
+                                            }}
+                                        />
                                     </div>
                                 );
                             })}
