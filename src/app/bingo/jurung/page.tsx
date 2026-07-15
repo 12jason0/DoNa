@@ -526,6 +526,25 @@ export default function JurungBingoPage() {
             );
 
             const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b as Blob), "image/png", 0.95));
+
+            // ① 폰(iOS/안드로이드): Web Share API로 공유 시트 → "이미지 저장"을 누르면 폰 사진 앨범에 저장된다.
+            // ② PC 등 파일 공유 미지원 브라우저: 기존 <a download> 다운로드로 폴백.
+            const file = new File([blob], "데이트빙고.png", { type: "image/png" });
+            const nav = navigator as Navigator & {
+                canShare?: (data?: ShareData) => boolean;
+                share?: (data?: ShareData) => Promise<void>;
+            };
+            if (nav.share && nav.canShare?.({ files: [file] })) {
+                try {
+                    await nav.share({ files: [file], title: "오늘의 주렁주렁", text: "우리 데이트 빙고 완성! 🎉" });
+                    return; // 공유 시트를 띄웠으면 끝 (취소해도 폴백 다운로드는 하지 않는다)
+                } catch (err) {
+                    // 사용자가 공유를 취소하면 AbortError — 이땐 아무것도 하지 않는다.
+                    if ((err as Error)?.name === "AbortError") return;
+                    // 그 밖의 공유 실패는 아래 다운로드로 폴백한다.
+                }
+            }
+
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
