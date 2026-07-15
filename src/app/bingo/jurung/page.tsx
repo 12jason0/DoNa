@@ -49,11 +49,12 @@ const MISSIONS: Mission[] = [
     { label: "미어캣 밥 주기", key: "meeacat" },
 ];
 
-// 사진 업로드 없이 나머지 8칸을 다 채우면 자동 완료되는 '빙고판 완성!' 칸
+// 한가운데(4번)는 처음부터 완료돼 있는 FREE 칸 — 완료된 미션으로 세어 시작부터 1/9
 const AUTO_INDEX = 4;
 
 // 아직 사진을 안 올린 칸의 일러스트는 연하게 — "채워야 할 칸"으로 읽히게
-const ILLUST_ALPHA = 0.35;
+// (너무 연하면 얼룩처럼 보여 뭘 찍어야 할지 안 읽힌다 → 살짝 진하게)
+const ILLUST_ALPHA = 0.45;
 
 // 빙고 판정 (가로3 · 세로3 · 대각2)
 const LINES = [
@@ -143,14 +144,11 @@ export default function JurungBingoPage() {
     const firstSave = useRef(true); // 첫 렌더에서 빈 보드로 저장소를 덮어쓰지 않도록
     const skipNextSave = useRef(false); // 복원으로 인한 setBoard는 저장(=활동시각 갱신)에서 제외
 
-    // '빙고판 완성!' 칸(한가운데 4번)은 나머지 8칸을 모두 채우면 자동으로 완료된다.
-    const autoDone = useMemo(() => board.every((c, i) => i === AUTO_INDEX || c.photo), [board]);
-    const isDone = useCallback(
-        (i: number) => Boolean(board[i].photo) || (i === AUTO_INDEX && autoDone),
-        [board, autoDone],
-    );
+    // 한가운데(4번)는 미션이 아니라 처음부터 완성된 FREE 칸 — 항상 done으로 친다
+    const isDone = useCallback((i: number) => i === AUTO_INDEX || Boolean(board[i].photo), [board]);
 
     const completedLines = useMemo(() => LINES.filter((l) => l.every((i) => isDone(i))).length, [isDone]);
+    // 가운데 FREE 칸도 '완료된 미션'으로 세어 시작부터 1/9로 보이게 한다
     const doneCount = useMemo(() => MISSIONS.reduce((n, _m, i) => n + (isDone(i) ? 1 : 0), 0), [isDone]);
 
     const canSave = completedLines >= 1;
@@ -601,64 +599,108 @@ export default function JurungBingoPage() {
                             {MISSIONS.map((m, i) => {
                                 const c = board[i];
                                 const even = i % 2 === 0;
-                                const auto = i === AUTO_INDEX; // '빙고판 완성!' — 8칸 완료 시 자동 완료 칸
+                                const auto = i === AUTO_INDEX; // 미션 아님 — 처음부터 완성된 FREE 칸
                                 const done = isDone(i);
                                 return (
                                     <div key={i} className="relative" style={{ transform: `rotate(${ROT[i]}deg)` }}>
-                                        {/* 폴라로이드 — 칸을 탭하면 내 사진 업로드(있으면 교체) */}
+                                        {/* 폴라로이드 — 칸을 탭하면 내 사진 업로드(있으면 교체).
+                                            · 안 올린 칸: 예전처럼 일러스트(정사각) + 아래 캡션 띠
+                                            · 올린 칸 / FREE 로고: 사진이 캡션 자리까지 칸 전체를 채우고 텍스트는 그 위에 겹침 */}
                                         <button
                                             type="button"
                                             aria-label={
                                                 auto
-                                                    ? `${m.label}${done ? " (완료)" : " (8칸을 모두 채우면 완료돼요)"}`
+                                                    ? "FREE 칸 · 처음부터 완성돼 있어요"
                                                     : c.photo
                                                       ? `${m.label} 사진 바꾸기`
                                                       : `${m.label} 인증샷 올리기`
                                             }
                                             onClick={() => pick(i)}
-                                            className={`block w-full overflow-hidden rounded-md text-left transition ${auto ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
+                                            className={`relative block w-full overflow-hidden rounded-md text-left transition ${auto ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
                                             style={{
                                                 background: C.polaroid,
                                                 boxShadow: "0 3px 8px rgba(90,70,54,0.18)",
                                             }}
                                         >
-                                            {/* 사진 영역 — 칸 폭을 꽉 채운다 */}
+                                            {/* 사진 영역(정사각) — 칸 높이를 정한다 */}
                                             <div
                                                 className="relative overflow-hidden"
                                                 style={{ aspectRatio: "1 / 1", background: C.photoBg }}
                                             >
+                                                {/* 안 채운 미션 칸의 일러스트(연하게) */}
+                                                {!c.photo && !auto && (
+                                                    <img
+                                                        src={illustSrc(i)}
+                                                        alt=""
+                                                        className="absolute inset-0 h-full w-full"
+                                                        style={{
+                                                            objectFit: m.key && pngOk[i] ? "cover" : "contain",
+                                                            padding: m.key && pngOk[i] ? 0 : "14%",
+                                                            opacity: ILLUST_ALPHA,
+                                                        }}
+                                                    />
+                                                )}
+                                                {/* 아직 안 채운 칸 → 업로드 슬롯임을 명확히 (점선 테두리 + 가운데 "＋ 사진") */}
+                                                {!c.photo && !auto && (
+                                                    <>
+                                                        <span
+                                                            className="pointer-events-none absolute inset-1 rounded-md"
+                                                            style={{ border: "2px dashed rgba(90,70,54,0.30)" }}
+                                                        />
+                                                        <span
+                                                            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+                                                            style={{ background: "rgba(90,70,54,0.62)", color: C.textLight }}
+                                                        >
+                                                            ＋ 사진
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            {/* 캡션 띠 — 안 올린 칸은 예전처럼 사진 밑 한 줄(길면 2줄) */}
+                                            <div
+                                                className="flex items-center justify-center overflow-hidden px-1 pb-1 pt-1 text-center leading-tight"
+                                                style={{ minHeight: 30, fontSize: 12, color: C.caption }}
+                                            >
+                                                <span className="line-clamp-2">{auto ? "" : m.label}</span>
+                                            </div>
+
+                                            {/* 사진 올린 칸(또는 FREE 로고)은 칸 전체를 꽉 채워 캡션 띠까지 덮는다 */}
+                                            {(c.photo || auto) && (
                                                 <img
                                                     src={c.photo ?? illustSrc(i)}
                                                     alt=""
                                                     className="absolute inset-0 h-full w-full"
                                                     style={{
-                                                        // 내 사진은 항상 cover(세로/가로 상관없이 칸을 꽉 채움)
-                                                        objectFit: c.photo || (m.key && pngOk[i]) ? "cover" : "contain",
-                                                        padding: c.photo || (m.key && pngOk[i]) ? 0 : "14%",
-                                                        // 한가운데 두나 로고는 판의 중심이라 항상 진하게
-                                                        opacity: c.photo || auto ? 1 : ILLUST_ALPHA,
-                                                        // 올린 사진만 톤 통일 필터 — 일러스트는 그대로
+                                                        objectFit: "cover",
+                                                        // 올린 사진만 톤 통일 필터 — FREE 로고는 그대로
                                                         filter: c.photo ? C.photoFilter : undefined,
                                                     }}
                                                 />
-                                                {/* 완료되면 초록 ✓ (자동 완료 칸 포함) */}
-                                                {done && (
-                                                    <span
-                                                        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
-                                                        style={{ background: C.green }}
-                                                    >
-                                                        ✓
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {/* 캡션 — 사진 밑 한 줄 */}
-                                            <div
-                                                className="flex items-center justify-center overflow-hidden whitespace-nowrap px-1 pb-1 pt-1 text-center leading-tight"
-                                                style={{ minHeight: 20, fontSize: 10, color: C.caption }}
-                                            >
-                                                {/* 한가운데 칸은 캡션 없이 로고만 — 높이는 다른 칸과 맞춘다 */}
-                                                {auto ? "" : m.label}
-                                            </div>
+                                            )}
+                                            {/* 올린 사진 위 캡션 — 하단 그라데이션 + 밝은 글씨로 사진 위에서도 읽히게 */}
+                                            {c.photo && (
+                                                <span
+                                                    className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center px-1 pb-1 pt-5 text-center font-semibold leading-tight"
+                                                    style={{
+                                                        fontSize: 12,
+                                                        color: C.polaroid,
+                                                        background:
+                                                            "linear-gradient(to top, rgba(40,28,18,0.64), rgba(40,28,18,0))",
+                                                        textShadow: "0 1px 3px rgba(0,0,0,0.55)",
+                                                    }}
+                                                >
+                                                    <span className="line-clamp-2">{m.label}</span>
+                                                </span>
+                                            )}
+                                            {/* 완료되면 초록 ✓ (FREE 칸 포함) */}
+                                            {done && (
+                                                <span
+                                                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
+                                                    style={{ background: C.green }}
+                                                >
+                                                    ✓
+                                                </span>
+                                            )}
                                         </button>
 
                                         {/* 마스킹테이프 — 사진이 칸을 꽉 채우므로 폴라로이드 바깥에 얹는다 */}
@@ -697,7 +739,7 @@ export default function JurungBingoPage() {
                             color: canSave ? C.textLight : "rgba(90,70,54,0.6)",
                         }}
                     >
-                        {saving ? "저장 중…" : canSave ? "📸 사진으로 저장" : "🔒 한 줄 채우면 저장"}
+                        {saving ? "저장 중…" : canSave ? "📸 사진으로 저장" : "📸 한 줄 완성하고 저장하기"}
                     </button>
                 </div>
             </div>
