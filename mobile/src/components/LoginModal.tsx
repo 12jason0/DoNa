@@ -42,7 +42,8 @@ let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
 try {
     const kakaoUserModule = require('@react-native-kakao/user');
     const loginFn = kakaoUserModule.login;
-    kakaoNativeLogin = loginFn ? () => loginFn({ useKakaoAccountLogin: true }) : null;
+    // useKakaoAccountLogin 미사용 — 켜면 브라우저 웹 로그인으로 빠져 App Link 가 가로챈다 (login.tsx 참고)
+    kakaoNativeLogin = loginFn ? () => loginFn() : null;
 } catch {}
 
 type LoginResponse = {

@@ -51,6 +51,11 @@
                 "ascApiKeyId": "VW9Z38T644",
                 "ascApiKeyIssuerId": "6362ce0b-3905-44a0-b832-851e44b162c9"
             }
+        },
+        "internal": {
+            "android": {
+                "track": "internal"
+            }
         }
     }
 }

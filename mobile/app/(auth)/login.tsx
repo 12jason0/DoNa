@@ -42,9 +42,11 @@ let kakaoNativeLogin: (() => Promise<{ accessToken: string }>) | null = null;
 try {
     const kakaoUserModule = require('@react-native-kakao/user');
     const loginFn = kakaoUserModule.login;
-    // useKakaoAccountLogin: true → KakaoTalk 앱 대신 웹 로그인 (프로세스 킬 방지)
-    kakaoNativeLogin = loginFn ? () => loginFn({ useKakaoAccountLogin: true }) : null;
-    console.log("[Kakao] @react-native-kakao/user 로드 성공, login(useKakaoAccountLogin:true):", typeof loginFn);
+    // useKakaoAccountLogin 을 켜면 KakaoTalk 앱 대신 브라우저로 카카오계정 웹 로그인이 열린다.
+    // 그 리다이렉트 체인이 dona.io.kr 를 밟으면 App Link(pathPrefix="/")가 가로채 앱이 다시 열리고
+    // 라우터가 /api/auth/kakao 를 못 찾아 Unmatched Route 가 된다. signup.tsx 와 동일하게 앱 로그인 사용.
+    kakaoNativeLogin = loginFn ? () => loginFn() : null;
+    console.log("[Kakao] @react-native-kakao/user 로드 성공, login():", typeof loginFn);
 } catch (e) {
     console.error("[Kakao] @react-native-kakao/user 로드 실패:", e);
     kakaoNativeLogin = null;
