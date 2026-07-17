@@ -73,6 +73,30 @@ const RC_PRODUCT_IDS: Record<string, string[]> = {
     sub_premium:   ["kr.io.dona.premium_monthly"],
 };
 
+// RevenueCat Offering 의 Package 식별자 → 플랜 매핑 (상품 ID 매칭 실패 시 대비)
+const RC_PACKAGE_IDS: Record<string, string> = {
+    monthly_basic: "sub_basic",
+    monthly_premium: "sub_premium",
+    ticket_basic: "ticket_basic",
+    ticket_premium: "ticket_premium",
+};
+
+/**
+ * Android 구독 상품은 "상품ID:기본요금제ID" 형태로 내려온다
+ * (예: kr.io.dona.ai_basic_monthly:basic-monthly). 콜론 뒤 기본요금제 ID 를 떼어
+ * 상품 ID 만 비교해야 매칭된다. iOS/일회성 상품은 콜론이 없어 그대로 통과.
+ */
+const baseProductId = (identifier: string) => identifier.split(":")[0];
+
+/** 이 패키지가 어느 플랜인지 판별 — 상품 ID 우선, 실패 시 패키지 식별자로 대체 */
+const planIdForPackage = (pkg: { identifier: string; product: { identifier: string } }) => {
+    const base = baseProductId(pkg.product.identifier);
+    const byProduct = Object.keys(RC_PRODUCT_IDS).find((planId) =>
+        RC_PRODUCT_IDS[planId].includes(base),
+    );
+    return byProduct ?? RC_PACKAGE_IDS[pkg.identifier];
+};
+
 const { height: SCREEN_H } = Dimensions.get("window");
 const SHEET_HEIGHT = SCREEN_H * 0.8;
 
@@ -168,11 +192,8 @@ export default function TicketPlansSheet() {
             if (!result.ok) return; // fallback: 하드코딩 가격 표시
             const prices: Partial<Record<PlanId, string>> = {};
             for (const pkg of result.packages) {
-                const match = PLANS.find(
-                    (p) => RC_PRODUCT_IDS[p.id]?.includes(pkg.product.identifier),
-                ) ?? PLANS.find(
-                    (p) => p.id === pkg.identifier,
-                );
+                const planId = planIdForPackage(pkg);
+                const match = PLANS.find((p) => p.id === planId);
                 if (match) prices[match.id] = pkg.product.priceString;
             }
             if (Object.keys(prices).length > 0) setRcPrices(prices);
@@ -292,8 +313,7 @@ export default function TicketPlansSheet() {
 
         const allPkgs = fetched.packages;
         const findPkg = (pkgs: typeof allPkgs) =>
-            pkgs.find((p) => RC_PRODUCT_IDS[selectedPlan.id]?.includes(p.product.identifier))
-            ?? pkgs.find((p) => p.identifier === selectedPlan.id);
+            pkgs.find((p) => planIdForPackage(p) === selectedPlan.id);
 
         const pkg = findPkg(allPkgs);
         if (!pkg) {
