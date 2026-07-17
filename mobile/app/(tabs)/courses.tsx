@@ -477,9 +477,14 @@ export default function CoursesScreen() {
                         if (hasNextPage && !isFetchingNextPage) fetchNextPage();
                     }}
                     onEndReachedThreshold={0.4}
-                    removeClippedSubviews={true}
+                    // 카드 높이가 가변(제목 1~2줄·infoLine 유무)이라 removeClippedSubviews 를 켜면
+                    // 안드로이드에서 화면 밖 카드를 detach/attach 할 때 높이 계산이 어긋나 스크롤이 튄다.
+                    // 다음 페이지가 붙을 때 "왔다갔다"하던 원인 → 끈다.
+                    removeClippedSubviews={false}
+                    // 새 페이지가 붙어도 현재 보고 있는 위치를 유지 (스크롤 점프 방지)
+                    maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
                     maxToRenderPerBatch={6}
-                    windowSize={5}
+                    windowSize={7}
                     initialNumToRender={6}
                     scrollEventThrottle={16}
                     decelerationRate="fast"
