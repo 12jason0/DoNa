@@ -10,7 +10,6 @@ import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StyleSheet } from "react-native";
 import * as Notifications from "expo-notifications";
-import Purchases, { LOG_LEVEL } from "react-native-purchases";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { migrateFromAsyncStorage } from "../src/lib/mmkv";
@@ -25,7 +24,7 @@ import SyncTextFontToLocale from "../src/components/SyncTextFontToLocale";
 import { ModalProvider } from "../src/lib/modalContext";
 import ModalManager from "../src/components/ModalManager";
 import { loadLocalePreference } from "../src/lib/appSettingsStorage";
-import { loadUserId } from "../src/lib/mmkv";
+import { ensureRcConfigured } from "../src/lib/purchases";
 import { applyDefaultTextFontForLocale } from "../src/lib/textDefaultFont";
 import { posthog } from "../src/lib/posthog";
 import { useScreenTracking } from "../src/hooks/useScreenTracking";
@@ -126,24 +125,8 @@ function RootLayoutInner() {
         if (showSplash) return;
 
         (async () => {
-            // RevenueCat 초기화
-            const apiKey =
-                Platform.OS === "ios"
-                    ? (process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS ?? "")
-                    : (process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID ?? "");
-
-            if (apiKey) {
-                try {
-                    Purchases.configure({ apiKey });
-                } catch {
-                    /* already configured */
-                }
-                if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-                const savedUserId = loadUserId();
-                if (savedUserId) {
-                    try { await Purchases.logIn(savedUserId); } catch {}
-                }
-            }
+            // RevenueCat 초기화 — 실패해도 결제 시점에 ensureRcConfigured()가 다시 시도한다
+            await ensureRcConfigured();
 
             // 카카오 SDK 초기화 (Android만)
             if (Platform.OS === "android" && KAKAO_NATIVE_APP_KEY) {

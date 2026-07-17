@@ -1373,7 +1373,25 @@
       "loginRequired": "请先登录。",
       "paymentFailed": "支付准备失败，请重试。",
       "paymentError": "支付处理时发生错误。",
-      "appUpdateRequired": "无法进行支付，请将应用更新至最新版本。"
+      "appUpdateRequired": "无法进行支付，请将应用更新至最新版本。",
+      "close": "关闭",
+      "retry": "重试",
+      "storeUnavailableTitle": "无法连接商店",
+      "storeUnavailableMessage": "无法加载支付商品信息。请检查网络连接后重试。",
+      "productUnavailableTitle": "当前无法购买",
+      "productUnavailableMessage": "在商店中未找到所选商品。请稍后重试。如果问题持续，请联系客服。",
+      "purchaseFailedTitle": "支付未能完成",
+      "errorCode": "错误代码：{code}",
+      "reasons": {
+        "network": "网络连接不稳定。请检查连接后重试。",
+        "storeProblem": "商店出现临时问题。请稍后重试。",
+        "notAllowed": "此设备不允许进行支付。请检查设备的支付设置。",
+        "productUnavailable": "该商品当前无法购买。请稍后重试。",
+        "alreadyOwned": "您已购买该商品。请尝试恢复购买。",
+        "paymentPending": "支付正在等待批准。批准后将自动生效。",
+        "configuration": "支付设置存在问题。请将应用更新至最新版本后重试。",
+        "unknown": "支付处理时发生错误。请稍后重试。"
+      }
     }
   },
   "passwordCheckModal": {

@@ -1346,7 +1346,25 @@
             "loginRequired": "로그인이 필요합니다.",
             "paymentFailed": "결제 준비에 실패했습니다. 다시 시도해주세요.",
             "paymentError": "결제 처리 중 오류가 발생했습니다.",
-            "appUpdateRequired": "결제를 진행할 수 없습니다. 앱을 최신 버전으로 업데이트해주세요."
+            "appUpdateRequired": "결제를 진행할 수 없습니다. 앱을 최신 버전으로 업데이트해주세요.",
+            "close": "닫기",
+            "retry": "다시 시도",
+            "storeUnavailableTitle": "스토어에 연결하지 못했습니다",
+            "storeUnavailableMessage": "결제 상품 정보를 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해주세요.",
+            "productUnavailableTitle": "지금은 구매할 수 없습니다",
+            "productUnavailableMessage": "선택하신 상품을 스토어에서 찾을 수 없습니다. 잠시 후 다시 시도해주세요. 문제가 계속되면 고객센터로 문의해주세요.",
+            "purchaseFailedTitle": "결제를 완료하지 못했습니다",
+            "errorCode": "오류 코드: {code}",
+            "reasons": {
+                "network": "네트워크 연결이 불안정합니다. 연결 상태를 확인한 뒤 다시 시도해주세요.",
+                "storeProblem": "스토어에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+                "notAllowed": "이 기기에서는 결제가 허용되어 있지 않습니다. 기기의 결제 설정을 확인해주세요.",
+                "productUnavailable": "현재 이 상품은 구매할 수 없습니다. 잠시 후 다시 시도해주세요.",
+                "alreadyOwned": "이미 구매하신 상품입니다. 구매 내역 복원을 시도해주세요.",
+                "paymentPending": "결제 승인을 기다리고 있습니다. 승인이 완료되면 자동으로 반영됩니다.",
+                "configuration": "결제 설정에 문제가 있습니다. 앱을 최신 버전으로 업데이트한 뒤 다시 시도해주세요.",
+                "unknown": "결제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+            }
         }
     },
     "passwordCheckModal": {

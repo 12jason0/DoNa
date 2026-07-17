@@ -26,6 +26,7 @@ import { useLocale } from "../lib/useLocale";
 import { useAuth, AUTH_QUERY_KEY } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import { useModal } from "../lib/modalContext";
+import { fetchAllPackages, purchaseErrorInfo } from "../lib/purchases";
 
 // ─── 플랜 정의 (웹 PLANS 동일) ────────────────────────────────────────────────
 
@@ -75,9 +76,6 @@ const RC_PRODUCT_IDS: Record<string, string[]> = {
 const { height: SCREEN_H } = Dimensions.get("window");
 const SHEET_HEIGHT = SCREEN_H * 0.8;
 
-// 모듈 레벨 RC 패키지 캐시 — 앱 세션 동안 유지 (컴포넌트 unmount 후에도 보존)
-let globalRcPkgs: import("react-native-purchases").PurchasesPackage[] = [];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TicketPlansSheet() {
@@ -105,7 +103,6 @@ export default function TicketPlansSheet() {
     const [tierLoadFailed, setTierLoadFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [rcPrices, setRcPrices] = useState<Partial<Record<PlanId, string>>>({});
-    const cachedPkgsRef = useRef<import("react-native-purchases").PurchasesPackage[]>(globalRcPkgs);
     // unlock-intent 프리패치 캐시 (courseId+planId 키)
     const prefetchedIntentRef = useRef<{ key: string; intentId: string } | null>(null);
 
@@ -167,34 +164,18 @@ export default function TicketPlansSheet() {
     useEffect(() => {
         if (!visible) return;
         (async () => {
-            try {
-                let allPkgs = globalRcPkgs;
-                if (allPkgs.length === 0) {
-                    const offerings = await Purchases.getOfferings();
-                    const seen = new Set<string>();
-                    allPkgs = [];
-                    for (const offering of Object.values(offerings.all)) {
-                        for (const pkg of offering.availablePackages) {
-                            if (!seen.has(pkg.product.identifier)) {
-                                seen.add(pkg.product.identifier);
-                                allPkgs.push(pkg);
-                            }
-                        }
-                    }
-                    globalRcPkgs = allPkgs;
-                }
-                cachedPkgsRef.current = allPkgs;
-                const prices: Partial<Record<PlanId, string>> = {};
-                for (const pkg of allPkgs) {
-                    const match = PLANS.find(
-                        (p) => RC_PRODUCT_IDS[p.id]?.includes(pkg.product.identifier),
-                    ) ?? PLANS.find(
-                        (p) => p.id === pkg.identifier,
-                    );
-                    if (match) prices[match.id] = pkg.product.priceString;
-                }
-                if (Object.keys(prices).length > 0) setRcPrices(prices);
-            } catch { /* fallback: 하드코딩 가격 */ }
+            const result = await fetchAllPackages();
+            if (!result.ok) return; // fallback: 하드코딩 가격 표시
+            const prices: Partial<Record<PlanId, string>> = {};
+            for (const pkg of result.packages) {
+                const match = PLANS.find(
+                    (p) => RC_PRODUCT_IDS[p.id]?.includes(pkg.product.identifier),
+                ) ?? PLANS.find(
+                    (p) => p.id === pkg.identifier,
+                );
+                if (match) prices[match.id] = pkg.product.priceString;
+            }
+            if (Object.keys(prices).length > 0) setRcPrices(prices);
         })();
     }, [visible]);
 
@@ -245,7 +226,18 @@ export default function TicketPlansSheet() {
 
     // ─── 결제 처리 ────────────────────────────────────────────────────────────
 
-    const handlePayment = async () => {
+    /**
+     * 실패해도 사용자가 그 자리에서 다시 시도할 수 있게 [다시 시도] 버튼을 단 알림.
+     * 결제 버튼이 "눌러도 아무 일 안 일어나는 버튼"으로 보이지 않게 하는 핵심.
+     */
+    const alertWithRetry = useCallback((title: string, message: string, onRetry: () => void) => {
+        Alert.alert(title, message, [
+            { text: i18n("ticketPlans.alerts.close"), style: "cancel" },
+            { text: i18n("ticketPlans.alerts.retry"), onPress: onRetry },
+        ]);
+    }, [i18n]);
+
+    const handlePayment = async (opts?: { forceRefresh?: boolean }) => {
         const selectedPlan = PLANS.find((p) => p.id === selectedPlanId);
         if (!selectedPlan) return;
 
@@ -286,36 +278,32 @@ export default function TicketPlansSheet() {
         }
 
         // ── 2) RC 패키지 찾기 ─────────────────────────────────────────────────
-        let allPkgs = globalRcPkgs.length > 0 ? globalRcPkgs : cachedPkgsRef.current;
-        if (allPkgs.length === 0) {
-            try {
-                const offerings = await Purchases.getOfferings();
-                const seen = new Set<string>();
-                allPkgs = [];
-                for (const offering of Object.values(offerings.all)) {
-                    for (const p of offering.availablePackages) {
-                        if (!seen.has(p.product.identifier)) {
-                            seen.add(p.product.identifier);
-                            allPkgs.push(p);
-                        }
-                    }
-                }
-                globalRcPkgs = allPkgs;
-                cachedPkgsRef.current = allPkgs;
-            } catch {
-                setLoading(false);
-                Alert.alert(i18n("ticketPlans.alerts.paymentError"));
-                return;
-            }
+        // 초기화 확인 → 재시도(백오프) 포함 조회. 실패 시 원인별로 안내가 갈린다.
+        const fetched = await fetchAllPackages({ force: opts?.forceRefresh });
+        if (!fetched.ok) {
+            setLoading(false);
+            alertWithRetry(
+                i18n("ticketPlans.alerts.storeUnavailableTitle"),
+                i18n("ticketPlans.alerts.storeUnavailableMessage"),
+                () => handlePayment({ forceRefresh: true }),
+            );
+            return;
         }
-        const pkg = allPkgs.find(
-            (p) => RC_PRODUCT_IDS[selectedPlan.id]?.includes(p.product.identifier),
-        ) ?? allPkgs.find(
-            (p) => p.identifier === selectedPlan.id,
-        );
+
+        const allPkgs = fetched.packages;
+        const findPkg = (pkgs: typeof allPkgs) =>
+            pkgs.find((p) => RC_PRODUCT_IDS[selectedPlan.id]?.includes(p.product.identifier))
+            ?? pkgs.find((p) => p.identifier === selectedPlan.id);
+
+        const pkg = findPkg(allPkgs);
         if (!pkg) {
             setLoading(false);
-            Alert.alert(i18n("ticketPlans.alerts.paymentError"));
+            // 캐시가 오래돼 상품이 빠졌을 수 있으니 강제 새로고침으로 재시도할 기회를 준다
+            alertWithRetry(
+                i18n("ticketPlans.alerts.productUnavailableTitle"),
+                i18n("ticketPlans.alerts.productUnavailableMessage"),
+                () => handlePayment({ forceRefresh: true }),
+            );
             return;
         }
 
@@ -330,12 +318,32 @@ export default function TicketPlansSheet() {
             customerInfo = result.customerInfo;
         } catch (err: unknown) {
             setLoading(false);
-            if (err && typeof err === "object" && "userCancelled" in err && (err as any).userCancelled) {
+            const info = purchaseErrorInfo(err);
+            if (info.userCancelled) {
                 console.log('[Purchase] 사용자 취소');
                 return;
             }
-            console.log('[Purchase] purchasePackage 오류:', err);
-            Alert.alert(i18n("ticketPlans.alerts.paymentError"));
+            console.log('[Purchase] purchasePackage 오류:', info.code, err);
+
+            // 결제 대기(PAYMENT_PENDING)는 실패가 아니라 승인 대기 — 재시도 버튼 없이 안내만
+            if (info.reason === "paymentPending") {
+                Alert.alert(
+                    i18n("ticketPlans.alerts.purchaseFailedTitle"),
+                    i18n("ticketPlans.alerts.reasons.paymentPending"),
+                );
+                return;
+            }
+
+            // 스토어가 준 실제 사유 + 문의용 오류 코드를 함께 노출
+            const reasonText = i18n(`ticketPlans.alerts.reasons.${info.reason}`);
+            const message = info.code
+                ? `${reasonText}\n\n${i18n("ticketPlans.alerts.errorCode", { code: info.code })}`
+                : reasonText;
+            alertWithRetry(
+                i18n("ticketPlans.alerts.purchaseFailedTitle"),
+                message,
+                () => handlePayment(),
+            );
             return;
         }
 
@@ -714,7 +722,7 @@ export default function TicketPlansSheet() {
                                     opacity: loading ? 0.7 : 1,
                                 },
                             ]}
-                            onPress={handlePayment}
+                            onPress={() => handlePayment()}
                             activeOpacity={0.85}
                             disabled={loading || tierLoadFailed}
                         >

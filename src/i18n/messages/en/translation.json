@@ -1379,7 +1379,25 @@
       "loginRequired": "Please log in.",
       "paymentFailed": "Payment setup failed. Please try again.",
       "paymentError": "An error occurred during payment.",
-      "appUpdateRequired": "Unable to process payment. Please update the app."
+      "appUpdateRequired": "Unable to process payment. Please update the app.",
+      "close": "Close",
+      "retry": "Try again",
+      "storeUnavailableTitle": "Couldn't reach the store",
+      "storeUnavailableMessage": "We couldn't load the purchase options. Check your network connection and try again.",
+      "productUnavailableTitle": "Not available right now",
+      "productUnavailableMessage": "We couldn't find this item in the store. Please try again in a moment. If the problem continues, contact support.",
+      "purchaseFailedTitle": "Purchase didn't go through",
+      "errorCode": "Error code: {code}",
+      "reasons": {
+        "network": "Your network connection seems unstable. Check it and try again.",
+        "storeProblem": "The store is having a temporary problem. Please try again in a moment.",
+        "notAllowed": "Purchases aren't allowed on this device. Check your device's payment settings.",
+        "productUnavailable": "This item can't be purchased right now. Please try again in a moment.",
+        "alreadyOwned": "You already own this item. Try restoring your purchases.",
+        "paymentPending": "Your payment is awaiting approval. It will be applied automatically once approved.",
+        "configuration": "There's a problem with the payment setup. Update the app to the latest version and try again.",
+        "unknown": "Something went wrong during payment. Please try again in a moment."
+      }
     }
   },
   "passwordCheckModal": {
