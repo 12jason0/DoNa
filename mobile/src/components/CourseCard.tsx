@@ -108,7 +108,11 @@ function CourseCardInner({
                     <Image
                         source={{ uri: resolveImageUrl(course.imageUrl) }}
                         style={s.cardImg}
-                        fadeDuration={0}
+                        contentFit="cover"
+                        // FlatList 재활용 시 같은 뷰가 다른 코스로 재사용될 때 이미지 재디코딩·깜빡임 방지 (스크롤 렉 완화)
+                        recyclingKey={String(course.id)}
+                        cachePolicy="memory-disk"
+                        transition={0}
                         blurRadius={isLocked ? 3 : 0}
                     />
                 ) : (
