@@ -388,6 +388,7 @@ export default function TicketPlansSheet() {
             }
             onUnlocked?.();
             prefetchedIntentRef.current = null;
+            queryClient.invalidateQueries({ queryKey: ["users", "profile"] });
             queryClient.invalidateQueries({ queryKey: ["profile"] });
             setLoading(false);
             dismiss();
@@ -407,16 +408,25 @@ export default function TicketPlansSheet() {
             }
             return;
         } else if (selectedPlan.type === "sub") {
-            // 구독: 즉시 닫고 confirm은 백그라운드
+            // 구독: 즉시 닫고 confirm은 백그라운드.
+            // 등급 반영은 서버 confirm 이 끝나야 하므로 .then() 안에서 무효화한다.
+            // 마이페이지 등급 뱃지·구독플랜은 ["users","profile"] 쿼리를 쓰므로 반드시 이 키를 무효화해야 한다
+            // (["profile"] 는 접두어가 달라 ["users","profile"] 를 잡지 못한다).
             api.post("/api/payments/revenuecat/confirm", {
                 planId: selectedPlan.id, planType: "sub",
                 transactionId, customerInfo,
+            }).then(() => {
+                queryClient.invalidateQueries({ queryKey: ["users", "profile"] });
+                queryClient.invalidateQueries({ queryKey: ["profile"] });
+                queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
             }).catch(() => {});
         }
 
         // 결제 완료 후 intent 캐시 초기화 (재결제 시 만료된 intentId 재사용 방지)
         prefetchedIntentRef.current = null;
 
+        // 낙관적 1차 무효화 (서버가 웹훅으로 이미 반영했을 경우 대비) — 위 confirm.then 이 2차로 재동기화
+        queryClient.invalidateQueries({ queryKey: ["users", "profile"] });
         queryClient.invalidateQueries({ queryKey: ["profile"] });
         if (selectedPlan.type === "sub") {
             queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
