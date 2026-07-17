@@ -63,6 +63,34 @@ const GRADE_META: Record<string, { bg: string; text: string }> = {
 };
 
 
+// ─── 코스 개수 라벨 ──────────────────────────────────────────────────────────
+// 헤더(HeroSlider 포함)가 페이지 추가마다 리마운트되지 않도록, 개수 표시만 캐시를
+// 자체 구독하는 독립 컴포넌트로 분리한다. enabled:false 로 자체 페치는 하지 않고
+// 부모 useInfiniteQuery 가 채운 ["courses-list", activeConcept] 캐시만 구독한다.
+const ListCountLabel = React.memo(function ListCountLabel({
+    activeConcept,
+    style,
+    translate,
+}: {
+    activeConcept: string;
+    style: any;
+    translate: (k: string, o?: any) => string;
+}) {
+    const { data } = useInfiniteQuery<Course[]>({
+        queryKey: ["courses-list", activeConcept],
+        queryFn: async () => [],
+        initialPageParam: 0,
+        getNextPageParam: () => undefined,
+        enabled: false,
+    });
+    const count = data?.pages.reduce((s, p) => s + (p?.length ?? 0), 0) ?? 0;
+    return (
+        <Text style={style} numberOfLines={1}>
+            {translate("courses.listCount", { count })}
+        </Text>
+    );
+});
+
 // ─── 히어로 슬라이더 ──────────────────────────────────────────────────────────
 
 const HeroSlider = React.memo(function HeroSlider({
@@ -376,13 +404,18 @@ export default function CoursesScreen() {
                     <Text style={[styles.listHeaderTitle, { color: t.text }]} numberOfLines={2}>
                         {listHeaderTitleText}
                     </Text>
-                    <Text style={[styles.listHeaderCount, { color: t.textMuted }]} numberOfLines={1}>
-                        {translate("courses.listCount", { count: courses.length })}
-                    </Text>
+                    <ListCountLabel
+                        activeConcept={activeConcept}
+                        style={[styles.listHeaderCount, { color: t.textMuted }]}
+                        translate={translate}
+                    />
                 </View>
             </>
         ),
-        [heroData, activeConcept, courses.length, t, translate, listHeaderTitleText, appLocale, openModal],
+        // courses.length 는 의존성에서 제외 — 페이지 추가마다 renderHeader 가 재생성되면
+        // ListHeaderComponent 가 리마운트되어 HeroSlider 가 다시 마운트되고 스크롤이 튄다.
+        // 개수는 ListCountLabel 이 캐시를 자체 구독해 갱신한다.
+        [heroData, activeConcept, t, translate, listHeaderTitleText, appLocale, openModal],
     );
 
     return (
@@ -440,7 +473,8 @@ export default function CoursesScreen() {
                     ListHeaderComponent={renderHeader}
                     contentContainerStyle={[styles.listContent, { backgroundColor: t.card }]}
                     onEndReached={() => {
-                        if (hasNextPage) fetchNextPage();
+                        // 이미 로딩 중이면 중복 호출 방지 (풋터 로더 깜빡임·높이 변동 유발)
+                        if (hasNextPage && !isFetchingNextPage) fetchNextPage();
                     }}
                     onEndReachedThreshold={0.4}
                     removeClippedSubviews={true}
