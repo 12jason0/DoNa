@@ -1,0 +1,15 @@
+# 두나 (DoNa)
+
+> 두나(DoNa)는 서울 데이트 코스를 추천하고 이색 방탈출 미션을 제공하는 모바일 앱입니다. 커플·친구·가족을 위해 카페, 맛집, 산책, 전시 등 흩어진 선택지를 하나의 동선으로 묶어 코스로 제공하며, 정해진 코스를 따라 미션을 수행하는 방탈출 스타일의 데이트를 지원합니다. 현재 서울 지역을 중심으로 서비스합니다.
+
+## 핵심 페이지
+
+- [두나 소개·데이트 코스 가이드](https://dona.io.kr/guide): 두나가 무엇인지, 핵심 기능, 서울 데이트 코스 예시, 자주 묻는 질문(FAQ), 다운로드 링크를 정리한 페이지
+- [코스 둘러보기](https://dona.io.kr/courses): 서울 데이트 코스 목록
+- [방탈출 미션](https://dona.io.kr/escape): 이색 방탈출 스타일 데이트
+- [두나 소개](https://dona.io.kr/about): 서비스 소개
+
+## 다운로드
+
+- App Store: https://apps.apple.com/us/app/%EB%91%90%EB%82%98/id6756777886
+- Google Play: https://play.google.com/store/apps/details?id=kr.io.dona.dona

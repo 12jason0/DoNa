@@ -1,16 +1,7 @@
 // app/sitemap.ts
 import { MetadataRoute } from "next";
-
-// Prisma import - 프로젝트에 맞게 아래 중 하나 선택하세요
-// Option 1: @/lib/prisma
-// import prisma from '@/lib/prisma';
-
-// Option 2: @/lib/db
-// import prisma from '@/lib/db';
-
-// Option 3: @prisma/client를 직접 사용
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+// 요청마다 새 PrismaClient를 만들면 커넥션이 누수되므로 프로젝트 공용 싱글톤을 사용
+import prisma from "@/lib/db";
 
 // Course 타입 정의
 type CourseData = {
@@ -51,6 +42,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 url: `${baseUrl}/escape`,
                 lastModified: new Date(),
                 changeFrequency: "daily",
+                priority: 0.9,
+            },
+            {
+                // AEO 허브 페이지 (두나 공식 설명서) — 크롤러가 빠르게 발견하도록 상위 우선순위
+                url: `${baseUrl}/guide`,
+                lastModified: new Date(),
+                changeFrequency: "weekly",
                 priority: 0.9,
             },
             {
@@ -97,6 +95,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 url: `${baseUrl}/escape`,
                 lastModified: new Date(),
                 changeFrequency: "daily",
+                priority: 0.9,
+            },
+            {
+                url: `${baseUrl}/guide`,
+                lastModified: new Date(),
+                changeFrequency: "weekly",
                 priority: 0.9,
             },
             {
