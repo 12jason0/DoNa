@@ -5,7 +5,6 @@ import { Providers } from "@/components/Providers";
 import Script from "next/script";
 import ClientStyleManager from "@/components/ClientStyleManager";
 // import AdSenseScript from "@/components/AdSenseScript"; // 🟢 AdMob/AdSense 비활성화
-import KakaoScript from "@/components/KakaoScript";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // ✅ 1. 페이지 정보 상자 (메타데이터)
@@ -33,8 +32,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <head>
                 {/* 예약 사이트(캐치테이블 등) 사전 연결으로 로딩 속도 개선 */}
                 <link rel="preconnect" href="https://www.catchtable.co.kr" crossOrigin="" />
-                {/* 한국어 기본 폰트 — FCP 개선을 위한 조기 preload */}
-                <link rel="preload" href="/fonts/Cafe24DongdongRegular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
             </head>
             <body className="antialiased" style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
                 {/* Google Tag Manager (noscript) - body 바로 뒤 */}
@@ -72,8 +69,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 <ClientStyleManager />
                 <Providers>{children}</Providers>
 
-                {/* 🟢 [Kakao SDK]: 공유·간편 로그인용 - Client Component에서 onLoad로 초기화 */}
-                <KakaoScript />
+                {/* Kakao SDK는 전역 로드하지 않음 — 공유 버튼 등 사용하는 곳에서 필요할 때 로드 */}
 
                 {/* Google AdSense 비활성화 */}
                 {/* <AdSenseScript /> */}
