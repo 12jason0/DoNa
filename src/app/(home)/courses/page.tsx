@@ -7,6 +7,13 @@ import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 import { getTimeOfDayFromKST } from "@/lib/kst";
 import { sortCoursesByTimeMatch } from "@/lib/timeMatch";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "서울 데이트 코스 모음",
+    description: "성수·망원·한남·홍대 등 동네별 서울 데이트 코스. 예산·소요시간·장소 동선까지 한눈에.",
+    alternates: { canonical: "/courses" },
+};
 
 type HeroSliderItem = {
     id: string;

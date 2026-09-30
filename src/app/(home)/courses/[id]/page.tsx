@@ -8,6 +8,8 @@ import { verifyJwtAndGetUserId } from "@/lib/auth";
 import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [Fix] CourseData 타입 임포트 추가
 import { unstable_cache } from "next/cache";
 import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
+import type { Metadata } from "next";
+import { resolveCourseImageAbsoluteForOg } from "@/lib/courseOpenGraph";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -210,6 +212,38 @@ const getCourse = unstable_cache(
     { revalidate: 300, tags: ["course-detail"] }
 );
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr").replace(/\/$/, "");
+const cleanCourseId = (id: string) => (id.startsWith("c-") ? id.replace("c-", "") : id);
+
+// 검색 결과용 설명: 잠금 코스에서도 화면에 보이는 정보(지역·시간·예산·장소명)만 사용
+function courseSeoDescription(course: CourseData): string {
+    const places = (course.coursePlaces || []).map((cp: any) => cp.place?.name).filter(Boolean).join(" → ");
+    const meta = [
+        course.region && `${course.region} 데이트 코스`,
+        course.duration !== COURSE_DETAIL_SENTINELS.duration && course.duration,
+        course.budget_range && `예산 ${course.budget_range}`,
+    ].filter(Boolean).join(" · ");
+    return `${meta}${places ? `. ${places}` : ""}`.slice(0, 150);
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const cleanId = cleanCourseId((await params).id);
+    const course = (await getCourse(cleanId)) ?? (await fetchCourseFromDb(cleanId));
+    if (!course) return { title: "코스를 찾을 수 없어요", robots: { index: false } };
+
+    const title = course.region ? `${course.title} - ${course.region} 데이트 코스` : course.title;
+    const description = courseSeoDescription(course);
+    const firstPlaceImage = (course.coursePlaces || []).find((cp: any) => cp.place?.imageUrl)?.place?.imageUrl;
+    const image = resolveCourseImageAbsoluteForOg(firstPlaceImage, course.imageUrl);
+    return {
+        title,
+        description,
+        alternates: { canonical: `/courses/${cleanId}` },
+        openGraph: { title: course.title, description, url: `/courses/${cleanId}`, images: [image] },
+        twitter: { card: "summary_large_image", title: course.title, description, images: [image] },
+    };
+}
+
 // 🔒 권한 확인 함수 (60초 캐시 - 열람권 구매 후 최대 60초 내 반영)
 const getUserPermissionCached = unstable_cache(
     async (userIdNum: number, courseId: number): Promise<{ userTier: string; hasUnlocked: boolean }> => {
@@ -244,7 +278,7 @@ const getUserPermissionCached = unstable_cache(
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     // 🟢 "c-" 접두사 제거 (지도 페이지에서 "c-55" 형식으로 전달되는 경우 처리)
-    const cleanId = id.startsWith("c-") ? id.replace("c-", "") : id;
+    const cleanId = cleanCourseId(id);
     const courseId = Number(cleanId); // ID를 확실하게 숫자로 변환
 
     // 🟢 [1단계: 데이터 병렬 조회] 코스 상세 정보와 유저 권한을 동시에 조회하여 성능 최적화
@@ -355,13 +389,39 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
               };
     })();
 
+    // 구조화 데이터: secureCourseData 기준이라 잠금 코스는 주소가 빠짐 (화면에 보이는 내용만)
+    const courseLd = {
+        "@context": "https://schema.org",
+        "@type": "TouristTrip",
+        name: courseData.title,
+        description: courseSeoDescription(courseData),
+        url: `${SITE_URL}/courses/${cleanId}`,
+        itinerary: {
+            "@type": "ItemList",
+            itemListElement: secureCourseData.coursePlaces
+                .filter((cp: any) => cp.place)
+                .map((cp: any, i: number) => ({
+                    "@type": "ListItem",
+                    position: i + 1,
+                    item: { "@type": "Place", name: cp.place.name, ...(cp.place.address && { address: cp.place.address }) },
+                })),
+        },
+        provider: { "@type": "Organization", name: "두나 DoNa", url: SITE_URL },
+    };
+
     // 🟢 최적화: 리뷰는 클라이언트에서 필요할 때만 로드
     return (
+        <>
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(courseLd).replace(/</g, "\\u003c") }}
+        />
         <CourseDetailClient
             courseData={secureCourseData}
             initialReviews={[]}
             courseId={cleanId}
             userTier={currentUserTier}
         />
+        </>
     );
 }

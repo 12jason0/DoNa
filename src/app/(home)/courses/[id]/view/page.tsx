@@ -40,7 +40,7 @@ export async function generateMetadata({
 
     return {
         metadataBase,
-        title: pageTitle,
+        title: { absolute: pageTitle },
         description,
         alternates: { canonical },
         openGraph: {

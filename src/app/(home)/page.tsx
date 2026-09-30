@@ -6,6 +6,24 @@ import { cookies } from "next/headers";
 import { verifyJwtAndGetUserId } from "@/lib/auth";
 import { getKSTTodayRange } from "@/lib/kst";
 import { getRecommendationDailyLimit } from "@/constants/subscription";
+import type { Metadata } from "next";
+import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr";
+const ORG_LD = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "두나 DoNa",
+    url: SITE_URL,
+    logo: getS3StaticUrlForMetadata("logo/donalogo_512.png"),
+    sameAs: [
+        "https://www.instagram.com/dona.date",
+        "https://play.google.com/store/apps/details?id=kr.io.dona.dona",
+        "https://apps.apple.com/app/id6756777886",
+    ],
+};
 
 // 비로그인 첫 방문자에게 보여줄 인기 코스 3개 (5분 캐시)
 const getInitialRecommendations = unstable_cache(
@@ -181,6 +199,7 @@ export default async function Page() {
 
     return (
         <>
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_LD) }} />
             {lcpImageUrl && (
                 <link rel="preload" as="image" href={lcpImageUrl} fetchPriority="high" />
             )}

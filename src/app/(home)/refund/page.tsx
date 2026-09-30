@@ -353,7 +353,7 @@ export default function RefundPage() {
 
                 {/* 사업자 정보 */}
                 <div className="mt-16 pt-10 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 dark:text-gray-500 leading-loose font-medium">
-                    <p>{tr("상호: (주)두나 (DoNa) | 대표: 오승용 | 사업자번호: 166-10-03081", "Company: DoNa Inc. | Representative: Oh Seung-yong | Business No.: 166-10-03081", "商号: DoNa | 代表: オ・スンヨン | 事業者番号: 166-10-03081", "公司: DoNa | 代表: 吴承勇 | 营业号: 166-10-03081")}</p>
+                    <p>{tr("상호: 두나 (DoNa) | 대표: 오승용 | 사업자번호: 166-10-03081", "Company: DoNa | Representative: Oh Seung-yong | Business No.: 166-10-03081", "商号: DoNa | 代表: オ・スンヨン | 事業者番号: 166-10-03081", "公司: DoNa | 代表: 吴承勇 | 营业号: 166-10-03081")}</p>
                     <p>{tr("통신판매: 제 2025-충남홍성-0193 호 | 주소: 충청남도 홍성군 홍북읍 신대로 33", "Online Sales: 2025-Chungnam Hongseong-0193 | Address: 33 Sindaero, Hongbukeup, Hongseong-gun", "通信販売: 第2025-忠南洪城-0193号 | 住所: 忠清南道洪城郡洪北邑新大路33", "通信销售: 第2025-忠南洪城-0193号 | 地址: 忠清南道洪城郡洪北邑新大路33")}</p>
                     <p>{tr("문의: 12jason@donacouse.com", "Contact: 12jason@donacouse.com", "お問い合わせ: 12jason@donacouse.com", "联系: 12jason@donacouse.com")}</p>
                 </div>

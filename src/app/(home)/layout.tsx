@@ -94,9 +94,7 @@ export async function generateMetadata(): Promise<Metadata> {
                 follow: true,
             },
         },
-        alternates: {
-            canonical: siteUrl,
-        },
+        // canonical은 레이아웃에 두면 모든 하위 페이지가 홈을 가리키게 됨 → 각 page에서 개별 지정
         icons: {
             icon: logoUrl,
             apple: logoUrl,
