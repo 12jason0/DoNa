@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {/* 예약 사이트(캐치테이블 등) 사전 연결으로 로딩 속도 개선 */}
                 <link rel="preconnect" href="https://www.catchtable.co.kr" crossOrigin="" />
                 {/* 한국어 기본 폰트 — FCP 개선을 위한 조기 preload */}
-                <link rel="preload" href="/fonts/Cafe24DongdongRegular.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+                <link rel="preload" href="/fonts/Cafe24DongdongRegular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
             </head>
             <body className="antialiased" style={{ backgroundColor: "#7FCC9F" }} suppressHydrationWarning={true}>
                 {/* Google Tag Manager (noscript) - body 바로 뒤 */}

@@ -52,12 +52,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 priority: 0.9,
             },
             {
-                url: `${baseUrl}/personalized-home`,
-                lastModified: new Date(),
-                changeFrequency: "daily",
-                priority: 0.85,
-            },
-            {
                 url: `${baseUrl}/map`,
                 lastModified: new Date(),
                 changeFrequency: "weekly",
@@ -102,12 +96,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 lastModified: new Date(),
                 changeFrequency: "weekly",
                 priority: 0.9,
-            },
-            {
-                url: `${baseUrl}/personalized-home`,
-                lastModified: new Date(),
-                changeFrequency: "daily",
-                priority: 0.85,
             },
         ];
     }

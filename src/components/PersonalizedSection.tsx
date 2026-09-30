@@ -355,7 +355,8 @@ export default function PersonalizedSection({ initialCourses }: { initialCourses
                                                     fill
                                                     alt={c.title}
                                                     className="object-cover object-center"
-                                                    sizes="100vw"
+                                                    // 앱 프레임은 md 이상에서 400px 고정 (LayoutContent)
+                                                    sizes="(max-width: 767px) 100vw, 400px"
                                                     priority
                                                     loading="eager"
                                                     quality={70}

@@ -1522,7 +1522,7 @@ const AIRecommender = () => {
                                                         <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                                                             <Image
                                                                 src={cp.place.imageUrl}
-                                                                alt=""
+                                                                alt={cp.place.name ?? ""}
                                                                 fill
                                                                 className="object-cover"
                                                                 sizes="56px"

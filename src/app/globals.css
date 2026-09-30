@@ -1,12 +1,10 @@
 @import "tailwindcss";
 @source not "../../mobile";
 
-/* 레거시·컴포넌트 직접 지정용 (지도 등) — public/fonts/Cafe24DongdongRegular.{otf,ttf} */
+/* 레거시·컴포넌트 직접 지정용 (지도 등) — public/fonts/Cafe24DongdongRegular.woff2 */
 @font-face {
     font-family: "Cafe24Dongdong";
-    src:
-        url("/fonts/Cafe24DongdongRegular.otf") format("opentype"),
-        url("/fonts/Cafe24DongdongRegular.ttf") format("truetype");
+    src: url("/fonts/Cafe24DongdongRegular.woff2") format("woff2");
     font-weight: 100 700;
     font-style: normal;
     font-display: swap;
@@ -18,7 +16,7 @@
  */
 @font-face {
     font-family: "RoundDisplay";
-    src: url("/fonts/Kalam-Light.ttf") format("truetype");
+    src: url("/fonts/Kalam-Light.woff2") format("woff2");
     font-weight: 300;
     font-style: normal;
     font-display: swap;
@@ -26,7 +24,7 @@
 }
 @font-face {
     font-family: "RoundDisplay";
-    src: url("/fonts/Kalam-Regular.ttf") format("truetype");
+    src: url("/fonts/Kalam-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -34,7 +32,7 @@
 }
 @font-face {
     font-family: "RoundDisplay";
-    src: url("/fonts/Kalam-Bold.ttf") format("truetype");
+    src: url("/fonts/Kalam-Bold.woff2") format("woff2");
     font-weight: 700;
     font-style: normal;
     font-display: swap;
@@ -42,9 +40,7 @@
 }
 @font-face {
     font-family: "RoundDisplay";
-    src:
-        url("/fonts/Cafe24DongdongRegular.otf") format("opentype"),
-        url("/fonts/Cafe24DongdongRegular.ttf") format("truetype");
+    src: url("/fonts/Cafe24DongdongRegular.woff2") format("woff2");
     font-weight: 100 700;
     font-style: normal;
     font-display: swap;
@@ -54,21 +50,21 @@
 /* fallback 체인 직접 지정용 */
 @font-face {
     font-family: "Kalam";
-    src: url("/fonts/Kalam-Light.ttf") format("truetype");
+    src: url("/fonts/Kalam-Light.woff2") format("woff2");
     font-weight: 300;
     font-style: normal;
     font-display: swap;
 }
 @font-face {
     font-family: "Kalam";
-    src: url("/fonts/Kalam-Regular.ttf") format("truetype");
+    src: url("/fonts/Kalam-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
 }
 @font-face {
     font-family: "Kalam";
-    src: url("/fonts/Kalam-Bold.ttf") format("truetype");
+    src: url("/fonts/Kalam-Bold.woff2") format("woff2");
     font-weight: 700;
     font-style: normal;
     font-display: swap;
@@ -87,19 +83,19 @@
     unicode-range: U+2190-21FF, U+27F0-27FF, U+2900-297F, U+2B00-2BFF, U+2700-27BF;
 }
 
-/* public/fonts/HachiMaruPop-Regular.ttf — 일본어(ja) */
+/* public/fonts/HachiMaruPop-Regular.woff2 — 일본어(ja) */
 @font-face {
     font-family: "HachiMaruPop";
-    src: url("/fonts/HachiMaruPop-Regular.ttf") format("truetype");
+    src: url("/fonts/HachiMaruPop-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
 }
 
-/* public/fonts/ZCOOLKuaiLe-Regular.ttf — 중국어(zh) */
+/* public/fonts/ZCOOLKuaiLe-Regular.woff2 — 중국어(zh) */
 @font-face {
     font-family: "ZCOOLKuaiLe";
-    src: url("/fonts/ZCOOLKuaiLe-Regular.ttf") format("truetype");
+    src: url("/fonts/ZCOOLKuaiLe-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -125,9 +121,10 @@
 :root {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    /* ko 기본: 영어도 Cafe24Dongdong 우선, ja/zh만 전용 폰트로 폴백 */
+    /* ko 기본: 영어도 Cafe24Dongdong 우선. HachiMaruPop/ZCOOLKuaiLe는 여기 넣지 말 것 —
+       Cafe24에 없는 글자 하나만 나와도 3.7MB를 받음. ja/zh는 아래 lang 규칙에서만 사용 */
     --font-app:
-        "ArrowFix", "Cafe24Dongdong", "HachiMaruPop", "ZCOOLKuaiLe", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+        "ArrowFix", "Cafe24Dongdong", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
         Roboto, "Noto Sans JP", "Noto Sans SC", "PingFang SC", "Hiragino Sans", "Yu Gothic UI", sans-serif;
     --font-sans: var(--font-app);
     --font-mono: var(--font-app);

@@ -366,9 +366,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
                                         </div>
 
                                         {/* 2. 메인 슬로건 */}
-                                        <h2 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900">
-                                            {t("webLanding.heroTitle")}
-                                        </h2>
+                                        {/* 홈에서만 H1 (다른 페이지는 자체 H1이 있음) */}
+                                        {(() => {
+                                            const Heading = pathname === "/" ? "h1" : "h2";
+                                            return (
+                                                <Heading className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900">
+                                                    {t("webLanding.heroTitle")}
+                                                </Heading>
+                                            );
+                                        })()}
 
                                         {/* 3. 부가 설명 */}
                                         <div className="text-xl font-bold text-gray-800">{t("webLanding.heroSubtitle")}</div>

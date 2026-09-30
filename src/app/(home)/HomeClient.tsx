@@ -649,7 +649,7 @@ export default function HomeClient({
                                 {activeCourse.imageUrl ? (
                                     <Image
                                         src={activeCourse.imageUrl}
-                                        alt=""
+                                        alt={activeCourse.title ?? activeCourse.courseTitle ?? ""}
                                         fill
                                         className="object-cover"
                                         sizes="80px"

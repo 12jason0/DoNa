@@ -419,7 +419,7 @@ export default function CourseSharePreviewClient({
                                             {cp.place?.imageUrl && (
                                                 <Image
                                                     src={cp.place.imageUrl}
-                                                    alt=""
+                                                    alt={pickPlaceName(cp.place, locale)}
                                                     fill
                                                     className="object-cover"
                                                     sizes="96px"
@@ -477,7 +477,7 @@ export default function CourseSharePreviewClient({
                                             {cp.place?.imageUrl && (
                                                 <Image
                                                     src={cp.place.imageUrl}
-                                                    alt=""
+                                                    alt={pickPlaceName(cp.place, locale)}
                                                     fill
                                                     className="object-cover"
                                                     sizes="96px"
@@ -540,7 +540,7 @@ export default function CourseSharePreviewClient({
                                         {cp.place?.imageUrl && (
                                             <Image
                                                 src={cp.place.imageUrl}
-                                                alt=""
+                                                alt={pickPlaceName(cp.place, locale)}
                                                 fill
                                                 className="object-cover"
                                                 sizes="96px"

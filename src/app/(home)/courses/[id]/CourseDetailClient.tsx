@@ -1904,7 +1904,7 @@ export default function CourseDetailClient({
                                                                             {coursePlace.place.imageUrl && (
                                                                                 <Image
                                                                                     src={coursePlace.place.imageUrl}
-                                                                                    alt=""
+                                                                                    alt={pickPlaceName(coursePlace.place, locale)}
                                                                                     fill
                                                                                     className="object-cover"
                                                                                     loading="lazy"
@@ -1998,7 +1998,7 @@ export default function CourseDetailClient({
                                                                                     {cp.place.imageUrl && (
                                                                                         <Image
                                                                                             src={cp.place.imageUrl}
-                                                                                            alt=""
+                                                                                            alt={pickPlaceName(cp.place, locale)}
                                                                                             fill
                                                                                             className="object-cover"
                                                                                             sizes="80px"
@@ -2140,7 +2140,7 @@ export default function CourseDetailClient({
                                                                                                 coursePlace.place
                                                                                                     .imageUrl
                                                                                             }
-                                                                                            alt=""
+                                                                                            alt={pickPlaceName(coursePlace.place, locale)}
                                                                                             fill
                                                                                             className="object-cover"
                                                                                             loading="lazy"
@@ -2820,7 +2820,7 @@ export default function CourseDetailClient({
                                                         {modalSelectedPlace.imageUrl && (
                                                             <Image
                                                                 src={modalSelectedPlace.imageUrl}
-                                                                alt=""
+                                                                alt={pickPlaceName(modalSelectedPlace, locale)}
                                                                 fill
                                                                 className="object-cover"
                                                                 sizes="(max-width: 768px) 100vw, 33vw"
