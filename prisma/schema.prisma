@@ -19,6 +19,7 @@ model Payment {
   method      String?
   requestedAt DateTime      @default(now()) @map("requested_at")
   approvedAt  DateTime?     @map("approved_at")
+  isTest      Boolean       @default(false) @map("is_test") // 테스트 결제 — 매출 집계에서 제외
   user           User            @relation(fields: [userId], references: [id])
   refundRequests RefundRequest[]
 
