@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeCostRange } from "@/lib/costRange";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -286,7 +287,7 @@ export async function POST(request: NextRequest) {
                 description_ja: description_ja || null,
                 description_zh: description_zh || null,
                 category: category || null,
-                avg_cost_range: avg_cost_range || null,
+                avg_cost_range: normalizeCostRange(avg_cost_range) || null,
                 opening_hours: opening_hours || null,
                 phone: phone || null,
                 website: website || null,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeCostRange } from "@/lib/costRange";
 import { runPlaceAutofill } from "@/lib/placeAutofill";
 import { getS3Client, getS3Bucket, getS3PublicUrl } from "@/lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
                     description_ja: autofillData.description_ja || null,
                     description_zh: autofillData.description_zh || null,
                     category: autofillData.category || null,
-                    avg_cost_range: autofillData.avg_cost_range || null,
+                    avg_cost_range: normalizeCostRange(autofillData.avg_cost_range) || null,
                     opening_hours: autofillData.opening_hours || null,
                     phone: autofillData.phone || null,
                     website: autofillData.website || null,

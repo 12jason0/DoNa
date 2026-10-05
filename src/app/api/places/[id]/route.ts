@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeCostRange } from "@/lib/costRange";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -166,7 +167,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 ...(description_ja !== undefined ? { description_ja: description_ja || null } : {}),
                 ...(description_zh !== undefined ? { description_zh: description_zh || null } : {}),
                 ...(category !== undefined ? { category } : {}),
-                ...(avg_cost_range !== undefined ? { avg_cost_range } : {}),
+                ...(avg_cost_range !== undefined ? { avg_cost_range: normalizeCostRange(avg_cost_range) } : {}),
                 ...(opening_hours !== undefined ? { opening_hours } : {}),
                 ...(phone !== undefined ? { phone } : {}),
                 ...(website !== undefined ? { website: website || null } : {}),
