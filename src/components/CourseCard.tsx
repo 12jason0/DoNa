@@ -196,14 +196,6 @@ const CourseCard = memo(
                         href={`/courses/${course.id}`}
                         prefetch={true}
                         className="absolute inset-0 z-10"
-                        onClick={() => {
-                            try {
-                                fetch(`/api/courses/${course.id}/view`, {
-                                    method: "POST",
-                                    keepalive: true,
-                                }).catch(() => {});
-                            } catch {}
-                        }}
                     />
                 )}
 

@@ -927,23 +927,20 @@ export default function CourseDetailClient({
         return () => {
             window.removeEventListener("favoritesChanged", handleFavoritesChanged);
         };
-
-        // 🟢 [Performance]: 조회수 추적도 지연
-        const trackView = () => {
-            const key = `course_view_${courseId}`;
-            const now = Date.now();
-            const lastView = localStorage.getItem(key);
-            if (!lastView || now - parseInt(lastView) > 1800000) {
-                const callApi = () =>
-                    fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
-                        .then(() => localStorage.setItem(key, String(now)))
-                        .catch(() => {});
-                // 🟢 더 긴 지연으로 메인 스레드 부하 감소
-                setTimeout(callApi, 3000);
-            }
-        };
-        ric(trackView);
     }, [courseId, isAuthenticated, authLoading]);
+
+    // 조회수: 같은 코스는 30분에 1번, 3초 이상 머문 경우만 (로그인 상태 변화로 재실행되지 않게 분리)
+    useEffect(() => {
+        const key = `course_view_${courseId}`;
+        const lastView = Number(localStorage.getItem(key) || 0);
+        if (Date.now() - lastView < 1800000) return;
+        const timer = setTimeout(() => {
+            fetch(`/api/courses/${courseId}/view`, { method: "POST", keepalive: true })
+                .then((r) => r.ok && localStorage.setItem(key, String(Date.now())))
+                .catch(() => {});
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [courseId]);
 
     // 선택형 코스: 내 선택 조합 조회
     useEffect(() => {
