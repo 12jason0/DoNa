@@ -829,8 +829,10 @@ export default function CourseDetailScreen() {
                                                                                         ? translateCourseFreeformKoText(cp.recommended_time, locale as CourseUiLocale, i18n)
                                                                                         : cp.place ? pickPlaceAddress(cp.place, locale as LocalePreference) : ""}
                                                                                 </Text>
-                                                                                <TipChips coursePlace={cp} max={2} />
                                                                             </View>
+                                                                        </View>
+                                                                        <View style={{ paddingHorizontal: 8, paddingBottom: 8 }}>
+                                                                            <TipChips coursePlace={cp} oneLine />
                                                                         </View>
                                                                         {/* 정보 버튼 (웹: 하단 전체 너비, 에메랄드 배경) */}
                                                                         <TouchableOpacity
