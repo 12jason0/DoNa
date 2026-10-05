@@ -54,8 +54,7 @@ const CONCEPT_ITEMS: { value: string; tKey: string; icon: string }[] = [
     { value: "술자리",     tKey: "courseConcept.drinking",     icon: `${CDN}/DRINKING.png` },
     { value: "실내데이트", tKey: "courseConcept.indoorDate",   icon: `${CDN}/INDOOR.png` },
     { value: "공연·전시",  tKey: "courseConcept.exhibition",   icon: `${CDN}/EXHIBITION.png` },
-    // 아이콘 미등록 → 첫 글자 표시 (CDN에 ANNIVERSARY.png 올리면 경로 넣기)
-    { value: "기념일",     tKey: "courseConcept.anniversary",  icon: "" },
+    { value: "기념일",     tKey: "courseConcept.anniversary",  icon: `${CDN}/ANNIVERSARY.png` },
 ];
 
 const GRADE_META: Record<string, { bg: string; text: string }> = {

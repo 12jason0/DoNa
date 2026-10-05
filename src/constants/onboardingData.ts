@@ -185,4 +185,6 @@ export const CATEGORY_ICONS: Record<string, string> = {
     [CONCEPTS.UNIQUE]: `${S3_BASE_URL}/UNIQUE.png`,
     [CONCEPTS.PHOTO]: `${S3_BASE_URL}/PHOTO.png`,
     [CONCEPTS.HEALING]: `${S3_BASE_URL}/HEALING.png`,
+    // 코스 탭 필터 전용 (온보딩 CONCEPTS에는 없음)
+    기념일: `${S3_BASE_URL}/ANNIVERSARY.png`,
 };
