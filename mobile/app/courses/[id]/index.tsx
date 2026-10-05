@@ -49,7 +49,7 @@ import {
 } from "../../../../src/lib/courseTranslate";
 import {
     pickCourseTitle,
-    pickCourseDescription,
+    pickCourseSubTitle,
     pickPlaceName,
     pickPlaceAddress,
 } from "../../../src/lib/courseLocalized";
@@ -664,9 +664,9 @@ export default function CourseDetailScreen() {
                         <Text style={s.heroTitle} numberOfLines={3}>
                             {pickCourseTitle(course, locale as LocalePreference)}
                         </Text>
-                        {course.description ? (
-                            <Text style={s.heroSubTitle} numberOfLines={2}>
-                                {pickCourseDescription(course, locale as LocalePreference)}
+                        {pickCourseSubTitle(course, locale as LocalePreference) ? (
+                            <Text style={s.heroSubTitle} numberOfLines={1}>
+                                {pickCourseSubTitle(course, locale as LocalePreference)}
                             </Text>
                         ) : null}
 

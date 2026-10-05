@@ -12,6 +12,10 @@ type LocalizedCourseText = {
     description_en?: string | null;
     description_ja?: string | null;
     description_zh?: string | null;
+    sub_title?: string | null;
+    sub_title_en?: string | null;
+    sub_title_ja?: string | null;
+    sub_title_zh?: string | null;
 };
 
 export function pickCourseTitle(course: LocalizedCourseText, locale: LocalePreference): string {
@@ -26,6 +30,13 @@ export function pickCourseDescription(course: LocalizedCourseText, locale: Local
     if (locale === "ja" && course.description_ja?.trim()) return course.description_ja.trim();
     if (locale === "zh" && course.description_zh?.trim()) return course.description_zh.trim();
     return course.description?.trim() || "";
+}
+
+export function pickCourseSubTitle(course: LocalizedCourseText, locale: LocalePreference): string {
+    if (locale === "en" && course.sub_title_en?.trim()) return course.sub_title_en.trim();
+    if (locale === "ja" && course.sub_title_ja?.trim()) return course.sub_title_ja.trim();
+    if (locale === "zh" && course.sub_title_zh?.trim()) return course.sub_title_zh.trim();
+    return course.sub_title?.trim() || "";
 }
 
 type LocalizedPlaceText = {

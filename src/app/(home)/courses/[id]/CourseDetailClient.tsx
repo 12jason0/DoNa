@@ -1764,9 +1764,14 @@ export default function CourseDetailClient({
                             </div>
 
                             {/* 🔥 제목 구조: title이 메인, sub_title이 부제목 (locale별 번역) */}
-                            <h1 className="text-xl md:text-xl font-extrabold mb-5 drop-shadow-lg">
+                            <h1 className={`text-xl md:text-xl font-extrabold drop-shadow-lg ${courseData.sub_title ? "mb-1" : "mb-5"}`}>
                                 {translatedTitle || courseData.title}
                             </h1>
+                            {courseData.sub_title && (
+                                <p className="text-[13px] text-white/80 mb-4 truncate drop-shadow-md">
+                                    {translatedSubTitle || courseData.sub_title}
+                                </p>
+                            )}
 
                             {/* 🔥 Row 2: 메타 정보 (칩 형태, 살짝 테두리) */}
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-3 text-[13px] font-medium drop-shadow-md mt-2">

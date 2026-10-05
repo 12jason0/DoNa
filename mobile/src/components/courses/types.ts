@@ -53,6 +53,9 @@ export interface CourseDetail extends Course {
     description?: string | null;
     coursePlaces?: CoursePlace[];
     sub_title?: string | null;
+    sub_title_en?: string | null;
+    sub_title_ja?: string | null;
+    sub_title_zh?: string | null;
     target_situation?: string | null;
     budget_range?: string | null;
     transportation?: string;
