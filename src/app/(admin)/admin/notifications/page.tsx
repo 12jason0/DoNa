@@ -1,21 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AdminNotificationsPage() {
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
     const [imageUrl, setImageUrl] = useState("");
-    const [target, setTarget] = useState<"all" | "subscribed">("all");
+    const [target, setTarget] = useState<"all" | "subscribed">("subscribed");
+    const [testEmail, setTestEmail] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const router = useRouter();
+    const targetLabel = target === "all" ? "마케팅 수신 동의한 전체 유저" : "알림 구독 유저";
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    useEffect(() => {
+        try {
+            setTestEmail(localStorage.getItem("admin_test_push_email") || "");
+        } catch {}
+    }, []);
+
+    const send = async (sendTarget: "all" | "subscribed" | "me") => {
         if (!title || !body) {
             alert("제목과 내용을 입력해주세요.");
+            return;
+        }
+        if (sendTarget === "me") {
+            if (!testEmail.trim()) {
+                alert("테스트 받을 계정 이메일을 입력해주세요.");
+                return;
+            }
+            try {
+                localStorage.setItem("admin_test_push_email", testEmail.trim());
+            } catch {}
+        } else if (!confirm(`[${targetLabel}]에게 발송합니다. 취소할 수 없습니다.
+
+제목: ${title}
+내용: ${body}`)) {
             return;
         }
 
@@ -26,12 +47,13 @@ export default function AdminNotificationsPage() {
             const res = await fetch("/api/admin/send-event-notification", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, body, imageUrl, target }),
+                body: JSON.stringify({ title, body, imageUrl, target: sendTarget, testEmail }),
             });
             const data = await res.json();
 
             if (res.ok) {
                 setResult(`✅ ${data.message || "알림 전송 완료"}`);
+                if (sendTarget === "me") return;
                 setTitle("");
                 setBody("");
                 setImageUrl("");
@@ -50,7 +72,11 @@ export default function AdminNotificationsPage() {
         <main className="max-w-3xl mx-auto px-6 py-12 pt-24 text-black">
             <h1 className="text-3xl font-bold mb-8">📢 이벤트 / 공지 알림 발송</h1>
 
-            <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-2xl shadow-lg">
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    send(target);
+                }} className="space-y-6 bg-white p-8 rounded-2xl shadow-lg">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
                     <input
@@ -97,7 +123,7 @@ export default function AdminNotificationsPage() {
                                 checked={target === "all"}
                                 onChange={() => setTarget("all")}
                             />
-                            <span>전체 (모든 사용자)</span>
+                            <span>전체 (마케팅 수신 동의 유저)</span>
                         </label>
                         <label className="flex items-center gap-2">
                             <input
@@ -125,6 +151,27 @@ export default function AdminNotificationsPage() {
                     </div>
                 )}
 
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">테스트 받을 내 계정 이메일</label>
+                    <div className="flex gap-2">
+                        <input
+                            type="email"
+                            value={testEmail}
+                            onChange={(e) => setTestEmail(e.target.value)}
+                            className="flex-1 px-4 py-2 border rounded-lg"
+                            placeholder="앱에 로그인한 계정 이메일"
+                        />
+                        <button
+                            type="button"
+                            disabled={isSending}
+                            onClick={() => send("me")}
+                            className="px-4 py-2 rounded-lg font-semibold border border-indigo-600 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                        >
+                            나에게 테스트 발송
+                        </button>
+                    </div>
+                </div>
+
                 <div className="pt-4 flex justify-end">
                     <button
                         type="submit"
@@ -133,7 +180,7 @@ export default function AdminNotificationsPage() {
                             isSending ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700"
                         }`}
                     >
-                        {isSending ? "전송 중..." : "전체 유저에게 알림 보내기"}
+                        {isSending ? "전송 중..." : `${targetLabel}에게 알림 보내기`}
                     </button>
                 </div>
 
