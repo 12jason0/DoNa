@@ -257,7 +257,6 @@ export default function CoursesClient({ initialCourses, initialHeroCourses = [] 
             "실내데이트",
             "공연·전시",
             "기념일",
-            "소개팅",
         ],
         [],
     );
