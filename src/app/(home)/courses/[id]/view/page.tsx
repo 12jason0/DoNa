@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
     fetchCourseFieldsForOpenGraph,
+    paidCourseShareDescription,
     resolveCourseImageAbsoluteForOg,
 } from "@/lib/courseOpenGraph";
 import CourseViewRedirect from "./CourseViewRedirect";
@@ -30,8 +31,10 @@ export async function generateMetadata({
     }
 
     const ogImage = resolveCourseImageAbsoluteForOg(course.firstPlaceImageUrl, course.imageUrl);
+    const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
     const description =
-        (course.description && course.description.trim().slice(0, 200)) ||
+        (isPaid && paidCourseShareDescription(course)) ||
+        (!isPaid && course.description && course.description.trim().slice(0, 200)) ||
         (course.sub_title && course.sub_title.trim()) ||
         defaultDescription;
     const pageTitle = `${course.title} | 두나 DoNa`;

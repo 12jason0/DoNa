@@ -9,7 +9,7 @@ import CourseDetailClient, { CourseData } from "./CourseDetailClient"; // 🟢 [
 import { unstable_cache } from "next/cache";
 import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
 import type { Metadata } from "next";
-import { resolveCourseImageAbsoluteForOg } from "@/lib/courseOpenGraph";
+import { paidCourseShareDescription, resolveCourseImageAbsoluteForOg } from "@/lib/courseOpenGraph";
 
 // 🟢 [Fix]: 데이터베이스 연결 재시도 헬퍼 (아이패드 연결 풀 타임아웃 문제 해결)
 async function retryDatabaseOperation<T>(
@@ -235,12 +235,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const description = courseSeoDescription(course);
     const firstPlaceImage = (course.coursePlaces || []).find((cp: any) => cp.place?.imageUrl)?.place?.imageUrl;
     const image = resolveCourseImageAbsoluteForOg(firstPlaceImage, course.imageUrl);
+    // 공유 카드(og·twitter): 유료 코스는 장소 이름을 빼고 "지역 · 시간 · 장소 N곳"만
+    const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
+    const shareDescription = isPaid
+        ? paidCourseShareDescription({ ...course, placeCount: (course.coursePlaces || []).length }) || "두나 데이트 코스"
+        : description;
     return {
         title,
         description,
         alternates: { canonical: `/courses/${cleanId}` },
-        openGraph: { title: course.title, description, url: `/courses/${cleanId}`, images: [image] },
-        twitter: { card: "summary_large_image", title: course.title, description, images: [image] },
+        openGraph: { title: course.title, description: shareDescription, url: `/courses/${cleanId}`, images: [image] },
+        twitter: { card: "summary_large_image", title: course.title, description: shareDescription, images: [image] },
     };
 }
 
