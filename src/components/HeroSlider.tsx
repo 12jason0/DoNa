@@ -64,7 +64,7 @@ const SliderItemComponent = memo(
         displayTitle?: string;
     }) => {
         const { t } = useLocale();
-        const hasPriority = idx === 0;
+        const hasPriority = idx === (totalSlots > 1 ? totalSlots : 0); // 첫 화면 = 가운데 세트 첫 장
         return (
             <Link
                 href={`/courses/${item.id}`}
@@ -128,7 +128,7 @@ const SliderItemComponent = memo(
 SliderItemComponent.displayName = "SliderItem";
 
 const HERO_SLIDER_MAX = 5; // 최대 5개 코스만 사용
-const REPEAT_COUNT = 15; // 5개 코스가 끊김 없이 계속 반복되도록 여러 번 복제
+const REPEAT_COUNT = 3; // 앞·가운데·뒤 세트. 가운데 세트를 벗어나면 같은 모양의 가운데 위치로 즉시 점프
 
 export default function HeroSlider({ items }: HeroSliderProps) {
     const { t, locale } = useLocale();
@@ -165,9 +165,18 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     }, []);
 
     // 🟢 슬라이드 이동 함수 (Peek용 step = slideWidth + gap 기준으로 통일, 왔다갔다 방지)
-    const middleSetStart = totalSlots * Math.floor(REPEAT_COUNT / 2);
-    const middleSetEnd = totalSlots * (Math.floor(REPEAT_COUNT / 2) + 1) - 1;
-    const upperBound = totalSlots * (REPEAT_COUNT - 1);
+    // 가운데 세트 밖이면 한 세트만큼 즉시 이동 (화면상 동일한 카드라 티 안 남)
+    const recenter = useCallback(() => {
+        const container = scrollRef.current;
+        const step = slideStepRef.current;
+        if (!container || step <= 0 || totalSlots <= 1) return;
+        const idx = Math.round(container.scrollLeft / step);
+        const shift = idx >= totalSlots * 2 ? -totalSlots : idx < totalSlots ? totalSlots : 0;
+        if (shift === 0) return;
+        container.style.scrollBehavior = "auto";
+        container.scrollLeft += shift * step;
+    }, [totalSlots]);
+
     const moveToNext = useCallback(
         (nextIdx: number) => {
             if (!scrollRef.current || isScrollingRef.current) return;
@@ -176,32 +185,17 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             isScrollingRef.current = true;
             const container = scrollRef.current;
 
-            let adjustedIdx = nextIdx;
-            if (adjustedIdx >= upperBound) adjustedIdx = middleSetStart;
-            else if (adjustedIdx < totalSlots) adjustedIdx = middleSetEnd;
-
-            const targetLeft = adjustedIdx * step;
+            const targetLeft = nextIdx * step;
             container.style.scrollBehavior = "smooth";
             container.scrollTo({ left: targetLeft });
 
             setTimeout(() => {
-                if (!container) return;
-                const finalScrollLeft = container.scrollLeft;
-                const finalIndex = Math.round(finalScrollLeft / step);
-
-                if (finalIndex >= upperBound) {
-                    container.style.scrollBehavior = "auto";
-                    container.scrollLeft = step * middleSetStart;
-                } else if (finalIndex < totalSlots) {
-                    container.style.scrollBehavior = "auto";
-                    container.scrollLeft = step * middleSetEnd;
-                }
-
+                recenter();
                 isScrollingRef.current = false;
                 container.style.scrollBehavior = "auto";
             }, 500);
         },
-        [totalSlots],
+        [recenter],
     );
 
     // 🟢 타이머 시작 함수 (3초) - step은 ref로 읽어서 항상 최신값 사용
@@ -278,7 +272,11 @@ export default function HeroSlider({ items }: HeroSliderProps) {
     }, [totalSlots, moveToNext, startTimer, stopTimer]);
 
     const scrollRafRef = useRef<number | null>(null);
+    const scrollIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const handleScroll = useCallback(() => {
+        // 손으로 넘긴 경우: 스크롤이 멈추면 가운데 세트로 복귀
+        if (scrollIdleRef.current) clearTimeout(scrollIdleRef.current);
+        scrollIdleRef.current = setTimeout(recenter, 150);
         if (scrollRafRef.current != null) return;
         scrollRafRef.current = requestAnimationFrame(() => {
             scrollRafRef.current = null;
@@ -294,7 +292,7 @@ export default function HeroSlider({ items }: HeroSliderProps) {
             const actualIndex = ((slotIndex % realLength) + realLength) % realLength;
             setCurrentIndex(actualIndex);
         });
-    }, [totalSlots, realLength]);
+    }, [totalSlots, realLength, recenter]);
 
     const onTouchStart = (e: React.TouchEvent) => {
         stopTimer(); // 터치 시작 시 타이머 중지
