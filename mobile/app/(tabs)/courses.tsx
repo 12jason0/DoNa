@@ -382,7 +382,7 @@ export default function CoursesScreen() {
                             lt={translate}
                             onLockedPress={(c) => openModal("ticket", {
                                 courseId: c.id,
-                                courseGrade: c.grade,
+                                courseGrade: c.grade === "PREMIUM" ? "PREMIUM" : "BASIC",
                                 onUnlocked: () => queryClient.setQueryData<InfiniteData<Course[]>>(["courses-list", ""], (old) =>
                                     old && { ...old, pages: old.pages.map((page) => page.map((item) => (item.id === c.id ? { ...item, isLocked: false } : item))) }
                                 ),
