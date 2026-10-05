@@ -156,26 +156,41 @@ async function handleInitialPurchase(
             });
         }
 
-        // 🟢 결제 기록 저장 (선택사항)
-        // RevenueCat의 transaction_id를 orderId로 사용
+        // 🟢 결제 기록 저장 — 스토어 거래 ID(transaction_id) 기준 1건만
         const transactionId = event.transaction_id || `rc_${Date.now()}`;
-        try {
-            await tx.payment.create({
-                data: {
-                    orderId: transactionId,
-                    userId: userId,
-                    orderName: productInfo.name,
-                    amount: productInfo.price,
-                    status: "PAID",
-                    method: "IN_APP",
-                    approvedAt: new Date(event.purchased_at_ms || Date.now()),
-                },
-            });
-        } catch (e) {
-                captureApiError(e);
-            // orderId 중복 등으로 인한 오류는 무시 (이미 처리된 것으로 간주)
-            console.warn("[RevenueCat Webhook] Payment record creation skipped:", e);
+        const approvedAt = new Date(event.purchased_at_ms || Date.now());
+        const existing = await tx.payment.findUnique({ where: { orderId: transactionId }, select: { id: true } });
+        if (existing) return; // 앱 confirm이 같은 거래 ID로 먼저 저장함
+
+        // 구버전 앱은 confirm에 거래 ID 없이 rc_{userId}_{ts}로 저장 → 그 기록에 실제 거래 ID를 붙임
+        // ponytail: 웹훅이 confirm보다 먼저 오면 구버전 앱은 여전히 2건, 앱 업데이트 보급되면 사라짐
+        const fallback = await tx.payment.findFirst({
+            where: {
+                userId,
+                orderName: productInfo.name,
+                method: "IN_APP",
+                orderId: { startsWith: `rc_${userId}_` },
+                approvedAt: { gte: new Date(approvedAt.getTime() - 30 * 60 * 1000) },
+            },
+            orderBy: { approvedAt: "asc" },
+            select: { id: true },
+        });
+        if (fallback) {
+            await tx.payment.update({ where: { id: fallback.id }, data: { orderId: transactionId } });
+            return;
         }
+
+        await tx.payment.create({
+            data: {
+                orderId: transactionId,
+                userId: userId,
+                orderName: productInfo.name,
+                amount: productInfo.price,
+                status: "PAID",
+                method: "IN_APP",
+                approvedAt,
+            },
+        });
     });
 }
 

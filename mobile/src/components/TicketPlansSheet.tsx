@@ -333,9 +333,12 @@ export default function TicketPlansSheet() {
         }
 
         let customerInfo: any;
+        let transactionId: string | null = null;
         try {
             const result = await Purchases.purchasePackage(pkg);
             customerInfo = result.customerInfo;
+            // 스토어 거래 ID — 웹훅 transaction_id와 같은 값이라 서버에서 결제가 1건으로 합쳐짐
+            transactionId = result.transaction?.transactionIdentifier ?? null;
         } catch (err: unknown) {
             setLoading(false);
             const info = purchaseErrorInfo(err);
@@ -368,7 +371,6 @@ export default function TicketPlansSheet() {
         }
 
         // ── 4) confirm + UI 반응 ─────────────────────────────────────────────
-        const transactionId = (customerInfo as any)?.originalTransactionId ?? null;
 
         // RC 결제 완료 = 사용자는 이미 돈을 냄. 즉시 잠금 해제 + 시트 닫기
         if (selectedPlan.type === "ticket") {
