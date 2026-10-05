@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkConcepts, conceptList, getCourseWarnings } from "@/lib/contentRules";
 import { prisma } from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -204,6 +205,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             }
         }
 
+        // 컨셉은 바뀌었을 때만 검사
+        if (tags !== undefined || concept !== undefined) {
+            const prev = await prisma.course.findUnique({ where: { id: courseId }, select: { tags: true, concept: true } });
+            const conceptError = checkConcepts(conceptList(tags ?? prev?.tags, concept ?? prev?.concept), prev ? conceptList(prev.tags, prev.concept) : null);
+            if (conceptError) return NextResponse.json({ error: conceptError }, { status: 400 });
+        }
+
         const updated = await prisma.course.update({
             where: { id: courseId },
             data: updateData,
@@ -273,7 +281,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             }
         }
 
-        return NextResponse.json({ success: true, course: updated });
+        return NextResponse.json({ success: true, course: updated, warnings: await getCourseWarnings(prisma, courseId) });
     } catch (error: any) {
 
             captureApiError(error);

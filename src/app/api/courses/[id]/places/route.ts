@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCourseWarnings } from "@/lib/contentRules";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             },
         });
 
-        return NextResponse.json({ success: true, course_place: created }, { status: 201 });
+        return NextResponse.json({ success: true, course_place: created, warnings: await getCourseWarnings(prisma, course_id) }, { status: 201 });
     } catch (error) {
             captureApiError(error);
         console.error("API: 코스-장소 연결 생성 오류:", error);

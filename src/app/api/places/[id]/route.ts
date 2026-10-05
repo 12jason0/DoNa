@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkCategory, checkOpeningHours, normalizeOpeningHours } from "@/lib/contentRules";
 import { normalizeCostRange } from "@/lib/costRange";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
@@ -151,6 +152,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             return val;
         };
 
+        // 바뀐 칸만 검사
+        const openingHours = normalizeOpeningHours(opening_hours);
+        if (category !== undefined || opening_hours !== undefined) {
+            const prev = await prisma.place.findUnique({ where: { id: placeId }, select: { category: true, opening_hours: true } });
+            const ruleError = checkCategory(category, prev?.category) || checkOpeningHours(openingHours, prev?.opening_hours);
+            if (ruleError) return NextResponse.json({ error: ruleError }, { status: 400 });
+        }
+
         const updated = await (prisma as any).place.update({
             where: { id: placeId },
             data: {
@@ -168,7 +177,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 ...(description_zh !== undefined ? { description_zh: description_zh || null } : {}),
                 ...(category !== undefined ? { category } : {}),
                 ...(avg_cost_range !== undefined ? { avg_cost_range: normalizeCostRange(avg_cost_range) } : {}),
-                ...(opening_hours !== undefined ? { opening_hours } : {}),
+                ...(opening_hours !== undefined ? { opening_hours: openingHours } : {}),
                 ...(phone !== undefined ? { phone } : {}),
                 ...(website !== undefined ? { website: website || null } : {}),
                 ...(reservation_required !== undefined ? { reservation_required: Boolean(reservation_required) } : {}),

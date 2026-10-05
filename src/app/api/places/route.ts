@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkCategory, checkOpeningHours, normalizeOpeningHours } from "@/lib/contentRules";
 import { normalizeCostRange } from "@/lib/costRange";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
@@ -271,6 +272,9 @@ export async function POST(request: NextRequest) {
         }
 
         const closedDaysList = normalizeClosedDays(rawClosedDays);
+        const openingHours = normalizeOpeningHours(opening_hours);
+        const ruleError = checkCategory(category, null) || checkOpeningHours(openingHours, null);
+        if (ruleError) return NextResponse.json({ error: ruleError }, { status: 400 });
 
         const created = await (prisma as any).place.create({
             data: {
@@ -288,7 +292,7 @@ export async function POST(request: NextRequest) {
                 description_zh: description_zh || null,
                 category: category || null,
                 avg_cost_range: normalizeCostRange(avg_cost_range) || null,
-                opening_hours: opening_hours || null,
+                opening_hours: openingHours || null,
                 phone: phone || null,
                 website: website || null,
                 reservation_required: typeof reservation_required === "boolean" ? reservation_required : false,

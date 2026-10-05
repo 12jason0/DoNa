@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, FormEvent, useMemo, useRef } from "react";
+import { CONCEPT_OPTIONS, MAX_CONCEPT_COUNT } from "@/lib/contentRules";
 import type { DoNaCourseTags, ConceptTag, MoodTag, TargetTag, BudgetTag } from "@/types/tag";
 import NaverMapComponent from "@/components/NaverMap";
 import type { Place } from "@/types/map";
@@ -15,23 +16,6 @@ import {
 import { useLocale } from "@/context/LocaleContext";
 
 // --- 1. 선택지 상수 정의 ---
-// 11개 컨셉 + 조건 태그 (중복 제거: 맛집→맛집탐방, 주점→술자리, 카페→카페투어, 전시/공연→공연·전시)
-const CONCEPT_OPTIONS: ConceptTag[] = [
-    "이색데이트",
-    "감성데이트",
-    "야경",
-    "힐링",
-    "가성비",
-    "인생샷",
-    "맛집탐방",
-    "카페투어",
-    "술자리",
-    "실내데이트",
-    "공연·전시",
-    "야외",
-    "기념일",
-    "소개팅",
-];
 
 // Mood: 트렌디한→힙한, 편안한→조용한 흡수 / 신비로운·전통적인 제거
 const MOOD_OPTIONS: MoodTag[] = [
@@ -50,7 +34,9 @@ const TARGET_OPTIONS: TargetTag[] = ["연인", "썸", "친구", "가족", "혼�
 const BUDGET_OPTIONS: BudgetTag[] = ["3만원 이하", "3~6만원", "6~10만원", "10~20만원", "20만원 이상"];
 const DURATION_OPTIONS = ["2시간", "3시간", "4시간", "5시간", "6시간+"];
 
-const MAX_CONCEPT_COUNT = 5;
+// 저장은 됐지만 확인이 필요한 항목
+const warningText = (warnings?: string[]) =>
+    warnings?.length ? `\n\n⚠️ 확인 필요 (${warnings.length}건)\n- ${warnings.join("\n- ")}` : "";
 
 // 선택형 코스용 세그먼트 (브런치/저녁 등 유저가 고를 구간)
 const SEGMENT_OPTIONS = [
@@ -568,7 +554,7 @@ export default function AdminCoursesPage() {
                     .map((s) => s.trim())
                     .filter(Boolean),
             ),
-        ).slice(0, MAX_CONCEPT_COUNT);
+        );
     };
 
 
@@ -624,7 +610,7 @@ export default function AdminCoursesPage() {
                         .map((v) => String(v || "").trim())
                         .filter(Boolean),
                 ),
-            ).slice(0, MAX_CONCEPT_COUNT);
+            );
             safeTags.concept = mergedConcepts as ConceptTag[];
 
             setFormData({
@@ -771,7 +757,7 @@ export default function AdminCoursesPage() {
             if (res.ok) {
                 const result = await res.json();
                 if (editingId) {
-                    alert("코스 정보가 수정되었습니다.");
+                    alert("코스 정보가 수정되었습니다." + warningText(result.warnings));
                     fetchCourses();
                 } else {
                     // 🟢 새 코스 생성 후 즉시 편집 모드로 진입
@@ -824,7 +810,8 @@ export default function AdminCoursesPage() {
             });
 
             if (res.ok) {
-                alert("장소가 추가되었습니다.");
+                const result = await res.json().catch(() => ({}));
+                alert("장소가 추가되었습니다." + warningText(result.warnings));
                 // 리스트 갱신
                 await fetchCoursePlaces(editingId);
 
@@ -965,7 +952,8 @@ export default function AdminCoursesPage() {
             });
 
             if (res.ok) {
-                alert("장소 정보가 수정되었습니다.");
+                const result = await res.json().catch(() => ({}));
+                alert("장소 정보가 수정되었습니다." + warningText(result.warnings));
                 cancelEditPlace();
                 await fetchCoursePlaces(editingId);
             } else {

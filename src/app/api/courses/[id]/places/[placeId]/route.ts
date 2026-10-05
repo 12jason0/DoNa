@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCourseWarnings } from "@/lib/contentRules";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -109,7 +110,7 @@ export async function PATCH(
             },
         });
 
-        return NextResponse.json({ success: true, course_place: updated });
+        return NextResponse.json({ success: true, course_place: updated, warnings: await getCourseWarnings(prisma, course_id) });
     } catch (error) {
 
             captureApiError(error);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkConcepts, conceptList } from "@/lib/contentRules";
 import prisma from "@/lib/db";
 import { verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
@@ -131,6 +132,8 @@ export async function POST(req: NextRequest) {
         if (!title) {
             return NextResponse.json({ error: "제목은 필수입니다." }, { status: 400 });
         }
+        const conceptError = checkConcepts(conceptList(tags, concept), null);
+        if (conceptError) return NextResponse.json({ error: conceptError }, { status: 400 });
 
         // 🟢 [Fix]: region 또는 location 둘 다 처리 (프론트엔드는 region을 보냄)
         const regionValue = region !== undefined ? region : location;
