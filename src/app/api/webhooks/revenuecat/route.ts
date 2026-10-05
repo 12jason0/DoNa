@@ -22,8 +22,8 @@ const PRODUCT_MAPPING: Record<
 > = {
     ticket_basic: { type: "COURSE_TICKET", value: 1, name: "BASIC 코스 열람권", tier: "BASIC", price: 990 },
     ticket_premium: { type: "COURSE_TICKET", value: 1, name: "PREMIUM 코스 열람권", tier: "PREMIUM", price: 1990 },
-    sub_basic: { type: "SUBSCRIPTION", value: 30, name: "AI 베이직 구독 (월 4,900원)", tier: "BASIC", price: 4900 },
-    sub_premium: { type: "SUBSCRIPTION", value: 30, name: "AI 프리미엄 구독 (월 9,900원)", tier: "PREMIUM", price: 9900 },
+    sub_basic: { type: "SUBSCRIPTION", value: 30, name: "베이직 구독", tier: "BASIC", price: 4900 },
+    sub_premium: { type: "SUBSCRIPTION", value: 30, name: "프리미엄 구독", tier: "PREMIUM", price: 9900 },
 };
 
 /**

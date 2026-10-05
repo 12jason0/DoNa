@@ -26,14 +26,14 @@ const PLAN_DATA: Record<PlanKey, PlanInfo> = {
         amount: 4900,
         type: "SUBSCRIPTION",
         value: 30,
-        name: "AI 베이직 구독 (월 4,900원)",
+        name: "베이직 구독",
         tier: "BASIC",
     },
     sub_premium: {
         amount: 9900,
         type: "SUBSCRIPTION",
         value: 30,
-        name: "AI 프리미엄 구독 (월 9,900원)",
+        name: "프리미엄 구독",
         tier: "PREMIUM",
     },
 };
