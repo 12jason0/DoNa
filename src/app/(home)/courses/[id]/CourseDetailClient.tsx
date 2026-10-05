@@ -1926,6 +1926,7 @@ export default function CourseDetailClient({
                                                                                 <Icons.Bulb className="w-3.5 h-3.5" />
                                                                                 {t("courseDetail.confirmed")}
                                                                             </div>
+                                                                            <TipChips coursePlace={coursePlace} locale={locale} t={t} />
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -2018,6 +2019,7 @@ export default function CourseDetailClient({
                                                                                               )
                                                                                             : pickPlaceAddress(cp.place, locale)}
                                                                                     </p>
+                                                                                    <TipChips coursePlace={cp} locale={locale} t={t} max={2} />
                                                                                 </div>
                                                                             </div>
                                                                             <button
@@ -2249,44 +2251,7 @@ export default function CourseDetailClient({
                                                                                 </div>
                                                                             </div>
                                                                             {/* 🟢 보유 꿀팁: 아이콘 + 카테고리명만 (주차, 시그니처 등), 내용은 모달에서 */}
-                                                                            {(() => {
-                                                                                const allTips = parseTipsFromDbForLocale(coursePlace, locale);
-                                                                                if (allTips.length === 0) return null;
-
-                                                                                const getCategoryLabel = (cat: string) =>
-                                                                                    getTipCategoryLabel(cat, t);
-
-                                                                                const categories = [...new Set(allTips.map((t) => t.category))];
-                                                                                const displayCategories = categories.slice(0, 3);
-                                                                                const hasMore = categories.length > 3;
-
-                                                                                return (
-                                                                                    <div className="mt-2 flex flex-col gap-1.5">
-                                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
-                                                                                            ✨ {t("courseDetail.freeTips")}
-                                                                                        </span>
-                                                                                        <div className="flex flex-wrap gap-1.5">
-                                                                                            {displayCategories.map((cat) => (
-                                                                                                <span
-                                                                                                    key={cat}
-                                                                                                    className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
-                                                                                                >
-                                                                                                    <TipCategoryIcon
-                                                                                                        category={cat}
-                                                                                                        className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
-                                                                                                    />
-                                                                                                    {getCategoryLabel(cat)}
-                                                                                                </span>
-                                                                                            ))}
-                                                                                            {hasMore && (
-                                                                                                <span className="inline-flex items-center py-0.5 px-2 rounded-md text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                                                                                                    ...
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            })()}
+                                                                            <TipChips coursePlace={coursePlace} locale={locale} t={t} />
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -3636,5 +3601,35 @@ export default function CourseDetailClient({
                 </div>
             )}
         </>
+    );
+}
+
+/** 보유 꿀팁 칩: 카테고리 아이콘 + 이름만, 내용은 장소 모달에서 */
+function TipChips({ coursePlace, locale, t, max = 3 }: { coursePlace: any; locale: any; t: any; max?: number }) {
+    const categories = [...new Set(parseTipsFromDbForLocale(coursePlace, locale).map((tip) => tip.category))];
+    if (categories.length === 0) return null;
+    return (
+        <div className="mt-2 flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">✨ {t("courseDetail.freeTips")}</span>
+            <div className="flex flex-wrap gap-1.5">
+                {categories.slice(0, max).map((cat) => (
+                    <span
+                        key={cat}
+                        className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
+                    >
+                        <TipCategoryIcon
+                            category={cat}
+                            className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
+                        />
+                        {getTipCategoryLabel(cat, t)}
+                    </span>
+                ))}
+                {categories.length > max && (
+                    <span className="inline-flex items-center py-0.5 px-2 rounded-md text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                        ...
+                    </span>
+                )}
+            </div>
+        </div>
     );
 }

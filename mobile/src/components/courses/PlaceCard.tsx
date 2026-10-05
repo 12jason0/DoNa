@@ -15,6 +15,7 @@ import {
 import { pickPlaceName, pickPlaceAddress } from "../../lib/courseLocalized";
 import type { LocalePreference } from "../../lib/appSettingsStorage";
 import type { CoursePlace } from "./types";
+import { TipChips } from "./TipChips";
 import { PLACE_OPEN_BADGE_RN } from "./constants";
 import { getPlaceImageUrl, getPlaceReservationUrl, closedDaysForPlaceStatus, isPlaceClosedForReserve } from "./utils";
 
@@ -173,10 +174,7 @@ export const PlaceCard = React.memo(function PlaceCard({
                         hitSlop={6}
                         activeOpacity={0.7}
                     >
-                        <Text style={s.tipLabel}>{i18n("mobile.courseScreen.tipSectionLabel")}</Text>
-                        <View style={s.tipChip}>
-                            <Text style={s.tipChipText}>{i18n("mobile.courseScreen.tipViewInfo")}</Text>
-                        </View>
+                        <TipChips coursePlace={cp} />
                     </TouchableOpacity>
                 ) : tipLocked ? (
                     <TouchableOpacity
@@ -233,17 +231,7 @@ const s = StyleSheet.create({
     },
     reserveBtnText: { fontSize: 11, color: "#fff", fontWeight: "500" },
     placeThumb: { width: 80, height: 80, borderRadius: 8, flexShrink: 0 },
-    tipRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" },
-    tipLabel: { fontSize: 11, fontWeight: "500", color: "#4b5563" },
-    tipChip: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        backgroundColor: "#f3f4f6",
-        borderWidth: 1,
-        borderColor: "#d1fae5",
-    },
-    tipChipText: { fontSize: 11, fontWeight: "500", color: "#059669" },
+    tipRow: { marginTop: 2 },
     tipLockedRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, backgroundColor: "#f9fafb", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: "#e5e7eb" },
     tipLockedIcon: { fontSize: 11 },
     tipLockedLabel: { flex: 1, fontSize: 11, color: "#6b7280" },

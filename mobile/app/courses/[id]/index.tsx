@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { TipChips } from "../../../src/components/courses/TipChips";
 import {
     View,
     Text,
@@ -828,6 +829,7 @@ export default function CourseDetailScreen() {
                                                                                         ? translateCourseFreeformKoText(cp.recommended_time, locale as CourseUiLocale, i18n)
                                                                                         : cp.place ? pickPlaceAddress(cp.place, locale as LocalePreference) : ""}
                                                                                 </Text>
+                                                                                <TipChips coursePlace={cp} max={2} />
                                                                             </View>
                                                                         </View>
                                                                         {/* 정보 버튼 (웹: 하단 전체 너비, 에메랄드 배경) */}
