@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { isNewCourse } from "../../../src/lib/courseListOrder";
 import {
     View,
     Text,
@@ -60,7 +61,7 @@ function CourseCardInner({
 
     const [unlocked, setUnlocked] = useState(false);
     const isLocked = !!course.isLocked && !unlocked;
-    const isNew = (course as any).reviewCount === 0;
+    const isNew = isNewCourse((course as any).createdAt);
     const placesCount = course.placesCount ?? course.coursePlaces?.length ?? 0;
     const views = Number((course as any).viewCount ?? 0);
     const reviewCount = Number((course as any).reviewCount ?? 0);

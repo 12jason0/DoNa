@@ -144,7 +144,8 @@ export function translateCourseRegion(
                 const mapKey = REGION_KEY_MAP[code];
                 if (mapKey) {
                     const translated = tResolved(t, mapKey);
-                    if (translated) return shortRegionLabel(translated);
+                    // 한국어 화면이면 넓은 권역명("연남"→"홍대")으로 바꾸지 않고 courses.region 그대로
+                    if (translated && !/[가-힣]/.test(translated)) return shortRegionLabel(translated);
                 }
             }
         }

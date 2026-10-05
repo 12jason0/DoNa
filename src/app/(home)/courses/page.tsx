@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import CoursesClient from "./CoursesClient";
 import prisma from "@/lib/db";
 import { filterCoursesByImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
@@ -222,37 +223,16 @@ function mapCourses(courses: any[], userTier: string, unlockedCourseIds: number[
 // isLocked는 mapCourses에서 userTier + unlockedCourseIds로 매 요청 계산 → 잠금 상태 정확 유지
 const getCachedRawCourses = unstable_cache(
     async (timeOfDay: string | null) => {
+        // 공개 코스 전체를 첫 화면에 (무한 스크롤에 기대지 않음). 순서는 /api/courses 기본 목록과 동일
         const rawAll = await prisma.course.findMany({
             where: { isPublic: true },
-            take: 60,
+            take: MAX_LIST_COURSES,
             orderBy: { id: "desc" },
             select: courseSelectOptions,
         });
-
-        const freeRaw = rawAll.filter((c: any) => c.grade === "FREE");
-        const basicRaw = rawAll.filter((c: any) => c.grade === "BASIC").slice(0, 9);
-        const premiumRaw = rawAll.filter((c: any) => c.grade === "PREMIUM").slice(0, 6);
-
-        const neededFromFree = 15 + (9 - basicRaw.length) + (6 - premiumRaw.length);
-        const freeArr = freeRaw.slice(0, Math.max(neededFromFree, 0));
-
-        const interleaved: any[] = [];
-        let fIdx = 0,
-            bIdx = 0,
-            pIdx = 0;
-
-        while (
-            interleaved.length < 30 &&
-            (fIdx < freeArr.length || bIdx < basicRaw.length || pIdx < premiumRaw.length)
-        ) {
-            if (fIdx < freeArr.length) interleaved.push(freeArr[fIdx++]);
-            if (fIdx < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[fIdx++]);
-            if (bIdx < basicRaw.length && interleaved.length < 30) interleaved.push(basicRaw[bIdx++]);
-            if (pIdx < premiumRaw.length && interleaved.length < 30) interleaved.push(premiumRaw[pIdx++]);
-        }
-
-        sortCoursesByTimeMatch(interleaved, timeOfDay);
-        return interleaved;
+        const ordered = interleaveByGrade(filterCoursesByImagePolicy(rawAll as unknown as CourseWithPlaces[], "any") as any[]);
+        sortCoursesByTimeMatch(ordered, timeOfDay);
+        return ordered;
     },
     ["courses-list"],
     { revalidate: 180, tags: ["courses-list"] }

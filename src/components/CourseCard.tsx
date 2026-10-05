@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isNewCourse } from "@/lib/courseListOrder";
 import Image from "@/components/ImageFallback";
 import React, { useState, memo, useMemo, useEffect } from "react"; // memo, useMemo 추가
 import { useLocale } from "@/context/LocaleContext";
@@ -61,6 +62,7 @@ export interface CourseCardProps {
         viewCount?: number;
         reviewCount?: number;
         rating?: number;
+        createdAt?: string | Date;
         grade?: "FREE" | "BASIC" | "PREMIUM";
         isLocked?: boolean;
         coursePlaces?: CoursePlace[];
@@ -260,7 +262,7 @@ const CourseCard = memo(
                         <span className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded-md font-bold border border-gray-700">
                             #{displayConcept}
                         </span>
-                        {showNewBadge && course.reviewCount === 0 && (
+                        {showNewBadge && isNewCourse(course.createdAt) && (
                             <span className="bg-[#7aa06f] text-white text-[10px] px-2 py-1 rounded-md font-bold">
                                 NEW
                             </span>

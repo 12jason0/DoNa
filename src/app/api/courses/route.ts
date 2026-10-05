@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { interleaveByGrade, MAX_LIST_COURSES } from "@/lib/courseListOrder";
 import prisma from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { filterCoursesByImagePolicy, type ImagePolicy, type CourseWithPlaces } from "@/lib/imagePolicy";
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
         const effectiveOffset = Math.max(parsedOffset, 0);
 
         // [수정] limit이 있어도 필터가 없으면 기본 로드를 수행하도록 조건 완화
-        const isDefaultLoad = effectiveOffset === 0 && !q && !concept && !regionQuery && !tagIdsParam && !gradeParam;
+        const isDefaultLoad = !q && !concept && !regionQuery && !tagIdsParam && !gradeParam;
 
         const courseSelect = {
             id: true,
@@ -179,38 +180,23 @@ export async function GET(request: NextRequest) {
         };
 
         if (isDefaultLoad) {
-            const cacheKey = `courses_def_v7:${imagePolicy}:${userTier}:${timeOfDay || ""}`;
+            // 전체 공개 코스를 한 순서로 만들고 offset으로 잘라 줌 (첫 페이지·다음 페이지가 같은 순서)
+            const cacheKey = `courses_def_v8:${imagePolicy}:${userTier}:${timeOfDay || ""}`;
             let cached = noCache ? null : await defaultCache.get<any[]>(cacheKey);
             if (!cached) {
                 const allRaw = await prisma.course.findMany({
                     where: { isPublic: true },
-                    take: 60,
+                    take: MAX_LIST_COURSES,
                     orderBy: { id: "desc" },
                     select: courseSelect,
                 });
                 const filteredRaw = filterCoursesByImagePolicy(allRaw as unknown as CourseWithPlaces[], imagePolicy);
-                const freeArr = filteredRaw.filter((c) => c.grade === "FREE");
-                const basicArr = filteredRaw.filter((c) => c.grade === "BASIC");
-                const premiumArr = filteredRaw.filter((c) => c.grade === "PREMIUM");
-                const interleaved = [];
-                let f = 0,
-                    b = 0,
-                    p = 0;
-                while (
-                    interleaved.length < 30 &&
-                    (f < freeArr.length || b < basicArr.length || p < premiumArr.length)
-                ) {
-                    if (f < freeArr.length) interleaved.push(freeArr[f++]);
-                    if (f < freeArr.length && interleaved.length < 30) interleaved.push(freeArr[f++]);
-                    if (b < basicArr.length && interleaved.length < 30) interleaved.push(basicArr[b++]);
-                    if (p < premiumArr.length && interleaved.length < 30) interleaved.push(premiumArr[p++]);
-                }
-                sortCoursesByTimeMatch(interleaved, timeOfDay);
-                cached = interleaved.map(formatCourse).filter(Boolean);
+                const ordered = interleaveByGrade(filteredRaw as any[]);
+                sortCoursesByTimeMatch(ordered, timeOfDay);
+                cached = ordered.map(formatCourse).filter(Boolean);
                 if (!noCache) await defaultCache.set(cacheKey, cached);
             }
-            // limit이 30보다 작게 들어온 경우 슬라이싱 처리
-            const finalData = effectiveLimit < 30 ? cached?.slice(0, effectiveLimit) : cached;
+            const finalData = cached!.slice(effectiveOffset, effectiveOffset + effectiveLimit);
             return NextResponse.json({ data: finalData, isRecommendation: false });
         }
 
