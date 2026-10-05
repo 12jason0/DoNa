@@ -159,8 +159,14 @@ async function handleInitialPurchase(
         // 🟢 결제 기록 저장 — 스토어 거래 ID(transaction_id) 기준 1건만
         const transactionId = event.transaction_id || `rc_${Date.now()}`;
         const approvedAt = new Date(event.purchased_at_ms || Date.now());
+        // 샌드박스(테스트) 결제는 매출 집계에서 빠지도록 is_test 표시. true로만 바꾸고 false로 되돌리지 않음 (수동 표시 보존)
+        const isSandbox = event.environment === "SANDBOX";
         const existing = await tx.payment.findUnique({ where: { orderId: transactionId }, select: { id: true } });
-        if (existing) return; // 앱 confirm이 같은 거래 ID로 먼저 저장함
+        if (existing) {
+            // 앱 confirm이 같은 거래 ID로 먼저 저장함 (confirm은 샌드박스 여부를 알 수 없어 여기서 표시)
+            if (isSandbox) await tx.payment.update({ where: { id: existing.id }, data: { isTest: true } });
+            return;
+        }
 
         // 구버전 앱은 confirm에 거래 ID 없이 rc_{userId}_{ts}로 저장 → 그 기록에 실제 거래 ID를 붙임
         // ponytail: 웹훅이 confirm보다 먼저 오면 구버전 앱은 여전히 2건, 앱 업데이트 보급되면 사라짐
@@ -176,7 +182,10 @@ async function handleInitialPurchase(
             select: { id: true },
         });
         if (fallback) {
-            await tx.payment.update({ where: { id: fallback.id }, data: { orderId: transactionId } });
+            await tx.payment.update({
+                where: { id: fallback.id },
+                data: { orderId: transactionId, ...(isSandbox && { isTest: true }) },
+            });
             return;
         }
 
@@ -189,6 +198,7 @@ async function handleInitialPurchase(
                 status: "PAID",
                 method: "IN_APP",
                 approvedAt,
+                isTest: isSandbox,
             },
         });
     });
