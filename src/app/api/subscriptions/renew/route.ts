@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
                 console.error(`[구독 자동갱신 실패] User ${user.id}:`, error);
 
                 // ❌ [슬랙 알림] 결제 실패 시 즉시 전송
-                const planName = user.subscriptionTier === "PREMIUM" ? "프리미엄 멤버십" : "베이직 멤버십";
+                const planName = user.subscriptionTier === "PREMIUM" ? "프리미엄 구독" : "베이직 구독";
                 const failureMessage = `
 ⚠️ *[두나] 정기 결제 실패*
 ━━━━━━━━━━━━━━━━━━━━
@@ -120,8 +120,8 @@ export async function GET(req: NextRequest) {
 async function processSubscriptionRenewal(userId: number, billingKey: string, currentTier: SubscriptionTier) {
     const planInfo =
         currentTier === "PREMIUM"
-            ? { amount: 9900, name: "프리미엄 멤버십", tier: "PREMIUM" }
-            : { amount: 4900, name: "베이직 멤버십", tier: "BASIC" };
+            ? { amount: 9900, name: "프리미엄 구독", tier: "PREMIUM" }
+            : { amount: 4900, name: "베이직 구독", tier: "BASIC" };
 
     // 🟢 빌링/구독 결제용 시크릿 키 (환경변수에서 로드)
     const secretKey = process.env.TOSS_SECRET_KEY_BILLING;

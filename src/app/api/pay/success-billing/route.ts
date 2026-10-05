@@ -70,8 +70,8 @@ export async function GET(req: NextRequest) {
         // 4. 첫 결제 승인 요청 (금액 설정 로직 포함)
         const planInfo =
             planId === "sub_premium"
-                ? { amount: 9900, name: "프리미엄 멤버십", tier: "PREMIUM" }
-                : { amount: 4900, name: "베이직 멤버십", tier: "BASIC" };
+                ? { amount: 9900, name: "프리미엄 구독", tier: "PREMIUM" }
+                : { amount: 4900, name: "베이직 구독", tier: "BASIC" };
 
         const orderId = `billing_${planId}_${userId}_${Date.now()}`;
         const billingPaymentResponse = await fetch(`https://api.tosspayments.com/v1/billing/${billingKey}`, {
