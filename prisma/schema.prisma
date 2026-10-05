@@ -132,6 +132,16 @@ model SearchHistory {
   @@map("search_histories")
 }
 
+/// 인기 검색어 집계용 검색 로그. 누가 검색했는지는 남기지 않음 (검색어·시간만)
+model SearchLog {
+  id        Int      @id @default(autoincrement())
+  keyword   String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("search_logs")
+}
+
 model ActiveCourse {
   id                    String               @id @default(cuid())
   userId                Int                  @unique @map("user_id")

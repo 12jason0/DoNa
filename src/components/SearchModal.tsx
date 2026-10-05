@@ -31,6 +31,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
     const [isSearchHistoryEnabled, setIsSearchHistoryEnabled] = useState(true);
     const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+    const [liveKeywords, setLiveKeywords] = useState<string[]>([]);
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
@@ -59,6 +60,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         if (isOpen) {
             document.body.style.overflow = "hidden";
             fetchSearchHistory();
+            fetch("/api/search/popular")
+                .then((r) => (r.ok ? r.json() : null))
+                .then((d) => setLiveKeywords(Array.isArray(d?.keywords) ? d.keywords : []))
+                .catch(() => {});
             setTimeout(() => {
                 inputRef.current?.focus();
             }, 100);
@@ -331,11 +336,20 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                     {t("search.popularTitle")}
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {([0, 1, 2, 3, 4] as const).map((index) => {
-                                        const keyword = t(`search.popularKeyword${index}` as "search.popularKeyword0");
+                                    {/* 최근 7일 실제 검색어, 5개 미만이면 기본 검색어로 채움 */}
+                                    {[
+                                        ...new Set([
+                                            ...liveKeywords,
+                                            ...([0, 1, 2, 3, 4] as const).map((i) =>
+                                                t(`search.popularKeyword${i}` as "search.popularKeyword0"),
+                                            ),
+                                        ]),
+                                    ]
+                                        .slice(0, 5)
+                                        .map((keyword) => {
                                         return (
                                             <button
-                                                key={index}
+                                                key={keyword}
                                                 onMouseEnter={() => {
                                                     const sp = new URLSearchParams();
                                                     sp.set("q", keyword);

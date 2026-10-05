@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
+import { isExcludedStatsUser } from "@/lib/statsExclude";
 
 export const dynamic = "force-dynamic";
 
@@ -40,16 +41,28 @@ export async function GET(request: NextRequest) {
     }
 }
 
-/** POST: 검색 키워드 저장 (isSearchHistoryEnabled일 때만) */
+/** 인기 검색어 집계용 로그 (비로그인 포함). 1글자·통계 제외 계정은 남기지 않음, 실패해도 검색 흐름엔 영향 없음 */
+async function logSearch(keyword: string, userId: number | null) {
+    try {
+        if (keyword.length < 2) return;
+        if (userId && (await isExcludedStatsUser(prisma, userId))) return;
+        await prisma.searchLog.create({ data: { keyword: keyword.slice(0, 100) } });
+    } catch (error) {
+        captureApiError(error);
+    }
+}
+
+/** POST: 검색 키워드 저장 (개인 기록은 로그인 + isSearchHistoryEnabled일 때만, 인기 검색어 로그는 모두) */
 export async function POST(request: NextRequest) {
     try {
         const userId = resolveUserId(request);
+        const body = await request.json().catch(() => null);
+        const keyword = typeof body?.keyword === "string" ? body.keyword.trim() : "";
+        if (keyword) await logSearch(keyword, userId);
+
         if (!userId) {
             return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
         }
-
-        const body = await request.json();
-        const keyword = typeof body?.keyword === "string" ? body.keyword.trim() : "";
 
         if (!keyword) {
             return NextResponse.json({ error: "keyword가 필요합니다." }, { status: 400 });

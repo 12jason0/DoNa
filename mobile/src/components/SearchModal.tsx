@@ -50,6 +50,7 @@ export default function SearchModal() {
     const [isSearchHistoryEnabled, setIsSearchHistoryEnabled] = useState(true);
     const [showDisableConfirm, setShowDisableConfirm] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [liveKeywords, setLiveKeywords] = useState<string[]>([]);
 
     const sheetHeight = Math.round(Dimensions.get("window").height * 0.80);
 
@@ -113,6 +114,9 @@ export default function SearchModal() {
             setLoading(true);
             setQuery("");
             fetchSearchHistory();
+            api.get<{ keywords?: string[] }>("/api/search/popular")
+                .then((d) => setLiveKeywords(Array.isArray(d?.keywords) ? d.keywords : []))
+                .catch(() => {});
             setTimeout(() => inputRef.current?.focus(), 120);
         } else {
             setShowDisableConfirm(false);
@@ -295,11 +299,16 @@ export default function SearchModal() {
                                             <Text style={[styles.sectionTitle, { color: t.text }]}>{i18n("search.popularTitle")}</Text>
                                         </View>
                                         <View style={styles.popularWrap}>
-                                            {Array.from({ length: POPULAR_KEYWORD_COUNT }, (_, i) => {
-                                                const kw = i18n(`search.popularKeyword${i}`);
+                                            {/* 최근 7일 실제 검색어, 5개 미만이면 기본 검색어로 채움 */}
+                                            {[
+                                                ...new Set([
+                                                    ...liveKeywords,
+                                                    ...Array.from({ length: POPULAR_KEYWORD_COUNT }, (_, i) => i18n(`search.popularKeyword${i}`)),
+                                                ]),
+                                            ].slice(0, POPULAR_KEYWORD_COUNT).map((kw) => {
                                                 return (
                                                     <TouchableOpacity
-                                                        key={i}
+                                                        key={kw}
                                                         style={[styles.popularChip, { backgroundColor: t.card, borderColor: t.border }]}
                                                         onPress={() => handleSearch(kw)}
                                                     >
