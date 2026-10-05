@@ -1,7 +1,7 @@
 import prisma from "@/lib/db";
 import { getS3StaticUrl } from "@/lib/s3Static";
 import { getS3StaticUrlForMetadata } from "@/lib/s3StaticUrl";
-import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
+export { paidCourseShareDescription } from "@/lib/courseShareDescription";
 
 /**
  * 카카오/OG 크롤러용 절대 이미지 URL.
@@ -16,21 +16,6 @@ export function resolveCourseImageAbsoluteForOg(
     if (!raw) return fallback;
     if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
     return getS3StaticUrl(raw.replace(/^\//, ""));
-}
-
-/** 유료(BASIC·PREMIUM) 코스 공유 설명: 장소 이름을 숨기고 "지역 · 시간 · 장소 N곳"만 */
-export function paidCourseShareDescription(course: {
-    region?: string | null;
-    duration?: string | null;
-    placeCount: number;
-}): string {
-    return [
-        course.region?.trim(),
-        course.duration !== COURSE_DETAIL_SENTINELS.duration && course.duration?.trim(),
-        course.placeCount > 0 && `장소 ${course.placeCount}곳`,
-    ]
-        .filter(Boolean)
-        .join(" · ");
 }
 
 export type CourseOgFields = {

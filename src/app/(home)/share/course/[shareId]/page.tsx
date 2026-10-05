@@ -1,7 +1,37 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CourseSharePreviewClient from "./CourseSharePreviewClient";
 import prisma from "@/lib/db";
 import { getMergedTipsFromRow } from "@/types/tip";
+import {
+    fetchCourseFieldsForOpenGraph,
+    paidCourseShareDescription,
+    resolveCourseImageAbsoluteForOg,
+} from "@/lib/courseOpenGraph";
+
+/** 공유 링크 카드: 코스 제목·사진, 설명은 /courses/[id]/view와 같은 규칙 (유료는 장소 이름 숨김) */
+export async function generateMetadata({ params }: { params: Promise<{ shareId: string }> }): Promise<Metadata> {
+    const { shareId } = await params;
+    const shared = await prisma.sharedCourse
+        .findUnique({ where: { id: shareId }, select: { templateCourseId: true } })
+        .catch(() => null);
+    const course = shared ? await fetchCourseFieldsForOpenGraph(String(shared.templateCourseId)) : null;
+    if (!course) return {};
+
+    const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
+    const description =
+        (isPaid && paidCourseShareDescription(course)) ||
+        (!isPaid && course.description?.trim().slice(0, 200)) ||
+        course.sub_title?.trim() ||
+        "특별한 데이트를 위한 맞춤 코스 추천";
+    const image = resolveCourseImageAbsoluteForOg(course.firstPlaceImageUrl, course.imageUrl);
+    return {
+        title: { absolute: `${course.title} | 두나 DoNa` },
+        description,
+        openGraph: { title: course.title, description, url: `/share/course/${shareId}`, images: [image] },
+        twitter: { card: "summary_large_image", title: course.title, description, images: [image] },
+    };
+}
 
 async function getSharedCourseData(shareId: string) {
     const shared = await prisma.sharedCourse.findUnique({
