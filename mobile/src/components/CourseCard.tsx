@@ -14,7 +14,7 @@ import { useThemeColors } from "../hooks/useThemeColors";
 import { useLocale } from "../lib/useLocale";
 import { useAuth } from "../hooks/useAuth";
 import { useModalActions } from "../lib/modalContext";
-import { resolveImageUrl } from "../lib/imageUrl";
+import { resolveResizedImageUrl } from "../lib/imageUrl";
 import { pickCourseTitle } from "../lib/courseLocalized";
 import { formatViewsCompact } from "../lib/localeUtils";
 import {
@@ -107,7 +107,7 @@ function CourseCardInner({
             <View style={[s.cardImgWrap, { borderColor: t.isDark ? "transparent" : "#f3f4f6" }]}>
                 {course.imageUrl ? (
                     <Image
-                        source={{ uri: resolveImageUrl(course.imageUrl) }}
+                        source={{ uri: resolveResizedImageUrl(course.imageUrl) }}
                         style={s.cardImg}
                         contentFit="cover"
                         // FlatList 재활용 시 같은 뷰가 다른 코스로 재사용될 때 이미지 재디코딩·깜빡임 방지 (스크롤 렉 완화)

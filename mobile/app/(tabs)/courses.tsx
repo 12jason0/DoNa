@@ -12,13 +12,13 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api, endpoints } from "../../src/lib/api";
 import { Colors } from "../../src/constants/theme";
 import PageLoadingOverlay from "../../src/components/PageLoadingOverlay";
-import { resolveImageUrl } from "../../src/lib/imageUrl";
+import { resolveResizedImageUrl } from "../../src/lib/imageUrl";
 import AppHeaderWithModals from "../../src/components/AppHeaderWithModals";
 import { useThemeColors } from "../../src/hooks/useThemeColors";
 import { useLocale } from "../../src/lib/useLocale";
@@ -147,7 +147,7 @@ const HeroSlider = React.memo(function HeroSlider({
                         activeOpacity={0.92}
                     >
                         {c.imageUrl ? (
-                            <Image source={{ uri: resolveImageUrl(c.imageUrl) }} style={heroStyles.img} fadeDuration={0} blurRadius={c.isLocked ? 3 : 0} />
+                            <Image source={{ uri: resolveResizedImageUrl(c.imageUrl, 1080) }} style={heroStyles.img} fadeDuration={0} blurRadius={c.isLocked ? 3 : 0} />
                         ) : (
                             <View style={[heroStyles.img, { backgroundColor: "#d1fae5" }]} />
                         )}
@@ -273,36 +273,12 @@ export default function CoursesScreen() {
     );
     const queryClient = useQueryClient();
 
-    // 히어로 슬라이더용 코스 (limit=10으로 각 등급 충분히 확보 후 프론트에서 순서 배치)
-    const { data: heroRaw } = useQuery<Course[]>({
-        queryKey: ["courses-hero"],
-        queryFn: async () => {
-            const r = await api.get<Course[] | { data?: Course[]; courses?: Course[] }>("/api/courses?limit=30");
-            if (Array.isArray(r)) return r;
-            return (r as any)?.data ?? (r as any)?.courses ?? [];
-        },
-        staleTime: 5 * 60 * 1000,
-    });
-
-    // 순서: 1=FREE, 2=BASIC, 3=BASIC, 4=PREMIUM, 5=FREE
-    const heroData = React.useMemo(() => {
-        if (!heroRaw || heroRaw.length === 0) return [];
-        const free = heroRaw.filter((c) => c.grade === "FREE");
-        const basic = heroRaw.filter((c) => c.grade === "BASIC");
-        const premium = heroRaw.filter((c) => c.grade === "PREMIUM");
-        const result: Course[] = [];
-        if (free[0]) result.push(free[0]);
-        if (basic[0]) result.push(basic[0]);
-        if (basic[1] ?? basic[0]) result.push(basic[1] ?? basic[0]);
-        if (premium[0]) result.push(premium[0]);
-        if (free[1] ?? free[0]) result.push(free[1] ?? free[0]);
-        return result;
-    }, [heroRaw]);
-
-    // 찜 목록
+    // 찜 목록 (비로그인은 401만 나므로 호출 안 함)
+    const { isAuthenticated } = useAuth();
     const { data: favList } = useQuery<any[]>({
         queryKey: ["favorites"],
         queryFn: () => api.get<any[]>(endpoints.favorites),
+        enabled: isAuthenticated,
         retry: false,
     });
 
@@ -347,6 +323,23 @@ export default function CoursesScreen() {
 
     const courses = useMemo(() => data?.pages.flat() ?? [], [data?.pages]);
 
+    // 히어로: 별도 API 호출 없이 전체 목록 첫 페이지(20개)에서 뽑음. 필터 중엔 히어로를 안 보여줌
+    const heroRaw = activeConcept ? undefined : data?.pages[0];
+    // 순서: 1=FREE, 2=BASIC, 3=BASIC, 4=PREMIUM, 5=FREE
+    const heroData = React.useMemo(() => {
+        if (!heroRaw || heroRaw.length === 0) return [];
+        const free = heroRaw.filter((c) => c.grade === "FREE");
+        const basic = heroRaw.filter((c) => c.grade === "BASIC");
+        const premium = heroRaw.filter((c) => c.grade === "PREMIUM");
+        const result: Course[] = [];
+        if (free[0]) result.push(free[0]);
+        if (basic[0]) result.push(basic[0]);
+        if (basic[1] ?? basic[0]) result.push(basic[1] ?? basic[0]);
+        if (premium[0]) result.push(premium[0]);
+        if (free[1] ?? free[0]) result.push(free[1] ?? free[0]);
+        return result;
+    }, [heroRaw]);
+
     const favIdsRef = useRef(favIds);
     useEffect(() => { favIdsRef.current = favIds; }, [favIds]);
 
@@ -390,8 +383,8 @@ export default function CoursesScreen() {
                             onLockedPress={(c) => openModal("ticket", {
                                 courseId: c.id,
                                 courseGrade: c.grade,
-                                onUnlocked: () => queryClient.setQueryData<Course[]>(["courses-hero"], (old) =>
-                                    old?.map(item => item.id === c.id ? { ...item, isLocked: false } : item) ?? old
+                                onUnlocked: () => queryClient.setQueryData<InfiniteData<Course[]>>(["courses-list", ""], (old) =>
+                                    old && { ...old, pages: old.pages.map((page) => page.map((item) => (item.id === c.id ? { ...item, isLocked: false } : item))) }
                                 ),
                             })}
                             onLoginRequired={() => openModal("login")}

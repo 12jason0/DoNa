@@ -403,8 +403,7 @@ export default function TicketPlansSheet() {
                     if (courseId != null) {
                         queryClient.invalidateQueries({ queryKey: ["course", String(courseId)] });
                     }
-                    // 코스 목록(히어로/리스트)도 갱신해 잠금 상태 반영
-                    queryClient.invalidateQueries({ queryKey: ["courses-hero"] });
+                    // 코스 목록(히어로는 목록 첫 페이지에서 뽑음)도 갱신해 잠금 상태 반영
                     queryClient.invalidateQueries({ queryKey: ["courses-list"] });
                 }).catch(() => {});
             }
