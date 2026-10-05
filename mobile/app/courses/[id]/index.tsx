@@ -53,6 +53,7 @@ import {
     pickPlaceName,
     pickPlaceAddress,
 } from "../../../src/lib/courseLocalized";
+import { markCourseDetailViewed } from "../../../src/lib/mmkv";
 import type { LocalePreference } from "../../../src/lib/appSettingsStorage";
 
 import type { PlaceData, CoursePlace, CourseDetail, CourseReview } from "../../../src/components/courses/types";
@@ -192,6 +193,7 @@ export default function CourseDetailScreen() {
     useEffect(() => {
         if (!id) return;
         api.post(`/api/courses/${id}/view`, {}).catch(() => {});
+        markCourseDetailViewed();
     }, [id]);
 
     // ── 선택형 코스 데이터 ──────────────────────────────────────────────────────

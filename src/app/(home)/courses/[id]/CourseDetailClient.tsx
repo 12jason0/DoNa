@@ -942,6 +942,13 @@ export default function CourseDetailClient({
         return () => clearTimeout(timer);
     }, [courseId]);
 
+    // 혜택 알림 동의 모달은 코스 상세를 1개 본 뒤에만 홈에서 노출
+    useEffect(() => {
+        try {
+            localStorage.setItem("courseDetailViewed", "1");
+        } catch {}
+    }, []);
+
     // 선택형 코스: 내 선택 조합 조회
     useEffect(() => {
         if (!courseData?.isSelectionType || !isAuthenticated || authLoading) {

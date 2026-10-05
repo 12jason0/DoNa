@@ -21,7 +21,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -43,7 +43,7 @@ import {
 } from "../../../src/lib/courseTranslate";
 import type { LocalePreference } from "../../src/lib/appSettingsStorage";
 import type { Course, ActiveCourse } from "../../src/types/api";
-import { getBenefitConsentHideUntil, setBenefitConsentHideUntil } from "../../src/lib/mmkv";
+import { getBenefitConsentHideUntil, setBenefitConsentHideUntil, hasViewedCourseDetail } from "../../src/lib/mmkv";
 import { useModalActions } from "../../src/lib/modalContext";
 import type { MemoryDetailStory } from "../../src/components/MemoryDetailModal";
 import type { UserProfile } from "../../src/types/api";
@@ -344,8 +344,9 @@ export default function HomeScreen() {
         (s) => s.status === "PUBLISHED" && Number.isFinite(Number(s.course?.id)),
     );
 
-    useEffect(() => {
-        if (!user || !userProfile || userProfile.hasSeenConsentModal !== false) return;
+    // 코스 상세를 1개 본 뒤 홈으로 돌아왔을 때 노출 → 탭 포커스마다 재확인
+    useFocusEffect(useCallback(() => {
+        if (!user || !userProfile || userProfile.hasSeenConsentModal !== false || !hasViewedCourseDetail()) return;
         const hideUntil = getBenefitConsentHideUntil();
         if (hideUntil) {
             const hideUntilDate = new Date(hideUntil);
@@ -358,7 +359,7 @@ export default function HomeScreen() {
         }
         const timer = setTimeout(() => openModal("benefitConsent"), 300);
         return () => clearTimeout(timer);
-    }, [user, userProfile]);
+    }, [user, userProfile]));
 
     const recommendations = recData?.recommendations ?? [];
     const featuredCourse = recommendations[0] ?? null;

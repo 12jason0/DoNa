@@ -54,6 +54,17 @@ export function setBenefitConsentHideUntil(iso: string | null): void {
     }
 }
 
+// 혜택 알림 동의는 코스 상세를 1개 본 뒤에만 노출 (웹 localStorage 키와 동일)
+const COURSE_DETAIL_VIEWED_KEY = 'courseDetailViewed';
+
+export function hasViewedCourseDetail(): boolean {
+    return storage.getString(COURSE_DETAIL_VIEWED_KEY) === '1';
+}
+
+export function markCourseDetailViewed(): void {
+    storage.set(COURSE_DETAIL_VIEWED_KEY, '1');
+}
+
 // ─── 기존 AsyncStorage → MMKV 마이그레이션 헬퍼 ────────────────────────────
 // Phase 1 로그인 화면 작업 시 호출. 기존 사용자 데이터를 MMKV로 이전.
 

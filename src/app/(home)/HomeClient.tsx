@@ -161,7 +161,7 @@ export default function HomeClient({
                     );
 
                     setTimeout(() => {
-                        if (p.hasSeenConsentModal === false) {
+                        if (p.hasSeenConsentModal === false && localStorage.getItem("courseDetailViewed") === "1") {
                             // 🟢 localStorage에서 숨김 시간 확인
                             if (typeof window !== "undefined") {
                                 const hideUntil = localStorage.getItem("benefitConsentModalHideUntil");
