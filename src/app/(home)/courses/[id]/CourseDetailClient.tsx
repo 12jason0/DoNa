@@ -11,6 +11,7 @@ import { type LoginModalPresetKey } from "@/constants/loginModalPresets";
 import { Place as MapPlace, UserLocation } from "@/types/map";
 import { apiFetch, authenticatedFetch } from "@/lib/authClient";
 import { getS3StaticUrl } from "@/lib/s3Static";
+import { paidCourseShareDescription } from "@/lib/courseShareDescription";
 import { useAuth } from "@/context/AuthContext";
 import TapFeedback from "@/components/TapFeedback";
 import { TipSection, TipCategoryIcon } from "@/components/TipSection";
@@ -1634,7 +1635,18 @@ export default function CourseDetailClient({
             // title 최대 200자, description 최대 200자로 제한
             const shareTitle =
                 translatedTitle.length > 200 ? translatedTitle.substring(0, 197) + "..." : translatedTitle;
-            const shareDescription = courseData.description
+            // 유료 코스는 장소 이름을 빼고 "지역 · 시간 · 장소 N곳"만 (OG 설명과 동일)
+            const paidDescription =
+                courseData.grade === "BASIC" || courseData.grade === "PREMIUM"
+                    ? paidCourseShareDescription({
+                          region: courseData.region,
+                          duration: courseData.duration,
+                          placeCount: (courseData.coursePlaces || []).length,
+                      }) || t("courseDetail.shareDesc")
+                    : null;
+            const shareDescription = paidDescription
+                ? paidDescription
+                : courseData.description
                 ? courseData.description.length > 200
                     ? courseData.description.substring(0, 197) + "..."
                     : courseData.description
@@ -2392,7 +2404,8 @@ export default function CourseDetailClient({
                             </TapFeedback>
                             <TapFeedback>
                                 <button
-                                    onClick={() => setShowShareModal(true)}
+                                    // 휴대폰: 바로 카카오톡 공유(피드 카드). PC는 카톡 앱이 없으니 기존 공유 시트(카카오 웹 공유·링크 복사)
+                                    onClick={() => (isIOS() || isAndroid() ? handleKakaoShare() : setShowShareModal(true))}
                                     className="flex flex-col items-center justify-center gap-0.5 text-gray-400 transition-all"
                                 >
                                     <Icons.Share />

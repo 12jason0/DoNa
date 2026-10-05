@@ -28,6 +28,8 @@ import { api, endpoints, BASE_URL } from "../../../src/lib/api";
 import { useAuth } from "../../../src/hooks/useAuth";
 import { Colors } from "../../../src/constants/theme";
 import { resolveImageUrl } from "../../../src/lib/imageUrl";
+import { shareFeedTemplate } from "@react-native-kakao/share";
+import { paidCourseShareDescription } from "../../../../src/lib/courseShareDescription";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
 import { useLocale } from "../../../src/lib/useLocale";
 import { textFontForLocale } from "../../../src/lib/textDefaultFont";
@@ -364,15 +366,43 @@ export default function CourseDetailScreen() {
             // 개인화 signal 기록 (실패해도 무시)
             api.post("/api/users/interactions", { courseId: Number(id), action: "share" }).catch(() => {});
 
-            const message = i18n("mobile.courseScreen.shareMessage", {
-                title: pickCourseTitle(course, locale as LocalePreference),
-                url: shareUrl,
-            });
+            const title = pickCourseTitle(course, locale as LocalePreference);
+
+            // 1순위: 카카오톡 공유(피드 카드). 카톡 미설치(AppNotAvailable) 등 실패 시 기존 시스템 공유 시트
+            try {
+                const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
+                // 유료 코스는 장소 이름을 빼고 "지역 · 시간 · 장소 N곳"만 (웹 OG 설명과 동일)
+                const description =
+                    (isPaid
+                        ? paidCourseShareDescription({
+                              region: course.region,
+                              duration: course.duration,
+                              placeCount: (course.coursePlaces ?? []).length,
+                          })
+                        : (course.description ?? "").trim().slice(0, 200)) || i18n("courseDetail.shareDesc");
+                const imageUrl =
+                    resolveImageUrl(course.imageUrl) ??
+                    getPlaceImageUrl(normalizedPlacesAll[0]?.place) ??
+                    resolveImageUrl("logo/donalogo_512.png")!;
+                const link = { webUrl: shareUrl, mobileWebUrl: shareUrl };
+                await shareFeedTemplate({
+                    template: {
+                        content: { title: title.slice(0, 200), description, imageUrl, link },
+                        buttons: [{ title: i18n("courseDetail.shareTitle"), link }],
+                    },
+                    useWebBrowserIfKakaoTalkNotAvailable: false,
+                });
+                return;
+            } catch {
+                // 아래 기존 공유 시트로
+            }
+
+            const message = i18n("mobile.courseScreen.shareMessage", { title, url: shareUrl });
             // iOS에서 message + url 동시 전달 시 링크가 두 번 붙는 경우가 있어 단일 필드만 사용
             await Share.share(
                 Platform.OS === "ios"
                     ? { message }
-                    : { message, title: pickCourseTitle(course, locale as LocalePreference) },
+                    : { message, title },
             );
         } catch {
             // 사용자가 시트를 닫은 경우 등 — 무시
@@ -381,7 +411,7 @@ export default function CourseDetailScreen() {
                 shareInFlightRef.current = false;
             }, 800);
         }
-    }, [course, id, i18n]);
+    }, [course, id, i18n, locale, normalizedPlacesAll]);
 
     const handleStartCourse = useCallback(async () => {
         if (!isAuthenticated) {

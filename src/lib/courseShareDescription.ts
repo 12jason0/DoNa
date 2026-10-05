@@ -1,4 +1,4 @@
-import { COURSE_DETAIL_SENTINELS } from "@/lib/courseDetailSentinels";
+import { COURSE_DETAIL_SENTINELS } from "./courseDetailSentinels"; // 앱도 import하므로 상대 경로
 
 /** 유료(BASIC·PREMIUM) 코스 공유 설명: 장소 이름을 숨기고 "지역 · 시간 · 장소 N곳"만 (서버 OG·클라이언트 카카오 공유 공용) */
 export function paidCourseShareDescription(course: {
