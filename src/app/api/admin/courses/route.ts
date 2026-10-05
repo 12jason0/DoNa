@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
         ensureAdmin(req);
 
         const body = await req.json().catch(() => ({}));
+        for (const k of ["title", "sub_title"]) if (typeof body?.[k] === "string") body[k] = body[k].trim();
         const {
             title,
             description,

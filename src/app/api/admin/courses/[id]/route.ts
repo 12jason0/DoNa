@@ -116,6 +116,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
 
         const body = await req.json().catch(() => ({}));
+        for (const k of ["title", "sub_title", "title_en", "title_ja", "title_zh", "sub_title_en", "sub_title_ja", "sub_title_zh"])
+            if (typeof body?.[k] === "string") body[k] = body[k].trim();
         const {
             title,
             description,
