@@ -79,8 +79,8 @@ export default function LoginModal() {
         saveUserId(String(user.id));
         try { await Purchases.logIn(String(user.id)); } catch {}
         await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        // 시트만 닫고 보던 화면에 그대로 둠 (예: 공유 링크로 들어온 코스에서 저장 → 로그인 → 그 코스)
         onClose();
-        router.replace('/(tabs)');
     }
 
     function handleGoToLogin() {
@@ -149,10 +149,13 @@ export default function LoginModal() {
                 const userId = urlObj.searchParams.get('userId');
                 if (!token) { setError(i18n('authPage.login.errorGeneric')); return; }
                 saveAuthToken(token);
-                if (userId) saveUserId(userId);
+                if (userId) {
+                    saveUserId(userId);
+                    // 다른 로그인 경로와 같이 RevenueCat에도 로그인 (안 하면 이 세션 결제가 익명 ID로 웹훅에 옴)
+                    try { await Purchases.logIn(userId); } catch {}
+                }
                 await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
                 onClose();
-                router.replace('/(tabs)');
             } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
                 setError(i18n('authPage.login.errorGeneric'));
             }

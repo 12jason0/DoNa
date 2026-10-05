@@ -88,7 +88,13 @@ export default function LoginScreen() {
 
         // TanStack Query 세션 캐시 갱신 → 루트 index.tsx가 /(tabs)로 리다이렉트
         await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-        router.replace('/(tabs)');
+        leaveLogin();
+    }
+
+    // 로그인 모달 → '다른 방법으로 로그인'으로 들어왔으면 보던 화면(예: 코스 상세)으로, 아니면 홈
+    function leaveLogin() {
+        if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)');
     }
 
     // ─── 이메일/비밀번호 로그인 ────────────────────────────────────────────────
@@ -175,9 +181,12 @@ export default function LoginScreen() {
                     return;
                 }
                 saveAuthToken(token);
-                if (userId) saveUserId(userId);
+                if (userId) {
+                    saveUserId(userId);
+                    try { await Purchases.logIn(userId); } catch {}
+                }
                 await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-                router.replace('/(tabs)');
+                leaveLogin();
             } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
                 setError(i18n('authPage.login.errorGeneric'));
             }
