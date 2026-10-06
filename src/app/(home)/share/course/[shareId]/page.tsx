@@ -9,7 +9,13 @@ import {
     resolveCourseImageAbsoluteForOg,
 } from "@/lib/courseOpenGraph";
 import { cookies, headers } from "next/headers";
-import { SHARE_DEVICE_COOKIE, claimShareDevice, isCrawlerUA, userHasCourseAccess } from "@/lib/shareAccess";
+import {
+    SHARE_DEVICE_COOKIE,
+    claimShareDevice,
+    daysLeftKst,
+    isCrawlerUA,
+    userHasCourseAccess,
+} from "@/lib/shareAccess";
 
 // 열람권·만료·기기 수를 매번 서버에서 확인 (캐시 금지)
 export const dynamic = "force-dynamic";
@@ -136,6 +142,12 @@ async function getSharedCourseData(shareId: string, viewer: { deviceId?: string;
         fullAccess = await claimShareDevice(shared.id, viewer.deviceId);
         if (!fullAccess) lockReason = "devices";
     }
+    const sharer = shared.sharedByUserId
+        ? await prisma.user.findFirst({
+              where: { id: shared.sharedByUserId, deletedAt: null },
+              select: { username: true },
+          })
+        : null;
     const places = isFree || fullAccess ? allResolved : allResolved.slice(0, 1);
 
     return {
@@ -153,6 +165,8 @@ async function getSharedCourseData(shareId: string, viewer: { deviceId?: string;
         totalPlaceCount,
         fullAccess,
         lockReason,
+        sharerName: sharer?.username?.trim() || null,
+        daysLeft: fullAccess ? daysLeftKst(shared.expiresAt!) : null,
         coursePlaces: places.map((cp: any) => ({
             id: cp.id,
             place_id: cp.place_id,

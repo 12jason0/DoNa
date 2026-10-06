@@ -71,3 +71,8 @@ export async function claimShareDevice(shareId: string, deviceId: string | null 
     });
     return !!row;
 }
+
+/** 만료일까지 남은 일수 (한국 날짜 기준, 만료 당일 0) */
+export function daysLeftKst(expiresAt: Date, now: Date = new Date()): number {
+    return Math.max(0, Math.round((kstDayStart(expiresAt).getTime() - kstDayStart(now).getTime()) / 86400_000));
+}

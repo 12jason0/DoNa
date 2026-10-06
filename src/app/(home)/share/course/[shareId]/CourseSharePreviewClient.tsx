@@ -105,6 +105,10 @@ interface ShareData {
     fullAccess?: boolean;
     /** 링크 열람권이 있었지만 지금 못 보는 이유 */
     lockReason?: "expired" | "devices" | null;
+    /** 공유한 사람 닉네임 (없으면 '친구가 공유한 코스') */
+    sharerName?: string | null;
+    /** 링크 열람권 남은 일수 (KST, 유효할 때만) */
+    daysLeft?: number | null;
     isPremium?: boolean;
     totalPlaceCount?: number;
     isSelectionType: boolean;
@@ -399,7 +403,13 @@ export default function CourseSharePreviewClient({
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <p className="text-sm text-white/80 mb-1">{t("sharePreview.sharedCourse")}</p>
+                    <p className="text-sm text-white/80 mb-1">
+                        {data.sharerName
+                            ? t("sharePreview.sharedBy", { name: data.sharerName })
+                            : t("sharePreview.sharedByFriend")}
+                        {data.daysLeft != null &&
+                            ` · ${data.daysLeft > 0 ? t("sharePreview.daysLeft", { days: data.daysLeft }) : t("sharePreview.lastDay")}`}
+                    </p>
                     <h1 className="text-2xl font-bold">{data.title}</h1>
                     {data.sub_title && (
                         <p className="text-sm text-white/90 mt-1">{data.sub_title}</p>
