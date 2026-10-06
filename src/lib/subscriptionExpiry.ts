@@ -63,6 +63,7 @@ export type ExpiryResult = {
 export async function downgradeExpiredSubscriptions(
     fetchSubscriber: (appUserId: string) => Promise<RcSubscriber | null> = fetchRevenueCatSubscriber,
     now: Date = new Date(),
+    dryRun = false,
 ): Promise<ExpiryResult> {
     const candidates = await prisma.user.findMany({
         where: { subscriptionTier: { in: ["BASIC", "PREMIUM"] }, subscriptionExpiresAt: { lt: now } },
@@ -80,6 +81,11 @@ export async function downgradeExpiredSubscriptions(
         if (hasActiveSubscription(subscriber, now)) {
             result.keptActive.push(u.id);
             console.log("[구독 만료 점검] RevenueCat 활성 구독 있음 — 유지 (웹훅 누락 가능성)", { userId: u.id });
+            continue;
+        }
+        if (dryRun) {
+            // 점검 모드: 내릴 대상만 보고, DB는 안 바꿈
+            result.downgraded.push({ userId: u.id, previousTier: u.subscriptionTier, expiresAt: u.subscriptionExpiresAt!.toISOString() });
             continue;
         }
         // 조회하는 사이 웹훅 갱신이 들어왔으면 안 바뀌게: 등급·만료일이 그대로일 때만

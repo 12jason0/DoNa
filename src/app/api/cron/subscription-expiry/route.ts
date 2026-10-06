@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { captureApiError } from "@/lib/sentry";
-import { downgradeExpiredSubscriptions } from "@/lib/subscriptionExpiry";
+import {
+    downgradeExpiredSubscriptions,
+    fetchRevenueCatSubscriber,
+    hasActiveSubscription,
+} from "@/lib/subscriptionExpiry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +22,24 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "REVENUECAT_SECRET_API_KEY missing" }, { status: 500 });
     }
     try {
+        // 점검 모드 (?dryRun=1&probe=<userId>): DB 변경 없이 대상자 목록 + RevenueCat 조회 가능 여부만 확인
+        const { searchParams } = new URL(req.url);
+        if (searchParams.get("dryRun") === "1") {
+            const result = await downgradeExpiredSubscriptions(undefined, new Date(), true);
+            const probe = searchParams.get("probe");
+            const probeSub = probe ? await fetchRevenueCatSubscriber(probe) : undefined;
+            return NextResponse.json({
+                dryRun: true,
+                ...result,
+                ...(probe && {
+                    probe: {
+                        userId: probe,
+                        revenueCatReachable: !!probeSub,
+                        hasActiveSubscription: probeSub ? hasActiveSubscription(probeSub) : null,
+                    },
+                }),
+            });
+        }
         const result = await downgradeExpiredSubscriptions();
         console.log("[구독 만료 점검] 완료", {
             checked: result.checked,
