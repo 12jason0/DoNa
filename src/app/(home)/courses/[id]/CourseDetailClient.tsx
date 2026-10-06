@@ -27,6 +27,7 @@ import {
 } from "@/lib/courseTranslate";
 import { getPlaceStatus } from "@/lib/placeStatus";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
+import CourseInfoDetails from "./CourseInfoDetails";
 import { isAndroid, isIOS, isMobileApp } from "@/lib/platform";
 import { useLocale } from "@/context/LocaleContext";
 import { useAppLayout } from "@/context/AppLayoutContext";
@@ -2308,7 +2309,7 @@ export default function CourseDetailClient({
 
                         <section
                             ref={reviewsSectionRef}
-                            className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/60 p-6 md:p-8 mb-24"
+                            className="rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/60 p-6 md:p-8 mb-6"
                         >
                             <div className={`flex justify-between items-center ${reviews.length > 0 ? "mb-6" : ""}`}>
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -2393,6 +2394,8 @@ export default function CourseDetailClient({
                                 </div>
                             ) : null}
                         </section>
+
+                        <CourseInfoDetails course={courseData} locale={locale} t={t} />
                     </main>
 
                     {/* 찜하기·공유 하단바: 폰 프레임에 transform 있으면 fixed가 폰 안에만 적용됨 */}
@@ -2653,6 +2656,10 @@ export default function CourseDetailClient({
                             </div>
                         </div>
                     </header>
+                    {/* 유료 코스 공개 정보(소요시간·예산·수정일)만 — 장소·팁 없음 */}
+                    <div className="max-w-[600px] mx-auto px-5 mt-4">
+                        <CourseInfoDetails course={courseData} locale={locale} t={t} />
+                    </div>
                 </div>
             )}
 

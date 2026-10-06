@@ -444,6 +444,17 @@
         "freeTips": "보유 꿀팁",
         "reviews": "이용후기",
         "writeReview": "작성하기",
+        "info": {
+            "title": "코스 정보",
+            "duration": "소요시간",
+            "budget": "예산",
+            "updated": "마지막 수정일",
+            "placeHours": "장소별 영업시간",
+            "hoursUnknown": "영업시간 정보 없음",
+            "closedWeekly": "매주 {days} 휴무",
+            "reservationNeeded": "예약 필요",
+            "reservationNotNeeded": "예약 없이 방문 가능"
+        },
         "errorRetry": "오류가 발생했습니다. 다시 시도해주세요.",
         "shareTitle": "코스 보러가기",
         "shareDesc": "DoNa에서 추천하는 코스를 확인해보세요!",

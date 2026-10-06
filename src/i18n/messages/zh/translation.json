@@ -478,6 +478,17 @@
     "freeTips": "我的小贴士",
     "reviews": "用户评价",
     "writeReview": "撰写",
+    "info": {
+        "title": "路线信息",
+        "duration": "所需时间",
+        "budget": "预算",
+        "updated": "最后更新",
+        "placeHours": "各地点营业时间",
+        "hoursUnknown": "暂无营业时间信息",
+        "closedWeekly": "每周{days}休息",
+        "reservationNeeded": "需要预约",
+        "reservationNotNeeded": "无需预约"
+    },
     "errorRetry": "发生错误，请重试。",
     "shareTitle": "查看课程",
     "shareDesc": "看看DoNa推荐的口碑课程吧！",

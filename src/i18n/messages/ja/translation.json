@@ -478,6 +478,17 @@
     "freeTips": "保有のコツ",
     "reviews": "利用レビュー",
     "writeReview": "書く",
+    "info": {
+        "title": "コース情報",
+        "duration": "所要時間",
+        "budget": "予算",
+        "updated": "最終更新日",
+        "placeHours": "スポット別の営業時間",
+        "hoursUnknown": "営業時間情報なし",
+        "closedWeekly": "毎週{days}定休",
+        "reservationNeeded": "予約必須",
+        "reservationNotNeeded": "予約なしで利用可"
+    },
     "errorRetry": "エラーが発生しました。もう一度お試しください。",
     "shareTitle": "コースを見る",
     "shareDesc": "DoNaのおすすめコースをチェックしてみてください！",

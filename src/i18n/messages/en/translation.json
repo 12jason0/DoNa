@@ -481,6 +481,17 @@
     "freeTips": "Your tips",
     "reviews": "Reviews",
     "writeReview": "Write",
+    "info": {
+        "title": "Course info",
+        "duration": "Duration",
+        "budget": "Budget",
+        "updated": "Last updated",
+        "placeHours": "Opening hours by place",
+        "hoursUnknown": "Hours not available",
+        "closedWeekly": "Closed every {days}",
+        "reservationNeeded": "Reservation required",
+        "reservationNotNeeded": "No reservation needed"
+    },
     "errorRetry": "An error occurred. Please try again.",
     "shareTitle": "View course",
     "shareDesc": "Check out DoNa's recommended courses!",
