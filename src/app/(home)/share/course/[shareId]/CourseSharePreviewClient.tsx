@@ -382,7 +382,7 @@ export default function CourseSharePreviewClient({
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] text-gray-900 dark:text-white pb-24">
+        <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0f1710] text-gray-900 dark:text-white pb-40">
             <header className="relative w-full max-w-[900px] mx-auto h-[280px] overflow-hidden">
                 <Image
                     src={heroImageUrl}
@@ -626,7 +626,15 @@ export default function CourseSharePreviewClient({
                 )}
             </main>
 
-            <div className="fixed bottom-0 left-0 right-0 max-w-[900px] mx-auto p-4 bg-white dark:bg-[#0f1710] border-t border-gray-200 dark:border-gray-800 flex gap-3">
+            <div className="fixed bottom-0 left-0 right-0 max-w-[900px] mx-auto p-4 bg-white dark:bg-[#0f1710] border-t border-gray-200 dark:border-gray-800 flex flex-col gap-2">
+                {/* 앱 없이도 웹 코스 상세로 (로그인·저장은 상세에서) */}
+                <a
+                    href={`/courses/${data.templateCourseId}`}
+                    className="w-full py-3 px-4 rounded-lg border border-[#85ad78] text-[#5f8a52] dark:text-[#a8cf9b] font-bold text-center"
+                >
+                    {t("sharePreview.viewOnWeb")}
+                </a>
+                <div className="flex gap-3">
                 <button
                     type="button"
                     onClick={() => setShowMapModal(true)}
@@ -641,6 +649,7 @@ export default function CourseSharePreviewClient({
                 >
                     {t("sharePreview.openInApp")}
                 </button>
+                </div>
             </div>
 
             {showMapModal && (
