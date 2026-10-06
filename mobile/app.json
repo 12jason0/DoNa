@@ -3,7 +3,7 @@
     "name": "두나",
     "slug": "duna",
     "owner": "dona-app",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "platforms": [
       "ios",
       "android"
