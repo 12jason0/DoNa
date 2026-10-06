@@ -9,17 +9,17 @@ datasource db {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  userId      Int           @map("user_id")
-  orderId     String        @unique @map("order_id")
-  orderName   String        @map("order_name")
-  amount      Int
-  status      PaymentStatus @default(READY)
-  paymentKey  String?       @map("payment_key")
-  method      String?
-  requestedAt DateTime      @default(now()) @map("requested_at")
-  approvedAt  DateTime?     @map("approved_at")
-  isTest      Boolean       @default(false) @map("is_test") // 테스트 결제 — 매출 집계에서 제외
+  id             String          @id @default(cuid())
+  userId         Int             @map("user_id")
+  orderId        String          @unique @map("order_id")
+  orderName      String          @map("order_name")
+  amount         Int
+  status         PaymentStatus   @default(READY)
+  paymentKey     String?         @map("payment_key")
+  method         String?
+  requestedAt    DateTime        @default(now()) @map("requested_at")
+  approvedAt     DateTime?       @map("approved_at")
+  isTest         Boolean         @default(false) @map("is_test") // 테스트 결제 — 매출 집계에서 제외
   user           User            @relation(fields: [userId], references: [id])
   refundRequests RefundRequest[]
 
@@ -781,16 +781,32 @@ model GridCode {
 }
 
 model SharedCourse {
-  id               String   @id @default(cuid())
-  templateCourseId Int      @map("template_course_id")
-  sharedByUserId   Int?     @map("shared_by_user_id")
-  selectedPlaceIds Int[]    @default([]) @map("selected_place_ids")
-  createdAt        DateTime @default(now()) @map("created_at")
-  templateCourse   Course   @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
+  id               String               @id @default(cuid())
+  templateCourseId Int                  @map("template_course_id")
+  sharedByUserId   Int?                 @map("shared_by_user_id")
+  selectedPlaceIds Int[]                @default([]) @map("selected_place_ids")
+  /// 링크 생성 시점에 공유한 사람이 열람 권한이 있었는지 (링크 열람권)
+  sharerHasAccess  Boolean              @default(false) @map("sharer_has_access")
+  expiresAt        DateTime?            @map("expires_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  templateCourse   Course               @relation(fields: [templateCourseId], references: [id], onDelete: Cascade)
+  devices          SharedCourseDevice[]
 
   @@index([id])
+  @@index([sharedByUserId, templateCourseId, createdAt])
   @@index([templateCourseId])
   @@map("shared_courses")
+}
+
+/// 링크 열람권을 쓴 기기 (쿠키 기기 ID, 링크당 5대)
+model SharedCourseDevice {
+  shareId   String       @map("share_id")
+  deviceId  String       @map("device_id") @db.VarChar(64)
+  createdAt DateTime     @default(now()) @map("created_at")
+  share     SharedCourse @relation(fields: [shareId], references: [id], onDelete: Cascade)
+
+  @@id([shareId, deviceId])
+  @@map("shared_course_devices")
 }
 
 model AiRecommendationUsage {
@@ -938,21 +954,21 @@ enum RefundRequestStatus {
 }
 
 model RefundRequest {
-  id                          Int                  @id @default(autoincrement())
-  paymentId                   String               @map("payment_id")
-  userId                      Int                  @map("user_id")
-  orderId                     String               @map("order_id")
-  orderName                   String               @map("order_name")
-  amount                      Int
-  cancelReason                String?              @map("cancel_reason")
-  status                      RefundRequestStatus  @default(PENDING)
-  adminNote                   String?              @map("admin_note")
-  requestedAt                 DateTime             @default(now()) @map("requested_at")
-  processedAt                 DateTime?            @map("processed_at")
-  processedBy                 Int?                 @map("processed_by")
-  originalSubscriptionTier    String?              @map("original_subscription_tier")
-  originalSubscriptionExpiresAt DateTime?          @map("original_subscription_expires_at")
-  createdAt                   DateTime             @default(now()) @map("created_at")
+  id                            Int                 @id @default(autoincrement())
+  paymentId                     String              @map("payment_id")
+  userId                        Int                 @map("user_id")
+  orderId                       String              @map("order_id")
+  orderName                     String              @map("order_name")
+  amount                        Int
+  cancelReason                  String?             @map("cancel_reason")
+  status                        RefundRequestStatus @default(PENDING)
+  adminNote                     String?             @map("admin_note")
+  requestedAt                   DateTime            @default(now()) @map("requested_at")
+  processedAt                   DateTime?           @map("processed_at")
+  processedBy                   Int?                @map("processed_by")
+  originalSubscriptionTier      String?             @map("original_subscription_tier")
+  originalSubscriptionExpiresAt DateTime?           @map("original_subscription_expires_at")
+  createdAt                     DateTime            @default(now()) @map("created_at")
 
   user    User    @relation(fields: [userId], references: [id])
   payment Payment @relation(fields: [paymentId], references: [id])
