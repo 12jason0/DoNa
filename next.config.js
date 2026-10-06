@@ -207,7 +207,8 @@ const nextConfig = {
 
     images: {
         // 🟢 수정: 비표준 'qualities' 제거, 표준 remotePatterns 사용
-        minimumCacheTTL: 3600,
+        // 원본(CloudFront)에 Cache-Control이 없어 이 값이 곧 변환 캐시 기간 — 1시간이면 같은 사진도 매시간 재변환(Hobby 월 5천 건 한도). 사진 교체 시 vercel cache invalidate --srcimg
+        minimumCacheTTL: 2678400, // 31일
         remotePatterns: [
             { protocol: "https", hostname: "d13xx6k6chk2in.cloudfront.net" },
             { protocol: "https", hostname: "stylemap-seoul.s3.ap-northeast-2.amazonaws.com" }, // 🟢 코스/장소 이미지
@@ -217,7 +218,7 @@ const nextConfig = {
             { protocol: "http", hostname: "localhost", port: "3001", pathname: "/**" },
             { protocol: "https", hostname: "dona.io.kr", pathname: "/**" },
         ],
-        qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90],
+        qualities: [65, 75], // 조합 수를 줄여 변환 건수 절약 (ImageFallback 기본 65)
         deviceSizes: [640, 750, 828, 1080, 1200],
         imageSizes: [16, 32, 48, 64, 96],
     },
