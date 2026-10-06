@@ -217,7 +217,11 @@ const cleanCourseId = (id: string) => (id.startsWith("c-") ? id.replace("c-", ""
 
 // 검색 결과용 설명: 잠금 코스에서도 화면에 보이는 정보(지역·시간·예산·장소명)만 사용
 function courseSeoDescription(course: CourseData): string {
-    const places = (course.coursePlaces || []).map((cp: any) => cp.place?.name).filter(Boolean).join(" → ");
+    // 유료(BASIC·PREMIUM) 코스는 장소 이름을 노출하지 않음 (공유 카드와 동일 정책)
+    const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
+    const places = isPaid
+        ? ""
+        : (course.coursePlaces || []).map((cp: any) => cp.place?.name).filter(Boolean).join(" → ");
     const meta = [
         course.region && `${course.region} 데이트 코스`,
         course.duration !== COURSE_DETAIL_SENTINELS.duration && course.duration,
