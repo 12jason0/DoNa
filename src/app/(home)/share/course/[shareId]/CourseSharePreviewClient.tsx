@@ -7,8 +7,9 @@ import dynamic from "next/dynamic";
 import { Place as MapPlace } from "@/types/map";
 import { isIOS, isAndroid } from "@/lib/platform";
 import { useAppLayout } from "@/context/AppLayoutContext";
-import { TipCategoryIcon } from "@/components/TipSection";
-import { getTipCategoryLabel } from "@/types/tip";
+import { TipCategoryIcon, TipSection } from "@/components/TipSection";
+import { getTipCategoryLabel, parseTipsFromDbForLocale } from "@/types/tip";
+import { localizeParsedTipsForUi, type CourseUiTranslate } from "@/lib/courseTranslate";
 import { pickPlaceAddress, pickPlaceDescription, pickPlaceName } from "@/lib/placeLocalized";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { getPlaceStatus } from "@/lib/placeStatus";
@@ -66,6 +67,11 @@ interface CoursePlace {
     segment?: string | null;
     order_in_segment?: number | null;
     tipCategories?: string[];
+    /** 링크 열람권이 유효할 때만 서버가 내려줌 */
+    tips?: string | null;
+    tips_en?: string | null;
+    tips_ja?: string | null;
+    tips_zh?: string | null;
     recommended_time?: string | null;
     place: {
         id: number;
@@ -95,6 +101,9 @@ interface ShareData {
     shareId: string;
     templateCourseId: number;
     isLocked?: boolean;
+    /** 링크 열람권 유효: 장소 전체 + 팁 원문 */
+    fullAccess?: boolean;
+    isExpired?: boolean;
     isPremium?: boolean;
     totalPlaceCount?: number;
     isSelectionType: boolean;
@@ -623,7 +632,7 @@ export default function CourseSharePreviewClient({
                     )}
                     </>
                 )}
-                {data.coursePlaces.some((cp) => cp.tipCategories?.length) && (
+                {!data.fullAccess && data.coursePlaces.some((cp) => cp.tipCategories?.length) && (
                     <ViewAllTipsLink courseId={data.templateCourseId} t={t} />
                 )}
             </main>
@@ -840,6 +849,18 @@ export default function CourseSharePreviewClient({
                                 {(() => {
                                     const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
                                     if (!cp?.tipCategories?.length) return null;
+                                    if (data.fullAccess) {
+                                        const tips = localizeParsedTipsForUi(
+                                            parseTipsFromDbForLocale(cp, locale),
+                                            locale,
+                                            t as CourseUiTranslate,
+                                        );
+                                        return (
+                                            <div className="mb-4 flex flex-col gap-2">
+                                                <TipSection tips={tips} variant="free" compact={false} />
+                                            </div>
+                                        );
+                                    }
                                     return (
                                         <div className="mb-4 flex flex-col gap-3">
                                             <TipChips categories={cp.tipCategories} t={t} />

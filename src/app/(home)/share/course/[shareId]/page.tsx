@@ -8,6 +8,11 @@ import {
     paidCourseShareDescription,
     resolveCourseImageAbsoluteForOg,
 } from "@/lib/courseOpenGraph";
+import { userHasCourseAccess } from "@/lib/shareAccess";
+
+// 열람권·만료·기기 수를 매번 서버에서 확인 (캐시 금지)
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /** 공유 링크 카드: 코스 제목·사진, 설명은 /courses/[id]/view와 같은 규칙 (유료는 장소 이름 숨김) */
 export async function generateMetadata({ params }: { params: Promise<{ shareId: string }> }): Promise<Metadata> {
@@ -16,7 +21,9 @@ export async function generateMetadata({ params }: { params: Promise<{ shareId: 
         .findUnique({ where: { id: shareId }, select: { templateCourseId: true } })
         .catch(() => null);
     const course = shared ? await fetchCourseFieldsForOpenGraph(String(shared.templateCourseId)) : null;
-    if (!course) return {};
+    // 링크 열람권으로 유료 내용이 보일 수 있으니 검색엔진 색인 금지 (카톡 미리보기용 OG는 유지)
+    const robots = { index: false, follow: false };
+    if (!course) return { robots };
 
     const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
     const description =
@@ -28,6 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ shareId: 
     return {
         title: { absolute: `${course.title} | 두나 DoNa` },
         description,
+        robots,
         openGraph: { title: course.title, description, url: `/share/course/${shareId}`, images: [image] },
         twitter: { card: "summary_large_image", title: course.title, description, images: [image] },
     };
@@ -56,6 +64,9 @@ async function getSharedCourseData(shareId: string) {
                             segment: true,
                             order_in_segment: true,
                             tips: true,
+                            tips_en: true,
+                            tips_ja: true,
+                            tips_zh: true,
                             recommended_time: true,
                             place: {
                                 select: {
@@ -108,7 +119,13 @@ async function getSharedCourseData(shareId: string) {
     const isFree = course?.grade === "FREE";
     const isPremium = course?.grade === "PREMIUM";
     const totalPlaceCount = allResolved.length;
-    const places = isFree ? allResolved : allResolved.slice(0, 1);
+
+    // 링크 열람권: 생성 시 공유자 권한 + 미만료 + 지금도 공유자에게 권한 있음(환불·구독 만료 대응)
+    const hasLinkGrant = shared.sharerHasAccess && !!shared.expiresAt;
+    const isExpired = hasLinkGrant && shared.expiresAt! <= new Date();
+    const fullAccess =
+        hasLinkGrant && !isExpired && (await userHasCourseAccess(shared.sharedByUserId, shared.templateCourseId));
+    const places = isFree || fullAccess ? allResolved : allResolved.slice(0, 1);
 
     return {
         shareId: shared.id,
@@ -120,17 +137,22 @@ async function getSharedCourseData(shareId: string) {
         sub_title: course?.sub_title ?? null,
         imageUrl: course?.imageUrl ?? null,
         region: course?.region ?? null,
-        isLocked: !isFree && totalPlaceCount > 1,
+        isLocked: !isFree && !fullAccess && totalPlaceCount > 1,
         isPremium,
         totalPlaceCount,
+        fullAccess,
+        isExpired,
         coursePlaces: places.map((cp: any) => ({
             id: cp.id,
             place_id: cp.place_id,
             order_index: cp.order_index,
             segment: cp.segment,
             order_in_segment: cp.order_in_segment,
-            // 팁 내용은 보내지 않음 (유료 팁 유출 방지) — 카테고리 칩만
+            // 팁 원문은 링크 열람권이 유효할 때만. 아니면 카테고리 칩만 (유료 팁 유출 방지)
             tipCategories: getTipCategoriesFromRow(cp),
+            ...(fullAccess
+                ? { tips: cp.tips ?? null, tips_en: cp.tips_en ?? null, tips_ja: cp.tips_ja ?? null, tips_zh: cp.tips_zh ?? null }
+                : {}),
             recommended_time: cp.recommended_time ?? null,
             place: cp.place
                 ? {
