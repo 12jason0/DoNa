@@ -162,7 +162,7 @@ export default function LegalAboutBody({ tr, theme }: Props) {
                             <Text style={styles.rating}>⭐ {item.rating ?? 4.5}</Text>
                         </View>
                         <Text style={[styles.courseDesc, { color: theme.textMuted }]} numberOfLines={2}>
-                            {item.description || "완벽한 여행 코스"}
+                            {item.description || "완벽한 데이트 코스"}
                         </Text>
                         <View style={styles.metaRow}>
                             <View style={[styles.metaPill, { backgroundColor: theme.surface }]}>
@@ -358,15 +358,15 @@ export default function LegalAboutBody({ tr, theme }: Props) {
             <View style={[styles.whySection, { backgroundColor: sectionAltBg }]}>
                 <Text style={[styles.whyTitle, { color: theme.text }]}>왜 DoNa인가요?</Text>
                 <View style={[styles.whyCard, { backgroundColor: theme.isDark ? "rgba(30,58,138,0.2)" : "#f0f9ff" }]}>
-                    <Text style={[styles.whyH3, { color: theme.text }]}>여행 계획하기 너무 귀찮으시죠?</Text>
+                    <Text style={[styles.whyH3, { color: theme.text }]}>데이트 계획하기 너무 귀찮으시죠?</Text>
                     <Text style={[styles.whyP, { color: theme.textMuted }]}>
                         &quot;어디 갈까?&quot;, &quot;뭐 먹을까?&quot;, &quot;길 찾기 어려워...&quot; 이런 고민들, 이제 그만!
                     </Text>
                     <Text style={[styles.whyP, { color: theme.textMuted }]}>
-                        DoNa는 여러분이 직접 여행 계획을 짤 필요 없이, 이미 검증된 완벽한 코스를 밀키트처럼 제공해드립니다.
+                        DoNa는 여러분이 직접 데이트 계획을 짤 필요 없이, 이미 검증된 완벽한 코스를 밀키트처럼 제공해드립니다.
                     </Text>
                     <Text style={[styles.whyP, { color: theme.textMuted }]}>
-                        컨셉과 카테고리만 선택하면 AI가 여러분을 위한 최적의 여행 코스를 만들어드려요!
+                        컨셉과 카테고리만 선택하면 AI가 여러분을 위한 최적의 데이트 코스를 만들어드려요!
                     </Text>
                     <View style={styles.whyCircle}>
                         <Text style={styles.whyCircleEmoji}>🎯</Text>
@@ -375,9 +375,9 @@ export default function LegalAboutBody({ tr, theme }: Props) {
             </View>
 
             <View style={[styles.ctaSection, { backgroundColor: sectionAltBg }]}>
-                <Text style={[styles.ctaTitle, { color: theme.text }]}>지금 바로 여행을 시작해보세요!</Text>
+                <Text style={[styles.ctaTitle, { color: theme.text }]}>지금 바로 데이트를 시작해보세요!</Text>
                 <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
-                    복잡한 계획 없이, 밀키트처럼 간편하게 완벽한 여행을 경험해보세요.
+                    복잡한 계획 없이, 밀키트처럼 간편하게 완벽한 데이트를 경험해보세요.
                 </Text>
                 <TouchableOpacity
                     style={styles.ctaBlue}
