@@ -31,6 +31,7 @@
     "submit": {
         "production": {
             "ios": {
+                "ascAppId": "6756777886",
                 "ascApiKeyPath": "C:\\Users\\12jas\\.appstoreconnect\\AuthKey_VW9Z38T644.p8",
                 "ascApiKeyId": "VW9Z38T644",
                 "ascApiKeyIssuerId": "6362ce0b-3905-44a0-b832-851e44b162c9"
