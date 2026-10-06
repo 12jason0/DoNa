@@ -52,11 +52,21 @@ export async function POST(request: NextRequest) {
 
         const eventType = event.type;
         const appUserId = event.app_user_id;
-        const revenueCatProductId = event.product_id;
+        // Google Play 구독은 "상품ID:기본요금제ID"로 옴 → 콜론 앞만 사용 (앱 TicketPlansSheet와 동일)
+        const revenueCatProductId = String(event.product_id ?? "").split(":")[0];
         const transactionId = event.transaction_id;
 
+        // 대시보드 "Send test event" — 도착 확인용 로그만 남기고 200
+        if (eventType === "TEST") {
+            console.log("[RevenueCat Webhook] TEST event received");
+            return NextResponse.json({ success: true, message: "test event" });
+        }
+
+        // RevenueCat에는 REFUND 이벤트가 없음 — 환불은 CANCELLATION + cancel_reason CUSTOMER_SUPPORT로 옴
+        const isRefund = eventType === "CANCELLATION" && event.cancel_reason === "CUSTOMER_SUPPORT";
+
         // transactionId 없으면 중복 방지 불가 → 200 반환 후 Sentry 기록 (400이면 RC가 무한 재시도)
-        if (!transactionId && ["INITIAL_PURCHASE", "NON_RENEWING_PURCHASE", "RENEWAL", "REFUND"].includes(eventType)) {
+        if (!transactionId && (["INITIAL_PURCHASE", "NON_RENEWING_PURCHASE", "RENEWAL"].includes(eventType) || isRefund)) {
             captureApiError(new Error(`[RevenueCat Webhook] transaction_id 없음 — 수동 확인 필요: eventType=${eventType}, appUserId=${appUserId}`));
             return NextResponse.json({ success: true, message: "transaction_id missing - manual review required" });
         }
@@ -96,15 +106,18 @@ export async function POST(request: NextRequest) {
         } else if (eventType === "RENEWAL") {
             // 구독 갱신 처리
             await handleRenewal(userId, productInfo, event);
+        } else if (isRefund) {
+            // 🟢 환불 처리 (스토어에서 실제 환불됨: CANCELLATION + CUSTOMER_SUPPORT)
+            await handleRefund(userId, productInfo, event);
         } else if (eventType === "CANCELLATION") {
-            // 구독 취소 처리
+            // 구독 해지(자동갱신 끔) — 만료일까지는 사용 가능
             await handleCancellation(userId, event);
         } else if (eventType === "UNCANCELLATION") {
             // 취소 복구 처리
             await handleUncancellation(userId, productInfo, event);
-        } else if (eventType === "REFUND") {
-            // 🟢 환불 처리 (플랫폼에서 실제 환불이 처리된 경우)
-            await handleRefund(userId, productInfo, event);
+        } else if (eventType === "EXPIRATION") {
+            // 구독 만료 → FREE
+            await handleExpiration(userId, productInfo, event);
         } else {
             // 기타 이벤트는 무시
             console.log("[RevenueCat Webhook] Unhandled event type:", eventType);
@@ -141,10 +154,8 @@ async function handleInitialPurchase(
                 console.warn("[RevenueCat Webhook] COURSE_TICKET: pending_course_id 없음, 잠금 해제 불가");
             }
         } else if (productInfo.type === "SUBSCRIPTION" && productInfo.tier) {
-            // 구독 활성화
-            const now = new Date();
-            const expireDate = new Date(now);
-            expireDate.setDate(expireDate.getDate() + productInfo.value);
+            // 구독 활성화 — 스토어가 알려준 만료 시각 우선, 없으면 지금+30일
+            const expireDate = eventExpiration(event) ?? addDays(new Date(), productInfo.value);
 
             await tx.user.update({
                 where: { id: userId },
@@ -217,14 +228,23 @@ async function handleRenewal(
     }
 
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        const currentUser = await tx.user.findUnique({ where: { id: userId } });
-        const now = new Date();
-
-        let newExpireDate = now;
-        if (currentUser?.subscriptionExpiresAt && currentUser.subscriptionExpiresAt > now) {
-            newExpireDate = new Date(currentUser.subscriptionExpiresAt);
+        // 같은 갱신 거래가 다시 오면(RC 재시도) 만료일·기록 모두 건드리지 않음
+        const transactionId = String(event.transaction_id);
+        const isSandbox = event.environment === "SANDBOX";
+        const existing = await tx.payment.findUnique({ where: { orderId: transactionId }, select: { id: true } });
+        if (existing) {
+            if (isSandbox) await tx.payment.update({ where: { id: existing.id }, data: { isTest: true } });
+            return;
         }
-        newExpireDate.setDate(newExpireDate.getDate() + productInfo.value);
+
+        // 만료일: 스토어가 알려준 이번 갱신의 만료 시각 우선, 없으면 남은 기간 + 30일
+        let newExpireDate = eventExpiration(event);
+        if (!newExpireDate) {
+            const currentUser = await tx.user.findUnique({ where: { id: userId }, select: { subscriptionExpiresAt: true } });
+            const now = new Date();
+            const base = currentUser?.subscriptionExpiresAt && currentUser.subscriptionExpiresAt > now ? currentUser.subscriptionExpiresAt : now;
+            newExpireDate = addDays(base, productInfo.value);
+        }
 
         await tx.user.update({
             where: { id: userId },
@@ -234,7 +254,51 @@ async function handleRenewal(
                 isAutoRenewal: true,
             },
         });
+
+        // 갱신마다 결제 기록 1건 (order_id = 스토어 거래 ID, 유니크)
+        await tx.payment.create({
+            data: {
+                orderId: transactionId,
+                userId,
+                orderName: `${productInfo.name} 자동갱신`,
+                amount: productInfo.price,
+                status: "PAID",
+                method: "IN_APP",
+                approvedAt: new Date(event.purchased_at_ms || Date.now()),
+                isTest: isSandbox,
+            },
+        });
     });
+}
+
+/** 구독 만료 → FREE. 이 만료보다 늦은 만료일을 이미 갖고 있으면(재구독·다른 결제) 그대로 둠 */
+async function handleExpiration(
+    userId: number,
+    productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number },
+    event: any,
+) {
+    if (productInfo.type !== "SUBSCRIPTION") return;
+    const expiredAt = eventExpiration(event) ?? new Date();
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionExpiresAt: true } });
+    if (user?.subscriptionExpiresAt && user.subscriptionExpiresAt.getTime() > expiredAt.getTime() + 60_000) {
+        console.log("[RevenueCat Webhook] EXPIRATION: 더 늦은 만료일이 있어 유지", { userId });
+        return;
+    }
+    await prisma.user.update({
+        where: { id: userId },
+        data: { subscriptionTier: "FREE", isAutoRenewal: false },
+    });
+}
+
+function eventExpiration(event: any): Date | null {
+    const ms = Number(event?.expiration_at_ms);
+    return Number.isFinite(ms) && ms > 0 ? new Date(ms) : null;
+}
+
+function addDays(base: Date, days: number): Date {
+    const d = new Date(base);
+    d.setDate(d.getDate() + days);
+    return d;
 }
 
 /**
@@ -294,33 +358,29 @@ async function handleRefund(
         where: {
             userId: userId,
             orderId: transactionId.toString(),
-            status: "PAID",
             method: "IN_APP",
         },
-        include: { user: true },
+        select: { id: true, status: true },
     });
-
-    if (!payment) {
-        console.warn("[RevenueCat Webhook] REFUND: 해당 결제 기록을 찾을 수 없습니다:", transactionId);
-        return;
-    }
-
-    // 🟢 이미 환불 처리되었는지 확인
-    if (payment.status === "CANCELLED") {
-        console.log("[RevenueCat Webhook] REFUND: 이미 환불 처리된 결제입니다:", transactionId);
-        return;
-    }
 
     // COURSE_TICKET(단건 열람권): 환불 시 열람 권한 회수하지 않음 (정책상 환불 불가이나 스토어 환불은 통제 불가)
     const isTicket = productInfo.type === "COURSE_TICKET";
 
+    // 결제 기록이 없어도(구버전 앱 rc_ 기록 등) 구독은 강등 — 기록 유무로 환불 반영이 갈리지 않게
+    if (!payment) {
+        console.warn("[RevenueCat Webhook] REFUND: 해당 결제 기록을 찾을 수 없습니다:", transactionId);
+        if (isTicket) return;
+    }
+
     // 🟢 DB 업데이트 (트랜잭션으로 일관성 보장)
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // 결제 상태 변경
-        await tx.payment.update({
-            where: { id: payment.id },
-            data: { status: "CANCELLED" },
-        });
+        // 결제 상태 변경 (이미 CANCELLED면 그대로)
+        if (payment && payment.status !== "CANCELLED") {
+            await tx.payment.update({
+                where: { id: payment.id },
+                data: { status: "CANCELLED" },
+            });
+        }
 
         if (isTicket) {
             // 단건 열람권: 결제 상태만 CANCELLED. CourseUnlock은 유지 (정책상 환불 불가이나 스토어 환불은 통제 불가)
