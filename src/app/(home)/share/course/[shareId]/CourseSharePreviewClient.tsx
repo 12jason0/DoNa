@@ -408,7 +408,9 @@ export default function CourseSharePreviewClient({
             </header>
 
             <main className="max-w-[900px] mx-auto px-4 pt-6 space-y-6">
-                {data.lockReason && <ShareLockNotice reason={data.lockReason} t={t} />}
+                {data.lockReason && (
+                    <ShareLockNotice reason={data.lockReason} courseId={data.templateCourseId} t={t} />
+                )}
                 {isSelectionModeUnselected && selectionOrderedSteps.length > 0 ? (
                     selectionOrderedSteps.map((step, stepIdx) => {
                         if (step.type === "fixed") {
@@ -634,8 +636,8 @@ export default function CourseSharePreviewClient({
                     )}
                     </>
                 )}
-                {!data.fullAccess && data.coursePlaces.some((cp) => cp.tipCategories?.length) && (
-                    <ViewAllTipsLink courseId={data.templateCourseId} t={t} />
+                {!data.fullAccess && !data.lockReason && data.coursePlaces.some((cp) => cp.tipCategories?.length) && (
+                    <ViewOnDonaLink courseId={data.templateCourseId} t={t} />
                 )}
             </main>
 
@@ -866,7 +868,7 @@ export default function CourseSharePreviewClient({
                                     return (
                                         <div className="mb-4 flex flex-col gap-3">
                                             <TipChips categories={cp.tipCategories} t={t} />
-                                            <ViewAllTipsLink courseId={data.templateCourseId} t={t} />
+                                            <ViewOnDonaLink courseId={data.templateCourseId} t={t} />
                                         </div>
                                     );
                                 })()}
@@ -930,20 +932,28 @@ function TipChips({ categories, t }: { categories?: string[]; t: Translate }) {
     );
 }
 
-function ViewAllTipsLink({ courseId, t }: { courseId: number; t: Translate }) {
+function ViewOnDonaLink({ courseId, t }: { courseId: number; t: Translate }) {
     return (
         <a
             href={`/courses/${courseId}`}
             onClick={(e) => e.stopPropagation()}
             className="block w-full py-3 px-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 font-bold text-sm text-center"
         >
-            💡 {t("sharePreview.viewAllTips")}
+            {t("sharePreview.viewOnDona")}
         </a>
     );
 }
 
 /** 링크 열람권 잠금 안내 (기기 수 초과·만료) */
-function ShareLockNotice({ reason, t }: { reason: "expired" | "devices"; t: Translate }) {
+function ShareLockNotice({
+    reason,
+    courseId,
+    t,
+}: {
+    reason: "expired" | "devices";
+    courseId: number;
+    t: Translate;
+}) {
     return (
         <div className="flex flex-col items-center text-center gap-1.5 p-5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
             <Icons.Lock className="w-6 h-6 text-gray-500 dark:text-gray-400 mb-1" />
@@ -953,6 +963,9 @@ function ShareLockNotice({ reason, t }: { reason: "expired" | "devices"; t: Tran
             <p className="text-sm text-gray-600 dark:text-gray-300">
                 {t(reason === "expired" ? "sharePreview.lockExpiredDesc" : "sharePreview.lockDevicesDesc")}
             </p>
+            <div className="w-full mt-2">
+                <ViewOnDonaLink courseId={courseId} t={t} />
+            </div>
         </div>
     );
 }
