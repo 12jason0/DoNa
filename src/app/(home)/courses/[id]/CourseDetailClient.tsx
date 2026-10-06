@@ -306,6 +306,8 @@ export interface CourseData {
     isPopular: boolean;
     grade?: "FREE" | "BASIC" | "PREMIUM";
     isLocked?: boolean;
+    /** 잠긴 유료 코스: "식당 · 카페 4곳" (장소 데이터 대신) */
+    lockedPlaceSummary?: string;
     isSelectionType?: boolean;
     recommended_start_time: string;
     season: string;
@@ -2642,6 +2644,12 @@ export default function CourseDetailClient({
                                     {courseData.sub_title && (
                                         <p className="text-sm text-white/80 mb-3 leading-relaxed">
                                             {translatedSubTitle || courseData.sub_title}
+                                        </p>
+                                    )}
+                                    {/* 잠금 시 장소 이름 대신 카테고리·개수만 (서버가 장소 데이터를 안 보냄) */}
+                                    {courseData.lockedPlaceSummary && (
+                                        <p className="text-sm font-medium text-white/90 mb-3">
+                                            {courseData.lockedPlaceSummary}
                                         </p>
                                     )}
                                     {/* 🟢 [iOS/Android]: iOS/Android에서는 등급 안내 텍스트 숨김 */}

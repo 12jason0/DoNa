@@ -215,6 +215,13 @@ const getCourse = unstable_cache(
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://dona.io.kr").replace(/\/$/, "");
 const cleanCourseId = (id: string) => (id.startsWith("c-") ? id.replace("c-", "") : id);
 
+/** 잠긴 유료 코스용 장소 요약: "식당 · 카페 · 체험 4곳" (이름 없이 카테고리 순서·개수만) */
+function lockedPlaceSummary(coursePlaces: any[]): string {
+    const places = coursePlaces.filter((cp) => cp.place);
+    const categories = [...new Set(places.map((cp) => cp.place.category?.trim()).filter(Boolean))];
+    return `${categories.length ? `${categories.join(" · ")} ` : ""}${places.length}곳`;
+}
+
 // 검색 결과용 설명: 잠금 코스에서도 화면에 보이는 정보(지역·시간·예산·장소명)만 사용
 function courseSeoDescription(course: CourseData): string {
     // 유료(BASIC·PREMIUM) 코스는 장소 이름을 노출하지 않음 (공유 카드와 동일 정책)
@@ -237,10 +244,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
     const title = course.region ? `${course.title} - ${course.region} 데이트 코스` : course.title;
     const description = courseSeoDescription(course);
-    const firstPlaceImage = (course.coursePlaces || []).find((cp: any) => cp.place?.imageUrl)?.place?.imageUrl;
-    const image = resolveCourseImageAbsoluteForOg(firstPlaceImage, course.imageUrl);
     // 공유 카드(og·twitter): 유료 코스는 장소 이름을 빼고 "지역 · 시간 · 장소 N곳"만
     const isPaid = course.grade === "BASIC" || course.grade === "PREMIUM";
+    // 유료 코스는 장소 사진 대신 코스 사진 (장소 사진 파일명에 장소 이름이 들어 있는 경우가 있음)
+    const firstPlaceImage = isPaid
+        ? null
+        : (course.coursePlaces || []).find((cp: any) => cp.place?.imageUrl)?.place?.imageUrl;
+    const image = resolveCourseImageAbsoluteForOg(firstPlaceImage, course.imageUrl);
     const shareDescription = isPaid
         ? paidCourseShareDescription({ ...course, placeCount: (course.coursePlaces || []).length }) || "두나 데이트 코스"
         : description;
@@ -358,32 +368,9 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                   season: COURSE_DETAIL_SENTINELS.season,
                   courseType: COURSE_DETAIL_SENTINELS.courseType,
                   transportation: COURSE_DETAIL_SENTINELS.transportation,
-                  coursePlaces:
-                      courseData.coursePlaces?.map((cp: any) => ({
-                          ...cp,
-                          estimated_duration: null,
-                          recommended_time: null,
-                          tips: null,
-                          place: cp.place
-                              ? {
-                                    id: cp.place.id,
-                                    name: cp.place.name,
-                                    category: cp.place.category,
-                                    imageUrl: cp.place.imageUrl,
-                                    address: null,
-                                    description: null,
-                                    avg_cost_range: null,
-                                    opening_hours: null,
-                                    phone: null,
-                                    parking_available: null,
-                                    reservation_required: null,
-                                    reservationUrl: null,
-                                    latitude: null,
-                                    longitude: null,
-                                    closed_days: [],
-                                }
-                              : null,
-                      })) || [],
+                  // 잠금 시 장소는 아무것도 내보내지 않음 (이름·place_id·사진 파일명·다국어 팁 모두) — 카테고리·개수 요약만
+                  coursePlaces: [],
+                  lockedPlaceSummary: lockedPlaceSummary(courseData.coursePlaces || []),
                   reservationRequired: false,
               }
             : {
@@ -405,16 +392,27 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         name: courseData.title,
         description: courseSeoDescription(courseData),
         url: `${SITE_URL}/courses/${cleanId}`,
-        itinerary: {
-            "@type": "ItemList",
-            itemListElement: secureCourseData.coursePlaces
-                .filter((cp: any) => cp.place)
-                .map((cp: any, i: number) => ({
-                    "@type": "ListItem",
-                    position: i + 1,
-                    item: { "@type": "Place", name: cp.place.name, ...(cp.place.address && { address: cp.place.address }) },
-                })),
-        },
+        // 잠금 시 장소 목록 대신 카테고리·개수 요약만 (화면과 동일)
+        itinerary: isLocked
+            ? {
+                  "@type": "ItemList",
+                  numberOfItems: (courseData.coursePlaces || []).filter((cp: any) => cp.place).length,
+                  description: lockedPlaceSummary(courseData.coursePlaces || []),
+              }
+            : {
+                  "@type": "ItemList",
+                  itemListElement: secureCourseData.coursePlaces
+                      .filter((cp: any) => cp.place)
+                      .map((cp: any, i: number) => ({
+                          "@type": "ListItem",
+                          position: i + 1,
+                          item: {
+                              "@type": "Place",
+                              name: cp.place.name,
+                              ...(cp.place.address && { address: cp.place.address }),
+                          },
+                      })),
+              },
         provider: { "@type": "Organization", name: "두나 DoNa", url: SITE_URL },
     };
 
