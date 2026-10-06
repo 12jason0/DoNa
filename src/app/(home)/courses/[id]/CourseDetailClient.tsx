@@ -1703,6 +1703,24 @@ export default function CourseDetailClient({
         }
     };
 
+    // 모바일 웹: 기본 공유창(카카오톡 포함 앱 선택) → 미지원 브라우저는 링크 복사
+    const handleNativeShare = async () => {
+        let shareUrl = "";
+        try {
+            shareUrl = await getShareUrl();
+            if (typeof navigator.share === "function") {
+                await navigator.share({ title: translatedTitle || courseData.title, url: shareUrl });
+                return;
+            }
+            await navigator.clipboard.writeText(shareUrl);
+            showToast(t("courseDetail.linkCopySuccess"), "success");
+        } catch (error: any) {
+            if (error?.name === "AbortError") return; // 사용자가 공유창을 닫음
+            // iOS Safari는 링크 생성(await) 뒤 공유창·복사를 막을 수 있음 → 기존 공유 시트로 (다시 탭하면 동작)
+            setShowShareModal(true);
+        }
+    };
+
     const handleCopyLink = async () => {
         try {
             const shareUrl = await getShareUrl();
@@ -2404,8 +2422,8 @@ export default function CourseDetailClient({
                             </TapFeedback>
                             <TapFeedback>
                                 <button
-                                    // 휴대폰: 바로 카카오톡 공유(피드 카드). PC는 카톡 앱이 없으니 기존 공유 시트(카카오 웹 공유·링크 복사)
-                                    onClick={() => (isIOS() || isAndroid() ? handleKakaoShare() : setShowShareModal(true))}
+                                    // 휴대폰: 기본 공유창(그 안에서 카카오톡 선택). PC: 기존 공유 시트(카카오 웹 공유·링크 복사)
+                                    onClick={() => (isIOS() || isAndroid() ? handleNativeShare() : setShowShareModal(true))}
                                     className="flex flex-col items-center justify-center gap-0.5 text-gray-400 transition-all"
                                 >
                                     <Icons.Share />
