@@ -164,6 +164,7 @@ async function getSharedCourseData(shareId: string, viewer: { deviceId?: string;
         isPremium,
         totalPlaceCount,
         fullAccess,
+        hideCourseLink: fullAccess && !isFree,
         lockReason,
         sharerName: sharer?.username?.trim() || null,
         daysLeft: fullAccess ? daysLeftKst(shared.expiresAt!) : null,

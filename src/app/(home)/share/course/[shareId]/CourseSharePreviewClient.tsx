@@ -105,6 +105,8 @@ interface ShareData {
     fullAccess?: boolean;
     /** 링크 열람권이 있었지만 지금 못 보는 이유 */
     lockReason?: "expired" | "devices" | null;
+    /** 유료 코스 + 링크 열람권 유효: /courses/{id} 버튼 숨김 */
+    hideCourseLink?: boolean;
     /** 공유한 사람 닉네임 (없으면 '친구가 공유한 코스') */
     sharerName?: string | null;
     /** 링크 열람권 남은 일수 (KST, 유효할 때만) */
@@ -657,13 +659,15 @@ export default function CourseSharePreviewClient({
             </main>
 
             <div className="fixed bottom-0 left-0 right-0 max-w-[900px] mx-auto p-4 bg-white dark:bg-[#0f1710] border-t border-gray-200 dark:border-gray-800 flex flex-col gap-2">
-                {/* 앱 없이도 웹 코스 상세로 (로그인·저장은 상세에서) */}
-                <a
-                    href={`/courses/${data.templateCourseId}`}
-                    className="w-full py-3 px-4 rounded-lg border border-[#85ad78] text-[#5f8a52] dark:text-[#a8cf9b] font-bold text-center"
-                >
-                    {t("sharePreview.viewOnWeb")}
-                </a>
+                {/* 앱 없이도 웹 코스 상세로. 유료 링크 열람권이 유효하면 숨김 — 받은 사람에게 /courses/{id}는 잠금 화면이라 */}
+                {!data.hideCourseLink && (
+                    <a
+                        href={`/courses/${data.templateCourseId}`}
+                        className="w-full py-3 px-4 rounded-lg border border-[#85ad78] text-[#5f8a52] dark:text-[#a8cf9b] font-bold text-center"
+                    >
+                        {t("sharePreview.viewOnWeb")}
+                    </a>
+                )}
                 <div className="flex gap-3">
                 <button
                     type="button"
