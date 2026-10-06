@@ -402,14 +402,19 @@ export default function CourseSharePreviewClient({
                     priority
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-b from-black/50 to-transparent" />
+                <div className="absolute top-4 left-4 right-4 flex flex-col items-start gap-2">
+                    <div className="flex items-center gap-2 min-w-0 max-w-full">
+                        {data.daysLeft != null && <DdayTag daysLeft={data.daysLeft} t={t} />}
+                        <span className="text-sm font-medium text-white drop-shadow truncate">
+                            {data.sharerName
+                                ? t("sharePreview.sentBy", { name: data.sharerName })
+                                : t("sharePreview.sentByFriend")}
+                        </span>
+                    </div>
+                    <SaveCourseButton courseId={data.templateCourseId} shareId={shareId} t={t} />
+                </div>
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <p className="text-sm text-white/80 mb-1">
-                        {data.sharerName
-                            ? t("sharePreview.sharedBy", { name: data.sharerName })
-                            : t("sharePreview.sharedByFriend")}
-                        {data.daysLeft != null &&
-                            ` · ${data.daysLeft > 0 ? t("sharePreview.daysLeft", { days: data.daysLeft }) : t("sharePreview.lastDay")}`}
-                    </p>
                     <h1 className="text-2xl font-bold">{data.title}</h1>
                     {data.sub_title && (
                         <p className="text-sm text-white/90 mt-1">{data.sub_title}</p>
@@ -977,5 +982,61 @@ function ShareLockNotice({
                 <ViewOnDonaLink courseId={courseId} t={t} />
             </div>
         </div>
+    );
+}
+
+/** 링크 열람권 남은 기간 태그: D-3·D-2 흰색, D-1 주황, 마지막 날 빨강 */
+function DdayTag({ daysLeft, t }: { daysLeft: number; t: Translate }) {
+    const tone =
+        daysLeft <= 0 ? "bg-red-500 text-white" : daysLeft === 1 ? "bg-orange-500 text-white" : "bg-white text-gray-900";
+    return (
+        <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-bold ${tone}`}>
+            {daysLeft <= 0 ? t("sharePreview.lastDay") : t("sharePreview.dday", { days: daysLeft })}
+        </span>
+    );
+}
+
+/** '나도 저장해두기': 찜 → 비로그인이면 로그인 후 이 공유 페이지로 돌아와(?save=1) 자동 찜 */
+function SaveCourseButton({ courseId, shareId, t }: { courseId: number; shareId: string; t: Translate }) {
+    const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
+
+    const save = async () => {
+        setState("saving");
+        try {
+            const res = await fetch("/api/users/favorites", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ courseId }),
+            });
+            if (res.status === 401) {
+                window.location.href = `/login?next=${encodeURIComponent(`/share/course/${shareId}?save=1`)}`;
+                return;
+            }
+            setState(res.ok ? "saved" : "idle");
+        } catch {
+            setState("idle");
+        }
+    };
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("save") !== "1") return;
+        params.delete("save");
+        const qs = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+        save();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+        <button
+            type="button"
+            onClick={save}
+            disabled={state !== "idle"}
+            className="px-3 py-1.5 rounded-full bg-white/90 dark:bg-black/60 text-xs font-bold text-gray-900 dark:text-white disabled:opacity-80"
+        >
+            {state === "saved" ? t("sharePreview.savedToo") : t("sharePreview.saveToo")}
+        </button>
     );
 }
