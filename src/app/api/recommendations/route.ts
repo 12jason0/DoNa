@@ -47,6 +47,30 @@ const regionMapping: Record<string, string> = {
     "홍대·연남": "마포구",
 };
 
+// [오늘 고른 동네 → DB courses.region에 들어 있는 동네 이름들]
+// regionMapping(행정구역명, 날씨 API용)으로 코스를 거르면 DB 값("성수", "홍대/연남")과 안 맞아 0건 → 지역이 무시됐음
+const REGION_TODAY_KEYWORDS: Record<string, string[]> = {
+    "문래·영등포": ["문래", "영등포"],
+    "합정·용산": ["합정", "용산"],
+    "안국·서촌": ["안국", "서촌", "북촌"],
+    "을지로": ["을지로"],
+    "여의도": ["여의도"],
+    "강남·신사": ["강남", "신사", "압구정"],
+    "성수·건대": ["성수", "건대"],
+    "홍대·연남": ["홍대", "연남", "망원", "신촌"],
+};
+
+/** 오늘 고른 동네의 DB 매칭 키워드 (모르는 값이면 · / , 로 나눈 원문) */
+function regionTodayKeywords(regionToday: string): string[] {
+    return (
+        REGION_TODAY_KEYWORDS[regionToday] ??
+        regionToday
+            .split(/[·\/,\s]+/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+    );
+}
+
 // ---------------------------------------------
 // [날씨 및 점수 계산 헬퍼 함수 - 기존 로직 100% 동일]
 // ---------------------------------------------
@@ -202,8 +226,7 @@ function calculateRegionMatch(courseRegion: string | null, longTermRegions: stri
     // 🟢 지역이 맞지 않으면 점수를 대폭 깎음 (UX 개선)
     // personalized-home 선택값("문래·영등포")을 DB 행정구역명("영등포구")으로 정규화 후 비교
     if (regionToday) {
-        const normalizedToday = regionMapping[regionToday] || regionToday;
-        return courseRegion.includes(normalizedToday) || normalizedToday.includes(courseRegion) ? 1.0 : 0.1;
+        return regionTodayKeywords(regionToday).some((k) => courseRegion.includes(k)) ? 1.0 : 0.1;
     }
 
     if (longTermRegions?.length > 0) {
@@ -524,8 +547,9 @@ function calculateWeekendRecommendationScore(
         activeWeightTotal += WEIGHTS.mood;
     }
     if ((longTermPrefs.regions?.length > 0) || todayContext.region_today || userPreferredGroupIds.size > 0) {
+        // 오늘 고른 동네가 있으면 그게 우선 (온보딩 장기 선호 지역보다)
         const regionScore =
-            userPreferredGroupIds.size > 0
+            userPreferredGroupIds.size > 0 && !todayContext.region_today
                 ? calculateRegionMatchV2(course.region, userPreferredGroupIds, REGION_GROUPS)
                 : calculateRegionMatch(
                       course.region,
@@ -1020,8 +1044,7 @@ export async function GET(req: NextRequest) {
         // 🟢 strict 모드: UI 선택지(예: "홍대 · 연남 · 신촌")를 행정구역명(예: "마포구")으로 매핑해 DB 조회 (그대로 쓰면 0건)
         let usedStrictRegion = false;
         if (strictRegion && regionToday) {
-            const regionForQuery = regionMapping[regionToday] || regionToday;
-            whereConditions.region = { contains: regionForQuery };
+            whereConditions.OR = regionTodayKeywords(regionToday).map((k) => ({ region: { contains: k } }));
             usedStrictRegion = true;
         }
 
@@ -1098,7 +1121,7 @@ export async function GET(req: NextRequest) {
 
         // 🟢 strict 지역 필터 결과 0건이면 지역 조건 제거 후 재조회 (추천 결과는 항상 보이도록)
         if (usedStrictRegion && allCourses.length === 0) {
-            delete whereConditions.region;
+            delete whereConditions.OR;
             allCourses = await (prisma as any).course.findMany({
                 where: whereConditions,
                 take: 200,
