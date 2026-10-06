@@ -26,3 +26,14 @@ export async function userHasCourseAccess(userId: number | null | undefined, cou
     const tier = subActive ? user.subscriptionTier : "FREE";
     return tier === "PREMIUM" || (tier === "BASIC" && grade === "BASIC");
 }
+
+/** 같은 코스 공유 링크 생성 한도 (사람당, 한국 날짜 기준 하루) */
+export const SHARE_DAILY_LIMIT = 5;
+
+const KST_OFFSET_MS = 9 * 3600_000;
+
+/** 한국 시간 기준 그날 0시 (UTC Date) */
+export function kstDayStart(at: Date = new Date()): Date {
+    const kst = new Date(at.getTime() + KST_OFFSET_MS);
+    return new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) - KST_OFFSET_MS);
+}

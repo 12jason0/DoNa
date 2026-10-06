@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
-import { SHARE_ACCESS_DAYS, userHasCourseAccess } from "@/lib/shareAccess";
+import { SHARE_ACCESS_DAYS, SHARE_DAILY_LIMIT, kstDayStart, userHasCourseAccess } from "@/lib/shareAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,18 @@ export async function POST(request: NextRequest) {
         }
 
         const userId = resolveUserId(request);
+
+        // 같은 코스는 사람당 하루(KST) 5개까지. 초과 시 클라이언트는 코스 URL로 공유 계속
+        // ponytail: 동시 요청 몇 개는 한도를 살짝 넘길 수 있음 — 필요해지면 advisory lock
+        if (userId) {
+            const todayCount = await prisma.sharedCourse.count({
+                where: { sharedByUserId: userId, templateCourseId, createdAt: { gte: kstDayStart() } },
+            });
+            if (todayCount >= SHARE_DAILY_LIMIT) {
+                return NextResponse.json({ error: "Daily share limit reached" }, { status: 429 });
+            }
+        }
+
         const sharerHasAccess = await userHasCourseAccess(userId, templateCourseId);
 
         const shared = await prisma.sharedCourse.create({
