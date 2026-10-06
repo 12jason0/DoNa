@@ -18,7 +18,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     try {
         // DB에서 모든 코스 가져오기
+        // 공개 코스만 (비공개 코스는 페이지가 열려도 검색에 올리지 않음)
         const courses: CourseData[] = await prisma.course.findMany({
+            where: { isPublic: true },
             select: {
                 id: true,
                 updatedAt: true,
