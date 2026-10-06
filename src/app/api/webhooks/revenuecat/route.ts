@@ -271,7 +271,12 @@ async function handleRenewal(
     });
 }
 
-/** 구독 만료 → FREE. 이 만료보다 늦은 만료일을 이미 갖고 있으면(재구독·다른 결제) 그대로 둠 */
+/**
+ * 구독 만료 → FREE. 아래를 모두 만족할 때만 (하나라도 아니면 유지, 로그만)
+ * - 이벤트의 만료 시각이 실제로 지남
+ * - 사용자 현재 등급이 이 구독 등급과 같음 (다른 등급으로 옮겼으면 그쪽이 유효)
+ * - 사용자 만료일이 있고, 이 만료보다 늦지 않음 (만료일 없음 = 무기한 부여로 보고 유지)
+ */
 async function handleExpiration(
     userId: number,
     productInfo: { type: "COURSE_TICKET" | "SUBSCRIPTION"; value: number; name: string; tier?: "BASIC" | "PREMIUM"; price: number },
@@ -279,9 +284,23 @@ async function handleExpiration(
 ) {
     if (productInfo.type !== "SUBSCRIPTION") return;
     const expiredAt = eventExpiration(event) ?? new Date();
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionExpiresAt: true } });
-    if (user?.subscriptionExpiresAt && user.subscriptionExpiresAt.getTime() > expiredAt.getTime() + 60_000) {
-        console.log("[RevenueCat Webhook] EXPIRATION: 더 늦은 만료일이 있어 유지", { userId });
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionTier: true, subscriptionExpiresAt: true },
+    });
+    const keepReason = !user
+        ? "사용자 없음"
+        : expiredAt.getTime() > Date.now()
+          ? "만료 시각이 아직 안 지남"
+          : user.subscriptionTier !== productInfo.tier
+            ? "현재 등급이 다름"
+            : !user.subscriptionExpiresAt
+              ? "만료일 없음(무기한)"
+              : user.subscriptionExpiresAt.getTime() > expiredAt.getTime() + 60_000
+                ? "더 늦은 만료일이 있음"
+                : null;
+    if (keepReason) {
+        console.log("[RevenueCat Webhook] EXPIRATION: 등급 유지 —", keepReason, { userId });
         return;
     }
     await prisma.user.update({
@@ -384,7 +403,18 @@ async function handleRefund(
 
         if (isTicket) {
             // 단건 열람권: 결제 상태만 CANCELLED. CourseUnlock은 유지 (정책상 환불 불가이나 스토어 환불은 통제 불가)
-        } else {
+            return;
+        }
+        // 구독 강등은 현재 등급이 환불된 구독 등급과 같고, 만료일이 있을 때만 (만료일 없음 = 무기한 부여로 보고 유지)
+        const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: { subscriptionTier: true, subscriptionExpiresAt: true },
+        });
+        if (!user || user.subscriptionTier !== productInfo.tier || !user.subscriptionExpiresAt) {
+            console.log("[RevenueCat Webhook] REFUND: 등급 유지 —", !user ? "사용자 없음" : user.subscriptionTier !== productInfo.tier ? "현재 등급이 다름" : "만료일 없음(무기한)", { userId });
+            return;
+        }
+        {
             // 구독 등급 강등 및 만료 처리
             await tx.user.update({
                 where: { id: userId },
