@@ -1596,6 +1596,18 @@ export default function CourseDetailClient({
         return Kakao || null;
     };
 
+    const shareUrlCacheRef = useRef<{ key: string; url: string } | null>(null);
+    const shareSelectedPlaceIds = () =>
+        courseData.isSelectionType
+            ? mySelection
+                ? mySelection.selectedPlaceIds
+                : [] // 선택 전 공유 시 빈 배열 → 공유받은 사람은 고르기 화면(점선·?핀)으로 표시
+            : displayCoursePlaces.map((cp) => cp.place_id);
+    /** 지금 선택 상태로 이미 만든 공유 링크 (없으면 null) — await 없이 꺼낼 수 있어야 iOS 공유창이 열림 */
+    const cachedShareUrl = () => {
+        const c = shareUrlCacheRef.current;
+        return c && c.key === `${courseId}:${shareSelectedPlaceIds().join(",")}` ? c.url : null;
+    };
     const getShareUrl = async (): Promise<string> => {
         const baseUrl =
             typeof window !== "undefined" && window.location.origin.includes("dona.io.kr")
@@ -1604,11 +1616,11 @@ export default function CourseDetailClient({
                   ? window.location.origin.replace(/\/$/, "")
                   : "https://dona.io.kr";
 
-        const selectedPlaceIds = courseData.isSelectionType
-            ? mySelection
-                ? mySelection.selectedPlaceIds
-                : [] // 선택 전 공유 시 빈 배열 → 공유받은 사람은 고르기 화면(점선·?핀)으로 표시
-            : displayCoursePlaces.map((cp) => cp.place_id);
+        const selectedPlaceIds = shareSelectedPlaceIds();
+
+        // 같은 화면에서 다시 공유하면 만든 링크 재사용 (탭마다 새 링크·새 3일 열람권이 생기지 않게, 하루 5개 한도 보호)
+        const cacheKey = `${courseId}:${selectedPlaceIds.join(",")}`;
+        if (shareUrlCacheRef.current?.key === cacheKey) return shareUrlCacheRef.current.url;
 
         const res = await fetch("/api/share/create", {
             method: "POST",
@@ -1620,8 +1632,10 @@ export default function CourseDetailClient({
         });
         const data = await res.json().catch(() => ({}));
         const shareId = data?.shareId;
-        if (shareId) return `${baseUrl}/share/course/${shareId}`;
-        return `${baseUrl}/courses/${courseId}`;
+        if (!shareId) return `${baseUrl}/courses/${courseId}`;
+        const url = `${baseUrl}/share/course/${shareId}`;
+        shareUrlCacheRef.current = { key: cacheKey, url };
+        return url;
     };
 
     const handleKakaoShare = async () => {
@@ -1710,7 +1724,8 @@ export default function CourseDetailClient({
     const handleNativeShare = async () => {
         let shareUrl = "";
         try {
-            shareUrl = await getShareUrl();
+            // 이미 만든 링크가 있으면 await 없이 바로 공유창 — iOS Safari는 await 뒤 공유창을 막음 (사용자 탭 효과 소멸)
+            shareUrl = cachedShareUrl() ?? (await getShareUrl());
             if (typeof navigator.share === "function") {
                 await navigator.share({ title: translatedTitle || courseData.title, url: shareUrl });
                 return;
