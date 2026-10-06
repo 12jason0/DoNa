@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, Suspense } from "react";
+import PageLoadingSpinner from "@/components/PageLoadingSpinner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { VIBE_OPTIONS, VALUE_OPTIONS, REGION_GROUPS, CREW_OPTIONS } from "@/constants/onboardingData";
 import Image from "next/image";
@@ -722,4 +723,12 @@ const AIOnboarding = ({ onClose }: AIOnboardingProps) => {
         </div>
     );
 };
-export default AIOnboarding;
+// useSearchParams 사용 → 정적 생성 시 Suspense 필요. 예전엔 (home)/loading.tsx가 감싸줬는데,
+// 그 파일이 없어져(없는 주소 진짜 404 위해) 여기서 직접 감쌈. 대체 화면은 예전과 같은 스피너.
+export default function OnboardingPage() {
+    return (
+        <Suspense fallback={<PageLoadingSpinner messageKey="loading.findingCourses" />}>
+            <AIOnboarding />
+        </Suspense>
+    );
+}
