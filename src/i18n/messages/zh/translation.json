@@ -1530,6 +1530,7 @@
       "courseLoadError": "无法加载此路线",
       "targetSome": "暧昧期",
       "metaSpotsCount": "👣 {count} 个地点",
+      "lockedPlaceCount": "{count}个地点",
       "saveSelection": "保存选择",
       "memoryLimitTitleLine1": "保存回忆",
       "memoryLimitHighlight": "已达上限",

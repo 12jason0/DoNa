@@ -1537,6 +1537,7 @@
       "courseLoadError": "Couldn't load this course",
       "targetSome": "Early dating",
       "metaSpotsCount": "👣 {count} spots",
+      "lockedPlaceCount": "{count} places",
       "saveSelection": "Save selection",
       "memoryLimitTitleLine1": "Save memory",
       "memoryLimitHighlight": "Limit reached",

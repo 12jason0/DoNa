@@ -640,7 +640,21 @@ export default function CourseDetailScreen() {
     const grade = GRADE_META[course.grade] ?? GRADE_META.FREE;
     const normalizedPlaces = normalizedPlacesAll;
     const regionLabel = translateCourseRegion(course.region, i18n) || (course as any).location || i18n("courses.regionSeoul");
-    const heroImage = resolveImageUrl(course.imageUrl) ?? getPlaceImageUrl(normalizedPlaces[0]?.place);
+    // 잠긴 코스는 장소 사진을 대표 사진으로 쓰지 않음 (웹 잠금 화면과 동일)
+    const heroImage = resolveImageUrl(course.imageUrl) ?? (isCourseLocked ? null : getPlaceImageUrl(normalizedPlaces[0]?.place));
+    // 잠긴 유료 코스: 장소 이름·사진·지도 대신 "식당 · 카페 · 체험 5곳" (웹 lockedPlaceSummary와 같은 형식)
+    const lockedPlaceSummary = (() => {
+        if (!isCourseLocked) return "";
+        const categories = [
+            ...new Set(
+                normalizedPlaces
+                    .map((cp) => translatePlaceCategory(cp.place?.category, locale as CourseUiLocale))
+                    .filter(Boolean),
+            ),
+        ];
+        const count = i18n("mobile.courseScreen.lockedPlaceCount", { count: normalizedPlaces.length });
+        return categories.length ? `${categories.join(" · ")} ${count}` : count;
+    })();
     const openMapForIndex = (idx: number) => {
         setActivePlaceIndex(idx);
         setMapSelectedIndex(idx);
@@ -732,8 +746,19 @@ export default function CourseDetailScreen() {
                     <View
                         style={[s.mainCard, { backgroundColor: t.card, borderColor: t.isDark ? "#374151" : "#f3f4f6" }]}
                     >
+                        {/* ── 잠긴 유료 코스: 장소 목록 대신 카테고리·개수 요약 ── */}
+                        {isCourseLocked && (
+                            <TouchableOpacity style={s.lockedSummary} onPress={handleTipLockPress} activeOpacity={0.85}>
+                                <Ionicons name="lock-closed" size={22} color={t.textMuted} />
+                                <Text style={[s.lockedSummaryText, { color: t.text }]}>{lockedPlaceSummary}</Text>
+                                <Text style={[s.lockedSummaryHint, { color: t.textMuted }]}>
+                                    {i18n("courseDetail.gradeUnlock", { grade: course.grade === "PREMIUM" ? "PREMIUM" : "BASIC" })}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
                         {/* ── 선택형 코스: 첫 방문 또는 "코스 수정" 시 ── */}
-                        {course.isSelectionType && selectionOrderedSteps.length > 0 && (!mySelection || showSelectionUI) && (
+                        {!isCourseLocked && course.isSelectionType && selectionOrderedSteps.length > 0 && (!mySelection || showSelectionUI) && (
                             <View style={{ position: "relative" }}>
                                 {/* 세로 점선 타임라인 (웹과 동일: absolute left) */}
                                 <View style={s.selTimelineLine} />
@@ -891,7 +916,7 @@ export default function CourseDetailScreen() {
                         )}
 
                         {/* ── 장소 목록: 일반 코스 or 저장된 선택형 ── */}
-                        {(!course.isSelectionType || selectionOrderedSteps.length === 0 || mySelection) && !showSelectionUI && (
+                        {!isCourseLocked && (!course.isSelectionType || selectionOrderedSteps.length === 0 || mySelection) && !showSelectionUI && (
                             <View style={{ gap: 8 }}>
                                 {mySelection && course.isSelectionType && (
                                     <TouchableOpacity
@@ -979,7 +1004,7 @@ export default function CourseDetailScreen() {
             </ScrollView>
 
             {/* 우하단 고정 지도 FAB (스크롤과 무관하게 CTA 바 위에 고정) */}
-            {normalizedPlaces.length > 0 ? (
+            {normalizedPlaces.length > 0 && !isCourseLocked ? (
                 <TouchableOpacity
                     style={[s.mapFabFixed, { bottom: mapFabBottom }]}
                     onPress={openFullRouteMap}
@@ -1093,7 +1118,7 @@ export default function CourseDetailScreen() {
             )}
 
             <CourseMapModal
-                visible={showCourseMapModal}
+                visible={showCourseMapModal && !isCourseLocked}
                 places={
                     course.isSelectionType && selectionOrderedSteps.length > 0
                         ? normalizedPlacesAll
@@ -1468,6 +1493,9 @@ const s = StyleSheet.create({
         overflow: "hidden",
     },
 
+    lockedSummary: { alignItems: "center", gap: 8, paddingVertical: 28, paddingHorizontal: 16 },
+    lockedSummaryText: { fontSize: 16, fontWeight: "700", textAlign: "center" },
+    lockedSummaryHint: { fontSize: 13, textAlign: "center" },
     mapFabFixed: {
         position: "absolute",
         right: 16,

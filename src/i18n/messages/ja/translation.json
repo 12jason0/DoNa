@@ -1530,6 +1530,7 @@
       "courseLoadError": "コースを読み込めませんでした",
       "targetSome": "ソムのとき",
       "metaSpotsCount": "👣 {count}スポット",
+      "lockedPlaceCount": "{count}か所",
       "saveSelection": "選択を保存",
       "memoryLimitTitleLine1": "思い出を保存",
       "memoryLimitHighlight": "上限に達しました",

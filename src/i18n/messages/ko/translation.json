@@ -1504,6 +1504,7 @@
             "courseLoadError": "코스를 불러올 수 없습니다",
             "targetSome": "썸탈 때",
             "metaSpotsCount": "👣 {count} 스팟",
+            "lockedPlaceCount": "{count}곳",
             "saveSelection": "선택 저장하기",
             "memoryLimitTitleLine1": "추억 저장",
             "memoryLimitHighlight": "한도에 도달했어요",
