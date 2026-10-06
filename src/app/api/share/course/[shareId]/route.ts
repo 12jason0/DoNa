@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { getMergedTipsFromRow } from "@/types/tip";
+import { getTipCategoriesFromRow } from "@/types/tip";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/share/course/[shareId]
  * 공유 미리보기용 코스 데이터 (비로그인 허용)
- * - tips 통합 필드로 팁 포함
+ * - 팁은 카테고리만 (내용은 /courses/{id}에서 권한 확인 후)
  */
 export async function GET(
     request: NextRequest,
@@ -42,9 +42,6 @@ export async function GET(
                                 segment: true,
                                 order_in_segment: true,
                                 tips: true,
-                                tips_en: true,
-                                tips_ja: true,
-                                tips_zh: true,
                                 recommended_time: true,
                                 place: {
                                     select: {
@@ -108,10 +105,8 @@ export async function GET(
             order_index: cp.order_index ?? cp.order_index,
             segment: cp.segment,
             order_in_segment: cp.order_in_segment,
-            tips: getMergedTipsFromRow(cp),
-            tips_en: cp.tips_en ?? null,
-            tips_ja: cp.tips_ja ?? null,
-            tips_zh: cp.tips_zh ?? null,
+            // 팁 내용은 보내지 않음 (유료 팁 유출 방지) — 카테고리 칩만
+            tipCategories: getTipCategoriesFromRow(cp),
             recommended_time: cp.recommended_time ?? null,
             place: cp.place
                 ? {

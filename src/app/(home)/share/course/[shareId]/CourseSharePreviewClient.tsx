@@ -7,9 +7,8 @@ import dynamic from "next/dynamic";
 import { Place as MapPlace } from "@/types/map";
 import { isIOS, isAndroid } from "@/lib/platform";
 import { useAppLayout } from "@/context/AppLayoutContext";
-import { TipSection } from "@/components/TipSection";
-import { parseTipsFromDbForLocale } from "@/types/tip";
-import { localizeParsedTipsForUi, type CourseUiTranslate } from "@/lib/courseTranslate";
+import { TipCategoryIcon } from "@/components/TipSection";
+import { getTipCategoryLabel } from "@/types/tip";
 import { pickPlaceAddress, pickPlaceDescription, pickPlaceName } from "@/lib/placeLocalized";
 import PlaceStatusBadge from "@/components/PlaceStatusBadge";
 import { getPlaceStatus } from "@/lib/placeStatus";
@@ -66,10 +65,7 @@ interface CoursePlace {
     order_index: number;
     segment?: string | null;
     order_in_segment?: number | null;
-    tips?: string | null;
-    tips_en?: string | null;
-    tips_ja?: string | null;
-    tips_zh?: string | null;
+    tipCategories?: string[];
     recommended_time?: string | null;
     place: {
         id: number;
@@ -436,6 +432,7 @@ export default function CourseSharePreviewClient({
                                             <p className="text-xs text-gray-500 truncate">
                                                 {cp.place ? pickPlaceAddress(cp.place, locale) : ""}
                                             </p>
+                                            <TipChips categories={cp.tipCategories} t={t} />
                                         </div>
                                     </div>
                                 </div>
@@ -494,6 +491,7 @@ export default function CourseSharePreviewClient({
                                             <p className="text-xs text-gray-500 truncate">
                                                 {cp.place ? pickPlaceAddress(cp.place, locale) : ""}
                                             </p>
+                                            <TipChips categories={cp.tipCategories} t={t} />
                                         </div>
                                     </div>
                                     );
@@ -557,6 +555,7 @@ export default function CourseSharePreviewClient({
                                         <p className="text-xs text-gray-500 truncate">
                                             {cp.place ? pickPlaceAddress(cp.place, locale) : ""}
                                         </p>
+                                        <TipChips categories={cp.tipCategories} t={t} />
                                     </div>
                                 </div>
                             </div>
@@ -623,6 +622,9 @@ export default function CourseSharePreviewClient({
                         </div>
                     )}
                     </>
+                )}
+                {data.coursePlaces.some((cp) => cp.tipCategories?.length) && (
+                    <ViewAllTipsLink courseId={data.templateCourseId} t={t} />
                 )}
             </main>
 
@@ -837,15 +839,11 @@ export default function CourseSharePreviewClient({
                                 </p>
                                 {(() => {
                                     const cp = data.coursePlaces.find((c) => c.place?.id === selectedPlace.id);
-                                    const tips = localizeParsedTipsForUi(
-                                        parseTipsFromDbForLocale(cp ?? {}, locale),
-                                        locale,
-                                        t as CourseUiTranslate,
-                                    );
-                                    if (tips.length === 0) return null;
+                                    if (!cp?.tipCategories?.length) return null;
                                     return (
-                                        <div className="mb-4 flex flex-col gap-2">
-                                            <TipSection tips={tips} variant="free" compact={false} />
+                                        <div className="mb-4 flex flex-col gap-3">
+                                            <TipChips categories={cp.tipCategories} t={t} />
+                                            <ViewAllTipsLink courseId={data.templateCourseId} t={t} />
                                         </div>
                                     );
                                 })()}
@@ -883,5 +881,40 @@ export default function CourseSharePreviewClient({
                 </div>
             )}
         </div>
+    );
+}
+
+type Translate = ReturnType<typeof useLocale>["t"];
+
+/** 꿀팁 카테고리 칩만 (내용은 /courses/{id}에서) */
+function TipChips({ categories, t }: { categories?: string[]; t: Translate }) {
+    if (!categories?.length) return null;
+    return (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+            {categories.map((cat) => (
+                <span
+                    key={cat}
+                    className="inline-flex items-center gap-1 py-0.5 px-2 rounded-md text-[11px] font-medium bg-[#F3F4F6] dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40"
+                >
+                    <TipCategoryIcon
+                        category={cat}
+                        className="[&_svg]:w-3.5 [&_svg]:h-3.5 text-emerald-600 dark:text-emerald-400"
+                    />
+                    {getTipCategoryLabel(cat, t)}
+                </span>
+            ))}
+        </div>
+    );
+}
+
+function ViewAllTipsLink({ courseId, t }: { courseId: number; t: Translate }) {
+    return (
+        <a
+            href={`/courses/${courseId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block w-full py-3 px-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 font-bold text-sm text-center"
+        >
+            💡 {t("sharePreview.viewAllTips")}
+        </a>
     );
 }

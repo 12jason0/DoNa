@@ -175,3 +175,8 @@ export function getMergedTipsFromRow(row: { tips?: string | null }): string | nu
     if (row.tips != null && String(row.tips).trim()) return row.tips.trim();
     return null;
 }
+
+/** 공유 미리보기 등 비공개 영역용: 팁 내용 없이 카테고리만 (중복 제거) */
+export function getTipCategoriesFromRow(row: { tips?: string | null }): TipCategory[] {
+    return [...new Set(parseTipsFromDb(row.tips).map((tip) => tip.category))];
+}

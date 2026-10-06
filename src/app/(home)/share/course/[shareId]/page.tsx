@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CourseSharePreviewClient from "./CourseSharePreviewClient";
 import prisma from "@/lib/db";
-import { getMergedTipsFromRow } from "@/types/tip";
+import { getTipCategoriesFromRow } from "@/types/tip";
 import {
     fetchCourseFieldsForOpenGraph,
     paidCourseShareDescription,
@@ -56,9 +56,6 @@ async function getSharedCourseData(shareId: string) {
                             segment: true,
                             order_in_segment: true,
                             tips: true,
-                            tips_en: true,
-                            tips_ja: true,
-                            tips_zh: true,
                             recommended_time: true,
                             place: {
                                 select: {
@@ -132,10 +129,8 @@ async function getSharedCourseData(shareId: string) {
             order_index: cp.order_index,
             segment: cp.segment,
             order_in_segment: cp.order_in_segment,
-            tips: getMergedTipsFromRow(cp),
-            tips_en: cp.tips_en ?? null,
-            tips_ja: cp.tips_ja ?? null,
-            tips_zh: cp.tips_zh ?? null,
+            // 팁 내용은 보내지 않음 (유료 팁 유출 방지) — 카테고리 칩만
+            tipCategories: getTipCategoriesFromRow(cp),
             recommended_time: cp.recommended_time ?? null,
             place: cp.place
                 ? {
