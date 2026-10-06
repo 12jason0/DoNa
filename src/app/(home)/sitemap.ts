@@ -4,6 +4,9 @@ import { MetadataRoute } from "next";
 import prisma from "@/lib/db";
 import { courseInRegion } from "@/lib/regionIntro";
 
+// 빌드 때 한 번만 만들지 않고 1시간마다 다시 생성 → 새 코스·지역·장소가 배포 없이 반영
+export const revalidate = 3600;
+
 // Course 타입 정의
 type CourseData = {
     id: number;
