@@ -60,6 +60,11 @@ const nextConfig = {
 
     async headers() {
         return [
+            // 공유 링크 열람권으로 유료 내용이 보일 수 있어 검색 색인 금지 (페이지 meta robots와 이중으로)
+            {
+                source: "/share/:path*",
+                headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+            },
             // 🟢 [신규 추가]: 구글 앱 링크 검증용 Content-Type 설정
             {
                 source: "/.well-known/assetlinks.json",

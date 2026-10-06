@@ -2,6 +2,7 @@
 import { MetadataRoute } from "next";
 // 요청마다 새 PrismaClient를 만들면 커넥션이 누수되므로 프로젝트 공용 싱글톤을 사용
 import prisma from "@/lib/db";
+import { courseInRegion } from "@/lib/regionIntro";
 
 // Course 타입 정의
 type CourseData = {
@@ -67,7 +68,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.8,
         }));
 
-        return [...staticPages, ...coursePages];
+        // 지역 페이지: regions 테이블 지역 중 공개 코스가 있는 곳 (/regions/[region]과 같은 조건)
+        const [regions, publicCourses, places] = await Promise.all([
+            prisma.region.findMany({ select: { name: true } }),
+            prisma.course.findMany({ where: { isPublic: true }, select: { region: true, updatedAt: true } }),
+            // 장소 페이지: 공개 코스에 쓰인 published 장소, 영구 폐업 제외 (/places/[id]와 같은 조건 + 폐업 noindex)
+            prisma.place.findMany({
+                where: {
+                    status: "published",
+                    NOT: { place_status: "CLOSED_PERMANENTLY" },
+                    coursePlaces: { some: { course: { isPublic: true } } },
+                },
+                select: { id: true, updated_at: true },
+            }),
+        ]);
+        const regionPages: MetadataRoute.Sitemap = regions.flatMap(({ name }) => {
+            const inRegion = publicCourses.filter((c) => courseInRegion(c.region, name));
+            if (inRegion.length === 0) return [];
+            const lastModified = new Date(Math.max(...inRegion.map((c) => c.updatedAt.getTime())));
+            return [
+                {
+                    url: `${baseUrl}/regions/${encodeURIComponent(name)}`,
+                    lastModified,
+                    changeFrequency: "weekly" as const,
+                    priority: 0.8,
+                },
+            ];
+        });
+        const placePages: MetadataRoute.Sitemap = places.map((p) => ({
+            url: `${baseUrl}/places/${p.id}`,
+            lastModified: p.updated_at,
+            changeFrequency: "monthly",
+            priority: 0.6,
+        }));
+
+        return [...staticPages, ...coursePages, ...regionPages, ...placePages];
     } catch (error) {
         console.error("Sitemap generation error:", error);
 
