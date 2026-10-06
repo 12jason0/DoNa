@@ -8,7 +8,8 @@ import {
     paidCourseShareDescription,
     resolveCourseImageAbsoluteForOg,
 } from "@/lib/courseOpenGraph";
-import { userHasCourseAccess } from "@/lib/shareAccess";
+import { cookies, headers } from "next/headers";
+import { SHARE_DEVICE_COOKIE, claimShareDevice, isCrawlerUA, userHasCourseAccess } from "@/lib/shareAccess";
 
 // 열람권·만료·기기 수를 매번 서버에서 확인 (캐시 금지)
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ shareId: 
     };
 }
 
-async function getSharedCourseData(shareId: string) {
+async function getSharedCourseData(shareId: string, viewer: { deviceId?: string; userAgent: string | null }) {
     const shared = await prisma.sharedCourse.findUnique({
         where: { id: shareId },
         include: {
@@ -120,11 +121,21 @@ async function getSharedCourseData(shareId: string) {
     const isPremium = course?.grade === "PREMIUM";
     const totalPlaceCount = allResolved.length;
 
-    // 링크 열람권: 생성 시 공유자 권한 + 미만료 + 지금도 공유자에게 권한 있음(환불·구독 만료 대응)
+    // 링크 열람권: 생성 시 공유자 권한 + 미만료 + 지금도 공유자에게 권한 있음(환불·구독 만료 대응) + 기기 5대 이내
+    // 크롤러(카톡 미리보기 등)는 기기 수에서 빼고 잠긴 화면만
     const hasLinkGrant = shared.sharerHasAccess && !!shared.expiresAt;
     const isExpired = hasLinkGrant && shared.expiresAt! <= new Date();
-    const fullAccess =
-        hasLinkGrant && !isExpired && (await userHasCourseAccess(shared.sharedByUserId, shared.templateCourseId));
+    let lockReason: "expired" | "devices" | null = isExpired ? "expired" : null;
+    let fullAccess = false;
+    if (
+        hasLinkGrant &&
+        !isExpired &&
+        !isCrawlerUA(viewer.userAgent) &&
+        (await userHasCourseAccess(shared.sharedByUserId, shared.templateCourseId))
+    ) {
+        fullAccess = await claimShareDevice(shared.id, viewer.deviceId);
+        if (!fullAccess) lockReason = "devices";
+    }
     const places = isFree || fullAccess ? allResolved : allResolved.slice(0, 1);
 
     return {
@@ -141,7 +152,7 @@ async function getSharedCourseData(shareId: string) {
         isPremium,
         totalPlaceCount,
         fullAccess,
-        isExpired,
+        lockReason,
         coursePlaces: places.map((cp: any) => ({
             id: cp.id,
             place_id: cp.place_id,
@@ -172,7 +183,11 @@ export default async function ShareCoursePage({
     const { shareId } = await params;
     if (!shareId?.trim()) notFound();
 
-    const data = await getSharedCourseData(shareId);
+    const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+    const data = await getSharedCourseData(shareId, {
+        deviceId: cookieStore.get(SHARE_DEVICE_COOKIE)?.value,
+        userAgent: headerStore.get("user-agent"),
+    });
     if (!data) notFound();
 
     return <CourseSharePreviewClient data={data} shareId={shareId} />;

@@ -103,7 +103,8 @@ interface ShareData {
     isLocked?: boolean;
     /** 링크 열람권 유효: 장소 전체 + 팁 원문 */
     fullAccess?: boolean;
-    isExpired?: boolean;
+    /** 링크 열람권이 있었지만 지금 못 보는 이유 */
+    lockReason?: "expired" | "devices" | null;
     isPremium?: boolean;
     totalPlaceCount?: number;
     isSelectionType: boolean;
@@ -407,6 +408,7 @@ export default function CourseSharePreviewClient({
             </header>
 
             <main className="max-w-[900px] mx-auto px-4 pt-6 space-y-6">
+                {data.lockReason && <ShareLockNotice reason={data.lockReason} t={t} />}
                 {isSelectionModeUnselected && selectionOrderedSteps.length > 0 ? (
                     selectionOrderedSteps.map((step, stepIdx) => {
                         if (step.type === "fixed") {
@@ -937,5 +939,20 @@ function ViewAllTipsLink({ courseId, t }: { courseId: number; t: Translate }) {
         >
             💡 {t("sharePreview.viewAllTips")}
         </a>
+    );
+}
+
+/** 링크 열람권 잠금 안내 (기기 수 초과·만료) */
+function ShareLockNotice({ reason, t }: { reason: "expired" | "devices"; t: Translate }) {
+    return (
+        <div className="flex flex-col items-center text-center gap-1.5 p-5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+            <Icons.Lock className="w-6 h-6 text-gray-500 dark:text-gray-400 mb-1" />
+            <p className="font-bold text-gray-800 dark:text-gray-100">
+                {t(reason === "expired" ? "sharePreview.lockExpiredTitle" : "sharePreview.lockDevicesTitle")}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+                {t(reason === "expired" ? "sharePreview.lockExpiredDesc" : "sharePreview.lockDevicesDesc")}
+            </p>
+        </div>
     );
 }

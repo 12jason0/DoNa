@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
+/** src/lib/shareAccess.ts SHARE_DEVICE_COOKIE와 같은 값 (미들웨어는 prisma를 import하지 않으려고 복사) */
+const SHARE_DEVICE_COOKIE = "dona_did";
+
 async function resolveUserIdEdge(req: NextRequest): Promise<number | null> {
     const secret = process.env.JWT_SECRET;
     if (!secret || secret.length < 32) return null;
@@ -25,6 +28,23 @@ async function resolveUserIdEdge(req: NextRequest): Promise<number | null> {
 
 export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
+
+    // 공유 링크 열람권 기기 구분: 기기 ID 쿠키가 없으면 발급하고, 같은 요청의 서버 렌더에서도 보이게 요청 쿠키에 주입
+    if (pathname.startsWith("/share/course/") && !req.cookies.get(SHARE_DEVICE_COOKIE)) {
+        const deviceId = crypto.randomUUID();
+        const headers = new Headers(req.headers);
+        const cookie = headers.get("cookie");
+        headers.set("cookie", `${cookie ? cookie + "; " : ""}${SHARE_DEVICE_COOKIE}=${deviceId}`);
+        const res = NextResponse.next({ request: { headers } });
+        res.cookies.set(SHARE_DEVICE_COOKIE, deviceId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/share",
+            maxAge: 60 * 60 * 24 * 365,
+        });
+        return res;
+    }
 
     // Edge Runtime 호환: jose 사용 (jsonwebtoken은 Node.js crypto 미지원)
     const resolvedUserId = await resolveUserIdEdge(req);
