@@ -4,6 +4,7 @@ import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { getMergedTipsFromRow } from "@/types/tip";
 import { captureApiError } from "@/lib/sentry";
+import { NO_TIPS, canSeeCourseTips } from "@/lib/tipAccess";
 export const dynamic = "force-dynamic";
 
 // 인증: 유저 JWT 또는 관리자(admin_auth) 허용
@@ -43,6 +44,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             },
         });
 
+        // 팁(모든 언어)은 관리자·열람 권한 있는 사용자만 — 잠긴 유료 코스 팁이 비로그인에게 새던 문제
+        const showTips = await canSeeCourseTips(request, Number(courseId));
         const formatted = cps.map((cp: any) => ({
             id: cp.id,
             course_id: cp.course_id,
@@ -52,10 +55,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             order_in_segment: cp.order_in_segment ?? null,
             estimated_duration: cp.estimated_duration,
             recommended_time: cp.recommended_time,
-            tips: getMergedTipsFromRow(cp),
-            tips_en: cp.tips_en ?? null,
-            tips_ja: cp.tips_ja ?? null,
-            tips_zh: cp.tips_zh ?? null,
+            ...(showTips
+                ? {
+                      tips: getMergedTipsFromRow(cp),
+                      tips_en: cp.tips_en ?? null,
+                      tips_ja: cp.tips_ja ?? null,
+                      tips_zh: cp.tips_zh ?? null,
+                  }
+                : NO_TIPS),
             place: {
                 id: cp.place_id,
                 name: cp.place?.name ?? "",

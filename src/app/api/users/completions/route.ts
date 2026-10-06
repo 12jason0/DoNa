@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
+import { userHasCourseAccess } from "@/lib/shareAccess";
+import { NO_TIPS } from "@/lib/tipAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -41,8 +43,19 @@ export async function GET(request: NextRequest) {
             include: { story: true },
         });
 
+        // 지금 열람 권한이 없는 코스(환불·구독 만료 등)는 팁 모든 언어 비움 — include로 코스장소 행 전체가 나가던 문제
+        const courses = await Promise.all(
+            completedCourses.map(async (cc) => {
+                if (!cc.course || (await userHasCourseAccess(Number(userId), cc.course.id))) return cc;
+                return {
+                    ...cc,
+                    course: { ...cc.course, coursePlaces: cc.course.coursePlaces.map((cp) => ({ ...cp, ...NO_TIPS })) },
+                };
+            }),
+        );
+
         return NextResponse.json({
-            courses: completedCourses,
+            courses,
             escapes: completedEscapes,
         });
     } catch (error) {

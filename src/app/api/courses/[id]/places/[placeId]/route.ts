@@ -3,6 +3,7 @@ import { getCourseWarnings } from "@/lib/contentRules";
 import prisma from "@/lib/db";
 import { resolveUserId, verifyAdminJwt } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
+import { NO_TIPS, canSeeCourseTips } from "@/lib/tipAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,9 @@ export async function GET(
     if (!existing) {
         return NextResponse.json({ error: "Course place not found" }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, course_place: existing });
+    // 행 전체를 돌려주므로 팁(모든 언어)은 관리자·열람 권한 있는 사용자만
+    const showTips = await canSeeCourseTips(request, course_id);
+    return NextResponse.json({ ok: true, course_place: showTips ? existing : { ...existing, ...NO_TIPS } });
 }
 
 // 코스의 장소(course_place) 수정
