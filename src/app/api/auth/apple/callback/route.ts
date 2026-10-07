@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
         });
 
         const user = result.user;
+        if (result.isNew) await saveSignupAttribution(request, user.id);
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "365d" });
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
         const decodedNext =

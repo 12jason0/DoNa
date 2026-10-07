@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
@@ -217,6 +218,7 @@ export async function POST(request: NextRequest) {
 
         const user = result.user;
         const isNewUser: boolean = result.isNew ?? false;
+        if (isNewUser) await saveSignupAttribution(request, user.id);
 
         const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "365d" });
         // 🟢 [2026-01-21] 응답 payload에 사용자 데이터 추가 (ageRange, gender 포함)

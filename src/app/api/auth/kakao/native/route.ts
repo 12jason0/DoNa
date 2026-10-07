@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
         });
 
         const user = result.user;
+        if (result.isNew) await saveSignupAttribution(request, user.id);
         const token = jwt.sign({ userId: user.id, name: user.username }, JWT_SECRET, { expiresIn: "365d" });
 
         const res = NextResponse.json({

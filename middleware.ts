@@ -26,7 +26,7 @@ async function resolveUserIdEdge(req: NextRequest): Promise<number | null> {
     }
 }
 
-export async function middleware(req: NextRequest) {
+async function handleRequest(req: NextRequest): Promise<NextResponse> {
     const { pathname } = req.nextUrl;
 
     // 공유 링크 열람권 기기 구분: 기기 ID 쿠키가 없으면 발급하고, 같은 요청의 서버 렌더에서도 보이게 요청 쿠키에 주입
@@ -105,6 +105,45 @@ export async function middleware(req: NextRequest) {
     }
 
     return NextResponse.next();
+}
+
+/** src/lib/signupAttribution.ts FIRST_TOUCH_COOKIE와 같은 값 */
+const FIRST_TOUCH_COOKIE = "dona_ft";
+
+/** 처음 방문 기록: utm, 리퍼러 도메인(다른 사이트일 때만), 첫 페이지 경로. 개인정보·쿼리스트링은 안 남김 */
+function firstTouchValue(req: NextRequest): string {
+    const sp = req.nextUrl.searchParams;
+    let referrer = "";
+    try {
+        const host = new URL(req.headers.get("referer") || "").hostname;
+        if (host && host !== req.nextUrl.hostname) referrer = host;
+    } catch {}
+    return JSON.stringify({
+        s: (sp.get("utm_source") || "").slice(0, 100),
+        c: (sp.get("utm_campaign") || "").slice(0, 100),
+        r: referrer.slice(0, 255),
+        l: req.nextUrl.pathname.slice(0, 255),
+    });
+}
+
+export async function middleware(req: NextRequest) {
+    const res = await handleRequest(req);
+    const isPageVisit =
+        req.method === "GET" &&
+        req.headers.get("sec-fetch-dest") !== "empty" && // fetch/RSC 요청 제외, 문서 요청만
+        !req.headers.get("x-middleware-prefetch") &&
+        !req.nextUrl.searchParams.has("_rsc");
+    if (isPageVisit && !req.cookies.get(FIRST_TOUCH_COOKIE)) {
+        const isProd = process.env.NODE_ENV === "production";
+        res.cookies.set(FIRST_TOUCH_COOKIE, firstTouchValue(req), {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax", // 애플 로그인 콜백(다른 사이트 POST)에도 실려 오도록
+            path: "/",
+            maxAge: 60 * 60 * 24 * 30,
+        });
+    }
+    return res;
 }
 
 export const config = {

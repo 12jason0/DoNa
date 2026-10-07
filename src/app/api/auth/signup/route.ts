@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveSignupAttribution } from "@/lib/signupAttribution";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
@@ -80,6 +81,8 @@ export async function POST(request: NextRequest) {
 
             return newUser;
         });
+
+        await saveSignupAttribution(request, createdUser.id);
 
         // 8. JWT 토큰 생성
         const JWT_SECRET = getJwtSecret();

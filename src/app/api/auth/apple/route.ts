@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveSignupAttribution } from "@/lib/signupAttribution";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/db";
 import { getJwtSecret } from "@/lib/auth";
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
             if (!id_token) {
                 return generateHtmlResponse(`alert('토큰이 없습니다.'); window.location.href='/login';`);
             }
-            return await handleWebAppleAuthLogic(id_token, next);
+            return await handleWebAppleAuthLogic(request, id_token, next);
         }
 
         // B. 앱 네이티브 (Face ID 인증 데이터 - JSON 방식)
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
 /**
  * 💡 웹 전용 로직 (신규 가입 혜택 및 리다이렉트 포함)
  */
-async function handleWebAppleAuthLogic(idToken: string, next: string) {
+async function handleWebAppleAuthLogic(request: NextRequest, idToken: string, next: string) {
     try {
         const decoded: any = jwt.decode(idToken);
         const appleUserId = decoded.sub;
@@ -212,6 +213,7 @@ async function handleWebAppleAuthLogic(idToken: string, next: string) {
         });
 
         const user = result.user;
+        if (result.isNew) await saveSignupAttribution(request, user.id);
 
         const serviceToken = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "365d" });
         // 🟢 [Fix]: next가 없거나 로그인 페이지면 메인으로, 있으면 그곳으로
@@ -424,6 +426,7 @@ async function handleAppAppleAuthLogic(
         });
 
         const user = result.user;
+        if (result.isNew) await saveSignupAttribution(request, user.id);
 
         const token = jwt.sign({ userId: user.id, name: user.username }, getJwtSecret(), { expiresIn: "365d" });
 

@@ -59,6 +59,11 @@ model User {
   appleRefreshToken          String?                  @map("apple_refresh_token")
   isSearchHistoryEnabled     Boolean                  @default(true) @map("is_search_history_enabled")
   lastAiRecommendationUsedAt DateTime?                @map("last_ai_recommendation_used_at")
+  /// 가입 유입 경로 (처음 들어온 방문 기준, 개인정보 없음: 리퍼러는 도메인만, 랜딩은 경로만)
+  signupUtmSource            String?                  @map("signup_utm_source") @db.VarChar(100)
+  signupUtmCampaign          String?                  @map("signup_utm_campaign") @db.VarChar(100)
+  signupReferrer             String?                  @map("signup_referrer") @db.VarChar(255)
+  signupLanding              String?                  @map("signup_landing") @db.VarChar(255)
   completedCourses           CompletedCourse[]
   completedEscapes           CompletedEscape[]
   activeCourse               ActiveCourse?
