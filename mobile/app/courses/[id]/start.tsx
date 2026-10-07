@@ -255,6 +255,25 @@ export default function CourseStartMemoryScreen() {
         }
     }, [id, rating, description, uploadedUrls, selectedTags, i18n]);
 
+    // '다녀왔어요': 사진 없이 완료만 기록, 추억은 나중에
+    const [markingVisited, setMarkingVisited] = useState(false);
+    const handleVisited = useCallback(async () => {
+        if (!id || markingVisited) return;
+        setMarkingVisited(true);
+        try {
+            await api.post(endpoints.completions, { courseId: Number(id) });
+            queryClient.invalidateQueries({ queryKey: ["users", "completions"] });
+            Alert.alert(i18n("courseStart.congratsTitle"), i18n("courseStart.congratsBody"), [
+                { text: i18n("courseStart.addMemoryNow"), style: "cancel" },
+                { text: i18n("courseStart.goHome"), onPress: () => router.replace("/(tabs)" as any) },
+            ]);
+        } catch (e: any) {
+            Alert.alert(i18n("courseStart.saveFailedTitle"), e?.message || i18n("courseStart.alertSaveError"));
+        } finally {
+            setMarkingVisited(false);
+        }
+    }, [id, markingVisited, i18n]);
+
     // ─── 성공 모달 ────────────────────────────────────────────────────────────
     if (showSuccessModal) {
         const goHome = async () => {
@@ -528,17 +547,30 @@ export default function CourseStartMemoryScreen() {
                 {/* 하단 버튼 */}
                 <View style={[s.footer, { borderTopColor: t.border, paddingBottom: insets.bottom + 14 }]}>
                     {pageIndex === 0 ? (
-                        <TouchableOpacity
-                            style={[s.primaryBtn, (localUris.length === 0 || uploading) && s.btnDisabled]}
-                            onPress={handleNext}
-                            disabled={localUris.length === 0 || uploading}
-                        >
-                            {uploading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={s.primaryBtnText}>{i18n("courseStart.nextWithArrow")}</Text>
-                            )}
-                        </TouchableOpacity>
+                        <View style={s.footerRow}>
+                            <TouchableOpacity
+                                style={[s.visitedBtn, markingVisited && s.btnDisabled]}
+                                onPress={handleVisited}
+                                disabled={markingVisited}
+                            >
+                                <Text style={s.visitedBtnText}>{i18n("courseStart.visited")}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    s.primaryBtn,
+                                    s.primaryBtnFlex,
+                                    (localUris.length === 0 || uploading) && s.btnDisabled,
+                                ]}
+                                onPress={handleNext}
+                                disabled={localUris.length === 0 || uploading}
+                            >
+                                {uploading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={s.primaryBtnText}>{i18n("courseStart.nextWithArrow")}</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     ) : (
                         <View style={s.footerRow}>
                             <TouchableOpacity
@@ -673,6 +705,11 @@ const s = StyleSheet.create({
     },
     primaryBtn: { backgroundColor: Colors.brandGreen, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
     primaryBtnFlex: { flex: 1 },
+    visitedBtn: {
+        paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14,
+        alignItems: "center", backgroundColor: "#f3f4f6",
+    },
+    visitedBtnText: { color: "#374151", fontSize: 15, fontWeight: "700" },
     primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "500" },
     btnDisabled: { opacity: 0.5 },
 

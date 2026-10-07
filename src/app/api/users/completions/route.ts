@@ -4,6 +4,7 @@ import { resolveUserId } from "@/lib/auth";
 import { captureApiError } from "@/lib/sentry";
 import { userHasCourseAccess } from "@/lib/shareAccess";
 import { NO_TIPS } from "@/lib/tipAccess";
+import { recordCourseCompletion } from "@/lib/courseCompletion";
 
 export const dynamic = "force-dynamic";
 
@@ -78,41 +79,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "유효한 courseId가 필요합니다." }, { status: 400 });
         }
 
-        // 이미 완료했는지 확인
-        const existing = await prisma.completedCourse.findFirst({
-            where: { userId: Number(userId), courseId: courseId },
-        });
-        if (existing) {
-            return NextResponse.json({ success: true, already: true });
+        const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } });
+        if (!course) {
+            return NextResponse.json({ error: "코스를 찾을 수 없습니다." }, { status: 404 });
         }
 
-        // 🟢 트랜잭션으로 코스 완료 저장 (열람권 지급은 리뷰 작성 시 처리)
         const result = await prisma.$transaction(async (tx) => {
-            // 코스 완료 기록 생성
-            const created = await tx.completedCourse.create({
-                data: {
-                    userId: Number(userId),
-                    courseId: courseId,
-                },
-                include: { course: true },
-            });
-
-            await (tx as any).userInteraction.create({
-                data: { userId: Number(userId), courseId, action: "complete" },
-            });
-
-            // 완료된 코스 개수 확인
-            const completedCount = await tx.completedCourse.count({
-                where: { userId: Number(userId) },
-            });
-
-            // 🟢 열람권 지급은 리뷰 작성 시 처리하므로 여기서는 제거
+            const created = await recordCourseCompletion(tx, Number(userId), courseId);
+            const completedCount = await tx.completedCourse.count({ where: { userId: Number(userId) } });
             return { created, completedCount };
         });
 
         return NextResponse.json({
             success: true,
-            item: result.created,
+            already: !result.created,
             completedCount: result.completedCount,
         });
     } catch (error) {

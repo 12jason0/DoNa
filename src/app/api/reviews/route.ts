@@ -6,6 +6,7 @@ import { getMemoryLimit } from "@/constants/subscription";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { checkRateLimit, getIdentifierFromRequest } from "@/lib/rateLimit";
 import { captureApiError } from "@/lib/sentry";
+import { recordCourseCompletion } from "@/lib/courseCompletion";
 
 export const dynamic = "force-dynamic";
 
@@ -281,6 +282,8 @@ export async function POST(request: NextRequest) {
             let personalMemoryCount: number | undefined = undefined;
 
             if (isPublicValue === false) {
+                // 나만의 추억 = 코스를 다녀왔다는 뜻 → 완료 기록도 같이
+                await recordCourseCompletion(tx, numericUserId, numericCourseId);
                 personalMemoryCount = await (tx as any).review.count({
                     where: { userId: numericUserId, isPublic: false },
                 });

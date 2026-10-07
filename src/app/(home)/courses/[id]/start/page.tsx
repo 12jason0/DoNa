@@ -257,19 +257,27 @@ function GuidePageInner() {
         if (pageIndex === 1) setPageIndex(0);
     };
 
-    async function markCompleted() {
+    // '다녀왔어요': 사진 없이 완료만 기록, 추억은 나중에
+    const [markingVisited, setMarkingVisited] = useState(false);
+    async function handleVisited() {
+        if (!isLoggedIn) {
+            setShowLoginModal(true);
+            return;
+        }
+        if (markingVisited) return;
+        setMarkingVisited(true);
         try {
             const { apiFetch } = await import("@/lib/authClient");
-            const { data, response } = await apiFetch("/api/users/completions", {
+            const { response } = await apiFetch("/api/users/completions", {
                 method: "POST",
-                body: JSON.stringify({ courseId: Number(courseId), title: course?.title }),
+                body: JSON.stringify({ courseId: Number(courseId) }),
             });
-
-            if (response.ok && data) {
-                // 코스 완료 처리
-            }
+            if (response.ok) setShowCongrats(true);
+            else alert(t("courseStart.alertSaveFailed"));
         } catch {
-            // 무시
+            alert(t("courseStart.alertSaveError"));
+        } finally {
+            setMarkingVisited(false);
         }
     }
 
@@ -876,13 +884,22 @@ function GuidePageInner() {
                             </button>
                         </>
                     ) : (
-                        <button
-                            onClick={handleNext}
-                            className="w-full h-14 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all"
-                            style={{ backgroundColor: "#99c08e" }}
-                        >
-                            {t("courseStart.next")}
-                        </button>
+                        <>
+                            <button
+                                onClick={handleVisited}
+                                disabled={markingVisited}
+                                className="px-5 h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
+                            >
+                                {t("courseStart.visited")}
+                            </button>
+                            <button
+                                onClick={handleNext}
+                                className="flex-1 h-14 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 active:scale-95 transition-all"
+                                style={{ backgroundColor: "#99c08e" }}
+                            >
+                                {t("courseStart.next")}
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -895,11 +912,14 @@ function GuidePageInner() {
 
                         <p className="text-gray-500 mb-8 whitespace-pre-line">{t("courseStart.congratsBody")}</p>
                         <button
-                            onClick={handleSubmit}
+                            onClick={() => {
+                                setShowCongrats(false);
+                                setPageIndex(0);
+                            }}
                             className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl mb-3 transition-all"
                             style={{ backgroundColor: "#99c08e" }}
                         >
-                            {t("courseStart.saveMemory")}
+                            {t("courseStart.addMemoryNow")}
                         </button>
                         <button
                             onClick={() => {

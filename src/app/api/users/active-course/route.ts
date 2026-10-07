@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { resolveUserId } from "@/lib/auth";
-import { getKSTTodayRange } from "@/lib/kst";
 import { captureApiError } from "@/lib/sentry";
 
 export const dynamic = "force-dynamic";
 
+const ACTIVE_COURSE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
 /**
  * GET /api/users/active-course
- * 오늘(KST) activeCourse 조회 + hasMemory (해당 코스로 나만의 추억 있음 여부)
+ * 진행 중 activeCourse 조회 (시작 후 3일, 추억 남기면 숨김)
  */
 export async function GET(request: NextRequest) {
     try {
         const userId = resolveUserId(request);
         if (!userId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-
-        const { start, end } = getKSTTodayRange();
 
         const active = await prisma.activeCourse.findUnique({
             where: { userId },
@@ -35,21 +34,21 @@ export async function GET(request: NextRequest) {
 
         if (!active) return NextResponse.json(null);
 
-        // startedAt이 오늘(KST) 범위인지 확인
+        // 진행 중 코스는 시작 후 3일 동안 유지 ('다녀왔어요' 후에도 추억 남기기 유도)
         const startedAt = new Date(active.startedAt);
-        if (startedAt < start || startedAt > end) return NextResponse.json(null);
+        if (Date.now() - startedAt.getTime() > ACTIVE_COURSE_TTL_MS) return NextResponse.json(null);
 
-        // 해당 코스로 오늘(KST) 나만의 추억(Review isPublic:false) 존재 여부
+        // 시작 이후 이 코스로 나만의 추억(Review isPublic:false)을 남겼는지
         const memory = await prisma.review.findFirst({
             where: {
                 userId,
                 courseId: active.courseId ?? undefined,
                 isPublic: false,
-                createdAt: { gte: start, lte: end },
+                createdAt: { gte: startedAt },
             },
         });
 
-        // 오늘 이 코스의 추억을 이미 남겼으면 배너 숨김
+        // 추억을 이미 남겼으면 배너 숨김
         if (memory) return NextResponse.json(null);
 
         const course = active.course;
