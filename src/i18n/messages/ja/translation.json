@@ -226,6 +226,8 @@
     "resultMessage": "ジャジャーン！🎉 {nickname}さんのためのシークレットコースを見つけました。\nカードをタッチして確認してください！",
     "resultNetError": "ネットワークエラーのためおすすめを取得できませんでした。しばらくしてからもう一度お試しください。",
     "resultNoMatch": "条件に合うコースが見つかりませんでした。別の条件で再度お試しになりますか？",
+    "regionFallbackNearby": "{requested}のコースはまだないため、近くの{used}のコースをご紹介します",
+    "regionFallbackOther": "{requested}のコースはまだないため、他のエリアのコースをご紹介します",
     "mobileChatGreeting": "こんにちは！今日もDoNaと特別なデートを計画しましょう 🌿",
     "mobileChatLoginBlock": "コース推薦を見るにはログインが必要です 🔐\nマイページからログインしてください。",
     "mobileChatFoundTpl": "{region}エリアの{goal}向けコースを見つけました！🎉",

@@ -221,6 +221,8 @@
         "resultMessage": "짜잔! 🎉 {nickname}님을 위한 시크릿 코스를 찾았습니다.\n카드를 터치해서 확인해보세요!",
         "resultNetError": "네트워크 오류로 추천을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.",
         "resultNoMatch": "조건에 맞는 코스를 찾지 못했어요. 다른 조건으로 다시 시도해볼까요?",
+        "regionFallbackNearby": "{requested} 코스가 아직 없어 가까운 {used} 코스를 보여드려요",
+        "regionFallbackOther": "{requested} 코스가 아직 없어 다른 동네 코스를 보여드려요",
         "mobileChatGreeting": "안녕하세요! 오늘도 두나와 함께 특별한 데이트를 만들어볼까요? 🌿",
         "mobileChatLoginBlock": "코스 추천을 보려면 로그인이 필요해요 🔐\n마이페이지에서 로그인해주세요!",
         "mobileChatFoundTpl": "{region} 지역의 {goal} 코스를 찾았어요! 🎉",

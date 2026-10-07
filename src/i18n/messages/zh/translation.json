@@ -226,6 +226,8 @@
     "resultMessage": "找到了！🎉 为 {nickname} 找到秘密路线。\n点击卡片查看吧！",
     "resultNetError": "因网络错误无法获取推荐，请稍后再试。",
     "resultNoMatch": "未找到符合条件的路线，换个条件再试？",
+    "regionFallbackNearby": "{requested}暂无路线，为你推荐附近{used}的路线",
+    "regionFallbackOther": "{requested}暂无路线，为你推荐其他区域的路线",
     "mobileChatGreeting": "你好！今天也和 DoNa 一起策划一场特别约会吧 🌿",
     "mobileChatLoginBlock": "查看路线推荐需要先登录 🔐\n请在「我的」页面登录。",
     "mobileChatFoundTpl": "在 {region} 区域找到了适合「{goal}」的路线！🎉",

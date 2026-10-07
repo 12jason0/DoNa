@@ -727,6 +727,7 @@ const AIRecommender = () => {
         }
 
         let list: Course[] = [];
+        let regionNotice = "";
 
         try {
             // 🟢 [보안] 쿠키 기반 인증: apiFetch가 credentials: "include"로 전송
@@ -771,6 +772,16 @@ const AIRecommender = () => {
                 setUpsellFor(upsell === "BASIC" || upsell === "PREMIUM" ? upsell : null);
                 setUserTier(((data as any)?.userTier || "FREE") as "FREE" | "BASIC" | "PREMIUM");
                 setHasLongTermPreferences((data as any)?.hasLongTermPreferences === true);
+                const fb = (data as any)?.regionFallback as { requested: string; used: string | null } | null;
+                if (fb) {
+                    const requested = regionCodeToDisplay(fb.requested, t) || fb.requested;
+                    regionNotice = fb.used
+                        ? t("personalizedHome.regionFallbackNearby", {
+                              requested,
+                              used: regionCodeToDisplay(fb.used, t) || fb.used,
+                          })
+                        : t("personalizedHome.regionFallbackOther", { requested });
+                }
             } else {
                 setUpsellFor(null);
             }
@@ -801,7 +812,8 @@ const AIRecommender = () => {
                 type: "ai",
                 text:
                     list.length > 0
-                        ? t("personalizedHome.resultMessage", { nickname })
+                        ? (regionNotice ? `${regionNotice}\n\n` : "") +
+                          t("personalizedHome.resultMessage", { nickname })
                         : hadNetworkError
                           ? t("personalizedHome.resultNetError")
                           : t("personalizedHome.resultNoMatch"),

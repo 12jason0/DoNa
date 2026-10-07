@@ -136,6 +136,18 @@ function buildChatFlow(i18n: TI18n): Question[] {
 }
 
 
+// 동네 값 → 번역 키 (가까운 동네 안내 문구용)
+const REGION_LABEL_KEY: Record<string, string> = {
+    "문래·영등포": "qRegionMulla",
+    "합정·용산": "qRegionHapjeong",
+    "안국·서촌": "qRegionAnguk",
+    을지로: "qRegionEuljiro",
+    여의도: "qRegionYeouido",
+    "강남·신사": "qRegionGangnam",
+    "성수·건대": "qRegionSeongsu",
+    "홍대·연남": "qRegionHongdae",
+};
+
 const DONA_LOGO = "https://d13xx6k6chk2in.cloudfront.net/logo/donalogo_512.png";
 const DEFAULT_PROFILE = "https://d13xx6k6chk2in.cloudfront.net/profileLogo.png";
 
@@ -498,6 +510,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
 
             setIsAnalyzing(true);
             let fetchedCourses: Course[] = [];
+            let regionNotice = "";
             try {
                 // 1순위: /api/recommendations (모든 답변 전달 → AI 매칭)
                 const recParams = new URLSearchParams({
@@ -514,6 +527,17 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                     const recommendations = recResult?.recommendations;
                     if (Array.isArray(recommendations) && recommendations.length > 0) {
                         fetchedCourses = recommendations;
+                        const fb = recResult?.regionFallback as { requested: string; used: string | null } | null;
+                        if (fb) {
+                            const label = (v: string) =>
+                                REGION_LABEL_KEY[v] ? i18n(`personalizedHome.${REGION_LABEL_KEY[v]}`) : v;
+                            regionNotice = fb.used
+                                ? i18n("personalizedHome.regionFallbackNearby", {
+                                      requested: label(fb.requested),
+                                      used: label(fb.used),
+                                  })
+                                : i18n("personalizedHome.regionFallbackOther", { requested: label(fb.requested) });
+                        }
                     }
                 } catch (e) {
                     if (e instanceof ApiError && e.status === 429) {
@@ -551,11 +575,13 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                 setIsComplete(true);
                 setProgress(100);
                 if (fetchedCourses.length > 0) {
+                    // 동네를 넓혔으면 '○○ 지역 코스를 찾았어요' 대신 안내 문구
                     addAiMsg(
-                        i18n("personalizedHome.mobileChatFoundTpl", {
-                            region: newAnswers.region_today ?? "",
-                            goal: newAnswers.purpose_today ?? "",
-                        }),
+                        regionNotice ||
+                            i18n("personalizedHome.mobileChatFoundTpl", {
+                                region: newAnswers.region_today ?? "",
+                                goal: newAnswers.purpose_today ?? "",
+                            }),
                     );
                 } else {
                     addAiMsg(i18n("personalizedHome.resultNoMatch"));

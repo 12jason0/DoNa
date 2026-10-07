@@ -60,6 +60,18 @@ const REGION_TODAY_KEYWORDS: Record<string, string[]> = {
     "홍대·연남": ["홍대", "연남", "망원", "신촌"],
 };
 
+// [고른 동네에 코스가 없을 때 넓혀 볼 가까운 동네] 가까운 순
+const NEARBY_REGIONS: Record<string, string[]> = {
+    "문래·영등포": ["여의도", "합정·용산", "홍대·연남"],
+    "합정·용산": ["홍대·연남", "여의도", "을지로"],
+    "안국·서촌": ["을지로", "합정·용산", "홍대·연남"],
+    "을지로": ["안국·서촌", "성수·건대", "합정·용산"],
+    "여의도": ["문래·영등포", "합정·용산", "홍대·연남"],
+    "강남·신사": ["성수·건대", "합정·용산", "을지로"],
+    "성수·건대": ["강남·신사", "을지로", "안국·서촌"],
+    "홍대·연남": ["합정·용산", "문래·영등포", "여의도"],
+};
+
 /** 오늘 고른 동네의 DB 매칭 키워드 (모르는 값이면 · / , 로 나눈 원문) */
 function regionTodayKeywords(regionToday: string): string[] {
     return (
@@ -732,7 +744,8 @@ export async function GET(req: NextRequest) {
         const goalDetail = searchParams.get("goal_detail") || "";
         const companionToday = searchParams.get("companion_today") || "";
         const moodToday = searchParams.get("mood_today") || "";
-        const regionToday = searchParams.get("region_today") || "";
+        // 고른 동네에 코스가 없으면 가까운 동네로 바뀜 (아래 strict 조회)
+        let regionToday = searchParams.get("region_today") || "";
         const strictRegion = searchParams.get("strict") === "true";
         const dayTypeParam = searchParams.get("dayType") as "today" | "weekend" | null;
 
@@ -1052,7 +1065,8 @@ export async function GET(req: NextRequest) {
         {
             const excludeBase = [...badCourseIds];
             if (mode === "ai") {
-                excludeBase.push(...completedCourseIds, ...cooldownCourseIds);
+                // 저장한 코스도 여기서 빼야 '동네에 남은 코스 0건' 판단이 맞음
+                excludeBase.push(...completedCourseIds, ...cooldownCourseIds, ...savedCourseIds);
             }
             const excludedIds = Array.from(
                 new Set(excludeBase.map((id) => Number(id)).filter((id) => Number.isFinite(id))),
@@ -1119,7 +1133,25 @@ export async function GET(req: NextRequest) {
             select: courseSelect,
         });
 
-        // 🟢 strict 지역 필터 결과 0건이면 지역 조건 제거 후 재조회 (추천 결과는 항상 보이도록)
+        // 🟢 strict 지역 필터 결과 0건이면 가까운 동네 순서로 넓혀 재조회, 그래도 없으면 지역 조건 제거
+        let regionFallback: { requested: string; used: string | null } | null = null;
+        if (usedStrictRegion && allCourses.length === 0) {
+            const requested = regionToday;
+            for (const nearby of NEARBY_REGIONS[requested] ?? []) {
+                whereConditions.OR = regionTodayKeywords(nearby).map((k) => ({ region: { contains: k } }));
+                allCourses = await (prisma as any).course.findMany({
+                    where: whereConditions,
+                    take: 200,
+                    select: courseSelect,
+                });
+                if (allCourses.length > 0) {
+                    regionFallback = { requested, used: nearby };
+                    regionToday = nearby; // 점수·매칭 이유도 넓힌 동네 기준
+                    break;
+                }
+            }
+            if (!regionFallback) regionFallback = { requested, used: null };
+        }
         if (usedStrictRegion && allCourses.length === 0) {
             delete whereConditions.OR;
             allCourses = await (prisma as any).course.findMany({
@@ -1486,6 +1518,7 @@ export async function GET(req: NextRequest) {
             hasLongTermPreferences,
             upsellFor: upsellFor,
             userTier: userTier,
+            regionFallback,
         });
     } catch (e: any) {
             captureApiError(e);

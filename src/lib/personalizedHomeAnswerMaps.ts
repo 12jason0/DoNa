@@ -66,6 +66,8 @@ const LEGACY_REGION: Record<string, keyof typeof REGION_CODE_TO_API> = {
     "안국·서촌": "anguk_seochon",
     을지로: "euljiro",
     여의도: "yeouido",
+    "성수·건대": "seongsu_konkuk",
+    "홍대·연남": "hongdae_yeonnam",
 };
 
 const PURPOSE_CODE_TO_FEEDBACK_KO: Record<string, string> = {

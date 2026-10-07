@@ -229,6 +229,8 @@
     "resultMessage": "Ta-da! 🎉 Found a secret course for {nickname}.\nTap the card to check it out!",
     "resultNetError": "Couldn't load recommendations due to a network error. Please try again later.",
     "resultNoMatch": "No matching courses found. Try different criteria?",
+    "regionFallbackNearby": "No courses in {requested} yet, so here are courses in nearby {used}",
+    "regionFallbackOther": "No courses in {requested} yet, so here are courses in other areas",
     "mobileChatGreeting": "Hi! Ready to plan a special date with DoNa today? 🌿",
     "mobileChatLoginBlock": "Please log in to see course recommendations 🔐\nYou can sign in from My Page.",
     "mobileChatFoundTpl": "Found {goal} courses around {region}! 🎉",
