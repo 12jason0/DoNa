@@ -1390,6 +1390,23 @@ const FootprintTab = ({
                                                         <span>{t("mypage.footprintTab.viewCourse")}</span>
                                                         <ChevronRight className="w-3.5 h-3.5 opacity-50" />
                                                     </button>
+                                                    {/* '다녀왔어요'만 누르고 사진은 아직 — 여기서 나중에 추가 */}
+                                                    {!isAI &&
+                                                        courseId &&
+                                                        !personalStories.some(
+                                                            (st: any) => Number(st.courseId ?? st.course?.id) === Number(courseId),
+                                                        ) && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setShowDateCoursesModal(false);
+                                                                    router.push(`/courses/${courseId}/start`);
+                                                                }}
+                                                                className="w-full mt-2 py-3 text-white rounded-xl font-black text-sm hover:opacity-90 transition-all active:scale-[0.98] shadow-md"
+                                                                style={{ backgroundColor: "#99c08e" }}
+                                                            >
+                                                                📷 {t("courseStart.addPhoto")}
+                                                            </button>
+                                                        )}
                                                 </div>
                                             </div>
                                         );

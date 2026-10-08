@@ -263,16 +263,17 @@ export default function CourseStartMemoryScreen() {
         try {
             await api.post(endpoints.completions, { courseId: Number(id) });
             queryClient.invalidateQueries({ queryKey: ["users", "completions"] });
-            Alert.alert(i18n("courseStart.congratsTitle"), i18n("courseStart.congratsBody"), [
-                { text: i18n("courseStart.addMemoryNow"), style: "cancel" },
-                { text: i18n("courseStart.goHome"), onPress: () => router.replace("/(tabs)" as any) },
+            // 완료 기록 직후 사진 한 번 더 묻기 — '올리기'는 바로 사진 고르기, '나중에'는 닫기 (발자취에서 추가 가능)
+            Alert.alert(i18n("courseStart.photoAskTitle"), i18n("courseStart.photoAskBody"), [
+                { text: i18n("courseStart.photoAskLater"), style: "cancel", onPress: () => router.replace("/(tabs)" as any) },
+                { text: i18n("courseStart.photoAskUpload"), onPress: () => handlePickPhotos() },
             ]);
         } catch (e: any) {
             Alert.alert(i18n("courseStart.saveFailedTitle"), e?.message || i18n("courseStart.alertSaveError"));
         } finally {
             setMarkingVisited(false);
         }
-    }, [id, markingVisited, i18n]);
+    }, [id, markingVisited, i18n, handlePickPhotos]);
 
     // ─── 성공 모달 ────────────────────────────────────────────────────────────
     if (showSuccessModal) {

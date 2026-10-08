@@ -907,10 +907,10 @@ function GuidePageInner() {
             {showCongrats && (
                 <div className="fixed inset-0 z-5000 bg-black/60 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl animate-zoom-in">
-                        <div className="text-6xl mb-4">🏆</div>
-                        <h3 className="text-2xl font-black text-slate-950 mb-2">{t("courseStart.congratsTitle")}</h3>
+                        <div className="text-6xl mb-4">📸</div>
+                        <h3 className="text-2xl font-black text-slate-950 mb-2">{t("courseStart.photoAskTitle")}</h3>
 
-                        <p className="text-gray-500 mb-8 whitespace-pre-line">{t("courseStart.congratsBody")}</p>
+                        <p className="text-gray-500 mb-8 whitespace-pre-line">{t("courseStart.photoAskBody")}</p>
                         <button
                             onClick={() => {
                                 setShowCongrats(false);
@@ -919,7 +919,7 @@ function GuidePageInner() {
                             className="w-full py-4 text-white rounded-xl font-bold shadow-lg hover:opacity-90 hover:shadow-xl mb-3 transition-all"
                             style={{ backgroundColor: "#99c08e" }}
                         >
-                            {t("courseStart.addMemoryNow")}
+                            {t("courseStart.photoAskUpload")}
                         </button>
                         <button
                             onClick={() => {
@@ -928,7 +928,7 @@ function GuidePageInner() {
                             }}
                             className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
                         >
-                            {t("courseStart.goHome")}
+                            {t("courseStart.photoAskLater")}
                         </button>
                     </div>
                 </div>

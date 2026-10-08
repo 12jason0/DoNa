@@ -1627,6 +1627,20 @@ function FootprintTab({
                                             </Text>
                                             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.55)" />
                                         </TouchableOpacity>
+                                        {/* '다녀왔어요'만 누르고 사진은 아직 — 여기서 나중에 추가 */}
+                                        {!isAI && !stories.some((st) => Number(st.courseId ?? st.course?.id) === courseId) && (
+                                            <TouchableOpacity
+                                                style={[s.coursePreviewCta, { backgroundColor: Colors.brandGreen, marginTop: 8 }]}
+                                                activeOpacity={0.88}
+                                                onPress={() => {
+                                                    closeDatePreviewModal();
+                                                    router.push(`/courses/${courseId}/start` as any);
+                                                }}
+                                            >
+                                                <Ionicons name="camera-outline" size={16} color="#fff" />
+                                                <Text style={s.coursePreviewCtaText}>{i18n("courseStart.addPhoto")}</Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
                                 </View>
                             );
