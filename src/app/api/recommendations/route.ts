@@ -1116,6 +1116,9 @@ export async function GET(req: NextRequest) {
                         select: {
                             id: true,
                             name: true,
+                            name_en: true,
+                            name_ja: true,
+                            name_zh: true,
                             imageUrl: true,
                             reservationUrl: true,
                             category: true,

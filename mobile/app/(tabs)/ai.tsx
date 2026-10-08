@@ -30,7 +30,7 @@ import { useThemeColors } from "../../src/hooks/useThemeColors";
 import type { Course } from "../../src/types/api";
 import { useLocale } from "../../src/lib/useLocale";
 import { useModal, type LimitCtx } from "../../src/lib/modalContext";
-import { pickCourseTitle, pickCourseDescription } from "../../src/lib/courseLocalized";
+import { pickCourseTitle, pickCourseDescription, pickPlaceName } from "../../src/lib/courseLocalized";
 
 type TI18n = (key: string, params?: Record<string, string | number>) => string;
 
@@ -802,7 +802,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     }}
                                 >
                                     <Text style={[s.detailTitle, { color: t.text, flex: 1 }]} numberOfLines={2}>
-                                        {detailCourse.title}
+                                        {pickCourseTitle(detailCourse, locale)}
                                     </Text>
                                     <TouchableOpacity
                                         onPress={() => setDetailCourse(null)}
@@ -858,7 +858,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     : null}
 
                                 {/* 설명 한 줄 */}
-                                {detailCourse.description ? (
+                                {pickCourseDescription(detailCourse, locale) ? (
                                     <View
                                         style={{
                                             flexDirection: "row",
@@ -870,7 +870,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                     >
                                         <Ionicons name="leaf-outline" size={14} color="#059669" />
                                         <Text style={[{ fontSize: 13, color: t.textMuted, flex: 1 }]} numberOfLines={2}>
-                                            {detailCourse.description.split(/[.\n]/)[0]?.trim()}
+                                            {pickCourseDescription(detailCourse, locale).split(/[.\n]/)[0]?.trim()}
                                         </Text>
                                     </View>
                                 ) : null}
@@ -925,7 +925,7 @@ function ChatModal({ visible, onClose, onLimitExceeded, user }: {
                                                             style={[{ fontSize: 14, fontWeight: "500", color: t.text }]}
                                                             numberOfLines={1}
                                                         >
-                                                            {cp.place?.name ?? i18n("personalizedHome.placeFallback")}
+                                                            {(cp.place && pickPlaceName(cp.place, locale)) || i18n("personalizedHome.placeFallback")}
                                                         </Text>
                                                         <Text
                                                             style={[{ fontSize: 11, color: t.textMuted, marginTop: 2 }]}
