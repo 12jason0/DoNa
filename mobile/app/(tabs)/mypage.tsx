@@ -90,6 +90,22 @@ interface CasefileItem {
     badge?: { name: string; image_url?: string | null } | null;
 }
 
+interface UnlockedCoursesResponse {
+    courses: {
+        id: number;
+        title: string;
+        title_en?: string | null;
+        title_ja?: string | null;
+        title_zh?: string | null;
+        imageUrl?: string | null;
+        region?: string | null;
+        concept?: string | null;
+        grade?: string;
+        unlockedAt: string;
+    }[];
+    subscription: { tier: string; expiresAt: string | null; isAutoRenewal: boolean };
+}
+
 interface RewardRow {
     id: number;
     type: string;
@@ -1737,7 +1753,7 @@ function RecordsTab() {
     const dateLoc = localeTag(locale);
     const insets = useSafeAreaInsets();
     const queryClient = useQueryClient();
-    const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "casefiles">("favorites");
+    const [subTab, setSubTab] = useState<"favorites" | "saved" | "completed" | "purchased" | "casefiles">("favorites");
 
     const { data: favorites = [], isLoading: loadFav } = useQuery<Favorite[]>({
         queryKey: ["users", "favorites"],
@@ -1766,6 +1782,15 @@ function RecordsTab() {
         staleTime: 5 * 60 * 1000,
     });
 
+    const { data: purchased, isLoading: loadPurchased } = useQuery<UnlockedCoursesResponse>({
+        queryKey: ["users", "unlocked-courses"],
+        queryFn: () => api.get<UnlockedCoursesResponse>("/api/users/me/unlocked-courses"),
+        staleTime: 60 * 1000,
+    });
+    const purchasedCourses = purchased?.courses ?? [];
+    const subscription = purchased?.subscription;
+    const hasSubscription = !!subscription && subscription.tier !== "FREE";
+
     const { data: casefiles = [], isLoading: loadCase } = useQuery<CasefileItem[]>({
         queryKey: ["users", "casefiles"],
         queryFn: async () => {
@@ -1786,12 +1811,13 @@ function RecordsTab() {
             { id: "favorites" as const, label: i18n("mypage.recordsTab.favorites"), count: favorites.length },
             { id: "saved" as const, label: i18n("mypage.recordsTab.todayRecommend"), count: saved.length },
             { id: "completed" as const, label: i18n("mypage.recordsTab.completedCourses"), count: completed.length },
+            { id: "purchased" as const, label: i18n("mypage.recordsTab.purchased"), count: purchasedCourses.length },
             { id: "casefiles" as const, label: i18n("mypage.recordsTab.casefiles"), count: casefiles.length },
         ],
-        [i18n, favorites.length, saved.length, completed.length, casefiles.length],
+        [i18n, favorites.length, saved.length, completed.length, purchasedCourses.length, casefiles.length],
     );
 
-    const isLoading = loadFav || loadSaved || loadCompleted || loadCase;
+    const isLoading = loadFav || loadSaved || loadCompleted || loadPurchased || loadCase;
 
     return (
         <ScrollView style={s.tabScroll} contentContainerStyle={[s.tabContent, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false}>
@@ -1896,6 +1922,59 @@ function RecordsTab() {
                                             region={item.course?.region}
                                             date={item.completedAt}
                                             onPress={() => router.push(`/courses/${item.courseId}` as any)}
+                                            t={t}
+                                        />
+                                    ))}
+                                </View>
+                            )}
+                        </>
+                    )}
+
+                    {/* ── 구매한 코스 (열람권) + 구독 상태 ── */}
+                    {subTab === "purchased" && (
+                        <>
+                            {hasSubscription && (
+                                <View style={[s.subscriptionBox, { borderColor: Colors.brandGreen }]}>
+                                    <Text style={[s.subscriptionBoxTitle, { color: t.text }]}>
+                                        {i18n("mypage.recordsTab.subscriptionActive", { tier: subscription!.tier })}
+                                    </Text>
+                                    {subscription!.expiresAt ? (
+                                        <Text style={[s.subscriptionBoxSub, { color: t.textMuted }]}>
+                                            {i18n(
+                                                subscription!.isAutoRenewal
+                                                    ? "mypage.recordsTab.subscriptionRenews"
+                                                    : "mypage.recordsTab.subscriptionExpires",
+                                                { date: new Date(subscription!.expiresAt).toLocaleDateString(dateLoc) },
+                                            )}
+                                        </Text>
+                                    ) : null}
+                                    <Text style={[s.subscriptionBoxSub, { color: t.textMuted }]}>
+                                        {i18n("mypage.recordsTab.subscriptionAllOpen")}
+                                    </Text>
+                                </View>
+                            )}
+                            <Text style={[s.sectionTitle, { color: t.text }]}>{i18n("mypage.recordsTab.purchasedTitle")}</Text>
+                            {purchasedCourses.length === 0 ? (
+                                <EmptyState
+                                    emoji="🎟️"
+                                    title={i18n("mypage.recordsTab.noPurchasedYet")}
+                                    sub={i18n("mypage.recordsTab.purchasedHint")}
+                                    ctaLabel={i18n("mypage.recordsTab.browseCourses")}
+                                    onCta={() => router.push("/(tabs)/courses" as any)}
+                                    t={t}
+                                />
+                            ) : (
+                                <View style={{ gap: 10 }}>
+                                    {purchasedCourses.map((c) => (
+                                        <CourseListCard
+                                            key={c.id}
+                                            title={pickCourseTitle(c, locale)}
+                                            imageUrl={c.imageUrl}
+                                            grade={c.grade}
+                                            concept={c.concept ?? null}
+                                            region={c.region}
+                                            date={c.unlockedAt}
+                                            onPress={() => router.push(`/courses/${c.id}` as any)}
                                             t={t}
                                         />
                                     ))}
@@ -3306,6 +3385,9 @@ const s = StyleSheet.create({
 
     // 케이스파일
     caseCard: { borderRadius: 14, overflow: "hidden", position: "relative" },
+    subscriptionBox: { borderWidth: 1.5, borderRadius: 14, padding: 14, marginBottom: 16, gap: 4 },
+    subscriptionBoxTitle: { fontSize: 15, fontWeight: "700" },
+    subscriptionBoxSub: { fontSize: 13 },
     caseImgWrap: { width: "100%", height: 200, position: "relative" },
     caseOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
     caseTextWrap: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14 },
